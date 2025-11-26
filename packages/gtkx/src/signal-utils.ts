@@ -13,7 +13,7 @@ export const disconnectSignalHandlers = (gobject: GObjectLike, handlers: SignalH
                 { type: { type: "gobject" }, value: gobject.ptr },
                 { type: { type: "int", size: 64, unsigned: true }, value: handlerId },
             ],
-            { type: "undefined" },
+            { type: "boolean" },
         );
     }
     handlers.clear();

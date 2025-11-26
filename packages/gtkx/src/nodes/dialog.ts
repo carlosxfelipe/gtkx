@@ -15,6 +15,13 @@ interface FileDialogWidget extends gtk.Widget {
 const isFileDialog = (dialog: gtk.Widget): dialog is FileDialogWidget =>
     "open" in dialog && typeof dialog.open === "function";
 
+interface DestroyableWidget extends gtk.Widget {
+    destroy(): void;
+}
+
+const isDestroyable = (widget: gtk.Widget): widget is DestroyableWidget =>
+    "destroy" in widget && typeof widget.destroy === "function";
+
 /**
  * Node implementation for GTK dialog widgets.
  * Handles non-widget dialogs like FileDialog, ColorDialog, etc.
@@ -107,5 +114,8 @@ export class DialogNode implements Node {
 
     dispose(): void {
         disconnectSignalHandlers(this.dialog, this.signalHandlers);
+        if (isDestroyable(this.dialog)) {
+            this.dialog.destroy();
+        }
     }
 }

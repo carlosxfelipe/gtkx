@@ -31,6 +31,8 @@ const CONSTRUCTOR_ARGS: Record<string, (props: Props, currentApp?: unknown) => u
     Scale: (props) => [props.orientation, props.adjustment],
     SpinButton: (props) => [props.adjustment, props.climbRate, props.digits],
     LinkButton: (props) => [props.uri],
+    ColorDialogButton: (props) => [props.dialog ?? new gtk.ColorDialog().ptr],
+    FontDialogButton: (props) => [props.dialog ?? new gtk.FontDialog().ptr],
 };
 
 type AnyNodeClass = {

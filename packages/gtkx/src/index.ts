@@ -4,7 +4,7 @@ export { createPortal } from "./portal.js";
 export { render } from "./render.js";
 
 import { stop } from "@gtkx/ffi";
-import { reconciler } from "./reconciler.js";
+import { disposeAllInstances, reconciler } from "./reconciler.js";
 import { container } from "./render.js";
 
 /**
@@ -14,6 +14,7 @@ import { container } from "./render.js";
  */
 export const quit = () => {
     reconciler.updateContainer(null, container, null, () => {
+        disposeAllInstances();
         stop();
     });
 

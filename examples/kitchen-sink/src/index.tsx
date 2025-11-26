@@ -75,15 +75,11 @@ const ButtonsSection = () => {
                     <Box spacing={10}>
                         <MenuButton.Root label={`Emoji: ${selectedEmoji}`}>
                             <MenuButton.Popover>
-                                <Popover.Root>
-                                    <Popover.Child>
-                                        <EmojiChooser
-                                            onEmojiPicked={(emoji: string) => {
-                                                if (emoji) setSelectedEmoji(emoji);
-                                            }}
-                                        />
-                                    </Popover.Child>
-                                </Popover.Root>
+                                <EmojiChooser
+                                    onEmojiPicked={(emoji: string) => {
+                                        if (emoji) setSelectedEmoji(emoji);
+                                    }}
+                                />
                             </MenuButton.Popover>
                         </MenuButton.Root>
                     </Box>

@@ -2,6 +2,16 @@ import React from "react";
 import Reconciler from "react-reconciler";
 import { createNode, type Props } from "./factory.js";
 import type { Node } from "./node.js";
+
+const allInstances = new Set<Node>();
+
+export const disposeAllInstances = (): void => {
+    for (const instance of allInstances) {
+        instance.dispose?.();
+    }
+    allInstances.clear();
+};
+
 import { TextNode } from "./nodes/text.js";
 
 /** The React reconciler container type. */
@@ -81,14 +91,18 @@ export class GtkReconciler {
             getChildHostContext: (parentHostContext: HostContext): HostContext => parentHostContext,
             shouldSetTextContent: (): boolean => false,
 
-            createInstance: (type: string, props: Props): Node => createNode(type, props, this.currentApp),
+            createInstance: (type: string, props: Props): Node => {
+                const instance = createNode(type, props, this.currentApp);
+                allInstances.add(instance);
+                return instance;
+            },
 
             createTextInstance: (text: string): TextInstance => {
                 return new TextNode(text);
             },
 
             appendInitialChild: (parent: Node, child: Node): void => parent.appendChild(child),
-            finalizeInitialChildren: (): boolean => false,
+            finalizeInitialChildren: (): boolean => true,
 
             commitUpdate: (instance: Node, _type: string, oldProps: Props, newProps: Props): void => {
                 instance.updateProps(oldProps, newProps);
@@ -143,6 +157,7 @@ export class GtkReconciler {
             getInstanceFromScope: () => null,
             detachDeletedInstance: (instance: Node): void => {
                 instance.dispose?.();
+                allInstances.delete(instance);
             },
             resetFormInstance: (): void => {},
             requestPostPaintCallback: (): void => {},

@@ -1,7 +1,14 @@
 import type * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, isConnectable, isNotebookLike, type NotebookLike, removeChild } from "../widget-capabilities.js";
+import {
+    appendChild,
+    disconnectSignalHandlers,
+    isConnectable,
+    isNotebookLike,
+    type NotebookLike,
+    removeChild,
+} from "../widget-capabilities.js";
 
 interface NotebookWidget extends gtk.Widget, NotebookLike {}
 
@@ -106,4 +113,8 @@ export class NotebookNode implements Node<NotebookWidget> {
     }
 
     mount(): void {}
+
+    dispose(): void {
+        disconnectSignalHandlers(this.widget, this.signalHandlers);
+    }
 }

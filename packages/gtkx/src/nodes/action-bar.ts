@@ -1,7 +1,7 @@
 import type * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, isConnectable, removeChild } from "../widget-capabilities.js";
+import { appendChild, disconnectSignalHandlers, isConnectable, removeChild } from "../widget-capabilities.js";
 
 interface ActionBarWidget extends gtk.Widget {
     packStart(child: unknown): void;
@@ -111,4 +111,8 @@ export class ActionBarNode implements Node<ActionBarWidget> {
     }
 
     mount(): void {}
+
+    dispose(): void {
+        disconnectSignalHandlers(this.widget, this.signalHandlers);
+    }
 }
