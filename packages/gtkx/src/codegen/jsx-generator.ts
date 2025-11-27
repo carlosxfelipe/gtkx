@@ -177,7 +177,6 @@ export class JsxGenerator {
         this.interfaceMap = new Map(namespace.interfaces.map((iface) => [iface.name, iface]));
         this.namespace = namespace.name;
         const widgets = this.findWidgets(namespace, classMap);
-        const dialogs = this.findDialogs(namespace, classMap, widgets);
         const containerMetadata = this.buildContainerMetadata(widgets, classMap);
 
         const widgetClass = classMap.get("Widget");
@@ -186,9 +185,8 @@ export class JsxGenerator {
             this.generateImports(),
             this.generateCommonTypes(widgetClass),
             this.generateWidgetPropsInterfaces(widgets, containerMetadata),
-            this.generateDialogPropsInterfaces(dialogs),
-            this.generateExports(widgets, dialogs, containerMetadata),
-            this.generateJsxNamespace(widgets, dialogs, containerMetadata),
+            this.generateExports(widgets, containerMetadata),
+            this.generateJsxNamespace(widgets, containerMetadata),
             "export {};",
         ];
 
@@ -337,13 +335,6 @@ ${widgetPropsContent}
         });
     }
 
-    private findDialogs(namespace: GirNamespace, _classMap: Map<string, GirClass>, widgets: GirClass[]): GirClass[] {
-        const widgetNames = new Set(widgets.map((w) => w.name));
-
-        return namespace.classes
-            .filter((cls) => cls.name.endsWith("Dialog") && !widgetNames.has(cls.name) && cls.name !== "Dialog")
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }
 
     private analyzeContainerCapabilities(widget: GirClass, classMap: Map<string, GirClass>): ContainerMetadata {
         const hasAppend = widget.methods.some((m) => m.name === "append");
@@ -543,55 +534,9 @@ ${widgetPropsContent}
         return params ? `(${params}) => ${returnType}` : `() => ${returnType}`;
     }
 
-    private generateDialogPropsInterfaces(dialogs: GirClass[]): string {
-        return dialogs.map((dialog) => this.generateDialogProps(dialog)).join("\n");
-    }
-
-    private generateDialogProps(dialog: GirClass): string {
-        const dialogName = toPascalCase(dialog.name);
-        const lines: string[] = [];
-        if (dialog.doc) {
-            lines.push(formatDoc(dialog.doc).trimEnd());
-        }
-        lines.push(`export interface ${dialogName}Props {`);
-
-        if (dialog.name === "FileDialog") {
-            lines.push(`\tmode?: "open" | "save" | "selectFolder" | "openMultiple";`);
-            lines.push("");
-        }
-
-        for (const prop of dialog.properties) {
-            if (!prop.writable) continue;
-            const propName = toCamelCase(prop.name);
-            const typeMapping = this.typeMapper.mapType(prop.type);
-            const tsType = toJsxPropertyType(typeMapping.ts, prop.type.name);
-            const isRequired = prop.constructOnly && !prop.hasDefault;
-            if (prop.doc) {
-                lines.push(formatDoc(prop.doc, "\t").trimEnd());
-            }
-            lines.push(`\t${propName}${isRequired ? "" : "?"}: ${tsType};`);
-        }
-
-        if (dialog.signals?.length > 0) {
-            lines.push("");
-            for (const signal of dialog.signals) {
-                if (signal.doc) {
-                    lines.push(formatDoc(signal.doc, "\t").trimEnd());
-                }
-                lines.push(`\t${this.generateSignalHandler(signal)}`);
-            }
-        }
-
-        lines.push("");
-        lines.push(`\tref?: Ref<Gtk.${dialogName}>;`);
-        lines.push(`}`);
-
-        return `${lines.join("\n")}\n`;
-    }
 
     private generateExports(
         widgets: GirClass[],
-        dialogs: GirClass[],
         containerMetadata: Map<string, ContainerMetadata>,
     ): string {
         const lines: string[] = [];
@@ -624,17 +569,11 @@ ${widgetPropsContent}
             }
         }
 
-        for (const dialog of dialogs) {
-            const dialogName = toPascalCase(dialog.name);
-            lines.push(`export const ${dialogName} = "${dialogName}" as const;`);
-        }
-
         return `${lines.join("\n")}\n`;
     }
 
     private generateJsxNamespace(
         widgets: GirClass[],
-        dialogs: GirClass[],
         containerMetadata: Map<string, ContainerMetadata>,
     ): string {
         const elements: string[] = [];
@@ -675,11 +614,6 @@ ${widgetPropsContent}
             if (isGridWidget(widget.name)) {
                 elements.push(`"${widgetName}.Child": GridChildProps;`);
             }
-        }
-
-        for (const dialog of dialogs) {
-            const dialogName = toPascalCase(dialog.name);
-            elements.push(`${dialogName}: ${dialogName}Props;`);
         }
 
         return `

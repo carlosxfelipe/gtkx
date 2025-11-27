@@ -1,7 +1,6 @@
 import * as gtk from "@gtkx/ffi/gtk";
 import type { Node } from "./node.js";
 import { ActionBarNode } from "./nodes/action-bar.js";
-import { DialogNode } from "./nodes/dialog.js";
 import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
 import { GridChildNode, GridNode } from "./nodes/grid.js";
 import { ListItemNode, ListViewNode } from "./nodes/list.js";
@@ -52,7 +51,6 @@ const NODE_CLASSES: AnyNodeClass[] = [
     OverlayNode,
     ActionBarNode,
     ListViewNode,
-    DialogNode,
     WidgetNode,
 ];
 
