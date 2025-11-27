@@ -55,3 +55,14 @@
     font-size: 0.9rem;
     overflow-x: auto;
 }
+
+.stylingSection {
+    padding: 3rem 0;
+}
+
+.stylingSection p {
+    color: var(--ifm-color-emphasis-700);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}

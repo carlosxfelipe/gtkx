@@ -125,6 +125,58 @@ render(
     );
 }
 
+function StylingExample(): ReactNode {
+    return (
+        <section className={styles.stylingSection}>
+            <div className="container">
+                <Heading as="h2" className="text--center margin-bottom--md">
+                    CSS-in-JS Styling
+                </Heading>
+                <p className="text--center margin-bottom--lg">
+                    Style your widgets with an Emotion-like API. Use template literals, keyframe animations, and GTK theme
+                    variables.
+                </p>
+                <div className="row">
+                    <div className="col col--8 col--offset-2">
+                        <pre className={styles.codeBlock}>
+                            <code>
+                                {`import { css, keyframes, injectGlobal } from "@gtkx/css";
+
+// Global styles
+injectGlobal\`
+  window { background: @theme_bg_color; }
+\`;
+
+// Keyframe animation
+const fadeIn = keyframes\`
+  from { opacity: 0; }
+  to { opacity: 1; }
+\`;
+
+// Component styles
+const cardStyle = css\`
+  padding: 24px;
+  border-radius: 12px;
+  animation: \${fadeIn} 0.3s ease-in;
+\`;
+
+<Box cssClasses={[cardStyle]}>
+  <Label.Root label="Styled with Emotion!" />
+</Box>`}
+                            </code>
+                        </pre>
+                    </div>
+                </div>
+                <div className="text--center margin-top--lg">
+                    <Link className="button button--primary" to="/docs/guides/styling">
+                        Learn more about styling
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 export default function Home(): ReactNode {
     return (
         <Layout title="Home" description="Build GTK4 desktop applications with React and TypeScript">
@@ -132,6 +184,7 @@ export default function Home(): ReactNode {
             <main>
                 <HomepageFeatures />
                 <CodeExample />
+                <StylingExample />
             </main>
         </Layout>
     );
