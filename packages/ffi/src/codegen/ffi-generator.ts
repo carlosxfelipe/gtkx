@@ -291,8 +291,9 @@ export class CodeGenerator {
 
         this.usesRef =
             cls.methods.some((m) => hasOutParameter(m.parameters)) ||
-            cls.constructors.some((c) => hasOutParameter(c.parameters));
-        this.usesCall = cls.methods.length > 0 || cls.constructors.length > 0 || cls.signals.length > 0;
+            cls.constructors.some((c) => hasOutParameter(c.parameters)) ||
+            cls.functions.some((f) => hasOutParameter(f.parameters));
+        this.usesCall = cls.methods.length > 0 || cls.constructors.length > 0 || cls.functions.length > 0 || cls.signals.length > 0;
 
         const className = normalizeClassName(cls.name);
         const hasParent = !!(cls.parent && classMap.has(cls.parent));
@@ -317,6 +318,7 @@ export class CodeGenerator {
 
         sections.push(this.generateConstructors(cls, sharedLibrary, hasParent));
         sections.push(this.generateCreatePtr(cls, sharedLibrary, hasParent));
+        sections.push(this.generateStaticFunctions(cls.functions, sharedLibrary, className));
         sections.push(this.generateMethods(cls.methods, sharedLibrary, cls.name));
         sections.push(this.generateProperties(cls.properties, cls.methods));
 
@@ -456,6 +458,91 @@ ${args}
     return instance;
   }
 `;
+    }
+
+    private generateStaticFunctions(functions: GirFunction[], sharedLibrary: string, className: string): string {
+        const sections: string[] = [];
+
+        for (const func of functions) {
+            sections.push(this.generateStaticFunction(func, sharedLibrary, className));
+        }
+
+        return sections.join("\n");
+    }
+
+    private generateStaticFunction(func: GirFunction, sharedLibrary: string, className: string): string {
+        const funcName = toValidIdentifier(toCamelCase(func.name));
+        const params = this.generateParameterList(func.parameters);
+        const returnTypeMapping = this.typeMapper.mapType(func.returnType, true);
+
+        const returnsOwnClass = func.returnType.name === className || func.returnType.name?.endsWith(`.${className}`);
+        const rawReturnType = returnsOwnClass ? className : returnTypeMapping.ts;
+        const tsReturnType = rawReturnType === "void" ? "" : `: ${rawReturnType}`;
+
+        const hasResultParam = func.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
+        const resultVarName = hasResultParam ? "_result" : "result";
+
+        const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
+        const hasReturnValue = rawReturnType !== "void";
+
+        const lines: string[] = [];
+        const funcDoc = formatMethodDoc(func.doc, func.parameters);
+        if (funcDoc) {
+            lines.push(funcDoc.trimEnd());
+        }
+        lines.push(`  static ${funcName}(${params})${tsReturnType} {`);
+
+        if (func.throws) {
+            lines.push(`    const error = { value: null as unknown };`);
+        }
+
+        const args = this.generateCallArguments(func.parameters);
+        const errorArg = func.throws ? this.generateErrorArgument() : "";
+        const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
+
+        if (returnsOwnClass) {
+            lines.push(`    const ptr = call(
+      "${sharedLibrary}",
+      "${func.cIdentifier}",
+      [
+${allArgs ? `${allArgs},` : ""}
+      ],
+      ${this.generateTypeDescriptor(returnTypeMapping.ffi)}
+    );`);
+            if (func.throws) {
+                lines.push(this.generateErrorCheck());
+            }
+            lines.push(`    const instance = Object.create(${className}.prototype) as ${className} & { ptr: unknown };
+    instance.ptr = ptr;
+    return instance;`);
+        } else {
+            const callPrefix = func.throws
+                ? hasReturnValue
+                    ? `const ${resultVarName} = `
+                    : ""
+                : hasReturnValue
+                  ? "return "
+                  : "";
+
+            lines.push(`    ${callPrefix}call(
+      "${sharedLibrary}",
+      "${func.cIdentifier}",
+      [
+${allArgs ? `${allArgs},` : ""}
+      ],
+      ${this.generateTypeDescriptor(returnTypeMapping.ffi)}
+    )${needsCast ? ` as ${rawReturnType}` : ""};`);
+
+            if (func.throws) {
+                lines.push(this.generateErrorCheck());
+                if (hasReturnValue) {
+                    lines.push(`    return ${resultVarName};`);
+                }
+            }
+        }
+
+        lines.push(`  }`);
+        return `${lines.join("\n")}\n`;
     }
 
     private generateMethods(methods: GirMethod[], sharedLibrary: string, className?: string): string {

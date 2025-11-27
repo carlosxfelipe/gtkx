@@ -40,6 +40,8 @@
         "codegen": "tsx scripts/codegen.ts"
     },
     "dependencies": {
+        "@emotion/cache": "^11.14.0",
+        "@emotion/serialize": "^1.3.3",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/native": "workspace:*",
         "react-reconciler": "0.33.0"

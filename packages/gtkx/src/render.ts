@@ -2,6 +2,7 @@ import { start } from "@gtkx/ffi";
 import type { ApplicationFlags } from "@gtkx/ffi/gio";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
+import { flushPendingStyles } from "./css/index.js";
 import { reconciler, setCurrentApp } from "./reconciler.js";
 
 /** The root container for the React reconciler. */
@@ -28,6 +29,7 @@ export let container: unknown = null;
 export const render = (element: ReactNode, appId: string, flags?: ApplicationFlags): void => {
     const app = start(appId, flags);
 
+    flushPendingStyles();
     setCurrentApp(app);
 
     container = (

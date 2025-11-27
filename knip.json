@@ -15,12 +15,6 @@
         },
         "website": {
             "ignoreDependencies": ["typedoc", "typedoc-plugin-frontmatter"]
-        },
-        "examples/demo": {
-            "ignoreDependencies": ["@gtkx/gtkx"]
-        },
-        "examples/kitchen-sink": {
-            "ignoreDependencies": ["@gtkx/ffi", "@gtkx/gtkx"]
         }
     },
     "ignore": ["**/dist/**", "**/node_modules/**", "**/*.d.ts", "**/src/generated/**"],

@@ -60,6 +60,8 @@ export interface GirClass {
     methods: GirMethod[];
     /** Constructor functions for this class. */
     constructors: GirConstructor[];
+    /** Static functions defined on this class. */
+    functions: GirFunction[];
     /** Properties defined on this class. */
     properties: GirProperty[];
     /** Signals defined on this class. */

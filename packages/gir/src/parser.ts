@@ -22,6 +22,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.bitfield",
     "namespace.class.method",
     "namespace.class.constructor",
+    "namespace.class.function",
     "namespace.class.property",
     "namespace.class.signal",
     "namespace.class.glib:signal",
@@ -31,6 +32,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.interface.glib:signal",
     "namespace.class.method.parameters.parameter",
     "namespace.class.constructor.parameters.parameter",
+    "namespace.class.function.parameters.parameter",
     "namespace.function.parameters.parameter",
     "namespace.enumeration.member",
     "namespace.bitfield.member",
@@ -107,6 +109,9 @@ export class GirParser {
             methods: this.parseMethods(Array.isArray(cls.method) ? (cls.method as Record<string, unknown>[]) : []),
             constructors: this.parseConstructors(
                 Array.isArray(cls.constructor) ? (cls.constructor as Record<string, unknown>[]) : [],
+            ),
+            functions: this.parseFunctions(
+                Array.isArray(cls.function) ? (cls.function as Record<string, unknown>[]) : [],
             ),
             properties: this.parseProperties(
                 Array.isArray(cls.property) ? (cls.property as Record<string, unknown>[]) : [],

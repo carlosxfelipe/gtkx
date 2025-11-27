@@ -2,6 +2,7 @@ export { createRef } from "@gtkx/native";
 export * from "./generated/jsx.js";
 export { createPortal } from "./portal.js";
 export { render } from "./render.js";
+export { css, cx, keyframes, injectGlobal, getGtkCache, resetGtkCache } from "./css/index.js";
 
 import { stop } from "@gtkx/ffi";
 import { disposeAllInstances, reconciler } from "./reconciler.js";
