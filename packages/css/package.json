@@ -2,17 +2,6 @@
     "name": "@gtkx/css",
     "version": "0.1.8",
     "description": "Emotion-style CSS-in-JS for GTKX applications",
-    "license": "MPL-2.0",
-    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/eugeniodepalo/gtkx.git",
-        "directory": "packages/css"
-    },
-    "homepage": "https://eugeniodepalo.github.io/gtkx",
-    "bugs": {
-        "url": "https://github.com/eugeniodepalo/gtkx/issues"
-    },
     "keywords": [
         "gtk",
         "gtk4",
@@ -21,13 +10,24 @@
         "css-in-js",
         "styling"
     ],
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/css"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "types": "./dist/index.d.ts",
             "development": "./src/index.ts",
-            "default": "./dist/index.js",
-            "types": "./dist/index.d.ts"
+            "default": "./dist/index.js"
         }
     },
     "files": [

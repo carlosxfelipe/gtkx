@@ -212,6 +212,7 @@ export class CodeGenerator {
     private usesWrite = false;
     private usesAlloc = false;
     private usesNativeError = false;
+    private usesWrapPtr = false;
     private usedEnums = new Set<string>();
     private usedRecords = new Set<string>();
     private usedExternalTypes = new Map<string, ExternalTypeUsage>();
@@ -382,6 +383,7 @@ export class CodeGenerator {
         this.usesWrite = false;
         this.usesAlloc = false;
         this.usesNativeError = false;
+        this.usesWrapPtr = false;
         this.usedEnums.clear();
         this.usedRecords.clear();
         this.usedExternalTypes.clear();
@@ -722,6 +724,7 @@ ${args}
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
 
+        this.usesWrapPtr = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${className} {
     const ptr = call(
       "${sharedLibrary}",
@@ -731,9 +734,7 @@ ${args}
       ],
       { type: "gobject", borrowed: true }
     );
-    const instance = Object.create(${className}.prototype) as ${className} & { ptr: unknown };
-    instance.ptr = ptr;
-    return instance;
+    return wrapPtr(ptr, ${className});
   }
 `;
     }
@@ -779,6 +780,7 @@ ${args}
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
         if (returnsOwnClass) {
+            this.usesWrapPtr = true;
             lines.push(`    const ptr = call(
       "${sharedLibrary}",
       "${func.cIdentifier}",
@@ -790,9 +792,7 @@ ${allArgs ? `${allArgs},` : ""}
             if (func.throws) {
                 lines.push(this.generateErrorCheck());
             }
-            lines.push(`    const instance = Object.create(${className}.prototype) as ${className} & { ptr: unknown };
-    instance.ptr = ptr;
-    return instance;`);
+            lines.push(`    return wrapPtr(ptr, ${className});`);
         } else {
             const callPrefix = func.throws
                 ? hasReturnValue
@@ -1050,14 +1050,11 @@ ${allArgs ? `${allArgs},` : ""}
         if (outputParams.length === 0) {
             if (hasMainReturn) {
                 if (needsObjectWrap) {
+                    this.usesWrapPtr = true;
                     lines.push(
                         `          if (ptr === null) { resolve(null as unknown as ${finishReturnType.ts}); return; }`,
                     );
-                    lines.push(
-                        `          const instance = Object.create(${finishReturnType.ts}.prototype) as ${finishReturnType.ts} & { ptr: unknown };`,
-                    );
-                    lines.push(`          instance.ptr = ptr;`);
-                    lines.push(`          resolve(instance);`);
+                    lines.push(`          resolve(wrapPtr(ptr, ${finishReturnType.ts}));`);
                 } else {
                     lines.push(`          resolve(result);`);
                 }
@@ -1068,13 +1065,10 @@ ${allArgs ? `${allArgs},` : ""}
             const resolveFields: string[] = [];
             if (hasMainReturn) {
                 if (needsObjectWrap) {
-                    lines.push(`          const result = (ptr === null ? null : (() => {`);
+                    this.usesWrapPtr = true;
                     lines.push(
-                        `            const instance = Object.create(${finishReturnType.ts}.prototype) as ${finishReturnType.ts} & { ptr: unknown };`,
+                        `          const result = (ptr === null ? null : wrapPtr(ptr, ${finishReturnType.ts})) as ${finishReturnType.ts};`,
                     );
-                    lines.push(`            instance.ptr = ptr;`);
-                    lines.push(`            return instance;`);
-                    lines.push(`          })()) as ${finishReturnType.ts};`);
                 }
                 resolveFields.push("result");
             }
@@ -1196,11 +1190,8 @@ ${allArgs ? `${allArgs},` : ""}
             if (isCyclic) {
                 lines.push(`    return { ptr } as unknown as ${tsReturnType};`);
             } else {
-                lines.push(
-                    `    const instance = Object.create(${tsReturnType}.prototype) as ${tsReturnType} & { ptr: unknown };`,
-                );
-                lines.push(`    instance.ptr = ptr;`);
-                lines.push(`    return instance;`);
+                this.usesWrapPtr = true;
+                lines.push(`    return wrapPtr(ptr, ${tsReturnType});`);
             }
         } else {
             const callPrefix = method.throws
@@ -1339,6 +1330,9 @@ ${allArgs ? `${allArgs},` : ""}
         });
 
         this.usesType = true;
+        if (signalMetadata.length > 0) {
+            this.usesWrapPtr = true;
+        }
 
         const signalMapCode =
             signalMetadata.length > 0
@@ -1353,9 +1347,7 @@ ${allArgs ? `${allArgs},` : ""}
       if (!meta) return handler(...signalArgs);
       const wrapped = meta.map((m, i) => {
         if (m.cls && signalArgs[i] != null) {
-          const inst = Object.create(m.cls.prototype) as { ptr: unknown };
-          inst.ptr = signalArgs[i];
-          return inst;
+          return wrapPtr(signalArgs[i], m.cls);
         }
         return signalArgs[i];
       });
@@ -1643,6 +1635,7 @@ ${args}
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
 
+        this.usesWrapPtr = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${recordName} {
     const ptr = call(
       "${sharedLibrary}",
@@ -1652,9 +1645,7 @@ ${args}
       ],
       { type: "boxed", borrowed: true, innerType: "${recordName}" }
     );
-    const instance = Object.create(${recordName}.prototype) as ${recordName} & { ptr: unknown };
-    instance.ptr = ptr;
-    return instance;
+    return wrapPtr(ptr, ${recordName});
   }
 `;
     }
@@ -1842,6 +1833,7 @@ ${args}
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
         if (needsObjectWrap && hasReturnValue) {
+            this.usesWrapPtr = true;
             lines.push(`  const ptr = call("${sharedLibrary}", "${func.cIdentifier}", [
 ${allArgs ? `${allArgs},` : ""}
   ], ${this.generateTypeDescriptor(returnTypeMapping.ffi)});`);
@@ -1849,11 +1841,7 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(this.generateErrorCheck(""));
             }
             lines.push(`  if (ptr === null) return null as unknown as ${returnTypeMapping.ts};`);
-            lines.push(
-                `  const instance = Object.create(${returnTypeMapping.ts}.prototype) as ${returnTypeMapping.ts} & { ptr: unknown };`,
-            );
-            lines.push(`  instance.ptr = ptr;`);
-            lines.push(`  return instance;`);
+            lines.push(`  return wrapPtr(ptr, ${returnTypeMapping.ts});`);
         } else {
             const callPrefix = func.throws
                 ? hasReturnValue
@@ -1990,8 +1978,11 @@ ${indent}  }`;
         if (nativeImports.length > 0) {
             lines.push(`import { ${nativeImports.join(", ")} } from "@gtkx/native";`);
         }
-        if (this.usesNativeError) {
-            lines.push(`import { NativeError } from "@gtkx/ffi";`);
+        const ffiImports: string[] = [];
+        if (this.usesNativeError) ffiImports.push("NativeError");
+        if (this.usesWrapPtr) ffiImports.push("wrapPtr");
+        if (ffiImports.length > 0) {
+            lines.push(`import { ${ffiImports.join(", ")} } from "@gtkx/ffi";`);
         }
         if (this.usedEnums.size > 0) {
             const enumList = Array.from(this.usedEnums).sort().join(", ");
