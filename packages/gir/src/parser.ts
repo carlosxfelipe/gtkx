@@ -244,7 +244,12 @@ export class GirParser {
         if (!returnValue) {
             return { name: "void" };
         }
-        return this.parseType((returnValue.type ?? returnValue.array) as Record<string, unknown> | undefined);
+        const type = this.parseType((returnValue.type ?? returnValue.array) as Record<string, unknown> | undefined);
+        const transferOwnership = returnValue["@_transfer-ownership"] as string | undefined;
+        if (transferOwnership === "none" || transferOwnership === "full" || transferOwnership === "container") {
+            type.transferOwnership = transferOwnership;
+        }
+        return type;
     }
 
     private parseType(typeNode: Record<string, unknown> | undefined): GirType {

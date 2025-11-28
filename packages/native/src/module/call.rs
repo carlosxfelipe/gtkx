@@ -149,7 +149,7 @@ fn handle_call(
                 FloatSize::_32 => cif::Value::F32(cif.call::<f32>(symbol_ptr, &mut ffi_args)),
                 FloatSize::_64 => cif::Value::F64(cif.call::<f64>(symbol_ptr, &mut ffi_args)),
             },
-            Type::String => {
+            Type::String(_) => {
                 let ptr = cif.call::<*const c_char>(symbol_ptr, &mut ffi_args);
                 cif::Value::Ptr(ptr as *mut c_void)
             }

@@ -1,5 +1,5 @@
 use std::{
-    ffi::{CString, c_void},
+    ffi::{CStr, CString, c_void},
     sync::Arc,
 };
 
@@ -157,7 +157,7 @@ impl Value {
 
                 Ok(Value::Number(number))
             }
-            Type::String => {
+            Type::String(string_type) => {
                 let str_ptr = match cif_value {
                     cif::Value::Ptr(ptr) => *ptr,
                     _ => {
@@ -172,8 +172,13 @@ impl Value {
                     return Ok(Value::Null);
                 }
 
-                let c_str = unsafe { CString::from_raw(str_ptr as *mut i8) };
-                let string = c_str.into_string()?;
+                let string = if string_type.is_borrowed {
+                    let c_str = unsafe { CStr::from_ptr(str_ptr as *const i8) };
+                    c_str.to_str()?.to_string()
+                } else {
+                    let c_string = unsafe { CString::from_raw(str_ptr as *mut i8) };
+                    c_string.into_string()?
+                };
 
                 Ok(Value::String(string))
             }
@@ -333,7 +338,7 @@ impl Value {
                                 .collect::<Vec<Value>>()
                         }
                     },
-                    Type::String => {
+                    Type::String(_) => {
                         let (cstrings, _) = array_ptr
                             .value
                             .downcast_ref::<(Vec<CString>, Vec<*mut c_void>)>()
@@ -463,7 +468,7 @@ impl Value {
                 FloatSize::_32 => Value::Number(gvalue.get::<f32>().unwrap() as f64),
                 FloatSize::_64 => Value::Number(gvalue.get::<f64>().unwrap()),
             },
-            Type::String => {
+            Type::String(_) => {
                 let string: String = gvalue.get().unwrap();
                 Value::String(string)
             }

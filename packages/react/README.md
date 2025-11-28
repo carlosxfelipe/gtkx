@@ -179,8 +179,8 @@ console.log(ref.value);
 ```tsx
 <Switch
   active={enabled}
-  onStateSet={() => {
-    setEnabled(e => !e);
+  onStateSet={(self, state) => {
+    setEnabled(state);
     return true;
   }}
 />
@@ -197,14 +197,15 @@ console.log(ref.value);
 **SpinButton** — Numeric input with increment/decrement
 
 ```tsx
-const adjustment = useRef(new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1 }));
-<SpinButton adjustment={adjustment.current.ptr} onValueChanged={() => setValue(adjustment.current.getValue())} />
+// Adjustment args: value, lower, upper, stepIncrement, pageIncrement, pageSize
+const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
+<SpinButton adjustment={adjustment} onValueChanged={(self) => setValue(self.getValue())} />
 ```
 
 **Scale** — Horizontal or vertical slider
 
 ```tsx
-<Scale hexpand drawValue adjustment={adjustment.current.ptr} />
+<Scale hexpand drawValue adjustment={adjustment} onValueChanged={(self) => setValue(self.getValue())} />
 ```
 
 ### Display Widgets

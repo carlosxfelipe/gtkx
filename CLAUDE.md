@@ -123,13 +123,13 @@ Some widgets use `.Root` with slot children for complex layouts:
 
 <CheckButton.Root label="Enable feature" active={checked} onToggled={() => setChecked(c => !c)} />
 
-// Switch requires returning true from onStateSet
-<Switch active={switchOn} onStateSet={() => { setSwitchOn(s => !s); return true; }} />
+// Switch requires returning true from onStateSet to accept the state change
+<Switch active={switchOn} onStateSet={(self, state) => { setSwitchOn(state); return true; }} />
 
-// SpinButton with Adjustment
-const adjustment = useRef(new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1 }));
-<SpinButton adjustment={adjustment.current.ptr} onValueChanged={() => setValue(adjustment.current.getValue())} />
-<Scale hexpand drawValue adjustment={adjustment.current.ptr} />
+// SpinButton with Adjustment (args: value, lower, upper, stepIncrement, pageIncrement, pageSize)
+const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
+<SpinButton adjustment={adjustment} onValueChanged={(self) => setValue(self.getValue())} />
+<Scale hexpand drawValue adjustment={adjustment} onValueChanged={(self) => setValue(self.getValue())} />
 ```
 
 ### Lists and Collections
@@ -310,18 +310,23 @@ try {
 
 ```bash
 pnpm install
-pnpm build                                   # Full build
+pnpm build                                   # Full build (uses turbo)
+turbo build --force                          # Force rebuild (bypass cache)
 cd examples/gtk4-demo && turbo start         # Run demo
 pnpm knip                                    # Find unused code
 pnpm test                                    # Run tests
 ```
+
+**Important:** Always use `turbo` for build commands in this monorepo. If you encounter stale cache issues after modifying codegen or generated files, either:
+1. Use `turbo build --force` to bypass the cache, or
+2. Delete `*.tsbuildinfo` files: `find . -name '*.tsbuildinfo' -delete`
 
 ## Working with Generated Code
 
 - **Never edit `src/generated/` directories** - they are regenerated on build
 - To modify generated code, edit the generators:
   - `packages/ffi/src/codegen/ffi-generator.ts` for FFI bindings
-  - `packages/gtkx/src/codegen/jsx-generator.ts` for JSX types
+  - `packages/react/src/codegen/jsx-generator.ts` for JSX types
 - GIR files are synced to `/girs/` from `/usr/share/gir-1.0`
 
 ## Coding Guidelines

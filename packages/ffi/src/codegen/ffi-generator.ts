@@ -541,7 +541,7 @@ export class CodeGenerator {
 
         if (cls.signals.length > 0) {
             const hasConnectMethod = cls.methods.some((m) => toCamelCase(m.name) === "connect");
-            sections.push(this.generateSignalConnect(sharedLibrary, cls.signals, hasConnectMethod, classMap));
+            sections.push(this.generateSignalConnect(sharedLibrary, cls.signals, hasConnectMethod, classMap, className));
         }
 
         sections.push("}");
@@ -1337,6 +1337,7 @@ ${allArgs ? `${allArgs},` : ""}
         signals: GirSignal[],
         hasConnectMethod: boolean,
         classMap: Map<string, GirClass>,
+        className: string,
     ): string {
         const methodName = hasConnectMethod ? "on" : "connect";
 
@@ -1379,20 +1380,21 @@ ${allArgs ? `${allArgs},` : ""}
             signalMetadata.length > 0
                 ? `const signalMeta: Record<string, { type: Type; cls?: { prototype: object } }[]> = {\n${signalMetadata.join(",\n")}\n  };
     const meta = signalMeta[signal];
-    const selfType: Type = { type: "gobject", borrowed: false };
+    const selfType: Type = { type: "gobject", borrowed: true };
     const argTypes = meta ? [selfType, ...meta.map((m) => m.type)] : [selfType];`
-                : `const meta = undefined;\n    const selfType: Type = { type: "gobject", borrowed: false };\n    const argTypes = [selfType];`;
+                : `const meta = undefined;\n    const selfType: Type = { type: "gobject", borrowed: true };\n    const argTypes = [selfType];`;
 
         const wrapperCode = `const wrappedHandler = (...args: unknown[]) => {
+      const self = wrapPtr(args[0], ${className});
       const signalArgs = args.slice(1);
-      if (!meta) return handler(...signalArgs);
+      if (!meta) return handler(self, ...signalArgs);
       const wrapped = meta.map((m, i) => {
         if (m.cls && signalArgs[i] != null) {
           return wrapPtr(signalArgs[i], m.cls);
         }
         return signalArgs[i];
       });
-      return handler(...wrapped);
+      return handler(self, ...wrapped);
     };`;
 
         return `  ${methodName}(
@@ -1983,6 +1985,9 @@ ${indent}  }`;
         }
         if (type.type === "float") {
             return `{ type: "float", size: ${type.size} }`;
+        }
+        if (type.type === "string") {
+            return type.borrowed ? `{ type: "string", borrowed: true }` : `{ type: "string" }`;
         }
         if (type.type === "gobject") {
             return type.borrowed ? `{ type: "gobject", borrowed: true }` : `{ type: "gobject" }`;

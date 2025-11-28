@@ -8,7 +8,7 @@ type FloatType = { type: "float"; size: 32 | 64 };
 type BooleanType = { type: "boolean" };
 
 /** String type descriptor for FFI calls. */
-type StringType = { type: "string" };
+type StringType = { type: "string"; borrowed?: boolean };
 
 /** GObject pointer type descriptor for FFI calls. */
 type GObjectType = { type: "gobject"; borrowed?: boolean };

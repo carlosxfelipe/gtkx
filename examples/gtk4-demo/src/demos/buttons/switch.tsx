@@ -19,8 +19,8 @@ export const SwitchDemo = () => {
                     <Label.Root label="Dark Mode" hexpand halign={Gtk.Align.START} />
                     <Switch
                         active={darkMode}
-                        onStateSet={() => {
-                            setDarkMode((v) => !v);
+                        onStateSet={(_self, state) => {
+                            setDarkMode(state);
                             return true;
                         }}
                     />
@@ -30,8 +30,8 @@ export const SwitchDemo = () => {
                     <Label.Root label="Notifications" hexpand halign={Gtk.Align.START} />
                     <Switch
                         active={notifications}
-                        onStateSet={() => {
-                            setNotifications((v) => !v);
+                        onStateSet={(_self, state) => {
+                            setNotifications(state);
                             return true;
                         }}
                     />
@@ -41,8 +41,8 @@ export const SwitchDemo = () => {
                     <Label.Root label="Auto-save" hexpand halign={Gtk.Align.START} />
                     <Switch
                         active={autoSave}
-                        onStateSet={() => {
-                            setAutoSave((v) => !v);
+                        onStateSet={(_self, state) => {
+                            setAutoSave(state);
                             return true;
                         }}
                     />
@@ -80,8 +80,8 @@ export const switchDemo: Demo = {
                 <Label.Root label="Dark Mode" hexpand halign={Gtk.Align.START} />
                 <Switch
                     active={darkMode}
-                    onStateSet={() => {
-                        setDarkMode((v) => !v);
+                    onStateSet={(_self, state) => {
+                        setDarkMode(state);
                         return true;
                     }}
                 />
@@ -90,8 +90,8 @@ export const switchDemo: Demo = {
                 <Label.Root label="Notifications" hexpand halign={Gtk.Align.START} />
                 <Switch
                     active={notifications}
-                    onStateSet={() => {
-                        setNotifications((v) => !v);
+                    onStateSet={(_self, state) => {
+                        setNotifications(state);
                         return true;
                     }}
                 />

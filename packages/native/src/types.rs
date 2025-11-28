@@ -8,6 +8,7 @@ mod float;
 mod gobject;
 mod integer;
 mod r#ref;
+mod string;
 
 pub use array::*;
 pub use boxed::*;
@@ -16,6 +17,7 @@ pub use float::*;
 pub use gobject::*;
 pub use integer::*;
 pub use r#ref::*;
+pub use string::*;
 
 #[derive(Debug, Clone)]
 pub struct CallbackType {
@@ -32,7 +34,7 @@ pub struct AsyncCallbackType {
 pub enum Type {
     Integer(IntegerType),
     Float(FloatType),
-    String,
+    String(StringType),
     Null,
     Undefined,
     Boolean,
@@ -57,7 +59,7 @@ impl Type {
         match type_.as_str() {
             "int" => Ok(Type::Integer(IntegerType::from_js_value(cx, value)?)),
             "float" => Ok(Type::Float(FloatType::from_js_value(cx, value)?)),
-            "string" => Ok(Type::String),
+            "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
             "boolean" => Ok(Type::Boolean),
             "null" => Ok(Type::Null),
             "undefined" => Ok(Type::Undefined),
@@ -100,7 +102,7 @@ impl From<&Type> for ffi::Type {
         match value {
             Type::Integer(type_) => type_.into(),
             Type::Float(type_) => type_.into(),
-            Type::String => ffi::Type::pointer(),
+            Type::String(type_) => type_.into(),
             Type::Boolean => ffi::Type::u8(),
             Type::Null => ffi::Type::pointer(),
             Type::GObject(type_) => type_.into(),

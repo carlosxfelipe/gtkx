@@ -90,7 +90,7 @@ impl TryFrom<arg::Arg> for Value {
                     FloatSize::_64 => Ok(Value::F64(number)),
                 }
             }
-            Type::String => {
+            Type::String(_) => {
                 match &arg.value {
                     value::Value::String(s) => {
                         let cstring = CString::new(s.as_bytes())?;
@@ -245,7 +245,7 @@ impl Value {
                     }
                 }
             }
-            Type::String => {
+            Type::String(_) => {
                 let mut cstrings = Vec::new();
 
                 for v in array {

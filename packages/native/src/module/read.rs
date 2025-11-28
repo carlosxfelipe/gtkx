@@ -79,7 +79,7 @@ fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Resu
             let value = unsafe { *(field_ptr as *const u8) != 0 };
             Ok(Value::Boolean(value))
         }
-        Type::String => {
+        Type::String(_) => {
             let str_ptr = unsafe { *(field_ptr as *const *const i8) };
             if str_ptr.is_null() {
                 return Ok(Value::Null);

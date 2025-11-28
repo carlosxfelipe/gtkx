@@ -204,6 +204,8 @@ export interface GirType {
     isArray?: boolean;
     /** The element type for array types. */
     elementType?: GirType;
+    /** Transfer ownership semantics for return types. */
+    transferOwnership?: "none" | "full" | "container";
 }
 
 /**
@@ -448,6 +450,8 @@ export class TypeRegistry {
     }
 }
 
+const STRING_TYPES = new Set(["utf8", "filename"]);
+
 const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["gboolean", { ts: "boolean", ffi: { type: "boolean" } }],
     ["gchar", { ts: "number", ffi: { type: "int", size: 8, unsigned: false } }],
@@ -469,8 +473,6 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["guint64", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
     ["gfloat", { ts: "number", ffi: { type: "float", size: 32 } }],
     ["gdouble", { ts: "number", ffi: { type: "float", size: 64 } }],
-    ["utf8", { ts: "string", ffi: { type: "string" } }],
-    ["filename", { ts: "string", ffi: { type: "string" } }],
     ["gpointer", { ts: "unknown", ffi: { type: "gobject" } }],
     ["gconstpointer", { ts: "unknown", ffi: { type: "gobject" } }],
     ["Quark", { ts: "number", ffi: { type: "int", size: 32, unsigned: true } }],
@@ -632,6 +634,14 @@ export class TypeMapper {
             return {
                 ts: `unknown[]`,
                 ffi: { type: "array", itemType: { type: "undefined" } },
+            };
+        }
+
+        if (STRING_TYPES.has(girType.name)) {
+            const borrowed = girType.transferOwnership === "none";
+            return {
+                ts: "string",
+                ffi: { type: "string", borrowed },
             };
         }
 

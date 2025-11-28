@@ -1,18 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, Scale } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 
 export const ScaleDemo = () => {
-    const volumeAdjustment = useRef(
-        new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }),
-    );
-    const brightnessAdjustment = useRef(
-        new Gtk.Adjustment({ value: 75, lower: 0, upper: 100, stepIncrement: 5, pageIncrement: 10 }),
-    );
-    const temperatureAdjustment = useRef(
-        new Gtk.Adjustment({ value: 20, lower: 10, upper: 30, stepIncrement: 0.5, pageIncrement: 2 }),
-    );
+    const volumeAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
+    const brightnessAdjustment = useMemo(() => new Gtk.Adjustment(75, 0, 100, 5, 10, 0), []);
+    const temperatureAdjustment = useMemo(() => new Gtk.Adjustment(20, 10, 30, 0.5, 2, 0), []);
 
     const [volume, setVolume] = useState(50);
     const [brightness, setBrightness] = useState(75);
@@ -30,8 +24,8 @@ export const ScaleDemo = () => {
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
-                        adjustment={volumeAdjustment.current}
-                        onValueChanged={() => setVolume(volumeAdjustment.current.getValue())}
+                        adjustment={volumeAdjustment}
+                        onValueChanged={(self) => setVolume(self.getValue())}
                     />
                 </Box>
                 <Label.Root label={`Current volume: ${Math.round(volume)}%`} cssClasses={["dim-label"]} />
@@ -45,8 +39,8 @@ export const ScaleDemo = () => {
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
-                        adjustment={brightnessAdjustment.current}
-                        onValueChanged={() => setBrightness(brightnessAdjustment.current.getValue())}
+                        adjustment={brightnessAdjustment}
+                        onValueChanged={(self) => setBrightness(self.getValue())}
                     />
                 </Box>
                 <Label.Root label={`Current brightness: ${Math.round(brightness)}%`} cssClasses={["dim-label"]} />
@@ -61,8 +55,8 @@ export const ScaleDemo = () => {
                         hexpand
                         drawValue
                         digits={1}
-                        adjustment={temperatureAdjustment.current}
-                        onValueChanged={() => setTemperature(temperatureAdjustment.current.getValue())}
+                        adjustment={temperatureAdjustment}
+                        onValueChanged={(self) => setTemperature(self.getValue())}
                     />
                 </Box>
                 <Label.Root label={`Temperature: ${temperature.toFixed(1)}°C`} cssClasses={["dim-label"]} />
@@ -77,7 +71,7 @@ export const ScaleDemo = () => {
                             heightRequest={150}
                             inverted
                             drawValue
-                            adjustment={volumeAdjustment.current}
+                            adjustment={volumeAdjustment}
                         />
                         <Label.Root label="Vol" cssClasses={["dim-label"]} />
                     </Box>
@@ -87,7 +81,7 @@ export const ScaleDemo = () => {
                             heightRequest={150}
                             inverted
                             drawValue
-                            adjustment={brightnessAdjustment.current}
+                            adjustment={brightnessAdjustment}
                         />
                         <Label.Root label="Bright" cssClasses={["dim-label"]} />
                     </Box>
@@ -104,10 +98,8 @@ export const scaleDemo: Demo = {
     keywords: ["scale", "slider", "range", "adjustment", "GtkScale"],
     component: ScaleDemo,
     source: `const ScaleDemo = () => {
-    const adjustment = useRef(new Gtk.Adjustment({
-        value: 50, lower: 0, upper: 100,
-        stepIncrement: 1, pageIncrement: 10
-    }));
+    // Adjustment args: value, lower, upper, stepIncrement, pageIncrement, pageSize
+    const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
     const [value, setValue] = useState(50);
 
     return (
@@ -115,8 +107,8 @@ export const scaleDemo: Demo = {
             <Scale
                 hexpand
                 drawValue
-                adjustment={adjustment.current}
-                onValueChanged={() => setValue(adjustment.current.getValue())}
+                adjustment={adjustment}
+                onValueChanged={(self) => setValue(self.getValue())}
             />
             <Label.Root label={\`Value: \${Math.round(value)}%\`} />
         </Box>

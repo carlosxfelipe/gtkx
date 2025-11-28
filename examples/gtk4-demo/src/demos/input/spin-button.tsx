@@ -1,18 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, SpinButton } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 
 export const SpinButtonDemo = () => {
-    const intAdjustment = useRef(
-        new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }),
-    );
-    const floatAdjustment = useRef(
-        new Gtk.Adjustment({ value: 3.14, lower: 0, upper: 10, stepIncrement: 0.1, pageIncrement: 1 }),
-    );
-    const priceAdjustment = useRef(
-        new Gtk.Adjustment({ value: 9.99, lower: 0, upper: 1000, stepIncrement: 0.01, pageIncrement: 1 }),
-    );
+    const intAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
+    const floatAdjustment = useMemo(() => new Gtk.Adjustment(3.14, 0, 10, 0.1, 1, 0), []);
+    const priceAdjustment = useMemo(() => new Gtk.Adjustment(9.99, 0, 1000, 0.01, 1, 0), []);
 
     const [intValue, setIntValue] = useState(50);
     const [floatValue, setFloatValue] = useState(3.14);
@@ -27,9 +21,9 @@ export const SpinButtonDemo = () => {
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <SpinButton
                         climbRate={1}
-                        adjustment={intAdjustment.current}
+                        adjustment={intAdjustment}
                         digits={0}
-                        onValueChanged={() => setIntValue(intAdjustment.current.getValue())}
+                        onValueChanged={(self) => setIntValue(self.getValue())}
                     />
                     <Label.Root label={`Value: ${intValue}`} />
                 </Box>
@@ -40,9 +34,9 @@ export const SpinButtonDemo = () => {
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <SpinButton
                         climbRate={1}
-                        adjustment={floatAdjustment.current}
+                        adjustment={floatAdjustment}
                         digits={2}
-                        onValueChanged={() => setFloatValue(floatAdjustment.current.getValue())}
+                        onValueChanged={(self) => setFloatValue(self.getValue())}
                     />
                     <Label.Root label={`Value: ${floatValue.toFixed(2)}`} />
                 </Box>
@@ -54,9 +48,9 @@ export const SpinButtonDemo = () => {
                     <Label.Root label="$" />
                     <SpinButton
                         climbRate={1}
-                        adjustment={priceAdjustment.current}
+                        adjustment={priceAdjustment}
                         digits={2}
-                        onValueChanged={() => setPriceValue(priceAdjustment.current.getValue())}
+                        onValueChanged={(self) => setPriceValue(self.getValue())}
                     />
                     <Label.Root label={`Total: $${priceValue.toFixed(2)}`} />
                 </Box>
@@ -64,7 +58,7 @@ export const SpinButtonDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Wrap Around" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <SpinButton climbRate={1} adjustment={intAdjustment.current} digits={0} wrap />
+                <SpinButton climbRate={1} adjustment={intAdjustment} digits={0} wrap />
                 <Label.Root
                     label="This spin button wraps from max to min and vice versa"
                     cssClasses={["dim-label"]}
@@ -82,18 +76,16 @@ export const spinButtonDemo: Demo = {
     keywords: ["spin", "button", "number", "input", "adjustment", "GtkSpinButton"],
     component: SpinButtonDemo,
     source: `const SpinButtonDemo = () => {
-    const adjustment = useRef(new Gtk.Adjustment({
-        value: 50, lower: 0, upper: 100,
-        stepIncrement: 1, pageIncrement: 10
-    }));
+    // Adjustment args: value, lower, upper, stepIncrement, pageIncrement, pageSize
+    const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
     const [value, setValue] = useState(50);
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
             <SpinButton
-                adjustment={adjustment.current}
+                adjustment={adjustment}
                 digits={0}
-                onValueChanged={() => setValue(adjustment.current.getValue())}
+                onValueChanged={(self) => setValue(self.getValue())}
             />
             <Label.Root label={\`Value: \${value}\`} />
         </Box>

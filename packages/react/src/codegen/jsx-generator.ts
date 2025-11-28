@@ -206,7 +206,7 @@ ${widgetPropsContent}
                     if (signal.doc) {
                         lines.push(formatDoc(signal.doc, "\t").trimEnd());
                     }
-                    lines.push(`\t${this.generateSignalHandler(signal)}`);
+                    lines.push(`\t${this.generateSignalHandler(signal, "Widget")}`);
                 }
             }
         }
@@ -388,7 +388,7 @@ ${widgetPropsContent}
                 if (signal.doc) {
                     lines.push(formatDoc(signal.doc, "\t").trimEnd());
                 }
-                lines.push(`\t${this.generateSignalHandler(signal)}`);
+                lines.push(`\t${this.generateSignalHandler(signal, widgetName)}`);
             }
         }
 
@@ -503,10 +503,10 @@ ${widgetPropsContent}
         return undefined;
     }
 
-    private generateSignalHandler(signal: GirSignal): string {
+    private generateSignalHandler(signal: GirSignal, widgetName: string): string {
         const signalName = toCamelCase(signal.name);
         const handlerName = `on${signalName.charAt(0).toUpperCase()}${signalName.slice(1)}`;
-        const handlerType = this.buildSignalHandlerType(signal);
+        const handlerType = this.buildSignalHandlerType(signal, widgetName);
         return `${handlerName}?: ${handlerType};`;
     }
 
@@ -540,8 +540,9 @@ ${widgetPropsContent}
         return `Gtk.${tsType}`;
     }
 
-    private buildSignalHandlerType(signal: GirSignal): string {
-        const params =
+    private buildSignalHandlerType(signal: GirSignal, widgetName: string): string {
+        const selfParam = `self: Gtk.${toPascalCase(widgetName)}`;
+        const otherParams =
             signal.parameters
                 ?.map((p) => {
                     const ffiType = this.getSignalParamFfiType(p.type.name);
@@ -560,7 +561,8 @@ ${widgetPropsContent}
             ? this.addNamespacePrefix(this.typeMapper.mapType(signal.returnType).ts)
             : "void";
 
-        return params ? `(${params}) => ${returnType}` : `() => ${returnType}`;
+        const params = otherParams ? `${selfParam}, ${otherParams}` : selfParam;
+        return `(${params}) => ${returnType}`;
     }
 
     private generateExports(widgets: GirClass[], containerMetadata: Map<string, ContainerMetadata>): string {

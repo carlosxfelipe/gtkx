@@ -1,20 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Expander, Label, ScrolledWindow, SearchEntry } from "@gtkx/react";
-import { useState } from "react";
 import { useDemo } from "../context/demo-context.js";
 
 export const Sidebar = () => {
     const { filteredCategories, currentDemo, selectDemo, setSearchQuery } = useDemo();
-    const [localQuery] = useState("");
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand>
             <SearchEntry
                 placeholderText="Search demos..."
-                text={localQuery}
-                onActivate={() => {
-                    setSearchQuery(localQuery);
-                }}
+                onSearchChanged={(entry) => setSearchQuery(entry.getText())}
                 marginStart={8}
                 marginEnd={8}
                 marginTop={8}

@@ -20,13 +20,34 @@ GTK uses signals for event handling. In GTKX, signals become React props with th
 
 ## Basic Event Handlers
 
-Event handlers work like React event handlers:
+Event handlers work like React event handlers. All signal handlers receive `self` (the widget that emitted the signal) as the first argument:
 
 ```tsx
 <Button
   label="Click me"
-  onClicked={() => {
+  onClicked={(self) => {
     console.log("Button clicked!");
+    console.log("Widget name:", self.getName());
+  }}
+/>
+```
+
+The `self` parameter gives you direct access to the widget's methods without needing to create a ref:
+
+```tsx
+<SearchEntry
+  placeholderText="Search..."
+  onSearchChanged={(self) => {
+    const query = self.getText();
+    performSearch(query);
+  }}
+/>
+
+<SpinButton
+  adjustment={adjustment}
+  onValueChanged={(self) => {
+    const value = self.getValue();
+    updateValue(value);
   }}
 />
 ```
@@ -76,10 +97,11 @@ The Switch widget requires returning `true` from `onStateSet` to indicate the si
 const [active, setActive] = useState(false);
 
 // Must return true to indicate handling
+// The handler receives (self, state) where state is the new state value
 <Switch
   active={active}
-  onStateSet={() => {
-    setActive(a => !a);
+  onStateSet={(_self, state) => {
+    setActive(state);
     return true;
   }}
 />
