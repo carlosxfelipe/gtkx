@@ -29,15 +29,15 @@ pub enum IntegerSign {
 
 impl IntegerSign {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let is_signed = value
+        let is_unsigned = value
             .downcast::<JsBoolean, _>(cx)
             .map(|b| b.value(cx))
-            .unwrap_or(false);
+            .unwrap_or(true);
 
-        Ok(if is_signed {
-            IntegerSign::Signed
-        } else {
+        Ok(if is_unsigned {
             IntegerSign::Unsigned
+        } else {
+            IntegerSign::Signed
         })
     }
 }
@@ -56,7 +56,7 @@ impl IntegerType {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let size_prop = obj.prop(cx, "size").get()?;
-        let sign_prop = obj.prop(cx, "signed").get()?;
+        let sign_prop = obj.prop(cx, "unsigned").get()?;
         let size = IntegerSize::from_js_value(cx, size_prop)?;
         let sign = IntegerSign::from_js_value(cx, sign_prop)?;
 

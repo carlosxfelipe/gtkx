@@ -163,6 +163,8 @@ export class WidgetNode implements Node {
                 continue;
             }
 
+            if (newValue === undefined) continue;
+
             const setterName = `set${key.charAt(0).toUpperCase()}${key.slice(1)}`;
             const setter = this.widget[setterName as keyof typeof this.widget];
             if (typeof setter === "function") {
