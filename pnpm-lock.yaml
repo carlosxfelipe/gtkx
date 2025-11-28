@@ -49,7 +49,7 @@ importers:
         version: link:../../packages/ffi
       '@gtkx/react':
         specifier: workspace:*
-        version: link:../../packages/gtkx
+        version: link:../../packages/react
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -82,7 +82,13 @@ importers:
 
   packages/gir: {}
 
-  packages/gtkx:
+  packages/native:
+    devDependencies:
+      '@neon-rs/cli':
+        specifier: 0.1.82
+        version: 0.1.82
+
+  packages/react:
     dependencies:
       '@gtkx/ffi':
         specifier: workspace:*
@@ -97,12 +103,6 @@ importers:
       '@gtkx/gir':
         specifier: workspace:*
         version: link:../gir
-
-  packages/native:
-    devDependencies:
-      '@neon-rs/cli':
-        specifier: 0.1.82
-        version: 0.1.82
 
   website:
     dependencies:

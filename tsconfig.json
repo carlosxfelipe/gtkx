@@ -12,7 +12,7 @@
             "path": "packages/native/tsconfig.json"
         },
         {
-            "path": "packages/gtkx/tsconfig.json"
+            "path": "packages/react/tsconfig.json"
         }
     ]
 }

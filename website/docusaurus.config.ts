@@ -51,8 +51,8 @@ const config: Config = {
         [
             "docusaurus-plugin-typedoc",
             {
-                entryPoints: ["../packages/gtkx/src/index.ts"],
-                tsconfig: "../packages/gtkx/tsconfig.lib.json",
+                entryPoints: ["../packages/react/src/index.ts"],
+                tsconfig: "../packages/react/tsconfig.lib.json",
                 out: "docs/api",
                 readme: "none",
                 sidebar: {
@@ -97,7 +97,7 @@ const config: Config = {
                 {
                     to: "/docs/api",
                     position: "left",
-                    label: "API",
+                    label: "API Reference",
                 },
                 {
                     href: "https://github.com/eugeniodepalo/gtkx",

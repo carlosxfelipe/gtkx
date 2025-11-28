@@ -2,9 +2,6 @@
     "extends": "../../tsconfig.base.json",
     "references": [
         {
-            "path": "../../packages/gtkx/tsconfig.lib.json"
-        },
-        {
             "path": "tsconfig.app.json"
         }
     ]
