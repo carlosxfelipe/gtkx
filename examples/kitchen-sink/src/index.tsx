@@ -165,6 +165,7 @@ const InputsSection = () => {
                         <Label.Root label="SpinButton:" />
                         <SpinButton
                             adjustment={spinAdjustment}
+                            climbRate={1.0}
                             digits={0}
                             onValueChanged={() => setSpinValue(Math.round(spinAdjustment.getValue()))}
                         />
@@ -172,7 +173,12 @@ const InputsSection = () => {
                     </Box>
                     <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} hexpand>
                         <Label.Root label="Scale:" />
-                        <Scale hexpand drawValue adjustment={scaleAdjustment} />
+                        <Scale
+                            orientation={Gtk.Orientation.HORIZONTAL}
+                            hexpand
+                            drawValue
+                            adjustment={scaleAdjustment}
+                        />
                     </Box>
                 </Box>
             </Frame.Child>

@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { CONSTRUCTOR_PARAMS } from "./generated/jsx.js";
 import type { Node } from "./node.js";
 import { ActionBarNode } from "./nodes/action-bar.js";
 import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
@@ -33,6 +34,12 @@ const NODE_CLASSES: AnyNodeClass[] = [
     WidgetNode,
 ];
 
+const extractConstructorArgs = (type: string, props: Props): unknown[] => {
+    const params = CONSTRUCTOR_PARAMS[type];
+    if (!params) return [];
+    return params.map((p: { name: string; hasDefault: boolean }) => props[p.name]);
+};
+
 const createWidget = (type: string, props: Props, currentApp: unknown): Gtk.Widget => {
     // biome-ignore lint/performance/noDynamicNamespaceImportAccess: dynamic widget creation
     const WidgetClass = Gtk[type as keyof typeof Gtk] as WidgetConstructor | undefined;
@@ -43,7 +50,8 @@ const createWidget = (type: string, props: Props, currentApp: unknown): Gtk.Widg
         return new WidgetClass(currentApp);
     }
 
-    return new WidgetClass(props);
+    const args = extractConstructorArgs(type, props);
+    return new WidgetClass(...args);
 };
 
 const normalizeType = (type: string): string => (type.endsWith(".Root") ? type.slice(0, -5) : type);

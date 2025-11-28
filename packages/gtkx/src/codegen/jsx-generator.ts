@@ -25,42 +25,10 @@ const LIST_WIDGETS = new Set(["ListView", "ColumnView", "GridView"]);
 const DROPDOWN_WIDGETS = new Set(["DropDown"]);
 const GRID_WIDGETS = new Set(["Grid"]);
 
-const COMMON_WIDGET_PROPS = new Set([
-    "halign",
-    "valign",
-    "hexpand",
-    "vexpand",
-    "marginStart",
-    "marginEnd",
-    "marginTop",
-    "marginBottom",
-    "widthRequest",
-    "heightRequest",
-    "visible",
-    "sensitive",
-    "canFocus",
-    "canTarget",
-    "focusOnClick",
-    "opacity",
-    "cssClasses",
-    "tooltipText",
-    "tooltipMarkup",
-]);
+const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
+    ApplicationWindow: new Set(["application"]),
+};
 
-const COMMON_SIGNALS = new Set(["destroy", "show", "hide", "map", "unmap"]);
-
-const CROSS_NAMESPACE_TYPES = new Map([
-    ["Gio.Application", "Gio.Application"],
-    ["Gio.AppInfo", "Gio.AppInfo"],
-    ["Gio.File", "Gio.File"],
-    ["Gio.Icon", "Gio.Icon"],
-    ["Gio.Menu", "Gio.Menu"],
-    ["Gio.MenuModel", "Gio.MenuModel"],
-    ["Gio.ListModel", "Gio.ListModel"],
-    ["Gio.Action", "Gio.Action"],
-    ["Gio.ActionGroup", "Gio.ActionGroup"],
-    ["Gio.ActionMap", "Gio.ActionMap"],
-]);
 
 const isPrimitive = (tsType: string): boolean => {
     const primitives = new Set(["boolean", "number", "string", "void", "unknown", "null", "undefined"]);
@@ -141,6 +109,9 @@ export class JsxGenerator {
     private classMap: Map<string, GirClass> = new Map();
     private interfaceMap: Map<string, GirInterface> = new Map();
     private namespace = "";
+    private usedExternalNamespaces: Set<string> = new Set();
+    private widgetPropertyNames: Set<string> = new Set();
+    private widgetSignalNames: Set<string> = new Set();
 
     /**
      * Creates a new JSX generator.
@@ -162,15 +133,26 @@ export class JsxGenerator {
         this.classMap = classMap;
         this.interfaceMap = new Map(namespace.interfaces.map((iface) => [iface.name, iface]));
         this.namespace = namespace.name;
+        this.usedExternalNamespaces.clear();
+
         const widgets = this.findWidgets(namespace, classMap);
         const containerMetadata = this.buildContainerMetadata(widgets, classMap);
-
         const widgetClass = classMap.get("Widget");
+
+        this.widgetPropertyNames = new Set(
+            widgetClass?.properties.map((p) => toCamelCase(p.name)) ?? [],
+        );
+        this.widgetSignalNames = new Set(
+            widgetClass?.signals.map((s) => toCamelCase(s.name)) ?? [],
+        );
+
+        const widgetPropsInterfaces = this.generateWidgetPropsInterfaces(widgets, containerMetadata);
 
         const sections = [
             this.generateImports(),
             this.generateCommonTypes(widgetClass),
-            this.generateWidgetPropsInterfaces(widgets, containerMetadata),
+            widgetPropsInterfaces,
+            this.generateConstructorArgsMetadata(widgets),
             this.generateExports(widgets, containerMetadata),
             this.generateJsxNamespace(widgets, containerMetadata),
             "export {};",
@@ -180,9 +162,13 @@ export class JsxGenerator {
     }
 
     private generateImports(): string {
+        const externalImports = [...this.usedExternalNamespaces]
+            .sort()
+            .map((ns) => `import type * as ${ns} from "@gtkx/ffi/${ns.toLowerCase()}";`);
+
         return [
             `import type { ReactNode, Ref } from "react";`,
-            `import type * as Gio from "@gtkx/ffi/gio";`,
+            ...externalImports,
             `import type * as Gtk from "@gtkx/ffi/gtk";`,
             `import type { GridChildProps, ItemProps, SlotProps } from "../types.js";`,
             "",
@@ -200,75 +186,36 @@ ${widgetPropsContent}
     }
 
     private generateWidgetPropsContent(widgetClass: GirClass | undefined): string {
-        const propDocs = new Map<string, string>();
-        const signalDocs = new Map<string, string>();
-
-        if (widgetClass) {
-            for (const prop of widgetClass.properties) {
-                if (prop.doc) {
-                    propDocs.set(toCamelCase(prop.name), prop.doc);
-                }
-            }
-            for (const signal of widgetClass.signals) {
-                if (signal.doc) {
-                    signalDocs.set(toCamelCase(signal.name), signal.doc);
-                }
-            }
-        }
-
-        const widgetDoc = widgetClass?.doc ? formatDoc(widgetClass.doc) : "";
         const lines: string[] = [];
+        const widgetDoc = widgetClass?.doc ? formatDoc(widgetClass.doc) : "";
 
         if (widgetDoc) {
             lines.push(widgetDoc.trimEnd());
         }
         lines.push("export interface WidgetProps {");
 
-        const addProp = (name: string, type: string): void => {
-            const doc = propDocs.get(name);
-            if (doc) {
-                lines.push(formatDoc(doc, "\t").trimEnd());
-            }
-            lines.push(`\t${name}?: ${type};`);
-        };
+        if (widgetClass) {
+            for (const prop of widgetClass.properties) {
+                const propName = toCamelCase(prop.name);
+                const tsType = toJsxPropertyType(this.typeMapper.mapType(prop.type).ts);
 
-        const addSignal = (name: string, handler: string): void => {
-            const signalName = name.replace(/^on/, "").toLowerCase();
-            const doc = signalDocs.get(signalName);
-            if (doc) {
-                lines.push(formatDoc(doc, "\t").trimEnd());
+                if (prop.doc) {
+                    lines.push(formatDoc(prop.doc, "\t").trimEnd());
+                }
+                lines.push(`\t${propName}?: ${tsType};`);
             }
-            lines.push(`\t${name}?: ${handler};`);
-        };
 
-        addProp("halign", 'Gtk.Align | "fill" | "start" | "end" | "center" | "baseline"');
-        addProp("valign", 'Gtk.Align | "fill" | "start" | "end" | "center" | "baseline"');
-        addProp("hexpand", "boolean");
-        addProp("vexpand", "boolean");
-        addProp("marginStart", "number");
-        addProp("marginEnd", "number");
-        addProp("marginTop", "number");
-        addProp("marginBottom", "number");
-        addProp("widthRequest", "number");
-        addProp("heightRequest", "number");
-        lines.push("");
-        addProp("visible", "boolean");
-        addProp("sensitive", "boolean");
-        addProp("canFocus", "boolean");
-        addProp("canTarget", "boolean");
-        addProp("focusOnClick", "boolean");
-        addProp("opacity", "number");
-        lines.push("");
-        addProp("cssClasses", "string[]");
-        lines.push("");
-        addProp("tooltipText", "string");
-        addProp("tooltipMarkup", "string");
-        lines.push("");
-        addSignal("onDestroy", "() => void");
-        addSignal("onShow", "() => void");
-        addSignal("onHide", "() => void");
-        addSignal("onMap", "() => void");
-        addSignal("onUnmap", "() => void");
+            if (widgetClass.signals.length > 0) {
+                lines.push("");
+                for (const signal of widgetClass.signals) {
+                    if (signal.doc) {
+                        lines.push(formatDoc(signal.doc, "\t").trimEnd());
+                    }
+                    lines.push(`\t${this.generateSignalHandler(signal)}`);
+                }
+            }
+        }
+
         lines.push("");
         lines.push("\tchildren?: ReactNode;");
         lines.push("}");
@@ -406,11 +353,13 @@ ${widgetPropsContent}
 
         const specificProps = allProps.filter((prop) => {
             const propName = toCamelCase(prop.name);
-            return !COMMON_WIDGET_PROPS.has(propName) && !namedChildPropNames.has(propName);
+            return !this.widgetPropertyNames.has(propName) && !namedChildPropNames.has(propName);
         });
 
+        const emittedProps = new Set<string>();
         for (const prop of specificProps) {
             const propName = toCamelCase(prop.name);
+            emittedProps.add(prop.name);
             const typeMapping = this.typeMapper.mapType(prop.type);
             const tsType = toJsxPropertyType(typeMapping.ts);
             const isRequiredByProperty = prop.constructOnly && !prop.hasDefault;
@@ -422,9 +371,20 @@ ${widgetPropsContent}
             lines.push(`\t${propName}${isRequired ? "" : "?"}: ${tsType};`);
         }
 
+        for (const paramName of requiredCtorParams) {
+            if (emittedProps.has(paramName)) continue;
+            const propName = toCamelCase(paramName);
+            const inheritedProp = this.findInheritedProperty(widget, paramName);
+            if (inheritedProp) {
+                const typeMapping = this.typeMapper.mapType(inheritedProp.type);
+                const tsType = toJsxPropertyType(typeMapping.ts);
+                lines.push(`\t${propName}: ${tsType};`);
+            }
+        }
+
         const specificSignals = allSignals.filter((signal) => {
             const signalName = toCamelCase(signal.name);
-            return !COMMON_SIGNALS.has(signalName);
+            return !this.widgetSignalNames.has(signalName);
         });
 
         if (specificSignals.length > 0) {
@@ -471,12 +431,45 @@ ${widgetPropsContent}
         const mainCtor = widget.constructors.find((c) => c.name === "new");
         if (!mainCtor) return required;
 
+        const internallyProvided = INTERNALLY_PROVIDED_PARAMS[widget.name] ?? new Set();
         for (const param of mainCtor.parameters) {
             if (!param.nullable && !param.optional) {
-                required.add(param.name);
+                const normalizedName = param.name.replace(/_/g, "-");
+                if (!internallyProvided.has(normalizedName)) {
+                    required.add(normalizedName);
+                }
             }
         }
         return required;
+    }
+
+    private getConstructorParams(widget: GirClass): { name: string; hasDefault: boolean }[] {
+        const mainCtor = widget.constructors.find((c) => c.name === "new");
+        if (!mainCtor) return [];
+
+        return mainCtor.parameters.map((param) => ({
+            name: toCamelCase(param.name),
+            hasDefault: param.nullable || param.optional || false,
+        }));
+    }
+
+    private generateConstructorArgsMetadata(widgets: GirClass[]): string {
+        const entries: string[] = [];
+
+        for (const widget of widgets) {
+            const params = this.getConstructorParams(widget);
+            if (params.length === 0) continue;
+
+            const widgetName = toPascalCase(widget.name);
+            const paramStrs = params.map((p) => `{ name: "${p.name}", hasDefault: ${p.hasDefault} }`);
+            entries.push(`\t${widgetName}: [${paramStrs.join(", ")}]`);
+        }
+
+        if (entries.length === 0) {
+            return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {};\n`;
+        }
+
+        return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {\n${entries.join(",\n")},\n};\n`;
     }
 
     private getAncestorInterfaces(widget: GirClass): Set<string> {
@@ -491,6 +484,30 @@ ${widgetPropsContent}
         return interfaces;
     }
 
+    private findInheritedProperty(widget: GirClass, propName: string): { type: { name: string } } | undefined {
+        let current: GirClass | undefined = widget.parent ? this.classMap.get(widget.parent) : undefined;
+        while (current) {
+            const prop = current.properties.find((p) => p.name === propName);
+            if (prop) return prop;
+            for (const ifaceName of current.implements) {
+                const iface = this.interfaceMap.get(ifaceName);
+                if (iface) {
+                    const ifaceProp = iface.properties.find((p) => p.name === propName);
+                    if (ifaceProp) return ifaceProp;
+                }
+            }
+            current = current.parent ? this.classMap.get(current.parent) : undefined;
+        }
+        for (const ifaceName of widget.implements) {
+            const iface = this.interfaceMap.get(ifaceName);
+            if (iface) {
+                const ifaceProp = iface.properties.find((p) => p.name === propName);
+                if (ifaceProp) return ifaceProp;
+            }
+        }
+        return undefined;
+    }
+
     private generateSignalHandler(signal: GirSignal): string {
         const signalName = toCamelCase(signal.name);
         const handlerName = `on${signalName.charAt(0).toUpperCase()}${signalName.slice(1)}`;
@@ -501,13 +518,14 @@ ${widgetPropsContent}
     private getSignalParamFfiType(typeName: string | undefined): string | undefined {
         if (!typeName) return undefined;
 
-        const crossNsType = CROSS_NAMESPACE_TYPES.get(typeName);
-        if (crossNsType) return crossNsType;
-
         if (typeName.includes(".")) {
             const [ns, className] = typeName.split(".", 2);
             if (ns === this.namespace && className && this.classMap.has(className)) {
                 return `Gtk.${toPascalCase(className)}`;
+            }
+            if (ns) {
+                this.usedExternalNamespaces.add(ns);
+                return typeName;
             }
             return undefined;
         }
