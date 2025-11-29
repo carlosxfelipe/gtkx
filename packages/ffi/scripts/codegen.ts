@@ -21,6 +21,7 @@ const IMPORTANT_GIRS = new Set([
     "Graphene-1.0.gir",
     "Gsk-4.0.gir",
     "Gtk-4.0.gir",
+    "GtkSource-5.gir",
     "HarfBuzz-0.0.gir",
     "Pango-1.0.gir",
     "PangoCairo-1.0.gir",

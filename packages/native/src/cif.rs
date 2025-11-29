@@ -10,8 +10,7 @@ use neon::prelude::*;
 
 use crate::{
     arg::{self, Arg},
-    async_callback,
-    trampolines,
+    async_callback, trampolines,
     types::*,
     value,
 };
@@ -547,13 +546,14 @@ impl Value {
     }
 
     fn try_from_ref(arg: &arg::Arg, type_: &RefType) -> anyhow::Result<Value> {
-        let r#ref = match &arg.value {
-            value::Value::Ref(r#ref) => r#ref,
+        let inner_value = match &arg.value {
+            value::Value::Ref(r#ref) => {
+                let ref_arg = Arg::new(*type_.inner_type.clone(), *r#ref.value.clone());
+                Value::try_from(ref_arg)?
+            }
+            value::Value::Null | value::Value::Undefined => Value::Ptr(std::ptr::null_mut()),
             _ => bail!("Expected a Ref for ref type, got {:?}", arg.value),
         };
-
-        let ref_arg = Arg::new(*type_.inner_type.clone(), *r#ref.value.clone());
-        let inner_value = Value::try_from(ref_arg)?;
 
         // Get the pointer value from the inner value
         let inner_ptr: *mut c_void = match &inner_value {

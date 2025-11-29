@@ -118,6 +118,8 @@ const METHOD_RENAMES = new Map<string, Map<string, string>>([
     ["SocketConnection", new Map([["connect", "connectTo"]])],
     ["Socket", new Map([["connect", "connectTo"]])],
     ["Cancellable", new Map([["connect", "connectCallback"]])],
+    ["GutterRenderer", new Map([["activate", "activateRenderer"]])],
+    ["GutterRendererText", new Map([["measure", "measureText"]])],
 ]);
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
@@ -542,7 +544,9 @@ export class CodeGenerator {
 
         if (cls.signals.length > 0) {
             const hasConnectMethod = cls.methods.some((m) => toCamelCase(m.name) === "connect");
-            sections.push(this.generateSignalConnect(sharedLibrary, cls.signals, hasConnectMethod, classMap, className));
+            sections.push(
+                this.generateSignalConnect(sharedLibrary, cls.signals, hasConnectMethod, classMap, className),
+            );
         }
 
         sections.push("}");
@@ -782,6 +786,7 @@ export class CodeGenerator {
 
         const callArgs = this.generateCallArguments(mainConstructor.parameters);
         const override = hasParent ? "override " : "";
+        const borrowed = mainConstructor.returnType.transferOwnership !== "full";
 
         return `  protected ${override}createPtr(${arrayParamName}: unknown[]): unknown {
 ${destructuring}    return call(
@@ -790,7 +795,7 @@ ${destructuring}    return call(
       [
 ${callArgs}
       ],
-      { type: "gobject", borrowed: true }
+      { type: "gobject", borrowed: ${borrowed} }
     );
   }
 `;
@@ -809,6 +814,7 @@ ${callArgs}
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
+        const borrowed = ctor.returnType.transferOwnership !== "full";
 
         this.usesWrapPtr = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${className} {
@@ -818,7 +824,7 @@ ${callArgs}
       [
 ${args}
       ],
-      { type: "gobject", borrowed: true }
+      { type: "gobject", borrowed: ${borrowed} }
     );
     return wrapPtr(ptr, ${className});
   }
@@ -1030,7 +1036,12 @@ ${allArgs ? `${allArgs},` : ""}
         return `${lines.join("\n")}\n`;
     }
 
-    private buildAsyncReturnType(hasMainReturn: boolean, mainReturnType: string, outputParams: GirParameter[], isNullable = false): string {
+    private buildAsyncReturnType(
+        hasMainReturn: boolean,
+        mainReturnType: string,
+        outputParams: GirParameter[],
+        isNullable = false,
+    ): string {
         if (outputParams.length === 0) {
             if (!hasMainReturn) return "void";
             return isNullable ? `${mainReturnType} | null` : mainReturnType;

@@ -10,11 +10,13 @@ use crate::{
 
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
+
     let flags_value: Option<u32> = cx.argument_opt(1).and_then(|arg| {
         arg.downcast::<JsNumber, _>(&mut cx)
             .ok()
             .map(|n| n.value(&mut cx) as u32)
     });
+
     let flags = flags_value
         .map(ApplicationFlags::from_bits_truncate)
         .unwrap_or(ApplicationFlags::FLAGS_NONE);
@@ -26,11 +28,11 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
             .application_id(app_id)
             .flags(flags)
             .build();
+
         let app_object_id = ObjectId::new(Object::GObject(app.clone().into()));
 
         GtkThreadState::with(|state| {
             state.app_hold_guard = Some(app.hold());
-            state.app = Some(app.clone());
         });
 
         app.connect_activate(move |_| {

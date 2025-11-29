@@ -1,16 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
-import React, { useState, useEffect, useCallback } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
 import { start, stop } from "@gtkx/ffi";
-import { reconciler, disposeAllInstances, setCurrentApp } from "../src/reconciler.js";
-import { createNode } from "../src/factory.js";
-import { WidgetNode } from "../src/nodes/widget.js";
-import { DialogNode } from "../src/nodes/dialog.js";
-import { ListViewNode, ListItemNode } from "../src/nodes/list.js";
-import { DropDownNode, DropDownItemNode } from "../src/nodes/dropdown.js";
-import { GridNode, GridChildNode } from "../src/nodes/grid.js";
-import { NotebookNode } from "../src/nodes/notebook.js";
+import * as Gtk from "@gtkx/ffi/gtk";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import type Reconciler from "react-reconciler";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { createNode } from "../src/factory.js";
+import { DialogNode } from "../src/nodes/dialog.js";
+import { DropDownItemNode, DropDownNode } from "../src/nodes/dropdown.js";
+import { GridChildNode, GridNode } from "../src/nodes/grid.js";
+import { ListItemNode, ListViewNode } from "../src/nodes/list.js";
+import { NotebookNode } from "../src/nodes/notebook.js";
+import { WidgetNode } from "../src/nodes/widget.js";
+import { disposeAllInstances, reconciler, setCurrentApp } from "../src/reconciler.js";
 
 const APP_ID = "com.gtkx.test.react";
 
@@ -219,8 +220,10 @@ describe("Node Creation and Matching", () => {
 describe("Signal Handler Management", () => {
     describe("Widget signal connections", () => {
         it("should connect signal handlers on creation", () => {
-            let clicked = false;
-            const onClicked = () => { clicked = true; };
+            let _clicked = false;
+            const onClicked = () => {
+                _clicked = true;
+            };
 
             const node = createNode("Button", { label: "Test", onClicked }, app) as WidgetNode;
             const widget = node.getWidget() as Gtk.Button;
@@ -229,9 +232,13 @@ describe("Signal Handler Management", () => {
         });
 
         it("should update signal handlers when props change", () => {
-            let clickCount = 0;
-            const handler1 = () => { clickCount = 1; };
-            const handler2 = () => { clickCount = 2; };
+            let _clickCount = 0;
+            const handler1 = () => {
+                _clickCount = 1;
+            };
+            const handler2 = () => {
+                _clickCount = 2;
+            };
 
             const node = createNode("Button", { label: "Test", onClicked: handler1 }, app) as WidgetNode;
             node.updateProps({ onClicked: handler1 }, { onClicked: handler2 });
@@ -241,7 +248,7 @@ describe("Signal Handler Management", () => {
             const onClicked = () => {};
 
             const node = createNode("Button", { label: "Test", onClicked }, app) as WidgetNode;
-            const widget = node.getWidget() as Gtk.Button;
+            const _widget = node.getWidget() as Gtk.Button;
 
             node.dispose?.();
         });
@@ -251,10 +258,14 @@ describe("Signal Handler Management", () => {
         it("should connect signal handlers to dialogs", () => {
             const onCloseRequest = () => false;
 
-            const node = createNode("AboutDialog", {
-                programName: "Test",
-                onCloseRequest
-            }, app) as DialogNode;
+            const node = createNode(
+                "AboutDialog",
+                {
+                    programName: "Test",
+                    onCloseRequest,
+                },
+                app,
+            ) as DialogNode;
 
             expect(node.getWidget()).toBeDefined();
         });
@@ -262,10 +273,14 @@ describe("Signal Handler Management", () => {
         it("should disconnect dialog signals on dispose", () => {
             const onCloseRequest = () => false;
 
-            const node = createNode("AboutDialog", {
-                programName: "Test",
-                onCloseRequest
-            }, app) as DialogNode;
+            const node = createNode(
+                "AboutDialog",
+                {
+                    programName: "Test",
+                    onCloseRequest,
+                },
+                app,
+            ) as DialogNode;
 
             node.dispose?.();
         });
@@ -289,14 +304,20 @@ describe("Signal Handler Management", () => {
 
     describe("DropDown signal connections", () => {
         it("should connect selection changed signal", () => {
-            let selectedItem: unknown = null;
-            const onSelectionChanged = (item: unknown) => { selectedItem = item; };
+            let _selectedItem: unknown = null;
+            const onSelectionChanged = (item: unknown) => {
+                _selectedItem = item;
+            };
             const itemLabel = (item: string) => item;
 
-            const node = createNode("DropDown", {
-                itemLabel,
-                onSelectionChanged
-            }, app) as DropDownNode;
+            const node = createNode(
+                "DropDown",
+                {
+                    itemLabel,
+                    onSelectionChanged,
+                },
+                app,
+            ) as DropDownNode;
 
             expect(node.getWidget()).toBeDefined();
         });
@@ -305,10 +326,14 @@ describe("Signal Handler Management", () => {
             const onSelectionChanged = () => {};
             const itemLabel = (item: string) => item;
 
-            const node = createNode("DropDown", {
-                itemLabel,
-                onSelectionChanged
-            }, app) as DropDownNode;
+            const node = createNode(
+                "DropDown",
+                {
+                    itemLabel,
+                    onSelectionChanged,
+                },
+                app,
+            ) as DropDownNode;
 
             node.dispose?.();
         });
@@ -377,14 +402,22 @@ describe("Multiple Windows and Dialogs", () => {
         const onCloseRequest1 = () => false;
         const onCloseRequest2 = () => false;
 
-        const dialog1 = createNode("AboutDialog", {
-            programName: "App 1",
-            onCloseRequest: onCloseRequest1
-        }, app);
-        const dialog2 = createNode("AboutDialog", {
-            programName: "App 2",
-            onCloseRequest: onCloseRequest2
-        }, app);
+        const dialog1 = createNode(
+            "AboutDialog",
+            {
+                programName: "App 1",
+                onCloseRequest: onCloseRequest1,
+            },
+            app,
+        );
+        const dialog2 = createNode(
+            "AboutDialog",
+            {
+                programName: "App 2",
+                onCloseRequest: onCloseRequest2,
+            },
+            app,
+        );
 
         dialog1.dispose?.();
         dialog2.dispose?.();
@@ -435,7 +468,7 @@ describe("Widget Disposal and Memory Management", () => {
             return box;
         };
 
-        const tree = createTree(4);
+        const _tree = createTree(4);
         disposeAllInstances();
     });
 
@@ -481,10 +514,14 @@ describe("Widget Disposal and Memory Management", () => {
 
         for (let row = 0; row < 5; row++) {
             for (let col = 0; col < 5; col++) {
-                const child = createNode("Grid.Child", {
-                    row,
-                    column: col
-                }, null) as GridChildNode;
+                const child = createNode(
+                    "Grid.Child",
+                    {
+                        row,
+                        column: col,
+                    },
+                    null,
+                ) as GridChildNode;
                 const button = createNode("Button", { label: `${row},${col}` }, app);
                 child.appendChild(button);
                 grid.appendChild(child);
@@ -510,9 +547,7 @@ describe("Widget Disposal and Memory Management", () => {
 
 describe("React Reconciler Integration", () => {
     it("should render a simple component", () => {
-        const SimpleComponent = () => (
-            <Button label="Hello" />
-        );
+        const SimpleComponent = () => <Button label="Hello" />;
 
         renderElement(<SimpleComponent />);
     });
@@ -572,7 +607,7 @@ describe("React Reconciler Integration", () => {
 
         const ListComponent = () => (
             <Box spacing={5}>
-                {items.map(item => (
+                {items.map((item) => (
                     <Label key={item} label={`Item ${item}`} />
                 ))}
             </Box>
@@ -594,11 +629,11 @@ describe("React Reconciler Integration", () => {
     });
 
     it("should handle signal handlers in React components", () => {
-        let clickCount = 0;
+        let _clickCount = 0;
 
         const ClickableComponent = () => {
             const handleClick = useCallback(() => {
-                clickCount++;
+                _clickCount++;
             }, []);
 
             return <Button label="Click Me" onClicked={handleClick} />;

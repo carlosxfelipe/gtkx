@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_char, c_void},
+    ops::Deref,
     sync::{Arc, mpsc},
 };
 
@@ -114,11 +115,7 @@ fn handle_call(
             let library = state.get_library(&library_name)?;
             let symbol = library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())?;
 
-            let ptr = symbol.try_as_raw_ptr().ok_or(anyhow::anyhow!(
-                "Failed to get raw pointer for symbol '{}'",
-                symbol_name
-            ))?;
-
+            let ptr = *symbol.deref() as *mut c_void;
             Ok(ffi::CodePtr(ptr))
         })?
     };

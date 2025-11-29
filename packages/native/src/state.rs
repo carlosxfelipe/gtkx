@@ -1,7 +1,7 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, mem::ManuallyDrop};
 
-use gtk4::{gio::ApplicationHoldGuard, Application};
-use libloading::Library;
+use gtk4::gio::ApplicationHoldGuard;
+use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::object::Object;
 
@@ -9,9 +9,8 @@ use crate::object::Object;
 pub struct GtkThreadState {
     pub object_map: HashMap<usize, Object>,
     pub next_object_id: usize,
-    pub libraries: HashMap<String, Library>,
+    pub libraries: HashMap<String, ManuallyDrop<Library>>,
     pub app_hold_guard: Option<ApplicationHoldGuard>,
-    pub app: Option<Application>,
 }
 
 impl Default for GtkThreadState {
@@ -21,7 +20,6 @@ impl Default for GtkThreadState {
             next_object_id: 1,
             libraries: HashMap::new(),
             app_hold_guard: None,
-            app: None,
         }
     }
 }
@@ -38,15 +36,20 @@ impl GtkThreadState {
         STATE.with(|state| f(&mut *state.borrow_mut()))
     }
 
+    pub fn is_active() -> bool {
+        Self::with(|state| state.app_hold_guard.is_some())
+    }
+
     pub fn get_library(&mut self, name: &str) -> anyhow::Result<&Library> {
         if !self.libraries.contains_key(name) {
             let lib_names: Vec<&str> = name.split(',').collect();
             let mut last_error = None;
 
             for lib_name in &lib_names {
-                match unsafe { Library::new(*lib_name) } {
+                match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                     Ok(lib) => {
-                        self.libraries.insert(name.to_string(), lib);
+                        self.libraries
+                            .insert(name.to_string(), ManuallyDrop::new(lib));
                         break;
                     }
                     Err(err) => {
@@ -66,6 +69,7 @@ impl GtkThreadState {
 
         self.libraries
             .get(name)
+            .map(|lib| &**lib)
             .ok_or(anyhow::anyhow!("Library '{}' not loaded", name))
     }
 }

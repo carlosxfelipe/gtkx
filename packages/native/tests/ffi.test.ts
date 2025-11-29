@@ -945,7 +945,7 @@ describe("ListView Integration Tests", () => {
                 { type: "boolean" },
             );
             if (setupCount > 0 && bindCount > 0) break;
-            await new Promise(resolve => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 10));
         }
 
         expect(setupCount).toBeGreaterThan(0);
@@ -1293,12 +1293,12 @@ describe("GList/GSList Types", () => {
         });
         expect(display).not.toBeNull();
 
-        const seats = call(
-            GDK_LIB,
-            "gdk_display_list_seats",
-            [{ type: { type: "gobject" }, value: display }],
-            { type: "array", listType: "glist", itemType: { type: "gobject", borrowed: true }, borrowed: true },
-        ) as unknown[];
+        const seats = call(GDK_LIB, "gdk_display_list_seats", [{ type: { type: "gobject" }, value: display }], {
+            type: "array",
+            listType: "glist",
+            itemType: { type: "gobject", borrowed: true },
+            borrowed: true,
+        }) as unknown[];
 
         expect(Array.isArray(seats)).toBe(true);
         expect(seats.length).toBeGreaterThanOrEqual(1);
@@ -1354,22 +1354,20 @@ describe("GList/GSList Types", () => {
             borrowed: true,
         });
 
-        const seats = call(
-            GDK_LIB,
-            "gdk_display_list_seats",
-            [{ type: { type: "gobject" }, value: display }],
-            { type: "array", listType: "glist", itemType: { type: "gobject", borrowed: true }, borrowed: true },
-        ) as unknown[];
+        const seats = call(GDK_LIB, "gdk_display_list_seats", [{ type: { type: "gobject" }, value: display }], {
+            type: "array",
+            listType: "glist",
+            itemType: { type: "gobject", borrowed: true },
+            borrowed: true,
+        }) as unknown[];
 
         expect(Array.isArray(seats)).toBe(true);
 
         for (const seat of seats) {
-            const pointer = call(
-                GDK_LIB,
-                "gdk_seat_get_pointer",
-                [{ type: { type: "gobject" }, value: seat }],
-                { type: "gobject", borrowed: true },
-            );
+            const pointer = call(GDK_LIB, "gdk_seat_get_pointer", [{ type: { type: "gobject" }, value: seat }], {
+                type: "gobject",
+                borrowed: true,
+            });
             expect(pointer).not.toBeNull();
         }
     });
@@ -1380,19 +1378,16 @@ describe("GList/GSList Types", () => {
             borrowed: true,
         });
 
-        const monitors = call(
-            GDK_LIB,
-            "gdk_display_get_monitors",
-            [{ type: { type: "gobject" }, value: display }],
-            { type: "gobject", borrowed: true },
-        );
+        const monitors = call(GDK_LIB, "gdk_display_get_monitors", [{ type: { type: "gobject" }, value: display }], {
+            type: "gobject",
+            borrowed: true,
+        });
 
-        const count = call(
-            GIO_LIB,
-            "g_list_model_get_n_items",
-            [{ type: { type: "gobject" }, value: monitors }],
-            { type: "int", size: 32, unsigned: true },
-        ) as number;
+        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: monitors }], {
+            type: "int",
+            size: 32,
+            unsigned: true,
+        }) as number;
 
         expect(count).toBeGreaterThanOrEqual(1);
     });

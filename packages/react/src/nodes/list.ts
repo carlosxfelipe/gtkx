@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, disconnectSignalHandlers, isConnectable, removeChild } from "../widget.js";
+import { appendChild, isConnectable, removeChild } from "../widget.js";
 
 type RenderItemFn<T> = (item: T | null) => Gtk.Widget;
 
@@ -165,8 +165,8 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
     mount(): void {}
 
     dispose(): void {
-        disconnectSignalHandlers(this.widget, this.signalHandlers);
-        disconnectSignalHandlers(this.factory, this.factorySignalHandlers);
+        this.widget.setModel(null);
+        this.widget.setFactory(null);
     }
 }
 

@@ -6,13 +6,18 @@ export { createRef };
 import type { ApplicationFlags } from "./generated/gio/enums.js";
 import { Application } from "./generated/gtk/application.js";
 
+type NativeEventMap = {
+    start: [];
+    stop: [];
+};
+
 let keepAliveTimeout: NodeJS.Timeout | null = null;
-let isReady = false;
 
 /**
  * Event emitter for GTK lifecycle events.
+ * Emits "start" when GTK is initialized and "stop" before shutdown.
  */
-const events = new EventEmitter();
+export const events = new EventEmitter<NativeEventMap>();
 
 /**
  * Wraps a native pointer in a class instance without calling the constructor.
@@ -29,18 +34,6 @@ const keepAlive = (): void => {
 };
 
 /**
- * Register a callback to be called when GTK is initialized.
- * If GTK is already ready, the callback is called immediately.
- */
-export const onReady = (callback: () => void): void => {
-    if (isReady) {
-        callback();
-    } else {
-        events.once("ready", callback);
-    }
-};
-
-/**
  * Starts the GTK application with the given application ID.
  * Sets up a keep-alive timer to prevent Node.js from exiting.
  * @param appId - The application ID (e.g., "com.example.myapp")
@@ -49,9 +42,8 @@ export const onReady = (callback: () => void): void => {
  */
 export const start = (appId: string, flags?: ApplicationFlags): Application => {
     const app = nativeStart(appId, flags);
+    events.emit("start");
 
-    isReady = true;
-    events.emit("ready");
     keepAlive();
 
     return wrapPtr(app, Application);
@@ -59,6 +51,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
 
 /**
  * Stops the GTK application and cleans up the keep-alive timer.
+ * Emits the "shutdown" event before shutting down to allow cleanup.
  */
 export const stop = (): void => {
     if (keepAliveTimeout) {
@@ -66,5 +59,6 @@ export const stop = (): void => {
         keepAliveTimeout = null;
     }
 
+    events.emit("stop");
     nativeStop();
 };

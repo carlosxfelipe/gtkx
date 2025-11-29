@@ -97,7 +97,7 @@ const findUnknownTypes = (filePath: string): UnknownTypeLocation[] => {
     const content = readFileSync(filePath, "utf-8");
     const lines = content.split("\n");
     const locations: UnknownTypeLocation[] = [];
-    const relativePath = filePath.replace(generatedDir + "/", "");
+    const relativePath = filePath.replace(`${generatedDir}/`, "");
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i] ?? "";
@@ -156,7 +156,7 @@ const findUnknownArrayTypes = (filePath: string): UnknownTypeLocation[] => {
     const content = readFileSync(filePath, "utf-8");
     const lines = content.split("\n");
     const locations: UnknownTypeLocation[] = [];
-    const relativePath = filePath.replace(generatedDir + "/", "");
+    const relativePath = filePath.replace(`${generatedDir}/`, "");
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i] ?? "";
@@ -264,7 +264,7 @@ describe("Generated FFI Types Quality", () => {
 
             for (const file of allFiles) {
                 const content = readFileSync(file, "utf-8");
-                const relativePath = file.replace(generatedDir + "/", "");
+                const relativePath = file.replace(`${generatedDir}/`, "");
 
                 const hasClass = content.match(/^export class \w+/m);
                 if (!hasClass) continue;
@@ -291,7 +291,7 @@ describe("Generated FFI Types Quality", () => {
 
             for (const file of allFiles) {
                 const content = readFileSync(file, "utf-8");
-                const relativePath = file.replace(generatedDir + "/", "");
+                const relativePath = file.replace(`${generatedDir}/`, "");
 
                 const hasClass = content.match(/^export class \w+/m);
                 if (!hasClass) continue;

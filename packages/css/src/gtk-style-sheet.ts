@@ -1,4 +1,4 @@
-import { onReady } from "@gtkx/ffi";
+import { events } from "@gtkx/ffi";
 import { type Display, DisplayManager } from "@gtkx/ffi/gdk";
 import { CssProvider, StyleContext } from "@gtkx/ffi/gtk";
 
@@ -23,7 +23,7 @@ const flushPendingStyles = (): void => {
     pendingSheets.length = 0;
 };
 
-onReady(flushPendingStyles);
+events.once("ready", flushPendingStyles);
 
 /**
  * Custom StyleSheet implementation for Emotion that outputs to GTK's CssProvider.

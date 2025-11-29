@@ -47,6 +47,10 @@ impl ObjectId {
 
 impl Finalize for ObjectId {
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
+        if !GtkThreadState::is_active() {
+            return;
+        }
+
         glib::idle_add_once(move || {
             GtkThreadState::with(|state| {
                 state.object_map.remove(&self.0);
