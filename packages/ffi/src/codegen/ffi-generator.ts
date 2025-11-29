@@ -1479,9 +1479,7 @@ ${allArgs ? `${allArgs},` : ""}
         }
 
         const moduleLevel =
-            signalMetadata.length > 0
-                ? `const SIGNAL_META: SignalMeta = {\n${signalMetadata.join(",\n")}\n};\n`
-                : "";
+            signalMetadata.length > 0 ? `const SIGNAL_META: SignalMeta = {\n${signalMetadata.join(",\n")}\n};\n` : "";
 
         const signalMapCode =
             signalMetadata.length > 0

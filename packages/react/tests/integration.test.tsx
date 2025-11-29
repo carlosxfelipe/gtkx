@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import type Reconciler from "react-reconciler";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNode } from "../src/factory.js";
 import { DropDownItemNode, DropDownNode } from "../src/nodes/dropdown.js";
 import { GridChildNode, GridNode } from "../src/nodes/grid.js";
@@ -64,7 +64,6 @@ afterAll(() => {
     unmountAll();
     stop();
 });
-
 
 describe("Node Creation and Matching", () => {
     describe("WidgetNode", () => {
