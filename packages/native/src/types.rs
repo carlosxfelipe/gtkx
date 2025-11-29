@@ -19,15 +19,21 @@ pub use integer::*;
 pub use r#ref::*;
 pub use string::*;
 
-#[derive(Debug, Clone)]
-pub struct CallbackType {
-    pub arg_types: Option<Vec<Type>>,
+#[derive(Debug, Clone, PartialEq)]
+pub enum CallbackTrampoline {
+    Closure,
+    AsyncReady,
+    Destroy,
+    SourceFunc,
 }
 
 #[derive(Debug, Clone)]
-pub struct AsyncCallbackType {
-    pub source_type: Box<Type>,
-    pub result_type: Box<Type>,
+pub struct CallbackType {
+    pub trampoline: CallbackTrampoline,
+    pub arg_types: Option<Vec<Type>>,
+    pub return_type: Option<Box<Type>>,
+    pub source_type: Option<Box<Type>>,
+    pub result_type: Option<Box<Type>>,
 }
 
 #[derive(Debug, Clone)]
@@ -42,7 +48,6 @@ pub enum Type {
     Boxed(BoxedType),
     Array(ArrayType),
     Callback(CallbackType),
-    AsyncCallback(AsyncCallbackType),
     Ref(RefType),
 }
 
@@ -67,6 +72,15 @@ impl Type {
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "callback" => {
+                let trampoline_handle: Option<Handle<JsString>> = obj.get_opt(cx, "trampoline")?;
+                let trampoline_str = trampoline_handle.map(|h| h.value(cx));
+                let trampoline = match trampoline_str.as_deref() {
+                    Some("asyncReady") => CallbackTrampoline::AsyncReady,
+                    Some("destroy") => CallbackTrampoline::Destroy,
+                    Some("sourceFunc") => CallbackTrampoline::SourceFunc,
+                    _ => CallbackTrampoline::Closure,
+                };
+
                 let arg_types: Option<Handle<JsArray>> = obj.get_opt(cx, "argTypes")?;
                 let arg_types = match arg_types {
                     Some(arr) => {
@@ -79,14 +93,29 @@ impl Type {
                     }
                     None => None,
                 };
-                Ok(Type::Callback(CallbackType { arg_types }))
-            }
-            "asyncCallback" => {
-                let source_type_value: Handle<JsValue> = obj.get(cx, "sourceType")?;
-                let result_type_value: Handle<JsValue> = obj.get(cx, "resultType")?;
-                let source_type = Box::new(Type::from_js_value(cx, source_type_value)?);
-                let result_type = Box::new(Type::from_js_value(cx, result_type_value)?);
-                Ok(Type::AsyncCallback(AsyncCallbackType {
+
+                let return_type: Option<Handle<JsValue>> = obj.get_opt(cx, "returnType")?;
+                let return_type = match return_type {
+                    Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
+                    None => None,
+                };
+
+                let source_type: Option<Handle<JsValue>> = obj.get_opt(cx, "sourceType")?;
+                let source_type = match source_type {
+                    Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
+                    None => None,
+                };
+
+                let result_type: Option<Handle<JsValue>> = obj.get_opt(cx, "resultType")?;
+                let result_type = match result_type {
+                    Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
+                    None => None,
+                };
+
+                Ok(Type::Callback(CallbackType {
+                    trampoline,
+                    arg_types,
+                    return_type,
                     source_type,
                     result_type,
                 }))
@@ -109,7 +138,6 @@ impl From<&Type> for ffi::Type {
             Type::Boxed(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
             Type::Callback(_) => ffi::Type::pointer(),
-            Type::AsyncCallback(_) => ffi::Type::pointer(),
             Type::Ref(type_) => type_.into(),
             Type::Undefined => ffi::Type::void(),
         }

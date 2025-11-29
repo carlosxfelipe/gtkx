@@ -296,9 +296,11 @@ export interface FfiTypeDescriptor {
     itemType?: FfiTypeDescriptor;
     /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
     listType?: "glist" | "gslist";
-    /** Source type for asyncCallback (the GObject source). */
+    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc). Default is "closure". */
+    trampoline?: "asyncReady" | "destroy" | "sourceFunc";
+    /** Source type for asyncReady callback (the GObject source). */
     sourceType?: FfiTypeDescriptor;
-    /** Result type for asyncCallback (the GAsyncResult). */
+    /** Result type for asyncReady callback (the GAsyncResult). */
     resultType?: FfiTypeDescriptor;
 }
 
@@ -851,9 +853,30 @@ export class TypeMapper {
             return {
                 ts: "(source: unknown, result: unknown) => void",
                 ffi: {
-                    type: "asyncCallback",
+                    type: "callback",
+                    trampoline: "asyncReady",
                     sourceType: { type: "gobject", borrowed: true },
                     resultType: { type: "gobject", borrowed: true },
+                },
+            };
+        }
+
+        if (param.type.name === "GLib.DestroyNotify") {
+            return {
+                ts: "() => void",
+                ffi: {
+                    type: "callback",
+                    trampoline: "destroy",
+                },
+            };
+        }
+
+        if (param.type.name === "GLib.SourceFunc") {
+            return {
+                ts: "() => boolean",
+                ffi: {
+                    type: "callback",
+                    trampoline: "sourceFunc",
                 },
             };
         }

@@ -5,6 +5,7 @@ mod cif;
 mod module;
 mod object;
 mod state;
+mod trampolines;
 mod types;
 mod value;
 

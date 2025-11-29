@@ -1192,7 +1192,7 @@ ${allArgs ? `${allArgs},` : ""}
         }
         lines.push(`          {`);
         lines.push(
-            `            type: { type: "asyncCallback", sourceType: { type: "gobject", borrowed: true }, resultType: { type: "gobject", borrowed: true } },`,
+            `            type: { type: "callback", trampoline: "asyncReady", sourceType: { type: "gobject", borrowed: true }, resultType: { type: "gobject", borrowed: true } },`,
         );
         lines.push(`            value: callback,`);
         lines.push(`          },`);
@@ -2023,8 +2023,18 @@ ${indent}  }`;
         if (type.type === "array" && type.itemType) {
             return `{ type: "array", itemType: ${this.generateTypeDescriptor(type.itemType)} }`;
         }
-        if (type.type === "asyncCallback" && type.sourceType && type.resultType) {
-            return `{ type: "asyncCallback", sourceType: ${this.generateTypeDescriptor(type.sourceType)}, resultType: ${this.generateTypeDescriptor(type.resultType)} }`;
+        if (type.type === "callback") {
+            const parts: string[] = [`type: "callback"`];
+            if (type.trampoline) {
+                parts.push(`trampoline: "${type.trampoline}"`);
+            }
+            if (type.sourceType) {
+                parts.push(`sourceType: ${this.generateTypeDescriptor(type.sourceType)}`);
+            }
+            if (type.resultType) {
+                parts.push(`resultType: ${this.generateTypeDescriptor(type.resultType)}`);
+            }
+            return `{ ${parts.join(", ")} }`;
         }
         return `{ type: "${type.type}" }`;
     }

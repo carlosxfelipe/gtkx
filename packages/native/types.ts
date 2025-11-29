@@ -28,16 +28,21 @@ type NullType = { type: "null" };
 /** Undefined/void type descriptor for FFI calls. */
 type UndefinedType = { type: "undefined" };
 
-/** Callback type descriptor for signal handlers and callbacks. */
-type CallbackType = { type: "callback"; argTypes?: Type[] };
-
 /**
- * Async callback type descriptor for GAsyncReadyCallback.
- * Used with async GIO/GTK operations like file I/O, network, etc.
- * The sourceType is the type of the source object (first callback arg).
- * The resultType is the type of the GAsyncResult (second callback arg).
+ * Callback type descriptor for signal handlers and callbacks.
+ * The trampoline field specifies which native trampoline function to use:
+ * - undefined or omitted: Use GClosure directly
+ * - "asyncReady": Use async ready callback trampoline (GAsyncReadyCallback)
+ * - "destroy": Use destroy notify trampoline (GDestroyNotify)
+ * - "sourceFunc": Use source func trampoline (GSourceFunc)
  */
-type AsyncCallbackType = { type: "asyncCallback"; sourceType: Type; resultType: Type };
+type CallbackType = {
+    type: "callback";
+    trampoline?: "asyncReady" | "destroy" | "sourceFunc";
+    argTypes?: Type[];
+    sourceType?: Type;
+    resultType?: Type;
+};
 
 /**
  * FFI type descriptor used to specify the type of arguments and return values
@@ -53,7 +58,6 @@ export type Type =
     | ArrayType
     | RefType
     | CallbackType
-    | AsyncCallbackType
     | NullType
     | UndefinedType;
 

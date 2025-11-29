@@ -12,7 +12,7 @@ use crate::{
     arg::Arg,
     cif,
     state::GtkThreadState,
-    types::{FloatSize, IntegerSign, IntegerSize, ListType, Type},
+    types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, ListType, Type},
     value::Value,
 };
 
@@ -73,7 +73,11 @@ fn handle_call(
 ) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
     let mut arg_types: Vec<ffi::Type> = Vec::with_capacity(args.len() + 1);
     for arg in &args {
-        if matches!(arg.type_, Type::AsyncCallback(_)) {
+        let uses_trampoline = matches!(
+            &arg.type_,
+            Type::Callback(cb) if cb.trampoline != CallbackTrampoline::Closure
+        );
+        if uses_trampoline {
             arg_types.push(ffi::Type::pointer());
             arg_types.push(ffi::Type::pointer());
         } else {
@@ -95,9 +99,9 @@ fn handle_call(
     let mut ffi_args: Vec<ffi::Arg> = Vec::with_capacity(cif_args.len() + 1);
     for cif_arg in &cif_args {
         match cif_arg {
-            cif::Value::AsyncCallback(async_cb) => {
-                ffi_args.push(ffi::arg(&async_cb.trampoline_ptr));
-                ffi_args.push(ffi::arg(&async_cb.closure.ptr));
+            cif::Value::TrampolineCallback(trampoline_cb) => {
+                ffi_args.push(ffi::arg(&trampoline_cb.trampoline_ptr));
+                ffi_args.push(ffi::arg(&trampoline_cb.closure.ptr));
             }
             other => {
                 ffi_args.push(other.into());

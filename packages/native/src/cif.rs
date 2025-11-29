@@ -11,6 +11,7 @@ use neon::prelude::*;
 use crate::{
     arg::{self, Arg},
     async_callback,
+    trampolines,
     types::*,
     value,
 };
@@ -34,12 +35,12 @@ pub enum Value {
     F64(f64),
     Ptr(*mut c_void),
     OwnedPtr(OwnedPtr),
-    AsyncCallback(AsyncCallbackValue),
+    TrampolineCallback(TrampolineCallbackValue),
     Void,
 }
 
 #[derive(Debug)]
-pub struct AsyncCallbackValue {
+pub struct TrampolineCallbackValue {
     pub trampoline_ptr: *mut c_void,
     pub closure: OwnedPtr,
 }
@@ -138,7 +139,6 @@ impl TryFrom<arg::Arg> for Value {
             }
             Type::Array(type_) => Value::try_from_array(&arg, type_),
             Type::Callback(type_) => Value::try_from_callback(&arg, type_),
-            Type::AsyncCallback(type_) => Value::try_from_async_callback(&arg, type_),
             Type::Ref(type_) => Value::try_from_ref(&arg, type_),
         }
     }
@@ -157,8 +157,8 @@ impl Value {
             Value::F64(value) => value as *const f64 as *mut c_void,
             Value::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
             Value::OwnedPtr(owned_ptr) => owned_ptr as *const OwnedPtr as *mut c_void,
-            Value::AsyncCallback(_) => {
-                panic!("AsyncCallback should not be converted to a single pointer")
+            Value::TrampolineCallback(_) => {
+                panic!("TrampolineCallback should not be converted to a single pointer")
             }
             Value::Void => std::ptr::null_mut(),
         }
@@ -307,142 +307,243 @@ impl Value {
 
         let channel = callback.channel.clone();
         let callback = callback.js_func.clone();
-        let arg_types = type_.arg_types.clone();
 
-        let closure = glib::Closure::new(move |args: &[glib::Value]| {
-            let args_values: Vec<value::Value> = match &arg_types {
-                Some(types) => args
-                    .iter()
-                    .zip(types.iter())
-                    .map(|(gval, type_)| value::Value::from_glib_value(gval, type_))
-                    .collect(),
-                None => args.iter().map(Into::into).collect(),
-            };
-            let callback = callback.clone();
+        match type_.trampoline {
+            CallbackTrampoline::Closure => {
+                let arg_types = type_.arg_types.clone();
 
-            let result = channel.send(move |mut cx| {
-                let js_args: Vec<Handle<JsValue>> = args_values
-                    .into_iter()
-                    .map(|v| v.to_js_value(&mut cx))
-                    .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values: Vec<value::Value> = match &arg_types {
+                        Some(types) => args
+                            .iter()
+                            .zip(types.iter())
+                            .map(|(gval, type_)| value::Value::from_glib_value(gval, type_))
+                            .collect(),
+                        None => args.iter().map(Into::into).collect(),
+                    };
+                    let callback = callback.clone();
 
-                let js_this = cx.undefined();
-                let js_callback = callback.clone().to_inner(&mut cx);
-                let js_result = js_callback.call(&mut cx, js_this, js_args)?;
+                    let result = channel.send(move |mut cx| {
+                        let js_args: Vec<Handle<JsValue>> = args_values
+                            .into_iter()
+                            .map(|v| v.to_js_value(&mut cx))
+                            .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
 
-                value::Value::from_js_value(&mut cx, js_result)
-            });
+                        let js_this = cx.undefined();
+                        let js_callback = callback.clone().to_inner(&mut cx);
+                        let js_result = js_callback.call(&mut cx, js_this, js_args)?;
 
-            let join_handle = result;
-            let main_context = glib::MainContext::default();
+                        value::Value::from_js_value(&mut cx, js_result)
+                    });
 
-            let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
-                unsafe { std::mem::transmute(join_handle) };
+                    let join_handle = result;
+                    let main_context = glib::MainContext::default();
 
-            loop {
-                match rx.try_recv() {
-                    Ok(result) => {
-                        return match result {
-                            Ok(value) => value.into(),
-                            Err(_) => {
-                                eprintln!("JS callback threw an error");
-                                None
+                    let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
+                        unsafe { std::mem::transmute(join_handle) };
+
+                    loop {
+                        match rx.try_recv() {
+                            Ok(result) => {
+                                return match result {
+                                    Ok(value) => value.into(),
+                                    Err(_) => {
+                                        eprintln!("JS callback threw an error");
+                                        None
+                                    }
+                                };
                             }
-                        };
-                    }
-                    Err(std::sync::mpsc::TryRecvError::Empty) => {
-                        main_context.iteration(false);
-                    }
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                        panic!("JS thread disconnected while waiting for callback result");
-                    }
-                }
-            }
-        });
-
-        let ptr = closure.as_ptr() as *mut c_void;
-
-        Ok(Value::OwnedPtr(OwnedPtr::new(closure, ptr)))
-    }
-
-    fn try_from_async_callback(arg: &arg::Arg, type_: &AsyncCallbackType) -> anyhow::Result<Value> {
-        let callback = match &arg.value {
-            value::Value::Callback(callback) => callback,
-            _ => bail!(
-                "Expected a Callback for async callback type, got {:?}",
-                arg.value
-            ),
-        };
-
-        let channel = callback.channel.clone();
-        let callback = callback.js_func.clone();
-        let source_type = type_.source_type.clone();
-        let result_type = type_.result_type.clone();
-
-        let closure = glib::Closure::new(move |args: &[glib::Value]| {
-            let source_value = args
-                .first()
-                .map(|gval| value::Value::from_glib_value(gval, &source_type))
-                .unwrap_or(value::Value::Null);
-            let result_value = args
-                .get(1)
-                .map(|gval| value::Value::from_glib_value(gval, &result_type))
-                .unwrap_or(value::Value::Null);
-
-            let args_values = vec![source_value, result_value];
-            let callback = callback.clone();
-
-            let result = channel.send(move |mut cx| {
-                let js_args: Vec<Handle<JsValue>> = args_values
-                    .into_iter()
-                    .map(|v| v.to_js_value(&mut cx))
-                    .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
-
-                let js_this = cx.undefined();
-                let js_callback = callback.clone().to_inner(&mut cx);
-                js_callback.call(&mut cx, js_this, js_args)?;
-
-                Ok(value::Value::Undefined)
-            });
-
-            let join_handle = result;
-            let main_context = glib::MainContext::default();
-
-            let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
-                unsafe { std::mem::transmute(join_handle) };
-
-            loop {
-                match rx.try_recv() {
-                    Ok(result) => {
-                        if let Err(_) = result {
-                            eprintln!("JS async callback threw an error");
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                main_context.iteration(false);
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                panic!("JS thread disconnected while waiting for callback result");
+                            }
                         }
-                        return None::<glib::Value>;
                     }
-                    Err(std::sync::mpsc::TryRecvError::Empty) => {
-                        main_context.iteration(false);
-                    }
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                        panic!("JS thread disconnected while waiting for async callback");
-                    }
-                }
+                });
+
+                let ptr = closure.as_ptr() as *mut c_void;
+                Ok(Value::OwnedPtr(OwnedPtr::new(closure, ptr)))
             }
-        });
 
-        let closure_ptr = unsafe {
-            use glib::translate::ToGlibPtr as _;
-            let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
-            glib::gobject_ffi::g_closure_ref(ptr);
-            glib::gobject_ffi::g_closure_sink(ptr);
-            ptr as *mut c_void
-        };
+            CallbackTrampoline::AsyncReady => {
+                let source_type = type_.source_type.clone().unwrap_or(Box::new(Type::Null));
+                let result_type = type_.result_type.clone().unwrap_or(Box::new(Type::Null));
 
-        let trampoline_ptr = async_callback::get_async_ready_trampoline_ptr();
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let source_value = args
+                        .first()
+                        .map(|gval| value::Value::from_glib_value(gval, &source_type))
+                        .unwrap_or(value::Value::Null);
+                    let result_value = args
+                        .get(1)
+                        .map(|gval| value::Value::from_glib_value(gval, &result_type))
+                        .unwrap_or(value::Value::Null);
 
-        Ok(Value::AsyncCallback(AsyncCallbackValue {
-            trampoline_ptr,
-            closure: OwnedPtr::new(closure, closure_ptr),
-        }))
+                    let args_values = vec![source_value, result_value];
+                    let callback = callback.clone();
+
+                    let result = channel.send(move |mut cx| {
+                        let js_args: Vec<Handle<JsValue>> = args_values
+                            .into_iter()
+                            .map(|v| v.to_js_value(&mut cx))
+                            .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
+
+                        let js_this = cx.undefined();
+                        let js_callback = callback.clone().to_inner(&mut cx);
+                        js_callback.call(&mut cx, js_this, js_args)?;
+
+                        Ok(value::Value::Undefined)
+                    });
+
+                    let join_handle = result;
+                    let main_context = glib::MainContext::default();
+
+                    let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
+                        unsafe { std::mem::transmute(join_handle) };
+
+                    loop {
+                        match rx.try_recv() {
+                            Ok(result) => {
+                                if let Err(_) = result {
+                                    eprintln!("JS async callback threw an error");
+                                }
+                                return None::<glib::Value>;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                main_context.iteration(false);
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                panic!("JS thread disconnected while waiting for async callback");
+                            }
+                        }
+                    }
+                });
+
+                let closure_ptr = unsafe {
+                    use glib::translate::ToGlibPtr as _;
+                    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
+                    glib::gobject_ffi::g_closure_ref(ptr);
+                    glib::gobject_ffi::g_closure_sink(ptr);
+                    ptr as *mut c_void
+                };
+
+                let trampoline_ptr = async_callback::get_async_ready_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new(closure, closure_ptr),
+                }))
+            }
+
+            CallbackTrampoline::Destroy => {
+                let closure = glib::Closure::new(move |_args: &[glib::Value]| {
+                    let callback = callback.clone();
+
+                    let result = channel.send(move |mut cx| {
+                        let js_this = cx.undefined();
+                        let js_callback = callback.clone().to_inner(&mut cx);
+                        js_callback.call(&mut cx, js_this, vec![])?;
+                        Ok(value::Value::Undefined)
+                    });
+
+                    let join_handle = result;
+                    let main_context = glib::MainContext::default();
+
+                    let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
+                        unsafe { std::mem::transmute(join_handle) };
+
+                    loop {
+                        match rx.try_recv() {
+                            Ok(result) => {
+                                if let Err(_) = result {
+                                    eprintln!("JS destroy callback threw an error");
+                                }
+                                return None::<glib::Value>;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                main_context.iteration(false);
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                panic!("JS thread disconnected while waiting for destroy callback");
+                            }
+                        }
+                    }
+                });
+
+                let closure_ptr = unsafe {
+                    use glib::translate::ToGlibPtr as _;
+                    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
+                    glib::gobject_ffi::g_closure_ref(ptr);
+                    glib::gobject_ffi::g_closure_sink(ptr);
+                    ptr as *mut c_void
+                };
+
+                let trampoline_ptr = trampolines::get_destroy_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new(closure, closure_ptr),
+                }))
+            }
+
+            CallbackTrampoline::SourceFunc => {
+                let closure = glib::Closure::new(move |_args: &[glib::Value]| {
+                    let callback = callback.clone();
+
+                    let result = channel.send(move |mut cx| {
+                        let js_this = cx.undefined();
+                        let js_callback = callback.clone().to_inner(&mut cx);
+                        let js_result = js_callback.call(&mut cx, js_this, vec![])?;
+                        value::Value::from_js_value(&mut cx, js_result)
+                    });
+
+                    let join_handle = result;
+                    let main_context = glib::MainContext::default();
+
+                    let rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> =
+                        unsafe { std::mem::transmute(join_handle) };
+
+                    loop {
+                        match rx.try_recv() {
+                            Ok(result) => {
+                                return match result {
+                                    Ok(value) => value.into(),
+                                    Err(_) => {
+                                        eprintln!("JS source func callback threw an error");
+                                        Some(false.into())
+                                    }
+                                };
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                main_context.iteration(false);
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                panic!(
+                                    "JS thread disconnected while waiting for source func callback"
+                                );
+                            }
+                        }
+                    }
+                });
+
+                let closure_ptr = unsafe {
+                    use glib::translate::ToGlibPtr as _;
+                    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
+                    glib::gobject_ffi::g_closure_ref(ptr);
+                    glib::gobject_ffi::g_closure_sink(ptr);
+                    ptr as *mut c_void
+                };
+
+                let trampoline_ptr = trampolines::get_source_func_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new(closure, closure_ptr),
+                }))
+            }
+        }
     }
 
     fn try_from_ref(arg: &arg::Arg, type_: &RefType) -> anyhow::Result<Value> {
@@ -486,8 +587,8 @@ impl<'a> From<&'a Value> for ffi::Arg<'a> {
             Value::F64(value) => ffi::arg(value),
             Value::Ptr(ptr) => ffi::arg(ptr),
             Value::OwnedPtr(owned_ptr) => ffi::arg(&owned_ptr.ptr),
-            Value::AsyncCallback(_) => {
-                panic!("AsyncCallback should be handled specially in call.rs")
+            Value::TrampolineCallback(_) => {
+                panic!("TrampolineCallback should be handled specially in call.rs")
             }
             Value::Void => ffi::arg(&()),
         }
