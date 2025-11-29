@@ -96,7 +96,7 @@ function ScreenshotSection(): ReactNode {
         <section className={styles.screenshotSection}>
             <div className="container">
                 <Heading as="h2" className="text--center margin-bottom--lg">
-                    Comprehensive Example Application
+                    Comprehensive Demo Application
                 </Heading>
                 <div className="row">
                     <div className="col col--10 col--offset-1">
