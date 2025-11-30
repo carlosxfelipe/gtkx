@@ -122,7 +122,7 @@ export const app = render(
 
 | Package | Description |
 |---------|-------------|
-| [`@gtkx/react`](packages/gtkx) | React reconciler and JSX components |
+| [`@gtkx/react`](packages/react) | React reconciler and JSX components |
 | [`@gtkx/ffi`](packages/ffi) | Generated TypeScript FFI bindings for GTK4 |
 | [`@gtkx/css`](packages/css) | Emotion-style CSS-in-JS for GTK widgets |
 | [`@gtkx/native`](packages/native) | Rust-based FFI bridge using libffi |

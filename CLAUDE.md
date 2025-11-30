@@ -43,7 +43,7 @@ Node Factory (factory.ts) → Specialized Nodes (widget.ts, list.ts, grid.ts, et
         ↓
 @gtkx/ffi Generated Bindings
         ↓
-@gtkx/native Rust Bridge (lib.rs → call/read/write/alloc)
+@gtkx/native Rust Bridge (lib.rs → start/stop/call/read/write/alloc)
         ↓
 libffi → GTK4 C Libraries
 ```
@@ -62,7 +62,7 @@ libffi → GTK4 C Libraries
 
 **FFI Generation** (`packages/ffi/scripts/codegen.ts`): Generates TypeScript bindings from GIR XML files in `/usr/share/gir-1.0`, outputting to `src/generated/`.
 
-**Native Module** (`packages/native/src/lib.rs`): Rust Neon module exporting `start`, `stop`, `call`, `read`, `write`, `alloc` functions for GTK operations.
+**Native Module** (`packages/native/src/lib.rs`): Rust Neon module exporting `start`, `stop`, `call`, `read`, `write`, `alloc` functions for GTK application lifecycle and FFI operations.
 
 ### Widget Hierarchy Rules
 

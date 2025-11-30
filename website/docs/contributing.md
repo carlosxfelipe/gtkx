@@ -32,7 +32,7 @@ gtkx/
 │   ├── native/     # Rust FFI module (Neon + libffi)
 │   ├── gir/        # GIR XML parser
 │   ├── ffi/        # Generated TypeScript FFI bindings
-│   ├── gtkx/       # React reconciler + JSX types
+│   ├── react/      # React reconciler + JSX types
 │   └── css/        # CSS-in-JS styling
 ├── examples/
 │   └── gtk4-demo/  # Comprehensive widget showcase
@@ -101,12 +101,12 @@ Never edit files in `src/generated/` directories. Instead:
 
 1. Edit the generator source:
    - `packages/ffi/src/codegen/ffi-generator.ts` for FFI bindings
-   - `packages/gtkx/src/codegen/jsx-generator.ts` for JSX types
+   - `packages/react/src/codegen/jsx-generator.ts` for JSX types
 
 2. Run codegen to see changes:
    ```bash
    cd packages/ffi && pnpm run codegen
-   cd ../gtkx && pnpm run codegen
+   cd ../react && pnpm run codegen
    ```
 
 ### Adding a New Widget
