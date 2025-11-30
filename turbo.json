@@ -19,7 +19,7 @@
         "test": {
             "dependsOn": ["build"]
         },
-        "@gtkx/website#build": {
+        "website#build": {
             "dependsOn": ["@gtkx/react#build"]
         }
     }

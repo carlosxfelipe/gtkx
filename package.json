@@ -6,8 +6,8 @@
     "type": "module",
     "private": true,
     "scripts": {
-        "build": "turbo build",
-        "docs": "pnpm --filter website start",
+        "build": "turbo build --filter=!website",
+        "docs": "turbo start --filter=website",
         "knip": "knip",
         "lint": "biome check .",
         "test": "turbo test"

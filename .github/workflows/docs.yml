@@ -13,12 +13,18 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: fedora:43
     steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y gtk4-devel gobject-introspection-devel gtksourceview5-devel
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -28,23 +34,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "pnpm"
+          node-version: 24
+          cache: pnpm
 
-      - name: Install GTK4 development libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev gobject-introspection libgtksourceview-5-dev
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: packages/native
-
-      - name: Install dependencies
+      - name: Install npm packages
         run: pnpm install
 
       - name: Setup Turbo cache
@@ -55,12 +48,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      - name: Build packages
-        run: pnpm build
-
       - name: Build documentation
         working-directory: website
-        run: pnpm build
+        run: pnpm turbo build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -75,6 +65,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    container:
+      image: fedora:43
     needs: build
     steps:
       - name: Deploy to GitHub Pages

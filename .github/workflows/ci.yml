@@ -9,29 +9,21 @@ on:
       - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci
   cancel-in-progress: true
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    container:
+      image: fedora:43
     steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y gtk4-devel gobject-introspection-devel xorg-x11-server-Xvfb gtksourceview5-devel
+
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "pnpm"
-
-      - name: Install GTK4 development libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev gobject-introspection xvfb libgtksourceview-5-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -41,7 +33,16 @@ jobs:
         with:
           workspaces: packages/native
 
-      - name: Install dependencies
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install npm packages
         run: pnpm install
 
       - name: Setup Turbo cache
@@ -62,6 +63,8 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    container:
+      image: fedora:43
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,7 +76,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: "pnpm"
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install
