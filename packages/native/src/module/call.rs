@@ -161,10 +161,15 @@ fn handle_call(
             }
             Type::Array(ref array_type) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &mut ffi_args);
-                if array_type.list_type == ListType::GList || array_type.list_type == ListType::GSList {
+                if array_type.list_type == ListType::GList
+                    || array_type.list_type == ListType::GSList
+                {
                     cif::Value::Ptr(ptr)
                 } else {
-                    bail!("Unsupported array return type (only GList/GSList supported): {:?}", result_type)
+                    bail!(
+                        "Unsupported array return type (only GList/GSList supported): {:?}",
+                        result_type
+                    )
                 }
             }
             Type::Null => cif::Value::Void,

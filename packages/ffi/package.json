@@ -30,6 +30,11 @@
             "development": "./src/index.ts",
             "default": "./dist/index.js"
         },
+        "./gl": {
+            "types": "./dist/gl/index.d.ts",
+            "development": "./src/gl/index.ts",
+            "default": "./dist/gl/index.js"
+        },
         "./*": {
             "types": "./dist/generated/*/index.d.ts",
             "development": "./src/generated/*/index.ts",

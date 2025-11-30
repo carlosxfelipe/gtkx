@@ -230,6 +230,11 @@ impl Value {
                     }
                 };
 
+                // Return null if the pointer is null
+                if boxed_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
                 let gtype = type_.get_gtype();
 
                 let boxed = if type_.is_borrowed {
@@ -590,12 +595,19 @@ impl Value {
             }
             Type::Boxed(boxed_type) => {
                 let boxed_ptr = gvalue.as_ptr();
+
+                if boxed_ptr.is_null() {
+                    return Value::Null;
+                }
+
                 let gtype = boxed_type.get_gtype().or_else(|| Some(gvalue.type_()));
+
                 let boxed = if boxed_type.is_borrowed {
                     Boxed::from_glib_none(gtype, boxed_ptr as *mut c_void)
                 } else {
                     Boxed::from_glib_full(gtype, boxed_ptr as *mut c_void)
                 };
+
                 let object_id = ObjectId::new(Object::Boxed(boxed));
                 Value::Object(object_id)
             }
@@ -635,9 +647,14 @@ impl From<&glib::Value> for Value {
             Value::Object(object_id)
         } else if value.is_type(glib::types::Type::BOXED) {
             let boxed_ptr = value.as_ptr();
-            let boxed = Boxed::from_glib_none(Some(value.type_()), boxed_ptr as *mut c_void);
-            let object_id = ObjectId::new(Object::Boxed(boxed));
-            Value::Object(object_id)
+
+            if boxed_ptr.is_null() {
+                Value::Null
+            } else {
+                let boxed = Boxed::from_glib_none(Some(value.type_()), boxed_ptr as *mut c_void);
+                let object_id = ObjectId::new(Object::Boxed(boxed));
+                Value::Object(object_id)
+            }
         } else if value.type_().is_a(glib::types::Type::PARAM_SPEC) {
             let param_spec: glib::ParamSpec = value.get().unwrap();
             Value::String(param_spec.name().to_string())

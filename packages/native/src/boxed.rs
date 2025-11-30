@@ -19,6 +19,15 @@ impl Boxed {
     }
 
     pub fn from_glib_none(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
+        // Don't try to copy a null pointer
+        if ptr.is_null() {
+            return Boxed {
+                ptr,
+                type_,
+                is_owned: false,
+            };
+        }
+
         if let Some(gtype) = type_ {
             let cloned_ptr = unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr) };
             Boxed {
@@ -44,6 +53,15 @@ impl AsRef<*mut c_void> for Boxed {
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
+        // Don't try to copy a null pointer
+        if self.ptr.is_null() {
+            return Boxed {
+                ptr: self.ptr,
+                type_: self.type_,
+                is_owned: false,
+            };
+        }
+
         if let Some(gtype) = self.type_ {
             let cloned_ptr =
                 unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), self.ptr) };
@@ -64,7 +82,8 @@ impl Clone for Boxed {
 
 impl Drop for Boxed {
     fn drop(&mut self) {
-        if self.is_owned {
+        // Don't try to free a null pointer
+        if self.is_owned && !self.ptr.is_null() {
             if let Some(gtype) = self.type_ {
                 unsafe {
                     glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
