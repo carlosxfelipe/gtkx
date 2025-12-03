@@ -4,7 +4,6 @@ import React from "react";
 import ReactReconciler from "react-reconciler";
 import { createNode, type Props } from "./factory.js";
 import type { Node } from "./node.js";
-import { WidgetWrapper } from "./nodes/widget.js";
 
 type Container = Gtk.Application | Gtk.Widget;
 type TextInstance = Node;
@@ -109,17 +108,20 @@ class Reconciler {
             insertBefore: (parent, child, beforeChild) => parent.insertBefore(child, beforeChild),
             removeChildFromContainer: (container, child) => {
                 if (container instanceof Gtk.Widget) {
-                    child.detachFromParent(new WidgetWrapper(container, this.getApp()));
+                    const parent = createNode(container.constructor.name, {}, this.getApp(), container);
+                    parent.removeChild(child);
                 }
             },
             appendChildToContainer: (container, child) => {
                 if (container instanceof Gtk.Widget) {
-                    child.attachToParent(new WidgetWrapper(container, this.getApp()));
+                    const parent = createNode(container.constructor.name, {}, this.getApp(), container);
+                    parent.appendChild(child);
                 }
             },
-            insertInContainerBefore: (container, child, _beforeChild) => {
+            insertInContainerBefore: (container, child, beforeChild) => {
                 if (container instanceof Gtk.Widget) {
-                    child.attachToParent(new WidgetWrapper(container, this.getApp()));
+                    const parent = createNode(container.constructor.name, {}, this.getApp(), container);
+                    parent.insertBefore(child, beforeChild);
                 }
             },
             prepareForCommit: () => null,

@@ -16,7 +16,7 @@ export let container: unknown = null;
  * ```tsx
  * render(
  *   <ApplicationWindow title="My App">
- *     <Label label="Hello, World!" />
+ *     Hello, GTKX!
  *   </ApplicationWindow>,
  *   "com.example.myapp"
  * );

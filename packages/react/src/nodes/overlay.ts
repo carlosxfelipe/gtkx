@@ -19,6 +19,30 @@ export class OverlayNode extends Node<Gtk.Overlay> {
         }
     }
 
+    insertChildBefore(childWidget: Gtk.Widget, beforeWidget: Gtk.Widget): void {
+        if (this.mainChild === null) {
+            this.mainChild = childWidget;
+            this.widget.setChild(childWidget);
+            return;
+        }
+
+        if (this.mainChild === beforeWidget) {
+            this.overlayChildren.unshift(childWidget);
+            this.widget.addOverlay(childWidget);
+            return;
+        }
+
+        const beforeIndex = this.overlayChildren.indexOf(beforeWidget);
+
+        if (beforeIndex === -1) {
+            this.attachChild(childWidget);
+            return;
+        }
+
+        this.overlayChildren.splice(beforeIndex, 0, childWidget);
+        this.widget.addOverlay(childWidget);
+    }
+
     detachChild(childWidget: Gtk.Widget): void {
         if (this.mainChild === childWidget) {
             this.widget.setChild(null);

@@ -45,12 +45,9 @@ Tests require `xvfb-run` because GTK needs a display. On Wayland systems, set `G
 ### Basic Test Structure
 
 ```tsx
-import { cleanup, render, screen, setup } from "@gtkx/testing";
+import { cleanup, render, screen } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
-
-// Initialize GTK for testing
-setup();
 
 describe("App", () => {
   // Clean up after each test
@@ -65,9 +62,20 @@ describe("App", () => {
 });
 ```
 
+GTK is automatically initialized on the first `render()` call—no manual setup required.
+
 ### Query Functions
 
-GTKX testing provides several ways to find elements:
+GTKX testing provides several ways to find elements. Each query type comes in multiple variants:
+
+| Variant | Returns | Throws if not found? | Async? |
+|---------|---------|----------------------|--------|
+| `getBy*` | Single element | Yes | No |
+| `getAllBy*` | Array of elements | Yes (if empty) | No |
+| `queryBy*` | Single element or `null` | No | No |
+| `queryAllBy*` | Array of elements (may be empty) | No | No |
+| `findBy*` | Single element | Yes | Yes |
+| `findAllBy*` | Array of elements | Yes (if empty) | Yes |
 
 #### By Text
 
@@ -77,6 +85,15 @@ const label = await screen.findByText("Hello, World!");
 
 // Find by partial text (regex)
 const greeting = await screen.findByText(/hello/i);
+
+// Check if element exists without throwing
+const maybeLabel = screen.queryByText("Optional");
+if (maybeLabel) {
+  // Element exists
+}
+
+// Find all matching elements
+const allLabels = screen.getAllByText(/item/i);
 ```
 
 #### By Role
@@ -93,6 +110,12 @@ const button = await screen.findByRole(AccessibleRole.BUTTON, {
 
 // Find any button
 const anyButton = await screen.findByRole(AccessibleRole.BUTTON);
+
+// Find a checked checkbox
+const checked = screen.getByRole(AccessibleRole.CHECKBOX, { checked: true });
+
+// Find an expanded expander
+const expanded = screen.getByRole(AccessibleRole.BUTTON, { expanded: true });
 ```
 
 Common roles:
@@ -100,7 +123,11 @@ Common roles:
 - `AccessibleRole.LABEL` — Labels
 - `AccessibleRole.TEXT_BOX` — Text inputs
 - `AccessibleRole.CHECKBOX` — Checkboxes
+- `AccessibleRole.RADIO` — Radio buttons
+- `AccessibleRole.TOGGLE_BUTTON` — Toggle buttons
 - `AccessibleRole.SWITCH` — Switches
+- `AccessibleRole.SEARCH_BOX` — Search inputs
+- `AccessibleRole.SPIN_BUTTON` — Spin buttons
 
 #### By Label Text
 
@@ -108,6 +135,18 @@ Find form controls by their associated label:
 
 ```tsx
 const input = await screen.findByLabelText("Email Address");
+```
+
+#### By Test ID
+
+Find elements by their widget name (test ID). Set the `name` prop on a widget to use this query:
+
+```tsx
+// In your component
+<Button name="submit-btn">Submit</Button>
+
+// In your test
+const button = screen.getByTestId("submit-btn");
 ```
 
 ### Synchronous Queries
@@ -118,6 +157,9 @@ For elements that are immediately available, use `getBy*` variants:
 // Throws if not found
 const button = screen.getByText("Click me");
 const input = screen.getByRole(AccessibleRole.TEXT_BOX);
+
+// Returns null if not found (doesn't throw)
+const maybeButton = screen.queryByText("Maybe exists");
 ```
 
 ## User Interactions
@@ -133,6 +175,9 @@ const button = await screen.findByRole(AccessibleRole.BUTTON, {
   name: "Increment",
 });
 await userEvent.click(button);
+
+// Double-click
+await userEvent.dblClick(button);
 ```
 
 ### Typing
@@ -140,6 +185,36 @@ await userEvent.click(button);
 ```tsx
 const input = await screen.findByRole(AccessibleRole.TEXT_BOX);
 await userEvent.type(input, "Hello, World!");
+
+// Clear input field
+await userEvent.clear(input);
+```
+
+### Custom Configuration
+
+Use `userEvent.setup()` to create an instance with custom options:
+
+```tsx
+const user = userEvent.setup({ delay: 100 });
+await user.click(button);
+await user.type(input, "text");
+```
+
+## Low-Level Events
+
+For more control, use `fireEvent` to emit GTK signals directly:
+
+```tsx
+import { fireEvent } from "@gtkx/testing";
+
+// Fire any signal by name
+fireEvent(button, "clicked");
+
+// Convenience methods
+fireEvent.click(button);
+fireEvent.activate(entry);
+fireEvent.toggled(checkbox);
+fireEvent.changed(entry);
 ```
 
 ## Waiting for Changes
@@ -156,6 +231,28 @@ await userEvent.click(submitButton);
 await waitFor(() => {
   expect(screen.getByText("Success!")).toBeDefined();
 });
+
+// With custom options
+await waitFor(
+  () => {
+    expect(screen.getByText("Done")).toBeDefined();
+  },
+  { timeout: 2000, interval: 100 }
+);
+```
+
+### `waitForElementToBeRemoved`
+
+Wait for an element to be removed from the widget tree:
+
+```tsx
+import { waitForElementToBeRemoved } from "@gtkx/testing";
+
+const loader = screen.getByText("Loading...");
+await waitForElementToBeRemoved(loader);
+
+// Or with a callback
+await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 ```
 
 ### `findBy*` Queries
@@ -173,11 +270,9 @@ Here's a full test for a counter component:
 
 ```tsx
 import { AccessibleRole } from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, setup, userEvent } from "@gtkx/testing";
+import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { Counter } from "../src/counter.js";
-
-setup();
 
 describe("Counter", () => {
   afterEach(() => cleanup());
@@ -234,49 +329,131 @@ describe("Counter", () => {
 });
 ```
 
+## Render Options
+
+The `render` function accepts an options object:
+
+```tsx
+import { render } from "@gtkx/testing";
+
+// With a wrapper component (useful for providers)
+const Wrapper = ({ children }) => (
+  <ThemeProvider theme="dark">{children}</ThemeProvider>
+);
+
+const { container, rerender, unmount, debug } = render(<MyComponent />, {
+  wrapper: Wrapper,
+});
+
+// Rerender with new props
+rerender(<MyComponent newProp="value" />);
+
+// Debug the widget tree
+debug();
+
+// Unmount the component
+unmount();
+```
+
 ## API Reference
 
-### Setup Functions
+### Lifecycle Functions
 
 | Function | Description |
 |----------|-------------|
-| `setup()` | Initialize GTK for testing. Call once before all tests. |
-| `teardown()` | Clean up GTK. Called automatically in most cases. |
+| `render(element, options?)` | Render a React element for testing. Returns `RenderResult`. |
 | `cleanup()` | Unmount rendered components. Call after each test. |
+| `teardown()` | Clean up GTK entirely. Used in global teardown. |
 
-### Render
+### RenderResult
 
-| Function | Description |
-|----------|-------------|
-| `render(element)` | Render a React element for testing. Returns `RenderResult`. |
+The object returned by `render()`:
+
+| Property/Method | Description |
+|-----------------|-------------|
+| `container` | The GTK Application instance |
+| `rerender(element)` | Re-render with a new element |
+| `unmount()` | Unmount the rendered component |
+| `debug()` | Print the widget tree to console |
+| `getBy*`, `queryBy*`, `findBy*`, etc. | Query methods bound to the container |
 
 ### Screen Queries
 
-| Query | Waits? | Throws if not found? |
-|-------|--------|---------------------|
-| `getByText` | No | Yes |
-| `getByRole` | No | Yes |
-| `getByLabelText` | No | Yes |
-| `findByText` | Yes | Yes |
-| `findByRole` | Yes | Yes |
-| `findByLabelText` | Yes | Yes |
+All queries are available on the `screen` object and on `RenderResult`:
+
+| Query Type | Variants | Description |
+|------------|----------|-------------|
+| `*ByRole` | get, getAll, query, queryAll, find, findAll | Find by accessible role |
+| `*ByText` | get, getAll, query, queryAll, find, findAll | Find by text content |
+| `*ByLabelText` | get, getAll, query, queryAll, find, findAll | Find by label text |
+| `*ByTestId` | get, getAll, query, queryAll, find, findAll | Find by widget name |
+
+### Query Options
+
+#### TextMatchOptions
+
+```tsx
+screen.getByText("hello", {
+  exact: false, // Enable substring matching (default: true)
+  normalizer: (text) => text.toLowerCase(), // Custom text normalizer
+});
+```
+
+#### ByRoleOptions
+
+```tsx
+screen.getByRole(AccessibleRole.BUTTON, {
+  name: "Submit", // Match by accessible name
+  checked: true, // For checkboxes/radios
+  expanded: true, // For expanders
+  pressed: true, // For toggle buttons
+  selected: true, // For selectable items
+  level: 2, // For headings
+});
+```
 
 ### User Events
 
 | Function | Description |
 |----------|-------------|
 | `userEvent.click(element)` | Click an element |
+| `userEvent.dblClick(element)` | Double-click an element |
 | `userEvent.type(element, text)` | Type text into an input |
+| `userEvent.clear(element)` | Clear an input field |
+| `userEvent.setup(options?)` | Create instance with custom options |
 
-### Utilities
+### Fire Event
+
+| Function | Description |
+|----------|-------------|
+| `fireEvent(element, signalName)` | Fire any GTK signal |
+| `fireEvent.click(element)` | Fire "clicked" signal |
+| `fireEvent.activate(element)` | Fire "activate" signal |
+| `fireEvent.toggled(element)` | Fire "toggled" signal |
+| `fireEvent.changed(element)` | Fire "changed" signal |
+
+### Async Utilities
 
 | Function | Description |
 |----------|-------------|
 | `waitFor(callback, options?)` | Wait for a condition to be true |
+| `waitForElementToBeRemoved(element, options?)` | Wait for element removal |
+
+#### WaitForOptions
+
+```tsx
+await waitFor(callback, {
+  timeout: 1000, // Max wait time in ms (default: 1000)
+  interval: 50, // Poll interval in ms (default: 50)
+  onTimeout: (error) => new Error("Custom message"), // Custom timeout error
+});
+```
 
 ## Tips
 
 1. **Always call `cleanup()`** in `afterEach` to prevent test pollution
 2. **Prefer `findBy*` queries** for elements that may need time to appear
-3. **Use roles over text** when possible for more robust tests
-4. **Test behavior, not implementation** — focus on what users see and do
+3. **Use `queryBy*`** when checking that an element does NOT exist
+4. **Use roles over text** when possible for more robust tests
+5. **Test behavior, not implementation** — focus on what users see and do
+6. **Use `debug()`** to inspect the widget tree when tests fail

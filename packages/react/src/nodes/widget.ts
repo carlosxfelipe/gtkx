@@ -21,18 +21,6 @@ const COMBINED_PROPS: CombinedPropHandler[] = [
     },
 ];
 
-/** Minimal wrapper around an existing widget for portal containers. */
-export class WidgetWrapper extends Node<Gtk.Widget> {
-    constructor(widget: Gtk.Widget, app: Gtk.Application) {
-        super("", {}, app);
-        this.widget = widget;
-    }
-
-    protected override isVirtual(): boolean {
-        return true;
-    }
-}
-
 export class WidgetNode extends Node<Gtk.Widget> {
     static matches(_type: string): boolean {
         return true;
@@ -62,6 +50,48 @@ export class WidgetNode extends Node<Gtk.Widget> {
         }
 
         super.attachToParent(parent);
+    }
+
+    override attachToParentBefore(parent: Node, before: Node): void {
+        if (this.widget instanceof Gtk.AboutDialog) {
+            return;
+        }
+
+        if (parent instanceof OverlayNode) {
+            const beforeWidget = before.getWidget();
+
+            if (beforeWidget) {
+                parent.insertChildBefore(this.widget, beforeWidget);
+            } else {
+                parent.attachChild(this.widget);
+            }
+
+            return;
+        }
+
+        const parentWidget = parent.getWidget();
+        const beforeWidget = before.getWidget();
+
+        if (!parentWidget) return;
+
+        if (parentWidget instanceof Gtk.ActionBar) {
+            parentWidget.packStart(this.widget);
+            return;
+        }
+
+        if (parentWidget instanceof Gtk.Notebook && beforeWidget) {
+            const beforePageNum = parentWidget.pageNum(beforeWidget);
+
+            if (beforePageNum >= 0) {
+                parentWidget.insertPage(this.widget, beforePageNum);
+            } else {
+                parentWidget.appendPage(this.widget);
+            }
+
+            return;
+        }
+
+        super.attachToParentBefore(parent, before);
     }
 
     override detachFromParent(parent: Node): void {
@@ -98,7 +128,10 @@ export class WidgetNode extends Node<Gtk.Widget> {
 
     protected override consumedProps(): Set<string> {
         const consumed = super.consumedProps();
-        consumed.add("application");
+
+        if (this.widget instanceof Gtk.ApplicationWindow) {
+            consumed.add("application");
+        }
 
         for (const handler of COMBINED_PROPS) {
             for (const prop of handler.props) {
@@ -128,24 +161,10 @@ export class WidgetNode extends Node<Gtk.Widget> {
     }
 
     override mount(app: Gtk.Application): void {
-        if (this.widget instanceof Gtk.AboutDialog) {
-            const activeWindow = app.getActiveWindow();
-
-            if (activeWindow) {
-                this.widget.setTransientFor(activeWindow);
-            }
-        }
+        super.mount(app);
 
         if (this.widget instanceof Gtk.Window) {
             this.widget.present();
-        }
-    }
-
-    override dispose(app: Gtk.Application): void {
-        super.dispose(app);
-
-        if (this.widget instanceof Gtk.Window) {
-            this.widget.close();
         }
     }
 }

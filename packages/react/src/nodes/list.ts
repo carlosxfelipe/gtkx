@@ -60,6 +60,18 @@ export class ListViewNode extends Node<Gtk.ListView> {
         this.stringList.append("");
     }
 
+    insertItemBefore(item: unknown, beforeItem: unknown): void {
+        const beforeIndex = this.items.indexOf(beforeItem);
+
+        if (beforeIndex === -1) {
+            this.addItem(item);
+            return;
+        }
+
+        this.items.splice(beforeIndex, 0, item);
+        this.stringList.splice(beforeIndex, 0, [""]);
+    }
+
     removeItem(item: unknown): void {
         const index = this.items.indexOf(item);
 
@@ -117,6 +129,14 @@ export class ListItemNode extends Node {
     override attachToParent(parent: Node): void {
         if (parent instanceof ListViewNode) {
             parent.addItem(this.item);
+        }
+    }
+
+    override attachToParentBefore(parent: Node, before: Node): void {
+        if (parent instanceof ListViewNode && before instanceof ListItemNode) {
+            parent.insertItemBefore(this.item, before.getItem());
+        } else {
+            this.attachToParent(parent);
         }
     }
 

@@ -11,25 +11,25 @@ export type Props = Record<string, unknown>;
 
 interface NodeClass {
     matches: (type: string) => boolean;
-    new (type: string, props: Props, currentApp?: unknown): Node;
+    new (type: string, props: Props, currentApp?: unknown, existingWidget?: Gtk.Widget): Node;
 }
 
 const NODE_CLASSES = [
-    SlotNode,
     ListItemNode,
     DropDownItemNode,
-    DropDownNode,
     GridChildNode,
+    SlotNode,
+    DropDownNode,
     GridNode,
     OverlayNode,
     ListViewNode,
     WidgetNode,
 ] as NodeClass[];
 
-export const createNode = (type: string, props: Props, app: Gtk.Application): Node => {
+export const createNode = (type: string, props: Props, app: Gtk.Application, existingWidget?: Gtk.Widget): Node => {
     for (const NodeClass of NODE_CLASSES) {
         if (NodeClass.matches(type)) {
-            return new NodeClass(type, props, app);
+            return new NodeClass(type, props, app, existingWidget);
         }
     }
 

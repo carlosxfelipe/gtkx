@@ -24,7 +24,12 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         return false;
     }
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
+    constructor(type: string, props: Props, app: Gtk.Application, existingWidget?: Gtk.Widget) {
+        if (existingWidget) {
+            this.widget = existingWidget as T;
+            return;
+        }
+
         this.widget = (this.isVirtual() ? undefined : this.createWidget(type, props, app)) as T;
         this.updateProps({}, props);
     }
@@ -38,7 +43,7 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
             throw new Error(`Unknown GTK widget type: ${normalizedType}`);
         }
 
-        if (normalizedType === "ApplicationWindow") {
+        if (WidgetClass === Gtk.ApplicationWindow) {
             return new WidgetClass(app) as T;
         }
 
@@ -57,8 +62,8 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         child.detachFromParent(this);
     }
 
-    insertBefore(child: Node, _before: Node): void {
-        this.appendChild(child);
+    insertBefore(child: Node, before: Node): void {
+        child.attachToParentBefore(this, before);
     }
 
     attachToParent(parent: Node): void {
@@ -68,7 +73,9 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         if (!parentWidget || !widget) return;
 
         if (isAppendable(parentWidget)) {
-            parentWidget.append(widget);
+            // Use insertBefore with null sibling to append - this handles
+            // moving existing children correctly (append() doesn't move)
+            widget.insertBefore(parentWidget, null);
         } else if (isSingleChild(parentWidget)) {
             parentWidget.setChild(widget);
         }
@@ -84,6 +91,21 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
             parentWidget.remove(widget);
         } else if (isSingleChild(parentWidget)) {
             parentWidget.setChild(null);
+        }
+    }
+
+    attachToParentBefore(parent: Node, before: Node): void {
+        const parentWidget = parent.getWidget();
+        const widget = this.getWidget();
+        const beforeWidget = before.getWidget();
+
+        if (!parentWidget || !widget) return;
+
+        if (isAppendable(parentWidget) && beforeWidget) {
+            // GTK's insertBefore handles reparenting automatically
+            widget.insertBefore(parentWidget, beforeWidget);
+        } else {
+            this.attachToParent(parent);
         }
     }
 

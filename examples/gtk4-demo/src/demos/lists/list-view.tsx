@@ -1,0 +1,79 @@
+import * as Gtk from "@gtkx/ffi/gtk";
+import { Box, Label, ListView } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
+import type { Demo } from "../types.js";
+
+interface Task {
+    id: string;
+    title: string;
+    completed: boolean;
+}
+
+const tasks: Task[] = [
+    { id: "1", title: "Learn GTK4", completed: true },
+    { id: "2", title: "Build a React app", completed: true },
+    { id: "3", title: "Create GTK bindings", completed: true },
+    { id: "4", title: "Write documentation", completed: false },
+    { id: "5", title: "Add more demos", completed: false },
+    { id: "6", title: "Test everything", completed: false },
+    { id: "7", title: "Ship the project", completed: false },
+];
+
+const renderTask = (task: Task | null): Gtk.Widget => {
+    const label = new Gtk.Label(task?.title ?? "Loading...");
+    label.setHalign(Gtk.Align.START);
+    label.setMarginStart(12);
+    label.setMarginEnd(12);
+    label.setMarginTop(8);
+    label.setMarginBottom(8);
+    if (task?.completed) {
+        label.setCssClasses(["dim-label"]);
+    }
+    return label;
+};
+
+const ListViewDemo = () => {
+    return (
+        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <Label.Root label="List View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <Label.Root label="About ListView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label.Root
+                    label="ListView is a high-performance scrollable list that efficiently handles large datasets using virtual scrolling. It only renders visible items."
+                    wrap
+                    cssClasses={["dim-label"]}
+                />
+            </Box>
+
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <Label.Root label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
+                    <ListView.Root renderItem={renderTask} vexpand>
+                        {tasks.map((task) => (
+                            <ListView.Item key={task.id} item={task} />
+                        ))}
+                    </ListView.Root>
+                </Box>
+            </Box>
+
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label.Root
+                    label="ListView uses a factory pattern for rendering items. The renderItem prop receives each item and returns a GTK widget. Items are recycled for performance."
+                    wrap
+                    cssClasses={["dim-label"]}
+                />
+            </Box>
+        </Box>
+    );
+};
+
+export const listViewDemo: Demo = {
+    id: "listview",
+    title: "List View",
+    description: "High-performance scrollable list with virtual scrolling.",
+    keywords: ["listview", "list", "scroll", "virtual", "performance", "GtkListView"],
+    component: ListViewDemo,
+    sourcePath: getSourcePath(import.meta.url, "listview.tsx"),
+};
