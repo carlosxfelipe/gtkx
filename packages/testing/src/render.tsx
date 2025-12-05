@@ -1,7 +1,7 @@
 import { start, stop } from "@gtkx/ffi";
 import type { Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { reconciler } from "@gtkx/react";
+import { ApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import * as queries from "./queries.js";
@@ -87,10 +87,13 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     return { app, container };
 };
 
-const wrapElement = (element: ReactNode, Wrapper?: RenderOptions["wrapper"]): ReactNode => {
-    if (!Wrapper) return element;
-    return <Wrapper>{element}</Wrapper>;
-};
+const DefaultWrapper = ({ children }: { children: ReactNode }): ReactNode => (
+    <ApplicationWindow>{children}</ApplicationWindow>
+);
+
+const wrapElement = (element: ReactNode, Wrapper: RenderOptions["wrapper"] = DefaultWrapper): ReactNode => (
+    <Wrapper>{element}</Wrapper>
+);
 
 /**
  * Renders a React element into a GTK application for testing.

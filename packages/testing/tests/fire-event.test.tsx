@@ -1,5 +1,5 @@
 import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button } from "@gtkx/react";
+import { Box, Button, Entry, ToggleButton } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent } from "../src/fire-event.js";
 import { cleanup, render, screen } from "../src/index.js";
@@ -11,11 +11,7 @@ describe("fireEvent", () => {
 
     describe("base function", () => {
         it("emits signal by name on widget", async () => {
-            render(
-                <ApplicationWindow>
-                    <Button label="Test Button" />
-                </ApplicationWindow>,
-            );
+            render(<Button label="Test Button" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Test Button" });
             fireEvent(button, "clicked");
@@ -23,11 +19,7 @@ describe("fireEvent", () => {
         });
 
         it("can emit activate signal", async () => {
-            render(
-                <ApplicationWindow>
-                    <Button label="Activate Me" />
-                </ApplicationWindow>,
-            );
+            render(<Button label="Activate Me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Activate Me" });
             fireEvent(button, "activate");
@@ -37,11 +29,7 @@ describe("fireEvent", () => {
 
     describe("click", () => {
         it("emits clicked signal on button", async () => {
-            render(
-                <ApplicationWindow>
-                    <Button label="Click Me" />
-                </ApplicationWindow>,
-            );
+            render(<Button label="Click Me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click Me" });
             fireEvent.click(button);
@@ -50,12 +38,10 @@ describe("fireEvent", () => {
 
         it("can fire click on multiple buttons", async () => {
             render(
-                <ApplicationWindow>
-                    <Box spacing={10} orientation={Orientation.VERTICAL}>
-                        <Button label="First" />
-                        <Button label="Second" />
-                    </Box>
-                </ApplicationWindow>,
+                <Box spacing={10} orientation={Orientation.VERTICAL}>
+                    <Button label="First" />
+                    <Button label="Second" />
+                </Box>,
             );
 
             const first = await screen.findByRole(AccessibleRole.BUTTON, { name: "First" });
@@ -71,11 +57,7 @@ describe("fireEvent", () => {
 
     describe("activate", () => {
         it("emits activate signal on button", async () => {
-            render(
-                <ApplicationWindow>
-                    <Button label="Activate" />
-                </ApplicationWindow>,
-            );
+            render(<Button label="Activate" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Activate" });
             fireEvent.activate(button);
@@ -84,30 +66,22 @@ describe("fireEvent", () => {
     });
 
     describe("toggled", () => {
-        it("emits toggled signal on widget", async () => {
-            render(
-                <ApplicationWindow>
-                    <Button label="Toggle" />
-                </ApplicationWindow>,
-            );
+        it("emits toggled signal on toggle button", async () => {
+            render(<ToggleButton.Root label="Toggle" />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Toggle" });
+            const button = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "Toggle" });
             fireEvent.toggled(button);
             expect(button).toBeDefined();
         });
     });
 
     describe("changed", () => {
-        it("emits changed signal on widget", async () => {
-            render(
-                <ApplicationWindow>
-                    <Button label="Change" />
-                </ApplicationWindow>,
-            );
+        it("emits changed signal on entry", async () => {
+            render(<Entry name="test-entry" />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Change" });
-            fireEvent.changed(button);
-            expect(button).toBeDefined();
+            const entry = await screen.findByTestId("test-entry");
+            fireEvent.changed(entry);
+            expect(entry).toBeDefined();
         });
     });
 });

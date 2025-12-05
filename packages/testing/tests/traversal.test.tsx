@@ -13,13 +13,11 @@ describe("findAll", () => {
     describe("with Application container", () => {
         it("finds all widgets matching predicate", async () => {
             const { container } = render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Button label="Button 1" />
-                        <Button label="Button 2" />
-                        <Label.Root label="Not a button" />
-                    </Box>
-                </ApplicationWindow>,
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Button label="Button 1" />
+                    <Button label="Button 2" />
+                    <Label.Root label="Not a button" />
+                </Box>,
             );
 
             const buttons = findAll(container, (node) => {
@@ -32,11 +30,7 @@ describe("findAll", () => {
         });
 
         it("returns empty array when no widgets with MENU role exist", async () => {
-            const { container } = render(
-                <ApplicationWindow>
-                    <Label.Root label="Just a label" />
-                </ApplicationWindow>,
-            );
+            const { container } = render(<Label.Root label="Just a label" />);
 
             // Use MENU role which we know won't exist in a simple label window
             const menus = findAll(container, (node) => {
@@ -49,13 +43,11 @@ describe("findAll", () => {
 
         it("finds widgets in nested hierarchy", async () => {
             const { container } = render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Box spacing={0} orientation={Orientation.HORIZONTAL}>
-                            <Button label="Deep Button" />
-                        </Box>
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Box spacing={0} orientation={Orientation.HORIZONTAL}>
+                        <Button label="Deep Button" />
                     </Box>
-                </ApplicationWindow>,
+                </Box>,
             );
 
             const buttons = findAll(container, (node) => {
@@ -77,6 +69,7 @@ describe("findAll", () => {
                         <Button label="Window 2 Button" />
                     </ApplicationWindow>
                 </>,
+                { wrapper: ({ children }) => <>{children}</> },
             );
 
             const windows = findAll(container, (node) => {
@@ -90,12 +83,10 @@ describe("findAll", () => {
 
         it("returns all widgets when predicate always returns true", async () => {
             const { container } = render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Label.Root label="Label" />
-                        <Button label="Button" />
-                    </Box>
-                </ApplicationWindow>,
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Label.Root label="Label" />
+                    <Button label="Button" />
+                </Box>,
             );
 
             const allWidgets = findAll(container, () => true);
@@ -107,24 +98,20 @@ describe("findAll", () => {
     describe("with Widget container", () => {
         it("finds widgets starting from a specific widget", async () => {
             render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Button label="Outside" />
-                        <Box spacing={0} orientation={Orientation.HORIZONTAL}>
-                            <Button label="Inside 1" />
-                            <Button label="Inside 2" />
-                        </Box>
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Button label="Outside" />
+                    <Box spacing={0} orientation={Orientation.HORIZONTAL}>
+                        <Button label="Inside 1" />
+                        <Button label="Inside 2" />
                     </Box>
-                </ApplicationWindow>,
+                </Box>,
             );
 
             const { container } = render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Label.Root label="Start here" />
-                        <Button label="Child button" />
-                    </Box>
-                </ApplicationWindow>,
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Label.Root label="Start here" />
+                    <Button label="Child button" />
+                </Box>,
             );
 
             const activeWindow = container.getActiveWindow();
@@ -144,12 +131,10 @@ describe("findAll", () => {
             const visitedRoles: AccessibleRole[] = [];
 
             const { container } = render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Label.Root label="Label" />
-                        <Button label="Button" />
-                    </Box>
-                </ApplicationWindow>,
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Label.Root label="Label" />
+                    <Button label="Button" />
+                </Box>,
             );
 
             findAll(container, (node) => {
@@ -164,13 +149,11 @@ describe("findAll", () => {
 
         it("can match by custom criteria", async () => {
             const { container } = render(
-                <ApplicationWindow>
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        <Label.Root label="First Label" />
-                        <Label.Root label="Second Label" />
-                        <Button label="Button" />
-                    </Box>
-                </ApplicationWindow>,
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Label.Root label="First Label" />
+                    <Label.Root label="Second Label" />
+                    <Button label="Button" />
+                </Box>,
             );
 
             // Custom criteria: find widgets that have the LABEL role

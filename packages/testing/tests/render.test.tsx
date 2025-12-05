@@ -12,22 +12,14 @@ describe("render", () => {
 
     describe("return value", () => {
         it("returns an object with container", () => {
-            const result = render(
-                <ApplicationWindow>
-                    <Label.Root label="Test" />
-                </ApplicationWindow>,
-            );
+            const result = render(<Label.Root label="Test" />);
 
             expect(result.container).toBeDefined();
             expect(typeof result.container.getActiveWindow).toBe("function");
         });
 
         it("returns query functions", () => {
-            const result = render(
-                <ApplicationWindow>
-                    <Label.Root label="Test" />
-                </ApplicationWindow>,
-            );
+            const result = render(<Label.Root label="Test" />);
 
             expect(typeof result.getByRole).toBe("function");
             expect(typeof result.getByText).toBe("function");
@@ -38,31 +30,19 @@ describe("render", () => {
         });
 
         it("returns unmount function", () => {
-            const result = render(
-                <ApplicationWindow>
-                    <Label.Root label="Test" />
-                </ApplicationWindow>,
-            );
+            const result = render(<Label.Root label="Test" />);
 
             expect(typeof result.unmount).toBe("function");
         });
 
         it("returns rerender function", () => {
-            const result = render(
-                <ApplicationWindow>
-                    <Label.Root label="Test" />
-                </ApplicationWindow>,
-            );
+            const result = render(<Label.Root label="Test" />);
 
             expect(typeof result.rerender).toBe("function");
         });
 
         it("returns debug function", () => {
-            const result = render(
-                <ApplicationWindow>
-                    <Label.Root label="Test" />
-                </ApplicationWindow>,
-            );
+            const result = render(<Label.Root label="Test" />);
 
             expect(typeof result.debug).toBe("function");
         });
@@ -70,66 +50,42 @@ describe("render", () => {
 
     describe("bound queries", () => {
         it("getByRole finds element", () => {
-            const { getByRole } = render(
-                <ApplicationWindow>
-                    <Button label="Click me" />
-                </ApplicationWindow>,
-            );
+            const { getByRole } = render(<Button label="Click me" />);
 
             const button = getByRole(AccessibleRole.BUTTON, { name: "Click me" });
             expect(button).toBeDefined();
         });
 
         it("getByText finds element", () => {
-            const { getByText } = render(
-                <ApplicationWindow>
-                    <Label.Root label="Hello World" />
-                </ApplicationWindow>,
-            );
+            const { getByText } = render(<Label.Root label="Hello World" />);
 
             const label = getByText("Hello World");
             expect(label).toBeDefined();
         });
 
         it("getByLabelText finds element", () => {
-            const { getByLabelText } = render(
-                <ApplicationWindow>
-                    <Button label="Submit" />
-                </ApplicationWindow>,
-            );
+            const { getByLabelText } = render(<Button label="Submit" />);
 
             const button = getByLabelText("Submit");
             expect(button).toBeDefined();
         });
 
         it("findByRole finds element asynchronously", async () => {
-            const { findByRole } = render(
-                <ApplicationWindow>
-                    <Button label="Async" />
-                </ApplicationWindow>,
-            );
+            const { findByRole } = render(<Button label="Async" />);
 
             const button = await findByRole(AccessibleRole.BUTTON, { name: "Async" });
             expect(button).toBeDefined();
         });
 
         it("findByText finds element asynchronously", async () => {
-            const { findByText } = render(
-                <ApplicationWindow>
-                    <Label.Root label="Async Text" />
-                </ApplicationWindow>,
-            );
+            const { findByText } = render(<Label.Root label="Async Text" />);
 
             const label = await findByText("Async Text");
             expect(label).toBeDefined();
         });
 
         it("findByLabelText finds element asynchronously", async () => {
-            const { findByLabelText } = render(
-                <ApplicationWindow>
-                    <Button label="Async Label" />
-                </ApplicationWindow>,
-            );
+            const { findByLabelText } = render(<Button label="Async Label" />);
 
             const button = await findByLabelText("Async Label");
             expect(button).toBeDefined();
@@ -138,19 +94,11 @@ describe("render", () => {
 
     describe("rerender", () => {
         it("updates the rendered content", async () => {
-            const { rerender, findByText } = render(
-                <ApplicationWindow>
-                    <Label.Root label="Initial" />
-                </ApplicationWindow>,
-            );
+            const { rerender, findByText } = render(<Label.Root label="Initial" />);
 
             await findByText("Initial");
 
-            rerender(
-                <ApplicationWindow>
-                    <Label.Root label="Updated" />
-                </ApplicationWindow>,
-            );
+            rerender(<Label.Root label="Updated" />);
 
             const label = await findByText("Updated");
             expect(label).toBeDefined();
@@ -165,21 +113,13 @@ describe("render", () => {
                 return <Label.Root label={`Count: ${count}`} />;
             };
 
-            const { findByText, rerender } = render(
-                <ApplicationWindow>
-                    <Counter />
-                </ApplicationWindow>,
-            );
+            const { findByText, rerender } = render(<Counter />);
 
             await findByText("Count: 0");
             setCount(5);
             await findByText("Count: 5");
 
-            rerender(
-                <ApplicationWindow>
-                    <Counter />
-                </ApplicationWindow>,
-            );
+            rerender(<Counter />);
 
             await findByText("Count: 5");
         });
@@ -187,11 +127,7 @@ describe("render", () => {
 
     describe("unmount", () => {
         it("removes rendered content", async () => {
-            const { unmount, findByText } = render(
-                <ApplicationWindow>
-                    <Label.Root label="Will be removed" />
-                </ApplicationWindow>,
-            );
+            const { unmount, findByText } = render(<Label.Root label="Will be removed" />);
 
             await findByText("Will be removed");
 
@@ -203,11 +139,7 @@ describe("render", () => {
 
     describe("container", () => {
         it("provides access to application", () => {
-            const { container } = render(
-                <ApplicationWindow>
-                    <Label.Root label="Test" />
-                </ApplicationWindow>,
-            );
+            const { container } = render(<Label.Root label="Test" />);
 
             const windows = container.getWindows();
             expect(windows.length).toBeGreaterThan(0);
@@ -229,11 +161,7 @@ describe("render", () => {
 
 describe("cleanup", () => {
     it("removes windows after cleanup", async () => {
-        const { container, findByText } = render(
-            <ApplicationWindow>
-                <Label.Root label="Before cleanup" />
-            </ApplicationWindow>,
-        );
+        const { container, findByText } = render(<Label.Root label="Before cleanup" />);
 
         await findByText("Before cleanup");
         const windowsBefore = container.getWindows();
@@ -246,19 +174,11 @@ describe("cleanup", () => {
     });
 
     it("allows rendering again after cleanup", async () => {
-        render(
-            <ApplicationWindow>
-                <Label.Root label="First render" />
-            </ApplicationWindow>,
-        );
+        render(<Label.Root label="First render" />);
 
         cleanup();
 
-        const { findByText } = render(
-            <ApplicationWindow>
-                <Label.Root label="Second render" />
-            </ApplicationWindow>,
-        );
+        const { findByText } = render(<Label.Root label="Second render" />);
 
         const label = await findByText("Second render");
         expect(label).toBeDefined();
@@ -271,33 +191,23 @@ describe("multiple renders", () => {
     });
 
     it("subsequent renders update the same container", async () => {
-        const result1 = render(
-            <ApplicationWindow>
-                <Label.Root label="First" />
-            </ApplicationWindow>,
-        );
+        const result1 = render(<Label.Root label="First" />);
 
-        const result2 = render(
-            <ApplicationWindow>
-                <Label.Root label="Second" />
-            </ApplicationWindow>,
-        );
+        const result2 = render(<Label.Root label="Second" />);
 
         expect(result1.container).toBe(result2.container);
     });
 
     it("can render complex nested components", async () => {
         const { findByRole, findByText } = render(
-            <ApplicationWindow>
-                <Box spacing={10} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="Header" />
-                    <Box spacing={5} orientation={Orientation.HORIZONTAL}>
-                        <Button label="Action 1" />
-                        <Button label="Action 2" />
-                    </Box>
-                    <Label.Root label="Footer" />
+            <Box spacing={10} orientation={Orientation.VERTICAL}>
+                <Label.Root label="Header" />
+                <Box spacing={5} orientation={Orientation.HORIZONTAL}>
+                    <Button label="Action 1" />
+                    <Button label="Action 2" />
                 </Box>
-            </ApplicationWindow>,
+                <Label.Root label="Footer" />
+            </Box>,
         );
 
         await findByText("Header");

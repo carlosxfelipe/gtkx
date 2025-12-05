@@ -1,5 +1,5 @@
 import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, waitForElementToBeRemoved } from "../src/index.js";
@@ -18,12 +18,10 @@ describe("waitForElementToBeRemoved", () => {
                 hideLabel = () => setShowLabel(false);
 
                 return (
-                    <ApplicationWindow>
-                        <Box spacing={0} orientation={Orientation.VERTICAL}>
-                            {showLabel && <Label.Root label="Removable" />}
-                            <Button label="Keep" />
-                        </Box>
-                    </ApplicationWindow>
+                    <Box spacing={0} orientation={Orientation.VERTICAL}>
+                        {showLabel && <Label.Root label="Removable" />}
+                        <Button label="Keep" />
+                    </Box>
                 );
             };
 
@@ -48,12 +46,10 @@ describe("waitForElementToBeRemoved", () => {
                 hideButton = () => setShowButton(false);
 
                 return (
-                    <ApplicationWindow>
-                        <Box spacing={0} orientation={Orientation.VERTICAL}>
-                            {showButton && <Button label="ToRemove" />}
-                            <Label.Root label="Static" />
-                        </Box>
-                    </ApplicationWindow>
+                    <Box spacing={0} orientation={Orientation.VERTICAL}>
+                        {showButton && <Button label="ToRemove" />}
+                        <Label.Root label="Static" />
+                    </Box>
                 );
             };
 
@@ -76,11 +72,7 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("error cases", () => {
         it("throws when callback initially returns null", async () => {
-            render(
-                <ApplicationWindow>
-                    <Label.Root label="Existing" />
-                </ApplicationWindow>,
-            );
+            render(<Label.Root label="Existing" />);
 
             await expect(waitForElementToBeRemoved(() => screen.queryByText("NonExistent"))).rejects.toThrow(
                 /The element\(s\) given to waitForElementToBeRemoved are already removed/,
@@ -88,11 +80,7 @@ describe("waitForElementToBeRemoved", () => {
         });
 
         it("throws when element is not removed before timeout", async () => {
-            render(
-                <ApplicationWindow>
-                    <Label.Root label="Permanent" />
-                </ApplicationWindow>,
-            );
+            render(<Label.Root label="Permanent" />);
 
             const label = await screen.findByText("Permanent");
 
@@ -104,11 +92,7 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("options handling", () => {
         it("uses custom timeout", async () => {
-            render(
-                <ApplicationWindow>
-                    <Label.Root label="Stays" />
-                </ApplicationWindow>,
-            );
+            render(<Label.Root label="Stays" />);
 
             const label = await screen.findByText("Stays");
             const start = Date.now();
@@ -121,11 +105,7 @@ describe("waitForElementToBeRemoved", () => {
         });
 
         it("calls onTimeout when provided", async () => {
-            render(
-                <ApplicationWindow>
-                    <Label.Root label="Timeout Test" />
-                </ApplicationWindow>,
-            );
+            render(<Label.Root label="Timeout Test" />);
 
             const label = await screen.findByText("Timeout Test");
             const customError = new Error("Custom timeout error");

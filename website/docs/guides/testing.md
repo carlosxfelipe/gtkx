@@ -309,14 +309,38 @@ test("resets count when clicking reset button", async () => {
 
 ## Render Options
 
-The `render` function accepts an options object:
+The `render` function accepts an options object.
+
+### Default ApplicationWindow Wrapper
+
+By default, `render` wraps your component in an `ApplicationWindow`. This means you don't need to manually wrap your test content:
+
+```tsx
+import { render } from "@gtkx/testing";
+
+// This works out of the box - no ApplicationWindow needed
+render(<Button label="Click me" />);
+
+// Equivalent to:
+render(
+  <ApplicationWindow>
+    <Button label="Click me" />
+  </ApplicationWindow>
+);
+```
+
+### Custom Wrapper
+
+You can provide a custom wrapper component, which replaces the default `ApplicationWindow` wrapper:
 
 ```tsx
 import { render } from "@gtkx/testing";
 
 // With a wrapper component (useful for providers)
 const Wrapper = ({ children }) => (
-  <ThemeProvider theme="dark">{children}</ThemeProvider>
+  <ApplicationWindow>
+    <ThemeProvider theme="dark">{children}</ThemeProvider>
+  </ApplicationWindow>
 );
 
 const { container, rerender, unmount, debug } = render(<MyComponent />, {
@@ -333,13 +357,34 @@ debug();
 unmount();
 ```
 
+### Disabling the Default Wrapper
+
+For advanced cases like testing multiple windows, disable the default wrapper by providing a pass-through fragment wrapper:
+
+```tsx
+import { render } from "@gtkx/testing";
+
+// Render multiple windows without the default wrapper
+render(
+  <>
+    <ApplicationWindow>
+      <Button label="Window 1" />
+    </ApplicationWindow>
+    <ApplicationWindow>
+      <Button label="Window 2" />
+    </ApplicationWindow>
+  </>,
+  { wrapper: ({ children }) => <>{children}</> }
+);
+```
+
 ## API Reference
 
 ### Lifecycle Functions
 
 | Function | Description |
 |----------|-------------|
-| `render(element, options?)` | Render a React element for testing. Returns `RenderResult`. |
+| `render(element, options?)` | Render a React element for testing. Wraps in `ApplicationWindow` by default. Returns `RenderResult`. |
 | `cleanup()` | Unmount rendered components. Call after each test. |
 | `teardown()` | Clean up GTK entirely. Used in global teardown. |
 
