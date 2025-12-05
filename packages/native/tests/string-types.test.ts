@@ -87,10 +87,15 @@ describe("Borrowed Strings", () => {
             borrowed: true,
         });
 
-        const text = call(GTK_LIB, "gtk_label_get_label", [{ type: { type: "gobject" }, value: label }], {
-            type: "string",
-            borrowed: true,
-        });
+        const text = call(
+            GTK_LIB,
+            "gtk_label_get_label",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "string",
+                borrowed: true,
+            },
+        );
         expect(text).toBe("Label Text");
     });
 });

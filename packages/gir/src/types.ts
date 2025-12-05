@@ -216,6 +216,8 @@ export interface GirParameter {
     closure?: number;
     /** Index of the destroy notifier parameter for callbacks. */
     destroy?: number;
+    /** Transfer ownership semantics for the parameter. */
+    transferOwnership?: "none" | "full" | "container";
     /** Documentation for the parameter. */
     doc?: string;
 }
@@ -1051,7 +1053,30 @@ export class TypeMapper {
             };
         }
 
-        return this.mapType(param.type);
+        const mapped = this.mapType(param.type);
+        const isObjectType = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
+        const isTransferFull = param.transferOwnership === "full";
+        const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;
+
+        if (isObjectType && isTransferFull) {
+            return {
+                ts: mapped.ts,
+                ffi: { ...mapped.ffi, borrowed: false },
+                externalType: mapped.externalType,
+                kind: mapped.kind,
+            };
+        }
+
+        if (isObjectType && isTransferNone) {
+            return {
+                ts: mapped.ts,
+                ffi: { ...mapped.ffi, borrowed: true },
+                externalType: mapped.externalType,
+                kind: mapped.kind,
+            };
+        }
+
+        return mapped;
     }
 
     /**

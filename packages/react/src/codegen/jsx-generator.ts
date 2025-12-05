@@ -21,9 +21,11 @@ interface ContainerMetadata {
     namedChildSlots: WidgetChildInfo[];
 }
 
-const LIST_WIDGETS = new Set(["ListView", "ColumnView", "GridView"]);
+const LIST_WIDGETS = new Set(["ListView", "GridView"]);
+const COLUMN_VIEW_WIDGET = "ColumnView";
 const DROPDOWN_WIDGETS = new Set(["DropDown"]);
 const GRID_WIDGETS = new Set(["Grid"]);
+const NOTEBOOK_WIDGET = "Notebook";
 
 const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
     ApplicationWindow: new Set(["application"]),
@@ -54,8 +56,10 @@ const toJsxPropertyType = (tsType: string): string => {
 };
 
 const isListWidget = (widgetName: string): boolean => LIST_WIDGETS.has(widgetName);
+const isColumnViewWidget = (widgetName: string): boolean => widgetName === COLUMN_VIEW_WIDGET;
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
 const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
+const isNotebookWidget = (widgetName: string): boolean => widgetName === NOTEBOOK_WIDGET;
 
 const sanitizeDoc = (doc: string): string => {
     let result = doc;
@@ -167,7 +171,7 @@ export class JsxGenerator {
             `import type { ReactNode, Ref } from "react";`,
             ...externalImports,
             `import type * as Gtk from "@gtkx/ffi/gtk";`,
-            `import type { GridChildProps, ListItemProps, SlotProps } from "../types.js";`,
+            `import type { ColumnViewColumnProps, GridChildProps, ListItemProps, ListViewFactoryProps, NotebookPageProps, SlotProps } from "../types.js";`,
             "",
         ].join("\n");
     }
@@ -176,7 +180,7 @@ export class JsxGenerator {
         const widgetPropsContent = this.generateWidgetPropsContent(widgetClass);
 
         return `
-export { SlotProps, GridChildProps, ListItemProps };
+export { ColumnViewColumnProps, GridChildProps, ListItemProps, ListViewFactoryProps, NotebookPageProps, SlotProps };
 
 ${widgetPropsContent}
 `;
@@ -394,8 +398,14 @@ ${widgetPropsContent}
 
         if (isListWidget(widget.name)) {
             lines.push("");
-            lines.push(`\t/** Function to render each item as a GTK widget */`);
-            lines.push(`\trenderItem?: (item: any) => Gtk.Widget;`);
+            lines.push(`\t/** Creates the widget for a list item (called once per visible row) */`);
+            lines.push(`\tsetup?: () => Gtk.Widget;`);
+            lines.push(`\t/** Updates the widget with item data (called when row binds to an item) */`);
+            lines.push(`\t// biome-ignore lint/suspicious/noExplicitAny: allows typed bind callbacks`);
+            lines.push(`\tbind?: (widget: any, item: any) => void;`);
+            lines.push(`\t/** Clears the widget when unbound (optional) */`);
+            lines.push(`\t// biome-ignore lint/suspicious/noExplicitAny: allows typed unbind callbacks`);
+            lines.push(`\tunbind?: (widget: any) => void;`);
         }
 
         if (isDropDownWidget(widget.name)) {
@@ -636,8 +646,10 @@ ${widgetPropsContent}
             const hasMeaningfulSlots =
                 nonChildSlots.length > 0 ||
                 isListWidget(widget.name) ||
+                isColumnViewWidget(widget.name) ||
                 isDropDownWidget(widget.name) ||
-                isGridWidget(widget.name);
+                isGridWidget(widget.name) ||
+                isNotebookWidget(widget.name);
 
             const docComment = widget.doc ? formatDoc(widget.doc).trimEnd() : "";
 
@@ -648,8 +660,12 @@ ${widgetPropsContent}
                         (slot) => `${slot.slotName}: "${widgetName}.${slot.slotName}" as const`,
                     ),
                     ...(isListWidget(widget.name) ? [`Item: "${widgetName}.Item" as const`] : []),
+                    ...(isColumnViewWidget(widget.name)
+                        ? [`Column: "${widgetName}.Column" as const`, `Item: "${widgetName}.Item" as const`]
+                        : []),
                     ...(isDropDownWidget(widget.name) ? [`Item: "${widgetName}.Item" as const`] : []),
                     ...(isGridWidget(widget.name) ? [`Child: "${widgetName}.Child" as const`] : []),
+                    ...(isNotebookWidget(widget.name) ? [`Page: "${widgetName}.Page" as const`] : []),
                 ];
                 if (docComment) {
                     lines.push(`${docComment}\nexport const ${widgetName} = {\n\t${valueMembers.join(",\n\t")},\n};`);
@@ -683,8 +699,10 @@ ${widgetPropsContent}
             const hasMeaningfulSlots =
                 nonChildSlots.length > 0 ||
                 isListWidget(widget.name) ||
+                isColumnViewWidget(widget.name) ||
                 isDropDownWidget(widget.name) ||
-                isGridWidget(widget.name);
+                isGridWidget(widget.name) ||
+                isNotebookWidget(widget.name);
 
             if (hasMeaningfulSlots) {
                 elements.push(`"${widgetName}.Root": ${propsName};`);
@@ -700,12 +718,21 @@ ${widgetPropsContent}
                 elements.push(`"${widgetName}.Item": ListItemProps;`);
             }
 
+            if (isColumnViewWidget(widget.name)) {
+                elements.push(`"${widgetName}.Column": ColumnViewColumnProps;`);
+                elements.push(`"${widgetName}.Item": ListItemProps;`);
+            }
+
             if (isDropDownWidget(widget.name)) {
                 elements.push(`"${widgetName}.Item": ListItemProps;`);
             }
 
             if (isGridWidget(widget.name)) {
                 elements.push(`"${widgetName}.Child": GridChildProps;`);
+            }
+
+            if (isNotebookWidget(widget.name)) {
+                elements.push(`"${widgetName}.Page": NotebookPageProps;`);
             }
         }
 

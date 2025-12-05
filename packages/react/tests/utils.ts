@@ -2,6 +2,7 @@ import { getCurrentApp, start, stop } from "@gtkx/ffi";
 import type React from "react";
 import type Reconciler from "react-reconciler";
 import { afterEach, beforeAll } from "vitest";
+import { ROOT_NODE_CONTAINER } from "../src/factory.js";
 import { reconciler } from "../src/reconciler.js";
 
 export { getCurrentApp };
@@ -69,10 +70,10 @@ const cleanup = (): void => {
 export const setupTests = () => {
     beforeAll(() => {
         if (!container) {
-            const app = start(APP_ID);
+            start(APP_ID);
             const instance = getInstance();
             container = instance.createContainer(
-                app,
+                ROOT_NODE_CONTAINER,
                 0,
                 null,
                 false,

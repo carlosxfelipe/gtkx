@@ -12,10 +12,15 @@ describe("GObject Types - Borrowed", () => {
         });
         expect(label).not.toBeNull();
 
-        const text = call(GTK_LIB, "gtk_label_get_label", [{ type: { type: "gobject" }, value: label }], {
-            type: "string",
-            borrowed: true,
-        });
+        const text = call(
+            GTK_LIB,
+            "gtk_label_get_label",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "string",
+                borrowed: true,
+            },
+        );
         expect(text).toBe("Test");
     });
 
@@ -30,7 +35,7 @@ describe("GObject Types - Borrowed", () => {
             { type: "gobject", borrowed: true },
         );
 
-        call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+        call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
             type: "gobject",
             borrowed: true,
         });
@@ -44,16 +49,21 @@ describe("GObject Types - Borrowed", () => {
             GTK_LIB,
             "gtk_box_append",
             [
-                { type: { type: "gobject" }, value: box },
-                { type: { type: "gobject" }, value: label },
+                { type: { type: "gobject", borrowed: true }, value: box },
+                { type: { type: "gobject", borrowed: true }, value: label },
             ],
             { type: "undefined" },
         );
 
-        const firstChild = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: { type: "gobject" }, value: box }], {
-            type: "gobject",
-            borrowed: true,
-        });
+        const firstChild = call(
+            GTK_LIB,
+            "gtk_widget_get_first_child",
+            [{ type: { type: "gobject", borrowed: true }, value: box }],
+            {
+                type: "gobject",
+                borrowed: true,
+            },
+        );
         expect(firstChild).not.toBeNull();
     });
 });
@@ -67,10 +77,15 @@ describe("GObject Types - Owned", () => {
 
         const refBefore = read(label, { type: "int", size: 32, unsigned: true }, 8) as number;
 
-        const ownedRef = call(GOBJECT_LIB, "g_object_ref", [{ type: { type: "gobject" }, value: label }], {
-            type: "gobject",
-            borrowed: false,
-        });
+        const ownedRef = call(
+            GOBJECT_LIB,
+            "g_object_ref",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "gobject",
+                borrowed: false,
+            },
+        );
         expect(ownedRef).not.toBeNull();
 
         const refAfter = read(label, { type: "int", size: 32, unsigned: true }, 8) as number;
@@ -89,10 +104,15 @@ describe("GObject Types - Owned", () => {
         );
         expect(box).not.toBeNull();
 
-        const sunkBox = call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
-            type: "gobject",
-            borrowed: false,
-        });
+        const sunkBox = call(
+            GOBJECT_LIB,
+            "g_object_ref_sink",
+            [{ type: { type: "gobject", borrowed: true }, value: box }],
+            {
+                type: "gobject",
+                borrowed: false,
+            },
+        );
         expect(sunkBox).not.toBeNull();
 
         const refCount = read(sunkBox, { type: "int", size: 32, unsigned: true }, 8) as number;
@@ -105,15 +125,25 @@ describe("GObject Types - Owned", () => {
             borrowed: true,
         });
 
-        const ownedLabel = call(GOBJECT_LIB, "g_object_ref", [{ type: { type: "gobject" }, value: label }], {
-            type: "gobject",
-            borrowed: false,
-        });
+        const ownedLabel = call(
+            GOBJECT_LIB,
+            "g_object_ref",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "gobject",
+                borrowed: false,
+            },
+        );
 
-        const text = call(GTK_LIB, "gtk_label_get_label", [{ type: { type: "gobject" }, value: ownedLabel }], {
-            type: "string",
-            borrowed: true,
-        });
+        const text = call(
+            GTK_LIB,
+            "gtk_label_get_label",
+            [{ type: { type: "gobject", borrowed: true }, value: ownedLabel }],
+            {
+                type: "string",
+                borrowed: true,
+            },
+        );
         expect(text).toBe("Owned Test");
     });
 });
@@ -142,16 +172,21 @@ describe("GObject Types - General", () => {
             GTK_LIB,
             "gtk_label_set_label",
             [
-                { type: { type: "gobject" }, value: label },
+                { type: { type: "gobject", borrowed: true }, value: label },
                 { type: { type: "string" }, value: "Modified" },
             ],
             { type: "undefined" },
         );
 
-        const text = call(GTK_LIB, "gtk_label_get_label", [{ type: { type: "gobject" }, value: label }], {
-            type: "string",
-            borrowed: true,
-        });
+        const text = call(
+            GTK_LIB,
+            "gtk_label_get_label",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "string",
+                borrowed: true,
+            },
+        );
         expect(text).toBe("Modified");
     });
 
@@ -161,9 +196,14 @@ describe("GObject Types - General", () => {
             borrowed: true,
         });
 
-        const isWidget = call(GTK_LIB, "gtk_widget_get_visible", [{ type: { type: "gobject" }, value: button }], {
-            type: "boolean",
-        });
+        const isWidget = call(
+            GTK_LIB,
+            "gtk_widget_get_visible",
+            [{ type: { type: "gobject", borrowed: true }, value: button }],
+            {
+                type: "boolean",
+            },
+        );
         expect(typeof isWidget).toBe("boolean");
     });
 
@@ -178,7 +218,7 @@ describe("GObject Types - General", () => {
             { type: "gobject", borrowed: true },
         );
 
-        call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+        call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
             type: "gobject",
             borrowed: true,
         });
@@ -194,8 +234,8 @@ describe("GObject Types - General", () => {
             GTK_LIB,
             "gtk_box_append",
             [
-                { type: { type: "gobject" }, value: box },
-                { type: { type: "gobject" }, value: label },
+                { type: { type: "gobject", borrowed: true }, value: box },
+                { type: { type: "gobject", borrowed: true }, value: label },
             ],
             { type: "undefined" },
         );
@@ -206,18 +246,21 @@ describe("GObject Types - General", () => {
 });
 
 describe("Boxed Types - Borrowed", () => {
-    it("should handle borrowed boxed type from getter", () => {
+    it("should handle borrowed GObject from getter (PangoLayout is a GObject)", () => {
         const label = call(GTK_LIB, "gtk_label_new", [{ type: { type: "string" }, value: "Test" }], {
             type: "gobject",
             borrowed: true,
         });
 
-        const layout = call(GTK_LIB, "gtk_label_get_layout", [{ type: { type: "gobject" }, value: label }], {
-            type: "boxed",
-            innerType: "PangoLayout",
-            lib: "libpango-1.0.so.0",
-            borrowed: true,
-        });
+        const layout = call(
+            GTK_LIB,
+            "gtk_label_get_layout",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "gobject",
+                borrowed: true,
+            },
+        );
         expect(layout).not.toBeNull();
     });
 });
@@ -233,7 +276,7 @@ describe("Boxed Types - Owned", () => {
         const copiedRgba = call(
             GDK_LIB,
             "gdk_rgba_copy",
-            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba }],
+            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba }],
             { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: false },
         );
         expect(copiedRgba).not.toBeNull();
@@ -252,7 +295,7 @@ describe("Boxed Types - Owned", () => {
         const copiedRgba = call(
             GDK_LIB,
             "gdk_rgba_copy",
-            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba }],
+            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba }],
             { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: false },
         );
 
@@ -289,7 +332,7 @@ describe("Boxed Types - General", () => {
         const result = call(
             GDK_LIB,
             "gdk_rgba_to_string",
-            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba }],
+            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba }],
             { type: "string" },
         );
         expect(result).toContain("rgb");
@@ -312,8 +355,8 @@ describe("Boxed Types - General", () => {
             GDK_LIB,
             "gdk_rgba_equal",
             [
-                { type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba1 },
-                { type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba2 },
+                { type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba1 },
+                { type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba2 },
             ],
             { type: "boolean" },
         );
@@ -327,7 +370,7 @@ describe("Boxed Types - General", () => {
             GDK_LIB,
             "gdk_rgba_parse",
             [
-                { type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba },
+                { type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba },
                 { type: { type: "string" }, value: "rgba(255, 128, 64, 0.5)" },
             ],
             { type: "boolean" },

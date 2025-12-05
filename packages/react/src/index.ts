@@ -16,7 +16,9 @@ import { container } from "./render.js";
 export const quit = () => {
     if (container) {
         reconciler.getInstance().updateContainer(null, container, null, () => {
-            stop();
+            setTimeout(() => {
+                stop();
+            }, 0);
         });
     }
 

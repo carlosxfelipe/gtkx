@@ -95,6 +95,11 @@ export class WidgetNode extends Node<Gtk.Widget> {
     }
 
     override detachFromParent(parent: Node): void {
+        if (this.widget instanceof Gtk.Window) {
+            this.widget.destroy();
+            return;
+        }
+
         if (this.widget instanceof Gtk.AboutDialog) {
             return;
         }
@@ -159,12 +164,6 @@ export class WidgetNode extends Node<Gtk.Widget> {
     override mount(_app: Gtk.Application): void {
         if (this.widget instanceof Gtk.Window) {
             this.widget.present();
-        }
-    }
-
-    override dispose(_app: Gtk.Application): void {
-        if (this.widget instanceof Gtk.Window) {
-            this.widget.destroy();
         }
     }
 }

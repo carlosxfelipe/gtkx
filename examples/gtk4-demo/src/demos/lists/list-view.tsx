@@ -1,3 +1,4 @@
+import { wrapPtr } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ListView } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
@@ -19,17 +20,24 @@ const tasks: Task[] = [
     { id: "7", title: "Ship the project", completed: false },
 ];
 
-const renderTask = (task: Task | null): Gtk.Widget => {
-    const label = new Gtk.Label(task?.title ?? "Loading...");
+const setupTask = (): Gtk.Label => {
+    const label = new Gtk.Label();
     label.setHalign(Gtk.Align.START);
     label.setMarginStart(12);
     label.setMarginEnd(12);
     label.setMarginTop(8);
     label.setMarginBottom(8);
-    if (task?.completed) {
-        label.setCssClasses(["dim-label"]);
-    }
     return label;
+};
+
+const bindTask = (widget: Gtk.Widget, task: Task): void => {
+    const label = wrapPtr(widget.ptr, Gtk.Label);
+    label.setLabel(task.title);
+    if (task.completed) {
+        label.setCssClasses(["dim-label"]);
+    } else {
+        label.setCssClasses([]);
+    }
 };
 
 const ListViewDemo = () => {
@@ -49,7 +57,7 @@ const ListViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
-                    <ListView.Root renderItem={renderTask} vexpand>
+                    <ListView.Root setup={setupTask} bind={bindTask} vexpand>
                         {tasks.map((task) => (
                             <ListView.Item key={task.id} item={task} />
                         ))}
@@ -60,7 +68,7 @@ const ListViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label.Root
-                    label="ListView uses a factory pattern for rendering items. The renderItem prop receives each item and returns a GTK widget. Items are recycled for performance."
+                    label="ListView uses a factory pattern for rendering items. The setup prop creates widgets once, and bind updates them with item data. This pattern ensures optimal performance with recycled widgets."
                     wrap
                     cssClasses={["dim-label"]}
                 />

@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "./factory.js";
+import type { Props, ROOT_NODE_CONTAINER } from "./factory.js";
 import { CONSTRUCTOR_PARAMS, SETTER_GETTERS } from "./generated/jsx.js";
 import { isAppendable, isRemovable, isSingleChild } from "./predicates.js";
 
@@ -13,7 +13,7 @@ const extractConstructorArgs = (type: string, props: Props): unknown[] => {
 };
 
 export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undefined> {
-    static matches(_type: string): boolean {
+    static matches(_type: string, _props: Props, _existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER): boolean {
         return false;
     }
 
@@ -198,6 +198,4 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
     }
 
     mount(_app: Gtk.Application): void {}
-
-    dispose(_app: Gtk.Application): void {}
 }

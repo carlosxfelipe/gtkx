@@ -33,8 +33,8 @@ describe("ListView Integration", () => {
                 GIO_LIB,
                 "g_list_store_append",
                 [
-                    { type: { type: "gobject" }, value: store },
-                    { type: { type: "gobject" }, value: strObj },
+                    { type: { type: "gobject", borrowed: true }, value: store },
+                    { type: { type: "gobject", borrowed: true }, value: strObj },
                 ],
                 { type: "undefined" },
             );
@@ -43,7 +43,7 @@ describe("ListView Integration", () => {
         const selectionModel = call(
             GTK_LIB,
             "gtk_single_selection_new",
-            [{ type: { type: "gobject" }, value: store }],
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
             { type: "gobject", borrowed: true },
         );
 
@@ -53,7 +53,7 @@ describe("ListView Integration", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: factory },
+                { type: { type: "gobject", borrowed: true }, value: factory },
                 { type: { type: "string" }, value: "setup" },
                 {
                     type: {
@@ -73,8 +73,8 @@ describe("ListView Integration", () => {
                             GTK_LIB,
                             "gtk_list_item_set_child",
                             [
-                                { type: { type: "gobject" }, value: listItem },
-                                { type: { type: "gobject" }, value: label },
+                                { type: { type: "gobject", borrowed: true }, value: listItem },
+                                { type: { type: "gobject", borrowed: true }, value: label },
                             ],
                             { type: "undefined" },
                         );
@@ -89,7 +89,7 @@ describe("ListView Integration", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: factory },
+                { type: { type: "gobject", borrowed: true }, value: factory },
                 { type: { type: "string" }, value: "bind" },
                 {
                     type: {
@@ -104,20 +104,20 @@ describe("ListView Integration", () => {
                         const child = call(
                             GTK_LIB,
                             "gtk_list_item_get_child",
-                            [{ type: { type: "gobject" }, value: listItem }],
+                            [{ type: { type: "gobject", borrowed: true }, value: listItem }],
                             { type: "gobject", borrowed: true },
                         );
                         const item = call(
                             GTK_LIB,
                             "gtk_list_item_get_item",
-                            [{ type: { type: "gobject" }, value: listItem }],
+                            [{ type: { type: "gobject", borrowed: true }, value: listItem }],
                             { type: "gobject", borrowed: true },
                         );
                         if (child && item) {
                             const text = call(
                                 GTK_LIB,
                                 "gtk_string_object_get_string",
-                                [{ type: { type: "gobject" }, value: item }],
+                                [{ type: { type: "gobject", borrowed: true }, value: item }],
                                 { type: "string", borrowed: true },
                             ) as string;
                             boundItems.push(text);
@@ -125,7 +125,7 @@ describe("ListView Integration", () => {
                                 GTK_LIB,
                                 "gtk_label_set_label",
                                 [
-                                    { type: { type: "gobject" }, value: child },
+                                    { type: { type: "gobject", borrowed: true }, value: child },
                                     { type: { type: "string" }, value: text },
                                 ],
                                 { type: "undefined" },
@@ -142,8 +142,8 @@ describe("ListView Integration", () => {
             GTK_LIB,
             "gtk_list_view_new",
             [
-                { type: { type: "gobject" }, value: selectionModel },
-                { type: { type: "gobject" }, value: factory },
+                { type: { type: "gobject", borrowed: true }, value: selectionModel },
+                { type: { type: "gobject", borrowed: true }, value: factory },
             ],
             { type: "gobject", borrowed: true },
         );
@@ -154,8 +154,8 @@ describe("ListView Integration", () => {
             GTK_LIB,
             "gtk_scrolled_window_set_child",
             [
-                { type: { type: "gobject" }, value: scrolledWindow },
-                { type: { type: "gobject" }, value: listView },
+                { type: { type: "gobject", borrowed: true }, value: scrolledWindow },
+                { type: { type: "gobject", borrowed: true }, value: listView },
             ],
             { type: "undefined" },
         );
@@ -165,7 +165,7 @@ describe("ListView Integration", () => {
             GTK_LIB,
             "gtk_window_set_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "int", size: 32 }, value: 400 },
                 { type: { type: "int", size: 32 }, value: 300 },
             ],
@@ -175,13 +175,15 @@ describe("ListView Integration", () => {
             GTK_LIB,
             "gtk_window_set_child",
             [
-                { type: { type: "gobject" }, value: window },
-                { type: { type: "gobject" }, value: scrolledWindow },
+                { type: { type: "gobject", borrowed: true }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: scrolledWindow },
             ],
             { type: "undefined" },
         );
 
-        call(GTK_LIB, "gtk_window_present", [{ type: { type: "gobject" }, value: window }], { type: "undefined" });
+        call(GTK_LIB, "gtk_window_present", [{ type: { type: "gobject", borrowed: true }, value: window }], {
+            type: "undefined",
+        });
 
         const startTime = Date.now();
         const timeout = process.env.CI ? 2000 : 500;
@@ -203,7 +205,9 @@ describe("ListView Integration", () => {
         expect(bindCount).toBeGreaterThan(0);
         expect(boundItems.length).toBeGreaterThan(0);
 
-        call(GTK_LIB, "gtk_window_close", [{ type: { type: "gobject" }, value: window }], { type: "undefined" });
+        call(GTK_LIB, "gtk_window_close", [{ type: { type: "gobject", borrowed: true }, value: window }], {
+            type: "undefined",
+        });
 
         for (let i = 0; i < 50; i++) {
             call(
@@ -240,24 +244,29 @@ describe("ListView Integration", () => {
                 GIO_LIB,
                 "g_list_store_append",
                 [
-                    { type: { type: "gobject" }, value: store },
-                    { type: { type: "gobject" }, value: strObj },
+                    { type: { type: "gobject", borrowed: true }, value: store },
+                    { type: { type: "gobject", borrowed: true }, value: strObj },
                 ],
                 { type: "undefined" },
             );
         }
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: store }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(count).toBe(100);
 
         const selectionModel = call(
             GTK_LIB,
             "gtk_single_selection_new",
-            [{ type: { type: "gobject" }, value: store }],
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
             { type: "gobject", borrowed: true },
         );
 
@@ -267,8 +276,8 @@ describe("ListView Integration", () => {
             GTK_LIB,
             "gtk_list_view_new",
             [
-                { type: { type: "gobject" }, value: selectionModel },
-                { type: { type: "gobject" }, value: factory },
+                { type: { type: "gobject", borrowed: true }, value: selectionModel },
+                { type: { type: "gobject", borrowed: true }, value: factory },
             ],
             { type: "gobject", borrowed: true },
         );
@@ -299,35 +308,45 @@ describe("ListView Integration", () => {
                 GIO_LIB,
                 "g_list_store_append",
                 [
-                    { type: { type: "gobject" }, value: store },
-                    { type: { type: "gobject" }, value: strObj },
+                    { type: { type: "gobject", borrowed: true }, value: store },
+                    { type: { type: "gobject", borrowed: true }, value: strObj },
                 ],
                 { type: "undefined" },
             );
         }
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: store }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(count).toBe(10);
 
         call(
             GIO_LIB,
             "g_list_store_remove",
             [
-                { type: { type: "gobject" }, value: store },
+                { type: { type: "gobject", borrowed: true }, value: store },
                 { type: { type: "int", size: 32, unsigned: true }, value: 0 },
             ],
             { type: "undefined" },
         );
 
-        const countAfter = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: store }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const countAfter = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(countAfter).toBe(9);
     });
 });

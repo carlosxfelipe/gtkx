@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::bail;
-use gtk4::glib;
+use gtk4::glib::{self, translate::IntoGlib as _};
 use libffi::middle as ffi;
 use neon::prelude::*;
 
@@ -194,27 +194,47 @@ impl TryFrom<arg::Arg> for Value {
             }
             Type::Null => Ok(Value::Ptr(std::ptr::null_mut())),
             Type::Undefined => Ok(Value::Ptr(std::ptr::null_mut())),
-            Type::GObject(_) => {
+            Type::GObject(type_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
                     value::Value::Null | value::Value::Undefined => None,
                     _ => bail!("Expected an Object for gobject type, got {:?}", arg.value),
                 };
 
-                Ok(Value::Ptr(
-                    object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr()),
-                ))
+                let ptr = object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr());
+                let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
+
+                if is_transfer_full {
+                    unsafe {
+                        glib::gobject_ffi::g_object_ref(ptr as *mut glib::gobject_ffi::GObject);
+                    }
+                }
+
+                Ok(Value::Ptr(ptr))
             }
-            Type::Boxed(_) => {
+            Type::Boxed(type_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
                     value::Value::Null | value::Value::Undefined => None,
                     _ => bail!("Expected an Object for boxed type, got {:?}", arg.value),
                 };
 
-                Ok(Value::Ptr(
-                    object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr()),
-                ))
+                let ptr = object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr());
+                let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
+
+                if is_transfer_full {
+                    if let Some(gtype) = type_.get_gtype() {
+                        unsafe {
+                            let copied = glib::gobject_ffi::g_boxed_copy(
+                                gtype.into_glib(),
+                                ptr as *const _,
+                            );
+                            return Ok(Value::Ptr(copied as *mut c_void));
+                        }
+                    }
+                }
+
+                Ok(Value::Ptr(ptr))
             }
             Type::Array(type_) => Value::try_from_array(&arg, type_),
             Type::Callback(type_) => Value::try_from_callback(&arg, type_),

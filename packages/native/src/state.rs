@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, mem::ManuallyDrop};
+use std::{cell::RefCell, collections::HashMap};
 
 use gtk4::{
     gio::ApplicationHoldGuard,
@@ -11,7 +11,7 @@ use crate::object::Object;
 pub struct GtkThreadState {
     pub object_map: HashMap<usize, Object>,
     pub next_object_id: usize,
-    pub libraries: HashMap<String, ManuallyDrop<Library>>,
+    pub libraries: HashMap<String, Library>,
     pub app_hold_guard: Option<ApplicationHoldGuard>,
     closures: Vec<glib::Closure>,
 }
@@ -48,8 +48,7 @@ impl GtkThreadState {
             for lib_name in &lib_names {
                 match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                     Ok(lib) => {
-                        self.libraries
-                            .insert(name.to_string(), ManuallyDrop::new(lib));
+                        self.libraries.insert(name.to_string(), lib);
                         break;
                     }
                     Err(err) => {
@@ -69,7 +68,6 @@ impl GtkThreadState {
 
         self.libraries
             .get(name)
-            .map(|lib| &**lib)
             .ok_or(anyhow::anyhow!("Library '{}' not loaded", name))
     }
 

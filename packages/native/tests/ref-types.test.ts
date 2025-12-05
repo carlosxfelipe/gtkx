@@ -15,7 +15,7 @@ describe("Ref with Primitive Types", () => {
             GTK_LIB,
             "gtk_window_set_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "int", size: 32, unsigned: false }, value: 800 },
                 { type: { type: "int", size: 32, unsigned: false }, value: 600 },
             ],
@@ -26,7 +26,7 @@ describe("Ref with Primitive Types", () => {
             GTK_LIB,
             "gtk_window_get_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 {
                     type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } },
                     value: widthRef,
@@ -50,7 +50,7 @@ describe("Ref with Primitive Types", () => {
             GTK_LIB,
             "gtk_window_set_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "int", size: 32, unsigned: false }, value: -1 },
                 { type: { type: "int", size: 32, unsigned: false }, value: -1 },
             ],
@@ -64,7 +64,7 @@ describe("Ref with Primitive Types", () => {
             GTK_LIB,
             "gtk_window_get_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: widthRef },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: heightRef },
             ],
@@ -91,7 +91,7 @@ describe("Ref with GError (pointer-to-pointer)", () => {
             GLIB_LIB,
             "g_key_file_load_from_file",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "/nonexistent/file/that/does/not/exist.ini" },
                 { type: { type: "int", size: 32, unsigned: false }, value: 0 },
                 {
@@ -125,7 +125,7 @@ describe("Ref with GError (pointer-to-pointer)", () => {
             GLIB_LIB,
             "g_key_file_set_string",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "Group" },
                 { type: { type: "string" }, value: "Key" },
                 { type: { type: "string" }, value: "Value" },
@@ -139,7 +139,7 @@ describe("Ref with GError (pointer-to-pointer)", () => {
             GLIB_LIB,
             "g_key_file_get_string",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "Group" },
                 { type: { type: "string" }, value: "Key" },
                 {
@@ -170,10 +170,15 @@ describe("Ref with GObject Types - Borrowed", () => {
         });
         expect(display).not.toBeNull();
 
-        const clipboard = call(GDK_LIB, "gdk_display_get_clipboard", [{ type: { type: "gobject" }, value: display }], {
-            type: "gobject",
-            borrowed: true,
-        });
+        const clipboard = call(
+            GDK_LIB,
+            "gdk_display_get_clipboard",
+            [{ type: { type: "gobject", borrowed: true }, value: display }],
+            {
+                type: "gobject",
+                borrowed: true,
+            },
+        );
         expect(clipboard).not.toBeNull();
     });
 });
@@ -193,7 +198,7 @@ describe("Ref with Boxed Types - Owned", () => {
             GLIB_LIB,
             "g_key_file_load_from_file",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "/nonexistent/path/file.ini" },
                 { type: { type: "int", size: 32, unsigned: false }, value: 0 },
                 {
@@ -225,7 +230,7 @@ describe("Ref with Boxed Types - Owned", () => {
         const copiedRgba = call(
             GDK_LIB,
             "gdk_rgba_copy",
-            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba }],
+            [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba }],
             { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: false },
         );
         expect(copiedRgba).not.toBeNull();
@@ -242,7 +247,7 @@ describe("Ref with Multiple Out Parameters", () => {
             GTK_LIB,
             "gtk_window_set_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "int", size: 32, unsigned: false }, value: 1024 },
                 { type: { type: "int", size: 32, unsigned: false }, value: 768 },
             ],
@@ -256,7 +261,7 @@ describe("Ref with Multiple Out Parameters", () => {
             GTK_LIB,
             "gtk_window_get_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: widthRef },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: heightRef },
             ],
@@ -277,7 +282,7 @@ describe("Ref with Multiple Out Parameters", () => {
             GTK_LIB,
             "gtk_window_get_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: widthRef },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: heightRef },
             ],
@@ -302,7 +307,7 @@ describe("Ref with Boxed Error Type", () => {
             GLIB_LIB,
             "g_key_file_set_string",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "Section" },
                 { type: { type: "string" }, value: "Key" },
                 { type: { type: "string" }, value: "TestValue" },
@@ -316,7 +321,7 @@ describe("Ref with Boxed Error Type", () => {
             GLIB_LIB,
             "g_key_file_get_string",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "Section" },
                 { type: { type: "string" }, value: "Key" },
                 {
@@ -348,7 +353,7 @@ describe("Ref with Boxed Error Type", () => {
             GLIB_LIB,
             "g_key_file_get_string",
             [
-                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB }, value: keyFile },
+                { type: { type: "boxed", innerType: "GKeyFile", lib: GLIB_LIB, borrowed: true }, value: keyFile },
                 { type: { type: "string" }, value: "NonExistent" },
                 { type: { type: "string" }, value: "Key" },
                 {
@@ -434,7 +439,7 @@ describe("Ref with All Integer Sizes", () => {
             GTK_LIB,
             "gtk_window_set_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "int", size: 32, unsigned: false }, value: 10000 },
                 { type: { type: "int", size: 32, unsigned: false }, value: 8000 },
             ],
@@ -448,7 +453,7 @@ describe("Ref with All Integer Sizes", () => {
             GTK_LIB,
             "gtk_window_get_default_size",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: widthRef },
                 { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: heightRef },
             ],

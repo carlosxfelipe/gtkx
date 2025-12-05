@@ -1,11 +1,11 @@
 import { getCurrentApp } from "@gtkx/ffi";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import ReactReconciler from "react-reconciler";
-import { createNode, type Props } from "./factory.js";
+import { createNode, type Props, type ROOT_NODE_CONTAINER } from "./factory.js";
 import type { Node } from "./node.js";
 
-type Container = Gtk.Application | Gtk.Widget;
+type Container = Gtk.Widget | typeof ROOT_NODE_CONTAINER;
 type TextInstance = Node;
 type SuspenseInstance = never;
 type HydratableInstance = never;
@@ -122,9 +122,7 @@ class Reconciler {
             afterActiveInstanceBlur: () => {},
             prepareScopeUpdate: () => {},
             getInstanceFromScope: () => null,
-            detachDeletedInstance: (instance) => {
-                instance.dispose(getCurrentApp());
-            },
+            detachDeletedInstance: () => {},
             resetFormInstance: () => {},
             requestPostPaintCallback: () => {},
             shouldAttemptEagerTransition: () => false,
@@ -145,11 +143,7 @@ class Reconciler {
     }
 
     private createNodeFromContainer(container: Container): Node {
-        if (container instanceof Gtk.Widget) {
-            return createNode(container.constructor.name, {}, getCurrentApp(), container);
-        }
-
-        return createNode("Application", {}, getCurrentApp(), container as unknown as Gtk.Widget);
+        return createNode(container.constructor.name, {}, getCurrentApp(), container);
     }
 }
 

@@ -12,12 +12,17 @@ describe("GList/GSList Types - Borrowed", () => {
         });
         expect(display).not.toBeNull();
 
-        const seats = call(GDK_LIB, "gdk_display_list_seats", [{ type: { type: "gobject" }, value: display }], {
-            type: "array",
-            listType: "glist",
-            itemType: { type: "gobject", borrowed: true },
-            borrowed: true,
-        }) as unknown[];
+        const seats = call(
+            GDK_LIB,
+            "gdk_display_list_seats",
+            [{ type: { type: "gobject", borrowed: true }, value: display }],
+            {
+                type: "array",
+                listType: "glist",
+                itemType: { type: "gobject", borrowed: true },
+                borrowed: true,
+            },
+        ) as unknown[];
 
         expect(Array.isArray(seats)).toBe(true);
         expect(seats.length).toBeGreaterThanOrEqual(1);
@@ -37,7 +42,7 @@ describe("GList/GSList Types - Borrowed", () => {
         const displays = call(
             GDK_LIB,
             "gdk_display_manager_list_displays",
-            [{ type: { type: "gobject" }, value: displayManager }],
+            [{ type: { type: "gobject", borrowed: true }, value: displayManager }],
             { type: "array", listType: "gslist", itemType: { type: "gobject", borrowed: true }, borrowed: true },
         ) as unknown[];
 
@@ -54,16 +59,26 @@ describe("GList/GSList Types - Owned", () => {
         });
         expect(display).not.toBeNull();
 
-        const monitors = call(GDK_LIB, "gdk_display_get_monitors", [{ type: { type: "gobject" }, value: display }], {
-            type: "gobject",
-            borrowed: true,
-        });
+        const monitors = call(
+            GDK_LIB,
+            "gdk_display_get_monitors",
+            [{ type: { type: "gobject", borrowed: true }, value: display }],
+            {
+                type: "gobject",
+                borrowed: true,
+            },
+        );
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: monitors }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        }) as number;
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: monitors }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        ) as number;
         expect(count).toBeGreaterThanOrEqual(1);
     });
 
@@ -76,7 +91,7 @@ describe("GList/GSList Types - Owned", () => {
         const displays = call(
             GDK_LIB,
             "gdk_display_manager_list_displays",
-            [{ type: { type: "gobject" }, value: displayManager }],
+            [{ type: { type: "gobject", borrowed: true }, value: displayManager }],
             { type: "array", listType: "gslist", itemType: { type: "gobject", borrowed: true }, borrowed: false },
         ) as unknown[];
 
@@ -99,11 +114,16 @@ describe("GList/GSList Types - General", () => {
             { type: "gobject", borrowed: true },
         );
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: store }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(count).toBe(0);
     });
 
@@ -113,18 +133,28 @@ describe("GList/GSList Types - General", () => {
             borrowed: true,
         });
 
-        const seats = call(GDK_LIB, "gdk_display_list_seats", [{ type: { type: "gobject" }, value: display }], {
-            type: "array",
-            listType: "glist",
-            itemType: { type: "gobject", borrowed: true },
-            borrowed: true,
-        }) as unknown[];
+        const seats = call(
+            GDK_LIB,
+            "gdk_display_list_seats",
+            [{ type: { type: "gobject", borrowed: true }, value: display }],
+            {
+                type: "array",
+                listType: "glist",
+                itemType: { type: "gobject", borrowed: true },
+                borrowed: true,
+            },
+        ) as unknown[];
 
         for (const seat of seats) {
-            const pointer = call(GDK_LIB, "gdk_seat_get_pointer", [{ type: { type: "gobject" }, value: seat }], {
-                type: "gobject",
-                borrowed: true,
-            });
+            const pointer = call(
+                GDK_LIB,
+                "gdk_seat_get_pointer",
+                [{ type: { type: "gobject", borrowed: true }, value: seat }],
+                {
+                    type: "gobject",
+                    borrowed: true,
+                },
+            );
             expect(pointer).not.toBeNull();
         }
     });
@@ -151,18 +181,23 @@ describe("GList/GSList Types - General", () => {
                 GIO_LIB,
                 "g_list_store_append",
                 [
-                    { type: { type: "gobject" }, value: store },
-                    { type: { type: "gobject" }, value: strObj },
+                    { type: { type: "gobject", borrowed: true }, value: store },
+                    { type: { type: "gobject", borrowed: true }, value: strObj },
                 ],
                 { type: "undefined" },
             );
         }
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: store }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: store }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(count).toBe(100);
     });
 });
@@ -262,11 +297,16 @@ describe("Array Input Arguments", () => {
         );
         expect(stringList).not.toBeNull();
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: stringList }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: stringList }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(count).toBe(3);
     });
 
@@ -284,11 +324,16 @@ describe("Array Input Arguments", () => {
         );
         expect(stringList).not.toBeNull();
 
-        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: stringList }], {
-            type: "int",
-            size: 32,
-            unsigned: true,
-        });
+        const count = call(
+            GIO_LIB,
+            "g_list_model_get_n_items",
+            [{ type: { type: "gobject", borrowed: true }, value: stringList }],
+            {
+                type: "int",
+                size: 32,
+                unsigned: true,
+            },
+        );
         expect(count).toBe(0);
     });
 

@@ -50,7 +50,7 @@ describe("Stress Tests", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: { type: "gobject" }, value: button },
+                    { type: { type: "gobject", borrowed: true }, value: button },
                     { type: { type: "string" }, value: "clicked" },
                     {
                         type: { type: "callback", argTypes: [{ type: "gobject", borrowed: true }] },
@@ -78,16 +78,21 @@ describe("Stress Tests", () => {
                 GTK_LIB,
                 "gtk_label_set_selectable",
                 [
-                    { type: { type: "gobject" }, value: label },
+                    { type: { type: "gobject", borrowed: true }, value: label },
                     { type: { type: "boolean" }, value: i % 2 === 0 },
                 ],
                 { type: "undefined" },
             );
 
-            const text = call(GTK_LIB, "gtk_label_get_label", [{ type: { type: "gobject" }, value: label }], {
-                type: "string",
-                borrowed: true,
-            });
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_label",
+                [{ type: { type: "gobject", borrowed: true }, value: label }],
+                {
+                    type: "string",
+                    borrowed: true,
+                },
+            );
             expect(text).toBe(`Label ${i}`);
         }
     });
@@ -126,8 +131,8 @@ describe("Stress Tests", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: { type: "gobject" }, value: childBox },
-                        { type: { type: "gobject" }, value: button },
+                        { type: { type: "gobject", borrowed: true }, value: childBox },
+                        { type: { type: "gobject", borrowed: true }, value: button },
                     ],
                     { type: "undefined" },
                 );
@@ -137,8 +142,8 @@ describe("Stress Tests", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: { type: "gobject" }, value: box },
-                    { type: { type: "gobject" }, value: childBox },
+                    { type: { type: "gobject", borrowed: true }, value: box },
+                    { type: { type: "gobject", borrowed: true }, value: childBox },
                 ],
                 { type: "undefined" },
             );
@@ -175,7 +180,7 @@ describe("Memory Management Tests", () => {
                 call(
                     GDK_LIB,
                     "gdk_rgba_to_string",
-                    [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB }, value: rgba }],
+                    [{ type: { type: "boxed", innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true }, value: rgba }],
                     { type: "string" },
                 );
             }
@@ -191,7 +196,7 @@ describe("Memory Management Tests", () => {
                     GOBJECT_LIB,
                     "g_signal_connect_closure",
                     [
-                        { type: { type: "gobject" }, value: button },
+                        { type: { type: "gobject", borrowed: true }, value: button },
                         { type: { type: "string" }, value: "clicked" },
                         {
                             type: { type: "callback", argTypes: [{ type: "gobject", borrowed: true }] },

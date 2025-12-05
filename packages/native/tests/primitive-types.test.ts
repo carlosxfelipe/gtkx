@@ -159,15 +159,20 @@ describe("Boolean Type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: { type: "gobject" }, value: label },
+                { type: { type: "gobject", borrowed: true }, value: label },
                 { type: { type: "boolean" }, value: true },
             ],
             { type: "undefined" },
         );
 
-        const isSelectable = call(GTK_LIB, "gtk_label_get_selectable", [{ type: { type: "gobject" }, value: label }], {
-            type: "boolean",
-        });
+        const isSelectable = call(
+            GTK_LIB,
+            "gtk_label_get_selectable",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "boolean",
+            },
+        );
         expect(isSelectable).toBe(true);
     });
 
@@ -181,15 +186,20 @@ describe("Boolean Type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: { type: "gobject" }, value: label },
+                { type: { type: "gobject", borrowed: true }, value: label },
                 { type: { type: "boolean" }, value: false },
             ],
             { type: "undefined" },
         );
 
-        const isSelectable = call(GTK_LIB, "gtk_label_get_selectable", [{ type: { type: "gobject" }, value: label }], {
-            type: "boolean",
-        });
+        const isSelectable = call(
+            GTK_LIB,
+            "gtk_label_get_selectable",
+            [{ type: { type: "gobject", borrowed: true }, value: label }],
+            {
+                type: "boolean",
+            },
+        );
         expect(isSelectable).toBe(false);
     });
 
@@ -235,7 +245,7 @@ describe("Null and Undefined Types", () => {
             GTK_LIB,
             "gtk_button_set_label",
             [
-                { type: { type: "gobject" }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: button },
                 { type: { type: "string" }, value: "test" },
             ],
             { type: "undefined" },
@@ -250,7 +260,7 @@ describe("Null and Undefined Types", () => {
             GTK_LIB,
             "gtk_window_set_child",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "null" }, value: null },
             ],
             { type: "undefined" },

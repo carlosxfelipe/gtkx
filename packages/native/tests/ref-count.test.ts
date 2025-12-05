@@ -30,14 +30,14 @@ describe("GObject Refcount Management", () => {
 
             const initialRef = getRefCount(label);
 
-            call(GOBJECT_LIB, "g_object_ref", [{ type: { type: "gobject" }, value: label }], {
+            call(GOBJECT_LIB, "g_object_ref", [{ type: { type: "gobject", borrowed: true }, value: label }], {
                 type: "undefined",
             });
 
             const afterRef = getRefCount(label);
             expect(afterRef).toBe(initialRef + 1);
 
-            call(GOBJECT_LIB, "g_object_unref", [{ type: { type: "gobject" }, value: label }], {
+            call(GOBJECT_LIB, "g_object_unref", [{ type: { type: "gobject", borrowed: true }, value: label }], {
                 type: "undefined",
             });
 
@@ -56,7 +56,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -78,7 +78,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -94,8 +94,8 @@ describe("GObject Refcount Management", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: { type: "gobject" }, value: box },
-                    { type: { type: "gobject" }, value: label },
+                    { type: { type: "gobject", borrowed: true }, value: box },
+                    { type: { type: "gobject", borrowed: true }, value: label },
                 ],
                 { type: "undefined" },
             );
@@ -115,7 +115,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -125,7 +125,7 @@ describe("GObject Refcount Management", () => {
                 borrowed: true,
             });
 
-            call(GOBJECT_LIB, "g_object_ref", [{ type: { type: "gobject" }, value: label }], {
+            call(GOBJECT_LIB, "g_object_ref", [{ type: { type: "gobject", borrowed: true }, value: label }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -134,8 +134,8 @@ describe("GObject Refcount Management", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: { type: "gobject" }, value: box },
-                    { type: { type: "gobject" }, value: label },
+                    { type: { type: "gobject", borrowed: true }, value: box },
+                    { type: { type: "gobject", borrowed: true }, value: label },
                 ],
                 { type: "undefined" },
             );
@@ -146,8 +146,8 @@ describe("GObject Refcount Management", () => {
                 GTK_LIB,
                 "gtk_box_remove",
                 [
-                    { type: { type: "gobject" }, value: box },
-                    { type: { type: "gobject" }, value: label },
+                    { type: { type: "gobject", borrowed: true }, value: box },
+                    { type: { type: "gobject", borrowed: true }, value: label },
                 ],
                 { type: "undefined" },
             );
@@ -167,7 +167,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -187,8 +187,8 @@ describe("GObject Refcount Management", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: { type: "gobject" }, value: box },
-                        { type: { type: "gobject" }, value: label },
+                        { type: { type: "gobject", borrowed: true }, value: box },
+                        { type: { type: "gobject", borrowed: true }, value: label },
                     ],
                     { type: "undefined" },
                 );
@@ -214,7 +214,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -231,8 +231,8 @@ describe("GObject Refcount Management", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: { type: "gobject" }, value: box },
-                        { type: { type: "gobject" }, value: label },
+                        { type: { type: "gobject", borrowed: true }, value: box },
+                        { type: { type: "gobject", borrowed: true }, value: label },
                     ],
                     { type: "undefined" },
                 );
@@ -241,7 +241,7 @@ describe("GObject Refcount Management", () => {
             const firstChild = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: { type: "gobject" }, value: box }],
+                [{ type: { type: "gobject", borrowed: true }, value: box }],
                 {
                     type: "gobject",
                     borrowed: true,
@@ -254,7 +254,7 @@ describe("GObject Refcount Management", () => {
             const secondChild = call(
                 GTK_LIB,
                 "gtk_widget_get_next_sibling",
-                [{ type: { type: "gobject" }, value: firstChild }],
+                [{ type: { type: "gobject", borrowed: true }, value: firstChild }],
                 { type: "gobject", borrowed: true },
             );
 
@@ -264,7 +264,7 @@ describe("GObject Refcount Management", () => {
             const thirdChild = call(
                 GTK_LIB,
                 "gtk_widget_get_next_sibling",
-                [{ type: { type: "gobject" }, value: secondChild }],
+                [{ type: { type: "gobject", borrowed: true }, value: secondChild }],
                 { type: "gobject", borrowed: true },
             );
 
@@ -274,7 +274,7 @@ describe("GObject Refcount Management", () => {
             const noMoreChildren = call(
                 GTK_LIB,
                 "gtk_widget_get_next_sibling",
-                [{ type: { type: "gobject" }, value: thirdChild }],
+                [{ type: { type: "gobject", borrowed: true }, value: thirdChild }],
                 { type: "gobject", borrowed: true },
             );
 
@@ -292,7 +292,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -307,27 +307,37 @@ describe("GObject Refcount Management", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: { type: "gobject" }, value: box },
-                        { type: { type: "gobject" }, value: label },
+                        { type: { type: "gobject", borrowed: true }, value: box },
+                        { type: { type: "gobject", borrowed: true }, value: label },
                     ],
                     { type: "undefined" },
                 );
             }
 
             let count = 0;
-            let child = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: { type: "gobject" }, value: box }], {
-                type: "gobject",
-                borrowed: true,
-            });
+            let child = call(
+                GTK_LIB,
+                "gtk_widget_get_first_child",
+                [{ type: { type: "gobject", borrowed: true }, value: box }],
+                {
+                    type: "gobject",
+                    borrowed: true,
+                },
+            );
 
             while (child !== null) {
                 count++;
                 expect(getRefCount(child)).toBeGreaterThanOrEqual(1);
 
-                child = call(GTK_LIB, "gtk_widget_get_next_sibling", [{ type: { type: "gobject" }, value: child }], {
-                    type: "gobject",
-                    borrowed: true,
-                });
+                child = call(
+                    GTK_LIB,
+                    "gtk_widget_get_next_sibling",
+                    [{ type: { type: "gobject", borrowed: true }, value: child }],
+                    {
+                        type: "gobject",
+                        borrowed: true,
+                    },
+                );
             }
 
             expect(count).toBe(10);
@@ -346,7 +356,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -360,8 +370,8 @@ describe("GObject Refcount Management", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: { type: "gobject" }, value: box },
-                    { type: { type: "gobject" }, value: label },
+                    { type: { type: "gobject", borrowed: true }, value: box },
+                    { type: { type: "gobject", borrowed: true }, value: label },
                 ],
                 { type: "undefined" },
             );
@@ -369,7 +379,7 @@ describe("GObject Refcount Management", () => {
             const firstChild = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: { type: "gobject" }, value: box }],
+                [{ type: { type: "gobject", borrowed: true }, value: box }],
                 {
                     type: "gobject",
                     borrowed: true,
@@ -378,10 +388,15 @@ describe("GObject Refcount Management", () => {
 
             expect(firstChild).not.toBeNull();
 
-            const labelText = call(GTK_LIB, "gtk_label_get_label", [{ type: { type: "gobject" }, value: firstChild }], {
-                type: "string",
-                borrowed: true,
-            });
+            const labelText = call(
+                GTK_LIB,
+                "gtk_label_get_label",
+                [{ type: { type: "gobject", borrowed: true }, value: firstChild }],
+                {
+                    type: "string",
+                    borrowed: true,
+                },
+            );
 
             expect(labelText).toBe("Test");
         });
@@ -399,7 +414,7 @@ describe("GObject Refcount Management", () => {
                 { type: "gobject", borrowed: true },
             );
 
-            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: box }], {
+            call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: box }], {
                 type: "gobject",
                 borrowed: true,
             });
@@ -413,8 +428,8 @@ describe("GObject Refcount Management", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: { type: "gobject" }, value: box },
-                    { type: { type: "gobject" }, value: label },
+                    { type: { type: "gobject", borrowed: true }, value: box },
+                    { type: { type: "gobject", borrowed: true }, value: label },
                 ],
                 { type: "undefined" },
             );
@@ -424,21 +439,21 @@ describe("GObject Refcount Management", () => {
             const firstChild1 = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: { type: "gobject" }, value: box }],
+                [{ type: { type: "gobject", borrowed: true }, value: box }],
                 { type: "gobject", borrowed: true },
             );
 
             const firstChild2 = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: { type: "gobject" }, value: box }],
+                [{ type: { type: "gobject", borrowed: true }, value: box }],
                 { type: "gobject", borrowed: true },
             );
 
             const firstChild3 = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: { type: "gobject" }, value: box }],
+                [{ type: { type: "gobject", borrowed: true }, value: box }],
                 { type: "gobject", borrowed: true },
             );
 

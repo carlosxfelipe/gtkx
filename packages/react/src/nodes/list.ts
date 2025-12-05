@@ -4,21 +4,24 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 
-const LIST_WIDGETS = ["ListView", "ColumnView", "GridView"];
+type SetupFn = () => Gtk.Widget;
+type BindFn = (widget: Gtk.Widget, item: unknown) => void;
+type UnbindFn = (widget: Gtk.Widget) => void;
+type TeardownFn = (widget: Gtk.Widget) => void;
 
-type RenderItemFn = (item: unknown) => Gtk.Widget;
-
-export class ListViewNode extends Node<Gtk.ListView> {
+export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
     static matches(type: string): boolean {
-        return LIST_WIDGETS.map((w) => `${w}.Root`).includes(type);
+        return type === "ListView.Root" || type === "GridView.Root";
     }
 
     private stringList: Gtk.StringList;
     private selectionModel: Gtk.SingleSelection;
     private factory: Gtk.SignalListItemFactory;
     private items: unknown[] = [];
-    private renderItem: RenderItemFn | null = null;
-    private factorySignalHandlers = new Map<string, number>();
+    private setup: SetupFn | null = null;
+    private bind: BindFn | null = null;
+    private unbind: UnbindFn | null = null;
+    private teardown: TeardownFn | null = null;
 
     constructor(type: string, props: Props, app: Gtk.Application) {
         super(type, props, app);
@@ -26,31 +29,50 @@ export class ListViewNode extends Node<Gtk.ListView> {
         this.stringList = new Gtk.StringList([]);
         this.selectionModel = new Gtk.SingleSelection(this.stringList as unknown as Gio.ListModel);
         this.factory = new Gtk.SignalListItemFactory();
-        this.renderItem = props.renderItem as RenderItemFn | null;
 
-        const setupHandlerId = this.factory.connect("setup", (_self, listItemObj) => {
+        this.setup = props.setup as SetupFn | null;
+        this.bind = props.bind as BindFn | null;
+        this.unbind = props.unbind as UnbindFn | null;
+        this.teardown = props.teardown as TeardownFn | null;
+
+        this.factory.connect("setup", (_self, listItemObj) => {
             const listItem = wrapPtr(listItemObj, Gtk.ListItem);
 
-            if (this.renderItem) {
-                const widget = this.renderItem(null);
+            if (this.setup) {
+                const widget = this.setup();
                 listItem.setChild(widget);
             }
         });
 
-        this.factorySignalHandlers.set("setup", setupHandlerId);
-
-        const bindHandlerId = this.factory.connect("bind", (_self, listItemObj) => {
+        this.factory.connect("bind", (_self, listItemObj) => {
             const listItem = wrapPtr(listItemObj, Gtk.ListItem);
             const position = listItem.getPosition();
             const item = this.items[position];
+            const child = listItem.getChild();
 
-            if (this.renderItem && item !== undefined) {
-                const widget = this.renderItem(item);
-                listItem.setChild(widget);
+            if (this.bind && child && item !== undefined) {
+                this.bind(child, item);
             }
         });
 
-        this.factorySignalHandlers.set("bind", bindHandlerId);
+        this.factory.connect("unbind", (_self, listItemObj) => {
+            const listItem = wrapPtr(listItemObj, Gtk.ListItem);
+            const child = listItem.getChild();
+
+            if (this.unbind && child) {
+                this.unbind(child);
+            }
+        });
+
+        this.factory.connect("teardown", (_self, listItemObj) => {
+            const listItem = wrapPtr(listItemObj, Gtk.ListItem);
+            const child = listItem.getChild();
+
+            if (this.teardown && child) {
+                this.teardown(child);
+            }
+        });
+
         this.widget.setModel(this.selectionModel);
         this.widget.setFactory(this.factory);
     }
@@ -83,32 +105,34 @@ export class ListViewNode extends Node<Gtk.ListView> {
 
     protected override consumedProps(): Set<string> {
         const consumed = super.consumedProps();
-        consumed.add("renderItem");
+        consumed.add("setup");
+        consumed.add("bind");
+        consumed.add("unbind");
+        consumed.add("teardown");
         return consumed;
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.renderItem !== newProps.renderItem) {
-            this.renderItem = newProps.renderItem as RenderItemFn | null;
+        if (oldProps.setup !== newProps.setup) {
+            this.setup = newProps.setup as SetupFn | null;
+        }
+        if (oldProps.bind !== newProps.bind) {
+            this.bind = newProps.bind as BindFn | null;
+        }
+        if (oldProps.unbind !== newProps.unbind) {
+            this.unbind = newProps.unbind as UnbindFn | null;
+        }
+        if (oldProps.teardown !== newProps.teardown) {
+            this.teardown = newProps.teardown as TeardownFn | null;
         }
 
         super.updateProps(oldProps, newProps);
-    }
-
-    override dispose(app: Gtk.Application): void {
-        super.dispose(app);
-        this.widget.setModel(undefined);
-        this.widget.setFactory(undefined);
     }
 }
 
 export class ListItemNode extends Node {
     static matches(type: string): boolean {
-        const dotIndex = type.indexOf(".");
-        if (dotIndex === -1) return false;
-        const widgetType = type.slice(0, dotIndex);
-        const suffix = type.slice(dotIndex + 1);
-        return suffix === "Item" && LIST_WIDGETS.includes(widgetType);
+        return type === "ListView.Item" || type === "GridView.Item";
     }
 
     protected override isVirtual(): boolean {

@@ -551,13 +551,17 @@ describe("React Reconciler", () => {
     });
 
     describe("child management - ListView", () => {
+        const setup = () => new Gtk.Label();
+        const bind = (widget: Gtk.Widget, item: { id: number }) => {
+            (widget as Gtk.Label).setLabel(`Item ${item.id}`);
+        };
+
         it("adds items to list view", () => {
-            const list = createNode("ListView.Root", { renderItem: () => new Gtk.Label("Item") }, getCurrentApp());
+            const list = createNode("ListView.Root", { setup, bind }, getCurrentApp());
             const item1 = createNode("ListView.Item", { item: { id: 1 } }, getCurrentApp());
             const item2 = createNode("ListView.Item", { item: { id: 2 } }, getCurrentApp());
             const item3 = createNode("ListView.Item", { item: { id: 3 } }, getCurrentApp());
 
-            // These operations should complete without error
             list.appendChild(item1);
             list.appendChild(item2);
             list.appendChild(item3);
@@ -568,13 +572,12 @@ describe("React Reconciler", () => {
         });
 
         it("removes items from list view", () => {
-            const list = createNode("ListView.Root", { renderItem: () => new Gtk.Label("Item") }, getCurrentApp());
+            const list = createNode("ListView.Root", { setup, bind }, getCurrentApp());
             const item1 = createNode("ListView.Item", { item: { id: 1 } }, getCurrentApp());
             const item2 = createNode("ListView.Item", { item: { id: 2 } }, getCurrentApp());
 
             list.appendChild(item1);
             list.appendChild(item2);
-            // Remove operation should complete without error
             list.removeChild(item1);
 
             const listWidget = list.getWidget() as Gtk.ListView;
@@ -583,18 +586,100 @@ describe("React Reconciler", () => {
         });
 
         it("inserts item before another", () => {
-            const list = createNode("ListView.Root", { renderItem: () => new Gtk.Label("Item") }, getCurrentApp());
+            const list = createNode("ListView.Root", { setup, bind }, getCurrentApp());
             const item1 = createNode("ListView.Item", { item: { id: 1, name: "First" } }, getCurrentApp());
             const item2 = createNode("ListView.Item", { item: { id: 2, name: "Second" } }, getCurrentApp());
             const middle = createNode("ListView.Item", { item: { id: 3, name: "Middle" } }, getCurrentApp());
 
             list.appendChild(item1);
             list.appendChild(item2);
-            // Insert before operation should complete without error
             list.insertBefore(middle, item2);
 
             const listWidget = list.getWidget() as Gtk.ListView;
             const model = listWidget.getModel();
+            expect(model).not.toBeNull();
+        });
+    });
+
+    describe("child management - ColumnView", () => {
+        const columnSetup = () => new Gtk.Label();
+        const columnBind = (widget: Gtk.Widget, item: { name: string }) => {
+            (widget as Gtk.Label).setLabel(item.name);
+        };
+
+        it("adds columns to column view", () => {
+            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
+            const column1 = createNode(
+                "ColumnView.Column",
+                { title: "Name", setup: columnSetup, bind: columnBind },
+                getCurrentApp(),
+            );
+            const column2 = createNode(
+                "ColumnView.Column",
+                { title: "Age", setup: columnSetup, bind: columnBind },
+                getCurrentApp(),
+            );
+
+            columnView.appendChild(column1);
+            columnView.appendChild(column2);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const columns = widget.getColumns();
+            expect(columns.getNItems()).toBe(2);
+        });
+
+        it("adds items to column view", () => {
+            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
+            const column = createNode(
+                "ColumnView.Column",
+                { title: "Name", setup: columnSetup, bind: columnBind },
+                getCurrentApp(),
+            );
+            const item1 = createNode("ColumnView.Item", { item: { name: "John" } }, getCurrentApp());
+            const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } }, getCurrentApp());
+
+            columnView.appendChild(column);
+            columnView.appendChild(item1);
+            columnView.appendChild(item2);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const model = widget.getModel();
+            expect(model).not.toBeNull();
+        });
+
+        it("removes columns from column view", () => {
+            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
+            const column1 = createNode(
+                "ColumnView.Column",
+                { title: "Name", setup: columnSetup, bind: columnBind },
+                getCurrentApp(),
+            );
+            const column2 = createNode(
+                "ColumnView.Column",
+                { title: "Age", setup: columnSetup, bind: columnBind },
+                getCurrentApp(),
+            );
+
+            columnView.appendChild(column1);
+            columnView.appendChild(column2);
+            columnView.removeChild(column1);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const columns = widget.getColumns();
+            expect(columns.getNItems()).toBe(1);
+        });
+
+        it("removes items from column view", () => {
+            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
+            const item1 = createNode("ColumnView.Item", { item: { name: "John" } }, getCurrentApp());
+            const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } }, getCurrentApp());
+
+            columnView.appendChild(item1);
+            columnView.appendChild(item2);
+            columnView.removeChild(item1);
+
+            const widget = columnView.getWidget() as Gtk.ColumnView;
+            const model = widget.getModel();
             expect(model).not.toBeNull();
         });
     });
@@ -675,47 +760,6 @@ describe("React Reconciler", () => {
 
             const windowWidget = window.getWidget() as Gtk.ApplicationWindow;
             expect(windowWidget.getChild()).not.toBeNull();
-        });
-    });
-
-    describe("disposal", () => {
-        it("disposes node and returns cleanly", () => {
-            const node = createNode("Button", { label: "Test" }, getCurrentApp());
-            const widget = node.getWidget();
-            expect(widget).toBeInstanceOf(Gtk.Button);
-
-            const result = node.dispose?.(getCurrentApp());
-            expect(result).toBeUndefined();
-        });
-
-        it("disposes node with signal handlers", () => {
-            let handlerCalled = false;
-            const node = createNode(
-                "Button",
-                {
-                    label: "Test",
-                    onClicked: () => {
-                        handlerCalled = true;
-                    },
-                },
-                getCurrentApp(),
-            );
-            const widget = node.getWidget();
-            expect(widget).toBeInstanceOf(Gtk.Button);
-
-            node.dispose?.(getCurrentApp());
-            expect(handlerCalled).toBe(false);
-        });
-
-        it("disposes parent with children", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const child = createNode("Label", { label: "Child" }, getCurrentApp());
-
-            parent.appendChild(child);
-            const parentWidget = parent.getWidget() as Gtk.Box;
-            expect(parentWidget.getFirstChild()).not.toBeNull();
-
-            parent.dispose?.(getCurrentApp());
         });
     });
 
@@ -853,11 +897,17 @@ describe("React Reconciler", () => {
 
         it("renders Notebook with multiple pages", () => {
             render(
-                <Notebook>
-                    <Label.Root label="Page 1 Content" />
-                    <Label.Root label="Page 2 Content" />
-                    <Label.Root label="Page 3 Content" />
-                </Notebook>,
+                <Notebook.Root>
+                    <Notebook.Page label="Page 1">
+                        <Label.Root label="Page 1 Content" />
+                    </Notebook.Page>
+                    <Notebook.Page label="Page 2">
+                        <Label.Root label="Page 2 Content" />
+                    </Notebook.Page>
+                    <Notebook.Page label="Page 3">
+                        <Label.Root label="Page 3 Content" />
+                    </Notebook.Page>
+                </Notebook.Root>,
             );
 
             const windows = getCurrentApp().getWindows();

@@ -255,6 +255,7 @@ export class GirParser {
             const scope = param["@_scope"] as string | undefined;
             const closure = param["@_closure"] as string | undefined;
             const destroy = param["@_destroy"] as string | undefined;
+            const transferOwnership = param["@_transfer-ownership"] as string | undefined;
             return {
                 name: String(param["@_name"] ?? ""),
                 type: this.parseType((param.type ?? param.array) as Record<string, unknown> | undefined),
@@ -264,6 +265,10 @@ export class GirParser {
                 scope: scope as "async" | "call" | "notified" | undefined,
                 closure: closure !== undefined ? parseInt(closure, 10) : undefined,
                 destroy: destroy !== undefined ? parseInt(destroy, 10) : undefined,
+                transferOwnership:
+                    transferOwnership === "none" || transferOwnership === "full" || transferOwnership === "container"
+                        ? transferOwnership
+                        : undefined,
                 doc: extractDoc(param),
             };
         });

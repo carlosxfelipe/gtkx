@@ -8,6 +8,7 @@ import * as queries from "./queries.js";
 import { setScreenRoot } from "./screen.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatchOptions } from "./types.js";
 
+const ROOT_NODE_CONTAINER = Symbol.for("ROOT_NODE_CONTAINER");
 const APP_ID = "com.gtkx.testing";
 
 let container: Reconciler.FiberRoot | null = null;
@@ -52,7 +53,8 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     if (!container) {
         const instance = reconciler.getInstance();
         container = instance.createContainer(
-            app,
+            // biome-ignore lint/suspicious/noExplicitAny: testing only
+            ROOT_NODE_CONTAINER as any,
             0,
             null,
             false,

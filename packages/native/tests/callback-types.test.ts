@@ -12,7 +12,7 @@ describe("Callback Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: button },
                 { type: { type: "string" }, value: "clicked" },
                 {
                     type: { type: "callback", argTypes: [{ type: "gobject", borrowed: true }] },
@@ -32,7 +32,7 @@ describe("Callback Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: factory },
+                { type: { type: "gobject", borrowed: true }, value: factory },
                 { type: { type: "string" }, value: "setup" },
                 {
                     type: {
@@ -59,8 +59,8 @@ describe("Callback Types", () => {
             GTK_LIB,
             "gtk_widget_add_controller",
             [
-                { type: { type: "gobject" }, value: widget },
-                { type: { type: "gobject" }, value: gestureClick },
+                { type: { type: "gobject", borrowed: true }, value: widget },
+                { type: { type: "gobject", borrowed: true }, value: gestureClick },
             ],
             { type: "undefined" },
         );
@@ -69,7 +69,7 @@ describe("Callback Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: gestureClick },
+                { type: { type: "gobject", borrowed: true }, value: gestureClick },
                 { type: { type: "string" }, value: "pressed" },
                 {
                     type: {
@@ -99,7 +99,7 @@ describe("Callback Types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: { type: "gobject" }, value: button },
+                    { type: { type: "gobject", borrowed: true }, value: button },
                     { type: { type: "string" }, value: "clicked" },
                     {
                         type: { type: "callback", argTypes: [{ type: "gobject", borrowed: true }] },
@@ -120,7 +120,7 @@ describe("Callback Types", () => {
 describe("Callback Trampoline Types", () => {
     it("should handle destroy callback for cleanup", () => {
         const button = call(GTK_LIB, "gtk_button_new", [], { type: "gobject", borrowed: true });
-        call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject" }, value: button }], {
+        call(GOBJECT_LIB, "g_object_ref_sink", [{ type: { type: "gobject", borrowed: true }, value: button }], {
             type: "gobject",
             borrowed: true,
         });
@@ -129,9 +129,9 @@ describe("Callback Trampoline Types", () => {
             GOBJECT_LIB,
             "g_object_set_data_full",
             [
-                { type: { type: "gobject" }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: button },
                 { type: { type: "string" }, value: "test-key" },
-                { type: { type: "gobject" }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: button },
                 {
                     type: { type: "callback", trampoline: "destroy" },
                     value: () => {},
@@ -144,7 +144,7 @@ describe("Callback Trampoline Types", () => {
             GOBJECT_LIB,
             "g_object_get_data",
             [
-                { type: { type: "gobject" }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: button },
                 { type: { type: "string" }, value: "test-key" },
             ],
             { type: "gobject", borrowed: true },
@@ -201,7 +201,7 @@ describe("Callback Trampoline Types", () => {
             GTK_LIB,
             "gtk_drawing_area_set_draw_func",
             [
-                { type: { type: "gobject" }, value: drawingArea },
+                { type: { type: "gobject", borrowed: true }, value: drawingArea },
                 {
                     type: {
                         type: "callback",
@@ -219,9 +219,14 @@ describe("Callback Trampoline Types", () => {
             { type: "undefined" },
         );
 
-        const visible = call(GTK_LIB, "gtk_widget_get_visible", [{ type: { type: "gobject" }, value: drawingArea }], {
-            type: "boolean",
-        });
+        const visible = call(
+            GTK_LIB,
+            "gtk_widget_get_visible",
+            [{ type: { type: "gobject", borrowed: true }, value: drawingArea }],
+            {
+                type: "boolean",
+            },
+        );
         expect(typeof visible).toBe("boolean");
     });
 });
@@ -238,17 +243,22 @@ describe("Callbacks with Various Argument Types", () => {
             },
         );
 
-        const label = call(GTK_LIB, "gtk_button_get_label", [{ type: { type: "gobject" }, value: button }], {
-            type: "string",
-            borrowed: true,
-        });
+        const label = call(
+            GTK_LIB,
+            "gtk_button_get_label",
+            [{ type: { type: "gobject", borrowed: true }, value: button }],
+            {
+                type: "string",
+                borrowed: true,
+            },
+        );
         expect(label).toBe("Test Button");
 
         const handlerId = call(
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: button },
                 { type: { type: "string" }, value: "clicked" },
                 {
                     type: {
@@ -259,7 +269,7 @@ describe("Callbacks with Various Argument Types", () => {
                         const btnLabel = call(
                             GTK_LIB,
                             "gtk_button_get_label",
-                            [{ type: { type: "gobject" }, value: btn }],
+                            [{ type: { type: "gobject", borrowed: true }, value: btn }],
                             { type: "string", borrowed: true },
                         );
                         expect(btnLabel).toBe("Test Button");
@@ -280,8 +290,8 @@ describe("Callbacks with Various Argument Types", () => {
             GTK_LIB,
             "gtk_widget_add_controller",
             [
-                { type: { type: "gobject" }, value: button },
-                { type: { type: "gobject" }, value: gestureClick },
+                { type: { type: "gobject", borrowed: true }, value: button },
+                { type: { type: "gobject", borrowed: true }, value: gestureClick },
             ],
             { type: "undefined" },
         );
@@ -290,7 +300,7 @@ describe("Callbacks with Various Argument Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: gestureClick },
+                { type: { type: "gobject", borrowed: true }, value: gestureClick },
                 { type: { type: "string" }, value: "pressed" },
                 {
                     type: {
@@ -320,7 +330,7 @@ describe("Callbacks with Various Argument Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: factory },
+                { type: { type: "gobject", borrowed: true }, value: factory },
                 { type: { type: "string" }, value: "setup" },
                 {
                     type: {
@@ -334,7 +344,7 @@ describe("Callbacks with Various Argument Types", () => {
                         const gtype = call(
                             GOBJECT_LIB,
                             "g_type_from_instance",
-                            [{ type: { type: "gobject" }, value: listItem }],
+                            [{ type: { type: "gobject", borrowed: true }, value: listItem }],
                             { type: "int", size: 64, unsigned: true },
                         );
                         expect(gtype).toBeGreaterThan(0);
@@ -354,7 +364,7 @@ describe("Callbacks with Various Argument Types", () => {
             GTK_LIB,
             "gtk_check_button_set_active",
             [
-                { type: { type: "gobject" }, value: checkButton },
+                { type: { type: "gobject", borrowed: true }, value: checkButton },
                 { type: { type: "boolean" }, value: true },
             ],
             { type: "undefined" },
@@ -363,7 +373,7 @@ describe("Callbacks with Various Argument Types", () => {
         const isActive = call(
             GTK_LIB,
             "gtk_check_button_get_active",
-            [{ type: { type: "gobject" }, value: checkButton }],
+            [{ type: { type: "gobject", borrowed: true }, value: checkButton }],
             {
                 type: "boolean",
             },
@@ -374,7 +384,7 @@ describe("Callbacks with Various Argument Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: checkButton },
+                { type: { type: "gobject", borrowed: true }, value: checkButton },
                 { type: { type: "string" }, value: "toggled" },
                 {
                     type: {
@@ -445,7 +455,7 @@ describe("Closure Callbacks with Return Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "string" }, value: "close-request" },
                 {
                     type: {
@@ -481,7 +491,7 @@ describe("Closure Callbacks with Return Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: adjustment },
+                { type: { type: "gobject", borrowed: true }, value: adjustment },
                 { type: { type: "string" }, value: "value-changed" },
                 {
                     type: {
@@ -505,7 +515,7 @@ describe("Closure Callbacks with Return Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "string" }, value: "close-request" },
                 {
                     type: {
@@ -524,7 +534,7 @@ describe("Closure Callbacks with Return Types", () => {
             GOBJECT_LIB,
             "g_signal_connect_closure",
             [
-                { type: { type: "gobject" }, value: window },
+                { type: { type: "gobject", borrowed: true }, value: window },
                 { type: { type: "string" }, value: "close-request" },
                 {
                     type: {
