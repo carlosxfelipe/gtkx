@@ -8,6 +8,10 @@
         },
         "{packages,examples}/*": {
             "project": ["src/**/*", "tests/**/*"]
+        },
+        "packages/ffi": {
+            "project": ["src/**/*", "tests/**/*"],
+            "entry": ["src/generated/*/index.ts", "src/index.ts", "src/*/index.ts"]
         }
     }
 }

@@ -20,11 +20,11 @@
             "dependsOn": ["build"]
         },
         "website#build": {
-            "dependsOn": ["@gtkx/ffi#codegen", "@gtkx/react#codegen"],
+            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "outputs": ["build/**", ".docusaurus/**", "docs/api/**"]
         },
         "website#start": {
-            "dependsOn": ["@gtkx/ffi#codegen", "@gtkx/react#codegen"],
+            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "persistent": true,
             "cache": false
         }
