@@ -76,8 +76,6 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         if (!parentWidget || !widget) return;
 
         if (isAppendable(parentWidget)) {
-            // Use insertBefore with null sibling to append - this handles
-            // moving existing children correctly (append() doesn't move)
             widget.insertBefore(parentWidget, null);
         } else if (isSingleChild(parentWidget)) {
             parentWidget.setChild(widget);
@@ -105,7 +103,6 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         if (!parentWidget || !widget) return;
 
         if (isAppendable(parentWidget) && beforeWidget) {
-            // GTK's insertBefore handles reparenting automatically
             widget.insertBefore(parentWidget, beforeWidget);
         } else {
             this.attachToParent(parent);
@@ -192,12 +189,8 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         if (getterName) {
             const getter = widget[getterName as keyof typeof widget];
             if (typeof getter === "function") {
-                try {
-                    const currentValue = (getter as () => unknown).call(widget);
-                    if (currentValue === value) return;
-                } catch {
-                    // Getter failed (e.g., unsupported return type) - proceed with setter
-                }
+                const currentValue = (getter as () => unknown).call(widget);
+                if (currentValue === value) return;
             }
         }
 

@@ -30,19 +30,17 @@ const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
 const getChildLabels = (widget: Gtk.Widget): string[] =>
     getChildren(widget).map((child) => {
         const ptr = child.ptr;
-        // Try to get label as a Gtk.Label
+
         try {
             const label = wrapPtr(ptr, Gtk.Label);
             return label.getLabel() ?? "";
-        } catch {
-            // Not a Label, try Button
-        }
+        } catch {}
+
         try {
             const button = wrapPtr(ptr, Gtk.Button);
             return button.getLabel() ?? "";
-        } catch {
-            // Not a Button either
-        }
+        } catch {}
+
         return "";
     });
 

@@ -1,10 +1,9 @@
+import { wrapPtr } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { type Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
-import { call } from "@gtkx/native";
+import { type Accessible, AccessibleRole, Button, CheckButton, Expander, Label, ToggleButton } from "@gtkx/ffi/gtk";
 import { findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatchOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
-import { getWidgetPtr } from "./widget.js";
 
 type Container = Gtk.Application | Gtk.Widget;
 
@@ -28,13 +27,11 @@ const matchText = (actual: string | null, expected: string | RegExp, options?: T
     return expected.test(normalizedActual);
 };
 
-const callGetter = (ptr: unknown, funcName: string): string | null => {
-    const result = call("libgtk-4.so.1", funcName, [{ type: { type: "gobject" }, value: ptr }], {
-        type: "string",
-        borrowed: true,
-    });
-    return result as string | null;
-};
+const asButton = (widget: Gtk.Widget): Button => wrapPtr(widget.ptr, Button);
+const asLabel = (widget: Gtk.Widget): Label => wrapPtr(widget.ptr, Label);
+const asCheckButton = (widget: Gtk.Widget): CheckButton => wrapPtr(widget.ptr, CheckButton);
+const asToggleButton = (widget: Gtk.Widget): ToggleButton => wrapPtr(widget.ptr, ToggleButton);
+const asExpander = (widget: Gtk.Widget): Expander => wrapPtr(widget.ptr, Expander);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
     const accessible = widget as unknown as Accessible;
@@ -58,9 +55,6 @@ const isInternalLabel = (widget: Gtk.Widget): boolean => {
 };
 
 const getWidgetText = (widget: Gtk.Widget): string | null => {
-    const ptr = getWidgetPtr(widget);
-    if (!ptr) return null;
-
     if (isInternalLabel(widget)) return null;
 
     const accessible = widget as unknown as Accessible;
@@ -74,84 +68,45 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case AccessibleRole.MENU_ITEM:
         case AccessibleRole.MENU_ITEM_CHECKBOX:
         case AccessibleRole.MENU_ITEM_RADIO:
-            return callGetter(ptr, "gtk_button_get_label");
+            return asButton(widget).getLabel();
         case AccessibleRole.LABEL:
-            return callGetter(ptr, "gtk_label_get_label");
+            return asLabel(widget).getLabel();
         case AccessibleRole.TEXT_BOX:
         case AccessibleRole.SEARCH_BOX:
         case AccessibleRole.SPIN_BUTTON:
-            return callGetter(ptr, "gtk_editable_get_text");
+            return (widget as unknown as { getText(): string }).getText();
         default:
             return null;
     }
 };
 
 const getWidgetTestId = (widget: Gtk.Widget): string | null => {
-    const ptr = getWidgetPtr(widget);
-    if (!ptr) return null;
-
-    const result = call("libgtk-4.so.1", "gtk_widget_get_name", [{ type: { type: "gobject" }, value: ptr }], {
-        type: "string",
-        borrowed: true,
-    });
-    return result as string | null;
+    return widget.getName();
 };
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
-    const ptr = getWidgetPtr(widget);
-    if (!ptr) return undefined;
-
     const accessible = widget as unknown as Accessible;
     const role = accessible.getAccessibleRole();
 
     if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
-        const result = call(
-            "libgtk-4.so.1",
-            "gtk_check_button_get_active",
-            [{ type: { type: "gobject" }, value: ptr }],
-            {
-                type: "boolean",
-            },
-        );
-        return result === true;
+        return asCheckButton(widget).getActive();
     }
 
     if (role === AccessibleRole.TOGGLE_BUTTON) {
-        const result = call(
-            "libgtk-4.so.1",
-            "gtk_toggle_button_get_active",
-            [{ type: { type: "gobject" }, value: ptr }],
-            { type: "boolean" },
-        );
-        return result === true;
+        return asToggleButton(widget).getActive();
     }
 
     return undefined;
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
-    const ptr = getWidgetPtr(widget);
-    if (!ptr) return undefined;
-
     const accessible = widget as unknown as Accessible;
     const role = accessible.getAccessibleRole();
 
     if (role === AccessibleRole.BUTTON) {
-        const expanderPtr = call(
-            "libgtk-4.so.1",
-            "gtk_widget_get_parent",
-            [{ type: { type: "gobject" }, value: ptr }],
-            { type: "gobject" },
-        );
-        if (!expanderPtr) return undefined;
-
-        const result = call(
-            "libgtk-4.so.1",
-            "gtk_expander_get_expanded",
-            [{ type: { type: "gobject" }, value: expanderPtr }],
-            { type: "boolean" },
-        );
-        return result === true;
+        const parent = widget.getParent();
+        if (!parent) return undefined;
+        return asExpander(parent).getExpanded();
     }
 
     return undefined;
@@ -191,15 +146,7 @@ const formatByRoleError = (role: AccessibleRole, options?: ByRoleOptions): strin
     return parts.join(" and ");
 };
 
-/**
- * Finds all widgets matching the specified accessible role.
- * @param container - The container to search within
- * @param role - The accessible role to match
- * @param options - Additional filtering options (name, checked, expanded)
- * @returns Array of matching widgets
- * @throws If no elements are found
- */
-export const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
+const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const accessible = node as unknown as Accessible;
         if (accessible.getAccessibleRole() !== role) return false;
@@ -212,15 +159,7 @@ export const getAllByRole = (container: Container, role: AccessibleRole, options
     return matches;
 };
 
-/**
- * Finds a single widget matching the specified accessible role.
- * @param container - The container to search within
- * @param role - The accessible role to match
- * @param options - Additional filtering options (name, checked, expanded)
- * @returns The matching widget
- * @throws If no elements or multiple elements are found
- */
-export const getByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget => {
+const getByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget => {
     const matches = getAllByRole(container, role, options);
 
     if (matches.length > 1) {
@@ -229,51 +168,7 @@ export const getByRole = (container: Container, role: AccessibleRole, options?: 
     return matches[0] as Gtk.Widget;
 };
 
-/**
- * Queries all widgets matching the specified accessible role without throwing.
- * @param container - The container to search within
- * @param role - The accessible role to match
- * @param options - Additional filtering options (name, checked, expanded)
- * @returns Array of matching widgets (empty if none found)
- */
-export const queryAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
-    return findAll(container, (node) => {
-        const accessible = node as unknown as Accessible;
-        if (accessible.getAccessibleRole() !== role) return false;
-        return matchByRoleOptions(node, options);
-    });
-};
-
-/**
- * Queries a single widget matching the specified accessible role without throwing.
- * @param container - The container to search within
- * @param role - The accessible role to match
- * @param options - Additional filtering options (name, checked, expanded)
- * @returns The matching widget or null if not found
- * @throws If multiple elements are found
- */
-export const queryByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget | null => {
-    const matches = queryAllByRole(container, role, options);
-
-    if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with ${formatByRoleError(role, options)}`);
-    }
-    return matches[0] ?? null;
-};
-
-/**
- * Finds all widgets matching the specified label text.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns Array of matching widgets
- * @throws If no elements are found
- */
-export const getAllByLabelText = (
-    container: Container,
-    text: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
+const getAllByLabelText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const widgetText = getWidgetText(node);
         return matchText(widgetText, text, options);
@@ -285,15 +180,7 @@ export const getAllByLabelText = (
     return matches;
 };
 
-/**
- * Finds a single widget matching the specified label text.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns The matching widget
- * @throws If no elements or multiple elements are found
- */
-export const getByLabelText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
+const getByLabelText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
     const matches = getAllByLabelText(container, text, options);
 
     if (matches.length > 1) {
@@ -302,54 +189,7 @@ export const getByLabelText = (container: Container, text: string | RegExp, opti
     return matches[0] as Gtk.Widget;
 };
 
-/**
- * Queries all widgets matching the specified label text without throwing.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns Array of matching widgets (empty if none found)
- */
-export const queryAllByLabelText = (
-    container: Container,
-    text: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
-    return findAll(container, (node) => {
-        const widgetText = getWidgetText(node);
-        return matchText(widgetText, text, options);
-    });
-};
-
-/**
- * Queries a single widget matching the specified label text without throwing.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns The matching widget or null if not found
- * @throws If multiple elements are found
- */
-export const queryByLabelText = (
-    container: Container,
-    text: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget | null => {
-    const matches = queryAllByLabelText(container, text, options);
-
-    if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with label text "${text}"`);
-    }
-    return matches[0] ?? null;
-};
-
-/**
- * Finds all widgets matching the specified text content.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns Array of matching widgets
- * @throws If no elements are found
- */
-export const getAllByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
+const getAllByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const widgetText = getWidgetText(node);
         return matchText(widgetText, text, options);
@@ -361,15 +201,7 @@ export const getAllByText = (container: Container, text: string | RegExp, option
     return matches;
 };
 
-/**
- * Finds a single widget matching the specified text content.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns The matching widget
- * @throws If no elements or multiple elements are found
- */
-export const getByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
+const getByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
     const matches = getAllByText(container, text, options);
 
     if (matches.length > 1) {
@@ -378,58 +210,7 @@ export const getByText = (container: Container, text: string | RegExp, options?:
     return matches[0] as Gtk.Widget;
 };
 
-/**
- * Queries all widgets matching the specified text content without throwing.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns Array of matching widgets (empty if none found)
- */
-export const queryAllByText = (
-    container: Container,
-    text: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
-    return findAll(container, (node) => {
-        const widgetText = getWidgetText(node);
-        return matchText(widgetText, text, options);
-    });
-};
-
-/**
- * Queries a single widget matching the specified text content without throwing.
- * @param container - The container to search within
- * @param text - The text or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns The matching widget or null if not found
- * @throws If multiple elements are found
- */
-export const queryByText = (
-    container: Container,
-    text: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget | null => {
-    const matches = queryAllByText(container, text, options);
-
-    if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with text "${text}"`);
-    }
-    return matches[0] ?? null;
-};
-
-/**
- * Finds all widgets matching the specified test ID.
- * @param container - The container to search within
- * @param testId - The test ID or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns Array of matching widgets
- * @throws If no elements are found
- */
-export const getAllByTestId = (
-    container: Container,
-    testId: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
+const getAllByTestId = (container: Container, testId: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const widgetTestId = getWidgetTestId(node);
         return matchText(widgetTestId, testId, options);
@@ -441,60 +222,13 @@ export const getAllByTestId = (
     return matches;
 };
 
-/**
- * Finds a single widget matching the specified test ID.
- * @param container - The container to search within
- * @param testId - The test ID or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns The matching widget
- * @throws If no elements or multiple elements are found
- */
-export const getByTestId = (container: Container, testId: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
+const getByTestId = (container: Container, testId: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
     const matches = getAllByTestId(container, testId, options);
 
     if (matches.length > 1) {
         throw new Error(`Found ${matches.length} elements with test id "${testId}"`);
     }
     return matches[0] as Gtk.Widget;
-};
-
-/**
- * Queries all widgets matching the specified test ID without throwing.
- * @param container - The container to search within
- * @param testId - The test ID or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns Array of matching widgets (empty if none found)
- */
-export const queryAllByTestId = (
-    container: Container,
-    testId: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
-    return findAll(container, (node) => {
-        const widgetTestId = getWidgetTestId(node);
-        return matchText(widgetTestId, testId, options);
-    });
-};
-
-/**
- * Queries a single widget matching the specified test ID without throwing.
- * @param container - The container to search within
- * @param testId - The test ID or pattern to match
- * @param options - Text matching options (exact, normalizer)
- * @returns The matching widget or null if not found
- * @throws If multiple elements are found
- */
-export const queryByTestId = (
-    container: Container,
-    testId: string | RegExp,
-    options?: TextMatchOptions,
-): Gtk.Widget | null => {
-    const matches = queryAllByTestId(container, testId, options);
-
-    if (matches.length > 1) {
-        throw new Error(`Found ${matches.length} elements with test id "${testId}"`);
-    }
-    return matches[0] ?? null;
 };
 
 /**

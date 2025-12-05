@@ -33,10 +33,12 @@ import { cleanup, render, screen } from "@gtkx/testing";
 import { App } from "../src/app.js";
 
 // Clean up after each test
-afterEach(() => cleanup());
+afterEach(async () => {
+  await cleanup();
+});
 
 test("renders the title", async () => {
-  render(<App />);
+  await render(<App />);
 
   const title = await screen.findByText("Welcome");
   expect(title).toBeDefined();
@@ -47,16 +49,14 @@ GTK is automatically initialized on the first `render()` call—no manual setup 
 
 ### Query Functions
 
-GTKX testing provides several ways to find elements. Each query type comes in multiple variants:
+GTKX testing provides async query functions to find elements:
 
-| Variant | Returns | Throws if not found? | Async? |
-|---------|---------|----------------------|--------|
-| `getBy*` | Single element | Yes | No |
-| `getAllBy*` | Array of elements | Yes (if empty) | No |
-| `queryBy*` | Single element or `null` | No | No |
-| `queryAllBy*` | Array of elements (may be empty) | No | No |
-| `findBy*` | Single element | Yes | Yes |
-| `findAllBy*` | Array of elements | Yes (if empty) | Yes |
+| Variant | Returns | Throws if not found? |
+|---------|---------|----------------------|
+| `findBy*` | Single element | Yes |
+| `findAllBy*` | Array of elements | Yes (if empty) |
+
+All queries are async and will wait for elements to appear (with a default timeout of 1000ms).
 
 #### By Text
 
@@ -67,14 +67,8 @@ const label = await screen.findByText("Hello, World!");
 // Find by partial text (regex)
 const greeting = await screen.findByText(/hello/i);
 
-// Check if element exists without throwing
-const maybeLabel = screen.queryByText("Optional");
-if (maybeLabel) {
-  // Element exists
-}
-
 // Find all matching elements
-const allLabels = screen.getAllByText(/item/i);
+const allLabels = await screen.findAllByText(/item/i);
 ```
 
 #### By Role
@@ -93,10 +87,10 @@ const button = await screen.findByRole(AccessibleRole.BUTTON, {
 const anyButton = await screen.findByRole(AccessibleRole.BUTTON);
 
 // Find a checked checkbox
-const checked = screen.getByRole(AccessibleRole.CHECKBOX, { checked: true });
+const checked = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: true });
 
 // Find an expanded expander
-const expanded = screen.getByRole(AccessibleRole.BUTTON, { expanded: true });
+const expanded = await screen.findByRole(AccessibleRole.BUTTON, { expanded: true });
 ```
 
 Common roles:
@@ -127,20 +121,7 @@ Find elements by their widget name (test ID). Set the `name` prop on a widget to
 <Button name="submit-btn">Submit</Button>
 
 // In your test
-const button = screen.getByTestId("submit-btn");
-```
-
-### Synchronous Queries
-
-For elements that are immediately available, use `getBy*` variants:
-
-```tsx
-// Throws if not found
-const button = screen.getByText("Click me");
-const input = screen.getByRole(AccessibleRole.TEXT_BOX);
-
-// Returns null if not found (doesn't throw)
-const maybeButton = screen.queryByText("Maybe exists");
+const button = await screen.findByTestId("submit-btn");
 ```
 
 ## User Interactions
@@ -209,14 +190,16 @@ import { waitFor } from "@gtkx/testing";
 
 await userEvent.click(submitButton);
 
-await waitFor(() => {
-  expect(screen.getByText("Success!")).toBeDefined();
+await waitFor(async () => {
+  const message = await screen.findByText("Success!");
+  expect(message).toBeDefined();
 });
 
 // With custom options
 await waitFor(
-  () => {
-    expect(screen.getByText("Done")).toBeDefined();
+  async () => {
+    const done = await screen.findByText("Done");
+    expect(done).toBeDefined();
   },
   { timeout: 2000, interval: 100 }
 );
@@ -229,11 +212,8 @@ Wait for an element to be removed from the widget tree:
 ```tsx
 import { waitForElementToBeRemoved } from "@gtkx/testing";
 
-const loader = screen.getByText("Loading...");
+const loader = await screen.findByText("Loading...");
 await waitForElementToBeRemoved(loader);
-
-// Or with a callback
-await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 ```
 
 ### `findBy*` Queries
@@ -254,17 +234,19 @@ import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { Counter } from "../src/counter.js";
 
-afterEach(() => cleanup());
+afterEach(async () => {
+  await cleanup();
+});
 
 test("renders initial count of zero", async () => {
-  render(<Counter />);
+  await render(<Counter />);
 
   const label = await screen.findByText("Count: 0");
   expect(label).toBeDefined();
 });
 
 test("increments count when clicking increment button", async () => {
-  render(<Counter />);
+  await render(<Counter />);
 
   const button = await screen.findByRole(AccessibleRole.BUTTON, {
     name: "Increment",
@@ -275,7 +257,7 @@ test("increments count when clicking increment button", async () => {
 });
 
 test("decrements count when clicking decrement button", async () => {
-  render(<Counter />);
+  await render(<Counter />);
 
   const button = await screen.findByRole(AccessibleRole.BUTTON, {
     name: "Decrement",
@@ -286,7 +268,7 @@ test("decrements count when clicking decrement button", async () => {
 });
 
 test("resets count when clicking reset button", async () => {
-  render(<Counter />);
+  await render(<Counter />);
 
   // Increment a few times
   const increment = await screen.findByRole(AccessibleRole.BUTTON, {
@@ -309,7 +291,7 @@ test("resets count when clicking reset button", async () => {
 
 ## Render Options
 
-The `render` function accepts an options object.
+The `render` function is async and accepts an options object.
 
 ### Default ApplicationWindow Wrapper
 
@@ -319,10 +301,10 @@ By default, `render` wraps your component in an `ApplicationWindow`. This means 
 import { render } from "@gtkx/testing";
 
 // This works out of the box - no ApplicationWindow needed
-render(<Button label="Click me" />);
+await render(<Button label="Click me" />);
 
 // Equivalent to:
-render(
+await render(
   <ApplicationWindow>
     <Button label="Click me" />
   </ApplicationWindow>
@@ -343,18 +325,18 @@ const Wrapper = ({ children }) => (
   </ApplicationWindow>
 );
 
-const { container, rerender, unmount, debug } = render(<MyComponent />, {
+const { container, rerender, unmount, debug } = await render(<MyComponent />, {
   wrapper: Wrapper,
 });
 
 // Rerender with new props
-rerender(<MyComponent newProp="value" />);
+await rerender(<MyComponent newProp="value" />);
 
 // Debug the widget tree
 debug();
 
 // Unmount the component
-unmount();
+await unmount();
 ```
 
 ### Disabling the Default Wrapper
@@ -365,7 +347,7 @@ For advanced cases like testing multiple windows, disable the default wrapper by
 import { render } from "@gtkx/testing";
 
 // Render multiple windows without the default wrapper
-render(
+await render(
   <>
     <ApplicationWindow>
       <Button label="Window 1" />
@@ -384,9 +366,9 @@ render(
 
 | Function | Description |
 |----------|-------------|
-| `render(element, options?)` | Render a React element for testing. Wraps in `ApplicationWindow` by default. Returns `RenderResult`. |
-| `cleanup()` | Unmount rendered components. Call after each test. |
-| `teardown()` | Clean up GTK entirely. Used in global teardown. |
+| `render(element, options?)` | Render a React element for testing. Wraps in `ApplicationWindow` by default. Returns `Promise<RenderResult>`. |
+| `cleanup()` | Unmount rendered components. Returns `Promise<void>`. Call after each test. |
+| `teardown()` | Clean up GTK entirely. Returns `Promise<void>`. Used in global teardown. |
 
 ### RenderResult
 
@@ -395,10 +377,10 @@ The object returned by `render()`:
 | Property/Method | Description |
 |-----------------|-------------|
 | `container` | The GTK Application instance |
-| `rerender(element)` | Re-render with a new element |
-| `unmount()` | Unmount the rendered component |
+| `rerender(element)` | Re-render with a new element. Returns `Promise<void>`. |
+| `unmount()` | Unmount the rendered component. Returns `Promise<void>`. |
 | `debug()` | Print the widget tree to console |
-| `getBy*`, `queryBy*`, `findBy*`, etc. | Query methods bound to the container |
+| `findBy*`, `findAllBy*` | Query methods bound to the container |
 
 ### Screen Queries
 
@@ -406,17 +388,17 @@ All queries are available on the `screen` object and on `RenderResult`:
 
 | Query Type | Variants | Description |
 |------------|----------|-------------|
-| `*ByRole` | get, getAll, query, queryAll, find, findAll | Find by accessible role |
-| `*ByText` | get, getAll, query, queryAll, find, findAll | Find by text content |
-| `*ByLabelText` | get, getAll, query, queryAll, find, findAll | Find by label text |
-| `*ByTestId` | get, getAll, query, queryAll, find, findAll | Find by widget name |
+| `*ByRole` | find, findAll | Find by accessible role |
+| `*ByText` | find, findAll | Find by text content |
+| `*ByLabelText` | find, findAll | Find by label text |
+| `*ByTestId` | find, findAll | Find by widget name |
 
 ### Query Options
 
 #### TextMatchOptions
 
 ```tsx
-screen.getByText("hello", {
+await screen.findByText("hello", {
   exact: false, // Enable substring matching (default: true)
   normalizer: (text) => text.toLowerCase(), // Custom text normalizer
 });
@@ -425,7 +407,7 @@ screen.getByText("hello", {
 #### ByRoleOptions
 
 ```tsx
-screen.getByRole(AccessibleRole.BUTTON, {
+await screen.findByRole(AccessibleRole.BUTTON, {
   name: "Submit", // Match by accessible name
   checked: true, // For checkboxes/radios
   expanded: true, // For expanders
@@ -474,9 +456,9 @@ await waitFor(callback, {
 
 ## Tips
 
-1. **Always call `cleanup()`** in `afterEach` to prevent test pollution
-2. **Prefer `findBy*` queries** for elements that may need time to appear
-3. **Use `queryBy*`** when checking that an element does NOT exist
+1. **Always call `await cleanup()`** in `afterEach` to prevent test pollution
+2. **Use `await render()`** — render is async
+3. **Use `findBy*` queries** — all queries are async and will wait for elements
 4. **Use roles over text** when possible for more robust tests
 5. **Test behavior, not implementation** — focus on what users see and do
 6. **Use `debug()`** to inspect the widget tree when tests fail

@@ -1,13 +1,15 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { call } from "@gtkx/native";
-import { getWidgetPtr, hasGetText, hasSetText } from "./widget.js";
+import { hasGetText, hasSetText } from "./widget.js";
+
+const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const emitSignal = (widget: Gtk.Widget, signalName: string): void => {
     call(
         "libgobject-2.0.so.0",
         "g_signal_emit_by_name",
         [
-            { type: { type: "gobject" }, value: getWidgetPtr(widget) },
+            { type: { type: "gobject" }, value: widget.ptr },
             { type: { type: "string" }, value: signalName },
         ],
         { type: "undefined" },
@@ -40,11 +42,14 @@ const createUserEventInstance = (_options?: UserEventOptions): UserEventInstance
     return {
         click: async (element: Gtk.Widget): Promise<void> => {
             emitSignal(element, "clicked");
+            await tick();
         },
 
         dblClick: async (element: Gtk.Widget): Promise<void> => {
             emitSignal(element, "clicked");
+            await tick();
             emitSignal(element, "clicked");
+            await tick();
         },
 
         type: async (element: Gtk.Widget, text: string): Promise<void> => {
@@ -54,6 +59,7 @@ const createUserEventInstance = (_options?: UserEventOptions): UserEventInstance
 
             const currentText = hasGetText(element) ? element.getText() : "";
             element.setText(currentText + text);
+            await tick();
         },
 
         clear: async (element: Gtk.Widget): Promise<void> => {
@@ -62,6 +68,7 @@ const createUserEventInstance = (_options?: UserEventOptions): UserEventInstance
             }
 
             element.setText("");
+            await tick();
         },
     };
 };
@@ -76,11 +83,14 @@ export const userEvent = {
 
     click: async (element: Gtk.Widget): Promise<void> => {
         emitSignal(element, "clicked");
+        await tick();
     },
 
     dblClick: async (element: Gtk.Widget): Promise<void> => {
         emitSignal(element, "clicked");
+        await tick();
         emitSignal(element, "clicked");
+        await tick();
     },
 
     type: async (element: Gtk.Widget, text: string): Promise<void> => {
@@ -90,6 +100,7 @@ export const userEvent = {
 
         const currentText = hasGetText(element) ? element.getText() : "";
         element.setText(currentText + text);
+        await tick();
     },
 
     clear: async (element: Gtk.Widget): Promise<void> => {
@@ -98,5 +109,6 @@ export const userEvent = {
         }
 
         element.setText("");
+        await tick();
     },
 };

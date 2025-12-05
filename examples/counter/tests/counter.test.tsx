@@ -7,18 +7,18 @@ const renderApp = () => render(<App />, { wrapper: ({ children }) => <>{children
 
 describe("Counter", () => {
     afterEach(async () => {
-        cleanup();
+        await cleanup();
     });
 
     it("renders initial count of zero", async () => {
-        renderApp();
+        await renderApp();
 
         const label = await screen.findByText("Count: 0");
         expect(label).toBeDefined();
     });
 
     it("renders increment, decrement, and reset buttons", async () => {
-        renderApp();
+        await renderApp();
 
         const increment = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
         const decrement = await screen.findByRole(AccessibleRole.BUTTON, { name: "Decrement" });
@@ -30,7 +30,7 @@ describe("Counter", () => {
     });
 
     it("increments count when clicking increment button", async () => {
-        renderApp();
+        await renderApp();
 
         const increment = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
         await userEvent.click(increment);
@@ -39,7 +39,7 @@ describe("Counter", () => {
     });
 
     it("decrements count when clicking decrement button", async () => {
-        renderApp();
+        await renderApp();
 
         const decrement = await screen.findByRole(AccessibleRole.BUTTON, { name: "Decrement" });
         await userEvent.click(decrement);
@@ -48,7 +48,7 @@ describe("Counter", () => {
     });
 
     it("resets count to zero when clicking reset button", async () => {
-        renderApp();
+        await renderApp();
 
         const increment = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
         await userEvent.click(increment);
@@ -64,7 +64,7 @@ describe("Counter", () => {
     });
 
     it("handles multiple increments and decrements", async () => {
-        renderApp();
+        await renderApp();
 
         const increment = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
         const decrement = await screen.findByRole(AccessibleRole.BUTTON, { name: "Decrement" });

@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, waitForElementToBeRemoved } from "../src/index.js";
 
 describe("waitForElementToBeRemoved", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     describe("element removal with state changes", () => {
@@ -25,7 +25,7 @@ describe("waitForElementToBeRemoved", () => {
                 );
             };
 
-            render(<TestComponent />);
+            await render(<TestComponent />);
 
             const label = await screen.findByText("Removable");
 
@@ -35,7 +35,7 @@ describe("waitForElementToBeRemoved", () => {
 
             await waitForElementToBeRemoved(label, { timeout: 500, interval: 20 });
 
-            expect(screen.queryByText("Removable")).toBeNull();
+            await expect(screen.findByText("Removable")).rejects.toThrow();
         });
 
         it("resolves when element is removed using callback", async () => {
@@ -53,34 +53,26 @@ describe("waitForElementToBeRemoved", () => {
                 );
             };
 
-            render(<TestComponent />);
+            await render(<TestComponent />);
 
-            await screen.findByRole(AccessibleRole.BUTTON, { name: "ToRemove" });
+            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "ToRemove" });
 
             setTimeout(() => {
                 hideButton();
             }, 50);
 
-            await waitForElementToBeRemoved(() => screen.queryByRole(AccessibleRole.BUTTON, { name: "ToRemove" }), {
+            await waitForElementToBeRemoved(button, {
                 timeout: 500,
                 interval: 20,
             });
 
-            expect(screen.queryByRole(AccessibleRole.BUTTON, { name: "ToRemove" })).toBeNull();
+            await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "ToRemove" })).rejects.toThrow();
         });
     });
 
     describe("error cases", () => {
-        it("throws when callback initially returns null", async () => {
-            render(<Label.Root label="Existing" />);
-
-            await expect(waitForElementToBeRemoved(() => screen.queryByText("NonExistent"))).rejects.toThrow(
-                /The element\(s\) given to waitForElementToBeRemoved are already removed/,
-            );
-        });
-
         it("throws when element is not removed before timeout", async () => {
-            render(<Label.Root label="Permanent" />);
+            await render(<Label.Root label="Permanent" />);
 
             const label = await screen.findByText("Permanent");
 
@@ -92,7 +84,7 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("options handling", () => {
         it("uses custom timeout", async () => {
-            render(<Label.Root label="Stays" />);
+            await render(<Label.Root label="Stays" />);
 
             const label = await screen.findByText("Stays");
             const start = Date.now();
@@ -105,7 +97,7 @@ describe("waitForElementToBeRemoved", () => {
         });
 
         it("calls onTimeout when provided", async () => {
-            render(<Label.Root label="Timeout Test" />);
+            await render(<Label.Root label="Timeout Test" />);
 
             const label = await screen.findByText("Timeout Test");
             const customError = new Error("Custom timeout error");

@@ -119,10 +119,12 @@ import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { App } from "./app.js";
 
 // Clean up after each test
-afterEach(() => cleanup());
+afterEach(async () => {
+  await cleanup();
+});
 
 test("increments count when clicking button", async () => {
-  render(<App />);
+  await render(<App />);
 
   const button = await screen.findByRole(AccessibleRole.BUTTON, {
     name: "Increment",
@@ -132,8 +134,8 @@ test("increments count when clicking button", async () => {
   await screen.findByText("Count: 1");
 });
 
-test("can also use fireEvent for synchronous events", async () => {
-  render(<App />);
+test("can also use fireEvent for low-level events", async () => {
+  await render(<App />);
 
   const button = await screen.findByRole(AccessibleRole.BUTTON, {
     name: "Increment",
@@ -146,10 +148,8 @@ test("can also use fireEvent for synchronous events", async () => {
 
 ### Available APIs
 
-**Queries** - Find elements in the rendered tree:
-- `getBy*` / `getAllBy*` - Throws if not found
-- `queryBy*` / `queryAllBy*` - Returns null/empty array if not found
-- `findBy*` / `findAllBy*` - Async, waits for element
+**Queries** - Find elements in the rendered tree (all async):
+- `findBy*` / `findAllBy*` - Waits for element to appear
 
 Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 

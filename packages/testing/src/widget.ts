@@ -1,9 +1,3 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-
-export const getWidgetPtr = (widget: Gtk.Widget): unknown => {
-    return (widget as unknown as { ptr: unknown }).ptr;
-};
-
 type WidgetWithSetText = { setText: (text: string) => void };
 type WidgetWithGetText = { getText: () => string };
 

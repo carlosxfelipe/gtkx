@@ -36,25 +36,15 @@ const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
 
 type ReconcilerInstance = ReturnType<typeof reconciler.getInstance>;
 
-const updateSync = (instance: ReconcilerInstance, element: ReactNode, fiberRoot: Reconciler.FiberRoot): void => {
-    const instanceAny = instance as unknown as Record<string, unknown>;
+const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-    if (typeof instanceAny.flushSync === "function") {
-        (instanceAny.flushSync as (fn: () => void) => void)(() => {
-            instance.updateContainer(element, fiberRoot, null, () => {});
-        });
-    } else {
-        if (typeof instanceAny.updateContainerSync === "function") {
-            (instanceAny.updateContainerSync as typeof instance.updateContainer)(element, fiberRoot, null, () => {});
-        } else {
-            instance.updateContainer(element, fiberRoot, null, () => {});
-        }
-        if (typeof instanceAny.flushSyncWork === "function") {
-            (instanceAny.flushSyncWork as () => void)();
-        }
-    }
-
-    instance.flushPassiveEffects();
+const update = async (
+    instance: ReconcilerInstance,
+    element: ReactNode,
+    fiberRoot: Reconciler.FiberRoot,
+): Promise<void> => {
+    instance.updateContainer(element, fiberRoot, null, () => {});
+    await tick();
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
@@ -101,42 +91,17 @@ const wrapElement = (element: ReactNode, Wrapper: RenderOptions["wrapper"] = Def
  * @param options - Render options including wrapper component
  * @returns Object containing query methods, container, and utility functions
  */
-export const render = (element: ReactNode, options?: RenderOptions): RenderResult => {
+export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
     const { app: application, container: fiberRoot } = ensureInitialized();
     const instance = reconciler.getInstance();
 
     const wrappedElement = wrapElement(element, options?.wrapper);
-    updateSync(instance, wrappedElement, fiberRoot);
+    await update(instance, wrappedElement, fiberRoot);
 
     setScreenRoot(application);
 
     return {
         container: application,
-        getByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.getByRole(application, role, opts),
-        getByLabelText: (text: string | RegExp, opts?: TextMatchOptions) =>
-            queries.getByLabelText(application, text, opts),
-        getByText: (text: string | RegExp, opts?: TextMatchOptions) => queries.getByText(application, text, opts),
-        getByTestId: (testId: string | RegExp, opts?: TextMatchOptions) =>
-            queries.getByTestId(application, testId, opts),
-        queryByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.queryByRole(application, role, opts),
-        queryByLabelText: (text: string | RegExp, opts?: TextMatchOptions) =>
-            queries.queryByLabelText(application, text, opts),
-        queryByText: (text: string | RegExp, opts?: TextMatchOptions) => queries.queryByText(application, text, opts),
-        queryByTestId: (testId: string | RegExp, opts?: TextMatchOptions) =>
-            queries.queryByTestId(application, testId, opts),
-        getAllByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.getAllByRole(application, role, opts),
-        getAllByLabelText: (text: string | RegExp, opts?: TextMatchOptions) =>
-            queries.getAllByLabelText(application, text, opts),
-        getAllByText: (text: string | RegExp, opts?: TextMatchOptions) => queries.getAllByText(application, text, opts),
-        getAllByTestId: (testId: string | RegExp, opts?: TextMatchOptions) =>
-            queries.getAllByTestId(application, testId, opts),
-        queryAllByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.queryAllByRole(application, role, opts),
-        queryAllByLabelText: (text: string | RegExp, opts?: TextMatchOptions) =>
-            queries.queryAllByLabelText(application, text, opts),
-        queryAllByText: (text: string | RegExp, opts?: TextMatchOptions) =>
-            queries.queryAllByText(application, text, opts),
-        queryAllByTestId: (testId: string | RegExp, opts?: TextMatchOptions) =>
-            queries.queryAllByTestId(application, testId, opts),
         findByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.findByRole(application, role, opts),
         findByLabelText: (text: string | RegExp, opts?: TextMatchOptions) =>
             queries.findByLabelText(application, text, opts),
@@ -150,10 +115,10 @@ export const render = (element: ReactNode, options?: RenderOptions): RenderResul
             queries.findAllByText(application, text, opts),
         findAllByTestId: (testId: string | RegExp, opts?: TextMatchOptions) =>
             queries.findAllByTestId(application, testId, opts),
-        unmount: () => updateSync(instance, null, fiberRoot),
+        unmount: () => update(instance, null, fiberRoot),
         rerender: (newElement: ReactNode) => {
             const wrapped = wrapElement(newElement, options?.wrapper);
-            updateSync(instance, wrapped, fiberRoot);
+            return update(instance, wrapped, fiberRoot);
         },
         debug: () => {
             const activeWindow = application.getActiveWindow();
@@ -168,10 +133,10 @@ export const render = (element: ReactNode, options?: RenderOptions): RenderResul
  * Cleans up the rendered component by unmounting it and destroying windows.
  * Should be called after each test to reset state.
  */
-export const cleanup = (): void => {
+export const cleanup = async (): Promise<void> => {
     if (container && app) {
         const instance = reconciler.getInstance();
-        updateSync(instance, null, container);
+        await update(instance, null, container);
         for (const window of app.getWindows()) {
             window.destroy();
         }
@@ -184,9 +149,9 @@ export const cleanup = (): void => {
  * Tears down the testing environment by cleaning up and stopping GTK.
  * Can be used as global teardown in your test runner configuration.
  */
-export const teardown = (): void => {
+export const teardown = async (): Promise<void> => {
     if (app) {
-        cleanup();
+        await cleanup();
         stop();
         app = null;
         container = null;

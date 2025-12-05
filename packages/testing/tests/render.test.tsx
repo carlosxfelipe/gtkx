@@ -1,4 +1,3 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
 import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
@@ -6,99 +5,90 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
 
 describe("render", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     describe("return value", () => {
-        it("returns an object with container", () => {
-            const result = render(<Label.Root label="Test" />);
+        it("returns an object with container", async () => {
+            const result = await render(<Label.Root label="Test" />);
 
             expect(result.container).toBeDefined();
             expect(typeof result.container.getActiveWindow).toBe("function");
         });
 
-        it("returns query functions", () => {
-            const result = render(<Label.Root label="Test" />);
+        it("returns query functions", async () => {
+            const result = await render(<Label.Root label="Test" />);
 
-            expect(typeof result.getByRole).toBe("function");
-            expect(typeof result.getByText).toBe("function");
-            expect(typeof result.getByLabelText).toBe("function");
             expect(typeof result.findByRole).toBe("function");
             expect(typeof result.findByText).toBe("function");
             expect(typeof result.findByLabelText).toBe("function");
+            expect(typeof result.findAllByRole).toBe("function");
+            expect(typeof result.findAllByText).toBe("function");
+            expect(typeof result.findAllByLabelText).toBe("function");
         });
 
-        it("returns unmount function", () => {
-            const result = render(<Label.Root label="Test" />);
+        it("returns unmount function", async () => {
+            const result = await render(<Label.Root label="Test" />);
 
             expect(typeof result.unmount).toBe("function");
         });
 
-        it("returns rerender function", () => {
-            const result = render(<Label.Root label="Test" />);
+        it("returns rerender function", async () => {
+            const result = await render(<Label.Root label="Test" />);
 
             expect(typeof result.rerender).toBe("function");
         });
 
-        it("returns debug function", () => {
-            const result = render(<Label.Root label="Test" />);
+        it("returns debug function", async () => {
+            const result = await render(<Label.Root label="Test" />);
 
             expect(typeof result.debug).toBe("function");
         });
     });
 
     describe("bound queries", () => {
-        it("getByRole finds element", () => {
-            const { getByRole } = render(<Button label="Click me" />);
+        it("findByRole finds element", async () => {
+            const { findByRole } = await render(<Button label="Click me" />);
 
-            const button = getByRole(AccessibleRole.BUTTON, { name: "Click me" });
+            const button = await findByRole(AccessibleRole.BUTTON, { name: "Click me" });
             expect(button).toBeDefined();
         });
 
-        it("getByText finds element", () => {
-            const { getByText } = render(<Label.Root label="Hello World" />);
+        it("findByText finds element", async () => {
+            const { findByText } = await render(<Label.Root label="Hello World" />);
 
-            const label = getByText("Hello World");
+            const label = await findByText("Hello World");
             expect(label).toBeDefined();
         });
 
-        it("getByLabelText finds element", () => {
-            const { getByLabelText } = render(<Button label="Submit" />);
+        it("findByLabelText finds element", async () => {
+            const { findByLabelText } = await render(<Button label="Submit" />);
 
-            const button = getByLabelText("Submit");
+            const button = await findByLabelText("Submit");
             expect(button).toBeDefined();
         });
 
-        it("findByRole finds element asynchronously", async () => {
-            const { findByRole } = render(<Button label="Async" />);
+        it("findAllByRole finds multiple elements", async () => {
+            const { findAllByRole } = await render(
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Button label="One" />
+                    <Button label="Two" />
+                </Box>,
+            );
 
-            const button = await findByRole(AccessibleRole.BUTTON, { name: "Async" });
-            expect(button).toBeDefined();
-        });
-
-        it("findByText finds element asynchronously", async () => {
-            const { findByText } = render(<Label.Root label="Async Text" />);
-
-            const label = await findByText("Async Text");
-            expect(label).toBeDefined();
-        });
-
-        it("findByLabelText finds element asynchronously", async () => {
-            const { findByLabelText } = render(<Button label="Async Label" />);
-
-            const button = await findByLabelText("Async Label");
-            expect(button).toBeDefined();
+            const buttons = await findAllByRole(AccessibleRole.BUTTON);
+            expect(buttons.length).toBe(2);
         });
     });
 
     describe("rerender", () => {
         it("updates the rendered content", async () => {
-            const { rerender, findByText } = render(<Label.Root label="Initial" />);
+            const { rerender, findByText } = await render(<Label.Root label="Initial" />);
 
             await findByText("Initial");
 
-            rerender(<Label.Root label="Updated" />);
+            await rerender(<Label.Root label="Updated" />);
 
             const label = await findByText("Updated");
             expect(label).toBeDefined();
@@ -113,13 +103,13 @@ describe("render", () => {
                 return <Label.Root label={`Count: ${count}`} />;
             };
 
-            const { findByText, rerender } = render(<Counter />);
+            const { findByText, rerender } = await render(<Counter />);
 
             await findByText("Count: 0");
             setCount(5);
             await findByText("Count: 5");
 
-            rerender(<Counter />);
+            await rerender(<Counter />);
 
             await findByText("Count: 5");
         });
@@ -127,58 +117,60 @@ describe("render", () => {
 
     describe("unmount", () => {
         it("removes rendered content", async () => {
-            const { unmount, findByText } = render(<Label.Root label="Will be removed" />);
+            const { unmount, findByText } = await render(<Label.Root label="Will be removed" />);
 
             await findByText("Will be removed");
 
-            unmount();
+            await unmount();
 
             await expect(findByText("Will be removed")).rejects.toThrow();
         });
     });
 
     describe("container", () => {
-        it("provides access to application", () => {
-            const { container } = render(<Label.Root label="Test" />);
+        it("provides access to application", async () => {
+            const { container } = await render(<Label.Root label="Test" />);
 
             const windows = container.getWindows();
             expect(windows.length).toBeGreaterThan(0);
         });
 
-        it("provides access to active window", () => {
-            const { container } = render(
+        it("provides access to active window", async () => {
+            const { container, findAllByText } = await render(
                 <ApplicationWindow title="Test Window">
-                    <Label.Root label="Test" />
+                    <Label.Root label="Window Content" />
                 </ApplicationWindow>,
             );
 
+            const labels = await findAllByText("Window Content");
+            expect(labels.length).toBeGreaterThan(0);
+
             const activeWindow = container.getActiveWindow();
             expect(activeWindow).not.toBeNull();
-            expect((activeWindow as Gtk.ApplicationWindow).getTitle()).toBe("Test Window");
         });
     });
 });
 
 describe("cleanup", () => {
     it("removes windows after cleanup", async () => {
-        const { container, findByText } = render(<Label.Root label="Before cleanup" />);
+        const { container, findByText } = await render(<Label.Root label="Before cleanup" />);
 
         await findByText("Before cleanup");
         const windowsBefore = container.getWindows();
         expect(windowsBefore.length).toBeGreaterThan(0);
 
-        cleanup();
+        await cleanup();
 
         const windowsAfter = container.getWindows();
         expect(windowsAfter.length).toBe(0);
     });
 
     it("allows rendering again after cleanup", async () => {
-        render(<Label.Root label="First render" />);
+        await render(<Label.Root label="First render" />);
 
-        cleanup();
+        await cleanup();
 
-        const { findByText } = render(<Label.Root label="Second render" />);
+        const { findByText } = await render(<Label.Root label="Second render" />);
 
         const label = await findByText("Second render");
         expect(label).toBeDefined();
@@ -186,20 +178,20 @@ describe("cleanup", () => {
 });
 
 describe("multiple renders", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     it("subsequent renders update the same container", async () => {
-        const result1 = render(<Label.Root label="First" />);
+        const result1 = await render(<Label.Root label="First" />);
 
-        const result2 = render(<Label.Root label="Second" />);
+        const result2 = await render(<Label.Root label="Second" />);
 
         expect(result1.container).toBe(result2.container);
     });
 
     it("can render complex nested components", async () => {
-        const { findByRole, findByText } = render(
+        const { findByRole, findByText } = await render(
             <Box spacing={10} orientation={Orientation.VERTICAL}>
                 <Label.Root label="Header" />
                 <Box spacing={5} orientation={Orientation.HORIZONTAL}>

@@ -102,7 +102,7 @@ export function glShaderSource(shader: number, source: string): void {
             { type: { type: "int", size: 32, unsigned: true }, value: shader },
             { type: { type: "int", size: 32, unsigned: false }, value: 1 },
             { type: { type: "array", itemType: { type: "string" } }, value: [source] },
-            { type: { type: "int", size: 64, unsigned: true }, value: 0 }, // NULL for length (null-terminated)
+            { type: { type: "int", size: 64, unsigned: true }, value: 0 },
         ],
         { type: "undefined" },
     );
@@ -442,7 +442,8 @@ export function glDeleteBuffer(buffer: number): void {
  * @param usage - Usage hint (GL_STATIC_DRAW, GL_DYNAMIC_DRAW, etc.)
  */
 export function glBufferData(target: number, data: number[], usage: number): void {
-    const size = data.length * 4; // 4 bytes per float
+    const size = data.length * 4;
+
     call(
         LIB,
         "glBufferData",
@@ -524,7 +525,8 @@ export function glDrawArrays(mode: number, first: number, count: number): void {
  * @param usage - Usage hint (GL_STATIC_DRAW, GL_DYNAMIC_DRAW, etc.)
  */
 export function glBufferDataUshort(target: number, data: number[], usage: number): void {
-    const size = data.length * 2; // 2 bytes per unsigned short
+    const size = data.length * 2;
+
     call(
         LIB,
         "glBufferData",

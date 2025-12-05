@@ -29,26 +29,6 @@ export interface RenderOptions {
 export interface RenderResult {
     container: Gtk.Application;
 
-    getByRole: (role: AccessibleRole, options?: ByRoleOptions) => Gtk.Widget;
-    getByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget;
-    getByText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget;
-    getByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Gtk.Widget;
-
-    queryByRole: (role: AccessibleRole, options?: ByRoleOptions) => Gtk.Widget | null;
-    queryByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget | null;
-    queryByText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget | null;
-    queryByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Gtk.Widget | null;
-
-    getAllByRole: (role: AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
-    getAllByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget[];
-    getAllByText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget[];
-    getAllByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Gtk.Widget[];
-
-    queryAllByRole: (role: AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
-    queryAllByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget[];
-    queryAllByText: (text: string | RegExp, options?: TextMatchOptions) => Gtk.Widget[];
-    queryAllByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Gtk.Widget[];
-
     findByRole: (role: AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
     findByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     findByText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
@@ -59,7 +39,7 @@ export interface RenderResult {
     findAllByText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     findAllByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
 
-    unmount: () => void;
-    rerender: (element: ReactNode) => void;
+    unmount: () => Promise<void>;
+    rerender: (element: ReactNode) => Promise<void>;
     debug: () => void;
 }

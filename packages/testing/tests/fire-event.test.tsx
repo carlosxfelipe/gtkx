@@ -5,13 +5,13 @@ import { fireEvent } from "../src/fire-event.js";
 import { cleanup, render, screen } from "../src/index.js";
 
 describe("fireEvent", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     describe("base function", () => {
         it("emits signal by name on widget", async () => {
-            render(<Button label="Test Button" />);
+            await render(<Button label="Test Button" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Test Button" });
             fireEvent(button, "clicked");
@@ -19,7 +19,7 @@ describe("fireEvent", () => {
         });
 
         it("can emit activate signal", async () => {
-            render(<Button label="Activate Me" />);
+            await render(<Button label="Activate Me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Activate Me" });
             fireEvent(button, "activate");
@@ -29,7 +29,7 @@ describe("fireEvent", () => {
 
     describe("click", () => {
         it("emits clicked signal on button", async () => {
-            render(<Button label="Click Me" />);
+            await render(<Button label="Click Me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click Me" });
             fireEvent.click(button);
@@ -37,7 +37,7 @@ describe("fireEvent", () => {
         });
 
         it("can fire click on multiple buttons", async () => {
-            render(
+            await render(
                 <Box spacing={10} orientation={Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
@@ -57,7 +57,7 @@ describe("fireEvent", () => {
 
     describe("activate", () => {
         it("emits activate signal on button", async () => {
-            render(<Button label="Activate" />);
+            await render(<Button label="Activate" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Activate" });
             fireEvent.activate(button);
@@ -67,7 +67,7 @@ describe("fireEvent", () => {
 
     describe("toggled", () => {
         it("emits toggled signal on toggle button", async () => {
-            render(<ToggleButton.Root label="Toggle" />);
+            await render(<ToggleButton.Root label="Toggle" />);
 
             const button = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "Toggle" });
             fireEvent.toggled(button);
@@ -77,7 +77,7 @@ describe("fireEvent", () => {
 
     describe("changed", () => {
         it("emits changed signal on entry", async () => {
-            render(<Entry name="test-entry" />);
+            await render(<Entry name="test-entry" />);
 
             const entry = await screen.findByTestId("test-entry");
             fireEvent.changed(entry);

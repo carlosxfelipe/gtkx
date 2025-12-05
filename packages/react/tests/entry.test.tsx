@@ -50,10 +50,8 @@ describe("Entry widget", () => {
 
             render(<App />);
 
-            // Simulate user typing
             entryRef?.setText("user typed");
 
-            // Widget changed, state unchanged
             expect(entryRef?.getText()).toBe("user typed");
             expect(currentState).toBe("initial");
         });

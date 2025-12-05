@@ -1036,7 +1036,7 @@ export class TypeMapper {
                     trampoline: "drawFunc",
                     argTypes: [
                         { type: "gobject", borrowed: true },
-                        { type: "int", size: 64, unsigned: true }, // cairo_t* as raw pointer
+                        { type: "int", size: 64, unsigned: true },
                         { type: "int", size: 32, unsigned: false },
                         { type: "int", size: 32, unsigned: false },
                     ],

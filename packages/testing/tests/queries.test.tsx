@@ -2,39 +2,23 @@ import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "../src/index.js";
-import {
-    findAllByTestId,
-    findByTestId,
-    getAllByLabelText,
-    getAllByRole,
-    getAllByTestId,
-    getAllByText,
-    getByTestId,
-    queryAllByLabelText,
-    queryAllByRole,
-    queryAllByTestId,
-    queryAllByText,
-    queryByLabelText,
-    queryByRole,
-    queryByTestId,
-    queryByText,
-} from "../src/queries.js";
+import { findAllByTestId, findByTestId } from "../src/queries.js";
 
 describe("Queries", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     describe("findByRole", () => {
         it("finds a button by role", async () => {
-            render(<Button label="Click me" />);
+            await render(<Button label="Click me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click me" });
             expect(button).toBeDefined();
         });
 
         it("finds a button by role and name", async () => {
-            render(
+            await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
@@ -46,42 +30,119 @@ describe("Queries", () => {
         });
 
         it("throws when element not found", async () => {
-            render(<Label.Root label="No buttons here" />);
+            await render(<Label.Root label="No buttons here" />);
 
             await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
                 /Unable to find any elements with role/,
+            );
+        });
+
+        it("throws when multiple elements found", async () => {
+            await render(
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Button label="Same" />
+                    <Button label="Same" />
+                </Box>,
+            );
+
+            await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "Same" })).rejects.toThrow(
+                /Found \d+ elements/,
+            );
+        });
+    });
+
+    describe("findAllByRole", () => {
+        it("returns all matching elements with name filter", async () => {
+            await render(
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Button label="Action" />
+                    <Button label="Action" />
+                    <Button label="Action" />
+                    <Button label="Different" />
+                </Box>,
+            );
+
+            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Action" });
+            expect(buttons.length).toBe(3);
+        });
+
+        it("throws when no elements match name filter", async () => {
+            await render(<Button label="Existing" />);
+
+            await expect(screen.findAllByRole(AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
+                /Unable to find any elements/,
             );
         });
     });
 
     describe("findByText", () => {
         it("finds element by text content", async () => {
-            render(<Label.Root label="Hello World" />);
+            await render(<Label.Root label="Hello World" />);
 
             const label = await screen.findByText("Hello World");
             expect(label).toBeDefined();
         });
 
         it("finds element by regex", async () => {
-            render(<Label.Root label="Hello World" />);
+            await render(<Label.Root label="Hello World" />);
 
             const label = await screen.findByText(/Hello/);
             expect(label).toBeDefined();
+        });
+
+        it("throws when text not found", async () => {
+            await render(<Label.Root label="Different" />);
+
+            await expect(screen.findByText("NotFound")).rejects.toThrow(/Unable to find any elements with text/);
+        });
+    });
+
+    describe("findAllByText", () => {
+        it("returns all matching elements", async () => {
+            await render(
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Label.Root label="Same" />
+                    <Label.Root label="Same" />
+                </Box>,
+            );
+
+            const labels = await screen.findAllByText("Same");
+            expect(labels.length).toBe(2);
         });
     });
 
     describe("findByLabelText", () => {
         it("finds element by label", async () => {
-            render(<Button label="Submit" />);
+            await render(<Button label="Submit" />);
 
             const button = await screen.findByLabelText("Submit");
             expect(button).toBeDefined();
+        });
+
+        it("throws when label not found", async () => {
+            await render(<Button label="Different" />);
+
+            await expect(screen.findByLabelText("NotFound")).rejects.toThrow(/Unable to find any elements/);
+        });
+    });
+
+    describe("findAllByLabelText", () => {
+        it("returns all matching elements", async () => {
+            await render(
+                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Button label="Action" />
+                    <Button label="Action" />
+                </Box>,
+            );
+
+            const buttons = await screen.findAllByLabelText("Action");
+            expect(buttons.length).toBe(2);
         });
     });
 
     describe("render result queries", () => {
         it("returns bound queries from render", async () => {
-            const { findByRole, findByText } = render(
+            const { findByRole, findByText } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="Click" />
                     <Label.Root label="Text" />
@@ -93,223 +154,26 @@ describe("Queries", () => {
         });
     });
 
-    describe("queryByRole", () => {
-        it("returns null when element not found with name filter", () => {
-            const { container } = render(<Label.Root label="No buttons matching" />);
-
-            const result = queryByRole(container, AccessibleRole.BUTTON, { name: "NonExistent" });
-            expect(result).toBeNull();
-        });
-
-        it("returns element when found", () => {
-            const { container } = render(<Button label="Found" />);
-
-            const result = queryByRole(container, AccessibleRole.BUTTON, { name: "Found" });
-            expect(result).toBeDefined();
-        });
-
-        it("throws when multiple elements with same name found", () => {
-            const { container } = render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Button label="Same" />
-                    <Button label="Same" />
-                </Box>,
-            );
-
-            expect(() => queryByRole(container, AccessibleRole.BUTTON, { name: "Same" })).toThrow(/Found \d+ elements/);
-        });
-    });
-
-    describe("queryByText", () => {
-        it("returns null when text not found", () => {
-            const { container } = render(<Label.Root label="Different" />);
-
-            const result = queryByText(container, "NotFound");
-            expect(result).toBeNull();
-        });
-
-        it("returns element when found", () => {
-            const { container } = render(<Label.Root label="Found Text" />);
-
-            const result = queryByText(container, "Found Text");
-            expect(result).toBeDefined();
-        });
-    });
-
-    describe("queryByLabelText", () => {
-        it("returns null when label not found", () => {
-            const { container } = render(<Button label="Different" />);
-
-            const result = queryByLabelText(container, "NotFound");
-            expect(result).toBeNull();
-        });
-
-        it("returns element when found", () => {
-            const { container } = render(<Button label="Found Label" />);
-
-            const result = queryByLabelText(container, "Found Label");
-            expect(result).toBeDefined();
-        });
-    });
-
-    describe("getAllByRole", () => {
-        it("returns all matching elements with name filter", () => {
-            const { container } = render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Button label="Action" />
-                    <Button label="Action" />
-                    <Button label="Action" />
-                    <Button label="Different" />
-                </Box>,
-            );
-
-            const buttons = getAllByRole(container, AccessibleRole.BUTTON, { name: "Action" });
-            expect(buttons.length).toBe(3);
-        });
-
-        it("throws when no elements match name filter", () => {
-            const { container } = render(<Button label="Existing" />);
-
-            expect(() => getAllByRole(container, AccessibleRole.BUTTON, { name: "NonExistent" })).toThrow(
-                /Unable to find any elements/,
-            );
-        });
-    });
-
-    describe("getAllByText", () => {
-        it("returns all matching elements", () => {
-            const { container } = render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="Same" />
-                    <Label.Root label="Same" />
-                </Box>,
-            );
-
-            const labels = getAllByText(container, "Same");
-            expect(labels.length).toBe(2);
-        });
-    });
-
-    describe("getAllByLabelText", () => {
-        it("returns all matching elements", () => {
-            const { container } = render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Button label="Action" />
-                    <Button label="Action" />
-                </Box>,
-            );
-
-            const buttons = getAllByLabelText(container, "Action");
-            expect(buttons.length).toBe(2);
-        });
-    });
-
-    describe("queryAllByRole", () => {
-        it("returns empty array when no elements match name filter", () => {
-            const { container } = render(<Button label="Existing" />);
-
-            const result = queryAllByRole(container, AccessibleRole.BUTTON, { name: "NonExistent" });
-            expect(result).toEqual([]);
-        });
-
-        it("returns all matching elements with name filter", () => {
-            const { container } = render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Button label="Action" />
-                    <Button label="Action" />
-                    <Button label="Different" />
-                </Box>,
-            );
-
-            const result = queryAllByRole(container, AccessibleRole.BUTTON, { name: "Action" });
-            expect(result.length).toBe(2);
-        });
-    });
-
-    describe("queryAllByText", () => {
-        it("returns empty array when no elements found", () => {
-            const { container } = render(<Label.Root label="Different" />);
-
-            const result = queryAllByText(container, "NotFound");
-            expect(result).toEqual([]);
-        });
-    });
-
-    describe("queryAllByLabelText", () => {
-        it("returns empty array when no elements found", () => {
-            const { container } = render(<Button label="Different" />);
-
-            const result = queryAllByLabelText(container, "NotFound");
-            expect(result).toEqual([]);
-        });
-    });
-
-    describe("getByTestId", () => {
-        it("finds element by test id (widget name)", () => {
-            const { container } = render(<Button label="Test" name="test-button" />);
-
-            const button = getByTestId(container, "test-button");
-            expect(button).toBeDefined();
-        });
-
-        it("throws when test id not found", () => {
-            const { container } = render(<Button label="Test" />);
-
-            expect(() => getByTestId(container, "nonexistent")).toThrow(/Unable to find any elements with test id/);
-        });
-    });
-
-    describe("queryByTestId", () => {
-        it("returns null when test id not found", () => {
-            const { container } = render(<Button label="Test" />);
-
-            const result = queryByTestId(container, "nonexistent");
-            expect(result).toBeNull();
-        });
-
-        it("returns element when found", () => {
-            const { container } = render(<Button label="Test" name="my-button" />);
-
-            const result = queryByTestId(container, "my-button");
-            expect(result).toBeDefined();
-        });
-    });
-
-    describe("getAllByTestId", () => {
-        it("returns all matching elements", () => {
-            const { container } = render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Button label="One" name="action-btn" />
-                    <Button label="Two" name="action-btn" />
-                </Box>,
-            );
-
-            const buttons = getAllByTestId(container, "action-btn");
-            expect(buttons.length).toBe(2);
-        });
-    });
-
-    describe("queryAllByTestId", () => {
-        it("returns empty array when no elements found", () => {
-            const { container } = render(<Button label="Test" />);
-
-            const result = queryAllByTestId(container, "nonexistent");
-            expect(result).toEqual([]);
-        });
-    });
-
     describe("findByTestId", () => {
-        it("finds element by test id asynchronously", async () => {
-            const { container } = render(<Button label="Async" name="async-test" />);
+        it("finds element by test id (widget name)", async () => {
+            const { container } = await render(<Button label="Test" name="test-button" />);
 
-            const button = await findByTestId(container, "async-test");
+            const button = await findByTestId(container, "test-button");
             expect(button).toBeDefined();
+        });
+
+        it("throws when test id not found", async () => {
+            const { container } = await render(<Button label="Test" />);
+
+            await expect(findByTestId(container, "nonexistent")).rejects.toThrow(
+                /Unable to find any elements with test id/,
+            );
         });
     });
 
     describe("findAllByTestId", () => {
         it("finds all elements by test id asynchronously", async () => {
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="One" name="item" />
                     <Button label="Two" name="item" />
@@ -319,36 +183,43 @@ describe("Queries", () => {
             const buttons = await findAllByTestId(container, "item");
             expect(buttons.length).toBe(2);
         });
+
+        it("throws when no elements found", async () => {
+            const { container } = await render(<Button label="Test" />);
+
+            await expect(findAllByTestId(container, "nonexistent")).rejects.toThrow(
+                /Unable to find any elements with test id/,
+            );
+        });
     });
 
     describe("TextMatchOptions", () => {
-        it("supports exact: false for partial matching", () => {
-            const { container } = render(<Label.Root label="Hello World" />);
+        it("supports exact: false for partial matching", async () => {
+            await render(<Label.Root label="Hello World" />);
 
-            const result = queryByText(container, "Hello", { exact: false });
+            const result = await screen.findByText("Hello", { exact: false });
             expect(result).toBeDefined();
         });
 
-        it("supports exact: true (default) for exact matching", () => {
-            const { container } = render(<Label.Root label="Hello World" />);
+        it("supports exact: true (default) for exact matching", async () => {
+            await render(<Label.Root label="Hello World" />);
 
-            const result = queryByText(container, "Hello", { exact: true });
-            expect(result).toBeNull();
+            await expect(screen.findByText("Hello", { exact: true })).rejects.toThrow(/Unable to find any elements/);
         });
 
-        it("supports custom normalizer", () => {
-            const { container } = render(<Label.Root label="  Spaced  Text  " />);
+        it("supports custom normalizer", async () => {
+            await render(<Label.Root label="  Spaced  Text  " />);
 
-            const result = queryByText(container, "Spaced Text", {
+            const result = await screen.findByText("Spaced Text", {
                 normalizer: (text) => text.trim().replace(/\s+/g, " "),
             });
             expect(result).toBeDefined();
         });
 
-        it("supports regex matching", () => {
-            const { container } = render(<Label.Root label="Count: 42" />);
+        it("supports regex matching", async () => {
+            await render(<Label.Root label="Count: 42" />);
 
-            const result = queryByText(container, /Count: \d+/);
+            const result = await screen.findByText(/Count: \d+/);
             expect(result).toBeDefined();
         });
     });

@@ -5,13 +5,13 @@ import { cleanup, render, screen } from "../src/index.js";
 import { userEvent } from "../src/user-event.js";
 
 describe("userEvent", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     describe("click", () => {
         it("emits clicked signal on button widget", async () => {
-            render(<Button label="Click Me" />);
+            await render(<Button label="Click Me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click Me" });
 
@@ -24,7 +24,7 @@ describe("userEvent", () => {
         });
 
         it("can emit click signal on multiple buttons", async () => {
-            render(
+            await render(
                 <Box spacing={10} orientation={Orientation.VERTICAL}>
                     <Button label="Button 1" />
                     <Button label="Button 2" />
@@ -42,7 +42,7 @@ describe("userEvent", () => {
         });
 
         it("can emit multiple clicks on same button", async () => {
-            render(<Button label="Multi Click" />);
+            await render(<Button label="Multi Click" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Multi Click" });
 
@@ -56,7 +56,7 @@ describe("userEvent", () => {
 
     describe("type", () => {
         it("throws when element has no setText method", async () => {
-            render(<Label.Root label="Not editable" />);
+            await render(<Label.Root label="Not editable" />);
 
             const label = await screen.findByText("Not editable");
 
@@ -66,7 +66,7 @@ describe("userEvent", () => {
         });
 
         it("throws for button elements", async () => {
-            render(<Button label="Not Editable" />);
+            await render(<Button label="Not Editable" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Not Editable" });
 
@@ -78,7 +78,7 @@ describe("userEvent", () => {
 
     describe("dblClick", () => {
         it("emits two clicked signals on button widget", async () => {
-            render(<Button label="Double Click Me" />);
+            await render(<Button label="Double Click Me" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Double Click Me" });
             await userEvent.dblClick(button);
@@ -86,7 +86,7 @@ describe("userEvent", () => {
         });
 
         it("can emit double click on multiple buttons", async () => {
-            render(
+            await render(
                 <Box spacing={10} orientation={Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
@@ -106,7 +106,7 @@ describe("userEvent", () => {
 
     describe("clear", () => {
         it("throws when element has no setText method", async () => {
-            render(<Label.Root label="Not clearable" />);
+            await render(<Label.Root label="Not clearable" />);
 
             const label = await screen.findByText("Not clearable");
 
@@ -114,7 +114,7 @@ describe("userEvent", () => {
         });
 
         it("throws for button elements", async () => {
-            render(<Button label="Not Clearable" />);
+            await render(<Button label="Not Clearable" />);
 
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Not Clearable" });
 
@@ -133,7 +133,7 @@ describe("userEvent", () => {
         });
 
         it("instance click works like static click", async () => {
-            render(<Button label="Instance Click" />);
+            await render(<Button label="Instance Click" />);
 
             const user = userEvent.setup();
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Instance Click" });
@@ -143,7 +143,7 @@ describe("userEvent", () => {
         });
 
         it("instance dblClick works like static dblClick", async () => {
-            render(<Button label="Instance DblClick" />);
+            await render(<Button label="Instance DblClick" />);
 
             const user = userEvent.setup();
             const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Instance DblClick" });

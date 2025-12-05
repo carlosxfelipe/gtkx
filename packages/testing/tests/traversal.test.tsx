@@ -6,13 +6,13 @@ import { cleanup, render } from "../src/index.js";
 import { findAll } from "../src/traversal.js";
 
 describe("findAll", () => {
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        await cleanup();
     });
 
     describe("with Application container", () => {
         it("finds all widgets matching predicate", async () => {
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="Button 1" />
                     <Button label="Button 2" />
@@ -30,7 +30,7 @@ describe("findAll", () => {
         });
 
         it("returns empty array when no widgets with MENU role exist", async () => {
-            const { container } = render(<Label.Root label="Just a label" />);
+            const { container } = await render(<Label.Root label="Just a label" />);
 
             // Use MENU role which we know won't exist in a simple label window
             const menus = findAll(container, (node) => {
@@ -42,7 +42,7 @@ describe("findAll", () => {
         });
 
         it("finds widgets in nested hierarchy", async () => {
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Box spacing={0} orientation={Orientation.HORIZONTAL}>
                         <Button label="Deep Button" />
@@ -60,7 +60,7 @@ describe("findAll", () => {
         });
 
         it("traverses multiple windows", async () => {
-            const { container } = render(
+            const { container } = await render(
                 <>
                     <ApplicationWindow>
                         <Button label="Window 1 Button" />
@@ -82,7 +82,7 @@ describe("findAll", () => {
         });
 
         it("returns all widgets when predicate always returns true", async () => {
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Label.Root label="Label" />
                     <Button label="Button" />
@@ -97,7 +97,7 @@ describe("findAll", () => {
 
     describe("with Widget container", () => {
         it("finds widgets starting from a specific widget", async () => {
-            render(
+            await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="Outside" />
                     <Box spacing={0} orientation={Orientation.HORIZONTAL}>
@@ -107,7 +107,7 @@ describe("findAll", () => {
                 </Box>,
             );
 
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Label.Root label="Start here" />
                     <Button label="Child button" />
@@ -130,7 +130,7 @@ describe("findAll", () => {
         it("passes each widget to predicate", async () => {
             const visitedRoles: AccessibleRole[] = [];
 
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Label.Root label="Label" />
                     <Button label="Button" />
@@ -148,7 +148,7 @@ describe("findAll", () => {
         });
 
         it("can match by custom criteria", async () => {
-            const { container } = render(
+            const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Label.Root label="First Label" />
                     <Label.Root label="Second Label" />
