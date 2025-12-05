@@ -415,7 +415,11 @@ describe("React Reconciler", () => {
 
         it("handles column and row span", () => {
             const grid = createNode("Grid.Root", {}, getCurrentApp());
-            const gridChild = createNode("Grid.Child", { column: 0, row: 0, columnSpan: 2, rowSpan: 3 }, getCurrentApp());
+            const gridChild = createNode(
+                "Grid.Child",
+                { column: 0, row: 0, columnSpan: 2, rowSpan: 3 },
+                getCurrentApp(),
+            );
             const label = createNode("Label", { label: "Spanning" }, getCurrentApp());
 
             gridChild.appendChild(label);
