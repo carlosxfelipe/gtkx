@@ -63,8 +63,8 @@ const FlowBoxDemo = () => {
                         homogeneous
                     >
                         {colors.map((color, index) => (
-                            // biome-ignore lint/suspicious/noArrayIndexKey: demo
                             <Box
+                                // biome-ignore lint/suspicious/noArrayIndexKey: demo
                                 key={index}
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={0}

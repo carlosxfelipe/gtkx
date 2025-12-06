@@ -1,4 +1,4 @@
-import { wrapPtr } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { type Accessible, AccessibleRole, Button, CheckButton, Expander, Label, ToggleButton } from "@gtkx/ffi/gtk";
 import { findAll } from "./traversal.js";
@@ -27,11 +27,11 @@ const matchText = (actual: string | null, expected: string | RegExp, options?: T
     return expected.test(normalizedActual);
 };
 
-const asButton = (widget: Gtk.Widget): Button => wrapPtr(widget.ptr, Button);
-const asLabel = (widget: Gtk.Widget): Label => wrapPtr(widget.ptr, Label);
-const asCheckButton = (widget: Gtk.Widget): CheckButton => wrapPtr(widget.ptr, CheckButton);
-const asToggleButton = (widget: Gtk.Widget): ToggleButton => wrapPtr(widget.ptr, ToggleButton);
-const asExpander = (widget: Gtk.Widget): Expander => wrapPtr(widget.ptr, Expander);
+const asButton = (widget: Gtk.Widget): Button => getObject(widget.ptr, Button);
+const asLabel = (widget: Gtk.Widget): Label => getObject(widget.ptr, Label);
+const asCheckButton = (widget: Gtk.Widget): CheckButton => getObject(widget.ptr, CheckButton);
+const asToggleButton = (widget: Gtk.Widget): ToggleButton => getObject(widget.ptr, ToggleButton);
+const asExpander = (widget: Gtk.Widget): Expander => getObject(widget.ptr, Expander);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
     const accessible = widget as unknown as Accessible;

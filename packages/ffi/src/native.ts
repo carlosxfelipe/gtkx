@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
-import { createRef, start as nativeStart, stop as nativeStop } from "@gtkx/native";
+import { createRef, getObjectId, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 
-export { createRef };
+export { createRef, getObjectId };
 
 import type { ApplicationFlags } from "./generated/gio/enums.js";
 import { Application } from "./generated/gtk/application.js";
@@ -27,7 +27,7 @@ export const events = new EventEmitter<NativeEventMap>();
  * @param cls - The class whose prototype should be used
  * @returns A new instance with the pointer attached
  */
-export const wrapPtr = <T extends object>(ptr: unknown, cls: { prototype: T }): T => {
+export const getObject = <T extends object>(ptr: unknown, cls: { prototype: T }): T => {
     const instance = Object.create(cls.prototype) as T & { ptr: unknown };
     instance.ptr = ptr;
     return instance;
@@ -51,7 +51,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     const app = nativeStart(appId, flags);
-    currentApp = wrapPtr(app, Application);
+    currentApp = getObject(app, Application);
     events.emit("start");
 
     keepAlive();

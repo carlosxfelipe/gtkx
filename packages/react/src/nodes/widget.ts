@@ -1,3 +1,4 @@
+import { getObjectId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
@@ -7,12 +8,12 @@ import { OverlayNode } from "./overlay.js";
 const isFlowBox = (widget: Gtk.Widget): widget is Gtk.FlowBox => widget instanceof Gtk.FlowBox;
 
 const isFlowBoxChild = (widget: Gtk.Widget): widget is Gtk.FlowBoxChild =>
-    GObject.typeNameFromInstance(widget.ptr as number) === "GtkFlowBoxChild";
+    GObject.typeNameFromInstance(getObjectId(widget.ptr)) === "GtkFlowBoxChild";
 
 const isListBox = (widget: Gtk.Widget): widget is Gtk.ListBox => widget instanceof Gtk.ListBox;
 
 const isListBoxRow = (widget: Gtk.Widget): widget is Gtk.ListBoxRow =>
-    GObject.typeNameFromInstance(widget.ptr as number) === "GtkListBoxRow";
+    GObject.typeNameFromInstance(getObjectId(widget.ptr)) === "GtkListBoxRow";
 
 type CombinedPropHandler = {
     props: string[];

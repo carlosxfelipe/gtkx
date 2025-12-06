@@ -1,13 +1,11 @@
-import { wrapPtr } from "@gtkx/ffi";
+import { getObject, getObjectId } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import type Reconciler from "react-reconciler";
 import type { Props } from "../factory.js";
+import { createFiberRoot, updateSync } from "../flush-sync.js";
 import { Node } from "../node.js";
-
-type SetupFn = () => Gtk.Widget;
-type BindFn = (widget: Gtk.Widget, item: unknown) => void;
-type UnbindFn = (widget: Gtk.Widget) => void;
-type TeardownFn = (widget: Gtk.Widget) => void;
+import type { RenderItemFn } from "../types.js";
 
 export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
     static matches(type: string): boolean {
@@ -18,10 +16,8 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
     private selectionModel: Gtk.SingleSelection;
     private factory: Gtk.SignalListItemFactory;
     private items: unknown[] = [];
-    private setup: SetupFn | null = null;
-    private bind: BindFn | null = null;
-    private unbind: UnbindFn | null = null;
-    private teardown: TeardownFn | null = null;
+    private renderItem: RenderItemFn<unknown>;
+    private fiberRoots = new Map<number, Reconciler.FiberRoot>();
 
     constructor(type: string, props: Props, app: Gtk.Application) {
         super(type, props, app);
@@ -30,47 +26,58 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
         this.selectionModel = new Gtk.SingleSelection(this.stringList as unknown as Gio.ListModel);
         this.factory = new Gtk.SignalListItemFactory();
 
-        this.setup = props.setup as SetupFn | null;
-        this.bind = props.bind as BindFn | null;
-        this.unbind = props.unbind as UnbindFn | null;
-        this.teardown = props.teardown as TeardownFn | null;
+        this.renderItem = props.renderItem as RenderItemFn<unknown>;
 
         this.factory.connect("setup", (_self, listItemObj) => {
-            const listItem = wrapPtr(listItemObj, Gtk.ListItem);
+            const listItem = getObject(listItemObj, Gtk.ListItem);
+            const id = getObjectId(listItemObj);
 
-            if (this.setup) {
-                const widget = this.setup();
-                listItem.setChild(widget);
-            }
+            const fiberRoot = createFiberRoot();
+            this.fiberRoots.set(id, fiberRoot);
+
+            let rootWidget: Gtk.Widget | null = null;
+            const ref = (widget: Gtk.Widget | null) => {
+                if (widget && !rootWidget) {
+                    rootWidget = widget;
+                    listItem.setChild(widget);
+                }
+            };
+
+            const element = this.renderItem(null, ref);
+            updateSync(element, fiberRoot);
         });
 
         this.factory.connect("bind", (_self, listItemObj) => {
-            const listItem = wrapPtr(listItemObj, Gtk.ListItem);
+            const listItem = getObject(listItemObj, Gtk.ListItem);
+            const id = getObjectId(listItemObj);
+            const fiberRoot = this.fiberRoots.get(id);
+            if (!fiberRoot) return;
+
             const position = listItem.getPosition();
             const item = this.items[position];
-            const child = listItem.getChild();
 
-            if (this.bind && child && item !== undefined) {
-                this.bind(child, item);
-            }
+            const ref = () => {};
+            const element = this.renderItem(item ?? null, ref);
+            updateSync(element, fiberRoot);
         });
 
         this.factory.connect("unbind", (_self, listItemObj) => {
-            const listItem = wrapPtr(listItemObj, Gtk.ListItem);
-            const child = listItem.getChild();
+            const id = getObjectId(listItemObj);
+            const fiberRoot = this.fiberRoots.get(id);
+            if (!fiberRoot) return;
 
-            if (this.unbind && child) {
-                this.unbind(child);
-            }
+            const ref = () => {};
+            const element = this.renderItem(null, ref);
+            updateSync(element, fiberRoot);
         });
 
         this.factory.connect("teardown", (_self, listItemObj) => {
-            const listItem = wrapPtr(listItemObj, Gtk.ListItem);
-            const child = listItem.getChild();
+            const id = getObjectId(listItemObj);
+            const fiberRoot = this.fiberRoots.get(id);
+            if (!fiberRoot) return;
 
-            if (this.teardown && child) {
-                this.teardown(child);
-            }
+            updateSync(null, fiberRoot);
+            this.fiberRoots.delete(id);
         });
 
         this.widget.setModel(this.selectionModel);
@@ -105,25 +112,13 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
 
     protected override consumedProps(): Set<string> {
         const consumed = super.consumedProps();
-        consumed.add("setup");
-        consumed.add("bind");
-        consumed.add("unbind");
-        consumed.add("teardown");
+        consumed.add("renderItem");
         return consumed;
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.setup !== newProps.setup) {
-            this.setup = newProps.setup as SetupFn | null;
-        }
-        if (oldProps.bind !== newProps.bind) {
-            this.bind = newProps.bind as BindFn | null;
-        }
-        if (oldProps.unbind !== newProps.unbind) {
-            this.unbind = newProps.unbind as UnbindFn | null;
-        }
-        if (oldProps.teardown !== newProps.teardown) {
-            this.teardown = newProps.teardown as TeardownFn | null;
+        if (oldProps.renderItem !== newProps.renderItem) {
+            this.renderItem = newProps.renderItem as RenderItemFn<unknown>;
         }
 
         super.updateProps(oldProps, newProps);

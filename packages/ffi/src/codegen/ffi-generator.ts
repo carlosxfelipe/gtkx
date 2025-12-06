@@ -276,7 +276,7 @@ export class CodeGenerator {
     private usesWrite = false;
     private usesAlloc = false;
     private usesNativeError = false;
-    private usesWrapPtr = false;
+    private usesGetObject = false;
     private usesSignalMeta = false;
     private usedEnums = new Set<string>();
     private usedRecords = new Set<string>();
@@ -415,7 +415,7 @@ export class CodeGenerator {
         this.usesWrite = false;
         this.usesAlloc = false;
         this.usesNativeError = false;
-        this.usesWrapPtr = false;
+        this.usesGetObject = false;
         this.usesSignalMeta = false;
         this.usedEnums.clear();
         this.usedRecords.clear();
@@ -830,7 +830,7 @@ ${callArgs}
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
         const borrowed = ctor.returnType.transferOwnership !== "full";
 
-        this.usesWrapPtr = true;
+        this.usesGetObject = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${className} {
     const ptr = call(
       "${sharedLibrary}",
@@ -840,7 +840,7 @@ ${args}
       ],
       { type: "gobject", borrowed: ${borrowed} }
     );
-    return wrapPtr(ptr, ${className});
+    return getObject(ptr, ${className});
   }
 `;
     }
@@ -886,7 +886,7 @@ ${args}
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
         if (returnsOwnClass) {
-            this.usesWrapPtr = true;
+            this.usesGetObject = true;
             lines.push(`    const ptr = call(
       "${sharedLibrary}",
       "${func.cIdentifier}",
@@ -898,7 +898,7 @@ ${allArgs ? `${allArgs},` : ""}
             if (func.throws) {
                 lines.push(this.generateErrorCheck());
             }
-            lines.push(`    return wrapPtr(ptr, ${className});`);
+            lines.push(`    return getObject(ptr, ${className});`);
         } else {
             const callPrefix = func.throws
                 ? hasReturnValue
@@ -1164,11 +1164,11 @@ ${allArgs ? `${allArgs},` : ""}
         if (outputParams.length === 0) {
             if (hasMainReturn) {
                 if (needsObjectWrap) {
-                    this.usesWrapPtr = true;
+                    this.usesGetObject = true;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
                     }
-                    lines.push(`          resolve(wrapPtr(ptr, ${finishReturnType.ts}));`);
+                    lines.push(`          resolve(getObject(ptr, ${finishReturnType.ts}));`);
                 } else {
                     lines.push(`          resolve(result);`);
                 }
@@ -1179,13 +1179,13 @@ ${allArgs ? `${allArgs},` : ""}
             const resolveFields: string[] = [];
             if (hasMainReturn) {
                 if (needsObjectWrap) {
-                    this.usesWrapPtr = true;
+                    this.usesGetObject = true;
                     if (isNullable) {
                         lines.push(
-                            `          const result = (ptr === null ? null : wrapPtr(ptr, ${finishReturnType.ts})) as ${finishReturnType.ts} | null;`,
+                            `          const result = (ptr === null ? null : getObject(ptr, ${finishReturnType.ts})) as ${finishReturnType.ts} | null;`,
                         );
                     } else {
-                        lines.push(`          const result = wrapPtr(ptr, ${finishReturnType.ts});`);
+                        lines.push(`          const result = getObject(ptr, ${finishReturnType.ts});`);
                     }
                 }
                 resolveFields.push("result");
@@ -1315,12 +1315,12 @@ ${allArgs ? `${allArgs},` : ""}
             if (isCyclic) {
                 lines.push(`    return { ptr } as unknown as ${baseReturnType};`);
             } else {
-                this.usesWrapPtr = true;
-                lines.push(`    return wrapPtr(ptr, ${baseReturnType});`);
+                this.usesGetObject = true;
+                lines.push(`    return getObject(ptr, ${baseReturnType});`);
             }
         } else if (needsArrayWrap && hasReturnValue) {
             const elementType = baseReturnType.slice(0, -2);
-            this.usesWrapPtr = true;
+            this.usesGetObject = true;
             lines.push(`    const ptrs = call(
       "${sharedLibrary}",
       "${method.cIdentifier}",
@@ -1336,7 +1336,7 @@ ${allArgs ? `${allArgs},` : ""}
             if (method.throws) {
                 lines.push(this.generateErrorCheck());
             }
-            lines.push(`    return ptrs.map(ptr => wrapPtr(ptr, ${elementType}));`);
+            lines.push(`    return ptrs.map(ptr => getObject(ptr, ${elementType}));`);
         } else {
             const callPrefix = method.throws
                 ? hasReturnValue
@@ -1467,7 +1467,7 @@ ${allArgs ? `${allArgs},` : ""}
         );
 
         this.usesType = true;
-        this.usesWrapPtr = true;
+        this.usesGetObject = true;
         if (signalMetadata.length > 0) {
             this.usesSignalMeta = true;
         }
@@ -1486,19 +1486,19 @@ ${allArgs ? `${allArgs},` : ""}
         const wrapperCode =
             signalMetadata.length > 0
                 ? `const wrappedHandler = (...args: unknown[]) => {
-      const self = wrapPtr(args[0], ${className});
+      const self = getObject(args[0], ${className});
       const signalArgs = args.slice(1);
       if (!meta) return handler(self, ...signalArgs);
       const wrapped = meta.params.map((m, i) => {
         if (m.getCls && signalArgs[i] != null) {
-          return wrapPtr(signalArgs[i], m.getCls());
+          return getObject(signalArgs[i], m.getCls());
         }
         return signalArgs[i];
       });
       return handler(self, ...wrapped);
     };`
                 : `const wrappedHandler = (...args: unknown[]) => {
-      const self = wrapPtr(args[0], ${className});
+      const self = getObject(args[0], ${className});
       return handler(self, ...args.slice(1));
     };`;
 
@@ -1787,7 +1787,7 @@ ${args}
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
 
-        this.usesWrapPtr = true;
+        this.usesGetObject = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${recordName} {
     const ptr = call(
       "${sharedLibrary}",
@@ -1797,7 +1797,7 @@ ${args}
       ],
       { type: "boxed", borrowed: true, innerType: "${recordName}" }
     );
-    return wrapPtr(ptr, ${recordName});
+    return getObject(ptr, ${recordName});
   }
 `;
     }
@@ -1988,7 +1988,7 @@ ${args}
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
         if (needsObjectWrap && hasReturnValue) {
-            this.usesWrapPtr = true;
+            this.usesGetObject = true;
             lines.push(`  const ptr = call("${sharedLibrary}", "${func.cIdentifier}", [
 ${allArgs ? `${allArgs},` : ""}
   ], ${this.generateTypeDescriptor(returnTypeMapping.ffi)});`);
@@ -1998,7 +1998,7 @@ ${allArgs ? `${allArgs},` : ""}
             if (isNullable) {
                 lines.push(`  if (ptr === null) return null;`);
             }
-            lines.push(`  return wrapPtr(ptr, ${baseReturnType});`);
+            lines.push(`  return getObject(ptr, ${baseReturnType});`);
         } else {
             const callPrefix = func.throws
                 ? hasReturnValue
@@ -2162,7 +2162,7 @@ ${indent}  }`;
         }
         const ffiImports: string[] = [];
         if (this.usesNativeError) ffiImports.push("NativeError");
-        if (this.usesWrapPtr) ffiImports.push("wrapPtr");
+        if (this.usesGetObject) ffiImports.push("getObject");
         if (ffiImports.length > 0) {
             lines.push(`import { ${ffiImports.join(", ")} } from "@gtkx/ffi";`);
         }

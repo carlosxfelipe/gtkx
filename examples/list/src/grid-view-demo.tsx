@@ -1,4 +1,3 @@
-import { wrapPtr } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, GridView, Label, ScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
@@ -24,21 +23,6 @@ const colors: ColorItem[] = [
     { id: 12, name: "Sun", icon: "\u2600\uFE0F" },
 ];
 
-const setupColor = (): Gtk.Label => {
-    const label = new Gtk.Label();
-    label.setCssClasses(["title-1"]);
-    label.setMarginStart(8);
-    label.setMarginEnd(8);
-    label.setMarginTop(8);
-    label.setMarginBottom(8);
-    return label;
-};
-
-const bindColor = (widget: Gtk.Widget, color: ColorItem): void => {
-    const label = wrapPtr(widget.ptr, Gtk.Label);
-    label.setLabel(`${color.icon}\n${color.name}`);
-};
-
 export const GridViewDemo = () => {
     const [items] = useState(colors);
 
@@ -59,7 +43,19 @@ export const GridViewDemo = () => {
                 wrap
             />
             <ScrolledWindow vexpand>
-                <GridView.Root setup={setupColor} bind={bindColor}>
+                <GridView.Root
+                    renderItem={(color: ColorItem | null, ref) => (
+                        <Label.Root
+                            ref={ref}
+                            label={color ? `${color.icon}\n${color.name}` : ""}
+                            cssClasses={["title-1"]}
+                            marginStart={8}
+                            marginEnd={8}
+                            marginTop={8}
+                            marginBottom={8}
+                        />
+                    )}
+                >
                     {items.map((color) => (
                         <GridView.Item key={color.id} item={color} />
                     ))}

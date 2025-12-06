@@ -1,4 +1,3 @@
-import { wrapPtr } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ListView } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
@@ -20,26 +19,6 @@ const tasks: Task[] = [
     { id: "7", title: "Ship the project", completed: false },
 ];
 
-const setupTask = (): Gtk.Label => {
-    const label = new Gtk.Label();
-    label.setHalign(Gtk.Align.START);
-    label.setMarginStart(12);
-    label.setMarginEnd(12);
-    label.setMarginTop(8);
-    label.setMarginBottom(8);
-    return label;
-};
-
-const bindTask = (widget: Gtk.Widget, task: Task): void => {
-    const label = wrapPtr(widget.ptr, Gtk.Label);
-    label.setLabel(task.title);
-    if (task.completed) {
-        label.setCssClasses(["dim-label"]);
-    } else {
-        label.setCssClasses([]);
-    }
-};
-
 const ListViewDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -57,7 +36,21 @@ const ListViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
-                    <ListView.Root setup={setupTask} bind={bindTask} vexpand>
+                    <ListView.Root
+                        vexpand
+                        renderItem={(task: Task | null, ref) => (
+                            <Label.Root
+                                ref={ref}
+                                label={task?.title ?? ""}
+                                cssClasses={task?.completed ? ["dim-label"] : []}
+                                halign={Gtk.Align.START}
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={8}
+                                marginBottom={8}
+                            />
+                        )}
+                    >
                         {tasks.map((task) => (
                             <ListView.Item key={task.id} item={task} />
                         ))}
@@ -68,7 +61,7 @@ const ListViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label.Root
-                    label="ListView uses a factory pattern for rendering items. The setup prop creates widgets once, and bind updates them with item data. This pattern ensures optimal performance with recycled widgets."
+                    label="ListView uses a renderItem prop that returns JSX for each item. The widget is created once during setup and updated with item data during bind. This pattern ensures optimal performance with recycled widgets."
                     wrap
                     cssClasses={["dim-label"]}
                 />

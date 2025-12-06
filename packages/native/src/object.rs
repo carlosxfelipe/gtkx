@@ -43,6 +43,15 @@ impl ObjectId {
             }
         })
     }
+
+    pub fn as_ptr_safe(&self) -> Option<usize> {
+        GtkThreadState::with(|state| {
+            state.object_map.get(&self.0).map(|object| match object {
+                Object::GObject(obj) => obj.as_ptr() as usize,
+                Object::Boxed(boxed) => *boxed.as_ref() as usize,
+            })
+        })
+    }
 }
 
 impl Finalize for ObjectId {

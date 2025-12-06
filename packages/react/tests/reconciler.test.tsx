@@ -1,4 +1,4 @@
-import { wrapPtr } from "@gtkx/ffi";
+import { getObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -32,12 +32,12 @@ const getChildLabels = (widget: Gtk.Widget): string[] =>
         const ptr = child.ptr;
 
         try {
-            const label = wrapPtr(ptr, Gtk.Label);
+            const label = getObject(ptr, Gtk.Label);
             return label.getLabel() ?? "";
         } catch {}
 
         try {
-            const button = wrapPtr(ptr, Gtk.Button);
+            const button = getObject(ptr, Gtk.Button);
             return button.getLabel() ?? "";
         } catch {}
 
@@ -77,7 +77,6 @@ describe("React Reconciler", () => {
             expect(widget).toBeInstanceOf(Gtk.ApplicationWindow);
             expect(widget.getTitle()).toBe("Test Window");
         });
-
     });
 
     describe("prop updates", () => {
@@ -299,7 +298,7 @@ describe("React Reconciler", () => {
             const overlay = parent.getWidget() as Gtk.Overlay;
             const mainChild = overlay.getChild();
             expect(mainChild).not.toBeNull();
-            const mainLabel = wrapPtr(assertDefined(mainChild).ptr, Gtk.Label);
+            const mainLabel = getObject(assertDefined(mainChild).ptr, Gtk.Label);
             expect(mainLabel.getLabel()).toBe("Main");
         });
 
@@ -552,13 +551,15 @@ describe("React Reconciler", () => {
     });
 
     describe("child management - ListView", () => {
-        const setup = () => new Gtk.Label();
-        const bind = (widget: Gtk.Widget, item: { id: number }) => {
-            (widget as Gtk.Label).setLabel(`Item ${item.id}`);
+        const renderItem = (item: { id: number } | null, ref: (w: Gtk.Widget | null) => void) => {
+            const label = new Gtk.Label();
+            label.setLabel(item ? `Item ${item.id}` : "");
+            ref(label);
+            return label;
         };
 
         it("adds items to list view", () => {
-            const list = createNode("ListView.Root", { setup, bind }, getCurrentApp());
+            const list = createNode("ListView.Root", { renderItem }, getCurrentApp());
             const item1 = createNode("ListView.Item", { item: { id: 1 } }, getCurrentApp());
             const item2 = createNode("ListView.Item", { item: { id: 2 } }, getCurrentApp());
             const item3 = createNode("ListView.Item", { item: { id: 3 } }, getCurrentApp());
@@ -573,7 +574,7 @@ describe("React Reconciler", () => {
         });
 
         it("removes items from list view", () => {
-            const list = createNode("ListView.Root", { setup, bind }, getCurrentApp());
+            const list = createNode("ListView.Root", { renderItem }, getCurrentApp());
             const item1 = createNode("ListView.Item", { item: { id: 1 } }, getCurrentApp());
             const item2 = createNode("ListView.Item", { item: { id: 2 } }, getCurrentApp());
 
@@ -587,7 +588,7 @@ describe("React Reconciler", () => {
         });
 
         it("inserts item before another", () => {
-            const list = createNode("ListView.Root", { setup, bind }, getCurrentApp());
+            const list = createNode("ListView.Root", { renderItem }, getCurrentApp());
             const item1 = createNode("ListView.Item", { item: { id: 1, name: "First" } }, getCurrentApp());
             const item2 = createNode("ListView.Item", { item: { id: 2, name: "Second" } }, getCurrentApp());
             const middle = createNode("ListView.Item", { item: { id: 3, name: "Middle" } }, getCurrentApp());
@@ -603,23 +604,17 @@ describe("React Reconciler", () => {
     });
 
     describe("child management - ColumnView", () => {
-        const columnSetup = () => new Gtk.Label();
-        const columnBind = (widget: Gtk.Widget, item: { name: string }) => {
-            (widget as Gtk.Label).setLabel(item.name);
+        const renderCell = (item: { name: string } | null, ref: (w: Gtk.Widget | null) => void) => {
+            const label = new Gtk.Label();
+            label.setLabel(item?.name ?? "");
+            ref(label);
+            return label;
         };
 
         it("adds columns to column view", () => {
             const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column1 = createNode(
-                "ColumnView.Column",
-                { title: "Name", setup: columnSetup, bind: columnBind },
-                getCurrentApp(),
-            );
-            const column2 = createNode(
-                "ColumnView.Column",
-                { title: "Age", setup: columnSetup, bind: columnBind },
-                getCurrentApp(),
-            );
+            const column1 = createNode("ColumnView.Column", { title: "Name", renderCell }, getCurrentApp());
+            const column2 = createNode("ColumnView.Column", { title: "Age", renderCell }, getCurrentApp());
 
             columnView.appendChild(column1);
             columnView.appendChild(column2);
@@ -631,11 +626,7 @@ describe("React Reconciler", () => {
 
         it("adds items to column view", () => {
             const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column = createNode(
-                "ColumnView.Column",
-                { title: "Name", setup: columnSetup, bind: columnBind },
-                getCurrentApp(),
-            );
+            const column = createNode("ColumnView.Column", { title: "Name", renderCell }, getCurrentApp());
             const item1 = createNode("ColumnView.Item", { item: { name: "John" } }, getCurrentApp());
             const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } }, getCurrentApp());
 
@@ -650,16 +641,8 @@ describe("React Reconciler", () => {
 
         it("removes columns from column view", () => {
             const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column1 = createNode(
-                "ColumnView.Column",
-                { title: "Name", setup: columnSetup, bind: columnBind },
-                getCurrentApp(),
-            );
-            const column2 = createNode(
-                "ColumnView.Column",
-                { title: "Age", setup: columnSetup, bind: columnBind },
-                getCurrentApp(),
-            );
+            const column1 = createNode("ColumnView.Column", { title: "Name", renderCell }, getCurrentApp());
+            const column2 = createNode("ColumnView.Column", { title: "Age", renderCell }, getCurrentApp());
 
             columnView.appendChild(column1);
             columnView.appendChild(column2);
@@ -697,7 +680,7 @@ describe("React Reconciler", () => {
             const expanderWidget = expander.getWidget() as Gtk.Expander;
             const rawChild = expanderWidget.getChild();
             expect(rawChild).not.toBeNull();
-            const child = wrapPtr(assertDefined(rawChild).ptr, Gtk.Label);
+            const child = getObject(assertDefined(rawChild).ptr, Gtk.Label);
             expect(child.getLabel()).toBe("Content");
         });
 
@@ -1402,25 +1385,25 @@ describe("React Reconciler", () => {
 
     describe("GObject introspection", () => {
         it("typeNameFromInstance works with GObject ptr", async () => {
+            const { getObjectId } = await import("@gtkx/ffi");
             const GObject = await import("@gtkx/ffi/gobject");
             const button = new Gtk.Button();
-            // The native layer now accepts GObject references where numbers are expected
-            // by extracting the raw pointer from the GObject
-            const typeName = GObject.typeNameFromInstance(button.ptr as number);
+            const typeName = GObject.typeNameFromInstance(getObjectId(button.ptr));
             expect(typeName).toBe("GtkButton");
         });
 
         it("typeNameFromInstance returns correct type for different widgets", async () => {
+            const { getObjectId } = await import("@gtkx/ffi");
             const GObject = await import("@gtkx/ffi/gobject");
 
             const label = new Gtk.Label("");
-            expect(GObject.typeNameFromInstance(label.ptr as number)).toBe("GtkLabel");
+            expect(GObject.typeNameFromInstance(getObjectId(label.ptr))).toBe("GtkLabel");
 
             const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
-            expect(GObject.typeNameFromInstance(box.ptr as number)).toBe("GtkBox");
+            expect(GObject.typeNameFromInstance(getObjectId(box.ptr))).toBe("GtkBox");
 
             const entry = new Gtk.Entry();
-            expect(GObject.typeNameFromInstance(entry.ptr as number)).toBe("GtkEntry");
+            expect(GObject.typeNameFromInstance(getObjectId(entry.ptr))).toBe("GtkEntry");
         });
     });
 });

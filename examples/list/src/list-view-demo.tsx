@@ -1,4 +1,3 @@
-import { wrapPtr } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ListView, ScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
@@ -20,28 +19,6 @@ const initialTasks: Task[] = [
     { id: 8, title: "Celebrate success", completed: false },
 ];
 
-const setupTask = (): Gtk.Label => {
-    const label = new Gtk.Label();
-    label.setHalign(Gtk.Align.START);
-    label.setMarginStart(8);
-    label.setMarginEnd(8);
-    label.setMarginTop(4);
-    label.setMarginBottom(4);
-    return label;
-};
-
-const bindTask = (widget: Gtk.Widget, task: Task): void => {
-    const label = wrapPtr(widget.ptr, Gtk.Label);
-    const prefix = task.completed ? "[x] " : "[ ] ";
-    label.setLabel(prefix + task.title);
-
-    if (task.completed) {
-        label.setCssClasses(["dim-label"]);
-    } else {
-        label.setCssClasses([]);
-    }
-};
-
 export const ListViewDemo = () => {
     const [tasks] = useState(initialTasks);
 
@@ -62,7 +39,20 @@ export const ListViewDemo = () => {
                 wrap
             />
             <ScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <ListView.Root setup={setupTask} bind={bindTask}>
+                <ListView.Root
+                    renderItem={(task: Task | null, ref) => (
+                        <Label.Root
+                            ref={ref}
+                            label={task ? (task.completed ? "[x] " : "[ ] ") + task.title : ""}
+                            cssClasses={task?.completed ? ["dim-label"] : []}
+                            halign={Gtk.Align.START}
+                            marginStart={8}
+                            marginEnd={8}
+                            marginTop={4}
+                            marginBottom={4}
+                        />
+                    )}
+                >
                     {tasks.map((task) => (
                         <ListView.Item key={task.id} item={task} />
                     ))}

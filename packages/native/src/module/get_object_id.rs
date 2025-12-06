@@ -1,0 +1,26 @@
+use std::sync::mpsc;
+
+use gtk4::glib;
+use neon::prelude::*;
+
+use crate::object::ObjectId;
+
+pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
+
+    let (tx, rx) = mpsc::channel::<Option<usize>>();
+    let id = *object_id.as_inner();
+
+    glib::idle_add_once(move || {
+        tx.send(id.as_ptr_safe()).unwrap();
+    });
+
+    let ptr = rx
+        .recv()
+        .or_else(|err| cx.throw_error(format!("Error receiving pointer: {err}")))?;
+
+    match ptr {
+        Some(p) => Ok(cx.number(p as f64)),
+        None => cx.throw_error("Object has been garbage collected"),
+    }
+}

@@ -9,7 +9,7 @@ mod trampolines;
 mod types;
 mod value;
 
-use module::{alloc, call, read, start, stop, write};
+use module::{alloc, call, get_object_id, read, start, stop, write};
 use neon::prelude::*;
 
 #[neon::main]
@@ -20,5 +20,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("read", read)?;
     cx.export_function("write", write)?;
     cx.export_function("alloc", alloc)?;
+    cx.export_function("getObjectId", get_object_id)?;
     Ok(())
 }
