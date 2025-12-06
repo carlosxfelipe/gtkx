@@ -26,9 +26,7 @@ export interface RenderOptions {
     wrapper?: ComponentType<{ children: ReactNode }>;
 }
 
-export interface RenderResult {
-    container: Gtk.Application;
-
+export interface BoundQueries {
     findByRole: (role: AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
     findByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     findByText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget>;
@@ -38,6 +36,10 @@ export interface RenderResult {
     findAllByLabelText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     findAllByText: (text: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     findAllByTestId: (testId: string | RegExp, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+}
+
+export interface RenderResult extends BoundQueries {
+    container: Gtk.Application;
 
     unmount: () => Promise<void>;
     rerender: (element: ReactNode) => Promise<void>;

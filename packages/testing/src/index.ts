@@ -12,6 +12,7 @@ export {
 export { cleanup, render, teardown } from "./render.js";
 export { screen } from "./screen.js";
 export type {
+    BoundQueries,
     ByRoleOptions,
     RenderOptions,
     RenderResult,
@@ -21,3 +22,4 @@ export type {
 export type { UserEventInstance, UserEventOptions } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
+export { within } from "./within.js";

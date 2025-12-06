@@ -225,6 +225,62 @@ await waitForElementToBeRemoved(loader);
 const message = await screen.findByText("Loading complete");
 ```
 
+## Scoped Queries with `within`
+
+Use `within` to scope queries to a specific container element. This is useful when you have multiple similar elements and need to query within a specific section:
+
+```tsx
+import { within } from "@gtkx/testing";
+
+// Find a dialog and query within it
+const dialog = await screen.findByRole(AccessibleRole.DIALOG);
+const { findByRole, findByText } = within(dialog);
+
+// These queries only search within the dialog
+const confirmButton = await findByRole(AccessibleRole.BUTTON, { name: "Confirm" });
+const message = await findByText("Are you sure?");
+```
+
+### Nested Containers
+
+You can chain `within` calls to query deeply nested elements:
+
+```tsx
+const sidebar = await screen.findByTestId("sidebar");
+const { findByTestId } = within(sidebar);
+
+const userSection = await findByTestId("user-section");
+const { findByText } = within(userSection);
+
+const username = await findByText("John Doe");
+```
+
+### Comparing Scoped vs Global Queries
+
+```tsx
+// Render a UI with multiple sections
+await render(
+  <Box>
+    <Box name="section-a">
+      <Button label="Save" />
+    </Box>
+    <Box name="section-b">
+      <Button label="Save" />
+    </Box>
+  </Box>
+);
+
+// Global query finds all matching elements
+const allSaveButtons = await screen.findAllByText("Save");
+// Returns 2 buttons
+
+// Scoped query finds only elements within the container
+const sectionA = await screen.findByTestId("section-a");
+const { findAllByText } = within(sectionA);
+const sectionASaveButtons = await findAllByText("Save");
+// Returns 1 button
+```
+
 ## Complete Example
 
 Here's a full test for a counter component:
@@ -436,6 +492,12 @@ await screen.findByRole(AccessibleRole.BUTTON, {
 | `fireEvent.activate(element)` | Fire "activate" signal |
 | `fireEvent.toggled(element)` | Fire "toggled" signal |
 | `fireEvent.changed(element)` | Fire "changed" signal |
+
+### Scoped Queries
+
+| Function | Description |
+|----------|-------------|
+| `within(container)` | Returns query functions scoped to a container element |
 
 ### Async Utilities
 
