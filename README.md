@@ -68,7 +68,7 @@ export const App = () => {
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+      <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
         <Label.Root label={`Count: ${count}`} />
         <Button
           label="Increment"

@@ -154,6 +154,7 @@ export class JsxGenerator {
             this.generateCommonTypes(widgetClass),
             widgetPropsInterfaces,
             this.generateConstructorArgsMetadata(widgets),
+            this.generatePropSettersMap(widgets),
             this.generateSetterGetterMap(widgets),
             this.generateExports(widgets, containerMetadata),
             this.generateJsxNamespace(widgets, containerMetadata),
@@ -494,6 +495,34 @@ ${widgetPropsContent}
         return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {\n${entries.join(",\n")},\n};\n`;
     }
 
+    private generatePropSettersMap(widgets: GirClass[]): string {
+        const widgetEntries: string[] = [];
+
+        for (const widget of widgets) {
+            const propSetterPairs: string[] = [];
+            const allProps = this.collectAllProperties(widget);
+
+            for (const prop of allProps) {
+                if (prop.setter) {
+                    const propName = toCamelCase(prop.name);
+                    const setterName = toCamelCase(prop.setter);
+                    propSetterPairs.push(`"${propName}": "${setterName}"`);
+                }
+            }
+
+            if (propSetterPairs.length > 0) {
+                const widgetName = toPascalCase(widget.name);
+                widgetEntries.push(`\t${widgetName}: { ${propSetterPairs.join(", ")} }`);
+            }
+        }
+
+        if (widgetEntries.length === 0) {
+            return `export const PROP_SETTERS: Record<string, Record<string, string>> = {};\n`;
+        }
+
+        return `export const PROP_SETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
+    }
+
     private generateSetterGetterMap(widgets: GirClass[]): string {
         const widgetEntries: string[] = [];
 
@@ -522,8 +551,8 @@ ${widgetPropsContent}
         return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
     }
 
-    private collectAllProperties(widget: GirClass): { setter?: string; getter?: string }[] {
-        const props: { setter?: string; getter?: string }[] = [];
+    private collectAllProperties(widget: GirClass): { name: string; setter?: string; getter?: string }[] {
+        const props: { name: string; setter?: string; getter?: string }[] = [];
         const seen = new Set<string>();
 
         let current: GirClass | undefined = widget;
@@ -531,7 +560,7 @@ ${widgetPropsContent}
             for (const prop of current.properties) {
                 if (!seen.has(prop.name)) {
                     seen.add(prop.name);
-                    props.push({ setter: prop.setter, getter: prop.getter });
+                    props.push({ name: prop.name, setter: prop.setter, getter: prop.getter });
                 }
             }
 
@@ -541,7 +570,7 @@ ${widgetPropsContent}
                     for (const prop of iface.properties) {
                         if (!seen.has(prop.name)) {
                             seen.add(prop.name);
-                            props.push({ setter: prop.setter, getter: prop.getter });
+                            props.push({ name: prop.name, setter: prop.setter, getter: prop.getter });
                         }
                     }
                 }

@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props, ROOT_NODE_CONTAINER } from "./factory.js";
-import { CONSTRUCTOR_PARAMS, SETTER_GETTERS } from "./generated/jsx.js";
+import { CONSTRUCTOR_PARAMS, PROP_SETTERS, SETTER_GETTERS } from "./generated/jsx.js";
 import { isAppendable, isRemovable, isSingleChild } from "./predicates.js";
 
 type WidgetConstructor = new (...args: unknown[]) => Gtk.Widget;
@@ -180,9 +180,10 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
     }
 
     protected setProperty(widget: Gtk.Widget, key: string, value: unknown): void {
-        const setterName = `set${key.charAt(0).toUpperCase()}${key.slice(1)}`;
-        const setter = widget[setterName as keyof typeof widget];
+        const setterName = PROP_SETTERS[this.widgetType]?.[key];
+        if (!setterName) return;
 
+        const setter = widget[setterName as keyof typeof widget];
         if (typeof setter !== "function") return;
 
         const getterName = SETTER_GETTERS[this.widgetType]?.[setterName];
