@@ -12,7 +12,7 @@ pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let id = *object_id.as_inner();
 
     glib::idle_add_once(move || {
-        tx.send(id.as_ptr_safe()).unwrap();
+        let _ = tx.send(id.try_as_ptr());
     });
 
     let ptr = rx

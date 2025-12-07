@@ -14,6 +14,7 @@ use crate::{
     cif,
     state::GtkThreadState,
     types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, Type},
+    uv,
     value::Value,
 };
 
@@ -26,18 +27,12 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let js_result_type = cx.argument::<JsObject>(3)?;
     let args = Arg::from_js_array(&mut cx, js_args)?;
     let result_type = Type::from_js_value(&mut cx, js_result_type.upcast())?;
-
-    let has_refs = args
-        .iter()
-        .any(|arg| matches!(arg.value, crate::value::Value::Ref(_)));
-
+    let has_refs = args.iter().any(|arg| matches!(arg.value, Value::Ref(_)));
     let is_void = matches!(result_type, Type::Undefined | Type::Null);
 
     if is_void && !has_refs {
         glib::idle_add_once(move || {
-            if let Err(err) = handle_call(library_name, symbol_name, args, result_type) {
-                eprintln!("Error during void FFI call: {err}");
-            }
+            let _ = handle_call(library_name, symbol_name, args, result_type);
         });
 
         return Ok(cx.undefined().upcast());
@@ -46,14 +41,15 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
 
     glib::idle_add_once(move || {
-        tx.send(handle_call(library_name, symbol_name, args, result_type))
-            .unwrap();
+        let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
     });
 
-    let (value, ref_updates) = rx
-        .recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving function call result: {err}")))?
-        .or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
+    let (value, ref_updates) = uv::wait_for_result(
+        uv::get_event_loop(&cx),
+        &rx,
+        "GTK thread disconnected while waiting for call result",
+    )
+    .or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
 
     for (js_obj, new_value) in ref_updates {
         let js_obj = js_obj.to_inner(&mut cx);

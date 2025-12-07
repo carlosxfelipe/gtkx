@@ -2,6 +2,7 @@ import { getCurrentApp } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import ReactReconciler from "react-reconciler";
+import { beginCommit, endCommit } from "./batch.js";
 import { createNode, type Props, type ROOT_NODE_CONTAINER } from "./factory.js";
 import type { Node } from "./node.js";
 
@@ -72,7 +73,9 @@ class Reconciler {
             getRootHostContext: () => ({}),
             getChildHostContext: (parentHostContext) => parentHostContext,
             shouldSetTextContent: () => false,
-            createInstance: (type, props) => createNode(type, props, getCurrentApp()),
+            createInstance: (type, props) => {
+                return createNode(type, props, getCurrentApp());
+            },
             createTextInstance: (text) => createNode("Label.Root", { label: text }, getCurrentApp()),
             appendInitialChild: (parent, child) => parent.appendChild(child),
             finalizeInitialChildren: () => true,
@@ -97,8 +100,13 @@ class Reconciler {
                 const parent = this.createNodeFromContainer(container);
                 parent.insertBefore(child, beforeChild);
             },
-            prepareForCommit: () => null,
-            resetAfterCommit: () => {},
+            prepareForCommit: () => {
+                beginCommit();
+                return null;
+            },
+            resetAfterCommit: () => {
+                endCommit();
+            },
             commitTextUpdate: (textInstance, oldText, newText) => {
                 textInstance.updateProps({ label: oldText }, { label: newText });
             },

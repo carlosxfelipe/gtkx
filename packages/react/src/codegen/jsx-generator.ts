@@ -400,13 +400,10 @@ ${widgetPropsContent}
             lines.push("");
             lines.push(`\t/**`);
             lines.push(`\t * Render function for list items.`);
-            lines.push(`\t * Called with null during setup/unbind and with the actual item during bind.`);
-            lines.push(`\t * The ref callback must be attached to the root widget to set it as the list item's child.`);
+            lines.push(`\t * Called with null during setup (for loading state) and with the actual item during bind.`);
             lines.push(`\t */`);
             lines.push(`\t// biome-ignore lint/suspicious/noExplicitAny: allows typed renderItem callbacks`);
-            lines.push(
-                `\trenderItem: (item: any, ref: import("react").RefCallback<Gtk.Widget>) => import("react").ReactElement;`,
-            );
+            lines.push(`\trenderItem: (item: any) => import("react").ReactElement;`);
         }
 
         if (isDropDownWidget(widget.name)) {

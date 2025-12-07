@@ -10,7 +10,7 @@ exclude = ["index.node"]
 crate-type = ["cdylib"]
 
 [dependencies]
-neon = "1.1.1"
+neon = { version = "1.1.1", features = ["sys"] }
 gtk4 = "0.10.3"
 libloading = "0.9.0"
 libffi = "5.0.0"

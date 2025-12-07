@@ -44,7 +44,7 @@ impl ObjectId {
         })
     }
 
-    pub fn as_ptr_safe(&self) -> Option<usize> {
+    pub fn try_as_ptr(&self) -> Option<usize> {
         GtkThreadState::with(|state| {
             state.object_map.get(&self.0).map(|object| match object {
                 Object::GObject(obj) => obj.as_ptr() as usize,

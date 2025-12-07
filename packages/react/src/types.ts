@@ -1,5 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-import type { ReactElement, ReactNode, RefCallback } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export interface SlotProps {
     children?: ReactNode;
@@ -18,21 +17,13 @@ export interface GridChildProps extends SlotProps {
 
 /**
  * Render function for ListView/GridView items.
- * Called with null during setup/unbind and with the actual item during bind.
- * The ref callback must be attached to the root widget to set it as the list item's child.
+ * Called with null during setup (for loading state) and with the actual item during bind.
  */
-export type RenderItemFn<T> = (item: T | null, ref: RefCallback<Gtk.Widget>) => ReactElement;
+export type RenderItemFn<T> = (item: T | null) => ReactElement;
 
 export interface ListViewRenderProps<T = unknown> {
     renderItem: RenderItemFn<T>;
 }
-
-/**
- * Render function for ColumnView cells.
- * Called with null during setup/unbind and with the actual item during bind.
- * The ref callback must be attached to the root widget to set it as the cell's child.
- */
-export type RenderCellFn<T> = (item: T | null, ref: RefCallback<Gtk.Widget>) => ReactElement;
 
 export interface ColumnViewColumnProps {
     title?: string;
@@ -40,7 +31,7 @@ export interface ColumnViewColumnProps {
     resizable?: boolean;
     fixedWidth?: number;
     // biome-ignore lint/suspicious/noExplicitAny: allows typed renderCell callbacks in JSX
-    renderCell: (item: any, ref: RefCallback<Gtk.Widget>) => ReactElement;
+    renderCell: (item: any) => ReactElement;
 }
 
 export interface NotebookPageProps extends SlotProps {

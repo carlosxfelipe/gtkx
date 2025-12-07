@@ -44,9 +44,8 @@ export const GridViewDemo = () => {
             />
             <ScrolledWindow vexpand>
                 <GridView.Root
-                    renderItem={(color: ColorItem | null, ref) => (
+                    renderItem={(color: ColorItem | null) => (
                         <Label.Root
-                            ref={ref}
                             label={color ? `${color.icon}\n${color.name}` : ""}
                             cssClasses={["title-1"]}
                             marginStart={8}

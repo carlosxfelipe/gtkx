@@ -2,8 +2,8 @@ import { getCurrentApp, start, stop } from "@gtkx/ffi";
 import type React from "react";
 import type Reconciler from "react-reconciler";
 import { afterEach, beforeAll } from "vitest";
+import { endCommit } from "../src/batch.js";
 import { ROOT_NODE_CONTAINER } from "../src/factory.js";
-import { updateSync } from "../src/flush-sync.js";
 import { reconciler } from "../src/reconciler.js";
 
 export { getCurrentApp };
@@ -14,32 +14,34 @@ let container: Reconciler.FiberRoot | null = null;
 
 const getInstance = () => reconciler.getInstance();
 
+type ReconcilerWithFlushSync = { flushSyncFromReconciler: (fn: () => void) => void };
+
+const renderSync = (element: React.ReactNode, fiberRoot: Reconciler.FiberRoot): void => {
+    const instance = getInstance();
+    const instanceAny = instance as unknown as ReconcilerWithFlushSync;
+    instanceAny.flushSyncFromReconciler(() => {
+        instance.updateContainer(element, fiberRoot, null, () => {});
+    });
+    instance.flushPassiveEffects();
+};
+
 export const render = (element: React.ReactNode): void => {
     if (!container) {
         throw new Error("Test container not initialized. Call setupTests() in your test file.");
     }
-    updateSync(element, container);
+    renderSync(element, container);
 };
 
 export const flushSync = (fn: () => void): void => {
     const instance = getInstance();
-    const instanceAny = instance as unknown as Record<string, unknown>;
-
-    if (typeof instanceAny.flushSync === "function") {
-        (instanceAny.flushSync as (fn: () => void) => void)(fn);
-    } else {
-        fn();
-        if (typeof instanceAny.flushSyncWork === "function") {
-            (instanceAny.flushSyncWork as () => void)();
-        }
-    }
-
+    const instanceAny = instance as unknown as ReconcilerWithFlushSync;
+    instanceAny.flushSyncFromReconciler(fn);
     instance.flushPassiveEffects();
 };
 
 const cleanup = (): void => {
     if (container) {
-        updateSync(null, container);
+        renderSync(null, container);
     }
 };
 
@@ -65,6 +67,7 @@ export const setupTests = () => {
     });
 
     afterEach(() => {
+        endCommit();
         cleanup();
     });
 };

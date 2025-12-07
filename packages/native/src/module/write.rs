@@ -22,8 +22,7 @@ pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
     glib::idle_add_once(move || {
-        tx.send(handle_write(object_id, &type_, offset, &value))
-            .unwrap();
+        let _ = tx.send(handle_write(object_id, &type_, offset, &value));
     });
 
     rx.recv()

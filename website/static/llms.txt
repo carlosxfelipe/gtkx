@@ -288,7 +288,6 @@ GTKX provides virtualized list components for large datasets:
 ### ListView
 
 ```tsx
-import type { RefCallback } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ListView, Label, ScrolledWindow } from "@gtkx/react";
 
@@ -301,9 +300,8 @@ const users: User[] = [/* ... */];
 
 <ScrolledWindow vexpand>
   <ListView.Root
-    renderItem={(user: User | null, ref: RefCallback<Gtk.Widget>) => (
+    renderItem={(user: User | null) => (
       <Label.Root
-        ref={ref}
         label={user?.name ?? ""}
         halign={Gtk.Align.START}
       />
@@ -317,8 +315,7 @@ const users: User[] = [/* ... */];
 ```
 
 The `renderItem` function receives:
-- `item`: The data item, or `null` during setup/unbind phases
-- `ref`: A ref callback that must be attached to the root widget
+- `item`: The data item to render, or `null` during setup (for loading/placeholder state)
 
 ### GridView
 
@@ -326,8 +323,8 @@ Grid layout with automatic wrapping:
 
 ```tsx
 <GridView.Root
-  renderItem={(photo: Photo | null, ref: RefCallback<Gtk.Widget>) => (
-    <Label.Root ref={ref} label={photo?.title ?? ""} />
+  renderItem={(photo: Photo | null) => (
+    <Label.Root label={photo?.title ?? ""} />
   )}
 >
   {photos.map(photo => (

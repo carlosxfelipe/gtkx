@@ -21,7 +21,7 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<Value>>();
 
     glib::idle_add_once(move || {
-        tx.send(handle_read(object_id, &type_, offset)).unwrap();
+        let _ = tx.send(handle_read(object_id, &type_, offset));
     });
 
     let value = rx

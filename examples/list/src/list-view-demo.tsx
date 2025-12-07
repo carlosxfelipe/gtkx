@@ -40,9 +40,8 @@ export const ListViewDemo = () => {
             />
             <ScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <ListView.Root
-                    renderItem={(task: Task | null, ref) => (
+                    renderItem={(task: Task | null) => (
                         <Label.Root
-                            ref={ref}
                             label={task ? (task.completed ? "[x] " : "[ ] ") + task.title : ""}
                             cssClasses={task?.completed ? ["dim-label"] : []}
                             halign={Gtk.Align.START}

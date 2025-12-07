@@ -2,10 +2,17 @@ import { getObject, getObjectId } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
+import { scheduleFlush } from "../batch.js";
 import type { Props } from "../factory.js";
-import { createFiberRoot, updateSync } from "../flush-sync.js";
+import { createFiberRoot } from "../fiber-root.js";
 import { Node } from "../node.js";
+import { reconciler } from "../reconciler.js";
 import type { RenderItemFn } from "../types.js";
+
+interface ListItemInfo {
+    box: Gtk.Box;
+    fiberRoot: Reconciler.FiberRoot;
+}
 
 export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
     static matches(type: string): boolean {
@@ -17,7 +24,8 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
     private factory: Gtk.SignalListItemFactory;
     private items: unknown[] = [];
     private renderItem: RenderItemFn<unknown>;
-    private fiberRoots = new Map<number, Reconciler.FiberRoot>();
+    private listItemCache = new Map<number, ListItemInfo>();
+    private committedLength = 0;
 
     constructor(type: string, props: Props, app: Gtk.Application) {
         super(type, props, app);
@@ -29,76 +37,79 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
         this.renderItem = props.renderItem as RenderItemFn<unknown>;
 
         this.factory.connect("setup", (_self, listItemObj) => {
-            const listItem = getObject(listItemObj, Gtk.ListItem);
-            const id = getObjectId(listItemObj);
+            const listItem = getObject(listItemObj.ptr, Gtk.ListItem);
+            const id = getObjectId(listItemObj.ptr);
 
-            const fiberRoot = createFiberRoot();
-            this.fiberRoots.set(id, fiberRoot);
+            const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+            listItem.setChild(box);
 
-            let rootWidget: Gtk.Widget | null = null;
-            const ref = (widget: Gtk.Widget | null) => {
-                if (widget && !rootWidget) {
-                    rootWidget = widget;
-                    listItem.setChild(widget);
-                }
-            };
+            const fiberRoot = createFiberRoot(box);
+            this.listItemCache.set(id, { box, fiberRoot });
 
-            const element = this.renderItem(null, ref);
-            updateSync(element, fiberRoot);
+            const element = this.renderItem(null);
+            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
         this.factory.connect("bind", (_self, listItemObj) => {
-            const listItem = getObject(listItemObj, Gtk.ListItem);
-            const id = getObjectId(listItemObj);
-            const fiberRoot = this.fiberRoots.get(id);
-            if (!fiberRoot) return;
+            const listItem = getObject(listItemObj.ptr, Gtk.ListItem);
+            const id = getObjectId(listItemObj.ptr);
+            const info = this.listItemCache.get(id);
+
+            if (!info) return;
 
             const position = listItem.getPosition();
             const item = this.items[position];
-
-            const ref = () => {};
-            const element = this.renderItem(item ?? null, ref);
-            updateSync(element, fiberRoot);
+            const element = this.renderItem(item);
+            reconciler.getInstance().updateContainer(element, info.fiberRoot, null, () => {});
         });
 
         this.factory.connect("unbind", (_self, listItemObj) => {
-            const id = getObjectId(listItemObj);
-            const fiberRoot = this.fiberRoots.get(id);
-            if (!fiberRoot) return;
+            const id = getObjectId(listItemObj.ptr);
+            const info = this.listItemCache.get(id);
 
-            const ref = () => {};
-            const element = this.renderItem(null, ref);
-            updateSync(element, fiberRoot);
+            if (!info) return;
+
+            reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
         });
 
         this.factory.connect("teardown", (_self, listItemObj) => {
-            const id = getObjectId(listItemObj);
-            const fiberRoot = this.fiberRoots.get(id);
-            if (!fiberRoot) return;
+            const id = getObjectId(listItemObj.ptr);
+            const info = this.listItemCache.get(id);
 
-            updateSync(null, fiberRoot);
-            this.fiberRoots.delete(id);
+            if (info) {
+                reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
+                this.listItemCache.delete(id);
+            }
         });
 
         this.widget.setModel(this.selectionModel);
         this.widget.setFactory(this.factory);
     }
 
+    private syncStringList = (): void => {
+        const newLength = this.items.length;
+        if (newLength === this.committedLength) return;
+
+        const placeholders = Array.from({ length: newLength }, () => "");
+        this.stringList.splice(0, this.committedLength, placeholders);
+        this.committedLength = newLength;
+    };
+
     addItem(item: unknown): void {
         this.items.push(item);
-        this.stringList.append("");
+        scheduleFlush(this.syncStringList);
     }
 
     insertItemBefore(item: unknown, beforeItem: unknown): void {
         const beforeIndex = this.items.indexOf(beforeItem);
 
         if (beforeIndex === -1) {
-            this.addItem(item);
-            return;
+            this.items.push(item);
+        } else {
+            this.items.splice(beforeIndex, 0, item);
         }
 
-        this.items.splice(beforeIndex, 0, item);
-        this.stringList.splice(beforeIndex, 0, [""]);
+        scheduleFlush(this.syncStringList);
     }
 
     removeItem(item: unknown): void {
@@ -106,7 +117,7 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
 
         if (index !== -1) {
             this.items.splice(index, 1);
-            this.stringList.remove(index);
+            scheduleFlush(this.syncStringList);
         }
     }
 

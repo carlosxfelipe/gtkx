@@ -20,8 +20,7 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<ObjectId>>();
 
     glib::idle_add_once(move || {
-        tx.send(handle_alloc(size, &type_name, lib_name.as_deref()))
-            .unwrap();
+        let _ = tx.send(handle_alloc(size, &type_name, lib_name.as_deref()));
     });
 
     let object_id = rx

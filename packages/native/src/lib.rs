@@ -1,25 +1,24 @@
 mod arg;
-mod async_callback;
 mod boxed;
+mod callback;
 mod cif;
 mod module;
 mod object;
 mod state;
-mod trampolines;
 mod types;
+mod uv;
 mod value;
 
-use module::{alloc, call, get_object_id, read, start, stop, write};
 use neon::prelude::*;
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    cx.export_function("start", start)?;
-    cx.export_function("stop", stop)?;
-    cx.export_function("call", call)?;
-    cx.export_function("read", read)?;
-    cx.export_function("write", write)?;
-    cx.export_function("alloc", alloc)?;
-    cx.export_function("getObjectId", get_object_id)?;
+    cx.export_function("start", module::start)?;
+    cx.export_function("stop", module::stop)?;
+    cx.export_function("call", module::call)?;
+    cx.export_function("read", module::read)?;
+    cx.export_function("write", module::write)?;
+    cx.export_function("alloc", module::alloc)?;
+    cx.export_function("getObjectId", module::get_object_id)?;
     Ok(())
 }

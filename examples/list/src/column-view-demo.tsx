@@ -51,9 +51,8 @@ export const ColumnViewDemo = () => {
                     <ColumnView.Column
                         title="Name"
                         expand
-                        renderCell={(person: Person | null, ref) => (
+                        renderCell={(person: Person | null) => (
                             <Label.Root
-                                ref={ref}
                                 label={person?.name ?? ""}
                                 halign={Gtk.Align.START}
                                 marginStart={8}
@@ -66,9 +65,8 @@ export const ColumnViewDemo = () => {
                     <ColumnView.Column
                         title="Email"
                         expand
-                        renderCell={(person: Person | null, ref) => (
+                        renderCell={(person: Person | null) => (
                             <Label.Root
-                                ref={ref}
                                 label={person?.email ?? ""}
                                 cssClasses={["dim-label"]}
                                 halign={Gtk.Align.START}
@@ -82,9 +80,8 @@ export const ColumnViewDemo = () => {
                     <ColumnView.Column
                         title="Department"
                         fixedWidth={120}
-                        renderCell={(person: Person | null, ref) => (
+                        renderCell={(person: Person | null) => (
                             <Label.Root
-                                ref={ref}
                                 label={person?.department ?? ""}
                                 halign={Gtk.Align.START}
                                 marginStart={8}
@@ -97,11 +94,10 @@ export const ColumnViewDemo = () => {
                     <ColumnView.Column
                         title="Status"
                         fixedWidth={100}
-                        renderCell={(person: Person | null, ref) => {
+                        renderCell={(person: Person | null) => {
                             const config = person ? statusConfig[person.status] : null;
                             return (
                                 <Label.Root
-                                    ref={ref}
                                     label={config ? `${config.icon} ${config.text}` : ""}
                                     cssClasses={person?.status === "offline" ? ["dim-label"] : []}
                                     halign={Gtk.Align.START}

@@ -18,7 +18,9 @@ impl Callback {
     ) -> NeonResult<Self> {
         let js_func = value.downcast::<JsFunction, _>(cx).or_throw(cx)?;
         let js_func_root = js_func.root(cx);
-        let channel = cx.channel();
+        let mut channel = cx.channel();
+
+        channel.unref(cx);
 
         Ok(Callback::new(Arc::new(js_func_root), channel))
     }

@@ -11,8 +11,7 @@ GTKX provides virtualized list components that efficiently render large datasets
 `ListView` renders a scrollable, virtualized list of items:
 
 ```tsx
-import type { RefCallback } from "react";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ListView, Label, ScrolledWindow } from "@gtkx/react";
 
 interface User {
@@ -30,9 +29,8 @@ const users: User[] = [
 const UserList = () => (
   <ScrolledWindow vexpand>
     <ListView.Root
-      renderItem={(user: User | null, ref: RefCallback<Gtk.Widget>) => (
+      renderItem={(user: User | null) => (
         <Label.Root
-          ref={ref}
           label={user?.name ?? ""}
           halign={Gtk.Align.START}
         />
@@ -50,29 +48,23 @@ const UserList = () => (
 
 1. **`ListView.Root`** creates a `GtkListView` with a `SignalListItemFactory`
 2. **`ListView.Item`** registers each data item with the internal model
-3. **`renderItem`** is called with `null` during setup/unbind and with the actual item during bind
-4. The `ref` callback must be attached to your root widget - it's used to set the list item's child
-5. Items outside the viewport are not rendered (virtualization)
+3. **`renderItem`** is called with the item during bind to render the content
+4. Items outside the viewport are not rendered (virtualization)
 
 ### renderItem Signature
 
 ```typescript
-type RenderItemFn<T> = (
-  item: T | null,
-  ref: RefCallback<Gtk.Widget>
-) => ReactElement;
+type RenderItemFn<T> = (item: T | null) => ReactElement;
 ```
 
-- **`item`**: The data item, or `null` during setup/unbind phases
-- **`ref`**: A ref callback that must be attached to the root widget
+- **`item`**: The data item to render, or `null` during setup (for loading/placeholder state)
 
 ## GridView
 
 `GridView` renders items in a grid layout with automatic wrapping:
 
 ```tsx
-import type { RefCallback } from "react";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { GridView, Label, ScrolledWindow } from "@gtkx/react";
 
 interface Photo {
@@ -90,9 +82,8 @@ const photos: Photo[] = [
 const PhotoGrid = () => (
   <ScrolledWindow vexpand>
     <GridView.Root
-      renderItem={(photo: Photo | null, ref: RefCallback<Gtk.Widget>) => (
+      renderItem={(photo: Photo | null) => (
         <Label.Root
-          ref={ref}
           label={photo ? `${photo.emoji}\n${photo.title}` : ""}
           cssClasses={["title-1"]}
         />
@@ -234,7 +225,6 @@ const CountrySelector = () => {
 List items respond to React state changes:
 
 ```tsx
-import type { RefCallback } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ListView, Box, Button, Label, ScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
@@ -257,9 +247,8 @@ const UserListWithRemove = () => {
   return (
     <ScrolledWindow vexpand>
       <ListView.Root
-        renderItem={(user: User | null, ref: RefCallback<Gtk.Widget>) => (
+        renderItem={(user: User | null) => (
           <Box.Root
-            ref={ref}
             orientation={Gtk.Orientation.HORIZONTAL}
             spacing={8}
           >
@@ -303,8 +292,8 @@ const UserListWithRemove = () => {
 // GTKX ListView - better for large lists
 <ScrolledWindow vexpand>
   <ListView.Root
-    renderItem={(item: Item | null, ref) => (
-      <Label.Root ref={ref} label={item?.name ?? ""} />
+    renderItem={(item: Item | null) => (
+      <Label.Root label={item?.name ?? ""} />
     )}
   >
     {items.map(item => (

@@ -1,9 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use gtk4::{
-    gio::ApplicationHoldGuard,
-    glib::{self, gobject_ffi, translate::ToGlibPtr},
-};
+use gtk4::{gio::ApplicationHoldGuard, glib};
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::object::Object;
@@ -13,7 +10,7 @@ pub struct GtkThreadState {
     pub next_object_id: usize,
     pub libraries: HashMap<String, Library>,
     pub app_hold_guard: Option<ApplicationHoldGuard>,
-    closures: Vec<glib::Closure>,
+    pub closures: Vec<glib::Closure>,
 }
 
 impl Default for GtkThreadState {
@@ -73,15 +70,5 @@ impl GtkThreadState {
 
     pub fn register_closure(&mut self, closure: glib::Closure) {
         self.closures.push(closure);
-    }
-
-    pub fn invalidate_all_closures(&mut self) {
-        for closure in &self.closures {
-            unsafe {
-                let ptr: *mut gobject_ffi::GClosure = closure.to_glib_none().0;
-                gobject_ffi::g_closure_invalidate(ptr);
-            }
-        }
-        self.closures.clear();
     }
 }

@@ -11,9 +11,8 @@ use neon::prelude::*;
 
 use crate::{
     arg::{self, Arg},
-    async_callback,
+    callback,
     state::GtkThreadState,
-    trampolines,
     types::*,
     value,
 };
@@ -112,21 +111,25 @@ fn invoke_js_callback(
     let callback = callback.clone();
 
     let result = channel.send(move |mut cx| {
-        let js_args: Vec<Handle<JsValue>> = args_values
-            .into_iter()
-            .map(|v| v.to_js_value(&mut cx))
-            .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
+        let result = (|| {
+            let js_args: Vec<Handle<JsValue>> = args_values
+                .into_iter()
+                .map(|v| v.to_js_value(&mut cx))
+                .collect::<NeonResult<Vec<Handle<JsValue>>>>()?;
 
-        let js_this = cx.undefined();
-        let js_callback = callback.to_inner(&mut cx);
+            let js_this = cx.undefined();
+            let js_callback = callback.to_inner(&mut cx);
 
-        if capture_result {
-            let js_result = js_callback.call(&mut cx, js_this, js_args)?;
-            value::Value::from_js_value(&mut cx, js_result)
-        } else {
-            js_callback.call(&mut cx, js_this, js_args)?;
-            Ok(value::Value::Undefined)
-        }
+            if capture_result {
+                let js_result = js_callback.call(&mut cx, js_this, js_args)?;
+                value::Value::from_js_value(&mut cx, js_result)
+            } else {
+                js_callback.call(&mut cx, js_this, js_args)?;
+                Ok(value::Value::Undefined)
+            }
+        })();
+
+        result
     });
 
     unsafe { std::mem::transmute(result) }
@@ -225,10 +228,8 @@ impl TryFrom<arg::Arg> for Value {
                 if is_transfer_full {
                     if let Some(gtype) = type_.get_gtype() {
                         unsafe {
-                            let copied = glib::gobject_ffi::g_boxed_copy(
-                                gtype.into_glib(),
-                                ptr as *const _,
-                            );
+                            let copied =
+                                glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _);
                             return Ok(Value::Ptr(copied as *mut c_void));
                         }
                     }
@@ -438,9 +439,10 @@ impl Value {
                         rx,
                         "JS thread disconnected while waiting for callback result",
                         |result| match result {
-                            Ok(value) => {
-                                value::Value::into_glib_value_with_default(value, return_type.as_deref())
-                            }
+                            Ok(value) => value::Value::into_glib_value_with_default(
+                                value,
+                                return_type.as_deref(),
+                            ),
                             Err(_) => {
                                 eprintln!("JS callback threw an error");
                                 value::Value::into_glib_value_with_default(
@@ -489,8 +491,9 @@ impl Value {
                 });
 
                 GtkThreadState::with(|state| state.register_closure(closure.clone()));
+
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
-                let trampoline_ptr = async_callback::get_async_ready_trampoline_ptr();
+                let trampoline_ptr = callback::get_async_ready_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
@@ -516,8 +519,9 @@ impl Value {
                 });
 
                 GtkThreadState::with(|state| state.register_closure(closure.clone()));
+
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
-                let trampoline_ptr = trampolines::get_destroy_trampoline_ptr();
+                let trampoline_ptr = callback::get_destroy_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
@@ -544,8 +548,9 @@ impl Value {
                 });
 
                 GtkThreadState::with(|state| state.register_closure(closure.clone()));
+
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
-                let trampoline_ptr = trampolines::get_source_func_trampoline_ptr();
+                let trampoline_ptr = callback::get_source_func_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
@@ -574,9 +579,10 @@ impl Value {
                 });
 
                 GtkThreadState::with(|state| state.register_closure(closure.clone()));
+
                 let closure_ptr = create_trampoline_closure_ptr(&closure);
-                let trampoline_ptr = trampolines::get_draw_func_trampoline_ptr();
-                let destroy_ptr = trampolines::get_unref_closure_trampoline_ptr();
+                let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
+                let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,

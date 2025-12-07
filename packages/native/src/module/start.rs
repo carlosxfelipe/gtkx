@@ -36,7 +36,9 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
         });
 
         app.connect_activate(move |_| {
-            tx.send(app_object_id).unwrap();
+            // Ignore SendError - the receiver may have been dropped after the first activation
+            // This can happen if the app is re-activated via D-Bus while already running
+            let _ = tx.send(app_object_id);
         });
 
         app.run_with_args::<&str>(&[]);

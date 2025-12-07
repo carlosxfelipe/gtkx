@@ -38,9 +38,8 @@ const ListViewDemo = () => {
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
                     <ListView.Root
                         vexpand
-                        renderItem={(task: Task | null, ref) => (
+                        renderItem={(task: Task | null) => (
                             <Label.Root
-                                ref={ref}
                                 label={task?.title ?? ""}
                                 cssClasses={task?.completed ? ["dim-label"] : []}
                                 halign={Gtk.Align.START}

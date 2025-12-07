@@ -1379,10 +1379,20 @@ ${allArgs ? `${allArgs},` : ""}
 
         if (typeName.includes(".")) {
             const [ns, className] = typeName.split(".", 2);
-            if (ns === this.options.namespace && className) {
-                return normalizeClassName(className);
+            if (!className) return undefined;
+
+            if (this.options.typeRegistry) {
+                const registered = this.options.typeRegistry.resolve(typeName);
+                if (!registered || (registered.kind !== "class" && registered.kind !== "interface")) {
+                    return undefined;
+                }
             }
-            return undefined;
+
+            const normalizedName = normalizeClassName(className);
+            if (ns === this.options.namespace) {
+                return normalizedName;
+            }
+            return `${ns}.${normalizedName}`;
         }
 
         const normalizedName = normalizeClassName(typeName);
@@ -1414,7 +1424,19 @@ ${allArgs ? `${allArgs},` : ""}
                 const ffiType = JSON.stringify(this.typeMapper.mapParameter(param).ffi);
                 const signalParamClass = this.extractSignalParamClass(param, classMap);
                 if (signalParamClass) {
-                    this.signalClasses.add(signalParamClass);
+                    const dotIndex = signalParamClass.indexOf(".");
+                    if (dotIndex !== -1) {
+                        const ns = signalParamClass.slice(0, dotIndex);
+                        const clsName = signalParamClass.slice(dotIndex + 1);
+                        this.usedExternalTypes.set(signalParamClass, {
+                            namespace: ns,
+                            name: clsName,
+                            transformedName: clsName,
+                            kind: "class",
+                        });
+                    } else {
+                        this.signalClasses.add(signalParamClass);
+                    }
                     return `{ type: ${ffiType}, getCls: () => ${signalParamClass} }`;
                 }
                 return `{ type: ${ffiType} }`;

@@ -1,3 +1,4 @@
+import { getCurrentApp } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
@@ -14,7 +15,7 @@ const FileChooserDemo = () => {
         dialog.setTitle("Open File");
 
         try {
-            const file = await dialog.open();
+            const file = await dialog.open(getCurrentApp().getActiveWindow() ?? undefined);
             setSelectedFile(file.getPath() ?? null);
         } catch {
             setSelectedFile(null);
@@ -26,7 +27,7 @@ const FileChooserDemo = () => {
         dialog.setTitle("Select Folder");
 
         try {
-            const folder = await dialog.selectFolder();
+            const folder = await dialog.selectFolder(getCurrentApp().getActiveWindow() ?? undefined);
             setSelectedFolder(folder.getPath() ?? null);
         } catch {
             setSelectedFolder(null);
@@ -39,7 +40,7 @@ const FileChooserDemo = () => {
         dialog.setInitialName("untitled.txt");
 
         try {
-            const file = await dialog.save();
+            const file = await dialog.save(getCurrentApp().getActiveWindow() ?? undefined);
             setSaveLocation(file.getPath() ?? null);
         } catch {
             setSaveLocation(null);

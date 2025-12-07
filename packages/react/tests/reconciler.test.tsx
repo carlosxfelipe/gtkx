@@ -551,11 +551,8 @@ describe("React Reconciler", () => {
     });
 
     describe("child management - ListView", () => {
-        const renderItem = (item: { id: number } | null, ref: (w: Gtk.Widget | null) => void) => {
-            const label = new Gtk.Label();
-            label.setLabel(item ? `Item ${item.id}` : "");
-            ref(label);
-            return label;
+        const renderItem = (item: { id: number } | null) => {
+            return <Label.Root label={item ? `Item ${item.id}` : ""} />;
         };
 
         it("adds items to list view", () => {
@@ -604,11 +601,8 @@ describe("React Reconciler", () => {
     });
 
     describe("child management - ColumnView", () => {
-        const renderCell = (item: { name: string } | null, ref: (w: Gtk.Widget | null) => void) => {
-            const label = new Gtk.Label();
-            label.setLabel(item?.name ?? "");
-            ref(label);
-            return label;
+        const renderCell = (item: { name: string } | null) => {
+            return <Label.Root label={item?.name ?? ""} />;
         };
 
         it("adds columns to column view", () => {
