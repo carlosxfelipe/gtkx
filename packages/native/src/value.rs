@@ -6,7 +6,7 @@ use std::{
 use anyhow::bail;
 use gtk4::{
     glib,
-    glib::translate::{FromGlibPtrFull as _, FromGlibPtrNone as _},
+    glib::translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
 };
 use neon::{handle::Root, object::Object as _, prelude::*};
 
@@ -622,32 +622,56 @@ impl Value {
 impl Value {
     pub fn from_glib_value(gvalue: &glib::Value, type_: &Type) -> Self {
         match type_ {
-            Type::Integer(int_type) => match (int_type.size, int_type.sign) {
-                (IntegerSize::_8, IntegerSign::Signed) => {
-                    Value::Number(gvalue.get::<i8>().unwrap() as f64)
+            Type::Integer(int_type) => {
+                let gtype = gvalue.type_();
+                let is_enum = gtype.is_a(glib::types::Type::ENUM);
+                let is_flags = gtype.is_a(glib::types::Type::FLAGS);
+
+                match (int_type.size, int_type.sign) {
+                    (IntegerSize::_8, IntegerSign::Signed) => {
+                        Value::Number(gvalue.get::<i8>().unwrap() as f64)
+                    }
+                    (IntegerSize::_8, IntegerSign::Unsigned) => {
+                        Value::Number(gvalue.get::<u8>().unwrap() as f64)
+                    }
+                    (IntegerSize::_16, IntegerSign::Signed) => {
+                        Value::Number(gvalue.get::<i32>().unwrap() as i16 as f64)
+                    }
+                    (IntegerSize::_16, IntegerSign::Unsigned) => {
+                        Value::Number(gvalue.get::<u32>().unwrap() as u16 as f64)
+                    }
+                    (IntegerSize::_32, IntegerSign::Signed) => {
+                        if is_enum {
+                            let enum_value = unsafe {
+                                glib::gobject_ffi::g_value_get_enum(
+                                    gvalue.to_glib_none().0 as *const _,
+                                )
+                            };
+                            Value::Number(enum_value as f64)
+                        } else {
+                            Value::Number(gvalue.get::<i32>().unwrap() as f64)
+                        }
+                    }
+                    (IntegerSize::_32, IntegerSign::Unsigned) => {
+                        if is_flags {
+                            let flags_value = unsafe {
+                                glib::gobject_ffi::g_value_get_flags(
+                                    gvalue.to_glib_none().0 as *const _,
+                                )
+                            };
+                            Value::Number(flags_value as f64)
+                        } else {
+                            Value::Number(gvalue.get::<u32>().unwrap() as f64)
+                        }
+                    }
+                    (IntegerSize::_64, IntegerSign::Signed) => {
+                        Value::Number(gvalue.get::<i64>().unwrap() as f64)
+                    }
+                    (IntegerSize::_64, IntegerSign::Unsigned) => {
+                        Value::Number(gvalue.get::<u64>().unwrap() as f64)
+                    }
                 }
-                (IntegerSize::_8, IntegerSign::Unsigned) => {
-                    Value::Number(gvalue.get::<u8>().unwrap() as f64)
-                }
-                (IntegerSize::_16, IntegerSign::Signed) => {
-                    Value::Number(gvalue.get::<i32>().unwrap() as i16 as f64)
-                }
-                (IntegerSize::_16, IntegerSign::Unsigned) => {
-                    Value::Number(gvalue.get::<u32>().unwrap() as u16 as f64)
-                }
-                (IntegerSize::_32, IntegerSign::Signed) => {
-                    Value::Number(gvalue.get::<i32>().unwrap() as f64)
-                }
-                (IntegerSize::_32, IntegerSign::Unsigned) => {
-                    Value::Number(gvalue.get::<u32>().unwrap() as f64)
-                }
-                (IntegerSize::_64, IntegerSign::Signed) => {
-                    Value::Number(gvalue.get::<i64>().unwrap() as f64)
-                }
-                (IntegerSize::_64, IntegerSign::Unsigned) => {
-                    Value::Number(gvalue.get::<u64>().unwrap() as f64)
-                }
-            },
+            }
             Type::Float(float_type) => match float_type.size {
                 FloatSize::_32 => Value::Number(gvalue.get::<f32>().unwrap() as f64),
                 FloatSize::_64 => Value::Number(gvalue.get::<f64>().unwrap()),
