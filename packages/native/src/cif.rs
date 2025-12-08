@@ -433,12 +433,6 @@ impl Value {
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let args_values = convert_glib_args(args, &arg_types);
                     let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
-                    let is_void = matches!(&return_type, Type::Undefined | Type::Null);
-
-                    if is_void {
-                        invoke_js_callback(&channel, &callback, args_values, false);
-                        return None;
-                    }
 
                     let rx = invoke_js_callback(&channel, &callback, args_values, true);
 
