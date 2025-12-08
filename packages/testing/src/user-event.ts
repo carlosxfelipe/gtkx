@@ -16,8 +16,11 @@ import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { asAccessible, isEditable } from "./widget.js";
 
+/**
+ * Options for the tab user event.
+ */
 export interface TabOptions {
-    /** If true, navigates backwards (Shift+Tab behavior) */
+    /** If true, navigates backwards (Shift+Tab behavior). */
     shift?: boolean;
 }
 
