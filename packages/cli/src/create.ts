@@ -142,6 +142,7 @@ import { strict as assert } from "node:assert";`;
         testing === "node" ? `assert.ok(button, "Button should be rendered");` : `expect(button).toBeDefined();`;
 
     return `${imports}
+import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
 import App from "../src/app.js";
 
@@ -152,7 +153,7 @@ ${afterEachFn}(async () => {
 describe("App", () => {
     it("renders the increment button", async () => {
         await render(<App />, { wrapper: false });
-        const button = await screen.findByRole("button", { name: "Increment" });
+        const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
         ${assertion}
     });
 });
