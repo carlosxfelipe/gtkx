@@ -760,9 +760,7 @@ ${widgetPropsContent}
  * The menu will appear in the window's title bar on supported platforms.
  * Use Menu.Item, Menu.Section, and Menu.Submenu as children.
  */
-export function ApplicationMenu(props: MenuRootProps): import("react").ReactElement {
-\treturn createElement("ApplicationMenu", props);
-}
+export const ApplicationMenu = "ApplicationMenu" as const;
 
 function MenuItem(props: MenuItemProps): import("react").ReactElement {
 \treturn createElement("Menu.Item", props);
