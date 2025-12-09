@@ -279,7 +279,7 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
     const appId =
         options.appId ??
         ((await p.text({
-            message: "App ID (reverse domain notation)",
+            message: "App ID",
             placeholder: defaultAppId,
             initialValue: defaultAppId,
             validate: (value) => {

@@ -64,20 +64,12 @@ npm install -D @types/react typescript
 Create your first app:
 
 ```tsx
-// index.tsx
-import { render } from "@gtkx/react";
-import { App } from "./app.js";
-
-render(<App />, "org.example.MyApp");
-```
-
-```tsx
-// app.tsx
-import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
+// src/app.tsx
 import { useState } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 
-export const App = () => {
+export default function App() {
   const [count, setCount] = useState(0);
 
   return (
@@ -88,7 +80,7 @@ export const App = () => {
       onCloseRequest={quit}
     >
       <Box
-        orientation={Orientation.VERTICAL}
+        orientation={Gtk.Orientation.VERTICAL}
         spacing={12}
         marginStart={20}
         marginEnd={20}
@@ -100,7 +92,17 @@ export const App = () => {
       </Box>
     </ApplicationWindow>
   );
-};
+}
+
+export const appId = "org.example.MyApp";
+```
+
+```tsx
+// src/index.tsx
+import { render } from "@gtkx/react";
+import App, { appId } from "./app.js";
+
+render(<App />, appId);
 ```
 
 Run with HMR:
@@ -109,10 +111,10 @@ Run with HMR:
 npx gtkx dev src/app.tsx
 ```
 
-Or without HMR:
+Or without HMR (production):
 
 ```bash
-npx tsx index.tsx
+npx tsc -b && node dist/index.js
 ```
 
 ## Styling

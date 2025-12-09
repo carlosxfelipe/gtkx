@@ -97,11 +97,11 @@ Create your first app:
 
 ```tsx
 // src/app.tsx
-import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 
-export const App = () => {
+export default function App() {
   const [count, setCount] = useState(0);
 
   return (
@@ -111,20 +111,23 @@ export const App = () => {
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
+      <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
         <Label.Root label={`Count: ${count}`} />
-        <Button
-          label="Increment"
-          onClicked={() => setCount((c) => c + 1)}
-        />
+        <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
     </ApplicationWindow>
   );
-};
-
-export default App;
+}
 
 export const appId = "org.example.MyApp";
+```
+
+```tsx
+// src/index.tsx
+import { render } from "@gtkx/react";
+import App, { appId } from "./app.js";
+
+render(<App />, appId);
 ```
 
 Run with HMR:

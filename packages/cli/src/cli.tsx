@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import type { ApplicationFlags } from "@gtkx/ffi/gio";
 import { render } from "@gtkx/react";
 import { defineCommand, runMain } from "citty";
 import { createApp } from "./create.js";
 import { createDevServer } from "./dev-server.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json") as { version: string };
 
 interface AppModule {
     default: () => React.ReactNode;
@@ -90,7 +94,7 @@ const create = defineCommand({
 const main = defineCommand({
     meta: {
         name: "gtkx",
-        version: "0.1.55",
+        version,
         description: "CLI for GTKX - create and develop GTK4 React applications",
     },
     subCommands: {
