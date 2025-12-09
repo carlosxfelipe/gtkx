@@ -351,7 +351,8 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
 
     s.stop("Project structure created!");
 
-    s.start("Installing dependencies...");
+    const installSpinner = p.spinner();
+    installSpinner.start("Installing dependencies...");
 
     const devDeps = [...DEV_DEPENDENCIES];
     if (testing !== "none") {
@@ -368,9 +369,9 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
         const addDevCmd = getAddCommand(packageManager, devDeps, true);
         execSync(addDevCmd, { cwd: projectPath, stdio: "pipe" });
 
-        s.stop("Dependencies installed!");
+        installSpinner.stop("Dependencies installed!");
     } catch (error) {
-        s.stop("Failed to install dependencies");
+        installSpinner.stop("Failed to install dependencies");
         p.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
         p.log.info("You can install dependencies manually by running:");
         p.log.info(`  cd ${name}`);

@@ -1,3 +1,4 @@
+import { events } from "@gtkx/ffi";
 import { update } from "@gtkx/react";
 import react from "@vitejs/plugin-react";
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
@@ -47,6 +48,10 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
             server.moduleGraph.invalidateModule(module);
         }
     };
+
+    events.on("stop", () => {
+        server.close();
+    });
 
     server.watcher.on("change", async (changedPath) => {
         console.log(`[gtkx] File changed: ${changedPath}`);
