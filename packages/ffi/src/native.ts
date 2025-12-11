@@ -97,6 +97,26 @@ export const getInterface = <T extends NativeObject>(obj: NativeObject, targetTy
     return obj as T;
 };
 
+/**
+ * Attempts to cast an object to a specific interface or class type.
+ * Returns null if the object does not implement the requested interface.
+ * @param obj - The object to get the interface from
+ * @param targetType - The interface or class type to cast to
+ * @returns The object typed as the target type, or null if not implemented
+ */
+export const tryGetInterface = <T extends NativeObject>(
+    obj: NativeObject,
+    targetType: TypeWithGlibTypeName<T>,
+): T | null => {
+    const targetGType = typeFromName(targetType.glibTypeName);
+    if (targetGType === 0) return null;
+
+    const objId = getObjectId(obj.id);
+    if (!typeCheckInstanceIsA(objId, targetGType)) return null;
+
+    return obj as T;
+};
+
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
 };

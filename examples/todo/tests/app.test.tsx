@@ -1,12 +1,8 @@
 import { getInterface } from "@gtkx/ffi";
 import { AccessibleRole, type CheckButton, Editable, type Label } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import type { ReactNode } from "react";
-import { Fragment } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
-
-const NoWrapper = ({ children }: { children: ReactNode }) => <Fragment>{children}</Fragment>;
 
 describe("Todo App", () => {
     afterEach(async () => {
@@ -15,35 +11,35 @@ describe("Todo App", () => {
 
     describe("initial state", () => {
         it("renders with title", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const title = await screen.findByRole(AccessibleRole.LABEL, { name: "Todo App" });
             expect(title).toBeDefined();
         });
 
         it("shows empty message when no todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const emptyMessage = await screen.findByText("No todos to display");
             expect(emptyMessage).toBeDefined();
         });
 
         it("has an input field for new todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             expect(input).toBeDefined();
         });
 
         it("has an add button", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
             expect(addButton).toBeDefined();
         });
 
         it("does not show filters when no todos exist", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             await expect(screen.findByTestId("filter-all", { timeout: 100 })).rejects.toThrow();
         });
@@ -51,7 +47,7 @@ describe("Todo App", () => {
 
     describe("adding todos", () => {
         it("adds a new todo when clicking Add button", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Buy groceries");
@@ -64,7 +60,7 @@ describe("Todo App", () => {
         });
 
         it("clears input after adding todo", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Buy groceries");
@@ -79,7 +75,7 @@ describe("Todo App", () => {
         });
 
         it("can add multiple todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
@@ -103,7 +99,7 @@ describe("Todo App", () => {
         });
 
         it("does not add empty todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
             await userEvent.click(addButton);
@@ -113,7 +109,7 @@ describe("Todo App", () => {
         });
 
         it("does not add whitespace-only todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "   ");
@@ -126,7 +122,7 @@ describe("Todo App", () => {
         });
 
         it("shows filters after adding first todo", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "New todo");
@@ -146,7 +142,7 @@ describe("Todo App", () => {
 
     describe("completing todos", () => {
         it("can toggle a todo as completed", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Test todo");
@@ -161,7 +157,7 @@ describe("Todo App", () => {
         });
 
         it("can toggle a completed todo back to active", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Test todo");
@@ -177,7 +173,7 @@ describe("Todo App", () => {
         });
 
         it("updates item count when completing todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
@@ -202,7 +198,7 @@ describe("Todo App", () => {
 
     describe("deleting todos", () => {
         it("can delete a todo", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo to delete");
@@ -221,7 +217,7 @@ describe("Todo App", () => {
         });
 
         it("deletes only the targeted todo", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
@@ -245,7 +241,7 @@ describe("Todo App", () => {
 
     describe("filtering todos", () => {
         const setupTodosWithMixedState = async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
@@ -327,7 +323,7 @@ describe("Todo App", () => {
 
     describe("clear completed", () => {
         it("removes all completed todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
@@ -357,7 +353,7 @@ describe("Todo App", () => {
         });
 
         it("is disabled when no completed todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Active todo");
@@ -370,7 +366,7 @@ describe("Todo App", () => {
         });
 
         it("becomes enabled when a todo is completed", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo");
@@ -390,7 +386,7 @@ describe("Todo App", () => {
 
     describe("item count", () => {
         it("shows singular 'item' for one todo", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Single todo");
@@ -403,7 +399,7 @@ describe("Todo App", () => {
         });
 
         it("shows plural 'items' for multiple todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
@@ -418,7 +414,7 @@ describe("Todo App", () => {
         });
 
         it("shows plural 'items' for zero todos", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo");
@@ -436,7 +432,7 @@ describe("Todo App", () => {
 
     describe("within scoped queries", () => {
         it("can query within a specific todo item", async () => {
-            await render(<App />, { wrapper: NoWrapper });
+            await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });

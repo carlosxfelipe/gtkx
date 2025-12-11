@@ -41,7 +41,14 @@ Edit your code and see changes instantly—no restart needed.
 ### Example
 
 ```tsx
-import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import {
+  render,
+  ApplicationWindow,
+  Box,
+  Button,
+  Label,
+  quit,
+} from "@gtkx/react";
 import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -74,7 +81,7 @@ const primary = css`
   color: white;
 `;
 
-<Button label="Click me" cssClasses={[primary]} />
+<Button label="Click me" cssClasses={[primary]} />;
 ```
 
 GTK also provides built-in classes like `suggested-action`, `destructive-action`, `card`, and `heading`.
@@ -90,7 +97,9 @@ afterEach(() => cleanup());
 test("increments count", async () => {
   await render(<App />);
 
-  const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
+  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+    name: "Increment",
+  });
   await userEvent.click(button);
 
   await screen.findByText("Count: 1");
@@ -103,10 +112,10 @@ User events: `click`, `dblClick`, `type`, `clear`, `tab`, `selectOptions`
 
 ## Examples
 
-| Example | Description |
-| ------- | ----------- |
-| [gtk4-demo](examples/gtk4-demo) | Widget showcase |
-| [todo](examples/todo) | Todo app with tests |
+| Example                         | Description         |
+| ------------------------------- | ------------------- |
+| [gtk4-demo](examples/gtk4-demo) | Widget showcase     |
+| [todo](examples/todo)           | Todo app with tests |
 
 ```bash
 cd examples/gtk4-demo && pnpm dev
@@ -114,15 +123,15 @@ cd examples/gtk4-demo && pnpm dev
 
 ## Packages
 
-| Package | Description |
-| ------- | ----------- |
-| [@gtkx/cli](packages/cli) | CLI with HMR dev server |
-| [@gtkx/react](packages/react) | React reconciler and JSX components |
-| [@gtkx/ffi](packages/ffi) | TypeScript bindings for GTK4/GLib/GIO |
-| [@gtkx/native](packages/native) | Rust native module (libffi bridge) |
-| [@gtkx/css](packages/css) | CSS-in-JS styling |
-| [@gtkx/testing](packages/testing) | Testing utilities |
-| [@gtkx/gir](packages/gir) | GObject Introspection parser |
+| Package                           | Description                           |
+| --------------------------------- | ------------------------------------- |
+| [@gtkx/cli](packages/cli)         | CLI with HMR dev server               |
+| [@gtkx/react](packages/react)     | React reconciler and JSX components   |
+| [@gtkx/ffi](packages/ffi)         | TypeScript bindings for GTK4/GLib/GIO |
+| [@gtkx/native](packages/native)   | Rust native module (libffi bridge)    |
+| [@gtkx/css](packages/css)         | CSS-in-JS styling                     |
+| [@gtkx/testing](packages/testing) | Testing utilities                     |
+| [@gtkx/gir](packages/gir)         | GObject Introspection parser          |
 
 ## Requirements
 
@@ -136,7 +145,6 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 - [Report a bug](https://github.com/eugeniodepalo/gtkx/issues/new?template=bug_report.md)
 - [Request a feature](https://github.com/eugeniodepalo/gtkx/issues/new?template=feature_request.md)
-- [Read the Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## License
 

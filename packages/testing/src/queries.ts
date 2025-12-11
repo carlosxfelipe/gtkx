@@ -1,4 +1,4 @@
-import { getInterface } from "@gtkx/ffi";
+import { getInterface, tryGetInterface } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import {
     Accessible,
@@ -9,6 +9,7 @@ import {
     Expander,
     Frame,
     Label,
+    MenuButton,
     StackPage,
     Switch,
     ToggleButton,
@@ -72,7 +73,10 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case AccessibleRole.BUTTON:
         case AccessibleRole.LINK:
         case AccessibleRole.TAB:
-            return getInterface(widget, Button).getLabel();
+            return (
+                tryGetInterface(widget, Button)?.getLabel() ?? tryGetInterface(widget, MenuButton)?.getLabel() ?? null
+            );
+
         case AccessibleRole.TOGGLE_BUTTON:
             return getInterface(widget, ToggleButton).getLabel();
         case AccessibleRole.CHECKBOX:
@@ -85,21 +89,13 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case AccessibleRole.SPIN_BUTTON:
             return getInterface(widget, Editable).getText();
         case AccessibleRole.GROUP:
-            try {
-                return getInterface(widget, Frame).getLabel();
-            } catch {
-                return null;
-            }
+            return tryGetInterface(widget, Frame)?.getLabel() ?? null;
         case AccessibleRole.WINDOW:
         case AccessibleRole.DIALOG:
         case AccessibleRole.ALERT_DIALOG:
             return getInterface(widget, Window).getTitle();
         case AccessibleRole.TAB_PANEL:
-            try {
-                return getInterface(widget, StackPage).getTitle();
-            } catch {
-                return null;
-            }
+            return tryGetInterface(widget, StackPage)?.getTitle() ?? null;
         case AccessibleRole.SWITCH:
             return null;
         default:
