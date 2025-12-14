@@ -1,11 +1,21 @@
 import { getCurrentApp } from "@gtkx/ffi";
+import * as Adw from "@gtkx/ffi/adw";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props, ROOT_NODE_CONTAINER } from "./factory.js";
 import { CONSTRUCTOR_PARAMS, PROP_SETTERS, SETTER_GETTERS } from "./generated/internal.js";
-import { isAppendable, isRemovable, isSingleChild } from "./predicates.js";
+import { isAddable, isAppendable, isRemovable, isSingleChild } from "./predicates.js";
 
 type WidgetConstructor = new (...args: unknown[]) => Gtk.Widget;
+
+const resolveWidgetClass = (type: string): WidgetConstructor | undefined => {
+    if (type.startsWith("Adw")) {
+        const adwType = type.slice(3);
+        return Adw[adwType as keyof typeof Adw] as WidgetConstructor | undefined;
+    }
+
+    return Gtk[type as keyof typeof Gtk] as WidgetConstructor | undefined;
+};
 
 const extractConstructorArgs = (type: string, props: Props): unknown[] => {
     const params = CONSTRUCTOR_PARAMS[type];
@@ -64,14 +74,13 @@ export abstract class Node<
 
     protected createWidget(type: string, props: Props): T {
         const normalizedType = type.split(".")[0] || type;
-        // biome-ignore lint/performance/noDynamicNamespaceImportAccess: dynamic widget creation
-        const WidgetClass = Gtk[normalizedType as keyof typeof Gtk] as WidgetConstructor | undefined;
+        const WidgetClass = resolveWidgetClass(normalizedType);
 
         if (!WidgetClass) {
             throw new Error(`Unknown GTK widget type: ${normalizedType}`);
         }
 
-        if (WidgetClass === Gtk.ApplicationWindow) {
+        if (WidgetClass === Gtk.ApplicationWindow || WidgetClass === Adw.ApplicationWindow) {
             return new WidgetClass(getCurrentApp()) as T;
         }
 
@@ -102,6 +111,8 @@ export abstract class Node<
 
         if (isAppendable(parentWidget)) {
             widget.insertBefore(parentWidget, null);
+        } else if (isAddable(parentWidget)) {
+            parentWidget.add(widget);
         } else if (isSingleChild(parentWidget)) {
             parentWidget.setChild(widget);
         }

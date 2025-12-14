@@ -4,6 +4,10 @@ interface Appendable extends Gtk.Widget {
     append(child: unknown): void;
 }
 
+interface Addable extends Gtk.Widget {
+    add(child: unknown): void;
+}
+
 interface SingleChild extends Gtk.Widget {
     setChild(child: unknown): void;
 }
@@ -17,6 +21,12 @@ interface Removable extends Gtk.Widget {
  */
 export const isAppendable = (widget: Gtk.Widget): widget is Appendable =>
     "append" in widget && typeof widget.append === "function";
+
+/**
+ * Type guard that checks if a GTK widget supports adding children via an add method.
+ */
+export const isAddable = (widget: Gtk.Widget): widget is Addable =>
+    "add" in widget && typeof widget.add === "function";
 
 /**
  * Type guard that checks if a GTK widget supports a single child via setChild method.

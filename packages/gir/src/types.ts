@@ -877,7 +877,12 @@ export class TypeMapper {
                     this.onExternalTypeUsed?.(externalType as ExternalTypeUsage);
                 } else if (registered.kind === "class" || registered.kind === "interface") {
                     this.onSameNamespaceClassUsed?.(registered.transformedName, registered.name);
+                } else if (registered.kind === "enum") {
+                    this.onEnumUsed?.(registered.transformedName);
+                } else if (registered.kind === "record") {
+                    this.onRecordUsed?.(registered.transformedName);
                 }
+
                 if (registered.kind === "enum") {
                     return {
                         ts: qualifiedName,
@@ -885,6 +890,7 @@ export class TypeMapper {
                         externalType,
                     };
                 }
+
                 if (registered.kind === "record") {
                     return {
                         ts: qualifiedName,
@@ -897,9 +903,11 @@ export class TypeMapper {
                         kind: registered.kind,
                     };
                 }
+
                 if (registered.kind === "callback") {
                     return POINTER_TYPE;
                 }
+
                 return {
                     ts: qualifiedName,
                     ffi: { type: "gobject", borrowed: isReturn },

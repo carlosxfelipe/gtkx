@@ -43,6 +43,7 @@ const GRID_WIDGETS = new Set(["Grid"]);
 const NOTEBOOK_WIDGET = "Notebook";
 const STACK_WIDGET = "Stack";
 const POPOVER_MENU_WIDGET = "PopoverMenu";
+const TOOLBAR_VIEW_WIDGET = "ToolbarView";
 
 const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
     ApplicationWindow: new Set(["application"]),
@@ -79,6 +80,7 @@ const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetNam
 const isNotebookWidget = (widgetName: string): boolean => widgetName === NOTEBOOK_WIDGET;
 const isStackWidget = (widgetName: string): boolean => widgetName === STACK_WIDGET;
 const isPopoverMenuWidget = (widgetName: string): boolean => widgetName === POPOVER_MENU_WIDGET;
+const isToolbarViewWidget = (widgetName: string): boolean => widgetName === TOOLBAR_VIEW_WIDGET;
 
 const sanitizeDoc = (doc: string): string => {
     let result = doc;
@@ -340,6 +342,11 @@ ${widgetPropsContent}
                 slotName: toPascalCase(prop.name),
             }));
 
+        if (isToolbarViewWidget(widget.name)) {
+            namedChildSlots.push({ propertyName: "top", slotName: "Top" });
+            namedChildSlots.push({ propertyName: "bottom", slotName: "Bottom" });
+        }
+
         return {
             supportsMultipleChildren: hasAppend,
             supportsSingleChild: hasSetChild,
@@ -558,6 +565,7 @@ ${widgetPropsContent}
         const widgetEntries: string[] = [];
 
         for (const { widget, namespace } of widgets) {
+            this.currentNamespace = namespace;
             const propSetterPairs: string[] = [];
             const allProps = this.collectAllProperties(widget);
 
@@ -570,7 +578,6 @@ ${widgetPropsContent}
             }
 
             if (propSetterPairs.length > 0) {
-                this.currentNamespace = namespace;
                 const widgetName = this.getWidgetExportName(widget);
                 widgetEntries.push(`\t${widgetName}: { ${propSetterPairs.join(", ")} }`);
             }
@@ -587,6 +594,7 @@ ${widgetPropsContent}
         const widgetEntries: string[] = [];
 
         for (const { widget, namespace } of widgets) {
+            this.currentNamespace = namespace;
             const setterGetterPairs: string[] = [];
             const allProps = this.collectAllProperties(widget);
 
@@ -599,7 +607,6 @@ ${widgetPropsContent}
             }
 
             if (setterGetterPairs.length > 0) {
-                this.currentNamespace = namespace;
                 const widgetName = this.getWidgetExportName(widget);
                 widgetEntries.push(`\t${widgetName}: { ${setterGetterPairs.join(", ")} }`);
             }
@@ -637,7 +644,14 @@ ${widgetPropsContent}
                 }
             }
 
-            current = current.parent ? this.classMap.get(current.parent) : undefined;
+            if (current.parent) {
+                current =
+                    this.classMap.get(current.parent) ??
+                    this.classMap.get(`${this.currentNamespace}.${current.parent}`) ??
+                    this.classMap.get(`Gtk.${current.parent}`);
+            } else {
+                current = undefined;
+            }
         }
 
         return props;

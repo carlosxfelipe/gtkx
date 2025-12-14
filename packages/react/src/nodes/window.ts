@@ -1,18 +1,32 @@
 import { getCurrentApp } from "@gtkx/ffi";
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 import { getNumberProp } from "../props.js";
 
+const WINDOW_TYPES = new Set(["Window", "ApplicationWindow", "AdwWindow", "AdwApplicationWindow"]);
+
 export class WindowNode extends Node<Gtk.Window> {
     static matches(type: string): boolean {
-        return type === "Window" || type === "ApplicationWindow";
+        return WINDOW_TYPES.has(type.split(".")[0] || type);
     }
 
     protected override createWidget(type: string, _props: Props): Gtk.Window {
-        if (type === "ApplicationWindow") {
+        const normalizedType = type.split(".")[0] || type;
+
+        if (normalizedType === "ApplicationWindow") {
             return new Gtk.ApplicationWindow(getCurrentApp());
         }
+
+        if (normalizedType === "AdwApplicationWindow") {
+            return new Adw.ApplicationWindow(getCurrentApp());
+        }
+
+        if (normalizedType === "AdwWindow") {
+            return new Adw.Window();
+        }
+
         return new Gtk.Window();
     }
 

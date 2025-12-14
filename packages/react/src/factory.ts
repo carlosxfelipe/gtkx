@@ -6,6 +6,7 @@ import { ColumnViewColumnNode, ColumnViewItemNode, ColumnViewNode } from "./node
 import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
 import { FlowBoxNode } from "./nodes/flow-box.js";
 import { GridChildNode, GridNode } from "./nodes/grid.js";
+import { AdwHeaderBarNode, HeaderBarNode } from "./nodes/header-bar.js";
 import { ListItemNode, ListViewNode } from "./nodes/list.js";
 import { ListBoxNode } from "./nodes/list-box.js";
 import {
@@ -23,6 +24,7 @@ import { SlotNode } from "./nodes/slot.js";
 import { StackNode, StackPageNode } from "./nodes/stack.js";
 import { TextViewNode } from "./nodes/text-view.js";
 import { ToggleButtonNode } from "./nodes/toggle-button.js";
+import { ToolbarViewSlotNode } from "./nodes/toolbar-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
@@ -49,6 +51,7 @@ const VIRTUAL_NODES = [
     MenuItemNode,
     MenuSectionNode,
     MenuSubmenuNode,
+    ToolbarViewSlotNode,
     SlotNode,
 ] as NodeClass[];
 
@@ -73,6 +76,8 @@ const CONTAINER_NODES = [
     ListViewNode,
     NotebookNode,
     StackNode,
+    AdwHeaderBarNode,
+    HeaderBarNode,
 ] as NodeClass[];
 
 const NODE_CLASSES = [RootNode, ...VIRTUAL_NODES, ...SPECIALIZED_NODES, ...CONTAINER_NODES, WidgetNode] as NodeClass[];
