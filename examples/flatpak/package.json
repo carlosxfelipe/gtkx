@@ -12,8 +12,8 @@
         "start": "node dist/index.js"
     },
     "dependencies": {
-        "@gtkx/ffi": "0.5.0",
-        "@gtkx/react": "0.5.0",
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/react": "workspace:*",
         "react": "19.2.3"
     },
     "devDependencies": {

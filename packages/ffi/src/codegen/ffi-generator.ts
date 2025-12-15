@@ -29,6 +29,8 @@ interface GeneratorOptions {
     prettierConfig?: unknown;
     /** Optional type registry for cross-namespace type resolution. */
     typeRegistry?: TypeRegistry;
+    /** All parsed namespaces for cross-namespace parent method lookup. */
+    allNamespaces?: Map<string, GirNamespace>;
 }
 
 const RESERVED_WORDS = new Set([
@@ -83,62 +85,17 @@ const RESERVED_WORDS = new Set([
     "arguments",
 ]);
 
+const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
+
 const METHOD_RENAMES = new Map<string, Map<string, string>>([
-    [
-        "IconView",
-        new Map([
-            ["setCursor", "setCursorPath"],
-            ["getCursor", "getCursorPath"],
-        ]),
-    ],
-    [
-        "TreeView",
-        new Map([
-            ["setCursor", "setCursorPath"],
-            ["getCursor", "getCursorPath"],
-        ]),
-    ],
-    ["HSV", new Map([["getColor", "getHsvColor"]])],
-    ["Layout", new Map([["getSize", "getLayoutSize"]])],
-    ["Table", new Map([["getSize", "getTableSize"]])],
-    ["MenuItem", new Map([["activate", "activateItem"]])],
-    ["FunctionInfo", new Map([["invoke", "invokeFunction"]])],
-    ["VFuncInfo", new Map([["invoke", "invokeVFunc"]])],
-    ["SignalGroup", new Map([["connect", "connectSignal"]])],
-    [
-        "MenuButton",
-        new Map([
-            ["getDirection", "getArrowDirection"],
-            ["setDirection", "setArrowDirection"],
-        ]),
-    ],
-    ["PrintUnixDialog", new Map([["getSettings", "getPrintSettings"]])],
-    ["Gdk.AppLaunchContext", new Map([["getDisplay", "getGdkDisplay"]])],
     ["SocketClient", new Map([["connect", "connectTo"]])],
     ["SocketConnection", new Map([["connect", "connectTo"]])],
     ["Socket", new Map([["connect", "connectTo"]])],
     ["Cancellable", new Map([["connect", "connectCallback"]])],
-    ["GutterRenderer", new Map([["activate", "activateRenderer"]])],
-    ["GutterRendererText", new Map([["measure", "measureText"]])],
-    ["Adw.ActionRow", new Map([["activate", "activateRow"]])],
-    ["Adw.PreferencesPage", new Map([["getName", "getPageName"]])],
-    [
-        "Adw.SplitButton",
-        new Map([
-            ["getDirection", "getArrowDirection"],
-            ["setDirection", "setArrowDirection"],
-        ]),
-    ],
-    ["Secret.Collection", new Map([["getFlags", "getCollectionFlags"]])],
-    ["Secret.Item", new Map([["getFlags", "getItemFlags"]])],
-    ["Secret.Service", new Map([["getFlags", "getServiceFlags"]])],
-    ["WebKit.WebResource", new Map([["getData", "getResourceData"]])],
-    ["WebKit.WebView", new Map([["getSettings", "getWebSettings"]])],
+    ["SignalGroup", new Map([["connect", "connectSignal"]])],
 ]);
 
-const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
-
-const getRenamedMethod = (namespace: string, className: string, methodName: string): string | undefined => {
+const getStaticRenamedMethod = (namespace: string, className: string, methodName: string): string | undefined => {
     const nsRenames = METHOD_RENAMES.get(`${namespace}.${className}`);
     if (nsRenames?.has(methodName)) {
         return nsRenames.get(methodName);
@@ -210,13 +167,13 @@ const toValidIdentifier = (str: string): string => {
     return result;
 };
 
-const normalizeClassName = (name: string): string => {
+const normalizeClassName = (name: string, namespace?: string): string => {
     const pascalName = toPascalCase(name);
     if (CLASS_RENAMES.has(pascalName)) {
         return CLASS_RENAMES.get(pascalName) as string;
     }
-    if (pascalName === "Object") {
-        return "GObject";
+    if (pascalName === "Object" && namespace) {
+        return namespace === "GObject" ? "GObject" : `${namespace}Object`;
     }
     return pascalName;
 };
@@ -230,7 +187,11 @@ type ParentInfo = {
     extendsClause: string;
 };
 
-const parseParentReference = (parent: string | undefined, classMap: Map<string, GirClass>): ParentInfo => {
+const parseParentReference = (
+    parent: string | undefined,
+    classMap: Map<string, GirClass>,
+    currentNamespace: string,
+): ParentInfo => {
     if (!parent) {
         return { hasParent: false, isCrossNamespace: false, className: "", extendsClause: "" };
     }
@@ -238,7 +199,7 @@ const parseParentReference = (parent: string | undefined, classMap: Map<string, 
     if (parent.includes(".")) {
         const [ns, className] = parent.split(".", 2);
         if (ns && className) {
-            const normalizedClass = normalizeClassName(className);
+            const normalizedClass = normalizeClassName(className, ns);
             const nsLower = ns.toLowerCase();
             return {
                 hasParent: true,
@@ -252,7 +213,7 @@ const parseParentReference = (parent: string | undefined, classMap: Map<string, 
     }
 
     if (classMap.has(parent)) {
-        const normalizedClass = normalizeClassName(parent);
+        const normalizedClass = normalizeClassName(parent, currentNamespace);
         return {
             hasParent: true,
             isCrossNamespace: false,
@@ -312,11 +273,12 @@ export class CodeGenerator {
     private usedExternalTypes = new Map<string, ExternalTypeUsage>();
     private usedSameNamespaceClasses = new Map<string, string>();
     private usedInterfaces = new Map<string, string>();
-    private signalClasses = new Set<string>();
+    private signalClasses = new Map<string, string>();
     private recordNameToFile = new Map<string, string>();
     private interfaceNameToFile = new Map<string, string>();
     private currentSharedLibrary = "";
     private cyclicReturnTypes = new Set<string>();
+    private methodRenames = new Map<string, string>();
 
     /**
      * Creates a new code generator with the given options.
@@ -392,7 +354,7 @@ export class CodeGenerator {
     private registerRecords(namespace: GirNamespace): void {
         for (const record of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
-                const normalizedName = normalizeClassName(record.name);
+                const normalizedName = normalizeClassName(record.name, this.options.namespace);
                 this.typeMapper.registerRecord(record.name, normalizedName, record.glibTypeName);
                 this.recordNameToFile.set(normalizedName, record.name);
             }
@@ -485,12 +447,38 @@ export class CodeGenerator {
         }
 
         const parentMethodNames = this.collectParentMethodNames(cls, classMap, interfaceMap);
-        const filteredClassMethods = cls.methods.filter((m) => !parentMethodNames.has(m.name));
         const classMethodNames = new Set(cls.methods.map((m) => m.name));
+        const className = normalizeClassName(cls.name, this.options.namespace);
 
-        const interfaceMethods = cls.implements
-            .flatMap((ifaceName) => interfaceMap.get(ifaceName)?.methods ?? [])
-            .filter((m) => !classMethodNames.has(m.name) && !parentMethodNames.has(m.name));
+        const filteredClassMethods = cls.methods.filter((m) => {
+            if (!parentMethodNames.has(m.name)) return true;
+            const camelMethodName = toCamelCase(m.name);
+            const renamedMethod = `${camelMethodName}${className}`;
+            this.methodRenames.set(m.cIdentifier, renamedMethod);
+            return true;
+        });
+
+        const seenInterfaceMethodNames = new Set<string>();
+        const interfaceMethods: GirMethod[] = [];
+        for (const ifaceName of cls.implements) {
+            const iface = interfaceMap.get(ifaceName);
+            if (!iface) continue;
+
+            for (const method of iface.methods) {
+                if (classMethodNames.has(method.name) || parentMethodNames.has(method.name)) continue;
+
+                if (seenInterfaceMethodNames.has(method.name)) {
+                    const camelMethodName = toCamelCase(method.name);
+                    const ifaceShortName = toPascalCase(iface.name);
+                    const renamedMethod = `${camelMethodName}${ifaceShortName}`;
+                    this.methodRenames.set(method.cIdentifier, renamedMethod);
+                    interfaceMethods.push(method);
+                } else {
+                    seenInterfaceMethodNames.add(method.name);
+                    interfaceMethods.push(method);
+                }
+            }
+        }
 
         const syncMethods = filteredClassMethods.filter((m) => !asyncMethods.has(m.name) && !finishMethods.has(m.name));
         const syncInterfaceMethods = interfaceMethods.filter(
@@ -518,8 +506,7 @@ export class CodeGenerator {
             hasStaticFactoryMethods ||
             hasSignalConnect;
 
-        const className = normalizeClassName(cls.name);
-        const parentInfo = parseParentReference(cls.parent, classMap);
+        const parentInfo = parseParentReference(cls.parent, classMap, this.options.namespace);
 
         const implementsClause = "";
 
@@ -625,7 +612,7 @@ export class CodeGenerator {
             const returnTypeName = method.returnType.name;
             if (returnTypeName && classMap.has(returnTypeName)) {
                 if (this.wouldCreateCycle(cls.name, returnTypeName, classMap)) {
-                    cyclic.add(normalizeClassName(returnTypeName));
+                    cyclic.add(normalizeClassName(returnTypeName, this.options.namespace));
                 }
             }
         }
@@ -633,7 +620,7 @@ export class CodeGenerator {
             const returnTypeName = func.returnType.name;
             if (returnTypeName && classMap.has(returnTypeName)) {
                 if (this.wouldCreateCycle(cls.name, returnTypeName, classMap)) {
-                    cyclic.add(normalizeClassName(returnTypeName));
+                    cyclic.add(normalizeClassName(returnTypeName, this.options.namespace));
                 }
             }
         }
@@ -692,21 +679,56 @@ export class CodeGenerator {
         interfaceMap: Map<string, GirInterface>,
     ): Set<string> {
         const names = new Set<string>();
-        let current = cls.parent ? classMap.get(cls.parent) : undefined;
-        while (current) {
+        const visited = new Set<string>();
+        let parentRef = cls.parent;
+        let currentClassMap = classMap;
+        let currentInterfaceMap = interfaceMap;
+
+        while (parentRef && !visited.has(parentRef)) {
+            visited.add(parentRef);
+
+            let current: GirClass | undefined;
+
+            if (parentRef.includes(".")) {
+                const [ns, className] = parentRef.split(".", 2);
+                const parentNs = this.options.allNamespaces?.get(ns ?? "");
+                if (parentNs && className) {
+                    current = parentNs.classes.find((c) => c.name === className);
+                    currentClassMap = new Map(parentNs.classes.map((c) => [c.name, c]));
+                    currentInterfaceMap = new Map(parentNs.interfaces.map((i) => [i.name, i]));
+                }
+            } else {
+                current = currentClassMap.get(parentRef);
+            }
+
+            if (!current) break;
+
             for (const method of current.methods) {
                 names.add(method.name);
             }
+
             for (const ifaceName of current.implements) {
-                const iface = interfaceMap.get(ifaceName);
+                let iface: GirInterface | undefined;
+                if (ifaceName.includes(".")) {
+                    const [ns, ifaceClassName] = ifaceName.split(".", 2);
+                    const ifaceNs = this.options.allNamespaces?.get(ns ?? "");
+                    if (ifaceNs && ifaceClassName) {
+                        iface = ifaceNs.interfaces.find((i) => i.name === ifaceClassName);
+                    }
+                } else {
+                    iface = currentInterfaceMap.get(ifaceName);
+                }
+
                 if (iface) {
                     for (const method of iface.methods) {
                         names.add(method.name);
                     }
                 }
             }
-            current = current.parent ? classMap.get(current.parent) : undefined;
+
+            parentRef = current.parent;
         }
+
         return names;
     }
 
@@ -1019,11 +1041,12 @@ ${allArgs ? `${allArgs},` : ""}
             return null;
         }
 
-        let methodName = toCamelCase(method.name);
-        if (className) {
-            const renamed = getRenamedMethod(this.options.namespace, className, methodName);
-            if (renamed) methodName = renamed;
-        }
+        const dynamicRename = this.methodRenames.get(method.cIdentifier);
+        const camelName = toCamelCase(method.name);
+        const staticRename = className
+            ? getStaticRenamedMethod(this.options.namespace, className, camelName)
+            : undefined;
+        const methodName = dynamicRename ?? staticRename ?? camelName;
 
         const params = paramsWithoutCallback
             .map((p) => {
@@ -1269,13 +1292,12 @@ ${allArgs ? `${allArgs},` : ""}
     }
 
     private generateMethod(method: GirMethod, sharedLibrary: string, className?: string, isRecord = false): string {
-        let methodName = toCamelCase(method.name);
-        if (className) {
-            const renamed = getRenamedMethod(this.options.namespace, className, methodName);
-            if (renamed) {
-                methodName = renamed;
-            }
-        }
+        const dynamicRename = this.methodRenames.get(method.cIdentifier);
+        const camelName = toCamelCase(method.name);
+        const staticRename = className
+            ? getStaticRenamedMethod(this.options.namespace, className, camelName)
+            : undefined;
+        const methodName = dynamicRename ?? staticRename ?? camelName;
 
         const params = this.generateParameterList(method.parameters);
         const returnTypeMapping = this.typeMapper.mapType(method.returnType, true);
@@ -1405,7 +1427,10 @@ ${allArgs ? `${allArgs},` : ""}
         return `${lines.join("\n")}\n`;
     }
 
-    private extractSignalParamClass(param: GirParameter, classMap: Map<string, GirClass>): string | undefined {
+    private extractSignalParamClass(
+        param: GirParameter,
+        classMap: Map<string, GirClass>,
+    ): { transformedName: string; originalName: string } | undefined {
         const typeName = param.type.name;
         if (!typeName) return undefined;
 
@@ -1420,16 +1445,16 @@ ${allArgs ? `${allArgs},` : ""}
                 }
             }
 
-            const normalizedName = normalizeClassName(className);
+            const normalizedName = normalizeClassName(className, ns);
             if (ns === this.options.namespace) {
-                return normalizedName;
+                return { transformedName: normalizedName, originalName: className };
             }
-            return `${ns}.${normalizedName}`;
+            return { transformedName: `${ns}.${normalizedName}`, originalName: className };
         }
 
-        const normalizedName = normalizeClassName(typeName);
+        const normalizedName = normalizeClassName(typeName, this.options.namespace);
         if (classMap.has(typeName) || classMap.has(normalizedName)) {
-            return normalizedName;
+            return { transformedName: normalizedName, originalName: typeName };
         }
 
         return undefined;
@@ -1456,20 +1481,21 @@ ${allArgs ? `${allArgs},` : ""}
                 const ffiType = JSON.stringify(this.typeMapper.mapParameter(param).ffi);
                 const signalParamClass = this.extractSignalParamClass(param, classMap);
                 if (signalParamClass) {
-                    const dotIndex = signalParamClass.indexOf(".");
+                    const { transformedName, originalName } = signalParamClass;
+                    const dotIndex = transformedName.indexOf(".");
                     if (dotIndex !== -1) {
-                        const ns = signalParamClass.slice(0, dotIndex);
-                        const clsName = signalParamClass.slice(dotIndex + 1);
-                        this.usedExternalTypes.set(signalParamClass, {
+                        const ns = transformedName.slice(0, dotIndex);
+                        const clsName = transformedName.slice(dotIndex + 1);
+                        this.usedExternalTypes.set(transformedName, {
                             namespace: ns,
-                            name: clsName,
+                            name: originalName,
                             transformedName: clsName,
                             kind: "class",
                         });
                     } else {
-                        this.signalClasses.add(signalParamClass);
+                        this.signalClasses.set(transformedName, originalName);
                     }
-                    return `{ type: ${ffiType}, getCls: () => ${signalParamClass} }`;
+                    return `{ type: ${ffiType}, getCls: () => ${transformedName} }`;
                 }
                 return `{ type: ${ffiType} }`;
             });
@@ -1496,7 +1522,7 @@ ${allArgs ? `${allArgs},` : ""}
             for (const param of signalParams) {
                 const paramName = toValidIdentifier(toCamelCase(param.name));
                 const signalParamClass = this.extractSignalParamClass(param, classMap);
-                const paramType = signalParamClass ?? this.typeMapper.mapType(param.type).ts;
+                const paramType = signalParamClass?.transformedName ?? this.typeMapper.mapType(param.type).ts;
                 handlerParams.push(`${paramName}: ${paramType}`);
             }
             const returnType = signal.returnType ? this.typeMapper.mapType(signal.returnType).ts : "void";
@@ -1634,7 +1660,7 @@ ${allArgs ? `${allArgs},` : ""}
             this.usesRead = true;
         }
 
-        const recordName = normalizeClassName(record.name);
+        const recordName = normalizeClassName(record.name, this.options.namespace);
         const sections: string[] = [];
 
         const initInterface = this.generateRecordInitInterface(record);
@@ -1674,12 +1700,12 @@ ${allArgs ? `${allArgs},` : ""}
         const initFields = this.getWritableFields(record.fields);
         if (initFields.length === 0) return null;
 
-        const recordName = normalizeClassName(record.name);
+        const recordName = normalizeClassName(record.name, this.options.namespace);
         return this.generateFieldInitInterface(recordName, initFields);
     }
 
     private generateRecordConstructors(record: GirRecord, sharedLibrary: string): string {
-        const recordName = normalizeClassName(record.name);
+        const recordName = normalizeClassName(record.name, this.options.namespace);
         const sections: string[] = [];
 
         const mainConstructor = record.constructors.find((c) => !c.parameters.some(isVararg));
@@ -1738,7 +1764,8 @@ ${allArgs ? `${allArgs},` : ""}
 
     private generateFieldInitInterface(recordName: string, fields: GirField[]): string {
         const properties = fields.map((field) => {
-            const fieldName = toValidIdentifier(toCamelCase(field.name));
+            let fieldName = toValidIdentifier(toCamelCase(field.name));
+            if (fieldName === "id") fieldName = "id_";
             const typeMapping = this.typeMapper.mapType(field.type);
             return `  ${fieldName}?: ${typeMapping.ts};`;
         });
@@ -1746,7 +1773,7 @@ ${allArgs ? `${allArgs},` : ""}
     }
 
     private generateRecordCreatePtr(record: GirRecord, sharedLibrary: string): string {
-        const recordName = normalizeClassName(record.name);
+        const recordName = normalizeClassName(record.name, this.options.namespace);
         const mainConstructor = record.constructors.find((c) => !c.parameters.some(isVararg));
 
         if (!mainConstructor) {
@@ -1812,7 +1839,8 @@ ${args}
             currentOffset = Math.ceil(currentOffset / alignment) * alignment;
 
             if (field.writable !== false && this.isWritableType(field.type)) {
-                const fieldName = toValidIdentifier(toCamelCase(field.name));
+                let fieldName = toValidIdentifier(toCamelCase(field.name));
+                if (fieldName === "id") fieldName = "id_";
                 const typeMapping = this.typeMapper.mapType(field.type);
                 writes.push(
                     `    if (init.${fieldName} !== undefined) write(ptr, ${this.generateTypeDescriptor(typeMapping.ffi)}, ${currentOffset}, init.${fieldName});`,
@@ -1900,8 +1928,9 @@ ${args}
 
             if (!isReadable && !isWritable) continue;
 
-            const fieldName = toValidIdentifier(toCamelCase(field.name));
+            let fieldName = toValidIdentifier(toCamelCase(field.name));
             if (methodNames.has(fieldName)) continue;
+            if (fieldName === "id") fieldName = "id_";
 
             const typeMapping = this.typeMapper.mapType(field.type);
 
@@ -2295,8 +2324,12 @@ ${indent}  }`;
         }
 
         for (const normalizedRecordName of Array.from(this.usedRecords).sort()) {
-            const normalizedCurrentClass = currentClassName ? normalizeClassName(currentClassName) : "";
-            const normalizedParentClass = parentClassName ? normalizeClassName(parentClassName) : "";
+            const normalizedCurrentClass = currentClassName
+                ? normalizeClassName(currentClassName, this.options.namespace)
+                : "";
+            const normalizedParentClass = parentClassName
+                ? normalizeClassName(parentClassName, this.options.namespace)
+                : "";
             if (normalizedRecordName !== normalizedCurrentClass && normalizedRecordName !== normalizedParentClass) {
                 const originalName = this.recordNameToFile.get(normalizedRecordName) ?? normalizedRecordName;
                 lines.push(`import { ${normalizedRecordName} } from "./${toKebabCase(originalName)}.js";`);
@@ -2313,8 +2346,12 @@ ${indent}  }`;
         for (const [className, originalName] of Array.from(this.usedSameNamespaceClasses.entries()).sort((a, b) =>
             a[0].localeCompare(b[0]),
         )) {
-            const normalizedCurrentClass = currentClassName ? normalizeClassName(currentClassName) : "";
-            const normalizedParentClass = parentClassName ? normalizeClassName(parentClassName) : "";
+            const normalizedCurrentClass = currentClassName
+                ? normalizeClassName(currentClassName, this.options.namespace)
+                : "";
+            const normalizedParentClass = parentClassName
+                ? normalizeClassName(parentClassName, this.options.namespace)
+                : "";
             if (
                 className !== normalizedCurrentClass &&
                 className !== normalizedParentClass &&
@@ -2329,9 +2366,11 @@ ${indent}  }`;
             }
         }
 
-        for (const className of Array.from(this.signalClasses).sort()) {
+        for (const [className, originalName] of Array.from(this.signalClasses.entries()).sort((a, b) =>
+            a[0].localeCompare(b[0]),
+        )) {
             if (className !== currentClassName && className !== parentClassName) {
-                lines.push(`import { ${className} } from "./${toKebabCase(className)}.js";`);
+                lines.push(`import { ${className} } from "./${toKebabCase(originalName)}.js";`);
             }
         }
 

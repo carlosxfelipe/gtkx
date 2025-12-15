@@ -11,26 +11,37 @@ const girsDir = join(workspaceRoot, "girs");
 const systemGirsDir = "/usr/share/gir-1.0";
 const outputDir = resolve(__dirname, "../src/generated");
 
-const IMPORTANT_GIRS = new Set([
+const GIRS_TO_SYNC = new Set([
     "Adw-1.gir",
+    "AppStream-1.0.gir",
+    "Atspi-2.0.gir",
     "GLib-2.0.gir",
+    "GLibUnix-2.0.gir",
     "GModule-2.0.gir",
     "GObject-2.0.gir",
     "Gdk-4.0.gir",
     "GdkPixbuf-2.0.gir",
     "Gio-2.0.gir",
+    "GioUnix-2.0.gir",
     "Graphene-1.0.gir",
     "Gsk-4.0.gir",
+    "Gst-1.0.gir",
+    "GstBase-1.0.gir",
     "Gtk-4.0.gir",
     "GtkSource-5.gir",
     "HarfBuzz-0.0.gir",
+    "JavaScriptCore-6.0.gir",
+    "Json-1.0.gir",
     "Pango-1.0.gir",
     "PangoCairo-1.0.gir",
     "Secret-1.gir",
+    "Soup-3.0.gir",
     "Vte-3.91.gir",
     "WebKit-6.0.gir",
+    "WebKitWebProcessExtension-6.0.gir",
     "cairo-1.0.gir",
     "freetype2-2.0.gir",
+    "libxml2-2.0.gir",
 ]);
 
 const syncGirFiles = (): void => {
@@ -45,7 +56,7 @@ const syncGirFiles = (): void => {
     console.log(`Found ${files.length} GIR files in ${systemGirsDir}`);
 
     for (const file of files) {
-        if (!IMPORTANT_GIRS.has(file)) continue;
+        if (!GIRS_TO_SYNC.has(file)) continue;
         copyFileSync(join(systemGirsDir, file), join(girsDir, file));
         console.log(`Copied ${file}`);
     }
@@ -62,8 +73,9 @@ const parseGirFile = (filePath: string): GirNamespace => {
 const generateForNamespace = async (
     namespace: GirNamespace,
     typeRegistry: TypeRegistry,
+    allNamespaces: Map<string, GirNamespace>,
 ): Promise<{ name: string; fileCount: number }> => {
-    const generator = new CodeGenerator({ outputDir, namespace: namespace.name, typeRegistry });
+    const generator = new CodeGenerator({ outputDir, namespace: namespace.name, typeRegistry, allNamespaces });
     const generatedFiles = await generator.generateNamespace(namespace);
 
     const namespaceOutputDir = join(outputDir, namespace.name.toLowerCase());
@@ -90,7 +102,7 @@ const generateBindings = async (): Promise<void> => {
 
     const girFiles = readdirSync(girsDir)
         .filter((f) => f.endsWith(".gir"))
-        .filter((f) => IMPORTANT_GIRS.has(f));
+        .filter((f) => GIRS_TO_SYNC.has(f));
 
     console.log(`\nFound ${girFiles.length} GIR files in ${girsDir}`);
 
@@ -107,12 +119,13 @@ const generateBindings = async (): Promise<void> => {
     }
 
     const typeRegistry = TypeRegistry.fromNamespaces(namespaces);
+    const allNamespaces = new Map(namespaces.map((ns) => [ns.name, ns]));
     console.log(`\nBuilt type registry with ${namespaces.length} namespaces`);
 
     console.log("\nGenerating bindings...");
     for (const namespace of namespaces) {
         try {
-            const result = await generateForNamespace(namespace, typeRegistry);
+            const result = await generateForNamespace(namespace, typeRegistry, allNamespaces);
             console.log(`  ✓ Generated ${result.fileCount} files for ${result.name}`);
         } catch (error) {
             console.error(`  ✗ Failed to generate ${namespace.name}:`, error);

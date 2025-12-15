@@ -123,9 +123,10 @@ pub fn get_unref_closure_trampoline_ptr() -> *mut c_void {
     unref_closure_trampoline as *mut c_void
 }
 
-/// Trampoline for GSourceFunc callbacks (e.g., idle_add, timeout_add).
+/// Trampoline for GSourceFunc callbacks (e.g., idle_add_full, timeout_add_full).
 ///
 /// Returns 1 (TRUE) to keep the source active, 0 (FALSE) to remove it.
+/// The closure is cleaned up by the destroy notify callback, not here.
 ///
 /// # Safety
 ///
@@ -150,11 +151,6 @@ unsafe extern "C" fn source_func_trampoline(user_data: *mut c_void) -> i32 {
         );
 
         let result = return_value.get::<bool>().unwrap_or(false);
-
-        if !result {
-            gobject_ffi::g_closure_unref(closure_ptr);
-        }
-
         i32::from(result)
     }
 }

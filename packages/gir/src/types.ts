@@ -398,14 +398,17 @@ export interface RegisteredType {
     glibTypeName?: string;
 }
 
-const CLASS_RENAMES = new Map<string, string>([
-    ["Error", "GError"],
-    ["Object", "GObject"],
-]);
+const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
 
-const normalizeTypeName = (name: string): string => {
+const normalizeTypeName = (name: string, namespace: string): string => {
     const pascalName = toPascalCase(name);
-    return CLASS_RENAMES.get(pascalName) ?? pascalName;
+    if (CLASS_RENAMES.has(pascalName)) {
+        return CLASS_RENAMES.get(pascalName) as string;
+    }
+    if (pascalName === "Object") {
+        return namespace === "GObject" ? "GObject" : `${namespace}Object`;
+    }
+    return pascalName;
 };
 
 /**
@@ -421,7 +424,7 @@ export class TypeRegistry {
      * @param name - The class name
      */
     registerType(namespace: string, name: string): void {
-        const transformedName = normalizeTypeName(name);
+        const transformedName = normalizeTypeName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "class",
             name,
@@ -436,7 +439,7 @@ export class TypeRegistry {
      * @param name - The interface name
      */
     registerInterface(namespace: string, name: string): void {
-        const transformedName = normalizeTypeName(name);
+        const transformedName = normalizeTypeName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "class",
             name,
@@ -467,7 +470,7 @@ export class TypeRegistry {
      * @param glibTypeName - Optional GLib type name for boxed type handling
      */
     registerRecord(namespace: string, name: string, glibTypeName?: string): void {
-        const transformedName = normalizeTypeName(name);
+        const transformedName = normalizeTypeName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "record",
             name,
@@ -1128,7 +1131,7 @@ export class TypeMapper {
             };
         }
 
-        if (param.type.name === "GLib.DestroyNotify") {
+        if (param.type.name === "GLib.DestroyNotify" || param.type.name === "DestroyNotify") {
             return {
                 ts: "() => void",
                 ffi: {
@@ -1138,7 +1141,7 @@ export class TypeMapper {
             };
         }
 
-        if (param.type.name === "GLib.SourceFunc") {
+        if (param.type.name === "GLib.SourceFunc" || param.type.name === "SourceFunc") {
             return {
                 ts: "() => boolean",
                 ffi: {

@@ -57,8 +57,9 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
 const extractDoc = (node: Record<string, unknown>): string | undefined => {
     const doc = node.doc as Record<string, unknown> | undefined;
     if (!doc) return undefined;
-    const text = doc["#text"] as string | undefined;
-    return text?.trim();
+    const text = doc["#text"];
+    if (typeof text !== "string") return undefined;
+    return text.trim();
 };
 
 const ensureArray = (value: unknown): Record<string, unknown>[] =>

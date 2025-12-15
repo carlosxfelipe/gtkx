@@ -145,10 +145,22 @@ where
 ///
 /// This adds a reference to the closure (and sinks any floating reference),
 /// returning a pointer that the caller is responsible for eventually unreffing.
+/// Use this when Rust retains ownership and will drop the closure later.
 fn closure_to_glib_full(closure: &glib::Closure) -> *mut c_void {
     use glib::translate::ToGlibPtr as _;
     let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
     ptr as *mut c_void
+}
+
+/// Returns a raw pointer to a closure without adding a reference.
+///
+/// Use this when transferring sole ownership to GTK via mem::forget.
+/// The closure's existing reference becomes GTK's responsibility to unref.
+fn closure_to_glib_none(closure: &glib::Closure) -> *mut c_void {
+    use glib::translate::ToGlibPtr;
+    let stash: glib::translate::Stash<*mut glib::gobject_ffi::GClosure, _> =
+        closure.to_glib_none();
+    stash.0 as *mut c_void
 }
 
 fn convert_glib_args(args: &[glib::Value], arg_types: &Option<Vec<Type>>) -> Vec<value::Value> {
@@ -615,13 +627,16 @@ impl Value {
                     )
                 });
 
-                let closure_ptr = closure_to_glib_full(&closure);
+                let closure_ptr = closure_to_glib_none(&closure);
                 let trampoline_ptr = callback::get_source_func_trampoline_ptr();
+                let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
+
+                std::mem::forget(closure);
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: OwnedPtr::new(closure, closure_ptr),
-                    destroy_ptr: None,
+                    closure: OwnedPtr::new((), closure_ptr),
+                    destroy_ptr: Some(destroy_ptr),
                 }))
             }
 
@@ -641,14 +656,10 @@ impl Value {
                     )
                 });
 
-                let closure_ptr = closure_to_glib_full(&closure);
+                let closure_ptr = closure_to_glib_none(&closure);
                 let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
-                // Transfer full ownership to GTK. The closure_to_glib_full() call added a ref,
-                // and we prevent Rust's Drop from running so GTK becomes the sole owner.
-                // The destroy callback (unref_closure_trampoline) will call g_closure_unref
-                // when GTK no longer needs the closure.
                 std::mem::forget(closure);
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
@@ -683,14 +694,10 @@ impl Value {
                     )
                 });
 
-                let closure_ptr = closure_to_glib_full(&closure);
+                let closure_ptr = closure_to_glib_none(&closure);
                 let trampoline_ptr = callback::get_compare_data_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
-                // Transfer full ownership to GTK. The closure_to_glib_full() call added a ref,
-                // and we prevent Rust's Drop from running so GTK becomes the sole owner.
-                // The destroy callback (unref_closure_trampoline) will call g_closure_unref
-                // when GTK no longer needs the closure.
                 std::mem::forget(closure);
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
