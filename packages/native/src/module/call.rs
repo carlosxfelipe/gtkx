@@ -32,15 +32,15 @@ struct BatchCallDescriptor {
 /// provided context. This enables synchronous callback invocation from GTK
 /// signal handlers during re-entrant calls.
 ///
-/// Increments the wait depth counter so that signal handlers know to use the
-/// synchronous queue path instead of the Neon channel. Supports nested calls.
+/// IMPORTANT: Callers must call `gtk_dispatch::enter_js_wait()` BEFORE scheduling
+/// the task to the GTK thread. This ensures that any signals triggered by the task
+/// see `is_js_waiting() = true` and use the synchronous queue path. This function
+/// calls `exit_js_wait()` when done.
 fn wait_for_result<'a, T, C: Context<'a>>(
     cx: &mut C,
     rx: &mpsc::Receiver<T>,
     error_message: &str,
 ) -> T {
-    gtk_dispatch::enter_js_wait();
-
     let result = loop {
         js_dispatch::process_pending(cx);
 
@@ -75,6 +75,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
 
+    gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
         let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
     });
@@ -280,6 +281,7 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
+    gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
         let result = handle_batch_calls(descriptors);
         let _ = tx.send(result);
