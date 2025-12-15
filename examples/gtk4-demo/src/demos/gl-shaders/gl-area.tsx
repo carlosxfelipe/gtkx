@@ -172,25 +172,20 @@ const GLAreaDemo = () => {
     }, [zAdjustment, rotationZ]);
 
     const handleRealize = useCallback((self: Gtk.Widget) => {
-        const area = self as Gtk.GLArea;
-        glAreaRef.current = area;
+        glAreaRef.current = self as Gtk.GLArea;
+    }, []);
 
-        // Make context current for GL calls
-        area.makeCurrent();
-
-        // Check for context creation errors by verifying context exists
+    const initializeGL = useCallback((area: Gtk.GLArea): boolean => {
         const context = area.getContext();
         if (!context) {
             setError("GL context creation failed");
-            return;
+            return false;
         }
 
         try {
-            // Create shader program
             const program = createShaderProgram(VERTEX_SHADER, FRAGMENT_SHADER);
             const mvpLocation = GL.glGetUniformLocation(program, "mvp");
 
-            // Create VAO and VBO
             const vao = GL.glGenVertexArray();
             const vbo = GL.glGenBuffer();
 
@@ -198,19 +193,19 @@ const GLAreaDemo = () => {
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
             GL.glBufferData(GL.GL_ARRAY_BUFFER, VERTEX_DATA, GL.GL_STATIC_DRAW);
 
-            // Position attribute (location 0)
             GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, false, 6 * 4, 0);
             GL.glEnableVertexAttribArray(0);
 
-            // Color attribute (location 1)
             GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, false, 6 * 4, 3 * 4);
             GL.glEnableVertexAttribArray(1);
 
             GL.glBindVertexArray(0);
 
             glResources.current = { program, vao, vbo, mvpLocation };
+            return true;
         } catch (e) {
             setError(`GL initialization error: ${e}`);
+            return false;
         }
     }, []);
 
@@ -227,14 +222,18 @@ const GLAreaDemo = () => {
     }, []);
 
     const handleRender = useCallback(
-        (_self: Gtk.GLArea, _context: Gdk.GLContext) => {
-            if (!glResources.current) {
+        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
+            if (!glResources.current && !initializeGL(self)) {
                 return true;
             }
 
-            const { program, vao, mvpLocation } = glResources.current;
+            const resources = glResources.current;
+            if (!resources) {
+                return true;
+            }
 
-            // Clear the framebuffer
+            const { program, vao, mvpLocation } = resources;
+
             GL.glClearColor(0.2, 0.2, 0.2, 1.0);
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 
@@ -254,10 +253,9 @@ const GLAreaDemo = () => {
             GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3);
             GL.glBindVertexArray(0);
 
-            // We handled the render, return true
             return true;
         },
-        [rotationX, rotationY, rotationZ],
+        [initializeGL, rotationX, rotationY, rotationZ],
     );
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {

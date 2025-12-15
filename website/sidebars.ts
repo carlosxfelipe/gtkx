@@ -13,6 +13,7 @@ const sidebars: SidebarsConfig = {
         },
         "styling",
         "testing",
+        "adwaita",
         "deploying",
     ],
     apiSidebar: [
