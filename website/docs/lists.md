@@ -35,7 +35,7 @@ const UserList = () => (
       )}
     >
       {users.map((user) => (
-        <ListView.Item key={user.id} item={user} />
+        <ListView.Item key={user.id} id={user.id} item={user} />
       ))}
     </ListView.Root>
   </ScrolledWindow>
@@ -88,7 +88,7 @@ const PhotoGrid = () => (
       )}
     >
       {photos.map((photo) => (
-        <GridView.Item key={photo.id} item={photo} />
+        <GridView.Item key={photo.id} id={photo.id} item={photo} />
       ))}
     </GridView.Root>
   </ScrolledWindow>
@@ -140,7 +140,7 @@ const ProductTable = () => (
         )}
       />
       {products.map((product) => (
-        <ColumnView.Item key={product.id} item={product} />
+        <ColumnView.Item key={product.id} id={product.id} item={product} />
       ))}
     </ColumnView.Root>
   </ScrolledWindow>
@@ -154,7 +154,7 @@ ColumnView supports sortable columns. When the user clicks a column header, the 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ColumnView, Label, ScrolledWindow } from "@gtkx/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface Product {
   id: string;
@@ -181,6 +181,12 @@ const SortableTable = () => {
     Gtk.SortType.ASCENDING
   );
 
+  const sortedProducts = useMemo(() => {
+    if (!sortColumn) return products;
+    const sorted = [...products].sort((a, b) => sortFn(a, b, sortColumn));
+    return sortOrder === Gtk.SortType.DESCENDING ? sorted.reverse() : sorted;
+  }, [sortColumn, sortOrder]);
+
   return (
     <ScrolledWindow vexpand>
       <ColumnView.Root<Product, ColumnId>
@@ -190,7 +196,6 @@ const SortableTable = () => {
           setSortColumn(column);
           setSortOrder(order);
         }}
-        sortFn={sortFn}
       >
         <ColumnView.Column<Product>
           id="name"
@@ -206,8 +211,8 @@ const SortableTable = () => {
             <Label label={product ? `$${product.price}` : ""} />
           )}
         />
-        {products.map((product) => (
-          <ColumnView.Item key={product.id} item={product} />
+        {sortedProducts.map((product) => (
+          <ColumnView.Item key={product.id} id={product.id} item={product} />
         ))}
       </ColumnView.Root>
     </ScrolledWindow>
@@ -215,12 +220,13 @@ const SortableTable = () => {
 };
 ```
 
+**Note:** ColumnView doesn't sort items internally. You must sort your data before rendering based on `sortColumn` and `sortOrder`. The `onSortChange` callback notifies you when the user clicks a column header.
+
 | Prop           | Type                                                    | Description                                    |
 | -------------- | ------------------------------------------------------- | ---------------------------------------------- |
 | `sortColumn`   | `string \| null`                                        | The column id currently sorted by (controlled) |
 | `sortOrder`    | `Gtk.SortType`                                          | `ASCENDING` or `DESCENDING`                    |
 | `onSortChange` | `(column: string \| null, order: Gtk.SortType) => void` | Called when user clicks column headers         |
-| `sortFn`       | `(a: T, b: T, columnId: string) => number`              | Comparison function for sorting                |
 
 ### ColumnView.Column Props
 
@@ -235,7 +241,7 @@ const SortableTable = () => {
 
 ## DropDown
 
-`DropDown` creates a selection dropdown with custom item rendering:
+`DropDown` creates a selection dropdown using simple id/label pairs:
 
 ```tsx
 import { DropDown, Label } from "@gtkx/react";
@@ -254,16 +260,17 @@ const countries: Country[] = [
 ];
 
 const CountrySelector = () => {
-  const [selected, setSelected] = useState<Country | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = countries.find((c) => c.id === selectedId);
 
   return (
     <>
       <DropDown.Root
-        itemLabel={(country: Country) => country.name}
-        onSelectionChanged={(country: Country) => setSelected(country)}
+        selectedId={selectedId ?? undefined}
+        onSelectionChanged={(id) => setSelectedId(id)}
       >
         {countries.map((country) => (
-          <DropDown.Item key={country.id} item={country} />
+          <DropDown.Item key={country.id} id={country.id} label={country.name} />
         ))}
       </DropDown.Root>
 
@@ -273,12 +280,19 @@ const CountrySelector = () => {
 };
 ```
 
-### DropDown Props
+### DropDown.Root Props
 
-| Prop                 | Type                  | Description                                      |
-| -------------------- | --------------------- | ------------------------------------------------ | ----------------------------- |
-| `itemLabel`          | `(item: T) => string` | Required. Returns the display text for each item |
-| `onSelectionChanged` | `(item: T             | null, index: number) => void`                    | Called when selection changes |
+| Prop                 | Type                 | Description                                       |
+| -------------------- | -------------------- | ------------------------------------------------- |
+| `selectedId`         | `string`             | ID of the initially selected item                 |
+| `onSelectionChanged` | `(id: string) => void` | Called when selection changes with the item's ID |
+
+### DropDown.Item Props
+
+| Prop    | Type     | Description                           |
+| ------- | -------- | ------------------------------------- |
+| `id`    | `string` | Unique identifier for this item       |
+| `label` | `string` | Display text shown in the dropdown    |
 
 ## Dynamic Updates
 
@@ -318,7 +332,7 @@ const UserListWithRemove = () => {
         )}
       >
         {users.map((user) => (
-          <ListView.Item key={user.id} item={user} />
+          <ListView.Item key={user.id} id={user.id} item={user} />
         ))}
       </ListView.Root>
     </ScrolledWindow>
@@ -356,7 +370,7 @@ const UserListWithRemove = () => {
     )}
   >
     {items.map(item => (
-      <ListView.Item key={item.id} item={item} />
+      <ListView.Item key={item.id} id={item.id} item={item} />
     ))}
   </ListView.Root>
 </ScrolledWindow>

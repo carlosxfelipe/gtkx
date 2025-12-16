@@ -92,6 +92,11 @@ describe("batch", () => {
             endCommit();
             await flushMicrotasks();
 
+            expect(callback).not.toHaveBeenCalled();
+
+            endCommit();
+            await flushMicrotasks();
+
             expect(callback).toHaveBeenCalledOnce();
         });
     });

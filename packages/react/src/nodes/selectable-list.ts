@@ -6,6 +6,7 @@ import { scheduleFlush } from "../batch.js";
 import type { ItemContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
+import { getCallbackChange } from "../props.js";
 
 export type SelectableListState = {
     itemsById: Map<string, unknown>;
@@ -78,12 +79,13 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
 
         const oldCallback = oldProps.onSelectionChanged as ((ids: string[]) => void) | undefined;
         const newCallback = newProps.onSelectionChanged as ((ids: string[]) => void) | undefined;
+        const change = getCallbackChange(oldCallback, newCallback);
 
-        if (oldCallback !== newCallback) {
-            this.state.onSelectionChanged = newCallback;
-            if (oldCallback && !newCallback) {
+        if (change.action !== "none") {
+            this.state.onSelectionChanged = change.callback;
+            if (change.action === "disconnect") {
                 this.disconnectSelectionHandler();
-            } else if (!oldCallback && newCallback) {
+            } else if (change.action === "connect") {
                 this.connectSelectionHandler();
             }
         }
@@ -218,7 +220,11 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
 
         if (this.state.needsInitialSelection && this.state.itemOrder.length > 0) {
             this.state.needsInitialSelection = false;
-            queueMicrotask(() => this.applyInitialSelection());
+            queueMicrotask(() => {
+                if (this.hasParent()) {
+                    this.applyInitialSelection();
+                }
+            });
         }
     };
 

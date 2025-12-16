@@ -72,7 +72,7 @@ export function connectListItemFactorySignals(config: ListItemFactoryConfig): Li
 
         if (info) {
             reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
-            listItemCache.delete(id);
+            queueMicrotask(() => listItemCache.delete(id));
         }
     });
     handlerIds.push(teardownId);

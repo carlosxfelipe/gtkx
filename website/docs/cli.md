@@ -32,6 +32,7 @@ The wizard prompts for:
 - **App ID** — reverse domain notation (e.g., `com.example.myapp`)
 - **Package manager** — pnpm, npm, yarn, or bun
 - **Testing framework** — Vitest, Jest, Node.js Test Runner, or none
+- **Claude Code skills** — optional AI assistance files for Claude Code
 
 You can also pass options directly to skip prompts:
 
@@ -41,11 +42,12 @@ gtkx create my-app --app-id com.example.myapp --pm pnpm --testing vitest
 
 #### Options
 
-| Option      | Description                                            |
-| ----------- | ------------------------------------------------------ |
-| `--app-id`  | GTK application ID in reverse domain notation          |
-| `--pm`      | Package manager: `pnpm`, `npm`, `yarn`, or `bun`       |
-| `--testing` | Testing framework: `vitest`, `jest`, `node`, or `none` |
+| Option           | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `--app-id`       | GTK application ID in reverse domain notation          |
+| `--pm`           | Package manager: `pnpm`, `npm`, `yarn`, or `bun`       |
+| `--testing`      | Testing framework: `vitest`, `jest`, `node`, or `none` |
+| `--claudeSkills` | Include Claude Code skill files for AI assistance      |
 
 #### Testing Setup
 
@@ -96,10 +98,12 @@ When you create a new project, these scripts are set up in `package.json`:
     "dev": "gtkx dev src/app.tsx",
     "build": "tsc -b",
     "start": "node dist/index.js",
-    "test": "vitest"
+    "test": "GDK_BACKEND=x11 xvfb-run -a vitest"
   }
 }
 ```
+
+The test script includes `GDK_BACKEND=x11 xvfb-run -a` to run tests in a virtual framebuffer, which is required for GTK4 widgets.
 
 ### `npm run dev`
 
@@ -115,35 +119,15 @@ Runs the compiled application without HMR. Use this for production or testing th
 
 ### `npm test`
 
-Runs the test suite. The test script varies based on your chosen framework:
+Runs the test suite. The test script varies based on your chosen framework (all include the xvfb wrapper):
 
-- **Vitest**: `vitest`
-- **Jest**: `jest`
-- **Node.js**: `node --import tsx --test tests/**/*.test.ts`
+- **Vitest**: `GDK_BACKEND=x11 xvfb-run -a vitest`
+- **Jest**: `GDK_BACKEND=x11 xvfb-run -a jest`
+- **Node.js**: `GDK_BACKEND=x11 xvfb-run -a node --import tsx --test tests/**/*.test.ts`
 
 ## App ID
 
-GTK applications require a unique identifier in reverse domain notation:
-
-```
-com.example.myapp
-org.gnome.Calculator
-io.github.user.project
-```
-
-The app ID is used by:
-
-- The desktop environment for window matching
-- D-Bus for inter-process communication
-- Flatpak/Snap for sandboxing
-
-### Choosing an App ID
-
-- Use a domain you control: `com.yourcompany.appname`
-- For personal projects: `io.github.username.appname`
-- For GTKX demos: `org.gtkx.appname`
-
-The CLI suggests `org.gtkx.<projectname>` as a default, but you should use your own domain for published apps.
+GTK applications require a unique identifier in reverse domain notation (e.g., `com.example.myapp`). The CLI suggests `org.gtkx.<projectname>` as a default, but you should use your own domain for published apps (e.g., `io.github.username.appname`).
 
 ## Using with npx/pnpx
 

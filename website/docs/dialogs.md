@@ -108,17 +108,6 @@ const App = () => {
 };
 ```
 
-### AlertDialog API
-
-| Method                    | Description                                                |
-| ------------------------- | ---------------------------------------------------------- |
-| `setMessage(text)`        | Main dialog message                                        |
-| `setDetail(text)`         | Secondary explanation text                                 |
-| `setButtons(labels)`      | Array of button labels                                     |
-| `setCancelButton(index)`  | Which button is triggered by Escape                        |
-| `setDefaultButton(index)` | Which button has default focus                             |
-| `choose(parent)`          | Show dialog and return `Promise<number>` with button index |
-
 ### File Dialogs
 
 ```tsx
@@ -172,17 +161,6 @@ const FilePicker = () => {
   );
 };
 ```
-
-### FileDialog API
-
-| Method                   | Description                                     |
-| ------------------------ | ----------------------------------------------- |
-| `setTitle(text)`         | Dialog title                                    |
-| `setInitialName(name)`   | Default filename for save dialogs               |
-| `setInitialFolder(file)` | Starting directory                              |
-| `open(parent)`           | Show open dialog, returns `Promise<Gio.File>`   |
-| `save(parent)`           | Show save dialog, returns `Promise<Gio.File>`   |
-| `selectFolder(parent)`   | Show folder picker, returns `Promise<Gio.File>` |
 
 ## Color and Font Dialogs
 

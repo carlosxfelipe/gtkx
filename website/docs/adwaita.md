@@ -4,22 +4,7 @@ sidebar_position: 3
 
 # Adwaita
 
-[libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/) provides modern, adaptive widgets for building GNOME applications. GTKX includes full support for libadwaita components, allowing you to create apps that follow GNOME's Human Interface Guidelines.
-
-## Prerequisites
-
-Install libadwaita on your system:
-
-```bash
-# Fedora
-sudo dnf install libadwaita
-
-# Ubuntu/Debian
-sudo apt install libadwaita-1-0
-
-# Arch Linux
-sudo pacman -S libadwaita
-```
+GTKX includes full support for [libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/) components, allowing you to create apps that follow GNOME's Human Interface Guidelines. Make sure `libadwaita` is installed on your system (see [Getting Started](./getting-started)).
 
 ## Application Window
 

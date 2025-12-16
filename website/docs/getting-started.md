@@ -11,50 +11,9 @@ Get up and running with GTKX in under a minute.
 Before you begin, make sure you have:
 
 - **Node.js 20+** — GTKX uses modern JavaScript features
-- **GTK4** — The GTK4 runtime libraries
+- **GTK4** — Install `gtk4` via your distribution's package manager
 - **Linux** — GTK4 is designed for Linux (GNOME desktop)
-
-### Installing GTK4
-
-On Fedora:
-
-```bash
-sudo dnf install gtk4
-```
-
-On Ubuntu/Debian:
-
-```bash
-sudo apt install libgtk-4-1
-```
-
-On Arch Linux:
-
-```bash
-sudo pacman -S gtk4
-```
-
-### Installing libadwaita (Optional)
-
-For modern GNOME-style applications, install libadwaita:
-
-On Fedora:
-
-```bash
-sudo dnf install libadwaita
-```
-
-On Ubuntu/Debian:
-
-```bash
-sudo apt install libadwaita-1-0
-```
-
-On Arch Linux:
-
-```bash
-sudo pacman -S libadwaita
-```
+- **libadwaita** (optional) — For modern GNOME-style applications
 
 ## Create Your App
 

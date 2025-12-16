@@ -19,7 +19,7 @@ npm install -D @gtkx/testing
 
 ### Display Requirements
 
-Tests require `xvfb-run` because GTK needs a display. On Wayland systems, set `GDK_BACKEND=x11` to ensure windows render offscreen:
+Tests require a display. Use `xvfb-run` to run tests in a virtual framebuffer:
 
 ```bash
 GDK_BACKEND=x11 xvfb-run -a <your-test-command>
@@ -98,17 +98,7 @@ const expanded = await screen.findByRole(AccessibleRole.BUTTON, {
 });
 ```
 
-Common roles:
-
-- `AccessibleRole.BUTTON` — Buttons
-- `AccessibleRole.LABEL` — Labels
-- `AccessibleRole.TEXT_BOX` — Text inputs
-- `AccessibleRole.CHECKBOX` — Checkboxes
-- `AccessibleRole.RADIO` — Radio buttons
-- `AccessibleRole.TOGGLE_BUTTON` — Toggle buttons
-- `AccessibleRole.SWITCH` — Switches
-- `AccessibleRole.SEARCH_BOX` — Search inputs
-- `AccessibleRole.SPIN_BUTTON` — Spin buttons
+Import `AccessibleRole` from `@gtkx/ffi/gtk` to access all available roles.
 
 #### By Label Text
 

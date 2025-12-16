@@ -1,14 +1,12 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { isPackContainer, type PackContainer } from "../container-interfaces.js";
+import type { Props } from "../factory.js";
 import { Node } from "../node.js";
+import { VirtualSlotNode } from "./virtual-slot.js";
 
 type HeaderBarWidget = Gtk.HeaderBar | Adw.HeaderBar | Gtk.ActionBar;
 
-/**
- * Container node for widgets with pack start/end functionality (HeaderBar, ActionBar).
- * Exported for reuse by ActionBarNode.
- */
 export class PackContainerNode<T extends HeaderBarWidget> extends Node<T> implements PackContainer {
     packStart(child: Gtk.Widget): void {
         this.widget.packStart(child);
@@ -56,68 +54,47 @@ export class HeaderBarNode extends PackContainerNode<Gtk.HeaderBar> {
 
 type PackPosition = "start" | "end";
 
-class PackSlotNode extends Node<never> {
-    protected position: PackPosition = "start";
+type PackSlotProps = {
+    position: PackPosition;
+};
 
-    protected override isVirtual(): boolean {
-        return true;
+abstract class PackSlotNode extends VirtualSlotNode<PackContainer, PackSlotProps> {
+    protected abstract readonly position: PackPosition;
+
+    protected isValidContainer(parent: Node): parent is Node & PackContainer {
+        return isPackContainer(parent);
     }
 
-    private childWidget: Gtk.Widget | null = null;
-    private parentContainer: (Node & PackContainer) | null = null;
+    protected extractSlotProps(_props: Props): PackSlotProps {
+        return { position: this.position };
+    }
 
-    override appendChild(child: Node): void {
-        const widget = child.getWidget();
-
-        if (widget) {
-            this.childWidget = widget;
-
-            if (this.parentContainer) {
-                if (this.position === "start") {
-                    this.parentContainer.packStart(widget);
-                } else {
-                    this.parentContainer.packEnd(widget);
-                }
-            }
+    protected addToContainer(container: PackContainer, child: Gtk.Widget, props: PackSlotProps): void {
+        if (props.position === "start") {
+            container.packStart(child);
+        } else {
+            container.packEnd(child);
         }
     }
 
-    override removeChild(child: Node): void {
-        const widget = child.getWidget();
-
-        if (widget && this.childWidget === widget) {
-            if (this.parentContainer) {
-                this.parentContainer.removeFromPack(widget);
-            }
-
-            this.childWidget = null;
-        }
+    protected insertBeforeInContainer(
+        container: PackContainer,
+        child: Gtk.Widget,
+        props: PackSlotProps,
+        _before: Gtk.Widget,
+    ): void {
+        this.addToContainer(container, child, props);
     }
 
-    override attachToParent(parent: Node): void {
-        if (isPackContainer(parent)) {
-            this.parentContainer = parent;
-
-            if (this.childWidget) {
-                if (this.position === "start") {
-                    this.parentContainer.packStart(this.childWidget);
-                } else {
-                    this.parentContainer.packEnd(this.childWidget);
-                }
-            }
-        }
+    protected removeFromContainer(container: PackContainer, child: Gtk.Widget): void {
+        container.removeFromPack(child);
     }
 
-    override detachFromParent(parent: Node): void {
-        if (isPackContainer(parent) && this.childWidget) {
-            parent.removeFromPack(this.childWidget);
-            this.parentContainer = null;
-        }
-    }
+    protected updateInContainer(): void {}
 }
 
 export class PackStartNode extends PackSlotNode {
-    protected override position: PackPosition = "start";
+    protected override readonly position: PackPosition = "start";
 
     static matches(type: string): boolean {
         return type === "HeaderBar.Start" || type === "AdwHeaderBar.Start" || type === "ActionBar.Start";
@@ -125,7 +102,7 @@ export class PackStartNode extends PackSlotNode {
 }
 
 export class PackEndNode extends PackSlotNode {
-    protected override position: PackPosition = "end";
+    protected override readonly position: PackPosition = "end";
 
     static matches(type: string): boolean {
         return type === "HeaderBar.End" || type === "AdwHeaderBar.End" || type === "ActionBar.End";

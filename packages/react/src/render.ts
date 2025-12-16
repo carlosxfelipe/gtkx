@@ -1,6 +1,7 @@
 import { start } from "@gtkx/ffi";
 import type { ApplicationFlags } from "@gtkx/ffi/gio";
 import type { ReactNode } from "react";
+import { formatBoundaryError, formatRenderError } from "./errors.js";
 import { ROOT_NODE_CONTAINER } from "./factory.js";
 import { reconciler } from "./reconciler.js";
 
@@ -49,11 +50,12 @@ export const render = (element: ReactNode, appId: string, flags?: ApplicationFla
         false,
         null,
         "",
-        (error: Error) => {
-            throw error;
+        (error: unknown) => {
+            throw formatRenderError(error);
         },
-        (error: Error) => {
-            console.error("Error caught by ErrorBoundary:", error);
+        (error: unknown) => {
+            const formattedError = formatBoundaryError(error);
+            console.error(formattedError.toString());
         },
         () => {},
         () => {},

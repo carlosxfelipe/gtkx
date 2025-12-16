@@ -66,7 +66,7 @@ describe("Input Demos", () => {
             const disabledEntry = entries.find((e) => !e.getSensitive()) as Entry;
             expect(disabledEntry).toBeDefined();
 
-            expect(getInterface(disabledEntry, Editable)?.getText()).toBe("Cannot edit this");
+            expect(getInterface(disabledEntry.id, Editable)?.getText()).toBe("Cannot edit this");
         });
 
         it("allows typing in entries", async () => {
@@ -82,7 +82,7 @@ describe("Input Demos", () => {
             await userEvent.type(basicEntry, "Hello World");
 
             await waitFor(() => {
-                const text = getInterface(basicEntry, Editable)?.getText();
+                const text = getInterface(basicEntry.id, Editable)?.getText();
                 expect(text).toBe("Hello World");
             });
         });
@@ -100,7 +100,7 @@ describe("Input Demos", () => {
             await userEvent.type(maxLengthEntry, "This is a very long text");
 
             await waitFor(() => {
-                const text = getInterface(maxLengthEntry, Editable)?.getText() ?? "";
+                const text = getInterface(maxLengthEntry.id, Editable)?.getText() ?? "";
                 expect(text.length).toBeLessThanOrEqual(10);
             });
         });
@@ -119,7 +119,7 @@ describe("Input Demos", () => {
             await userEvent.clear(basicEntry);
 
             await waitFor(() => {
-                const text = getInterface(basicEntry, Editable)?.getText();
+                const text = getInterface(basicEntry.id, Editable)?.getText();
                 expect(text).toBe("");
             });
         });

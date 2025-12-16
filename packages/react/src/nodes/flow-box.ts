@@ -1,30 +1,21 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { ChildContainer } from "../container-interfaces.js";
-import { Node } from "../node.js";
 import { isFlowBoxChild } from "../predicates.js";
+import { IndexedChildContainerNode } from "./indexed-child-container.js";
 
-export class FlowBoxNode extends Node<Gtk.FlowBox> implements ChildContainer {
+export class FlowBoxNode extends IndexedChildContainerNode<Gtk.FlowBox> {
     static matches(type: string): boolean {
         return type === "FlowBox";
     }
 
-    attachChild(child: Gtk.Widget): void {
-        this.widget.append(child);
-    }
-
-    insertChildBefore(child: Gtk.Widget, before: Gtk.Widget): void {
+    protected getInsertionIndex(before: Gtk.Widget): number {
         const beforeParent = before.getParent();
         if (beforeParent && isFlowBoxChild(beforeParent)) {
-            this.widget.insert(child, beforeParent.getIndex());
-        } else {
-            this.widget.append(child);
+            return beforeParent.getIndex();
         }
+        return -1;
     }
 
-    detachChild(child: Gtk.Widget): void {
-        const flowBoxChild = child.getParent();
-        if (flowBoxChild) {
-            this.widget.remove(flowBoxChild);
-        }
+    protected override getWidgetToRemove(child: Gtk.Widget): Gtk.Widget {
+        return child.getParent() ?? child;
     }
 }

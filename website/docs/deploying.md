@@ -4,11 +4,7 @@ sidebar_position: 8
 
 # Deploying
 
-Deploy your GTKX app as a Flatpak for distribution on Flathub.
-
-## Overview
-
-Flatpak is the standard way to distribute desktop applications on Linux. This guide shows how to package a GTKX app using Node.js Single Executable Applications (SEA) within a Flatpak sandbox.
+This guide shows how to package a GTKX app as a Flatpak using Node.js Single Executable Applications (SEA).
 
 The packaging strategy:
 
@@ -189,15 +185,8 @@ Create `org.example.myapp.json` (replace `org.example.myapp` with your app ID):
 
 ### Key Manifest Settings
 
-| Setting | Purpose |
-|---------|---------|
-| `runtime: org.gnome.Platform` | Provides GTK4 and other GNOME libraries |
-| `sdk-extensions: node22` | Node.js 22 for building (not included in runtime) |
-| `strip: false` | Prevents stripping the binary, which would corrupt the SEA blob |
-| `--share=ipc` | Required for GTK clipboard and drag-and-drop |
-| `--socket=wayland` | Wayland display access |
-| `--socket=fallback-x11` | X11 fallback for non-Wayland systems |
-| `--device=dri` | GPU access for hardware acceleration |
+- `strip: false` — Prevents stripping the binary, which would corrupt the SEA blob
+- The `finish-args` provide standard GTK display and GPU access
 
 ## Step 4: Update package.json
 

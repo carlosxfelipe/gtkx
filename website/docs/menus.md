@@ -122,22 +122,7 @@ const OptionsButton = () => (
 
 ## Keyboard Accelerators
 
-Accelerator format uses GTK's accelerator syntax:
-
-| Modifier | Syntax |
-|----------|--------|
-| Control | `<Control>` or `<Ctrl>` |
-| Shift | `<Shift>` |
-| Alt | `<Alt>` |
-| Super (Windows key) | `<Super>` |
-
-Examples:
-- `<Control>s` - Ctrl+S
-- `<Control><Shift>n` - Ctrl+Shift+N
-- `<Alt>F4` - Alt+F4
-- `<Control><Alt>Delete` - Ctrl+Alt+Delete
-
-Multiple accelerators can be passed as an array:
+Use the `accels` prop with GTK accelerator syntax (e.g., `"<Control>s"`, `"<Control><Shift>n"`). Multiple accelerators can be passed as an array:
 
 ```tsx
 <Menu.Item

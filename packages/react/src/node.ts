@@ -145,6 +145,7 @@ export abstract class Node<
 
     detachFromParent(parent: Node): void {
         this.parent = null;
+        this.disconnectAllSignals();
 
         if (isChildContainer(parent)) {
             const widget = this.getWidget();
@@ -162,6 +163,20 @@ export abstract class Node<
         } else if (isSingleChild(parentWidget)) {
             parentWidget.setChild(null);
         }
+    }
+
+    protected disconnectAllSignals(): void {
+        const widget = this.getWidget();
+        if (!widget) return;
+
+        for (const [_eventName, handlerId] of this.signalHandlers) {
+            GObject.signalHandlerDisconnect(widget, handlerId);
+        }
+        this.signalHandlers.clear();
+    }
+
+    hasParent(): boolean {
+        return this.parent !== null;
     }
 
     attachToParentBefore(parent: Node, before: Node): void {

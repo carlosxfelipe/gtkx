@@ -115,7 +115,7 @@ render(<App />, "com.example.myapp");
     )}
 >
     {items.map(item => (
-        <ListView.Item key={item.id} item={item} />
+        <ListView.Item key={item.id} id={item.id} item={item} />
     ))}
 </ListView.Root>
 ```
@@ -137,7 +137,7 @@ render(<App />, "com.example.myapp");
         )}
     />
     {items.map(item => (
-        <ColumnView.Item key={item.id} item={item} />
+        <ColumnView.Item key={item.id} id={item.id} item={item} />
     ))}
 </ColumnView.Root>
 ```
@@ -146,11 +146,11 @@ render(<App />, "com.example.myapp");
 
 ```tsx
 <DropDown.Root
-    itemLabel={(opt: Option) => opt.label}
-    onSelectionChanged={(item, index) => setSelected(item.value)}
+    selectedId={selectedId}
+    onSelectionChanged={(id) => setSelectedId(id)}
 >
     {options.map(opt => (
-        <DropDown.Item key={opt.value} item={opt} />
+        <DropDown.Item key={opt.id} id={opt.id} label={opt.label} />
     ))}
 </DropDown.Root>
 ```
