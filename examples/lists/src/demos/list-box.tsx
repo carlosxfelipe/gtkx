@@ -89,7 +89,9 @@ export const ListBoxDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label
-                    label="• Supports selection modes: none, single, browse, multiple\n• Rows can contain any widgets\n• Built-in keyboard navigation\n• Supports placeholder for empty state"
+                    label={
+                        "• Supports selection modes: none, single, browse, multiple\n• Rows can contain any widgets\n• Built-in keyboard navigation\n• Supports placeholder for empty state"
+                    }
                     wrap
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}

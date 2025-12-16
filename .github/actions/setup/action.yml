@@ -9,9 +9,16 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Cache DNF packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/dnf
+        key: dnf-${{ hashFiles('.github/actions/setup/action.yml') }}
+
     - name: Install system dependencies
       shell: bash
       run: |
+        echo "keepcache=1" >> /etc/dnf/dnf.conf
         dnf install -y \
           gtk4-devel \
           gobject-introspection-devel \

@@ -77,9 +77,9 @@ describe("TypeRegistry", () => {
             expect(registry.resolve("Gio.ActionGroup")).toBeDefined();
         });
 
-        it("returns class kind for interfaces", () => {
+        it("returns interface kind for interfaces", () => {
             const actionable = registry.resolve("Gtk.Actionable");
-            expect(actionable?.kind).toBe("class");
+            expect(actionable?.kind).toBe("interface");
         });
     });
 

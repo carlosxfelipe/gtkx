@@ -125,7 +125,9 @@ export const DropDownDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label
-                    label="• Modern replacement for GtkComboBox\n• id and label props for items\n• onSelectionChanged callback returns selected ID\n• Built-in keyboard navigation\n• Search filtering support"
+                    label={
+                        "• Modern replacement for GtkComboBox\n• id and label props for items\n• onSelectionChanged callback returns selected ID\n• Built-in keyboard navigation\n• Search filtering support"
+                    }
                     wrap
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}

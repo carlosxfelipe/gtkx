@@ -327,11 +327,13 @@ describe("Specific namespace quality checks", () => {
             expect(content).not.toContain("Ref<unknown>");
         });
 
-        it("Transform.parse should re-wrap GTK-allocated ref with getObject", () => {
+        it("Transform.parse should re-wrap GTK-allocated ref with getBoxed", () => {
             const transformPath = join(gskDir, "transform.ts");
             const content = readFileSync(transformPath, "utf-8");
 
-            expect(content).toContain("outTransform.value = getObject(outTransform.value) as Transform");
+            expect(content).toContain(
+                'outTransform.value = getBoxed(\n      outTransform.value,\n      "GskTransform",\n    ) as Transform',
+            );
         });
     });
 
@@ -370,11 +372,13 @@ describe("Pointer-to-pointer (Ref) type quality", () => {
         }
     });
 
-    it("GTK-allocated boxed refs should be re-wrapped with getObject", () => {
+    it("GTK-allocated boxed refs should be re-wrapped with getBoxed", () => {
         const gskTransformPath = join(generatedDir, "gsk", "transform.ts");
         const content = readFileSync(gskTransformPath, "utf-8");
 
         expect(content).toContain("static parse(string: string, outTransform: Ref<Transform>)");
-        expect(content).toContain("outTransform.value = getObject(outTransform.value) as Transform");
+        expect(content).toContain(
+            'outTransform.value = getBoxed(\n      outTransform.value,\n      "GskTransform",\n    ) as Transform',
+        );
     });
 });

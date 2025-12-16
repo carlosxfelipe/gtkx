@@ -148,7 +148,9 @@ export const FlowBoxDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label
-                    label="• Automatic reflow on resize\n• minChildrenPerLine and maxChildrenPerLine\n• columnSpacing and rowSpacing\n• Multiple selection modes\n• homogeneous for uniform sizing"
+                    label={
+                        "• Automatic reflow on resize\n• minChildrenPerLine and maxChildrenPerLine\n• columnSpacing and rowSpacing\n• Multiple selection modes\n• homogeneous for uniform sizing"
+                    }
                     wrap
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}

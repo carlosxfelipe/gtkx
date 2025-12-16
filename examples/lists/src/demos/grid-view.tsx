@@ -106,7 +106,9 @@ export const GridViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label
-                    label="• Automatic grid layout with configurable columns\n• Virtual scrolling for large datasets\n• minColumns and maxColumns for responsive design\n• Same renderItem pattern as ListView"
+                    label={
+                        "• Automatic grid layout with configurable columns\n• Virtual scrolling for large datasets\n• minColumns and maxColumns for responsive design\n• Same renderItem pattern as ListView"
+                    }
                     wrap
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}

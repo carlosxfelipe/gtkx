@@ -280,7 +280,9 @@ export const ColumnViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label
-                    label="• Sortable columns with sortFn and onSortChange\n• Resizable columns with resizable prop\n• Fixed-width columns with fixedWidth prop\n• renderCell for custom cell content\n• Virtual scrolling for performance"
+                    label={
+                        "• Sortable columns with sortFn and onSortChange\n• Resizable columns with resizable prop\n• Fixed-width columns with fixedWidth prop\n• renderCell for custom cell content\n• Virtual scrolling for performance"
+                    }
                     wrap
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}

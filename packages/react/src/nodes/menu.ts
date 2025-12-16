@@ -225,7 +225,7 @@ export class MenuItemNode extends Node<never> {
         this.signalHandlerId = this.action.connect("activate", () => this.invokeCurrentCallback());
 
         const app = getCurrentApp();
-        const action = getInterface(this.action, Gio.Action);
+        const action = getInterface(this.action.id, Gio.Action);
 
         if (!action) {
             throw new Error("Failed to get Gio.Action interface from SimpleAction");

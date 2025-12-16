@@ -135,9 +135,6 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../../packages/cli
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7

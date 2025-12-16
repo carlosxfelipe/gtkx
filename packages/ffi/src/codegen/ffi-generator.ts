@@ -267,6 +267,8 @@ export class CodeGenerator {
     private usesAlloc = false;
     private usesNativeError = false;
     private usesGetObject = false;
+    private usesGetBoxed = false;
+    private usesGetInterface = false;
     private usesRegisterType = false;
     private usesSignalMeta = false;
     private usedEnums = new Set<string>();
@@ -413,6 +415,8 @@ export class CodeGenerator {
         this.usesAlloc = false;
         this.usesNativeError = false;
         this.usesGetObject = false;
+        this.usesGetBoxed = false;
+        this.usesGetInterface = false;
         this.usesRegisterType = false;
         this.usesSignalMeta = false;
         this.usedEnums.clear();
@@ -1156,9 +1160,14 @@ ${allArgs ? `${allArgs},` : ""}
     ): string {
         const returnTypeMapping = this.typeMapper.mapType(finishMethod.returnType, true);
         const hasMainReturn = returnTypeMapping.ts !== "void";
-        const needsObjectWrap =
-            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
-            returnTypeMapping.ts !== "unknown";
+        const isInterface = returnTypeMapping.kind === "interface";
+        const needsGObjectWrap =
+            returnTypeMapping.ffi.type === "gobject" && returnTypeMapping.ts !== "unknown" && !isInterface;
+        const needsBoxedWrap =
+            returnTypeMapping.ffi.type === "boxed" && returnTypeMapping.ts !== "unknown" && !isInterface;
+        const needsInterfaceWrap =
+            returnTypeMapping.ffi.type === "gobject" && returnTypeMapping.ts !== "unknown" && isInterface;
+        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsInterfaceWrap;
 
         const lines: string[] = [];
 
@@ -1231,7 +1240,20 @@ ${allArgs ? `${allArgs},` : ""}
 
         if (outputParams.length === 0) {
             if (hasMainReturn) {
-                if (needsObjectWrap) {
+                if (needsBoxedWrap) {
+                    this.usesGetBoxed = true;
+                    const boxedTypeName = (finishReturnType.ffi as { innerType?: string }).innerType;
+                    if (isNullable) {
+                        lines.push(`          if (ptr === null) { resolve(null); return; }`);
+                    }
+                    lines.push(`          resolve(getBoxed(ptr, "${boxedTypeName}") as ${finishReturnType.ts});`);
+                } else if (needsInterfaceWrap) {
+                    this.usesGetInterface = true;
+                    if (isNullable) {
+                        lines.push(`          if (ptr === null) { resolve(null); return; }`);
+                    }
+                    lines.push(`          resolve(getInterface(ptr, ${finishReturnType.ts})!);`);
+                } else if (needsGObjectWrap) {
                     this.usesGetObject = true;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
@@ -1246,7 +1268,28 @@ ${allArgs ? `${allArgs},` : ""}
         } else {
             const resolveFields: string[] = [];
             if (hasMainReturn) {
-                if (needsObjectWrap) {
+                if (needsBoxedWrap) {
+                    this.usesGetBoxed = true;
+                    const boxedTypeName = (finishReturnType.ffi as { innerType?: string }).innerType;
+                    if (isNullable) {
+                        lines.push(
+                            `          const result = (ptr === null ? null : getBoxed(ptr, "${boxedTypeName}")) as ${finishReturnType.ts} | null;`,
+                        );
+                    } else {
+                        lines.push(
+                            `          const result = getBoxed(ptr, "${boxedTypeName}") as ${finishReturnType.ts};`,
+                        );
+                    }
+                } else if (needsInterfaceWrap) {
+                    this.usesGetInterface = true;
+                    if (isNullable) {
+                        lines.push(
+                            `          const result = ptr === null ? null : getInterface(ptr, ${finishReturnType.ts});`,
+                        );
+                    } else {
+                        lines.push(`          const result = getInterface(ptr, ${finishReturnType.ts})!;`);
+                    }
+                } else if (needsGObjectWrap) {
                     this.usesGetObject = true;
                     if (isNullable) {
                         lines.push(
@@ -1334,10 +1377,19 @@ ${allArgs ? `${allArgs},` : ""}
         const hasResultParam = method.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
         const resultVarName = hasResultParam ? "_result" : "result";
 
-        const needsObjectWrap =
-            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
+        const needsGObjectWrap =
+            returnTypeMapping.ffi.type === "gobject" &&
             baseReturnType !== "unknown" &&
             returnTypeMapping.kind !== "interface";
+        const needsBoxedWrap =
+            returnTypeMapping.ffi.type === "boxed" &&
+            baseReturnType !== "unknown" &&
+            returnTypeMapping.kind !== "interface";
+        const needsInterfaceWrap =
+            returnTypeMapping.ffi.type === "gobject" &&
+            baseReturnType !== "unknown" &&
+            returnTypeMapping.kind === "interface";
+        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsInterfaceWrap;
         const needsArrayWrap =
             returnTypeMapping.ffi.type === "array" &&
             returnTypeMapping.ffi.itemType?.type === "gobject" &&
@@ -1389,6 +1441,13 @@ ${allArgs ? `${allArgs},` : ""}
             }
             if (isCyclic) {
                 lines.push(this.generateCyclicTypeReturn(baseReturnType));
+            } else if (needsBoxedWrap) {
+                this.usesGetBoxed = true;
+                const boxedTypeName = (returnTypeMapping.ffi as { innerType?: string }).innerType;
+                lines.push(`    return getBoxed(ptr, "${boxedTypeName}") as ${baseReturnType};`);
+            } else if (needsInterfaceWrap) {
+                this.usesGetInterface = true;
+                lines.push(`    return getInterface(ptr, ${baseReturnType})!;`);
             } else {
                 this.usesGetObject = true;
                 lines.push(`    return getObject(ptr) as ${baseReturnType};`);
@@ -2089,10 +2148,19 @@ ${args}
         const hasResultParam = func.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
         const resultVarName = hasResultParam ? "_result" : "result";
 
-        const needsObjectWrap =
-            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
+        const needsGObjectWrap =
+            returnTypeMapping.ffi.type === "gobject" &&
             returnTypeMapping.ts !== "unknown" &&
             returnTypeMapping.kind !== "interface";
+        const needsBoxedWrap =
+            returnTypeMapping.ffi.type === "boxed" &&
+            returnTypeMapping.ts !== "unknown" &&
+            returnTypeMapping.kind !== "interface";
+        const needsInterfaceWrap =
+            returnTypeMapping.ffi.type === "gobject" &&
+            returnTypeMapping.ts !== "unknown" &&
+            returnTypeMapping.kind === "interface";
+        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsInterfaceWrap;
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
         const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(func.parameters);
@@ -2115,7 +2183,6 @@ ${args}
         const refRewrapCode = this.generateRefRewrapCode(gtkAllocatesRefs).map((line) => line.replace(/^ {4}/, "  "));
 
         if (needsObjectWrap && hasReturnValue) {
-            this.usesGetObject = true;
             lines.push(`  const ptr = call("${sharedLibrary}", "${func.cIdentifier}", [
 ${allArgs ? `${allArgs},` : ""}
   ], ${this.generateTypeDescriptor(returnTypeMapping.ffi)});`);
@@ -2126,7 +2193,17 @@ ${allArgs ? `${allArgs},` : ""}
             if (isNullable) {
                 lines.push(`  if (ptr === null) return null;`);
             }
-            lines.push(`  return getObject(ptr) as ${baseReturnType};`);
+            if (needsBoxedWrap) {
+                this.usesGetBoxed = true;
+                const boxedTypeName = (returnTypeMapping.ffi as { innerType?: string }).innerType;
+                lines.push(`  return getBoxed(ptr, "${boxedTypeName}") as ${baseReturnType};`);
+            } else if (needsInterfaceWrap) {
+                this.usesGetInterface = true;
+                lines.push(`  return getInterface(ptr, ${baseReturnType})!;`);
+            } else {
+                this.usesGetObject = true;
+                lines.push(`  return getObject(ptr) as ${baseReturnType};`);
+            }
         } else {
             const hasRefRewrap = gtkAllocatesRefs.length > 0;
             const needsResultVar = func.throws || hasRefRewrap;
@@ -2236,9 +2313,13 @@ ${allArgs ? `${allArgs},` : ""}
             .join(",\n");
     }
 
-    private identifyGtkAllocatesRefs(
-        parameters: GirParameter[],
-    ): { paramName: string; innerType: string; nullable: boolean }[] {
+    private identifyGtkAllocatesRefs(parameters: GirParameter[]): {
+        paramName: string;
+        innerType: string;
+        nullable: boolean;
+        isBoxed: boolean;
+        boxedTypeName: string | undefined;
+    }[] {
         return parameters
             .filter((p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, parameters))
             .map((param) => {
@@ -2249,30 +2330,48 @@ ${allArgs ? `${allArgs},` : ""}
                     (mapped.ffi.innerType.type === "boxed" || mapped.ffi.innerType.type === "gobject")
                 ) {
                     const innerTsType = mapped.ts.slice(4, -1);
+                    const isBoxed = mapped.ffi.innerType.type === "boxed";
+                    const boxedTypeName = isBoxed
+                        ? (mapped.ffi.innerType as { innerType?: string }).innerType
+                        : undefined;
                     return {
                         paramName: toValidIdentifier(toCamelCase(param.name)),
                         innerType: innerTsType,
                         nullable: this.typeMapper.isNullable(param),
+                        isBoxed,
+                        boxedTypeName,
                     };
                 }
                 return null;
             })
-            .filter((x): x is { paramName: string; innerType: string; nullable: boolean } => x !== null);
+            .filter((x): x is NonNullable<typeof x> => x !== null);
     }
 
     private generateRefRewrapCode(
-        gtkAllocatesRefs: { paramName: string; innerType: string; nullable: boolean }[],
+        gtkAllocatesRefs: {
+            paramName: string;
+            innerType: string;
+            nullable: boolean;
+            isBoxed: boolean;
+            boxedTypeName: string | undefined;
+        }[],
     ): string[] {
         if (gtkAllocatesRefs.length === 0) {
             return [];
         }
 
-        this.usesGetObject = true;
-        return gtkAllocatesRefs.map((ref) =>
-            ref.nullable
+        return gtkAllocatesRefs.map((ref) => {
+            if (ref.isBoxed && ref.boxedTypeName) {
+                this.usesGetBoxed = true;
+                return ref.nullable
+                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getBoxed(${ref.paramName}.value, "${ref.boxedTypeName}") as ${ref.innerType};`
+                    : `    ${ref.paramName}.value = getBoxed(${ref.paramName}.value, "${ref.boxedTypeName}") as ${ref.innerType};`;
+            }
+            this.usesGetObject = true;
+            return ref.nullable
                 ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`
-                : `    ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`,
-        );
+                : `    ${ref.paramName}.value = getObject(${ref.paramName}.value) as ${ref.innerType};`;
+        });
     }
 
     private generateErrorArgument(indent = "      "): string {
@@ -2355,6 +2454,8 @@ ${indent}  }`;
         if (this.usesCall) ffiImports.push("call");
         if (this.usesNativeError) ffiImports.push("NativeError");
         if (this.usesGetObject) ffiImports.push("getObject");
+        if (this.usesGetBoxed) ffiImports.push("getBoxed");
+        if (this.usesGetInterface) ffiImports.push("getInterface");
         if (this.usesInstantiating) ffiImports.push("isInstantiating", "setInstantiating");
         if (this.usesRegisterType) ffiImports.push("registerType");
         if (ffiImports.length > 0) {

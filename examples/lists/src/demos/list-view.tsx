@@ -100,7 +100,9 @@ export const ListViewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label
-                    label="• Virtual scrolling for optimal performance\n• Widget recycling reduces memory usage\n• renderItem prop for custom item rendering\n• Works with any data type"
+                    label={
+                        "• Virtual scrolling for optimal performance\n• Widget recycling reduces memory usage\n• renderItem prop for custom item rendering\n• Works with any data type"
+                    }
                     wrap
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}

@@ -45,8 +45,10 @@ jobs:
 
       - name: Run tests
         run: |
-          Xvfb :99 -screen 0 1024x768x24 &
+          Xvfb :99 -screen 0 1024x768x24 2>/dev/null &
           sleep 1
           pnpm test
         env:
           DISPLAY: ":99"
+          GSK_RENDERER: cairo
+          GDK_DEBUG: portals

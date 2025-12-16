@@ -459,7 +459,7 @@ export class TypeRegistry {
     registerInterface(namespace: string, name: string): void {
         const transformedName = normalizeTypeName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
-            kind: "class",
+            kind: "interface",
             name,
             namespace,
             transformedName,
