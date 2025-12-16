@@ -11,69 +11,100 @@ interface Employee {
     status: "active" | "on-leave" | "remote";
 }
 
-const employees: Employee[] = [
-    {
-        id: "1",
-        name: "Alice Johnson",
-        department: "Engineering",
-        salary: 95000,
-        startDate: "2021-03-15",
-        status: "active",
-    },
-    { id: "2", name: "Bob Smith", department: "Design", salary: 82000, startDate: "2020-06-01", status: "remote" },
-    {
-        id: "3",
-        name: "Carol Williams",
-        department: "Marketing",
-        salary: 78000,
-        startDate: "2022-01-10",
-        status: "active",
-    },
-    {
-        id: "4",
-        name: "David Brown",
-        department: "Engineering",
-        salary: 105000,
-        startDate: "2019-09-22",
-        status: "active",
-    },
-    { id: "5", name: "Eve Davis", department: "Sales", salary: 88000, startDate: "2021-07-05", status: "on-leave" },
-    {
-        id: "6",
-        name: "Frank Miller",
-        department: "Engineering",
-        salary: 92000,
-        startDate: "2020-11-30",
-        status: "remote",
-    },
-    { id: "7", name: "Grace Wilson", department: "Design", salary: 85000, startDate: "2022-04-18", status: "active" },
-    {
-        id: "8",
-        name: "Henry Taylor",
-        department: "Marketing",
-        salary: 72000,
-        startDate: "2023-02-14",
-        status: "active",
-    },
-    {
-        id: "9",
-        name: "Ivy Anderson",
-        department: "Engineering",
-        salary: 110000,
-        startDate: "2018-08-07",
-        status: "active",
-    },
-    { id: "10", name: "Jack Thomas", department: "Sales", salary: 91000, startDate: "2021-05-20", status: "remote" },
-    {
-        id: "11",
-        name: "Kate Jackson",
-        department: "Engineering",
-        salary: 98000,
-        startDate: "2020-02-28",
-        status: "active",
-    },
-    { id: "12", name: "Leo White", department: "Design", salary: 79000, startDate: "2022-09-12", status: "on-leave" },
+const firstNames = [
+    "Alice",
+    "Bob",
+    "Carol",
+    "David",
+    "Eve",
+    "Frank",
+    "Grace",
+    "Henry",
+    "Ivy",
+    "Jack",
+    "Kate",
+    "Leo",
+    "Maya",
+    "Noah",
+    "Olivia",
+    "Peter",
+    "Quinn",
+    "Rachel",
+    "Sam",
+    "Tina",
+    "Uma",
+    "Victor",
+    "Wendy",
+    "Xavier",
+    "Yara",
+    "Zach",
+    "Anna",
+    "Brian",
+    "Clara",
+    "Derek",
 ];
+
+const lastNames = [
+    "Johnson",
+    "Smith",
+    "Williams",
+    "Brown",
+    "Davis",
+    "Miller",
+    "Wilson",
+    "Taylor",
+    "Anderson",
+    "Thomas",
+    "Jackson",
+    "White",
+    "Harris",
+    "Martin",
+    "Garcia",
+    "Martinez",
+    "Robinson",
+    "Clark",
+    "Rodriguez",
+    "Lewis",
+    "Lee",
+    "Walker",
+    "Hall",
+    "Allen",
+    "Young",
+    "King",
+    "Wright",
+    "Scott",
+    "Green",
+    "Adams",
+];
+
+const departments = ["Engineering", "Design", "Marketing", "Sales", "HR", "Finance", "Operations", "Legal"];
+const statuses: Employee["status"][] = ["active", "on-leave", "remote"];
+
+const generateEmployees = (count: number): Employee[] => {
+    const employees: Employee[] = [];
+    for (let i = 0; i < count; i++) {
+        const firstName = firstNames[i % firstNames.length] ?? "Unknown";
+        const lastName = lastNames[Math.floor(i / firstNames.length) % lastNames.length] ?? "Unknown";
+        const department = departments[i % departments.length] ?? "Engineering";
+        const status = statuses[i % statuses.length] ?? "active";
+        const salary = 50000 + Math.floor((i * 7919) % 80000);
+        const year = 2020 + (i % 5);
+        const month = String((i % 12) + 1).padStart(2, "0");
+        const day = String((i % 28) + 1).padStart(2, "0");
+
+        employees.push({
+            id: String(i + 1),
+            name: `${firstName} ${lastName} ${Math.floor(i / (firstNames.length * lastNames.length)) || ""}`.trim(),
+            department,
+            salary,
+            startDate: `${year}-${month}-${day}`,
+            status,
+        });
+    }
+    return employees;
+};
+
+const employees = generateEmployees(5000);
 
 const statusColors: Record<Employee["status"], string> = {
     active: "success",
@@ -147,7 +178,12 @@ export const ColumnViewDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                    <Label label="Employee Directory" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
+                    <Label
+                        label={`Employee Directory (${employees.length.toLocaleString()} employees)`}
+                        cssClasses={["heading"]}
+                        halign={Gtk.Align.START}
+                        hexpand
+                    />
                     <Label label={sortIndicator} cssClasses={["dim-label"]} />
                 </Box>
 

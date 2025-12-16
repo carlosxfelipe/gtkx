@@ -23,7 +23,7 @@ const countries: Country[] = [
 
 const DropDownDemo = () => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const selectedCountry = selectedId ? countries.find((c) => c.id === selectedId) ?? null : null;
+    const selectedCountry = selectedId ? (countries.find((c) => c.id === selectedId) ?? null) : null;
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>

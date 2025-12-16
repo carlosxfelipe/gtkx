@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { type ChildContainer, isPageContainer, type PageContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
-import { getStringProp } from "../props.js";
+import { VirtualSlotNode } from "./virtual-slot.js";
 
 export class NotebookNode extends Node<Gtk.Notebook> implements PageContainer, ChildContainer {
     static matches(type: string): boolean {
@@ -60,85 +60,50 @@ export class NotebookNode extends Node<Gtk.Notebook> implements PageContainer, C
     }
 }
 
-export class NotebookPageNode extends Node {
+type NotebookPageProps = {
+    label: string;
+};
+
+export class NotebookPageNode extends VirtualSlotNode<PageContainer, NotebookPageProps> {
+    static override consumedPropNames = ["label"];
+
     static matches(type: string): boolean {
         return type === "Notebook.Page";
     }
 
-    protected override isVirtual(): boolean {
-        return true;
+    protected isValidContainer(parent: Node): parent is Node & PageContainer {
+        return isPageContainer(parent);
     }
 
-    private label: string = "";
-    private childWidget: Gtk.Widget | null = null;
-    private parentContainer: (Node & PageContainer) | null = null;
-
-    override initialize(props: Props): void {
-        this.label = getStringProp(props, "label", "");
-        super.initialize(props);
+    protected extractSlotProps(props: Props): NotebookPageProps {
+        return {
+            label: (props.label as string | undefined) ?? "",
+        };
     }
 
-    getLabel(): string {
-        return this.label;
+    protected addToContainer(container: PageContainer, child: Gtk.Widget, props: NotebookPageProps): void {
+        container.addPage(child, props.label);
     }
 
-    setChildWidget(widget: Gtk.Widget): void {
-        this.childWidget = widget;
+    protected insertBeforeInContainer(
+        container: PageContainer,
+        child: Gtk.Widget,
+        props: NotebookPageProps,
+        before: Gtk.Widget,
+    ): void {
+        container.insertPageBefore(child, props.label, before);
     }
 
-    getChildWidget(): Gtk.Widget | null {
-        return this.childWidget;
+    protected removeFromContainer(container: PageContainer, child: Gtk.Widget): void {
+        container.removePage(child);
     }
 
-    override appendChild(child: Node): void {
-        const childWidget = child.getWidget();
-        if (childWidget) {
-            this.childWidget = childWidget;
-        }
-    }
-
-    override attachToParent(parent: Node): void {
-        if (isPageContainer(parent) && this.childWidget) {
-            this.parentContainer = parent;
-            parent.addPage(this.childWidget, this.label);
-        }
-    }
-
-    override attachToParentBefore(parent: Node, before: Node): void {
-        if (isPageContainer(parent) && this.childWidget) {
-            this.parentContainer = parent;
-            const beforePage = before instanceof NotebookPageNode ? before.getChildWidget() : before.getWidget();
-
-            if (beforePage) {
-                parent.insertPageBefore(this.childWidget, this.label, beforePage);
-            } else {
-                parent.addPage(this.childWidget, this.label);
-            }
-        }
-    }
-
-    override detachFromParent(parent: Node): void {
-        if (isPageContainer(parent) && this.childWidget) {
-            parent.removePage(this.childWidget);
-            this.parentContainer = null;
-        }
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("label");
-        return consumed;
+    protected updateInContainer(container: PageContainer, child: Gtk.Widget, props: NotebookPageProps): void {
+        container.updatePageLabel(child, props.label);
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.label !== newProps.label) {
-            this.label = getStringProp(newProps, "label", "");
-
-            if (this.parentContainer && this.childWidget) {
-                this.parentContainer.updatePageLabel(this.childWidget, this.label);
-            }
-        }
-
+        this.updateSlotPropsIfChanged(oldProps, newProps, ["label"]);
         super.updateProps(oldProps, newProps);
     }
 }

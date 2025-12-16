@@ -32,7 +32,7 @@ export const App = () => {
                 <AdwViewStack.Page name="gridview" title="GridView" iconName="view-grid-symbolic">
                     <GridViewDemo />
                 </AdwViewStack.Page>
-                <AdwViewStack.Page name="columnview" title="ColumnView" iconName="view-column-symbolic">
+                <AdwViewStack.Page name="columnview" title="ColumnView" iconName="x-office-spreadsheet-symbolic">
                     <ColumnViewDemo />
                 </AdwViewStack.Page>
                 <AdwViewStack.Page name="dropdown" title="DropDown" iconName="view-more-symbolic">

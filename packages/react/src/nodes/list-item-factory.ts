@@ -11,7 +11,7 @@ export type ListItemInfo = {
     fiberRoot: Reconciler.FiberRoot;
 };
 
-export type ListItemFactoryConfig = {
+type ListItemFactoryConfig = {
     factory: Gtk.SignalListItemFactory;
     listItemCache: Map<number, ListItemInfo>;
     getRenderFn: () => RenderItemFn<unknown>;

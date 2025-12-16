@@ -1,9 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ChildContainer } from "../container-interfaces.js";
 import { Node } from "../node.js";
-
-const isFlowBoxChild = (widget: Gtk.Widget): widget is Gtk.FlowBoxChild =>
-    "getIndex" in widget && "getChild" in widget && typeof (widget as Gtk.FlowBoxChild).getIndex === "function";
+import { isFlowBoxChild } from "../predicates.js";
 
 export class FlowBoxNode extends Node<Gtk.FlowBox> implements ChildContainer {
     static matches(type: string): boolean {

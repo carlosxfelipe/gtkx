@@ -1,9 +1,12 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { isStackPageContainer, type StackPageContainer, type StackPageProps } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
-import { Node } from "../node.js";
+import type { Node } from "../node.js";
 import { PagedStackNode } from "./paged-stack.js";
 import { applyStackPageProps } from "./stack-page-props.js";
+import { VirtualSlotNode } from "./virtual-slot.js";
+
+const STACK_PAGE_PROP_KEYS = ["name", "title", "iconName", "needsAttention", "visible", "useUnderline", "badgeNumber"];
 
 export class StackNode extends PagedStackNode<Gtk.Stack> {
     static matches(type: string): boolean {
@@ -31,105 +34,52 @@ export class StackNode extends PagedStackNode<Gtk.Stack> {
     }
 }
 
-export class StackPageNode extends Node {
+export class StackPageNode extends VirtualSlotNode<StackPageContainer, StackPageProps> {
+    static override consumedPropNames = STACK_PAGE_PROP_KEYS;
+
     static matches(type: string): boolean {
         return type === "Stack.Page" || type === "AdwViewStack.Page";
     }
 
-    protected override isVirtual(): boolean {
-        return true;
+    protected isValidContainer(parent: Node): parent is Node & StackPageContainer {
+        return isStackPageContainer(parent);
     }
 
-    private pageProps: StackPageProps = {};
-    private childWidget: Gtk.Widget | null = null;
-    private parentContainer: (Node & StackPageContainer) | null = null;
-
-    override initialize(props: Props): void {
-        this.pageProps = this.extractPageProps(props);
-        super.initialize(props);
-    }
-
-    private extractPageProps(props: Props): StackPageProps {
+    protected extractSlotProps(props: Props): StackPageProps {
         return {
-            name: typeof props.name === "string" ? props.name : undefined,
-            title: typeof props.title === "string" ? props.title : undefined,
-            iconName: typeof props.iconName === "string" ? props.iconName : undefined,
-            needsAttention: typeof props.needsAttention === "boolean" ? props.needsAttention : undefined,
-            visible: typeof props.visible === "boolean" ? props.visible : undefined,
-            useUnderline: typeof props.useUnderline === "boolean" ? props.useUnderline : undefined,
-            badgeNumber: typeof props.badgeNumber === "number" ? props.badgeNumber : undefined,
+            name: props.name as string | undefined,
+            title: props.title as string | undefined,
+            iconName: props.iconName as string | undefined,
+            needsAttention: props.needsAttention as boolean | undefined,
+            visible: props.visible as boolean | undefined,
+            useUnderline: props.useUnderline as boolean | undefined,
+            badgeNumber: props.badgeNumber as number | undefined,
         };
     }
 
-    getChildWidget(): Gtk.Widget | null {
-        return this.childWidget;
+    protected addToContainer(container: StackPageContainer, child: Gtk.Widget, props: StackPageProps): void {
+        container.addStackPage(child, props);
     }
 
-    override appendChild(child: Node): void {
-        const childWidget = child.getWidget();
-        if (childWidget) {
-            this.childWidget = childWidget;
-        }
+    protected insertBeforeInContainer(
+        container: StackPageContainer,
+        child: Gtk.Widget,
+        props: StackPageProps,
+        before: Gtk.Widget,
+    ): void {
+        container.insertStackPageBefore(child, props, before);
     }
 
-    override attachToParent(parent: Node): void {
-        if (isStackPageContainer(parent) && this.childWidget) {
-            this.parentContainer = parent;
-            parent.addStackPage(this.childWidget, this.pageProps);
-        }
+    protected removeFromContainer(container: StackPageContainer, child: Gtk.Widget): void {
+        container.removeStackPage(child);
     }
 
-    override attachToParentBefore(parent: Node, before: Node): void {
-        if (isStackPageContainer(parent) && this.childWidget) {
-            this.parentContainer = parent;
-            const beforePage = before instanceof StackPageNode ? before.getChildWidget() : before.getWidget();
-
-            if (beforePage) {
-                parent.insertStackPageBefore(this.childWidget, this.pageProps, beforePage);
-            } else {
-                parent.addStackPage(this.childWidget, this.pageProps);
-            }
-        }
-    }
-
-    override detachFromParent(parent: Node): void {
-        if (isStackPageContainer(parent) && this.childWidget) {
-            parent.removeStackPage(this.childWidget);
-            this.parentContainer = null;
-        }
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("name");
-        consumed.add("title");
-        consumed.add("iconName");
-        consumed.add("needsAttention");
-        consumed.add("visible");
-        consumed.add("useUnderline");
-        consumed.add("badgeNumber");
-        return consumed;
+    protected updateInContainer(container: StackPageContainer, child: Gtk.Widget, props: StackPageProps): void {
+        container.updateStackPageProps(child, props);
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {
-        const newPageProps = this.extractPageProps(newProps);
-        const propsChanged =
-            oldProps.name !== newProps.name ||
-            oldProps.title !== newProps.title ||
-            oldProps.iconName !== newProps.iconName ||
-            oldProps.needsAttention !== newProps.needsAttention ||
-            oldProps.visible !== newProps.visible ||
-            oldProps.useUnderline !== newProps.useUnderline ||
-            oldProps.badgeNumber !== newProps.badgeNumber;
-
-        if (propsChanged) {
-            this.pageProps = newPageProps;
-
-            if (this.parentContainer && this.childWidget) {
-                this.parentContainer.updateStackPageProps(this.childWidget, this.pageProps);
-            }
-        }
-
+        this.updateSlotPropsIfChanged(oldProps, newProps, STACK_PAGE_PROP_KEYS);
         super.updateProps(oldProps, newProps);
     }
 }

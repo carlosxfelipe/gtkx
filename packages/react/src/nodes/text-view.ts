@@ -3,14 +3,10 @@ import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 
 export class TextViewNode extends Node<Gtk.TextView> {
+    static override consumedPropNames = ["buffer"];
+
     static override matches(type: string): boolean {
         return type === "TextView";
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("buffer");
-        return consumed;
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {

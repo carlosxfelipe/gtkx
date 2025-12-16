@@ -2,7 +2,6 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { type GridContainer, isGridContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
-import { getNumberProp } from "../props.js";
 
 export class GridNode extends Node<Gtk.Grid> implements GridContainer {
     static matches(type: string): boolean {
@@ -35,10 +34,10 @@ export class GridChildNode extends Node<never> {
     private parentContainer: (Node & GridContainer) | null = null;
 
     override initialize(props: Props): void {
-        this.column = getNumberProp(props, "column", 0);
-        this.row = getNumberProp(props, "row", 0);
-        this.columnSpan = getNumberProp(props, "columnSpan", 1);
-        this.rowSpan = getNumberProp(props, "rowSpan", 1);
+        this.column = (props.column as number | undefined) ?? 0;
+        this.row = (props.row as number | undefined) ?? 0;
+        this.columnSpan = (props.columnSpan as number | undefined) ?? 1;
+        this.rowSpan = (props.rowSpan as number | undefined) ?? 1;
         super.initialize(props);
     }
 
@@ -99,10 +98,10 @@ export class GridChildNode extends Node<never> {
 
         if (positionChanged) {
             this.detachChildFromGrid();
-            this.column = getNumberProp(newProps, "column", 0);
-            this.row = getNumberProp(newProps, "row", 0);
-            this.columnSpan = getNumberProp(newProps, "columnSpan", 1);
-            this.rowSpan = getNumberProp(newProps, "rowSpan", 1);
+            this.column = (newProps.column as number | undefined) ?? 0;
+            this.row = (newProps.row as number | undefined) ?? 0;
+            this.columnSpan = (newProps.columnSpan as number | undefined) ?? 1;
+            this.rowSpan = (newProps.rowSpan as number | undefined) ?? 1;
             this.attachChildToGrid();
         }
     }

@@ -38,3 +38,15 @@ export const isSingleChild = (widget: Gtk.Widget): widget is SingleChild =>
  */
 export const isRemovable = (widget: Gtk.Widget): widget is Removable =>
     "remove" in widget && typeof widget.remove === "function";
+
+/**
+ * Type guard that checks if a GTK widget is a FlowBoxChild.
+ */
+export const isFlowBoxChild = (widget: Gtk.Widget): widget is Gtk.FlowBoxChild =>
+    "getIndex" in widget && "getChild" in widget && typeof (widget as Gtk.FlowBoxChild).getIndex === "function";
+
+/**
+ * Type guard that checks if a GTK widget is a ListBoxRow.
+ */
+export const isListBoxRow = (widget: Gtk.Widget): widget is Gtk.ListBoxRow =>
+    "getIndex" in widget && "isSelected" in widget && typeof (widget as Gtk.ListBoxRow).getIndex === "function";

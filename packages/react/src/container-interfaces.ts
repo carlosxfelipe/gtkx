@@ -1,6 +1,11 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "./node.js";
 
+const createContainerGuard =
+    <T>(requiredMethods: (keyof T)[]) =>
+    (node: Node): node is Node & T =>
+        requiredMethods.every((method) => method in node);
+
 /**
  * Type for containers that manage child widgets with attach/detach semantics.
  * Used by ActionBar, FlowBox, ListBox, Overlay.
@@ -75,23 +80,35 @@ export type ColumnContainer = {
     getItems(): unknown[];
 };
 
-export const isChildContainer = (node: Node): node is Node & ChildContainer =>
-    "attachChild" in node && "detachChild" in node && "insertChildBefore" in node;
+export const isChildContainer = createContainerGuard<ChildContainer>([
+    "attachChild",
+    "detachChild",
+    "insertChildBefore",
+]);
 
-export const isPageContainer = (node: Node): node is Node & PageContainer =>
-    "addPage" in node && "removePage" in node && "insertPageBefore" in node && "updatePageLabel" in node;
+export const isPageContainer = createContainerGuard<PageContainer>([
+    "addPage",
+    "removePage",
+    "insertPageBefore",
+    "updatePageLabel",
+]);
 
-export const isStackPageContainer = (node: Node): node is Node & StackPageContainer =>
-    "addStackPage" in node && "removeStackPage" in node && "updateStackPageProps" in node;
+export const isStackPageContainer = createContainerGuard<StackPageContainer>([
+    "addStackPage",
+    "removeStackPage",
+    "updateStackPageProps",
+]);
 
-export const isGridContainer = (node: Node): node is Node & GridContainer =>
-    "attachToGrid" in node && "removeFromGrid" in node;
+export const isGridContainer = createContainerGuard<GridContainer>(["attachToGrid", "removeFromGrid"]);
 
-export const isItemContainer = <T>(node: Node): node is Node & ItemContainer<T> =>
-    "addItem" in node && "insertItemBefore" in node && "removeItem" in node && "updateItem" in node;
+export const isItemContainer = createContainerGuard<ItemContainer<unknown>>([
+    "addItem",
+    "insertItemBefore",
+    "removeItem",
+    "updateItem",
+]);
 
-export const isColumnContainer = (node: Node): node is Node & ColumnContainer =>
-    "addColumn" in node && "removeColumn" in node && "getItems" in node;
+export const isColumnContainer = createContainerGuard<ColumnContainer>(["addColumn", "removeColumn", "getItems"]);
 
 /**
  * Type for containers that support packStart/packEnd semantics.
@@ -103,5 +120,4 @@ export type PackContainer = {
     removeFromPack(child: Gtk.Widget): void;
 };
 
-export const isPackContainer = (node: Node): node is Node & PackContainer =>
-    "packStart" in node && "packEnd" in node && "removeFromPack" in node;
+export const isPackContainer = createContainerGuard<PackContainer>(["packStart", "packEnd", "removeFromPack"]);

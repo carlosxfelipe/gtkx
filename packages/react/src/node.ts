@@ -12,6 +12,8 @@ import { isAddable, isAppendable, isRemovable, isSingleChild } from "./predicate
 type WidgetConstructor = new (...args: unknown[]) => Gtk.Widget;
 type Namespace = Record<string, unknown>;
 
+export const normalizeWidgetType = (type: string): string => type.split(".")[0] || type;
+
 const NAMESPACE_REGISTRY: [string, Namespace][] = [
     ["GtkSource", GtkSource],
     ["WebKit", WebKit],
@@ -37,6 +39,8 @@ const extractConstructorArgs = (type: string, props: Props): unknown[] => {
     return params.map((p: { name: string; hasDefault: boolean }) => props[p.name]);
 };
 
+type NodeClass = typeof Node & { consumedPropNames?: string[] };
+
 export abstract class Node<
     T extends Gtk.Widget | undefined = Gtk.Widget | undefined,
     S extends object | undefined = object | undefined,
@@ -44,6 +48,8 @@ export abstract class Node<
     static matches(_type: string, _existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER): boolean {
         return false;
     }
+
+    static consumedPropNames: string[] = [];
 
     protected signalHandlers = new Map<string, number>();
     protected widget: T = undefined as T;
@@ -69,7 +75,7 @@ export abstract class Node<
 
     constructor(type: string, existingWidget?: Gtk.Widget) {
         this.nodeType = type;
-        this.widgetType = type.split(".")[0] || type;
+        this.widgetType = normalizeWidgetType(type);
 
         if (existingWidget) {
             this.widget = existingWidget as T;
@@ -88,14 +94,14 @@ export abstract class Node<
     }
 
     protected createWidget(type: string, props: Props): T {
-        const normalizedType = type.split(".")[0] || type;
-        const WidgetClass = resolveWidgetClass(normalizedType);
+        const widgetType = normalizeWidgetType(type);
+        const WidgetClass = resolveWidgetClass(widgetType);
 
         if (!WidgetClass) {
-            throw new Error(`Unknown GTK widget type: ${normalizedType}`);
+            throw new Error(`Unknown GTK widget type: ${widgetType}`);
         }
 
-        return new WidgetClass(...extractConstructorArgs(normalizedType, props)) as T;
+        return new WidgetClass(...extractConstructorArgs(widgetType, props)) as T;
     }
 
     getWidget(): T {
@@ -190,7 +196,20 @@ export abstract class Node<
     }
 
     protected consumedProps(): Set<string> {
-        return new Set(["children"]);
+        const consumed = new Set(["children"]);
+
+        let proto = Object.getPrototypeOf(this) as NodeClass | null;
+        while (proto && proto.constructor !== Object) {
+            const propNames = (proto.constructor as NodeClass).consumedPropNames;
+            if (propNames) {
+                for (const name of propNames) {
+                    consumed.add(name);
+                }
+            }
+            proto = Object.getPrototypeOf(proto) as NodeClass | null;
+        }
+
+        return consumed;
     }
 
     updateProps(oldProps: Props, newProps: Props): void {

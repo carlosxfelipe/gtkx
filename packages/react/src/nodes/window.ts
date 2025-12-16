@@ -2,28 +2,29 @@ import { getCurrentApp } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
-import { Node } from "../node.js";
-import { getNumberProp } from "../props.js";
+import { Node, normalizeWidgetType } from "../node.js";
 
 const WINDOW_TYPES = new Set(["Window", "ApplicationWindow", "AdwWindow", "AdwApplicationWindow"]);
 
 export class WindowNode extends Node<Gtk.Window> {
+    static override consumedPropNames = ["defaultWidth", "defaultHeight"];
+
     static matches(type: string): boolean {
-        return WINDOW_TYPES.has(type.split(".")[0] || type);
+        return WINDOW_TYPES.has(normalizeWidgetType(type));
     }
 
     protected override createWidget(type: string, _props: Props): Gtk.Window {
-        const normalizedType = type.split(".")[0] || type;
+        const widgetType = normalizeWidgetType(type);
 
-        if (normalizedType === "ApplicationWindow") {
+        if (widgetType === "ApplicationWindow") {
             return new Gtk.ApplicationWindow(getCurrentApp());
         }
 
-        if (normalizedType === "AdwApplicationWindow") {
+        if (widgetType === "AdwApplicationWindow") {
             return new Adw.ApplicationWindow(getCurrentApp());
         }
 
-        if (normalizedType === "AdwWindow") {
+        if (widgetType === "AdwWindow") {
             return new Adw.Window();
         }
 
@@ -38,20 +39,13 @@ export class WindowNode extends Node<Gtk.Window> {
         this.widget.present();
     }
 
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("defaultWidth");
-        consumed.add("defaultHeight");
-        return consumed;
-    }
-
     override updateProps(oldProps: Props, newProps: Props): void {
         const widthChanged = oldProps.defaultWidth !== newProps.defaultWidth;
         const heightChanged = oldProps.defaultHeight !== newProps.defaultHeight;
 
         if (widthChanged || heightChanged) {
-            const width = getNumberProp(newProps, "defaultWidth", -1);
-            const height = getNumberProp(newProps, "defaultHeight", -1);
+            const width = (newProps.defaultWidth as number | undefined) ?? -1;
+            const height = (newProps.defaultHeight as number | undefined) ?? -1;
             this.widget.setDefaultSize(width, height);
         }
 

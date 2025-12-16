@@ -1,13 +1,22 @@
-import type { Props } from "./factory.js";
+type CallbackAction = "connect" | "disconnect" | "none";
 
-/** Extracts a number property from props with a default value. */
-export const getNumberProp = (props: Props, key: string, defaultValue: number): number => {
-    const value = props[key];
-    return typeof value === "number" ? value : defaultValue;
+type CallbackChange<T> = {
+    callback: T | undefined;
+    action: CallbackAction;
 };
 
-/** Extracts a string property from props with a default value. */
-export const getStringProp = (props: Props, key: string, defaultValue: string): string => {
-    const value = props[key];
-    return typeof value === "string" ? value : defaultValue;
+export const getCallbackChange = <T>(oldCallback: T | undefined, newCallback: T | undefined): CallbackChange<T> => {
+    if (oldCallback === newCallback) {
+        return { callback: newCallback, action: "none" };
+    }
+
+    if (oldCallback && !newCallback) {
+        return { callback: undefined, action: "disconnect" };
+    }
+
+    if (!oldCallback && newCallback) {
+        return { callback: newCallback, action: "connect" };
+    }
+
+    return { callback: newCallback, action: "none" };
 };

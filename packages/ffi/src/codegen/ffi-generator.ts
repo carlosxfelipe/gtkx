@@ -466,7 +466,16 @@ export class CodeGenerator {
         const seenInterfaceMethodNames = new Set<string>();
         const interfaceMethods: GirMethod[] = [];
         for (const ifaceName of cls.implements) {
-            const iface = interfaceMap.get(ifaceName);
+            let iface: GirInterface | undefined;
+            if (ifaceName.includes(".")) {
+                const [ns, ifaceClassName] = ifaceName.split(".", 2);
+                const ifaceNs = this.options.allNamespaces?.get(ns ?? "");
+                if (ifaceNs && ifaceClassName) {
+                    iface = ifaceNs.interfaces.find((i) => i.name === ifaceClassName);
+                }
+            } else {
+                iface = interfaceMap.get(ifaceName);
+            }
             if (!iface) continue;
 
             for (const method of iface.methods) {

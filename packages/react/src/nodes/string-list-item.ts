@@ -3,6 +3,8 @@ import { Node } from "../node.js";
 import { isStringListContainer, type StringListItem } from "./string-list-container.js";
 
 export abstract class StringListItemNode extends Node<never> {
+    static override consumedPropNames = ["id", "label"];
+
     protected override isVirtual(): boolean {
         return true;
     }
@@ -38,13 +40,6 @@ export abstract class StringListItemNode extends Node<never> {
         if (isStringListContainer(parent)) {
             parent.removeStringListItem(this.id);
         }
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("id");
-        consumed.add("label");
-        return consumed;
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {

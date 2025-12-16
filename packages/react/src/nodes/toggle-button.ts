@@ -16,6 +16,8 @@ type ToggleButtonState = {
  * suppressing callbacks when the signal was caused by a programmatic update.
  */
 export class ToggleButtonNode extends Node<Gtk.ToggleButton, ToggleButtonState> {
+    static override consumedPropNames = ["active"];
+
     static matches(type: string): boolean {
         return type === "ToggleButton.Root";
     }
@@ -57,10 +59,6 @@ export class ToggleButtonNode extends Node<Gtk.ToggleButton, ToggleButtonState> 
         }
 
         super.detachFromParent(parent);
-    }
-
-    protected override consumedProps(): Set<string> {
-        return new Set(["children", "active"]);
     }
 
     override updateProps(_oldProps: Props, newProps: Props): void {

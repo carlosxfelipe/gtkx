@@ -12,6 +12,8 @@ const hasGetId = (node: Node): node is Node & { getId(): string } => {
  * in list models (ListView, GridView, ColumnView).
  */
 export abstract class VirtualItemNode extends Node<never> {
+    static override consumedPropNames = ["id", "item"];
+
     protected override isVirtual(): boolean {
         return true;
     }
@@ -51,13 +53,6 @@ export abstract class VirtualItemNode extends Node<never> {
         if (isItemContainer(parent)) {
             parent.removeItem(this.id);
         }
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("id");
-        consumed.add("item");
-        return consumed;
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {

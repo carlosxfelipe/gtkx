@@ -75,13 +75,15 @@ abstract class MenuContainerNode<T extends Gtk.Widget | undefined> extends Node<
     protected onMenuRebuilt(): void {}
 }
 
-export class PopoverMenuRootNode extends MenuContainerNode<Gtk.PopoverMenu> {
-    static matches(type: string): boolean {
-        return type === "PopoverMenu.Root";
-    }
+type MenuWidget = Gtk.Widget & {
+    setMenuModel(model: Gio.MenuModel | null): void;
+};
+
+abstract class MenuWidgetNode<T extends MenuWidget> extends MenuContainerNode<T> {
+    protected abstract createMenuWidget(menu: Gio.Menu): T;
 
     override initialize(props: Props): void {
-        this.widget = new Gtk.PopoverMenu(this.menu);
+        this.widget = this.createMenuWidget(this.menu);
         super.initialize(props);
     }
 
@@ -90,18 +92,23 @@ export class PopoverMenuRootNode extends MenuContainerNode<Gtk.PopoverMenu> {
     }
 }
 
-export class PopoverMenuBarNode extends MenuContainerNode<Gtk.PopoverMenuBar> {
+export class PopoverMenuRootNode extends MenuWidgetNode<Gtk.PopoverMenu> {
+    static matches(type: string): boolean {
+        return type === "PopoverMenu.Root";
+    }
+
+    protected createMenuWidget(menu: Gio.Menu): Gtk.PopoverMenu {
+        return new Gtk.PopoverMenu(menu);
+    }
+}
+
+export class PopoverMenuBarNode extends MenuWidgetNode<Gtk.PopoverMenuBar> {
     static matches(type: string): boolean {
         return type === "PopoverMenuBar";
     }
 
-    override initialize(props: Props): void {
-        this.widget = new Gtk.PopoverMenuBar(this.menu);
-        super.initialize(props);
-    }
-
-    protected override onMenuRebuilt(): void {
-        this.widget.setMenuModel(this.menu);
+    protected createMenuWidget(menu: Gio.Menu): Gtk.PopoverMenuBar {
+        return new Gtk.PopoverMenuBar(menu);
     }
 }
 
@@ -134,6 +141,8 @@ export class ApplicationMenuNode extends MenuContainerNode<never> {
 }
 
 export class MenuItemNode extends Node<never> {
+    static override consumedPropNames = ["label", "onActivate", "accels"];
+
     static matches(type: string): boolean {
         return type === "Menu.Item";
     }
@@ -169,14 +178,6 @@ export class MenuItemNode extends Node<never> {
         parent.removeMenuEntry(this.entry);
         this.cleanupAction();
         this.isAttached = false;
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("label");
-        consumed.add("onActivate");
-        consumed.add("accels");
-        return consumed;
     }
 
     private isFieldInitializationIncomplete(): boolean {
@@ -269,6 +270,8 @@ export class MenuItemNode extends Node<never> {
 }
 
 class MenuContainerItemNode extends MenuContainerNode<never> {
+    static override consumedPropNames = ["label"];
+
     protected entryType: "section" | "submenu" = "section";
     protected matchType = "";
 
@@ -297,12 +300,6 @@ class MenuContainerItemNode extends MenuContainerNode<never> {
     override detachFromParent(parent: Node): void {
         if (!isMenuContainer(parent)) return;
         parent.removeMenuEntry(this.entry);
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("label");
-        return consumed;
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {

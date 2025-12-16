@@ -1,9 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ChildContainer } from "../container-interfaces.js";
 import { Node } from "../node.js";
-
-const isListBoxRow = (widget: Gtk.Widget): widget is Gtk.ListBoxRow =>
-    "getIndex" in widget && "isSelected" in widget && typeof (widget as Gtk.ListBoxRow).getIndex === "function";
+import { isListBoxRow } from "../predicates.js";
 
 export class ListBoxNode extends Node<Gtk.ListBox> implements ChildContainer {
     static matches(type: string): boolean {

@@ -19,6 +19,8 @@ export abstract class PagedStackNode<T extends StackWidget>
     extends Node<T>
     implements StackPageContainer, ChildContainer
 {
+    static override consumedPropNames = ["visibleChildName"];
+
     private pendingVisibleChildName: string | null = null;
 
     /**
@@ -66,12 +68,6 @@ export abstract class PagedStackNode<T extends StackWidget>
 
     detachChild(child: Gtk.Widget): void {
         this.widget.remove(child);
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("visibleChildName");
-        return consumed;
     }
 
     private setVisibleChildOrDefer(name: string): void {

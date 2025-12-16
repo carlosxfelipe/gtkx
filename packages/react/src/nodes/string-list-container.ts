@@ -4,6 +4,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
 import { Node as NodeClass } from "../node.js";
+import { getCallbackChange } from "../props.js";
 import { StringListStore } from "./string-list-store.js";
 
 export type StringListItem = {
@@ -11,7 +12,7 @@ export type StringListItem = {
     label: string;
 };
 
-export type StringListContainer = {
+type StringListContainer = {
     addStringListItem(id: string, label: string): void;
     insertStringListItemBefore(id: string, label: string, beforeId: string): void;
     removeStringListItem(id: string): void;
@@ -43,6 +44,8 @@ export abstract class StringListContainerNode<T extends StringListWidget>
     extends NodeClass<T, StringListContainerState>
     implements StringListContainer
 {
+    static override consumedPropNames = ["onSelectionChanged", "selectedId"];
+
     override initialize(props: Props): void {
         const store = new StringListStore();
         const onSelectionChanged = props.onSelectionChanged as ((id: string) => void) | undefined;
@@ -110,26 +113,17 @@ export abstract class StringListContainerNode<T extends StringListWidget>
         this.state.store.update(oldId, newId, newLabel);
     }
 
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("onSelectionChanged");
-        consumed.add("selectedId");
-        return consumed;
-    }
-
     override updateProps(oldProps: Props, newProps: Props): void {
         const oldCallback = oldProps.onSelectionChanged as ((id: string) => void) | undefined;
         const newCallback = newProps.onSelectionChanged as ((id: string) => void) | undefined;
+        const change = getCallbackChange(oldCallback, newCallback);
 
-        if (oldCallback !== newCallback) {
-            this.state.onSelectionChanged = newCallback;
+        if (change.action !== "none") {
+            this.state.onSelectionChanged = change.callback;
 
-            const hadCallback = oldCallback !== undefined;
-            const hasCallback = newCallback !== undefined;
-
-            if (hadCallback && !hasCallback) {
+            if (change.action === "disconnect") {
                 this.disconnectSignal(SELECTION_SIGNAL);
-            } else if (!hadCallback && hasCallback) {
+            } else if (change.action === "connect") {
                 this.connectSelectionHandler();
             }
         }
