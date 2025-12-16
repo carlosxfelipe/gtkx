@@ -1,29 +1,28 @@
-import { getInterface, getObject, getObjectId } from "@gtkx/ffi";
+import { getInterface } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type Reconciler from "react-reconciler";
 import { scheduleFlush } from "../batch.js";
-import { type ItemContainer, isItemContainer } from "../container-interfaces.js";
+import type { ItemContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
-import { createFiberRoot } from "../fiber-root.js";
 import { Node } from "../node.js";
-import { reconciler } from "../reconciler.js";
 import type { RenderItemFn } from "../types.js";
+import {
+    connectListItemFactorySignals,
+    type ListItemFactoryHandlers,
+    type ListItemInfo,
+} from "./list-item-factory.js";
+import { VirtualItemNode } from "./virtual-item.js";
 
-interface ListItemInfo {
-    box: Gtk.Box;
-    fiberRoot: Reconciler.FiberRoot;
-}
-
-interface ListViewState {
+type ListViewState = {
     stringList: Gtk.StringList;
     selectionModel: Gtk.SingleSelection;
     factory: Gtk.SignalListItemFactory;
+    factoryHandlers: ListItemFactoryHandlers | null;
     renderItem: RenderItemFn<unknown>;
     listItemCache: Map<number, ListItemInfo>;
     items: unknown[];
     committedLength: number;
-}
+};
 
 export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView, ListViewState> implements ItemContainer<unknown> {
     static matches(type: string): boolean {
@@ -44,6 +43,7 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView, ListViewStat
             stringList: null as unknown as Gtk.StringList,
             selectionModel: null as unknown as Gtk.SingleSelection,
             factory: null as unknown as Gtk.SignalListItemFactory,
+            factoryHandlers: null,
             renderItem: props.renderItem as RenderItemFn<unknown>,
             listItemCache: new Map(),
             items: [],
@@ -62,53 +62,18 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView, ListViewStat
     }
 
     private connectFactorySignals(): void {
-        const factory = this.state.factory;
-
-        factory.connect("setup", (_self, listItemObj) => {
-            const listItem = getObject<Gtk.ListItem>(listItemObj.id);
-            const id = getObjectId(listItemObj.id);
-
-            const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
-            listItem.setChild(box);
-
-            const fiberRoot = createFiberRoot(box);
-            this.state.listItemCache.set(id, { box, fiberRoot });
-
-            const element = this.state.renderItem(null);
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
+        this.state.factoryHandlers = connectListItemFactorySignals({
+            factory: this.state.factory,
+            listItemCache: this.state.listItemCache,
+            getRenderFn: () => this.state.renderItem,
+            getItemAtPosition: (position) => this.state.items[position],
         });
+    }
 
-        factory.connect("bind", (_self, listItemObj) => {
-            const listItem = getObject<Gtk.ListItem>(listItemObj.id);
-            const id = getObjectId(listItemObj.id);
-            const info = this.state.listItemCache.get(id);
-
-            if (!info) return;
-
-            const position = listItem.getPosition();
-            const item = this.state.items[position];
-            const element = this.state.renderItem(item);
-            reconciler.getInstance().updateContainer(element, info.fiberRoot, null, () => {});
-        });
-
-        factory.connect("unbind", (_self, listItemObj) => {
-            const id = getObjectId(listItemObj.id);
-            const info = this.state.listItemCache.get(id);
-
-            if (!info) return;
-
-            reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
-        });
-
-        factory.connect("teardown", (_self, listItemObj) => {
-            const id = getObjectId(listItemObj.id);
-            const info = this.state.listItemCache.get(id);
-
-            if (info) {
-                reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
-                this.state.listItemCache.delete(id);
-            }
-        });
+    override detachFromParent(parent: Node): void {
+        // Disconnect factory signal handlers to prevent memory leaks
+        this.state.factoryHandlers?.disconnect();
+        super.detachFromParent(parent);
     }
 
     private syncStringList = (): void => {
@@ -169,58 +134,8 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView, ListViewStat
     }
 }
 
-export class ListItemNode extends Node {
+export class ListItemNode extends VirtualItemNode {
     static matches(type: string): boolean {
         return type === "ListView.Item" || type === "GridView.Item";
-    }
-
-    protected override isVirtual(): boolean {
-        return true;
-    }
-
-    private item: unknown;
-
-    override initialize(props: Props): void {
-        this.item = props.item as unknown;
-        super.initialize(props);
-    }
-
-    getItem(): unknown {
-        return this.item;
-    }
-
-    override attachToParent(parent: Node): void {
-        if (isItemContainer(parent)) {
-            parent.addItem(this.item);
-        }
-    }
-
-    override attachToParentBefore(parent: Node, before: Node): void {
-        if (isItemContainer(parent) && before instanceof ListItemNode) {
-            parent.insertItemBefore(this.item, before.getItem());
-        } else {
-            this.attachToParent(parent);
-        }
-    }
-
-    override detachFromParent(parent: Node): void {
-        if (isItemContainer(parent)) {
-            parent.removeItem(this.item);
-        }
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("item");
-        return consumed;
-    }
-
-    override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.item !== newProps.item && this.parent && isItemContainer(this.parent)) {
-            this.parent.updateItem(this.item, newProps.item);
-            this.item = newProps.item;
-        }
-
-        super.updateProps(oldProps, newProps);
     }
 }

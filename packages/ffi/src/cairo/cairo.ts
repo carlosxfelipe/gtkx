@@ -4,6 +4,7 @@
  */
 
 import { call } from "@gtkx/native";
+import type { LineCap, LineJoin, Operator } from "../generated/cairo/enums.js";
 
 const LIB = "libcairo.so.2";
 
@@ -245,9 +246,8 @@ export function setLineWidth(cr: unknown, width: number): void {
 
 /**
  * Sets the current line cap style.
- * @param lineCap - 0 = BUTT, 1 = ROUND, 2 = SQUARE
  */
-export function setLineCap(cr: unknown, lineCap: number): void {
+export function setLineCap(cr: unknown, lineCap: LineCap): void {
     call(
         LIB,
         "cairo_set_line_cap",
@@ -261,9 +261,8 @@ export function setLineCap(cr: unknown, lineCap: number): void {
 
 /**
  * Sets the current line join style.
- * @param lineJoin - 0 = MITER, 1 = ROUND, 2 = BEVEL
  */
-export function setLineJoin(cr: unknown, lineJoin: number): void {
+export function setLineJoin(cr: unknown, lineJoin: LineJoin): void {
     call(
         LIB,
         "cairo_set_line_join",
@@ -377,9 +376,8 @@ export function resetClip(cr: unknown): void {
 
 /**
  * Sets the compositing operator.
- * @param op - Operator constant (e.g., CAIRO_OPERATOR_OVER = 2)
  */
-export function setOperator(cr: unknown, op: number): void {
+export function setOperator(cr: unknown, op: Operator): void {
     call(
         LIB,
         "cairo_set_operator",

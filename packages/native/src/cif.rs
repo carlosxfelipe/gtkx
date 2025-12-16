@@ -170,7 +170,12 @@ fn convert_glib_args(args: &[glib::Value], arg_types: &Option<Vec<Type>>) -> Vec
         Some(types) => args
             .iter()
             .zip(types.iter())
-            .map(|(gval, type_)| value::Value::from_glib_value(gval, type_))
+            .map(|(gval, type_)| {
+                value::Value::from_glib_value(gval, type_).unwrap_or_else(|e| {
+                    eprintln!("Warning: Failed to convert GLib value: {}", e);
+                    value::Value::Null
+                })
+            })
             .collect(),
         None => args.iter().map(Into::into).collect(),
     }
@@ -527,12 +532,12 @@ impl Value {
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let source_value = args
                         .first()
-                        .map(|gval| value::Value::from_glib_value(gval, &source_type))
+                        .and_then(|gval| value::Value::from_glib_value(gval, &source_type).ok())
                         .unwrap_or(value::Value::Null);
 
                     let result_value = args
                         .get(1)
-                        .map(|gval| value::Value::from_glib_value(gval, &result_type))
+                        .and_then(|gval| value::Value::from_glib_value(gval, &result_type).ok())
                         .unwrap_or(value::Value::Null);
 
                     let args_values = vec![source_value, result_value];

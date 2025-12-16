@@ -944,109 +944,104 @@ const suggestAppId = (name: string): string => {
     return `org.gtkx.${sanitized}`;
 };
 
-/**
- * Creates a new GTKX application with interactive prompts.
- * Scaffolds project structure, installs dependencies, and sets up configuration.
- * @param options - Pre-filled options to skip interactive prompts
- */
-export const createApp = async (options: CreateOptions = {}): Promise<void> => {
-    p.intro("Create GTKX App");
+type ResolvedOptions = {
+    name: string;
+    appId: string;
+    packageManager: PackageManager;
+    testing: TestingFramework;
+    claudeSkills: boolean;
+};
 
-    const name =
-        options.name ??
-        ((await p.text({
-            message: "Project name",
-            placeholder: "my-app",
-            validate: (value) => {
-                if (!value) return "Project name is required";
-                if (!isValidProjectName(value)) {
-                    return "Project name must be lowercase letters, numbers, and hyphens only";
-                }
-                if (existsSync(resolve(process.cwd(), value))) {
-                    return `Directory "${value}" already exists`;
-                }
-                return undefined;
-            },
-        })) as string);
-
-    if (p.isCancel(name)) {
+const checkCancelled = <T>(value: T | symbol): T => {
+    if (p.isCancel(value)) {
         p.cancel("Operation cancelled");
         process.exit(0);
     }
+    return value as T;
+};
+
+const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
+    const name =
+        options.name ??
+        checkCancelled(
+            await p.text({
+                message: "Project name",
+                placeholder: "my-app",
+                validate: (value) => {
+                    if (!value) return "Project name is required";
+                    if (!isValidProjectName(value)) {
+                        return "Project name must be lowercase letters, numbers, and hyphens only";
+                    }
+                    if (existsSync(resolve(process.cwd(), value))) {
+                        return `Directory "${value}" already exists`;
+                    }
+                    return undefined;
+                },
+            }),
+        );
 
     const defaultAppId = suggestAppId(name);
     const appId =
         options.appId ??
-        ((await p.text({
-            message: "App ID",
-            placeholder: defaultAppId,
-            initialValue: defaultAppId,
-            validate: (value) => {
-                if (!value) return "App ID is required";
-                if (!isValidAppId(value)) {
-                    return "App ID must be reverse domain notation (e.g., com.example.myapp)";
-                }
-                return undefined;
-            },
-        })) as string);
-
-    if (p.isCancel(appId)) {
-        p.cancel("Operation cancelled");
-        process.exit(0);
-    }
+        checkCancelled(
+            await p.text({
+                message: "App ID",
+                placeholder: defaultAppId,
+                initialValue: defaultAppId,
+                validate: (value) => {
+                    if (!value) return "App ID is required";
+                    if (!isValidAppId(value)) {
+                        return "App ID must be reverse domain notation (e.g., com.example.myapp)";
+                    }
+                    return undefined;
+                },
+            }),
+        );
 
     const packageManager =
         options.packageManager ??
-        ((await p.select({
-            message: "Package manager",
-            options: [
-                { value: "pnpm", label: "pnpm", hint: "recommended" },
-                { value: "npm", label: "npm" },
-                { value: "yarn", label: "yarn" },
-                { value: "bun", label: "bun" },
-            ],
-            initialValue: "pnpm",
-        })) as PackageManager);
-
-    if (p.isCancel(packageManager)) {
-        p.cancel("Operation cancelled");
-        process.exit(0);
-    }
+        checkCancelled(
+            await p.select({
+                message: "Package manager",
+                options: [
+                    { value: "pnpm", label: "pnpm", hint: "recommended" },
+                    { value: "npm", label: "npm" },
+                    { value: "yarn", label: "yarn" },
+                    { value: "bun", label: "bun" },
+                ],
+                initialValue: "pnpm",
+            }),
+        );
 
     const testing =
         options.testing ??
-        ((await p.select({
-            message: "Testing framework",
-            options: [
-                { value: "vitest", label: "Vitest", hint: "recommended" },
-                { value: "jest", label: "Jest" },
-                { value: "node", label: "Node.js Test Runner" },
-                { value: "none", label: "None" },
-            ],
-            initialValue: "vitest",
-        })) as TestingFramework);
-
-    if (p.isCancel(testing)) {
-        p.cancel("Operation cancelled");
-        process.exit(0);
-    }
+        checkCancelled(
+            await p.select({
+                message: "Testing framework",
+                options: [
+                    { value: "vitest", label: "Vitest", hint: "recommended" },
+                    { value: "jest", label: "Jest" },
+                    { value: "node", label: "Node.js Test Runner" },
+                    { value: "none", label: "None" },
+                ],
+                initialValue: "vitest",
+            }),
+        );
 
     const claudeSkills =
         options.claudeSkills ??
-        ((await p.confirm({
-            message: "Include Claude Code skills?",
-            initialValue: true,
-        })) as boolean);
+        checkCancelled(
+            await p.confirm({
+                message: "Include Claude Code skills?",
+                initialValue: true,
+            }),
+        );
 
-    if (p.isCancel(claudeSkills)) {
-        p.cancel("Operation cancelled");
-        process.exit(0);
-    }
+    return { name, appId, packageManager, testing, claudeSkills };
+};
 
-    const projectPath = resolve(process.cwd(), name);
-
-    const s = p.spinner();
-    s.start("Creating project structure...");
+const scaffoldProject = (projectPath: string, resolved: ResolvedOptions): void => {
+    const { name, appId, testing, claudeSkills } = resolved;
 
     mkdirSync(projectPath, { recursive: true });
     mkdirSync(join(projectPath, "src"), { recursive: true });
@@ -1078,12 +1073,9 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
     } else if (testing === "node") {
         writeFileSync(join(projectPath, "tests", "app.test.tsx"), generateExampleTest(testing));
     }
+};
 
-    s.stop("Project structure created!");
-
-    const installSpinner = p.spinner();
-    installSpinner.start("Installing dependencies...");
-
+const getDevDependencies = (testing: TestingFramework): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
     if (testing !== "none") {
         devDeps.push(...TESTING_DEV_DEPENDENCIES[testing]);
@@ -1091,6 +1083,17 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
             devDeps.push("tsx");
         }
     }
+    return devDeps;
+};
+
+const installDependencies = async (
+    projectPath: string,
+    name: string,
+    packageManager: PackageManager,
+    devDeps: string[],
+): Promise<void> => {
+    const installSpinner = p.spinner();
+    installSpinner.start("Installing dependencies...");
 
     try {
         const addCmd = getAddCommand(packageManager, DEPENDENCIES, false);
@@ -1108,11 +1111,11 @@ export const createApp = async (options: CreateOptions = {}): Promise<void> => {
         p.log.info(`  ${getAddCommand(packageManager, DEPENDENCIES, false)}`);
         p.log.info(`  ${getAddCommand(packageManager, devDeps, true)}`);
     }
+};
 
+const printNextSteps = (name: string, packageManager: PackageManager, testing: TestingFramework): void => {
     const runCmd = getRunCommand(packageManager);
-
-    const nextSteps = `cd ${name}
-${runCmd}`;
+    const nextSteps = `cd ${name}\n${runCmd}`;
 
     const testingNote =
         testing !== "none"
@@ -1124,4 +1127,26 @@ To run tests, you need xvfb installed:
             : "";
 
     p.note(`${nextSteps}${testingNote}`, "Next steps");
+};
+
+/**
+ * Creates a new GTKX application with interactive prompts.
+ * Scaffolds project structure, installs dependencies, and sets up configuration.
+ * @param options - Pre-filled options to skip interactive prompts
+ */
+export const createApp = async (options: CreateOptions = {}): Promise<void> => {
+    p.intro("Create GTKX App");
+
+    const resolved = await promptForOptions(options);
+    const projectPath = resolve(process.cwd(), resolved.name);
+
+    const s = p.spinner();
+    s.start("Creating project structure...");
+    scaffoldProject(projectPath, resolved);
+    s.stop("Project structure created!");
+
+    const devDeps = getDevDependencies(resolved.testing);
+    await installDependencies(projectPath, resolved.name, resolved.packageManager, devDeps);
+
+    printNextSteps(resolved.name, resolved.packageManager, resolved.testing);
 };

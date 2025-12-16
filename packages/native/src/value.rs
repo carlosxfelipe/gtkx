@@ -694,30 +694,34 @@ impl Value {
     /// This is used to convert callback arguments from GLib signals to
     /// JavaScript-compatible values.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the GLib value type doesn't match the expected type descriptor,
+    /// Returns an error if the GLib value type doesn't match the expected type descriptor,
     /// or if extraction from the GLib value fails.
-    pub fn from_glib_value(gvalue: &glib::Value, type_: &Type) -> Self {
+    pub fn from_glib_value(gvalue: &glib::Value, type_: &Type) -> anyhow::Result<Self> {
         match type_ {
             Type::Integer(int_type) => {
                 let gtype = gvalue.type_();
                 let is_enum = gtype.is_a(glib::types::Type::ENUM);
                 let is_flags = gtype.is_a(glib::types::Type::FLAGS);
 
-                match (int_type.size, int_type.sign) {
-                    (IntegerSize::_8, IntegerSign::Signed) => {
-                        Value::Number(gvalue.get::<i8>().unwrap() as f64)
-                    }
-                    (IntegerSize::_8, IntegerSign::Unsigned) => {
-                        Value::Number(gvalue.get::<u8>().unwrap() as f64)
-                    }
-                    (IntegerSize::_16, IntegerSign::Signed) => {
-                        Value::Number(gvalue.get::<i32>().unwrap() as i16 as f64)
-                    }
-                    (IntegerSize::_16, IntegerSign::Unsigned) => {
-                        Value::Number(gvalue.get::<u32>().unwrap() as u16 as f64)
-                    }
+                let number = match (int_type.size, int_type.sign) {
+                    (IntegerSize::_8, IntegerSign::Signed) => gvalue
+                        .get::<i8>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {}", e))?
+                        as f64,
+                    (IntegerSize::_8, IntegerSign::Unsigned) => gvalue
+                        .get::<u8>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {}", e))?
+                        as f64,
+                    (IntegerSize::_16, IntegerSign::Signed) => gvalue
+                        .get::<i32>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {}", e))?
+                        as i16 as f64,
+                    (IntegerSize::_16, IntegerSign::Unsigned) => gvalue
+                        .get::<u32>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e))?
+                        as u16 as f64,
                     (IntegerSize::_32, IntegerSign::Signed) => {
                         if is_enum {
                             let enum_value = unsafe {
@@ -725,9 +729,12 @@ impl Value {
                                     gvalue.to_glib_none().0 as *const _,
                                 )
                             };
-                            Value::Number(enum_value as f64)
+                            enum_value as f64
                         } else {
-                            Value::Number(gvalue.get::<i32>().unwrap() as f64)
+                            gvalue
+                                .get::<i32>()
+                                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {}", e))?
+                                as f64
                         }
                     }
                     (IntegerSize::_32, IntegerSign::Unsigned) => {
@@ -737,37 +744,57 @@ impl Value {
                                     gvalue.to_glib_none().0 as *const _,
                                 )
                             };
-                            Value::Number(flags_value as f64)
+                            flags_value as f64
                         } else {
-                            Value::Number(gvalue.get::<u32>().unwrap() as f64)
+                            gvalue
+                                .get::<u32>()
+                                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {}", e))?
+                                as f64
                         }
                     }
-                    (IntegerSize::_64, IntegerSign::Signed) => {
-                        Value::Number(gvalue.get::<i64>().unwrap() as f64)
-                    }
-                    (IntegerSize::_64, IntegerSign::Unsigned) => {
-                        Value::Number(gvalue.get::<u64>().unwrap() as f64)
-                    }
-                }
+                    (IntegerSize::_64, IntegerSign::Signed) => gvalue
+                        .get::<i64>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {}", e))?
+                        as f64,
+                    (IntegerSize::_64, IntegerSign::Unsigned) => gvalue
+                        .get::<u64>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {}", e))?
+                        as f64,
+                };
+                Ok(Value::Number(number))
             }
-            Type::Float(float_type) => match float_type.size {
-                FloatSize::_32 => Value::Number(gvalue.get::<f32>().unwrap() as f64),
-                FloatSize::_64 => Value::Number(gvalue.get::<f64>().unwrap()),
-            },
+            Type::Float(float_type) => {
+                let number = match float_type.size {
+                    FloatSize::_32 => gvalue
+                        .get::<f32>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {}", e))?
+                        as f64,
+                    FloatSize::_64 => gvalue
+                        .get::<f64>()
+                        .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {}", e))?,
+                };
+                Ok(Value::Number(number))
+            }
             Type::String(_) => {
-                let string: String = gvalue.get().unwrap();
-                Value::String(string)
+                let string: String = gvalue
+                    .get()
+                    .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+                Ok(Value::String(string))
             }
             Type::Boolean => {
-                let boolean: bool = gvalue.get().unwrap();
-                Value::Boolean(boolean)
+                let boolean: bool = gvalue
+                    .get()
+                    .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
+                Ok(Value::Boolean(boolean))
             }
-            Type::GObject(_) => gvalue
-                .get::<Option<glib::Object>>()
-                .unwrap()
-                .map_or(Value::Null, |obj| {
+            Type::GObject(_) => {
+                let obj = gvalue
+                    .get::<Option<glib::Object>>()
+                    .map_err(|e| anyhow::anyhow!("Failed to get GObject from GValue: {}", e))?;
+                Ok(obj.map_or(Value::Null, |obj| {
                     Value::Object(ObjectId::new(Object::GObject(obj)))
-                }),
+                }))
+            }
             Type::Boxed(boxed_type) => {
                 let gvalue_type = gvalue.type_();
 
@@ -783,7 +810,7 @@ impl Value {
                 };
 
                 if boxed_ptr.is_null() {
-                    return Value::Null;
+                    return Ok(Value::Null);
                 }
 
                 let gtype = boxed_type.get_gtype().or(Some(gvalue_type));
@@ -795,11 +822,11 @@ impl Value {
                 };
 
                 let object_id = ObjectId::new(Object::Boxed(boxed));
-                Value::Object(object_id)
+                Ok(Value::Object(object_id))
             }
-            Type::Null | Type::Undefined => Value::Null,
+            Type::Null | Type::Undefined => Ok(Value::Null),
             Type::Array(_) | Type::Ref(_) | Type::Callback(_) => {
-                unreachable!(
+                bail!(
                     "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
                     type_
                 )

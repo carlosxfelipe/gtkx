@@ -5,36 +5,36 @@ import { format } from "prettier";
 /**
  * Configuration options for the JSX type generator.
  */
-interface JsxGeneratorOptions {
+type JsxGeneratorOptions = {
     /** Optional Prettier configuration for formatting output. */
     prettierConfig?: unknown;
-}
+};
 
 /**
  * Result of the JSX generation containing both public and internal files.
  */
-interface JsxGeneratorResult {
+type JsxGeneratorResult = {
     /** Public JSX types and components for user consumption. */
     jsx: string;
     /** Internal metadata for reconciler use (not exported to users). */
     internal: string;
-}
+};
 
-interface WidgetChildInfo {
+type WidgetChildInfo = {
     propertyName: string;
     slotName: string;
-}
+};
 
-interface ContainerMetadata {
+type ContainerMetadata = {
     supportsMultipleChildren: boolean;
     supportsSingleChild: boolean;
     namedChildSlots: WidgetChildInfo[];
-}
+};
 
-interface WidgetInfo {
+type WidgetInfo = {
     widget: GirClass;
     namespace: string;
-}
+};
 
 const LIST_WIDGETS = new Set(["ListView", "GridView"]);
 const COLUMN_VIEW_WIDGET = "ColumnView";

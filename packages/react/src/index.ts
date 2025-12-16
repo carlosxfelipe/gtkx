@@ -12,7 +12,7 @@ export { render } from "./render.js";
 import { stop } from "@gtkx/ffi";
 import type { ReactNode } from "react";
 import { reconciler } from "./reconciler.js";
-import { container } from "./render.js";
+import { getContainer } from "./render.js";
 
 /**
  * Updates the React tree without restarting the GTK application.
@@ -22,6 +22,7 @@ import { container } from "./render.js";
  * @throws Error if called before render()
  */
 export const update = (element: ReactNode): void => {
+    const container = getContainer();
     if (!container) {
         throw new Error("Cannot update before render() is called");
     }
@@ -34,6 +35,7 @@ export const update = (element: ReactNode): void => {
  * @returns Always returns true (useful for signal handlers)
  */
 export const quit = () => {
+    const container = getContainer();
     if (container) {
         reconciler.getInstance().updateContainer(null, container, null, () => {
             setTimeout(() => {

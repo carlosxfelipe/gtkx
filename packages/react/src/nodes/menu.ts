@@ -9,12 +9,12 @@ import { RootNode } from "./root.js";
 let actionCounter = 0;
 const generateActionName = () => `gtkx_menu_action_${actionCounter++}`;
 
-interface MenuEntry {
+type MenuEntry = {
     type: "item" | "section" | "submenu";
     label?: string;
     action?: string;
     menu?: Gio.Menu;
-}
+};
 
 interface MenuContainer {
     getMenu(): Gio.Menu;
@@ -268,9 +268,12 @@ export class MenuItemNode extends Node<never> {
     }
 }
 
-export class MenuSectionNode extends MenuContainerNode<never> {
-    static matches(type: string): boolean {
-        return type === "Menu.Section";
+class MenuContainerItemNode extends MenuContainerNode<never> {
+    protected entryType: "section" | "submenu" = "section";
+    protected matchType = "";
+
+    static matches(_type: string): boolean {
+        return false;
     }
 
     protected override isVirtual(): boolean {
@@ -280,6 +283,7 @@ export class MenuSectionNode extends MenuContainerNode<never> {
     private entry: MenuEntry = { type: "section" };
 
     override initialize(props: Props): void {
+        this.entry = { type: this.entryType };
         this.entry.menu = this.menu;
         this.entry.label = props.label as string | undefined;
         super.initialize(props);
@@ -310,44 +314,18 @@ export class MenuSectionNode extends MenuContainerNode<never> {
     }
 }
 
-export class MenuSubmenuNode extends MenuContainerNode<never> {
-    static matches(type: string): boolean {
+export class MenuSectionNode extends MenuContainerItemNode {
+    protected override entryType: "section" | "submenu" = "section";
+
+    static override matches(type: string): boolean {
+        return type === "Menu.Section";
+    }
+}
+
+export class MenuSubmenuNode extends MenuContainerItemNode {
+    protected override entryType: "section" | "submenu" = "submenu";
+
+    static override matches(type: string): boolean {
         return type === "Menu.Submenu";
-    }
-
-    protected override isVirtual(): boolean {
-        return true;
-    }
-
-    private entry: MenuEntry = { type: "submenu" };
-
-    override initialize(props: Props): void {
-        this.entry.menu = this.menu;
-        this.entry.label = props.label as string | undefined;
-        super.initialize(props);
-    }
-
-    override attachToParent(parent: Node): void {
-        if (!isMenuContainer(parent)) return;
-        parent.addMenuEntry(this.entry);
-    }
-
-    override detachFromParent(parent: Node): void {
-        if (!isMenuContainer(parent)) return;
-        parent.removeMenuEntry(this.entry);
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("label");
-        return consumed;
-    }
-
-    override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.label !== newProps.label && this.entry) {
-            this.entry.label = newProps.label as string | undefined;
-        }
-
-        super.updateProps(oldProps, newProps);
     }
 }

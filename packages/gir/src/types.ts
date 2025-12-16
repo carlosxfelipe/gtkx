@@ -1,7 +1,7 @@
 /**
  * Represents a parsed GIR namespace containing all type definitions.
  */
-export interface GirNamespace {
+export type GirNamespace = {
     /** The namespace name (e.g., "Gtk", "Gio"). */
     name: string;
     /** The namespace version (e.g., "4.0"). */
@@ -26,12 +26,12 @@ export interface GirNamespace {
     callbacks: GirCallback[];
     /** Documentation for the namespace. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR callback type definition.
  */
-export interface GirCallback {
+export type GirCallback = {
     /** The callback name. */
     name: string;
     /** The C type name. */
@@ -42,12 +42,12 @@ export interface GirCallback {
     parameters: GirParameter[];
     /** Documentation for the callback. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR interface definition.
  */
-export interface GirInterface {
+export type GirInterface = {
     /** The interface name. */
     name: string;
     /** The C type name. */
@@ -62,12 +62,12 @@ export interface GirInterface {
     signals: GirSignal[];
     /** Documentation for the interface. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR class definition.
  */
-export interface GirClass {
+export type GirClass = {
     /** The class name. */
     name: string;
     /** The C type name. */
@@ -96,12 +96,12 @@ export interface GirClass {
     signals: GirSignal[];
     /** Documentation for the class. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR record (struct) definition.
  */
-export interface GirRecord {
+export type GirRecord = {
     /** The record name. */
     name: string;
     /** The C type name. */
@@ -124,12 +124,12 @@ export interface GirRecord {
     functions: GirFunction[];
     /** Documentation for the record. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR field definition in a record.
  */
-export interface GirField {
+export type GirField = {
     /** The field name. */
     name: string;
     /** The field type. */
@@ -142,12 +142,12 @@ export interface GirField {
     private?: boolean;
     /** Documentation for the field. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR method definition.
  */
-export interface GirMethod {
+export type GirMethod = {
     /** The method name. */
     name: string;
     /** The C function identifier. */
@@ -160,12 +160,12 @@ export interface GirMethod {
     throws?: boolean;
     /** Documentation for the method. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR constructor definition.
  */
-export interface GirConstructor {
+export type GirConstructor = {
     /** The constructor name. */
     name: string;
     /** The C function identifier. */
@@ -178,12 +178,12 @@ export interface GirConstructor {
     throws?: boolean;
     /** Documentation for the constructor. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR standalone function definition.
  */
-export interface GirFunction {
+export type GirFunction = {
     /** The function name. */
     name: string;
     /** The C function identifier. */
@@ -196,12 +196,12 @@ export interface GirFunction {
     throws?: boolean;
     /** Documentation for the function. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR parameter definition.
  */
-export interface GirParameter {
+export type GirParameter = {
     /** The parameter name. */
     name: string;
     /** The parameter type. */
@@ -224,12 +224,12 @@ export interface GirParameter {
     transferOwnership?: "none" | "full" | "container";
     /** Documentation for the parameter. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR type reference.
  */
-export interface GirType {
+export type GirType = {
     /** The type name. */
     name: string;
     /** The C type name. */
@@ -242,12 +242,12 @@ export interface GirType {
     transferOwnership?: "none" | "full" | "container";
     /** Whether this type can be null (for return types). */
     nullable?: boolean;
-}
+};
 
 /**
  * Represents a GIR property definition.
  */
-export interface GirProperty {
+export type GirProperty = {
     /** The property name. */
     name: string;
     /** The property type. */
@@ -266,12 +266,12 @@ export interface GirProperty {
     setter?: string;
     /** Documentation for the property. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR signal definition.
  */
-export interface GirSignal {
+export type GirSignal = {
     /** The signal name. */
     name: string;
     /** When the signal handler runs relative to the default handler. */
@@ -282,12 +282,12 @@ export interface GirSignal {
     parameters?: GirParameter[];
     /** Documentation for the signal. */
     doc?: string;
-}
+};
 
 /**
  * Represents a GIR enumeration or bitfield definition.
  */
-export interface GirEnumeration {
+export type GirEnumeration = {
     /** The enumeration name. */
     name: string;
     /** The C type name. */
@@ -296,12 +296,12 @@ export interface GirEnumeration {
     members: GirEnumerationMember[];
     /** Documentation for the enumeration. */
     doc?: string;
-}
+};
 
 /**
  * Represents a single enumeration member.
  */
-export interface GirEnumerationMember {
+export type GirEnumerationMember = {
     /** The member name. */
     name: string;
     /** The numeric value. */
@@ -310,12 +310,12 @@ export interface GirEnumerationMember {
     cIdentifier: string;
     /** Documentation for the member. */
     doc?: string;
-}
+};
 
 /**
  * Describes an FFI type for code generation.
  */
-export interface FfiTypeDescriptor {
+export type FfiTypeDescriptor = {
     /** The FFI type category. */
     type: string;
     /** Size in bits for integer/float types. */
@@ -340,7 +340,7 @@ export interface FfiTypeDescriptor {
     argTypes?: FfiTypeDescriptor[];
     /** Whether this argument is optional (can be null/undefined for pointer types). */
     optional?: boolean;
-}
+};
 
 /**
  * Converts a snake_case or kebab-case string to camelCase.
@@ -390,13 +390,13 @@ type TypeMapping = { ts: string; ffi: FfiTypeDescriptor };
 
 export type TypeKind = "class" | "interface" | "enum" | "record" | "callback";
 
-export interface RegisteredType {
+export type RegisteredType = {
     kind: TypeKind;
     name: string;
     namespace: string;
     transformedName: string;
     glibTypeName?: string;
-}
+};
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
 
@@ -684,20 +684,20 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["FreeFunc", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
 ]);
 
-export interface ExternalTypeUsage {
+export type ExternalTypeUsage = {
     namespace: string;
     name: string;
     transformedName: string;
     kind: TypeKind;
-}
+};
 
-export interface MappedType {
+export type MappedType = {
     ts: string;
     ffi: FfiTypeDescriptor;
     externalType?: ExternalTypeUsage;
     kind?: TypeKind;
     nullable?: boolean;
-}
+};
 
 /**
  * Maps GIR types to TypeScript types and FFI type descriptors.

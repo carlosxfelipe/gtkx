@@ -4,8 +4,22 @@ import type { ReactNode } from "react";
 import { ROOT_NODE_CONTAINER } from "./factory.js";
 import { reconciler } from "./reconciler.js";
 
-/** The root container for the React reconciler. */
-export let container: unknown = null;
+let container: unknown = null;
+
+export const getContainer = (): unknown => container;
+
+const APP_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
+
+function validateAppId(appId: string): void {
+    if (!appId || typeof appId !== "string") {
+        throw new Error("appId must be a non-empty string");
+    }
+    if (!APP_ID_PATTERN.test(appId)) {
+        throw new Error(
+            `Invalid appId "${appId}". App ID must be in reverse-DNS format (e.g., "com.example.myapp")`,
+        );
+    }
+}
 
 /**
  * Renders a React element tree as a GTK application.
@@ -26,6 +40,7 @@ export let container: unknown = null;
  * @param flags - Optional GIO application flags
  */
 export const render = (element: ReactNode, appId: string, flags?: ApplicationFlags): void => {
+    validateAppId(appId);
     start(appId, flags);
     const instance = reconciler.getInstance();
 

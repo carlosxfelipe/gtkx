@@ -1,22 +1,20 @@
-import { getInterface, getObject, getObjectId } from "@gtkx/ffi";
+import { getInterface, getObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type Reconciler from "react-reconciler";
 import { scheduleFlush } from "../batch.js";
-import {
-    type ColumnContainer,
-    type ItemContainer,
-    isColumnContainer,
-    isItemContainer,
-} from "../container-interfaces.js";
+import { type ColumnContainer, type ItemContainer, isColumnContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
-import { createFiberRoot } from "../fiber-root.js";
 import { Node } from "../node.js";
-import { reconciler } from "../reconciler.js";
 import type { ColumnSortFn, RenderItemFn } from "../types.js";
+import {
+    connectListItemFactorySignals,
+    type ListItemFactoryHandlers,
+    type ListItemInfo,
+} from "./list-item-factory.js";
+import { VirtualItemNode } from "./virtual-item.js";
 
-interface ColumnViewState {
+type ColumnViewState = {
     stringList: Gtk.StringList;
     selectionModel: Gtk.SingleSelection;
     sortListModel: Gtk.SortListModel;
@@ -31,7 +29,7 @@ interface ColumnViewState {
     sorterChangedHandlerId: number | null;
     lastNotifiedColumn: string | null;
     lastNotifiedOrder: Gtk.SortType;
-}
+};
 
 export class ColumnViewNode
     extends Node<Gtk.ColumnView, ColumnViewState>
@@ -284,19 +282,15 @@ export class ColumnViewNode
     }
 }
 
-interface ListItemInfo {
-    box: Gtk.Box;
-    fiberRoot: Reconciler.FiberRoot;
-}
-
-interface ColumnViewColumnState {
+type ColumnViewColumnState = {
     column: Gtk.ColumnViewColumn;
     factory: Gtk.SignalListItemFactory;
+    factoryHandlers: ListItemFactoryHandlers | null;
     renderCell: RenderItemFn<unknown>;
     columnId: string | null;
     sorter: Gtk.CustomSorter | null;
     listItemCache: Map<number, ListItemInfo>;
-}
+};
 
 export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
     static matches(type: string): boolean {
@@ -317,6 +311,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
         this.state = {
             column,
             factory,
+            factoryHandlers: null,
             renderCell: props.renderCell as RenderItemFn<unknown>,
             columnId,
             sorter: null,
@@ -341,54 +336,11 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
             column.setFixedWidth(props.fixedWidth as number);
         }
 
-        factory.connect("setup", (_self, listItemObj) => {
-            const listItem = getObject<Gtk.ListItem>(listItemObj.id);
-            const id = getObjectId(listItemObj.id);
-
-            const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
-            listItem.setChild(box);
-
-            const fiberRoot = createFiberRoot(box);
-            this.state.listItemCache.set(id, { box, fiberRoot });
-
-            const element = this.state.renderCell(null);
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
-        });
-
-        factory.connect("bind", (_self, listItemObj) => {
-            const listItem = getObject<Gtk.ListItem>(listItemObj.id);
-            const id = getObjectId(listItemObj.id);
-            const info = this.state.listItemCache.get(id);
-
-            if (!info) return;
-
-            const position = listItem.getPosition();
-
-            if (this.columnView) {
-                const items = this.columnView.getItems();
-                const item = items[position];
-                const element = this.state.renderCell(item ?? null);
-                reconciler.getInstance().updateContainer(element, info.fiberRoot, null, () => {});
-            }
-        });
-
-        factory.connect("unbind", (_self, listItemObj) => {
-            const id = getObjectId(listItemObj.id);
-            const info = this.state.listItemCache.get(id);
-
-            if (!info) return;
-
-            reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
-        });
-
-        factory.connect("teardown", (_self, listItemObj) => {
-            const id = getObjectId(listItemObj.id);
-            const info = this.state.listItemCache.get(id);
-
-            if (info) {
-                reconciler.getInstance().updateContainer(null, info.fiberRoot, null, () => {});
-                this.state.listItemCache.delete(id);
-            }
+        this.state.factoryHandlers = connectListItemFactorySignals({
+            factory,
+            listItemCache: this.state.listItemCache,
+            getRenderFn: () => this.state.renderCell,
+            getItemAtPosition: (position) => this.columnView?.getItems()[position] ?? null,
         });
     }
 
@@ -459,6 +411,9 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
     }
 
     override detachFromParent(parent: Node): void {
+        // Disconnect factory signal handlers to prevent memory leaks
+        this.state.factoryHandlers?.disconnect();
+
         if (isColumnContainer(parent)) {
             parent.removeColumn(this);
         }
@@ -499,58 +454,8 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
     }
 }
 
-export class ColumnViewItemNode extends Node {
+export class ColumnViewItemNode extends VirtualItemNode {
     static matches(type: string): boolean {
         return type === "ColumnView.Item";
-    }
-
-    protected override isVirtual(): boolean {
-        return true;
-    }
-
-    private item: unknown;
-
-    override initialize(props: Props): void {
-        this.item = props.item as unknown;
-        super.initialize(props);
-    }
-
-    getItem(): unknown {
-        return this.item;
-    }
-
-    override attachToParent(parent: Node): void {
-        if (isItemContainer(parent)) {
-            parent.addItem(this.item);
-        }
-    }
-
-    override attachToParentBefore(parent: Node, before: Node): void {
-        if (isItemContainer(parent) && before instanceof ColumnViewItemNode) {
-            parent.insertItemBefore(this.item, before.getItem());
-        } else {
-            this.attachToParent(parent);
-        }
-    }
-
-    override detachFromParent(parent: Node): void {
-        if (isItemContainer(parent)) {
-            parent.removeItem(this.item);
-        }
-    }
-
-    protected override consumedProps(): Set<string> {
-        const consumed = super.consumedProps();
-        consumed.add("item");
-        return consumed;
-    }
-
-    override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.item !== newProps.item && this.parent && isItemContainer(this.parent)) {
-            this.parent.updateItem(this.item, newProps.item);
-            this.item = newProps.item;
-        }
-
-        super.updateProps(oldProps, newProps);
     }
 }

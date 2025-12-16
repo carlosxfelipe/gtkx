@@ -20,7 +20,7 @@ import { format } from "prettier";
 /**
  * Configuration options for the FFI code generator.
  */
-interface GeneratorOptions {
+type GeneratorOptions = {
     /** Output directory for generated files. */
     outputDir: string;
     /** The namespace being generated (e.g., "Gtk"). */
@@ -31,7 +31,7 @@ interface GeneratorOptions {
     typeRegistry?: TypeRegistry;
     /** All parsed namespaces for cross-namespace parent method lookup. */
     allNamespaces?: Map<string, GirNamespace>;
-}
+};
 
 const RESERVED_WORDS = new Set([
     "break",
@@ -2414,8 +2414,11 @@ ${indent}  }`;
     }
 
     /**
-     * Adds a catch-all signal handler overload.
-     * Uses `any` for TypeScript compatibility with typed overloads.
+     * Adds a catch-all signal handler overload for unknown signal types.
+     *
+     * Uses `any` because TypeScript overload resolution requires the catch-all
+     * signature to be compatible with all typed overloads. Using `unknown` would
+     * prevent passing typed handlers to this overload.
      */
     private addSignalCatchAllOverload(signalOverloads: string[], methodName: string): void {
         signalOverloads.push(

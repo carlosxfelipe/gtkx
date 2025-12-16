@@ -4,11 +4,11 @@ import { AboutDialogNode } from "./nodes/about-dialog.js";
 import { ActionBarNode } from "./nodes/action-bar.js";
 import { ColumnViewColumnNode, ColumnViewItemNode, ColumnViewNode } from "./nodes/column-view.js";
 import { ComboRowNode } from "./nodes/combo-row.js";
-import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
+import { DropDownItemNode, DropDownNode } from "./nodes/drop-down.js";
 import { FlowBoxNode } from "./nodes/flow-box.js";
 import { GridChildNode, GridNode } from "./nodes/grid.js";
 import { AdwHeaderBarNode, HeaderBarNode, PackEndNode, PackStartNode } from "./nodes/header-bar.js";
-import { ListItemNode, ListViewNode } from "./nodes/list.js";
+import { ListItemNode, ListViewNode } from "./nodes/list-view.js";
 import { ListBoxNode } from "./nodes/list-box.js";
 import {
     ApplicationMenuNode,
@@ -37,10 +37,10 @@ export type Props = Record<string, unknown>;
 
 export { ROOT_NODE_CONTAINER } from "./nodes/root.js";
 
-interface NodeClass {
+type NodeClass = {
     matches: (type: string, existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER) => boolean;
     new (type: string, existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER): Node;
-}
+};
 
 const VIRTUAL_NODES = [
     ColumnViewColumnNode,

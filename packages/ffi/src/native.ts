@@ -61,7 +61,16 @@ const findRegisteredClass = (glibTypeName: string) => {
  * @throws Error if no registered class is found in the type hierarchy
  */
 export function getObject<T extends NativeObject = NativeObject>(id: unknown): T {
-    const runtimeTypeName = typeNameFromInstance(getObjectId(id));
+    if (id === null || id === undefined) {
+        throw new Error("getObject: id cannot be null or undefined");
+    }
+
+    const objectId = getObjectId(id);
+    if (objectId === null || objectId === undefined) {
+        throw new Error("getObject: failed to get object ID from input");
+    }
+
+    const runtimeTypeName = typeNameFromInstance(objectId);
     const cls = findRegisteredClass(runtimeTypeName);
     if (!cls) {
         throw new Error(`Unknown GLib type: ${runtimeTypeName}. Make sure the class is registered.`);
@@ -119,11 +128,15 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
 
     try {
         initAdwaita();
-    } catch {}
+    } catch {
+        // Adwaita is optional - silently continue if not available
+    }
 
     try {
         initGtkSource();
-    } catch {}
+    } catch {
+        // GtkSourceView is optional - silently continue if not available
+    }
 
     keepAlive();
 
@@ -161,7 +174,9 @@ export const stop = (): void => {
 
     try {
         finalizeGtkSource();
-    } catch {}
+    } catch {
+        // GtkSourceView finalization is optional - silently continue if not available
+    }
 
     nativeStop();
     currentApp = null;
