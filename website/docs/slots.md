@@ -12,15 +12,15 @@ GTK widgets often have named child properties like `titleWidget`, `child`, or `l
 Slots follow the pattern `<Widget.SlotName>`:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Expander, Box, Label } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const ExpandableSection = () => (
   <Expander.Root label="Click to expand">
     <Expander.Child>
-      <Box orientation={Orientation.VERTICAL} spacing={8}>
-        <Label label="This content is inside the expander" />
-        <Label label="It shows when expanded" />
+      <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        This content is inside the expander
+        It shows when expanded
       </Box>
     </Expander.Child>
   </Expander.Root>
@@ -44,24 +44,22 @@ This maps React's composition model to GTK's property-based child management.
 ### Frame with Child
 
 ```tsx
-import { Frame, Label } from "@gtkx/react";
+import { Frame } from "@gtkx/react";
 
 <Frame.Root label="Settings">
-  <Frame.Child>
-    <Label label="Frame content goes here" />
-  </Frame.Child>
+  <Frame.Child>Frame content goes here</Frame.Child>
 </Frame.Root>;
 ```
 
 ### HeaderBar with Title Widget
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { HeaderBar, Label, Box } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 <HeaderBar.Root>
   <HeaderBar.TitleWidget>
-    <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
       <Label label="My App" cssClasses={["heading"]} />
       <Label label="v1.0" cssClasses={["dim-label"]} />
     </Box>
@@ -104,9 +102,7 @@ import {
       </AdwHeaderBar.TitleWidget>
     </AdwHeaderBar.Root>
   </AdwToolbarView.Top>
-  <AdwToolbarView.Content>
-    <Label label="Main content" />
-  </AdwToolbarView.Content>
+  <AdwToolbarView.Content>Main content</AdwToolbarView.Content>
   <AdwToolbarView.Bottom>{/* Optional bottom toolbar */}</AdwToolbarView.Bottom>
 </AdwToolbarView.Root>;
 ```
@@ -144,20 +140,23 @@ Every widget with slots has two component types:
 
 ## Labels as Slots
 
-`Label` is a special case — it's both a widget and commonly used as a slot value:
+`Label` is commonly used as a slot value for custom widget titles:
 
 ```tsx
-import { Label, Button } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { Expander, Label, Box } from "@gtkx/react";
 
-// Label as a standalone widget
-<Label label="Hello, World!" />
-
-// Button with custom label widget (uses Label internally)
-<Button>
-  <Button.Child>
-    <Label label="<b>Bold</b> button" useMarkup />
-  </Button.Child>
-</Button>
+// Expander with a custom label widget using markup
+<Expander.Root>
+  <Expander.LabelWidget>
+    <Label label="<b>Bold</b> title" useMarkup />
+  </Expander.LabelWidget>
+  <Expander.Child>
+    <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+      Content inside the expander
+    </Box>
+  </Expander.Child>
+</Expander.Root>
 ```
 
 ## Dynamic Slot Content

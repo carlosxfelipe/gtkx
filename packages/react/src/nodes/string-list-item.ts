@@ -9,8 +9,8 @@ export abstract class StringListItemNode extends Node<never> {
         return true;
     }
 
-    private id!: string;
-    private label!: string;
+    private id = "";
+    private label = "";
 
     override initialize(props: Props): void {
         this.id = props.id as string;

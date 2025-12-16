@@ -9,7 +9,18 @@ export abstract class VirtualSlotNode<TContainer, TProps> extends Node<never> {
 
     protected childWidget: Gtk.Widget | null = null;
     protected parentContainer: (Node & TContainer) | null = null;
-    protected slotProps!: TProps;
+    private _slotProps: TProps | undefined;
+
+    protected get slotProps(): TProps {
+        if (this._slotProps === undefined) {
+            throw new Error("slotProps accessed before initialization");
+        }
+        return this._slotProps;
+    }
+
+    protected set slotProps(value: TProps) {
+        this._slotProps = value;
+    }
 
     protected abstract isValidContainer(parent: Node): parent is Node & TContainer;
     protected abstract addToContainer(container: TContainer, child: Gtk.Widget, props: TProps): void;

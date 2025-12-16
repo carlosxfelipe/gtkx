@@ -137,12 +137,12 @@ Use the `accels` prop with GTK accelerator syntax (e.g., `"<Control>s"`, `"<Cont
 `PopoverMenuBar` renders a traditional horizontal menu bar as a widget in your content area (rather than in the window titlebar). Use it when you need a menu bar positioned within your layout.
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, PopoverMenuBar, Menu, quit } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const App = () => (
   <ApplicationWindow title="My App" onCloseRequest={quit}>
-    <Box orientation={Orientation.VERTICAL}>
+    <Box orientation={Gtk.Orientation.VERTICAL}>
       <PopoverMenuBar>
         <Menu.Submenu label="File">
           <Menu.Item label="New" onActivate={handleNew} accels="<Control>n" />

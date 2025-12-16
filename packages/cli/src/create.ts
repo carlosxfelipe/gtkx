@@ -618,7 +618,7 @@ const generateExamplesMd = (): string => {
 ### Basic App with State
 
 \`\`\`tsx
-import { Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Label, quit } from "@gtkx/react";
 import { useCallback, useState } from "react";
 
@@ -647,7 +647,7 @@ export const App = () => {
 
     return (
         <ApplicationWindow title="Todo App" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
-            <Box orientation={Orientation.VERTICAL} spacing={16} marginTop={16} marginStart={16} marginEnd={16}>
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={16} marginStart={16} marginEnd={16}>
                 <Label label="Todo App" />
             </Box>
         </ApplicationWindow>
@@ -796,8 +796,8 @@ const MenuDemo = () => {
 ### List Item Component
 
 \`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, CheckButton, Label } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 interface Todo {
     id: number;
@@ -812,7 +812,7 @@ interface TodoItemProps {
 }
 
 export const TodoItem = ({ todo, onToggle, onDelete }: TodoItemProps) => (
-    <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
         <CheckButton active={todo.completed} onToggled={() => onToggle(todo.id)} />
         <Label label={todo.text} hexpand cssClasses={todo.completed ? ["dim-label"] : []} />
         <Button iconName="edit-delete-symbolic" onClicked={() => onDelete(todo.id)} cssClasses={["flat"]} />
@@ -836,7 +836,7 @@ import { strict as assert } from "node:assert";`;
         testing === "node" ? `assert.ok(button, "Button should be rendered");` : `expect(button).toBeDefined();`;
 
     return `${imports}
-import { AccessibleRole } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
 import App from "../src/app.js";
 
@@ -847,7 +847,7 @@ ${afterEachFn}(async () => {
 describe("App", () => {
     it("renders the increment button", async () => {
         await render(<App />, { wrapper: false });
-        const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Increment" });
         ${assertion}
     });
 });

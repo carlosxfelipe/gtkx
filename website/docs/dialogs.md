@@ -12,6 +12,7 @@ GTK4 provides several dialog types for common interactions. GTKX supports both d
 Use `createPortal` to render dialogs at the root level of your application:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import {
   createPortal,
   ApplicationWindow,
@@ -19,7 +20,6 @@ import {
   AboutDialog,
   quit,
 } from "@gtkx/react";
-import { License } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
@@ -36,7 +36,7 @@ const App = () => {
             version="1.0.0"
             comments="A GTKX application"
             website="https://example.com"
-            licenseType={License.MIT_X11}
+            licenseType={Gtk.License.MIT_X11}
             authors={["Your Name"]}
             onCloseRequest={() => {
               setShowAbout(false);
@@ -64,7 +64,7 @@ GTK4's `AlertDialog` and file dialogs use async/await patterns:
 
 ```tsx
 import { getCurrentApp } from "@gtkx/ffi";
-import { AlertDialog, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Button, Label, Box, quit } from "@gtkx/react";
 import { useState } from "react";
 
@@ -73,7 +73,7 @@ const App = () => {
 
   const showConfirmDialog = async () => {
     const app = getCurrentApp();
-    const dialog = new AlertDialog();
+    const dialog = new Gtk.AlertDialog();
     dialog.setMessage("Confirm Action");
     dialog.setDetail(
       "Are you sure you want to proceed? This cannot be undone."
@@ -94,7 +94,7 @@ const App = () => {
   return (
     <ApplicationWindow title="Dialogs" onCloseRequest={quit}>
       <Box
-        orientation={Orientation.VERTICAL}
+        orientation={Gtk.Orientation.VERTICAL}
         spacing={12}
         marginStart={20}
         marginEnd={20}
@@ -112,7 +112,7 @@ const App = () => {
 
 ```tsx
 import { getCurrentApp } from "@gtkx/ffi";
-import { FileDialog, FileFilter } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Button, Label } from "@gtkx/react";
 import { useState } from "react";
 
@@ -121,11 +121,10 @@ const FilePicker = () => {
 
   const openFile = async () => {
     const app = getCurrentApp();
-    const dialog = new FileDialog();
+    const dialog = new Gtk.FileDialog();
     dialog.setTitle("Open File");
 
-    // Optional: Add file filters
-    const filter = new FileFilter();
+    const filter = new Gtk.FileFilter();
     filter.setName("Text Files");
     filter.addPattern("*.txt");
     filter.addMimeType("text/plain");
@@ -140,7 +139,7 @@ const FilePicker = () => {
 
   const saveFile = async () => {
     const app = getCurrentApp();
-    const dialog = new FileDialog();
+    const dialog = new Gtk.FileDialog();
     dialog.setTitle("Save File");
     dialog.setInitialName("document.txt");
 
@@ -166,12 +165,11 @@ const FilePicker = () => {
 
 ```tsx
 import { getCurrentApp } from "@gtkx/ffi";
-import { ColorDialog, FontDialog } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 
-// Color picker
 const pickColor = async () => {
   const app = getCurrentApp();
-  const dialog = new ColorDialog();
+  const dialog = new Gtk.ColorDialog();
   dialog.setTitle("Choose Color");
 
   try {
@@ -184,10 +182,9 @@ const pickColor = async () => {
   }
 };
 
-// Font picker
 const pickFont = async () => {
   const app = getCurrentApp();
-  const dialog = new FontDialog();
+  const dialog = new Gtk.FontDialog();
   dialog.setTitle("Choose Font");
 
   try {

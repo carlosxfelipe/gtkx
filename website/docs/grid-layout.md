@@ -10,20 +10,20 @@ The `Grid` component provides a two-dimensional layout system where you can posi
 ## Basic Usage
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Grid, Label, Entry, Button } from "@gtkx/react";
-import { Align } from "@gtkx/ffi/gtk";
 
 const LoginForm = () => (
   <Grid.Root columnSpacing={12} rowSpacing={8}>
     <Grid.Child row={0} column={0}>
-      <Label label="Username:" halign={Align.END} />
+      <Label label="Username:" halign={Gtk.Align.END} />
     </Grid.Child>
     <Grid.Child row={0} column={1}>
       <Entry hexpand />
     </Grid.Child>
 
     <Grid.Child row={1} column={0}>
-      <Label label="Password:" halign={Align.END} />
+      <Label label="Password:" halign={Gtk.Align.END} />
     </Grid.Child>
     <Grid.Child row={1} column={1}>
       <Entry visibility={false} hexpand />
@@ -82,16 +82,16 @@ Use `rowSpan` and `columnSpan` to create cells that span multiple rows or column
       cssClasses={["card"]}
       vexpand
     >
-      <Label label="Navigation" />
+      Navigation
     </Box>
   </Grid.Child>
 
   {/* Content areas */}
   <Grid.Child row={1} column={1} columnSpan={2}>
-    <Label label="Main content" />
+    Main content
   </Grid.Child>
   <Grid.Child row={2} column={1} columnSpan={2}>
-    <Label label="Secondary content" />
+    Secondary content
   </Grid.Child>
 </Grid.Root>
 ```
@@ -126,38 +126,34 @@ const DynamicGrid = ({ cells }: { cells: Cell[] }) => (
 Grids are ideal for form layouts with aligned labels and inputs:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Grid, Label, Entry, Switch, Button, Box } from "@gtkx/react";
-import { Align } from "@gtkx/ffi/gtk";
 
 const SettingsForm = () => (
   <Grid.Root columnSpacing={16} rowSpacing={12}>
-    {/* Row 0: Name */}
     <Grid.Child row={0} column={0}>
-      <Label label="Display Name" halign={Align.END} />
+      <Label label="Display Name" halign={Gtk.Align.END} />
     </Grid.Child>
     <Grid.Child row={0} column={1}>
       <Entry hexpand placeholderText="Enter your name" />
     </Grid.Child>
 
-    {/* Row 1: Email */}
     <Grid.Child row={1} column={0}>
-      <Label label="Email" halign={Align.END} />
+      <Label label="Email" halign={Gtk.Align.END} />
     </Grid.Child>
     <Grid.Child row={1} column={1}>
       <Entry hexpand placeholderText="you@example.com" />
     </Grid.Child>
 
-    {/* Row 2: Notifications toggle */}
     <Grid.Child row={2} column={0}>
-      <Label label="Notifications" halign={Align.END} />
+      <Label label="Notifications" halign={Gtk.Align.END} />
     </Grid.Child>
     <Grid.Child row={2} column={1}>
-      <Switch halign={Align.START} />
+      <Switch halign={Gtk.Align.START} />
     </Grid.Child>
 
-    {/* Row 3: Buttons */}
     <Grid.Child row={3} column={1}>
-      <Box orientation={Orientation.HORIZONTAL} spacing={8} halign={Align.END}>
+      <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.END}>
         <Button label="Cancel" />
         <Button label="Save" cssClasses={["suggested-action"]} />
       </Box>

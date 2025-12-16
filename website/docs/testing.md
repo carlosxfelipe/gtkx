@@ -77,28 +77,24 @@ const allLabels = await screen.findAllByText(/item/i);
 GTK widgets have accessibility roles. Use `findByRole` to query by role:
 
 ```tsx
-import { AccessibleRole } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 
-// Find a button by role and name
-const button = await screen.findByRole(AccessibleRole.BUTTON, {
+const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
   name: "Submit",
 });
 
-// Find any button
-const anyButton = await screen.findByRole(AccessibleRole.BUTTON);
+const anyButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
 
-// Find a checked checkbox
-const checked = await screen.findByRole(AccessibleRole.CHECKBOX, {
+const checked = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
   checked: true,
 });
 
-// Find an expanded expander
-const expanded = await screen.findByRole(AccessibleRole.BUTTON, {
+const expanded = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
   expanded: true,
 });
 ```
 
-Import `AccessibleRole` from `@gtkx/ffi/gtk` to access all available roles.
+Import `Gtk` from `@gtkx/ffi/gtk` to access all available roles via `Gtk.AccessibleRole`.
 
 #### By Label Text
 
@@ -278,7 +274,7 @@ const sectionASaveButtons = await findAllByText("Save");
 Here's a full test for a counter component:
 
 ```tsx
-import { AccessibleRole } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { Counter } from "../src/counter.js";
 
@@ -296,7 +292,7 @@ test("renders initial count of zero", async () => {
 test("increments count when clicking increment button", async () => {
   await render(<Counter />);
 
-  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
     name: "Increment",
   });
   await userEvent.click(button);
@@ -307,7 +303,7 @@ test("increments count when clicking increment button", async () => {
 test("decrements count when clicking decrement button", async () => {
   await render(<Counter />);
 
-  const button = await screen.findByRole(AccessibleRole.BUTTON, {
+  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
     name: "Decrement",
   });
   await userEvent.click(button);
@@ -318,8 +314,7 @@ test("decrements count when clicking decrement button", async () => {
 test("resets count when clicking reset button", async () => {
   await render(<Counter />);
 
-  // Increment a few times
-  const increment = await screen.findByRole(AccessibleRole.BUTTON, {
+  const increment = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
     name: "Increment",
   });
   await userEvent.click(increment);
@@ -327,8 +322,7 @@ test("resets count when clicking reset button", async () => {
   await userEvent.click(increment);
   await screen.findByText("Count: 3");
 
-  // Reset
-  const reset = await screen.findByRole(AccessibleRole.BUTTON, {
+  const reset = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
     name: "Reset",
   });
   await userEvent.click(reset);

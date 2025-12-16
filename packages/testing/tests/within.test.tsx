@@ -1,9 +1,9 @@
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "../src/index.js";
 
-const V = Orientation.VERTICAL;
+const V = Gtk.Orientation.VERTICAL;
 
 describe("within", () => {
     afterEach(async () => {
@@ -14,9 +14,9 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label label="Inside" />
+                    Inside
                 </Box>
-                <Label label="Outside" />
+                Outside
             </Box>,
         );
 
@@ -31,9 +31,9 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label label="Shared" />
+                    Shared
                 </Box>
-                <Label label="Shared" />
+                Shared
             </Box>,
         );
 
@@ -60,7 +60,7 @@ describe("within", () => {
         const container = await screen.findByTestId("container");
         const { findByRole } = within(container);
 
-        const button = await findByRole(AccessibleRole.BUTTON);
+        const button = await findByRole(Gtk.AccessibleRole.BUTTON);
         expect(button).toBeDefined();
     });
 
@@ -112,7 +112,7 @@ describe("within", () => {
         const container = await screen.findByTestId("container");
         const { findAllByRole } = within(container);
 
-        const buttons = await findAllByRole(AccessibleRole.BUTTON);
+        const buttons = await findAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(2);
     });
 
@@ -120,10 +120,10 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label label="Item" />
-                    <Label label="Item" />
+                    {"Item"}
+                    {"Item"}
                 </Box>
-                <Label label="Item" />
+                Item
             </Box>,
         );
 
@@ -175,7 +175,7 @@ describe("within", () => {
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="level1">
                     <Box spacing={0} orientation={V} name="level2">
-                        <Label label="Deep" />
+                        Deep
                     </Box>
                 </Box>
             </Box>,
@@ -194,7 +194,7 @@ describe("within", () => {
     it("uses text match options", async () => {
         await render(
             <Box spacing={0} orientation={V} name="container">
-                <Label label="Hello World" />
+                Hello World
             </Box>,
         );
 
@@ -219,10 +219,10 @@ describe("within", () => {
         const container = await screen.findByTestId("container");
         const { findByRole } = within(container);
 
-        const enabledButton = await findByRole(AccessibleRole.BUTTON, { name: "Enabled" });
+        const enabledButton = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Enabled" });
         expect(enabledButton).toBeDefined();
 
-        const disabledButton = await findByRole(AccessibleRole.BUTTON, { name: "Disabled" });
+        const disabledButton = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Disabled" });
         expect(disabledButton).toBeDefined();
     });
 });

@@ -87,9 +87,9 @@ injectGlobal`
 ## Example: Custom Button Styles
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { css, cx } from "@gtkx/css";
 import { Button, Box } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const baseButton = css`
   padding: 16px 32px;
@@ -127,7 +127,7 @@ const gradientStyle = css`
 `;
 
 const ButtonShowcase = () => (
-  <Box orientation={Orientation.HORIZONTAL} spacing={12}>
+  <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
     <Button label="Success" cssClasses={[cx(baseButton, successStyle)]} />
     <Button label="Warning" cssClasses={[cx(baseButton, warningStyle)]} />
     <Button label="Gradient" cssClasses={[cx(baseButton, gradientStyle)]} />

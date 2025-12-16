@@ -1,4 +1,4 @@
-import { AccessibleRole, Orientation, type Window } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
@@ -12,15 +12,15 @@ describe("findAll", () => {
     describe("with Application container", () => {
         it("finds all widgets matching predicate", async () => {
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="Button 1" />
                     <Button label="Button 2" />
-                    <Label label="Not a button" />
+                    Not a button
                 </Box>,
             );
 
             const buttons = findAll(container, (node) => {
-                return node.getAccessibleRole() === AccessibleRole.BUTTON;
+                return node.getAccessibleRole() === Gtk.AccessibleRole.BUTTON;
             });
 
             // Should find at least 2 buttons (our explicit ones, plus GTK may add internal buttons)
@@ -31,7 +31,7 @@ describe("findAll", () => {
             const { container } = await render(<Label label="Just a label" />);
 
             const menus = findAll(container, (node) => {
-                return node.getAccessibleRole() === AccessibleRole.MENU;
+                return node.getAccessibleRole() === Gtk.AccessibleRole.MENU;
             });
 
             expect(menus).toEqual([]);
@@ -39,15 +39,15 @@ describe("findAll", () => {
 
         it("finds widgets in nested hierarchy", async () => {
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Box spacing={0} orientation={Orientation.HORIZONTAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <Box spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
                         <Button label="Deep Button" />
                     </Box>
                 </Box>,
             );
 
             const buttons = findAll(container, (node) => {
-                return node.getAccessibleRole() === AccessibleRole.BUTTON;
+                return node.getAccessibleRole() === Gtk.AccessibleRole.BUTTON;
             });
 
             // At least 1 button (GTK may create additional internal buttons)
@@ -68,7 +68,7 @@ describe("findAll", () => {
             );
 
             const windows = findAll(container, (node) => {
-                return node.getAccessibleRole() === AccessibleRole.WINDOW;
+                return node.getAccessibleRole() === Gtk.AccessibleRole.WINDOW;
             });
 
             expect(windows.length).toBeGreaterThanOrEqual(2);
@@ -76,8 +76,8 @@ describe("findAll", () => {
 
         it("returns all widgets when predicate always returns true", async () => {
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label label="Label" />
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    Label
                     <Button label="Button" />
                 </Box>,
             );
@@ -85,7 +85,7 @@ describe("findAll", () => {
             const activeWindow = container.getActiveWindow();
             expect(activeWindow).not.toBeNull();
 
-            const allWidgets = findAll(activeWindow as Window, () => true);
+            const allWidgets = findAll(activeWindow as Gtk.Window, () => true);
 
             expect(allWidgets.length).toBeGreaterThan(0);
         });
@@ -94,9 +94,9 @@ describe("findAll", () => {
     describe("with Widget container", () => {
         it("finds widgets starting from a specific widget", async () => {
             await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="Outside" />
-                    <Box spacing={0} orientation={Orientation.HORIZONTAL}>
+                    <Box spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
                         <Button label="Inside 1" />
                         <Button label="Inside 2" />
                     </Box>
@@ -104,8 +104,8 @@ describe("findAll", () => {
             );
 
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label label="Start here" />
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    Start here
                     <Button label="Child button" />
                 </Box>,
             );
@@ -113,8 +113,8 @@ describe("findAll", () => {
             const activeWindow = container.getActiveWindow();
             expect(activeWindow).not.toBeNull();
 
-            const labels = findAll(activeWindow as Window, (node) => {
-                return node.getAccessibleRole() === AccessibleRole.LABEL;
+            const labels = findAll(activeWindow as Gtk.Window, (node) => {
+                return node.getAccessibleRole() === Gtk.AccessibleRole.LABEL;
             });
 
             expect(labels.length).toBeGreaterThan(0);
@@ -123,11 +123,11 @@ describe("findAll", () => {
 
     describe("predicate behavior", () => {
         it("passes each widget to predicate", async () => {
-            const visitedRoles: AccessibleRole[] = [];
+            const visitedRoles: Gtk.AccessibleRole[] = [];
 
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label label="Label" />
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    Label
                     <Button label="Button" />
                 </Box>,
             );
@@ -138,20 +138,20 @@ describe("findAll", () => {
             });
 
             expect(visitedRoles.length).toBeGreaterThan(0);
-            expect(visitedRoles).toContain(AccessibleRole.WINDOW);
+            expect(visitedRoles).toContain(Gtk.AccessibleRole.WINDOW);
         });
 
         it("can match by custom criteria", async () => {
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label label="First Label" />
-                    <Label label="Second Label" />
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    {"First Label"}
+                    {"Second Label"}
                     <Button label="Button" />
                 </Box>,
             );
 
             const labels = findAll(container, (node) => {
-                return node.getAccessibleRole() === AccessibleRole.LABEL;
+                return node.getAccessibleRole() === Gtk.AccessibleRole.LABEL;
             });
 
             // Should find at least the 2 explicit labels (may include button's internal label)

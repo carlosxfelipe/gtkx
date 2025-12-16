@@ -32,7 +32,7 @@ const MenuButtonDemo = () => {
                                         marginTop={8}
                                         marginBottom={8}
                                     >
-                                        <Label label="Menu content" />
+                                        Menu content
                                     </Box>
                                 </Popover.Child>
                             </Popover.Root>
@@ -51,7 +51,7 @@ const MenuButtonDemo = () => {
                                         marginTop={8}
                                         marginBottom={8}
                                     >
-                                        <Label label="Icon menu" />
+                                        Icon menu
                                     </Box>
                                 </Popover.Child>
                             </Popover.Root>

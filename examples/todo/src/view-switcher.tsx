@@ -1,4 +1,4 @@
-import { Align, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, ToggleButton } from "@gtkx/react";
 import type { Filter } from "./types.js";
 
@@ -9,7 +9,7 @@ type ViewSwitcherProps = {
 
 export const ViewSwitcher = ({ filter, onFilterChange }: ViewSwitcherProps) => {
     return (
-        <Box orientation={Orientation.HORIZONTAL} spacing={0} cssClasses={["linked"]} halign={Align.CENTER}>
+        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["linked"]} halign={Gtk.Align.CENTER}>
             <ToggleButton.Root
                 label="All"
                 active={filter === "all"}

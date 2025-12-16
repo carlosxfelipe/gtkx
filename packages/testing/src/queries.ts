@@ -142,8 +142,17 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case Gtk.AccessibleRole.DIALOG:
         case Gtk.AccessibleRole.ALERT_DIALOG:
             return (widget as Gtk.Window).getTitle() ?? null;
-        case Gtk.AccessibleRole.TAB_PANEL:
-            return (widget as unknown as Gtk.StackPage).getTitle() ?? null;
+        case Gtk.AccessibleRole.TAB_PANEL: {
+            const parent = widget.getParent();
+            if (parent) {
+                const stack = parent as Gtk.Stack;
+                const page = stack.getPage?.(widget);
+                if (page) {
+                    return page.getTitle() ?? null;
+                }
+            }
+            return null;
+        }
         default:
             return null;
     }

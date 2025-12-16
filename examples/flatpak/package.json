@@ -1,14 +1,15 @@
 {
-    "name": "flatpak-demo",
+    "name": "flatpak",
     "version": "0.0.0",
     "private": true,
     "description": "GTKX Flatpak Demo - Demonstrates Flatpak packaging with Node.js SEA",
     "type": "module",
     "scripts": {
         "build": "tsc -b",
-        "bundle": "node --import tsx scripts/bundle.ts",
-        "build:sea": "bash scripts/build-sea.sh",
         "build:flatpak": "flatpak-builder --user --install --force-clean build-dir org.gtkx.flatpak.json",
+        "build:sea": "bash scripts/build-sea.sh",
+        "bundle": "node --import tsx scripts/bundle.ts",
+        "dev": "gtkx dev src/app.tsx",
         "start": "node dist/index.js"
     },
     "dependencies": {
@@ -17,6 +18,7 @@
         "react": "19.2.3"
     },
     "devDependencies": {
+        "@gtkx/cli": "workspace:*",
         "@types/react": "19.2.7",
         "esbuild": "0.27.1",
         "postject": "1.0.0-alpha.6",

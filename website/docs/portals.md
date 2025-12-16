@@ -5,19 +5,18 @@ sidebar_label: Portals
 
 # Portals
 
-Portals let you render React children into a different part of the GTK widget tree. This is essential for dialogs, popovers, and overlay content that should render outside their parent container.
+Portals let you render React children into a different part of the GTK widget tree. This is essential for dialogs, additional windows, and content that should render outside their parent container.
 
 ## Basic Usage
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { createPortal, Box, Label } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const MyComponent = () => (
-  <Box orientation={Orientation.VERTICAL} spacing={8}>
-    <Label label="This is in the box" />
-
-    {createPortal(<Label label="This renders at the root level" />)}
+  <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+    This is in the box
+    {createPortal("This renders at the root level")}
   </Box>
 );
 ```
@@ -81,44 +80,43 @@ The dialog renders as a sibling to the main window, not nested inside it.
 You can also render into a specific widget container using refs:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { createPortal, Box, Label, Button } from "@gtkx/react";
-import type { Box as BoxType } from "@gtkx/ffi/gtk";
-import { Orientation } from "@gtkx/ffi/gtk";
 import { useState, useRef } from "react";
 
 const App = () => {
-  const targetRef = useRef<BoxType | null>(null);
+  const targetRef = useRef<Gtk.Box | null>(null);
   const [showInTarget, setShowInTarget] = useState(false);
 
   return (
-    <Box orientation={Orientation.VERTICAL} spacing={12}>
+    <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
       <Button
         label="Toggle Portal"
         onClicked={() => setShowInTarget(!showInTarget)}
       />
 
-      <Box orientation={Orientation.HORIZONTAL} spacing={12}>
+      <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
         <Box
-          orientation={Orientation.VERTICAL}
+          orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
           ref={targetRef}
           cssClasses={["card"]}
           hexpand
         >
-          <Label label="Target container" />
+          Target container
           {/* Portal content appears here */}
         </Box>
 
         <Box
-          orientation={Orientation.VERTICAL}
+          orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
           cssClasses={["card"]}
           hexpand
         >
-          <Label label="Source container" />
+          Source container
           {showInTarget &&
             createPortal(
-              <Label label="I'm rendered in the target!" />,
+              "I'm rendered in the target!",
               targetRef.current ?? undefined
             )}
         </Box>
@@ -130,7 +128,7 @@ const App = () => {
 
 ## How Portals Work
 
-1. **Without container**: Content attaches to `Gtk.Application.getDefault()`, rendering at the top level of the application
+1. **Without container**: Content renders at the root level, as siblings to your main window (windows/dialogs are associated with the GTK Application)
 2. **With container**: Content attaches to the specified widget as a child
 3. **React events bubble**: Events still bubble through the React tree, not the GTK tree
 4. **Context preserved**: React context passes through portals normally
@@ -152,19 +150,17 @@ The primary use case — render dialogs outside the main window hierarchy:
 }
 ```
 
-### Popovers
+### Multiple Windows
 
-Render content that overlays other widgets:
+Render additional windows alongside your main window:
 
 ```tsx
 {
-  showPopover &&
+  showSecondWindow &&
     createPortal(
-      <Popover.Root pointing={buttonRef.current}>
-        <Popover.Child>
-          <Label label="Popover content" />
-        </Popover.Child>
-      </Popover.Root>
+      <ApplicationWindow title="Second Window" defaultWidth={400} defaultHeight={300}>
+        This is a second window
+      </ApplicationWindow>
     );
 }
 ```
@@ -176,7 +172,7 @@ Move content between containers based on state:
 ```tsx
 const [inSidebar, setInSidebar] = useState(true);
 
-const content = <Label label="Movable content" />;
+const content = "Movable content";
 
 // Renders in sidebar or main area based on state
 {

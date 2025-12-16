@@ -85,8 +85,8 @@ export default function App() {
         marginStart={40}
         marginEnd={40}
       >
-        <Label label="Welcome to GTKX!" />
-        <Label label={`Count: ${count}`} />
+        Welcome to GTKX!
+        {`Count: ${count}`}
         <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
     </ApplicationWindow>

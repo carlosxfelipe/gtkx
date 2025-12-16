@@ -1,4 +1,4 @@
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent } from "../src/fire-event.js";
@@ -12,21 +12,21 @@ describe("fireEvent", () => {
     it("emits signal by name on widget", async () => {
         await render(<Button label="Test Button" />);
 
-        const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Test Button" });
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test Button" });
         await fireEvent(button, "clicked");
         expect(button).toBeDefined();
     });
 
     it("can emit signals on multiple widgets", async () => {
         await render(
-            <Box spacing={10} orientation={Orientation.VERTICAL}>
+            <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                 <Button label="First" />
                 <Button label="Second" />
             </Box>,
         );
 
-        const first = await screen.findByRole(AccessibleRole.BUTTON, { name: "First" });
-        const second = await screen.findByRole(AccessibleRole.BUTTON, { name: "Second" });
+        const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
+        const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
 
         await fireEvent(first, "clicked");
         await fireEvent(second, "clicked");

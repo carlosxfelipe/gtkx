@@ -109,7 +109,7 @@ export const DropDownDemo = () => {
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                     <Label label="Theme Preference" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
-                        <Label label="Select theme:" />
+                        Select theme:
                         <DropDown.Root selectedId="system" onSelectionChanged={setSelectedThemeId} hexpand={false}>
                             {themes.map((theme) => (
                                 <DropDown.Item key={theme.id} id={theme.id} label={theme.name} />

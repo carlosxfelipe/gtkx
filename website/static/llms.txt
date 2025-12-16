@@ -46,8 +46,8 @@ render(<App />, "com.example.myapp");
 
 ```tsx
 <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-    <Label label="First" />
-    <Label label="Second" />
+    First
+    Second
 </Box>
 ```
 
@@ -56,10 +56,10 @@ render(<App />, "com.example.myapp");
 ```tsx
 <Grid.Root rowSpacing={8} columnSpacing={8}>
     <Grid.Child column={0} row={0}>
-        <Label label="Top-left" />
+        Top-left
     </Grid.Child>
     <Grid.Child column={1} row={0} columnSpan={2}>
-        <Label label="Spans 2 columns" />
+        Spans 2 columns
     </Grid.Child>
 </Grid.Root>
 ```
@@ -69,10 +69,10 @@ render(<App />, "com.example.myapp");
 ```tsx
 <Stack.Root visibleChildName="page1">
     <Stack.Page name="page1" title="Page 1">
-        <Label label="Content 1" />
+        Content 1
     </Stack.Page>
     <Stack.Page name="page2" title="Page 2">
-        <Label label="Content 2" />
+        Content 2
     </Stack.Page>
 </Stack.Root>
 ```
@@ -267,8 +267,8 @@ All widgets support:
 ## Testing
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
-import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { afterEach, describe, it, expect } from "vitest";
 
 afterEach(async () => {
@@ -278,7 +278,7 @@ afterEach(async () => {
 describe("App", () => {
     it("renders button", async () => {
         await render(<App />, { wrapper: false });
-        const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click me" });
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         expect(button).toBeDefined();
     });
 });

@@ -1,5 +1,5 @@
 import { getInterface } from "@gtkx/ffi";
-import { AccessibleRole, Editable, type Label, type ToggleButton, type Widget } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
@@ -69,7 +69,7 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             await waitFor(() => {
-                const currentText = getInterface(input.id, Editable)?.getText() ?? "";
+                const currentText = getInterface(input.id, Gtk.Editable)?.getText() ?? "";
                 expect(currentText).toBe("");
             });
         });
@@ -150,10 +150,10 @@ describe("Todo App", () => {
             const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
             await userEvent.click(checkbox);
 
-            const checkedCheckbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: true });
+            const checkedCheckbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
             expect(checkedCheckbox).toBeDefined();
         });
 
@@ -166,13 +166,13 @@ describe("Todo App", () => {
             const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
             await userEvent.click(checkbox);
 
-            const checkedCheckbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: true });
+            const checkedCheckbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
             await userEvent.click(checkedCheckbox);
 
-            const uncheckedCheckbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
+            const uncheckedCheckbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
             expect(uncheckedCheckbox).toBeDefined();
         });
 
@@ -188,16 +188,16 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             let itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toContain("2");
+            expect((itemsLeft as Gtk.Label).getLabel()).toContain("2");
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
+            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
             expect(checkboxes.length).toBeGreaterThanOrEqual(1);
-            const firstCheckbox = checkboxes[0] as Widget;
+            const firstCheckbox = checkboxes[0] as Gtk.Widget;
             expect(firstCheckbox).toBeDefined();
             await userEvent.click(firstCheckbox);
 
             itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toContain("1");
+            expect((itemsLeft as Gtk.Label).getLabel()).toContain("1");
         });
     });
 
@@ -234,7 +234,7 @@ describe("Todo App", () => {
 
             const deleteButtons = await screen.findAllByTestId(/^delete-\d+$/);
             expect(deleteButtons.length).toBeGreaterThanOrEqual(2);
-            const secondDeleteButton = deleteButtons[1] as Widget;
+            const secondDeleteButton = deleteButtons[1] as Gtk.Widget;
             expect(secondDeleteButton).toBeDefined();
             await userEvent.click(secondDeleteButton);
 
@@ -257,9 +257,9 @@ describe("Todo App", () => {
             await userEvent.type(input, "Completed todo");
             await userEvent.click(addButton);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
+            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
             expect(checkboxes.length).toBeGreaterThanOrEqual(2);
-            const secondCheckbox = checkboxes[1] as Widget;
+            const secondCheckbox = checkboxes[1] as Gtk.Widget;
             expect(secondCheckbox).toBeDefined();
             await userEvent.click(secondCheckbox);
         };
@@ -318,13 +318,13 @@ describe("Todo App", () => {
             await setupTodosWithMixedState();
 
             const filterAll = await screen.findByTestId("filter-all");
-            expect((filterAll as ToggleButton).getActive()).toBe(true);
+            expect((filterAll as Gtk.ToggleButton).getActive()).toBe(true);
 
             const filterActive = await screen.findByTestId("filter-active");
             await userEvent.click(filterActive);
 
-            expect((filterActive as ToggleButton).getActive()).toBe(true);
-            expect((filterAll as ToggleButton).getActive()).toBe(false);
+            expect((filterActive as Gtk.ToggleButton).getActive()).toBe(true);
+            expect((filterAll as Gtk.ToggleButton).getActive()).toBe(false);
         });
     });
 
@@ -342,10 +342,10 @@ describe("Todo App", () => {
             await userEvent.type(input, "Also complete");
             await userEvent.click(addButton);
 
-            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX, { checked: false });
+            const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
             expect(checkboxes.length).toBeGreaterThanOrEqual(3);
-            const secondCheckbox = checkboxes[1] as Widget;
-            const thirdCheckbox = checkboxes[2] as Widget;
+            const secondCheckbox = checkboxes[1] as Gtk.Widget;
+            const thirdCheckbox = checkboxes[2] as Gtk.Widget;
             expect(secondCheckbox).toBeDefined();
             expect(thirdCheckbox).toBeDefined();
             await userEvent.click(secondCheckbox);
@@ -386,7 +386,7 @@ describe("Todo App", () => {
             const clearButton = await screen.findByTestId("clear-completed");
             expect(clearButton.getSensitive()).toBe(false);
 
-            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX);
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkbox);
 
             expect(clearButton.getSensitive()).toBe(true);
@@ -404,7 +404,7 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toBe("1 task remaining");
+            expect((itemsLeft as Gtk.Label).getLabel()).toBe("1 task remaining");
         });
 
         it("shows plural 'tasks' for multiple todos", async () => {
@@ -419,7 +419,7 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toBe("2 tasks remaining");
+            expect((itemsLeft as Gtk.Label).getLabel()).toBe("2 tasks remaining");
         });
 
         it("shows plural 'tasks' for zero todos", async () => {
@@ -431,11 +431,11 @@ describe("Todo App", () => {
             const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX);
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
             await userEvent.click(checkbox);
 
             const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toBe("0 tasks remaining");
+            expect((itemsLeft as Gtk.Label).getLabel()).toBe("0 tasks remaining");
         });
     });
 
@@ -453,17 +453,17 @@ describe("Todo App", () => {
 
             const todoItems = await screen.findAllByTestId(/^todo-\d+$/);
             expect(todoItems.length).toBeGreaterThanOrEqual(2);
-            const firstTodoItem = todoItems[0] as Widget;
-            const secondTodoItem = todoItems[1] as Widget;
+            const firstTodoItem = todoItems[0] as Gtk.Widget;
+            const secondTodoItem = todoItems[1] as Gtk.Widget;
             expect(firstTodoItem).toBeDefined();
             expect(secondTodoItem).toBeDefined();
 
             const { findByRole } = within(firstTodoItem);
 
-            const checkbox = await findByRole(AccessibleRole.CHECKBOX);
+            const checkbox = await findByRole(Gtk.AccessibleRole.CHECKBOX);
             expect(checkbox).toBeDefined();
 
-            const deleteBtn = await findByRole(AccessibleRole.BUTTON);
+            const deleteBtn = await findByRole(Gtk.AccessibleRole.BUTTON);
             expect(deleteBtn).toBeDefined();
         });
     });

@@ -1,4 +1,4 @@
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -18,8 +18,8 @@ describe("waitForElementToBeRemoved", () => {
                 hideLabel = () => setShowLabel(false);
 
                 return (
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        {showLabel && <Label label="Removable" />}
+                    <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                        {showLabel && "Removable"}
                         <Button label="Keep" />
                     </Box>
                 );
@@ -46,16 +46,16 @@ describe("waitForElementToBeRemoved", () => {
                 hideButton = () => setShowButton(false);
 
                 return (
-                    <Box spacing={0} orientation={Orientation.VERTICAL}>
+                    <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                         {showButton && <Button label="ToRemove" />}
-                        <Label label="Static" />
+                        Static
                     </Box>
                 );
             };
 
             await render(<TestComponent />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "ToRemove" });
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "ToRemove" });
 
             setTimeout(() => {
                 hideButton();
@@ -66,7 +66,7 @@ describe("waitForElementToBeRemoved", () => {
                 interval: 20,
             });
 
-            await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "ToRemove" })).rejects.toThrow();
+            await expect(screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "ToRemove" })).rejects.toThrow();
         });
     });
 

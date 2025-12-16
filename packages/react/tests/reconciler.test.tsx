@@ -539,7 +539,7 @@ describe("React Reconciler", () => {
 
     describe("child management - ListView", () => {
         const renderItem = (item: { id: number } | null) => {
-            return <Label label={item ? `Item ${item.id}` : ""} />;
+            return item ? `Item ${item.id}` : "";
         };
 
         it("adds items to list view", () => {
@@ -630,7 +630,7 @@ describe("React Reconciler", () => {
 
     describe("child management - ColumnView", () => {
         const renderCell = (item: { name: string } | null) => {
-            return <Label label={item?.name ?? ""} />;
+            return item?.name ?? "";
         };
 
         it("adds columns to column view", () => {
@@ -884,7 +884,7 @@ describe("React Reconciler", () => {
         it("renders nested components", () => {
             render(
                 <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                    <Label label="Title" />
+                    Title
                     <Button label="Click Me" />
                 </Box>,
             );
@@ -898,7 +898,7 @@ describe("React Reconciler", () => {
             const Counter = () => {
                 const [count, _setCount] = useState(0);
                 setCount = _setCount;
-                return <Label label={`Count: ${count}`} />;
+                return `Count: ${count}`;
             };
 
             render(<Counter />);
@@ -918,7 +918,7 @@ describe("React Reconciler", () => {
                 setVisible = _setVisible;
                 return (
                     <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                        {visible && <Label label="Visible" />}
+                        {visible && "Visible"}
                     </Box>
                 );
             };
@@ -951,12 +951,8 @@ describe("React Reconciler", () => {
         it("handles multiple windows", () => {
             render(
                 <>
-                    <ApplicationWindow title="Window 1">
-                        <Label label="Content 1" />
-                    </ApplicationWindow>
-                    <ApplicationWindow title="Window 2">
-                        <Label label="Content 2" />
-                    </ApplicationWindow>
+                    <ApplicationWindow title="Window 1">Content 1</ApplicationWindow>
+                    <ApplicationWindow title="Window 2">Content 2</ApplicationWindow>
                 </>,
             );
 
@@ -968,16 +964,16 @@ describe("React Reconciler", () => {
             render(
                 <Grid.Root>
                     <Grid.Child column={0} row={0}>
-                        <Label label="A" />
+                        A
                     </Grid.Child>
                     <Grid.Child column={1} row={0}>
-                        <Label label="B" />
+                        B
                     </Grid.Child>
                     <Grid.Child column={0} row={1}>
-                        <Label label="C" />
+                        C
                     </Grid.Child>
                     <Grid.Child column={1} row={1}>
-                        <Label label="D" />
+                        D
                     </Grid.Child>
                 </Grid.Root>,
             );
@@ -989,7 +985,7 @@ describe("React Reconciler", () => {
         it("renders Overlay with main child and overlays", () => {
             render(
                 <Overlay>
-                    <Label label="Main Content" />
+                    Main Content
                     <Button label="Overlay Button" />
                 </Overlay>,
             );
@@ -1001,15 +997,9 @@ describe("React Reconciler", () => {
         it("renders Notebook with multiple pages", () => {
             render(
                 <Notebook.Root>
-                    <Notebook.Page label="Page 1">
-                        <Label label="Page 1 Content" />
-                    </Notebook.Page>
-                    <Notebook.Page label="Page 2">
-                        <Label label="Page 2 Content" />
-                    </Notebook.Page>
-                    <Notebook.Page label="Page 3">
-                        <Label label="Page 3 Content" />
-                    </Notebook.Page>
+                    <Notebook.Page label="Page 1">Page 1 Content</Notebook.Page>
+                    <Notebook.Page label="Page 2">Page 2 Content</Notebook.Page>
+                    <Notebook.Page label="Page 3">Page 3 Content</Notebook.Page>
                 </Notebook.Root>,
             );
 
@@ -1254,7 +1244,7 @@ describe("React Reconciler", () => {
                                     windowRef = ref ?? undefined;
                                 }}
                             >
-                                <Label label="Portal Content" />
+                                Portal Content
                             </ApplicationWindow>,
                         )}
                     </>
@@ -1285,7 +1275,7 @@ describe("React Reconciler", () => {
                                             windowRef = ref ?? undefined;
                                         }}
                                     >
-                                        <Label label="Portal Content" />
+                                        Portal Content
                                     </ApplicationWindow>,
                                 )}
                         </>
@@ -1319,7 +1309,7 @@ describe("React Reconciler", () => {
                                         windowRef = ref ?? undefined;
                                     }}
                                 >
-                                    <Label label="Content" />
+                                    Content
                                 </ApplicationWindow>,
                             )}
                         </>
@@ -1386,13 +1376,13 @@ describe("React Reconciler", () => {
                                     containerRef = ref ?? undefined;
                                 }}
                             >
-                                <Label label="Direct Child" />
+                                Direct Child
                             </Box>
                             {containerRef &&
                                 createPortal(
                                     <>
-                                        <Label label="Portal Child 1" />
-                                        <Label label="Portal Child 2" />
+                                        {"Portal Child 1"}
+                                        {"Portal Child 2"}
                                     </>,
                                     containerRef,
                                 )}
@@ -1428,9 +1418,9 @@ describe("React Reconciler", () => {
                                     containerRef = ref ?? undefined;
                                 }}
                             >
-                                <Label label="Stays" />
+                                Stays
                             </Box>
-                            {containerRef && showPortal && createPortal(<Label label="Goes Away" />, containerRef)}
+                            {containerRef && showPortal && createPortal("Goes Away", containerRef)}
                         </ApplicationWindow>
                     );
                 };

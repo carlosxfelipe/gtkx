@@ -1,4 +1,4 @@
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -51,7 +51,7 @@ describe("render", () => {
         it("findByRole finds element", async () => {
             const { findByRole } = await render(<Button label="Click me" />);
 
-            const button = await findByRole(AccessibleRole.BUTTON, { name: "Click me" });
+            const button = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
             expect(button).toBeDefined();
         });
 
@@ -71,13 +71,13 @@ describe("render", () => {
 
         it("findAllByRole finds multiple elements", async () => {
             const { findAllByRole } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="One" />
                     <Button label="Two" />
                 </Box>,
             );
 
-            const buttons = await findAllByRole(AccessibleRole.BUTTON);
+            const buttons = await findAllByRole(Gtk.AccessibleRole.BUTTON);
             expect(buttons.length).toBe(2);
         });
     });
@@ -100,7 +100,7 @@ describe("render", () => {
             const Counter = () => {
                 const [count, _setCount] = useState(0);
                 setCount = _setCount;
-                return <Label label={`Count: ${count}`} />;
+                return `Count: ${count}`;
             };
 
             const { findByText, rerender } = await render(<Counter />);
@@ -137,9 +137,7 @@ describe("render", () => {
 
         it("provides access to active window", async () => {
             const { container, findAllByText } = await render(
-                <ApplicationWindow title="Test Window">
-                    <Label label="Window Content" />
-                </ApplicationWindow>,
+                <ApplicationWindow title="Test Window">Window Content</ApplicationWindow>,
             );
 
             const labels = await findAllByText("Window Content");
@@ -192,19 +190,19 @@ describe("multiple renders", () => {
 
     it("can render complex nested components", async () => {
         const { findByRole, findByText } = await render(
-            <Box spacing={10} orientation={Orientation.VERTICAL}>
-                <Label label="Header" />
-                <Box spacing={5} orientation={Orientation.HORIZONTAL}>
+            <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
+                Header
+                <Box spacing={5} orientation={Gtk.Orientation.HORIZONTAL}>
                     <Button label="Action 1" />
                     <Button label="Action 2" />
                 </Box>
-                <Label label="Footer" />
+                Footer
             </Box>,
         );
 
         await findByText("Header");
         await findByText("Footer");
-        await findByRole(AccessibleRole.BUTTON, { name: "Action 1" });
-        await findByRole(AccessibleRole.BUTTON, { name: "Action 2" });
+        await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Action 1" });
+        await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Action 2" });
     });
 });

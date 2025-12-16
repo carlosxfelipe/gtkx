@@ -1,6 +1,6 @@
 import { events } from "@gtkx/ffi";
-import { type Display, DisplayManager } from "@gtkx/ffi/gdk";
-import { CssProvider, StyleContext } from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as Gtk from "@gtkx/ffi/gtk";
 
 type StyleSheetOptions = {
     key: string;
@@ -43,8 +43,8 @@ events.on("stop", resetGtkState);
 export class StyleSheet {
     key: string;
     private rules: string[] = [];
-    private provider: CssProvider | null = null;
-    private display: Display | null = null;
+    private provider: Gtk.CssProvider | null = null;
+    private display: Gdk.Display | null = null;
     private isRegistered = false;
     private hasPendingRules = false;
 
@@ -54,11 +54,15 @@ export class StyleSheet {
 
     private ensureProvider(): void {
         if (!this.provider) {
-            this.provider = new CssProvider();
-            this.display = DisplayManager.get().getDefaultDisplay();
+            this.provider = new Gtk.CssProvider();
+            this.display = Gdk.DisplayManager.get().getDefaultDisplay();
 
             if (this.display) {
-                StyleContext.addProviderForDisplay(this.display, this.provider, STYLE_PROVIDER_PRIORITY_APPLICATION);
+                Gtk.StyleContext.addProviderForDisplay(
+                    this.display,
+                    this.provider,
+                    STYLE_PROVIDER_PRIORITY_APPLICATION,
+                );
                 this.isRegistered = true;
             }
         }
@@ -93,7 +97,7 @@ export class StyleSheet {
 
     flush(): void {
         if (this.provider && this.display && this.isRegistered) {
-            StyleContext.removeProviderForDisplay(this.display, this.provider);
+            Gtk.StyleContext.removeProviderForDisplay(this.display, this.provider);
             this.isRegistered = false;
         }
 

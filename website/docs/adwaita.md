@@ -47,9 +47,7 @@ const AppLayout = () => (
         </AdwHeaderBar.TitleWidget>
       </AdwHeaderBar.Root>
     </AdwToolbarView.Top>
-    <AdwToolbarView.Content>
-      <Label label="Main content area" />
-    </AdwToolbarView.Content>
+    <AdwToolbarView.Content>Main content area</AdwToolbarView.Content>
     <AdwToolbarView.Bottom>{/* Optional bottom bar */}</AdwToolbarView.Bottom>
   </AdwToolbarView.Root>
 );
@@ -75,8 +73,8 @@ import { AdwHeaderBar, AdwWindowTitle, Button } from "@gtkx/react";
 `AdwStatusPage` displays a prominent icon, title, and description. Ideal for welcome screens, empty states, or error pages:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwStatusPage, Box, Button, AdwButtonContent } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const WelcomePage = () => (
   <AdwStatusPage
@@ -84,7 +82,7 @@ const WelcomePage = () => (
     description="Get started by exploring the features below"
     iconName="org.gnome.Adwaita1.Demo"
   >
-    <Box orientation={Orientation.VERTICAL} spacing={12}>
+    <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
       <Button cssClasses={["suggested-action", "pill"]}>
         <AdwButtonContent iconName="list-add-symbolic" label="Get Started" />
       </Button>
@@ -210,8 +208,8 @@ import { Button, AdwButtonContent } from "@gtkx/react";
 `AdwClamp` constrains content to a maximum width while centering it:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwClamp, ScrolledWindow, Box } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 
 const ContentPage = () => (
   <ScrolledWindow vexpand>
@@ -222,7 +220,7 @@ const ContentPage = () => (
       marginStart={12}
       marginEnd={12}
     >
-      <Box orientation={Orientation.VERTICAL} spacing={24}>
+      <Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
         {/* Content constrained to 600px max width */}
       </Box>
     </AdwClamp>
@@ -235,7 +233,7 @@ const ContentPage = () => (
 Here's a full application using libadwaita components:
 
 ```tsx
-import { Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import {
   AdwActionRow,
   AdwApplicationWindow,
@@ -282,7 +280,7 @@ const SettingsPage = () => {
   return (
     <ScrolledWindow vexpand hscrollbarPolicy={2}>
       <AdwClamp maximumSize={600} marginTop={24} marginBottom={24}>
-        <Box orientation={Orientation.VERTICAL} spacing={24}>
+        <Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
           {showBanner && (
             <AdwBanner
               title="Welcome! Explore the settings below."
@@ -363,10 +361,10 @@ export const appId = "org.gtkx.AdwaitaDemo";
 
 ## Running the Example
 
-The GTKX repository includes a full adwaita-demo example:
+The GTKX repository includes a full adwaita example:
 
 ```bash
-cd examples/adwaita-demo
+cd examples/adwaita
 pnpm install
 pnpm dev
 ```

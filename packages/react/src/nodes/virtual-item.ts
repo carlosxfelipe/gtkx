@@ -18,7 +18,7 @@ export abstract class VirtualItemNode extends Node<never> {
         return true;
     }
 
-    private id!: string;
+    private id = "";
     private item: unknown;
 
     override initialize(props: Props): void {

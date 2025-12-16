@@ -1,4 +1,4 @@
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "../src/index.js";
@@ -13,39 +13,39 @@ describe("Queries", () => {
         it("finds a button by role", async () => {
             await render(<Button label="Click me" />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Click me" });
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
             expect(button).toBeDefined();
         });
 
         it("finds a button by role and name", async () => {
             await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
                 </Box>,
             );
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Second" });
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
             expect(button).toBeDefined();
         });
 
         it("throws when element not found", async () => {
             await render(<Label label="No buttons here" />);
 
-            await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
+            await expect(screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
                 /Unable to find any elements with role/,
             );
         });
 
         it("throws when multiple elements found", async () => {
             await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="Same" />
                     <Button label="Same" />
                 </Box>,
             );
 
-            await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "Same" })).rejects.toThrow(
+            await expect(screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Same" })).rejects.toThrow(
                 /Found \d+ elements/,
             );
         });
@@ -54,7 +54,7 @@ describe("Queries", () => {
     describe("findAllByRole", () => {
         it("returns all matching elements with name filter", async () => {
             await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="Action" />
                     <Button label="Action" />
                     <Button label="Action" />
@@ -62,14 +62,14 @@ describe("Queries", () => {
                 </Box>,
             );
 
-            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Action" });
+            const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Action" });
             expect(buttons.length).toBe(3);
         });
 
         it("throws when no elements match name filter", async () => {
             await render(<Button label="Existing" />);
 
-            await expect(screen.findAllByRole(AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
+            await expect(screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
                 /Unable to find any elements/,
             );
         });
@@ -100,9 +100,9 @@ describe("Queries", () => {
     describe("findAllByText", () => {
         it("returns all matching elements", async () => {
             await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label label="Same" />
-                    <Label label="Same" />
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    {"Same"}
+                    {"Same"}
                 </Box>,
             );
 
@@ -129,7 +129,7 @@ describe("Queries", () => {
     describe("findAllByLabelText", () => {
         it("returns all matching elements", async () => {
             await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="Action" />
                     <Button label="Action" />
                 </Box>,
@@ -143,13 +143,13 @@ describe("Queries", () => {
     describe("render result queries", () => {
         it("returns bound queries from render", async () => {
             const { findByRole, findByText } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="Click" />
-                    <Label label="Text" />
+                    Text
                 </Box>,
             );
 
-            expect(await findByRole(AccessibleRole.BUTTON, { name: "Click" })).toBeDefined();
+            expect(await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" })).toBeDefined();
             expect(await findByText("Text")).toBeDefined();
         });
     });
@@ -174,7 +174,7 @@ describe("Queries", () => {
     describe("findAllByTestId", () => {
         it("finds all elements by test id asynchronously", async () => {
             const { container } = await render(
-                <Box spacing={0} orientation={Orientation.VERTICAL}>
+                <Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="One" name="item" />
                     <Button label="Two" name="item" />
                 </Box>,
@@ -263,7 +263,7 @@ describe("Queries", () => {
         it("supports function matcher for name option", async () => {
             await render(<Button label="Click Me" />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, {
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
                 name: (content) => content.includes("Click"),
             });
             expect(button).toBeDefined();
@@ -272,7 +272,7 @@ describe("Queries", () => {
         it("function matcher receives normalized text", async () => {
             await render(<Button label="  Click  Me  " />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, {
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
                 name: (content) => content === "Click Me",
             });
             expect(button).toBeDefined();

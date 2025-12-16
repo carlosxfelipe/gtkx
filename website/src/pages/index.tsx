@@ -91,7 +91,7 @@ const HomepageFeatures = () => {
 };
 
 const codeExample = `import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { css } from "@gtkx/css";
 import { useState } from "react";
 
@@ -107,7 +107,7 @@ const App = () => {
 
   return (
     <ApplicationWindow title="Counter" onCloseRequest={quit}>
-      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+      <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} margin={20}>
         <Label label={\`Count: \${count}\`} cssClasses={["title-1"]} />
         <Button
           label="Increment"

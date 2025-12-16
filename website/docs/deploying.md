@@ -4,59 +4,18 @@ sidebar_position: 8
 
 # Deploying
 
-This guide shows how to package a GTKX app as a Flatpak using Node.js Single Executable Applications (SEA).
+GTKX apps can be packaged as [Flatpaks](https://docs.flatpak.org/) using [Node.js Single Executable Applications (SEA)](https://nodejs.org/api/single-executable-applications.html). A complete working example is available at `examples/flatpak/` in the GTKX repository.
 
-The packaging strategy:
+## GTKX-Specific Consideration
 
-1. **Bundle** TypeScript/JavaScript into a single file with esbuild
-2. **Create SEA** by embedding the bundle into a Node.js binary
-3. **Package as Flatpak** with the GNOME runtime providing GTK4
+The main challenge when bundling GTKX apps is that `@gtkx/native` contains a native `.node` module that cannot be embedded into a Node.js SEA blob. The solution is to:
 
-## Prerequisites
+1. Replace `@gtkx/native` imports with a loader that finds the native module at runtime
+2. Copy `index.node` alongside the executable when packaging
 
-Install the Flatpak SDK and GNOME runtime:
+## Native Module Loader
 
-```bash
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install flathub org.gnome.Platform//48 org.gnome.Sdk//48
-flatpak install flathub org.freedesktop.Sdk.Extension.node22//24.08
-```
-
-## Project Structure
-
-A Flatpak-ready GTKX project needs these additional files:
-
-```
-my-app/
-├── src/
-│   ├── app.tsx
-│   └── index.tsx
-├── scripts/
-│   └── bundle.ts          # esbuild bundler with SEA support
-├── org.example.myapp.json # Flatpak manifest
-├── sea-config.json        # Node.js SEA configuration
-├── package.json
-└── tsconfig.json
-```
-
-## Step 1: Configure SEA
-
-Create `sea-config.json`:
-
-```json
-{
-    "main": "dist/bundle.cjs",
-    "output": "dist/sea-prep.blob",
-    "disableExperimentalSEAWarning": true,
-    "useCodeCache": false
-}
-```
-
-## Step 2: Create the Bundle Script
-
-The bundle script uses esbuild to create a single JavaScript file and handles native module loading for SEA environments.
-
-Create `scripts/bundle.ts`:
+When bundling with esbuild, use this plugin to handle `@gtkx/native`:
 
 ```typescript
 import { dirname, join } from "node:path";
@@ -131,113 +90,26 @@ await build({
 console.log("Bundle created: dist/bundle.cjs");
 ```
 
-This script solves a key challenge: Node.js SEA cannot embed native `.node` modules, so the bundle includes a loader that finds `index.node` next to the executable at runtime.
+The loader detects whether it's running inside a SEA and loads `index.node` from either:
+- Next to the executable (SEA mode)
+- The normal `node_modules` path (development mode)
 
-## Step 3: Create the Flatpak Manifest
+## Packaging the Native Module
 
-Create `org.example.myapp.json` (replace `org.example.myapp` with your app ID):
-
-```json
-{
-    "app-id": "org.example.myapp",
-    "runtime": "org.gnome.Platform",
-    "runtime-version": "48",
-    "sdk": "org.gnome.Sdk",
-    "sdk-extensions": ["org.freedesktop.Sdk.Extension.node22"],
-    "command": "myapp",
-    "finish-args": ["--share=ipc", "--socket=fallback-x11", "--socket=wayland", "--device=dri"],
-    "build-options": {
-        "append-path": "/usr/lib/sdk/node22/bin",
-        "env": {
-            "npm_config_nodedir": "/usr/lib/sdk/node22"
-        },
-        "no-debuginfo": true,
-        "strip": false
-    },
-    "modules": [
-        {
-            "name": "myapp",
-            "buildsystem": "simple",
-            "build-options": {
-                "build-args": ["--share=network"]
-            },
-            "build-commands": [
-                "npm install",
-                "npm run build",
-                "npm run bundle",
-                "node --experimental-sea-config sea-config.json",
-                "cp /usr/lib/sdk/node22/bin/node myapp",
-                "npx postject myapp NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
-                "install -Dm755 myapp /app/bin/myapp",
-                "install -Dm755 node_modules/@gtkx/native/dist/index.node /app/bin/index.node"
-            ],
-            "sources": [
-                {
-                    "type": "dir",
-                    "path": ".",
-                    "skip": [".flatpak-builder", "build-dir", "dist", "node_modules"]
-                }
-            ]
-        }
-    ]
-}
-```
-
-### Key Manifest Settings
-
-- `strip: false` — Prevents stripping the binary, which would corrupt the SEA blob
-- The `finish-args` provide standard GTK display and GPU access
-
-## Step 4: Update package.json
-
-Add the required scripts and dependencies:
-
-```json
-{
-    "name": "myapp",
-    "version": "1.0.0",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "build": "tsc -b",
-        "bundle": "node --import tsx scripts/bundle.ts",
-        "build:flatpak": "flatpak-builder --user --install --force-clean build-dir org.example.myapp.json",
-        "start": "node dist/index.js"
-    },
-    "dependencies": {
-        "@gtkx/ffi": "^0.5.0",
-        "@gtkx/react": "^0.5.0",
-        "react": "^19.0.0"
-    },
-    "devDependencies": {
-        "@types/react": "^19.0.0",
-        "esbuild": "^0.27.0",
-        "postject": "^1.0.0-alpha.6",
-        "tsx": "^4.0.0",
-        "typescript": "^5.0.0"
-    }
-}
-```
-
-## Step 5: Build and Install
-
-Build and install the Flatpak locally:
+When creating the Flatpak, copy `index.node` alongside the executable:
 
 ```bash
-pnpm build:flatpak
+install -Dm755 node_modules/@gtkx/native/dist/index.node /app/bin/index.node
 ```
 
-Run your app:
+## Complete Example
 
-```bash
-flatpak run org.example.myapp
-```
+See `examples/flatpak/` in the GTKX repository for a complete working example with:
+- esbuild bundle script with the native loader plugin
+- SEA configuration
+- Flatpak manifest
 
-## Example Project
-
-See the complete example in the GTKX repository:
-
-```
-examples/flatpak/
-```
+For general Flatpak and Node.js SEA documentation, refer to:
+- [Flatpak Documentation](https://docs.flatpak.org/)
+- [Node.js Single Executable Applications](https://nodejs.org/api/single-executable-applications.html)
 

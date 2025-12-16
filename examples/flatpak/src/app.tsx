@@ -1,4 +1,4 @@
-import { Align, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 import { useState } from "react";
 
@@ -14,14 +14,14 @@ export const App = () => {
     return (
         <ApplicationWindow title="GTKX Flatpak Demo" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
             <Box
-                orientation={Orientation.VERTICAL}
+                orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}
                 marginTop={40}
                 marginBottom={40}
                 marginStart={40}
                 marginEnd={40}
-                valign={Align.CENTER}
-                halign={Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                halign={Gtk.Align.CENTER}
             >
                 <Label label="Hello from Flatpak!" cssClasses={["title-1"]} />
                 <Label label={`Count: ${count}`} cssClasses={["title-2"]} name="count-label" />

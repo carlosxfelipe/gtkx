@@ -42,12 +42,11 @@ gtkx create my-app --app-id com.example.myapp --pm pnpm --testing vitest
 
 #### Options
 
-| Option           | Description                                            |
-| ---------------- | ------------------------------------------------------ |
-| `--app-id`       | GTK application ID in reverse domain notation          |
-| `--pm`           | Package manager: `pnpm`, `npm`, `yarn`, or `bun`       |
-| `--testing`      | Testing framework: `vitest`, `jest`, `node`, or `none` |
-| `--claudeSkills` | Include Claude Code skill files for AI assistance      |
+| Option      | Description                                            |
+| ----------- | ------------------------------------------------------ |
+| `--app-id`  | GTK application ID in reverse domain notation          |
+| `--pm`      | Package manager: `pnpm`, `npm`, `yarn`, or `bun`       |
+| `--testing` | Testing framework: `vitest`, `jest`, `node`, or `none` |
 
 #### Testing Setup
 

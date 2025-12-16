@@ -1,4 +1,4 @@
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
@@ -13,7 +13,7 @@ describe("screen", () => {
         it("findByRole throws when no render has been performed", async () => {
             setScreenRoot(null);
 
-            await expect(Promise.resolve().then(() => screen.findByRole(AccessibleRole.BUTTON))).rejects.toThrow(
+            await expect(Promise.resolve().then(() => screen.findByRole(Gtk.AccessibleRole.BUTTON))).rejects.toThrow(
                 /No render has been performed. Call render\(\) before using screen queries/,
             );
         });
@@ -39,7 +39,7 @@ describe("screen", () => {
         it("findByRole finds elements", async () => {
             await render(<Button label="Test Button" />);
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Test Button" });
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test Button" });
             expect(button).toBeDefined();
         });
 
@@ -59,13 +59,13 @@ describe("screen", () => {
 
         it("findAllByRole finds multiple elements", async () => {
             await render(
-                <Box spacing={10} orientation={Orientation.VERTICAL}>
+                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
                 </Box>,
             );
 
-            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+            const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
             expect(buttons.length).toBe(2);
         });
     });
@@ -73,13 +73,13 @@ describe("screen", () => {
     describe("query options", () => {
         it("findByRole with name option filters results", async () => {
             await render(
-                <Box spacing={10} orientation={Orientation.VERTICAL}>
+                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
                 </Box>,
             );
 
-            const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Second" });
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
             expect(button).toBeDefined();
         });
 
@@ -102,7 +102,7 @@ describe("screen", () => {
         it("findByRole throws when element not found with name filter", async () => {
             await render(<Label label="No buttons here" />);
 
-            await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "Nonexistent Button" })).rejects.toThrow(
+            await expect(screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nonexistent Button" })).rejects.toThrow(
                 /Unable to find any elements with role/,
             );
         });
@@ -115,13 +115,13 @@ describe("screen", () => {
 
         it("findByRole throws when multiple elements match without name filter", async () => {
             await render(
-                <Box spacing={10} orientation={Orientation.VERTICAL}>
+                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                     <Button label="First" />
                     <Button label="Second" />
                 </Box>,
             );
 
-            await expect(screen.findByRole(AccessibleRole.BUTTON)).rejects.toThrow(/Found \d+ elements with role/);
+            await expect(screen.findByRole(Gtk.AccessibleRole.BUTTON)).rejects.toThrow(/Found \d+ elements with role/);
         });
     });
 });

@@ -7,8 +7,7 @@
     "scripts": {
         "build": "tsc -b",
         "dev": "gtkx dev src/app.tsx",
-        "start": "node dist/index.js",
-        "test": "f() { if [ -n \"$CI\" ]; then vitest run \"$@\"; else GDK_BACKEND=x11 xvfb-run -a vitest run \"$@\"; fi; }; f"
+        "start": "node dist/index.js"
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",
@@ -18,7 +17,6 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@gtkx/testing": "workspace:*",
         "@types/react": "19.2.7"
     }
 }

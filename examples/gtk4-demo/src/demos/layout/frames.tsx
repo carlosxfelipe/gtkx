@@ -20,7 +20,7 @@ const FramesDemo = () => {
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <Label label="This content is inside a frame." />
+                            This content is inside a frame.
                             <Label
                                 label="Frames provide visual grouping with an optional label."
                                 cssClasses={["dim-label"]}

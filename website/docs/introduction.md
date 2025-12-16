@@ -50,6 +50,7 @@ GTKX provides bindings for GTK4, libadwaita, and many other GNOME libraries incl
 Here's a simple counter application:
 
 ```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import {
   render,
   ApplicationWindow,
@@ -58,7 +59,6 @@ import {
   Label,
   quit,
 } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const Counter = () => {
@@ -66,7 +66,7 @@ const Counter = () => {
 
   return (
     <Box
-      orientation={Orientation.VERTICAL}
+      orientation={Gtk.Orientation.VERTICAL}
       spacing={12}
       marginStart={20}
       marginEnd={20}

@@ -1,4 +1,4 @@
-import { Align, Orientation, SelectionMode } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, HeaderBar, Label, ListBox, quit, ScrolledWindow } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 import { TodoInput } from "./todo-input.js";
@@ -54,7 +54,7 @@ export const App = () => {
             </HeaderBar.Root>
 
             <Box
-                orientation={Orientation.VERTICAL}
+                orientation={Gtk.Orientation.VERTICAL}
                 spacing={12}
                 marginTop={12}
                 marginBottom={12}
@@ -67,10 +67,10 @@ export const App = () => {
 
                 {filteredTodos.length === 0 ? (
                     <Box
-                        orientation={Orientation.VERTICAL}
+                        orientation={Gtk.Orientation.VERTICAL}
                         vexpand
-                        valign={Align.CENTER}
-                        halign={Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        halign={Gtk.Align.CENTER}
                         spacing={12}
                     >
                         <Label
@@ -84,7 +84,7 @@ export const App = () => {
                     </Box>
                 ) : (
                     <ScrolledWindow vexpand hscrollbarPolicy={2} name="todo-list">
-                        <ListBox cssClasses={["boxed-list"]} selectionMode={SelectionMode.NONE}>
+                        <ListBox cssClasses={["boxed-list"]} selectionMode={Gtk.SelectionMode.NONE}>
                             {filteredTodos.map((todo) => (
                                 <TodoRow key={todo.id} todo={todo} onToggle={toggleTodo} onDelete={deleteTodo} />
                             ))}
@@ -93,11 +93,11 @@ export const App = () => {
                 )}
 
                 {todos.length > 0 && (
-                    <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                         <Label
                             label={`${activeCount} ${itemText} remaining`}
                             cssClasses={["dim-label"]}
-                            halign={Align.START}
+                            halign={Gtk.Align.START}
                             hexpand
                             name="items-left"
                         />

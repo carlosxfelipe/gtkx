@@ -152,7 +152,9 @@ describe("Menu Nodes", () => {
 
             popover.removeChild(item);
 
-            const actionsAfter = app.listActions().filter((a) => a.startsWith("gtkx_menu_action_"));
+            const actionsAfter = getCurrentApp()
+                .listActions()
+                .filter((a) => a.startsWith("gtkx_menu_action_"));
             expect(actionsAfter.length).toBe(actionsBefore.length - 1);
         });
 

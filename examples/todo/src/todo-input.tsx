@@ -1,5 +1,5 @@
 import { getInterface } from "@gtkx/ffi";
-import { Editable, type Entry as GtkEntry, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Entry } from "@gtkx/react";
 import { useState } from "react";
 
@@ -10,8 +10,8 @@ type TodoInputProps = {
 export const TodoInput = ({ onAdd }: TodoInputProps) => {
     const [text, setText] = useState("");
 
-    const handleChange = (entry: GtkEntry) => {
-        setText(getInterface(entry.id, Editable)?.getText() ?? "");
+    const handleChange = (entry: Gtk.Entry) => {
+        setText(getInterface(entry.id, Gtk.Editable)?.getText() ?? "");
     };
 
     const handleAdd = () => {
@@ -24,7 +24,7 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
     };
 
     return (
-        <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
             <Entry
                 text={text}
                 onChanged={handleChange}

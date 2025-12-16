@@ -1,4 +1,4 @@
-import { Align, Orientation } from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, CheckButton, Label, ListBoxRow } from "@gtkx/react";
 import type { Todo } from "./types.js";
 
@@ -12,7 +12,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
     return (
         <ListBoxRow activatable={false} name={`todo-${todo.id}`}>
             <Box
-                orientation={Orientation.HORIZONTAL}
+                orientation={Gtk.Orientation.HORIZONTAL}
                 spacing={12}
                 marginTop={8}
                 marginBottom={8}
@@ -23,7 +23,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     active={todo.completed}
                     onToggled={() => onToggle(todo.id)}
                     name={`toggle-${todo.id}`}
-                    valign={Align.CENTER}
+                    valign={Gtk.Align.CENTER}
                 />
                 <Label
                     label={todo.text}
@@ -31,7 +31,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     xalign={0}
                     name={`text-${todo.id}`}
                     cssClasses={todo.completed ? ["dim-label"] : []}
-                    valign={Align.CENTER}
+                    valign={Gtk.Align.CENTER}
                 />
                 <Button
                     iconName="edit-delete-symbolic"
@@ -39,7 +39,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     cssClasses={["flat", "circular"]}
                     onClicked={() => onDelete(todo.id)}
                     name={`delete-${todo.id}`}
-                    valign={Align.CENTER}
+                    valign={Gtk.Align.CENTER}
                 />
             </Box>
         </ListBoxRow>

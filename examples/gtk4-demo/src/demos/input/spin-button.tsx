@@ -46,7 +46,7 @@ const SpinButtonDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label label="Price Input (step 0.01)" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="$" />
+                    $
                     <SpinButton
                         climbRate={1}
                         adjustment={priceAdjustment}

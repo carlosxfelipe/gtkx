@@ -15,9 +15,7 @@ const HeaderBarDemo = () => {
                 <Label label="Basic Header Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <HeaderBar.Root>
-                        <HeaderBar.TitleWidget>
-                            <Label label="Application Title" />
-                        </HeaderBar.TitleWidget>
+                        <HeaderBar.TitleWidget>Application Title</HeaderBar.TitleWidget>
                     </HeaderBar.Root>
                     <Box
                         orientation={Gtk.Orientation.VERTICAL}
@@ -58,9 +56,7 @@ const HeaderBarDemo = () => {
                 <Label label="Search Toggle Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <HeaderBar.Root showTitleButtons={false}>
-                        <HeaderBar.TitleWidget>
-                            <Label label="Document Viewer" />
-                        </HeaderBar.TitleWidget>
+                        <HeaderBar.TitleWidget>Document Viewer</HeaderBar.TitleWidget>
                     </HeaderBar.Root>
                     <Box
                         orientation={Gtk.Orientation.HORIZONTAL}
