@@ -99,11 +99,23 @@ impl OwnedPtr {
             ptr,
         }
     }
+
+    /// Creates an OwnedPtr from a Vec, safely capturing the pointer to its buffer.
+    ///
+    /// This is preferred over `new` for Vec types because it captures the pointer
+    /// after the Vec is boxed, avoiding reliance on move semantics.
+    pub fn from_vec<T: 'static>(vec: Vec<T>) -> Self {
+        let boxed: Box<Vec<T>> = Box::new(vec);
+        let ptr = boxed.as_ptr() as *mut c_void;
+        Self {
+            value: boxed,
+            ptr,
+        }
+    }
 }
 
 fn wait_for_js_result<T, F>(
     rx: std::sync::mpsc::Receiver<Result<value::Value, ()>>,
-    error_message: &str,
     on_result: F,
 ) -> T
 where
@@ -118,7 +130,7 @@ where
                 std::thread::yield_now();
             }
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                panic!("{}", error_message);
+                return on_result(Err(()));
             }
         }
     }
@@ -129,7 +141,6 @@ fn invoke_and_wait_for_js_result<T, F>(
     callback: &Arc<Root<JsFunction>>,
     args_values: Vec<value::Value>,
     capture_result: bool,
-    error_message: &str,
     on_result: F,
 ) -> T
 where
@@ -141,7 +152,7 @@ where
         js_dispatch::send_via_channel(channel, callback.clone(), args_values, capture_result)
     };
 
-    wait_for_js_result(rx, error_message, on_result)
+    wait_for_js_result(rx, on_result)
 }
 
 /// Transfers ownership of a closure to C, returning a raw pointer.
@@ -155,29 +166,17 @@ fn closure_to_glib_full(closure: &glib::Closure) -> *mut c_void {
     ptr as *mut c_void
 }
 
-/// Returns a raw pointer to a closure without adding a reference.
-///
-/// Use this when transferring sole ownership to GTK via mem::forget.
-/// The closure's existing reference becomes GTK's responsibility to unref.
-fn closure_to_glib_none(closure: &glib::Closure) -> *mut c_void {
-    use glib::translate::ToGlibPtr;
-    let stash: glib::translate::Stash<*mut glib::gobject_ffi::GClosure, _> = closure.to_glib_none();
-    stash.0 as *mut c_void
-}
-
-fn convert_glib_args(args: &[glib::Value], arg_types: &Option<Vec<Type>>) -> Vec<value::Value> {
+fn convert_glib_args(
+    args: &[glib::Value],
+    arg_types: &Option<Vec<Type>>,
+) -> anyhow::Result<Vec<value::Value>> {
     match arg_types {
         Some(types) => args
             .iter()
             .zip(types.iter())
-            .map(|(gval, type_)| {
-                value::Value::from_glib_value(gval, type_).unwrap_or_else(|e| {
-                    eprintln!("Warning: Failed to convert GLib value: {}", e);
-                    value::Value::Null
-                })
-            })
+            .map(|(gval, type_)| value::Value::from_glib_value(gval, type_))
             .collect(),
-        None => args.iter().map(Into::into).collect(),
+        None => args.iter().map(value::Value::try_from).collect(),
     }
 }
 
@@ -193,24 +192,7 @@ impl TryFrom<arg::Arg> for Value {
                     _ => bail!("Expected a Number for integer type, got {:?}", arg.value),
                 };
 
-                match type_.size {
-                    IntegerSize::_8 => match type_.sign {
-                        IntegerSign::Unsigned => Ok(Value::U8(number as u8)),
-                        IntegerSign::Signed => Ok(Value::I8(number as i8)),
-                    },
-                    IntegerSize::_16 => match type_.sign {
-                        IntegerSign::Unsigned => Ok(Value::U16(number as u16)),
-                        IntegerSign::Signed => Ok(Value::I16(number as i16)),
-                    },
-                    IntegerSize::_32 => match type_.sign {
-                        IntegerSign::Unsigned => Ok(Value::U32(number as u32)),
-                        IntegerSign::Signed => Ok(Value::I32(number as i32)),
-                    },
-                    IntegerSize::_64 => match type_.sign {
-                        IntegerSign::Unsigned => Ok(Value::U64(number as u64)),
-                        IntegerSign::Signed => Ok(Value::I64(number as i64)),
-                    },
-                }
+                dispatch_integer_to_cif!(type_, number)
             }
             Type::Float(type_) => {
                 let number = match arg.value {
@@ -351,51 +333,35 @@ impl Value {
                 match (type_.size, type_.sign) {
                     (IntegerSize::_8, IntegerSign::Unsigned) => {
                         let values: Vec<u8> = values.iter().map(|&v| *v as u8).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_8, IntegerSign::Signed) => {
                         let values: Vec<i8> = values.iter().map(|&v| *v as i8).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_16, IntegerSign::Unsigned) => {
                         let values: Vec<u16> = values.iter().map(|&v| *v as u16).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_16, IntegerSign::Signed) => {
                         let values: Vec<i16> = values.iter().map(|&v| *v as i16).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_32, IntegerSign::Unsigned) => {
                         let values: Vec<u32> = values.iter().map(|&v| *v as u32).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_32, IntegerSign::Signed) => {
                         let values: Vec<i32> = values.iter().map(|&v| *v as i32).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_64, IntegerSign::Unsigned) => {
                         let values: Vec<u64> = values.iter().map(|&v| *v as u64).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     (IntegerSize::_64, IntegerSign::Signed) => {
                         let values: Vec<i64> = values.iter().map(|&v| *v as i64).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                 }
             }
@@ -412,15 +378,11 @@ impl Value {
                 match type_.size {
                     FloatSize::_32 => {
                         let values: Vec<f32> = values.iter().map(|&v| *v as f32).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                     FloatSize::_64 => {
                         let values: Vec<f64> = values.iter().map(|&v| *v).collect();
-                        let ptr = values.as_ptr() as *mut c_void;
-
-                        Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                        Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
                     }
                 }
             }
@@ -455,10 +417,13 @@ impl Value {
                     }
                 }
 
-                let ptrs: Vec<*mut c_void> = ids
-                    .iter()
-                    .map(|id| id.as_ptr().unwrap_or(std::ptr::null_mut()))
-                    .collect();
+                let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(ids.len());
+                for id in &ids {
+                    match id.as_ptr() {
+                        Some(ptr) => ptrs.push(ptr),
+                        None => bail!("GObject in array has been garbage collected"),
+                    }
+                }
                 let ptr = ptrs.as_ptr() as *mut c_void;
 
                 Ok(Value::OwnedPtr(OwnedPtr::new((ids, ptrs), ptr)))
@@ -473,9 +438,7 @@ impl Value {
                     }
                 }
 
-                let ptr = values.as_ptr() as *mut c_void;
-
-                Ok(Value::OwnedPtr(OwnedPtr::new(values, ptr)))
+                Ok(Value::OwnedPtr(OwnedPtr::from_vec(values)))
             }
             _ => bail!("Unsupported array item type: {:?}", type_.item_type),
         }
@@ -499,7 +462,8 @@ impl Value {
                 let return_type = type_.return_type.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = convert_glib_args(args, &arg_types);
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib callback arguments");
                     let return_type = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
 
                     invoke_and_wait_for_js_result(
@@ -507,7 +471,6 @@ impl Value {
                         &callback,
                         args_values,
                         true,
-                        "JS thread disconnected while waiting for callback result",
                         |result| match result {
                             Ok(value) => value::Value::into_glib_value_with_default(
                                 value,
@@ -532,12 +495,18 @@ impl Value {
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let source_value = args
                         .first()
-                        .and_then(|gval| value::Value::from_glib_value(gval, &source_type).ok())
+                        .map(|gval| {
+                            value::Value::from_glib_value(gval, &source_type)
+                                .expect("Failed to convert async source value")
+                        })
                         .unwrap_or(value::Value::Null);
 
                     let result_value = args
                         .get(1)
-                        .and_then(|gval| value::Value::from_glib_value(gval, &result_type).ok())
+                        .map(|gval| {
+                            value::Value::from_glib_value(gval, &result_type)
+                                .expect("Failed to convert async result value")
+                        })
                         .unwrap_or(value::Value::Null);
 
                     let args_values = vec![source_value, result_value];
@@ -547,7 +516,6 @@ impl Value {
                         &callback,
                         args_values,
                         false,
-                        "JS thread disconnected while waiting for async callback",
                         |_| None::<glib::Value>,
                     )
                 });
@@ -569,7 +537,6 @@ impl Value {
                         &callback,
                         vec![],
                         false,
-                        "JS thread disconnected while waiting for destroy callback",
                         |_| None::<glib::Value>,
                     )
                 });
@@ -591,7 +558,6 @@ impl Value {
                         &callback,
                         vec![],
                         true,
-                        "JS thread disconnected while waiting for source func callback",
                         |result| match result {
                             Ok(value) => value.into(),
                             Err(_) => Some(false.into()),
@@ -599,15 +565,13 @@ impl Value {
                     )
                 });
 
-                let closure_ptr = closure_to_glib_none(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_source_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
-                std::mem::forget(closure);
-
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: OwnedPtr::new((), closure_ptr),
+                    closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
                 }))
             }
@@ -616,27 +580,25 @@ impl Value {
                 let arg_types = type_.arg_types.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = convert_glib_args(args, &arg_types);
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib draw callback arguments");
 
                     invoke_and_wait_for_js_result(
                         &channel,
                         &callback,
                         args_values,
                         false,
-                        "JS thread disconnected while waiting for draw func callback",
                         |_| None::<glib::Value>,
                     )
                 });
 
-                let closure_ptr = closure_to_glib_none(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
-                std::mem::forget(closure);
-
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: OwnedPtr::new((), closure_ptr),
+                    closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
                 }))
             }
@@ -645,14 +607,14 @@ impl Value {
                 let arg_types = type_.arg_types.clone();
 
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = convert_glib_args(args, &arg_types);
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib compare callback arguments");
 
                     invoke_and_wait_for_js_result(
                         &channel,
                         &callback,
                         args_values,
                         true,
-                        "JS thread disconnected while waiting for compare func callback",
                         |result| match result {
                             Ok(value) => {
                                 let ordering = match value {
@@ -666,15 +628,13 @@ impl Value {
                     )
                 });
 
-                let closure_ptr = closure_to_glib_none(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_compare_data_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
-                std::mem::forget(closure);
-
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: OwnedPtr::new((), closure_ptr),
+                    closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
                 }))
             }

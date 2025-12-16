@@ -54,11 +54,17 @@ impl Boxed {
                     is_owned: true,
                 }
             }
-            None => Self {
-                ptr,
-                type_: None,
-                is_owned: false,
-            },
+            None => {
+                debug_assert!(
+                    false,
+                    "Boxed::from_glib_none called with unknown type - pointer may become dangling"
+                );
+                Self {
+                    ptr,
+                    type_: None,
+                    is_owned: false,
+                }
+            }
         }
     }
 }

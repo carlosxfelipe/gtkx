@@ -10,14 +10,11 @@
 //!
 //! The choice between paths is made by checking `gtk_dispatch::is_js_waiting()`.
 
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex, mpsc},
-};
+use std::sync::{Arc, mpsc};
 
 use neon::prelude::*;
 
-use crate::value::Value;
+use crate::{queue::Queue, value::Value};
 
 /// A pending callback waiting to be executed on the JS thread.
 pub struct PendingCallback {
@@ -31,27 +28,7 @@ pub struct PendingCallback {
     pub result_tx: mpsc::Sender<Result<Value, ()>>,
 }
 
-struct DispatchQueue {
-    pending: Mutex<VecDeque<PendingCallback>>,
-}
-
-impl DispatchQueue {
-    const fn new() -> Self {
-        Self {
-            pending: Mutex::new(VecDeque::new()),
-        }
-    }
-
-    fn push(&self, callback: PendingCallback) {
-        self.pending.lock().unwrap().push_back(callback);
-    }
-
-    fn pop(&self) -> Option<PendingCallback> {
-        self.pending.lock().unwrap().pop_front()
-    }
-}
-
-static QUEUE: DispatchQueue = DispatchQueue::new();
+static QUEUE: Queue<PendingCallback> = Queue::new();
 
 /// Queues a callback for synchronous execution on the JS thread.
 ///
@@ -89,7 +66,7 @@ pub fn send_via_channel(
 
     channel.send(move |mut cx| {
         let result = execute_callback(&mut cx, &callback, &args, capture_result);
-        let _ = tx.send(result);
+        tx.send(result).expect("JS callback result channel disconnected");
         Ok(())
     });
 
@@ -104,7 +81,10 @@ pub fn send_via_channel(
 pub fn process_pending<'a, C: Context<'a>>(cx: &mut C) {
     while let Some(pending) = QUEUE.pop() {
         let result = execute_callback(cx, &pending.callback, &pending.args, pending.capture_result);
-        let _ = pending.result_tx.send(result);
+        pending
+            .result_tx
+            .send(result)
+            .expect("Pending callback result channel disconnected");
     }
 }
 

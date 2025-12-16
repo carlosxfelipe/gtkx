@@ -28,7 +28,8 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<ObjectId>>();
 
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(handle_alloc(size, &type_name, lib_name.as_deref()));
+        tx.send(handle_alloc(size, &type_name, lib_name.as_deref()))
+            .expect("Alloc result channel disconnected");
     });
 
     let object_id = rx

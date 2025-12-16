@@ -10,6 +10,30 @@ use std::{
 };
 
 use anyhow::bail;
+
+struct GListGuard {
+    ptr: *mut glib::ffi::GList,
+    should_free: bool,
+}
+
+impl GListGuard {
+    fn new(ptr: *mut c_void, should_free: bool) -> Self {
+        Self {
+            ptr: ptr as *mut glib::ffi::GList,
+            should_free,
+        }
+    }
+}
+
+impl Drop for GListGuard {
+    fn drop(&mut self) {
+        if self.should_free && !self.ptr.is_null() {
+            unsafe {
+                glib::ffi::g_list_free(self.ptr);
+            }
+        }
+    }
+}
 use gtk4::{
     glib,
     glib::translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
@@ -241,13 +265,14 @@ impl Value {
                     return Ok(Value::Null);
                 }
 
-                let string = if string_type.is_borrowed {
-                    let c_str = unsafe { CStr::from_ptr(str_ptr as *const i8) };
-                    c_str.to_str()?.to_string()
-                } else {
-                    let c_string = unsafe { CString::from_raw(str_ptr as *mut i8) };
-                    c_string.into_string()?
-                };
+                let c_str = unsafe { CStr::from_ptr(str_ptr as *const i8) };
+                let string = c_str.to_str()?.to_string();
+
+                if !string_type.is_borrowed {
+                    unsafe {
+                        glib::ffi::g_free(str_ptr);
+                    }
+                }
 
                 Ok(Value::String(string))
             }
@@ -339,6 +364,8 @@ impl Value {
                         return Ok(Value::Array(vec![]));
                     }
 
+                    let list_guard = GListGuard::new(list_ptr, !array_type.is_borrowed);
+
                     let mut values = Vec::new();
                     let mut current = list_ptr as *mut glib::ffi::GList;
 
@@ -371,7 +398,7 @@ impl Value {
                                     Value::Null
                                 } else {
                                     let c_str = unsafe { CStr::from_ptr(data as *const i8) };
-                                    Value::String(c_str.to_str().unwrap_or("").to_string())
+                                    Value::String(c_str.to_string_lossy().into_owned())
                                 }
                             }
                             _ => {
@@ -382,11 +409,7 @@ impl Value {
                         current = unsafe { (*current).next };
                     }
 
-                    if !array_type.is_borrowed {
-                        unsafe {
-                            glib::ffi::g_list_free(list_ptr as *mut glib::ffi::GList);
-                        }
-                    }
+                    drop(list_guard);
 
                     return Ok(Value::Array(values));
                 }
@@ -407,8 +430,7 @@ impl Value {
                                     break;
                                 }
                                 let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                                values
-                                    .push(Value::String(c_str.to_str().unwrap_or("").to_string()));
+                                values.push(Value::String(c_str.to_string_lossy().into_owned()));
                                 i += 1;
                             }
 
@@ -851,71 +873,66 @@ impl Value {
     }
 }
 
-impl From<&glib::Value> for Value {
-    fn from(value: &glib::Value) -> Self {
+impl TryFrom<&glib::Value> for Value {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &glib::Value) -> anyhow::Result<Self> {
         if value.is_type(glib::types::Type::I8) {
-            Value::Number(value.get::<i8>().unwrap() as f64)
+            Ok(Value::Number(value.get::<i8>()? as f64))
         } else if value.is_type(glib::types::Type::U8) {
-            Value::Number(value.get::<u8>().unwrap() as f64)
+            Ok(Value::Number(value.get::<u8>()? as f64))
         } else if value.is_type(glib::types::Type::I32) {
-            Value::Number(value.get::<i32>().unwrap() as f64)
+            Ok(Value::Number(value.get::<i32>()? as f64))
         } else if value.is_type(glib::types::Type::U32) {
-            Value::Number(value.get::<u32>().unwrap() as f64)
+            Ok(Value::Number(value.get::<u32>()? as f64))
         } else if value.is_type(glib::types::Type::I64) {
-            Value::Number(value.get::<i64>().unwrap() as f64)
+            Ok(Value::Number(value.get::<i64>()? as f64))
         } else if value.is_type(glib::types::Type::U64) {
-            Value::Number(value.get::<u64>().unwrap() as f64)
+            Ok(Value::Number(value.get::<u64>()? as f64))
         } else if value.is_type(glib::types::Type::F32) {
-            Value::Number(value.get::<f32>().unwrap() as f64)
+            Ok(Value::Number(value.get::<f32>()? as f64))
         } else if value.is_type(glib::types::Type::F64) {
-            Value::Number(value.get::<f64>().unwrap())
+            Ok(Value::Number(value.get::<f64>()?))
         } else if value.is_type(glib::types::Type::STRING) {
-            let string: String = value.get().unwrap();
-            Value::String(string)
+            Ok(Value::String(value.get::<String>()?))
         } else if value.is_type(glib::types::Type::BOOL) {
-            let boolean: bool = value.get().unwrap();
-            Value::Boolean(boolean)
+            Ok(Value::Boolean(value.get::<bool>()?))
         } else if value.is_type(glib::types::Type::OBJECT) {
-            let object: glib::Object = value.get().unwrap();
-            let object_id = ObjectId::new(Object::GObject(object));
-            Value::Object(object_id)
+            let obj = value.get::<glib::Object>()?;
+            Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
         } else if value.is_type(glib::types::Type::BOXED) {
             let boxed_ptr = value.as_ptr();
-
             if boxed_ptr.is_null() {
-                Value::Null
+                Ok(Value::Null)
             } else {
                 let boxed = Boxed::from_glib_none(Some(value.type_()), boxed_ptr as *mut c_void);
                 let object_id = ObjectId::new(Object::Boxed(boxed));
-                Value::Object(object_id)
+                Ok(Value::Object(object_id))
             }
         } else if value.type_().is_a(glib::types::Type::PARAM_SPEC) {
-            let param_spec: glib::ParamSpec = value.get().unwrap();
-            Value::String(param_spec.name().to_string())
+            let ps = value.get::<glib::ParamSpec>()?;
+            Ok(Value::String(ps.name().to_string()))
         } else if value.type_().is_a(glib::types::Type::ENUM) {
             let enum_value = unsafe {
                 glib::gobject_ffi::g_value_get_enum(
                     glib::translate::ToGlibPtr::to_glib_none(value).0 as *const _,
                 )
             };
-            Value::Number(enum_value as f64)
+            Ok(Value::Number(enum_value as f64))
         } else if value.type_().is_a(glib::types::Type::FLAGS) {
             let flags_value = unsafe {
                 glib::gobject_ffi::g_value_get_flags(
                     glib::translate::ToGlibPtr::to_glib_none(value).0 as *const _,
                 )
             };
-            Value::Number(flags_value as f64)
+            Ok(Value::Number(flags_value as f64))
         } else if value.type_().is_a(glib::types::Type::OBJECT) {
-            value
-                .get::<Option<glib::Object>>()
-                .ok()
-                .flatten()
-                .map_or(Value::Null, |obj| {
-                    Value::Object(ObjectId::new(Object::GObject(obj)))
-                })
+            match value.get::<Option<glib::Object>>()? {
+                Some(obj) => Ok(Value::Object(ObjectId::new(Object::GObject(obj)))),
+                None => Ok(Value::Null),
+            }
         } else {
-            Value::Null
+            bail!("Unsupported glib::Value type: {:?}", value.type_())
         }
     }
 }

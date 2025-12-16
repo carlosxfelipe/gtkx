@@ -8,41 +8,16 @@
 //! - Re-entrant: `dispatch_pending()` processes queued callbacks synchronously when the GTK
 //!   thread is blocked waiting for a JS callback result
 
-use std::collections::VecDeque;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use gtk4::glib;
 
+use crate::queue::Queue;
+
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
-struct DispatchQueue {
-    tasks: Mutex<VecDeque<Task>>,
-    dispatch_scheduled: AtomicBool,
-}
-
-impl DispatchQueue {
-    const fn new() -> Self {
-        Self {
-            tasks: Mutex::new(VecDeque::new()),
-            dispatch_scheduled: AtomicBool::new(false),
-        }
-    }
-
-    fn push(&self, task: Task) {
-        self.tasks.lock().unwrap().push_back(task);
-    }
-
-    fn pop(&self) -> Option<Task> {
-        self.tasks.lock().unwrap().pop_front()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.tasks.lock().unwrap().is_empty()
-    }
-}
-
-static QUEUE: DispatchQueue = DispatchQueue::new();
+static QUEUE: Queue<Task> = Queue::new();
+static DISPATCH_SCHEDULED: AtomicBool = AtomicBool::new(false);
 
 static JS_WAIT_DEPTH: AtomicUsize = AtomicUsize::new(0);
 
@@ -79,8 +54,7 @@ where
 {
     QUEUE.push(Box::new(task));
 
-    if QUEUE
-        .dispatch_scheduled
+    if DISPATCH_SCHEDULED
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
         .is_ok()
     {
@@ -89,15 +63,14 @@ where
 }
 
 fn dispatch_batch() {
-    QUEUE.dispatch_scheduled.store(false, Ordering::Release);
+    DISPATCH_SCHEDULED.store(false, Ordering::Release);
 
     while let Some(task) = QUEUE.pop() {
         task();
     }
 
     if !QUEUE.is_empty()
-        && QUEUE
-            .dispatch_scheduled
+        && DISPATCH_SCHEDULED
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
     {

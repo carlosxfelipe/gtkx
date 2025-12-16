@@ -29,7 +29,8 @@ pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(handle_write(object_id, &type_, offset, &value));
+        tx.send(handle_write(object_id, &type_, offset, &value))
+            .expect("Write result channel disconnected");
     });
 
     rx.recv()
@@ -56,32 +57,9 @@ fn handle_write(
     let field_ptr = unsafe { (ptr as *mut u8).add(offset) };
 
     match (type_, value) {
-        (Type::Integer(int_type), Value::Number(n)) => match (int_type.size, int_type.sign) {
-            (IntegerSize::_8, IntegerSign::Signed) => unsafe {
-                field_ptr.cast::<i8>().write_unaligned(*n as i8);
-            },
-            (IntegerSize::_8, IntegerSign::Unsigned) => unsafe {
-                field_ptr.cast::<u8>().write_unaligned(*n as u8);
-            },
-            (IntegerSize::_16, IntegerSign::Signed) => unsafe {
-                field_ptr.cast::<i16>().write_unaligned(*n as i16);
-            },
-            (IntegerSize::_16, IntegerSign::Unsigned) => unsafe {
-                field_ptr.cast::<u16>().write_unaligned(*n as u16);
-            },
-            (IntegerSize::_32, IntegerSign::Signed) => unsafe {
-                field_ptr.cast::<i32>().write_unaligned(*n as i32);
-            },
-            (IntegerSize::_32, IntegerSign::Unsigned) => unsafe {
-                field_ptr.cast::<u32>().write_unaligned(*n as u32);
-            },
-            (IntegerSize::_64, IntegerSign::Signed) => unsafe {
-                field_ptr.cast::<i64>().write_unaligned(*n as i64);
-            },
-            (IntegerSize::_64, IntegerSign::Unsigned) => unsafe {
-                field_ptr.cast::<u64>().write_unaligned(*n as u64);
-            },
-        },
+        (Type::Integer(int_type), Value::Number(n)) => {
+            dispatch_integer_write!(int_type, field_ptr, *n);
+        }
         (Type::Float(float_type), Value::Number(n)) => match float_type.size {
             FloatSize::_32 => unsafe { field_ptr.cast::<f32>().write_unaligned(*n as f32) },
             FloatSize::_64 => unsafe { field_ptr.cast::<f64>().write_unaligned(*n) },

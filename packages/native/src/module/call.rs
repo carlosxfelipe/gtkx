@@ -36,11 +36,10 @@ struct BatchCallDescriptor {
 /// the task to the GTK thread. This ensures that any signals triggered by the task
 /// see `is_js_waiting() = true` and use the synchronous queue path. This function
 /// calls `exit_js_wait()` when done.
-fn wait_for_result<'a, T, C: Context<'a>>(
+fn wait_for_result<'a, R, C: Context<'a>>(
     cx: &mut C,
-    rx: &mpsc::Receiver<T>,
-    error_message: &str,
-) -> T {
+    rx: &mpsc::Receiver<anyhow::Result<R>>,
+) -> anyhow::Result<R> {
     let result = loop {
         js_dispatch::process_pending(cx);
 
@@ -50,7 +49,8 @@ fn wait_for_result<'a, T, C: Context<'a>>(
                 std::thread::yield_now();
             }
             Err(mpsc::TryRecvError::Disconnected) => {
-                panic!("Channel disconnected: {}", error_message);
+                gtk_dispatch::exit_js_wait();
+                return Err(anyhow::anyhow!("GTK thread disconnected"));
             }
         }
     };
@@ -77,15 +77,12 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
+        tx.send(handle_call(library_name, symbol_name, args, result_type))
+            .expect("FFI call result channel disconnected");
     });
 
-    let (value, ref_updates) = wait_for_result(
-        &mut cx,
-        &rx,
-        "GTK thread disconnected while waiting for call result",
-    )
-    .or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
+    let (value, ref_updates) = wait_for_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
 
     for (js_obj, new_value) in ref_updates {
         let js_obj = js_obj.to_inner(&mut cx);
@@ -284,15 +281,11 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
         let result = handle_batch_calls(descriptors);
-        let _ = tx.send(result);
+        tx.send(result).expect("Batch FFI call result channel disconnected");
     });
 
-    wait_for_result(
-        &mut cx,
-        &rx,
-        "GTK thread disconnected while waiting for batch call result",
-    )
-    .or_else(|err| cx.throw_error(format!("Error during batch FFI call: {err}")))?;
+    wait_for_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(format!("Error during batch FFI call: {err}")))?;
 
     Ok(cx.undefined())
 }

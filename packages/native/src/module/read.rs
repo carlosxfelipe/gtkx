@@ -30,7 +30,8 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<Value>>();
 
     gtk_dispatch::schedule(move || {
-        let _ = tx.send(handle_read(object_id, &type_, offset));
+        tx.send(handle_read(object_id, &type_, offset))
+            .expect("Read result channel disconnected");
     });
 
     let value = rx
@@ -54,32 +55,7 @@ fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Resu
 
     match type_ {
         Type::Integer(int_type) => {
-            let number = match (int_type.size, int_type.sign) {
-                (IntegerSize::_8, IntegerSign::Signed) => unsafe {
-                    field_ptr.cast::<i8>().read_unaligned() as f64
-                },
-                (IntegerSize::_8, IntegerSign::Unsigned) => unsafe {
-                    field_ptr.cast::<u8>().read_unaligned() as f64
-                },
-                (IntegerSize::_16, IntegerSign::Signed) => unsafe {
-                    field_ptr.cast::<i16>().read_unaligned() as f64
-                },
-                (IntegerSize::_16, IntegerSign::Unsigned) => unsafe {
-                    field_ptr.cast::<u16>().read_unaligned() as f64
-                },
-                (IntegerSize::_32, IntegerSign::Signed) => unsafe {
-                    field_ptr.cast::<i32>().read_unaligned() as f64
-                },
-                (IntegerSize::_32, IntegerSign::Unsigned) => unsafe {
-                    field_ptr.cast::<u32>().read_unaligned() as f64
-                },
-                (IntegerSize::_64, IntegerSign::Signed) => unsafe {
-                    field_ptr.cast::<i64>().read_unaligned() as f64
-                },
-                (IntegerSize::_64, IntegerSign::Unsigned) => unsafe {
-                    field_ptr.cast::<u64>().read_unaligned() as f64
-                },
-            };
+            let number = dispatch_integer_read!(int_type, field_ptr);
             Ok(Value::Number(number))
         }
         Type::Float(float_type) => {
