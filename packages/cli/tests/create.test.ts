@@ -20,45 +20,6 @@ vi.mock("node:fs/promises", async () => {
     return memfs.fs.promises;
 });
 
-vi.mock("@clack/prompts", () => ({
-    intro: vi.fn(),
-    spinner: vi.fn(() => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        message: vi.fn(),
-    })),
-    note: vi.fn(),
-    log: {
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-        success: vi.fn(),
-        message: vi.fn(),
-        step: vi.fn(),
-    },
-    text: vi.fn(),
-    select: vi.fn(),
-    confirm: vi.fn(),
-    isCancel: vi.fn(() => false),
-    cancel: vi.fn(),
-}));
-
-vi.mock("node:child_process", () => ({
-    spawn: vi.fn(() => {
-        const mockProcess = {
-            on: vi.fn((event: string, callback: (code: number | null) => void) => {
-                if (event === "close") {
-                    setTimeout(() => callback(0), 0);
-                }
-                return mockProcess;
-            }),
-            stdout: { on: vi.fn() },
-            stderr: { on: vi.fn() },
-        };
-        return mockProcess;
-    }),
-}));
-
 describe("isValidProjectName", () => {
     it("accepts lowercase letters", () => {
         expect(isValidProjectName("myapp")).toBe(true);
@@ -620,21 +581,6 @@ describe("createApp", () => {
 
     describe("error handling", () => {
         it("handles dependency installation failure gracefully", async () => {
-            const childProcess = await import("node:child_process");
-            vi.mocked(childProcess.spawn).mockImplementation(() => {
-                const mockProcess = {
-                    on: vi.fn((event: string, callback: (arg: unknown) => void) => {
-                        if (event === "close") {
-                            setTimeout(() => callback(1), 0);
-                        }
-                        return mockProcess;
-                    }),
-                    stdout: { on: vi.fn() },
-                    stderr: { on: vi.fn() },
-                } as unknown as ReturnType<typeof childProcess.spawn>;
-                return mockProcess;
-            });
-
             const { createApp } = await import("../src/create.js");
             await createApp({
                 name: "test-app",

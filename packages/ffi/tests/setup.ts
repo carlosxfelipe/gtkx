@@ -19,7 +19,7 @@ export const initGtk = () => {
     registerType(Gtk.ApplicationWindow);
     registerType(Gtk.Builder);
     registerType(Gtk.Orientable);
-    registerType(Gdk.Rgba);
+    registerType(Gdk.RGBA);
 
     start(APP_ID);
     initialized = true;

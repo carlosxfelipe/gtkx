@@ -6,5 +6,14 @@ export default defineConfig({
         typecheck: {
             tsconfig: "tsconfig.test.json",
         },
+        pool: "forks",
+        maxWorkers: 1,
+        isolate: true,
+        fileParallelism: false,
+        sequence: {
+            hooks: "list",
+        },
+        globalSetup: "./tests/setup.ts",
+        setupFiles: ["./tests/vitest-setup.ts"],
     },
 });

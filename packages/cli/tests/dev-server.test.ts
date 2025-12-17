@@ -1,3 +1,4 @@
+import { events } from "@gtkx/ffi";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockModule = {
@@ -29,20 +30,6 @@ vi.mock("vite", () => ({
     createServer: vi.fn().mockResolvedValue(mockViteServer),
 }));
 
-vi.mock("@gtkx/ffi", () => ({
-    events: {
-        on: vi.fn(),
-    },
-}));
-
-vi.mock("@gtkx/react", () => ({
-    update: vi.fn(),
-}));
-
-vi.mock("@vitejs/plugin-react", () => ({
-    default: vi.fn(() => ({ name: "react-plugin" })),
-}));
-
 describe("createDevServer", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -50,6 +37,7 @@ describe("createDevServer", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        events.removeAllListeners("stop");
     });
 
     it("creates a vite server with correct configuration", async () => {
@@ -116,14 +104,13 @@ describe("createDevServer", () => {
     });
 
     it("registers stop event handler", async () => {
-        const { events } = await import("@gtkx/ffi");
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
             entry: "/path/to/app.tsx",
         });
 
-        expect(events.on).toHaveBeenCalledWith("stop", expect.any(Function));
+        expect(events.listenerCount("stop")).toBeGreaterThan(0);
     });
 
     it("loads entry module via ssrLoadModule", async () => {
@@ -185,8 +172,8 @@ describe("createDevServer", () => {
         expect(mockModuleGraph.invalidateModule).toHaveBeenCalledTimes(2);
     });
 
-    it("calls update with new component on file change", async () => {
-        const { update } = await import("@gtkx/react");
+    it("completes hot reload on file change", async () => {
+        const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
@@ -196,21 +183,18 @@ describe("createDevServer", () => {
         const changeHandler = mockWatcher.on.mock.calls.find((call) => call[0] === "change")?.[1];
         await changeHandler("/path/to/changed-file.tsx");
 
-        expect(update).toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith("[gtkx] Hot reload complete");
+        consoleLogSpy.mockRestore();
     });
 
     it("closes server on stop event", async () => {
-        const { events } = await import("@gtkx/ffi");
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
             entry: "/path/to/app.tsx",
         });
 
-        const stopHandler = vi.mocked(events.on).mock.calls.find((call) => call[0] === "stop")?.[1];
-        expect(stopHandler).toBeDefined();
-
-        stopHandler();
+        events.emit("stop");
 
         expect(mockViteServer.close).toHaveBeenCalled();
     });
@@ -223,9 +207,10 @@ describe("createDevServer", () => {
             entry: "/path/to/app.tsx",
         });
 
-        const config = vi.mocked(createServer).mock.calls[0][0];
-        const plugins = config?.plugins as Array<{ name: string }>;
-        expect(plugins.some((p) => p.name === "react-plugin")).toBe(true);
+        const config = vi.mocked(createServer).mock.calls[0]?.[0];
+        expect(config).toBeDefined();
+        const plugins = config?.plugins?.flat() as Array<{ name: string }>;
+        expect(plugins.some((p) => p.name === "vite:react-babel")).toBe(true);
     });
 
     it("includes gtkx:remove-react-dom-optimized plugin", async () => {
@@ -236,8 +221,9 @@ describe("createDevServer", () => {
             entry: "/path/to/app.tsx",
         });
 
-        const config = vi.mocked(createServer).mock.calls[0][0];
-        const plugins = config?.plugins as Array<{ name: string }>;
+        const config = vi.mocked(createServer).mock.calls[0]?.[0];
+        expect(config).toBeDefined();
+        const plugins = config?.plugins?.flat() as Array<{ name: string }>;
         expect(plugins.some((p) => p.name === "gtkx:remove-react-dom-optimized")).toBe(true);
     });
 

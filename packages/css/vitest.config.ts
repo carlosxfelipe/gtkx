@@ -5,11 +5,8 @@ export default mergeConfig(baseConfig, {
     test: {
         include: ["tests/**/*.test.ts"],
         pool: "forks",
-        poolOptions: {
-            forks: {
-                singleFork: true,
-            },
-        },
+        maxWorkers: 1,
+        isolate: true,
         fileParallelism: false,
         sequence: {
             hooks: "list",

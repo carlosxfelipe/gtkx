@@ -4,11 +4,8 @@ import baseConfig from "../../vitest.config.js";
 export default mergeConfig(baseConfig, {
     test: {
         pool: "forks",
-        poolOptions: {
-            forks: {
-                singleFork: true,
-            },
-        },
+        maxWorkers: 1,
+        isolate: true,
         fileParallelism: false,
         sequence: {
             hooks: "list",

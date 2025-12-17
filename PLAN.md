@@ -50,11 +50,18 @@ For each unit, include tests for:
 3. **Error handling** - Invalid inputs, failure scenarios (grouped)
 4. **Memory leaks** - Resource cleanup, if applicable (grouped)
 
+### Mocking Policy
+
+- **Never mock** unless done for performance or isolation purposes
+- **Allowed mocks**:
+  - `memfs` - In-memory filesystem for isolated file system tests (avoids polluting real filesystem)
+  - External services that would be slow or unreliable in tests
+- **Not allowed**: Mocking internal modules, GTK/FFI bindings, or other code under test
+
 ### Testing Tools
 
 - **vitest** - Test runner
 - **memfs** - In-memory filesystem for isolated file system tests
-- **vi.mock()** - Module mocking for ESM compatibility
 
 ---
 
@@ -111,13 +118,19 @@ TODO: Plan test files
 
 ### Public API
 
-TODO: Document public exports
+The CSS package exposes:
+1. `css` - Creates CSS class names from styles and injects them into GTK's CssProvider
+2. `cx` - Merges multiple class names, filtering out falsy values
+3. `injectGlobal` - Injects global CSS styles
 
 ### Test Files
 
-TODO: Plan test files
+```
+packages/css/tests/
+└── css.test.ts    # css(), cx(), injectGlobal()
+```
 
-### Status: ⏳ Pending
+### Status: ✅ Complete (23 tests)
 
 ---
 
