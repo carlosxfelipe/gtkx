@@ -209,13 +209,28 @@ TODO: Plan test files
 
 ### Public API
 
-TODO: Document public exports
+The GIR package exposes:
+1. `GirParser` - Parses GObject Introspection (GIR) XML files into structured TypeScript interfaces
+2. `TypeRegistry` - Registry for tracking all types across GIR namespaces, used for cross-namespace type resolution
+3. `TypeMapper` - Maps GIR types to TypeScript types and FFI type descriptors
+4. `toCamelCase` - Converts snake_case or kebab-case to camelCase
+5. `toPascalCase` - Converts snake_case or kebab-case to PascalCase
+6. `buildClassMap` - Builds a map of class names to class definitions for quick lookup
+7. `registerEnumsFromNamespace` - Registers all enumerations and bitfields from a namespace with a TypeMapper
+
+Note: Also exports various TypeScript types: `GirNamespace`, `GirClass`, `GirInterface`, `GirMethod`, `GirConstructor`, `GirFunction`, `GirParameter`, `GirType`, `GirProperty`, `GirSignal`, `GirEnumeration`, `GirEnumerationMember`, `GirRecord`, `GirField`, `GirCallback`, `GirConstant`, `FfiTypeDescriptor`, `TypeKind`, `RegisteredType`, `ExternalTypeUsage`, `MappedType`
 
 ### Test Files
 
-TODO: Plan test files
+```
+packages/gir/tests/
+├── gir-parser.test.ts      # GirParser class
+├── type-registry.test.ts   # TypeRegistry class
+├── type-mapper.test.ts     # TypeMapper class
+└── utils.test.ts           # toCamelCase(), toPascalCase(), buildClassMap(), registerEnumsFromNamespace()
+```
 
-### Status: ⏳ Pending
+### Status: ✅ Complete (139 tests)
 
 ---
 
