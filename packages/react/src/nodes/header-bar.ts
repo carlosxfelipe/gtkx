@@ -36,6 +36,8 @@ export class PackContainerNode<T extends HeaderBarWidget> extends Node<T> implem
 
         if (childWidget) {
             this.removeFromPack(childWidget);
+        } else {
+            child.detachFromParent(this);
         }
     }
 }

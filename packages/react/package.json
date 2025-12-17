@@ -44,7 +44,8 @@
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
-        "@gtkx/gir": "workspace:*"
+        "@gtkx/gir": "workspace:*",
+        "@gtkx/native": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19"

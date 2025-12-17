@@ -1,3 +1,4 @@
+import { beginBatch, endBatch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { isFlowBoxChild } from "../predicates.js";
 import { IndexedChildContainerNode } from "./indexed-child-container.js";
@@ -15,7 +16,33 @@ export class FlowBoxNode extends IndexedChildContainerNode<Gtk.FlowBox> {
         return -1;
     }
 
-    protected override getWidgetToRemove(child: Gtk.Widget): Gtk.Widget {
-        return child.getParent() ?? child;
+    private unparentFromChild(child: Gtk.Widget): void {
+        const parent = child.getParent();
+        if (parent && isFlowBoxChild(parent)) {
+            beginBatch();
+            parent.setChild(null);
+            this.widget.remove(parent);
+            endBatch();
+        }
+    }
+
+    attachChild(child: Gtk.Widget): void {
+        this.unparentFromChild(child);
+        this.widget.append(child);
+    }
+
+    insertChildBefore(child: Gtk.Widget, before: Gtk.Widget): void {
+        this.unparentFromChild(child);
+
+        const index = this.getInsertionIndex(before);
+        if (index >= 0) {
+            this.widget.insert(child, index);
+        } else {
+            this.widget.append(child);
+        }
+    }
+
+    detachChild(child: Gtk.Widget): void {
+        this.unparentFromChild(child);
     }
 }

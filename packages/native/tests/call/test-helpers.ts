@@ -50,14 +50,6 @@ export function createBox(orientation: number = 0, spacing: number = 0): unknown
     );
 }
 
-export function createEntry(): unknown {
-    return call(GTK_LIB, "gtk_entry_new", [], GOBJECT);
-}
-
-export function createWindow(): unknown {
-    return call(GTK_LIB, "gtk_window_new", [], GOBJECT);
-}
-
 export function createScale(orientation: number = 0, min: number = 0, max: number = 100, step: number = 1): unknown {
     return call(
         GTK_LIB,
@@ -80,10 +72,6 @@ export function createGrid(): unknown {
     return call(GTK_LIB, "gtk_grid_new", [], GOBJECT);
 }
 
-export function createDrawingArea(): unknown {
-    return call(GTK_LIB, "gtk_drawing_area_new", [], GOBJECT);
-}
-
 export function createCancellable(): unknown {
     return call(GIO_LIB, "g_cancellable_new", [], GOBJECT);
 }
@@ -92,24 +80,6 @@ export function forceGC(): void {
     if (global.gc) {
         global.gc();
     }
-}
-
-export function measureMemory<T>(fn: () => T): { result: T; memoryDelta: number } {
-    forceGC();
-    const before = process.memoryUsage().heapUsed;
-    const result = fn();
-    forceGC();
-    const after = process.memoryUsage().heapUsed;
-    return { result, memoryDelta: after - before };
-}
-
-export async function waitForGC(weakRef: WeakRef<object>, timeoutMs = 1000): Promise<boolean> {
-    const start = Date.now();
-    while (weakRef.deref() !== undefined && Date.now() - start < timeoutMs) {
-        forceGC();
-        await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    return weakRef.deref() === undefined;
 }
 
 export function connectSignal(obj: unknown, signalName: string, callback: (...args: unknown[]) => void): number {
