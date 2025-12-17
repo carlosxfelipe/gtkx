@@ -25,9 +25,17 @@ export const initGtk = () => {
     initialized = true;
 };
 
-export const cleanupGtk = () => {
+const cleanupGtk = () => {
     if (initialized) {
         stop();
         initialized = false;
     }
 };
+
+initGtk();
+
+export default async function globalSetup() {
+    return async () => {
+        cleanupGtk();
+    };
+}

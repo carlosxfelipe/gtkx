@@ -1242,11 +1242,10 @@ ${allArgs ? `${allArgs},` : ""}
             if (hasMainReturn) {
                 if (needsBoxedWrap) {
                     this.usesGetBoxed = true;
-                    const boxedTypeName = (finishReturnType.ffi as { innerType?: string }).innerType;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
                     }
-                    lines.push(`          resolve(getBoxed(ptr, "${boxedTypeName}") as ${finishReturnType.ts});`);
+                    lines.push(`          resolve(getBoxed(ptr, ${finishReturnType.ts}));`);
                 } else if (needsInterfaceWrap) {
                     this.usesGetInterface = true;
                     if (isNullable) {
@@ -1270,15 +1269,12 @@ ${allArgs ? `${allArgs},` : ""}
             if (hasMainReturn) {
                 if (needsBoxedWrap) {
                     this.usesGetBoxed = true;
-                    const boxedTypeName = (finishReturnType.ffi as { innerType?: string }).innerType;
                     if (isNullable) {
                         lines.push(
-                            `          const result = (ptr === null ? null : getBoxed(ptr, "${boxedTypeName}")) as ${finishReturnType.ts} | null;`,
+                            `          const result = ptr === null ? null : getBoxed(ptr, ${finishReturnType.ts});`,
                         );
                     } else {
-                        lines.push(
-                            `          const result = getBoxed(ptr, "${boxedTypeName}") as ${finishReturnType.ts};`,
-                        );
+                        lines.push(`          const result = getBoxed(ptr, ${finishReturnType.ts});`);
                     }
                 } else if (needsInterfaceWrap) {
                     this.usesGetInterface = true;
@@ -1443,8 +1439,7 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(this.generateCyclicTypeReturn(baseReturnType));
             } else if (needsBoxedWrap) {
                 this.usesGetBoxed = true;
-                const boxedTypeName = (returnTypeMapping.ffi as { innerType?: string }).innerType;
-                lines.push(`    return getBoxed(ptr, "${boxedTypeName}") as ${baseReturnType};`);
+                lines.push(`    return getBoxed(ptr, ${baseReturnType});`);
             } else if (needsInterfaceWrap) {
                 this.usesGetInterface = true;
                 lines.push(`    return getInterface(ptr, ${baseReturnType})!;`);
@@ -1762,6 +1757,7 @@ ${allArgs ? `${allArgs},` : ""}
         sections.push(`  id: unknown;\n`);
 
         sections.push(this.generateRecordConstructors(record, sharedLibrary));
+        sections.push(this.generateRecordFromPtr(recordName));
         sections.push(this.generateRecordStaticFunctions(record.functions, sharedLibrary, recordName));
         sections.push(this.generateRecordMethods(record.methods, sharedLibrary, record.name, record.glibTypeName));
         sections.push(this.generateRecordFields(record.fields, record.methods));
@@ -1840,6 +1836,15 @@ ${allArgs ? `${allArgs},` : ""}
 
         sections.push(this.generateRecordCreatePtr(record, sharedLibrary));
         return sections.join("\n");
+    }
+
+    private generateRecordFromPtr(recordName: string): string {
+        return `  static fromPtr(ptr: unknown): ${recordName} {
+    const instance = Object.create(${recordName}.prototype) as ${recordName};
+    instance.id = ptr;
+    return instance;
+  }
+`;
     }
 
     private getWritableFields(fields: GirField[]): GirField[] {
@@ -2195,8 +2200,7 @@ ${allArgs ? `${allArgs},` : ""}
             }
             if (needsBoxedWrap) {
                 this.usesGetBoxed = true;
-                const boxedTypeName = (returnTypeMapping.ffi as { innerType?: string }).innerType;
-                lines.push(`  return getBoxed(ptr, "${boxedTypeName}") as ${baseReturnType};`);
+                lines.push(`  return getBoxed(ptr, ${baseReturnType});`);
             } else if (needsInterfaceWrap) {
                 this.usesGetInterface = true;
                 lines.push(`  return getInterface(ptr, ${baseReturnType})!;`);
@@ -2361,11 +2365,11 @@ ${allArgs ? `${allArgs},` : ""}
         }
 
         return gtkAllocatesRefs.map((ref) => {
-            if (ref.isBoxed && ref.boxedTypeName) {
+            if (ref.isBoxed) {
                 this.usesGetBoxed = true;
                 return ref.nullable
-                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getBoxed(${ref.paramName}.value, "${ref.boxedTypeName}") as ${ref.innerType};`
-                    : `    ${ref.paramName}.value = getBoxed(${ref.paramName}.value, "${ref.boxedTypeName}") as ${ref.innerType};`;
+                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getBoxed(${ref.paramName}.value, ${ref.innerType});`
+                    : `    ${ref.paramName}.value = getBoxed(${ref.paramName}.value, ${ref.innerType});`;
             }
             this.usesGetObject = true;
             return ref.nullable
@@ -2450,16 +2454,22 @@ ${indent}  }`;
         if (nativeImports.length > 0) {
             lines.push(`import { ${nativeImports.join(", ")} } from "@gtkx/native";`);
         }
-        const ffiImports: string[] = [];
-        if (this.usesCall) ffiImports.push("call");
-        if (this.usesNativeError) ffiImports.push("NativeError");
-        if (this.usesGetObject) ffiImports.push("getObject");
-        if (this.usesGetBoxed) ffiImports.push("getBoxed");
-        if (this.usesGetInterface) ffiImports.push("getInterface");
-        if (this.usesInstantiating) ffiImports.push("isInstantiating", "setInstantiating");
-        if (this.usesRegisterType) ffiImports.push("registerType");
-        if (ffiImports.length > 0) {
-            lines.push(`import { ${ffiImports.join(", ")} } from "@gtkx/ffi";`);
+        if (this.usesCall) {
+            lines.push(`import { call } from "../../batch.js";`);
+        }
+        if (this.usesNativeError) {
+            lines.push(`import { NativeError } from "../../native-error.js";`);
+        }
+        const nativeJsImports: string[] = [];
+        if (this.usesGetObject) nativeJsImports.push("getObject");
+        if (this.usesGetBoxed) nativeJsImports.push("getBoxed");
+        if (this.usesGetInterface) nativeJsImports.push("getInterface");
+        if (this.usesInstantiating) nativeJsImports.push("isInstantiating", "setInstantiating");
+        if (nativeJsImports.length > 0) {
+            lines.push(`import { ${nativeJsImports.join(", ")} } from "../../native.js";`);
+        }
+        if (this.usesRegisterType) {
+            lines.push(`import { registerType } from "../../registry.js";`);
         }
         if (this.usesSignalMeta) {
             lines.push(`import type { SignalMeta } from "../../types.js";`);

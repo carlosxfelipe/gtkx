@@ -136,8 +136,13 @@ fn handle_call(
     for cif_arg in &cif_args {
         match cif_arg {
             cif::Value::TrampolineCallback(trampoline_cb) => {
-                ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
-                ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
+                if trampoline_cb.data_first {
+                    ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
+                    ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
+                } else {
+                    ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
+                    ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
+                }
                 if let Some(destroy_ptr) = &trampoline_cb.destroy_ptr {
                     ffi_args.push(libffi::arg(destroy_ptr));
                 }

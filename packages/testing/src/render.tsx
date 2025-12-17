@@ -1,5 +1,4 @@
 import { getCurrentApp, getInterface, start, stop } from "@gtkx/ffi";
-import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, ROOT_NODE_CONTAINER, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -106,11 +105,12 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
 
     return {
         container: application,
-        findByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.findByRole(application, role, opts),
+        findByRole: (role: Gtk.AccessibleRole, opts?: ByRoleOptions) => queries.findByRole(application, role, opts),
         findByLabelText: (text: TextMatch, opts?: TextMatchOptions) => queries.findByLabelText(application, text, opts),
         findByText: (text: TextMatch, opts?: TextMatchOptions) => queries.findByText(application, text, opts),
         findByTestId: (testId: TextMatch, opts?: TextMatchOptions) => queries.findByTestId(application, testId, opts),
-        findAllByRole: (role: AccessibleRole, opts?: ByRoleOptions) => queries.findAllByRole(application, role, opts),
+        findAllByRole: (role: Gtk.AccessibleRole, opts?: ByRoleOptions) =>
+            queries.findAllByRole(application, role, opts),
         findAllByLabelText: (text: TextMatch, opts?: TextMatchOptions) =>
             queries.findAllByLabelText(application, text, opts),
         findAllByText: (text: TextMatch, opts?: TextMatchOptions) => queries.findAllByText(application, text, opts),

@@ -1,5 +1,5 @@
 import { start } from "@gtkx/ffi";
-import type { ApplicationFlags } from "@gtkx/ffi/gio";
+import type * as Gio from "@gtkx/ffi/gio";
 import type { ReactNode } from "react";
 import { formatBoundaryError, formatRenderError } from "./errors.js";
 import { ROOT_NODE_CONTAINER } from "./factory.js";
@@ -38,7 +38,7 @@ function validateAppId(appId: string): void {
  * @param appId - The application ID (e.g., "com.example.myapp")
  * @param flags - Optional GIO application flags
  */
-export const render = (element: ReactNode, appId: string, flags?: ApplicationFlags): void => {
+export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
     validateAppId(appId);
     start(appId, flags);
     const instance = reconciler.getInstance();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alloc, read, write } from "../index.js";
-import { GDK_LIB, GTK_LIB } from "./test-setup.js";
+import { GDK_LIB, GTK_LIB } from "./setup.js";
 
 describe("alloc", () => {
     it("allocates a zeroed struct for GdkRGBA", () => {

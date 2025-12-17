@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alloc, read, write } from "../index.js";
-import { GDK_LIB } from "./test-setup.js";
+import { GDK_LIB } from "./setup.js";
 
 describe("read and write", () => {
     describe("float fields", () => {

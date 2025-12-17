@@ -301,17 +301,18 @@ impl Value {
                     return Ok(Value::Null);
                 }
 
-                let object = if type_.is_borrowed {
-                    let object = unsafe {
-                        glib::Object::from_glib_none(object_ptr as *mut glib::gobject_ffi::GObject)
-                    };
+                let gobject_ptr = object_ptr as *mut glib::gobject_ffi::GObject;
 
+                let object = if type_.is_borrowed {
+                    let object = unsafe { glib::Object::from_glib_none(gobject_ptr) };
                     Object::GObject(object)
                 } else {
-                    let object = unsafe {
-                        glib::Object::from_glib_full(object_ptr as *mut glib::gobject_ffi::GObject)
-                    };
-
+                    let is_floating =
+                        unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+                    if is_floating {
+                        unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
+                    }
+                    let object = unsafe { glib::Object::from_glib_full(gobject_ptr) };
                     Object::GObject(object)
                 };
 

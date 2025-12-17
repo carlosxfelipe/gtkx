@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import type { ComponentType, ReactNode } from "react";
 
 /**
@@ -92,7 +91,7 @@ export type RenderOptions = {
  */
 export type BoundQueries = {
     /** Find a single element by its accessible role. */
-    findByRole: (role: AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
+    findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
     /** Find a single element by its associated label text. */
     findByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
     /** Find a single element by its text content. */
@@ -101,7 +100,7 @@ export type BoundQueries = {
     findByTestId: (testId: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
 
     /** Find all elements matching an accessible role. */
-    findAllByRole: (role: AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget[]>;
+    findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements with matching label text. */
     findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements with matching text content. */

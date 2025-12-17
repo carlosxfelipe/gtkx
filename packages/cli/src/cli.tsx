@@ -2,7 +2,7 @@
 
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import type { ApplicationFlags } from "@gtkx/ffi/gio";
+import type * as Gio from "@gtkx/ffi/gio";
 import { render } from "@gtkx/react";
 import { defineCommand, runMain } from "citty";
 import { createApp } from "./create.js";
@@ -14,7 +14,7 @@ const { version } = require("../package.json") as { version: string };
 interface AppModule {
     default: () => React.ReactNode;
     appId?: string;
-    appFlags?: ApplicationFlags;
+    appFlags?: Gio.ApplicationFlags;
 }
 
 const dev = defineCommand({

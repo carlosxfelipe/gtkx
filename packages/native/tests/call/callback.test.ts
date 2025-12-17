@@ -1,0 +1,446 @@
+import { describe, expect, it } from "vitest";
+import { call } from "../../index.js";
+import {
+    BOOLEAN,
+    connectSignal,
+    createButton,
+    createCancellable,
+    disconnectSignal,
+    forceGC,
+    GIO_LIB,
+    GLIB_LIB,
+    GOBJECT,
+    GOBJECT_BORROWED,
+    GOBJECT_LIB,
+    INT32,
+    NULL,
+    STRING,
+    UINT32,
+    UINT64,
+    UNDEFINED,
+} from "./test-helpers.js";
+
+describe("call - callback types", () => {
+    describe("closure trampoline (signals)", () => {
+        it("connects callback to signal", () => {
+            const button = createButton("Test");
+
+            const handlerId = call(
+                GOBJECT_LIB,
+                "g_signal_connect_data",
+                [
+                    { type: GOBJECT, value: button },
+                    { type: STRING, value: "clicked" },
+                    { type: { type: "callback", trampoline: "closure" }, value: () => {} },
+                    { type: NULL, value: null },
+                    { type: NULL, value: null },
+                    { type: INT32, value: 0 },
+                ],
+                UINT64,
+            );
+
+            expect(typeof handlerId).toBe("number");
+            expect(handlerId).toBeGreaterThan(0);
+        });
+
+        it("invokes callback when signal emits", () => {
+            const cancellable = createCancellable();
+            let callbackInvoked = false;
+
+            call(
+                GOBJECT_LIB,
+                "g_signal_connect_closure",
+                [
+                    { type: GOBJECT, value: cancellable },
+                    { type: STRING, value: "cancelled" },
+                    {
+                        type: { type: "callback", trampoline: "closure" },
+                        value: () => {
+                            callbackInvoked = true;
+                        },
+                    },
+                    { type: BOOLEAN, value: false },
+                ],
+                UINT64,
+            );
+
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT, value: cancellable }], UNDEFINED);
+
+            expect(callbackInvoked).toBe(true);
+        });
+
+        it("receives signal arguments in callback", () => {
+            const cancellable = createCancellable();
+            let receivedArg: unknown = null;
+
+            call(
+                GOBJECT_LIB,
+                "g_signal_connect_closure",
+                [
+                    { type: GOBJECT, value: cancellable },
+                    { type: STRING, value: "cancelled" },
+                    {
+                        type: {
+                            type: "callback",
+                            trampoline: "closure",
+                            argTypes: [{ type: "gobject", borrowed: true }],
+                        },
+                        value: (arg: unknown) => {
+                            receivedArg = arg;
+                        },
+                    },
+                    { type: BOOLEAN, value: false },
+                ],
+                UINT64,
+            );
+
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT, value: cancellable }], UNDEFINED);
+
+            expect(receivedArg).toBeDefined();
+        });
+
+        it("disconnects callback correctly", () => {
+            const button = createButton("Test");
+
+            const handlerId = call(
+                GOBJECT_LIB,
+                "g_signal_connect_data",
+                [
+                    { type: GOBJECT, value: button },
+                    { type: STRING, value: "clicked" },
+                    { type: { type: "callback", trampoline: "closure" }, value: () => {} },
+                    { type: NULL, value: null },
+                    { type: NULL, value: null },
+                    { type: INT32, value: 0 },
+                ],
+                UINT64,
+            ) as number;
+
+            disconnectSignal(button, handlerId);
+
+            const isConnected = call(
+                GOBJECT_LIB,
+                "g_signal_handler_is_connected",
+                [
+                    { type: GOBJECT_BORROWED, value: button },
+                    { type: UINT64, value: handlerId },
+                ],
+                BOOLEAN,
+            );
+
+            expect(isConnected).toBe(false);
+        });
+
+        it("handles multiple callbacks on same signal", () => {
+            const cancellable = createCancellable();
+            let count1 = 0;
+            let count2 = 0;
+
+            call(
+                GOBJECT_LIB,
+                "g_signal_connect_closure",
+                [
+                    { type: GOBJECT, value: cancellable },
+                    { type: STRING, value: "cancelled" },
+                    {
+                        type: { type: "callback", trampoline: "closure" },
+                        value: () => {
+                            count1++;
+                        },
+                    },
+                    { type: BOOLEAN, value: false },
+                ],
+                UINT64,
+            );
+
+            call(
+                GOBJECT_LIB,
+                "g_signal_connect_closure",
+                [
+                    { type: GOBJECT, value: cancellable },
+                    { type: STRING, value: "cancelled" },
+                    {
+                        type: { type: "callback", trampoline: "closure" },
+                        value: () => {
+                            count2++;
+                        },
+                    },
+                    { type: BOOLEAN, value: false },
+                ],
+                UINT64,
+            );
+
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT, value: cancellable }], UNDEFINED);
+
+            expect(count1).toBe(1);
+            expect(count2).toBe(1);
+        });
+    });
+
+    describe("sourceFunc trampoline (idle/timeout)", () => {
+        it("invokes idle callback", () => {
+            const sourceId = call(
+                GLIB_LIB,
+                "g_idle_add",
+                [
+                    {
+                        type: { type: "callback", trampoline: "sourceFunc", returnType: BOOLEAN },
+                        value: () => false,
+                    },
+                    { type: NULL, value: null },
+                ],
+                UINT32,
+            );
+
+            expect(typeof sourceId).toBe("number");
+            expect(sourceId).toBeGreaterThan(0);
+
+            call(GLIB_LIB, "g_source_remove", [{ type: UINT32, value: sourceId }], BOOLEAN);
+        });
+
+        it("stops when returning false", () => {
+            const sourceId = call(
+                GLIB_LIB,
+                "g_idle_add",
+                [
+                    {
+                        type: { type: "callback", trampoline: "sourceFunc", returnType: BOOLEAN },
+                        value: () => false,
+                    },
+                    { type: NULL, value: null },
+                ],
+                UINT32,
+            ) as number;
+
+            if (sourceId > 0) {
+                call(GLIB_LIB, "g_source_remove", [{ type: UINT32, value: sourceId }], BOOLEAN);
+            }
+        });
+    });
+
+    describe("destroy trampoline", () => {
+        it("registers destroy notify callback", () => {
+            const button = createButton("Test");
+            let destroyCalled = false;
+
+            call(
+                GOBJECT_LIB,
+                "g_object_set_data_full",
+                [
+                    { type: GOBJECT, value: button },
+                    { type: STRING, value: "test-data" },
+                    {
+                        type: { type: "callback", trampoline: "destroy" },
+                        value: () => {
+                            destroyCalled = true;
+                        },
+                    },
+                ],
+                UNDEFINED,
+            );
+
+            call(
+                GOBJECT_LIB,
+                "g_object_set_data",
+                [
+                    { type: GOBJECT, value: button },
+                    { type: STRING, value: "test-data" },
+                    { type: NULL, value: null },
+                ],
+                UNDEFINED,
+            );
+
+            expect(destroyCalled).toBe(true);
+        });
+    });
+
+    describe("callback argument types", () => {
+        it("passes gobject arguments to callback", () => {
+            const cancellable = createCancellable();
+            let receivedObject: unknown = null;
+
+            call(
+                GOBJECT_LIB,
+                "g_signal_connect_closure",
+                [
+                    { type: GOBJECT, value: cancellable },
+                    { type: STRING, value: "cancelled" },
+                    {
+                        type: {
+                            type: "callback",
+                            trampoline: "closure",
+                            argTypes: [{ type: "gobject", borrowed: true }],
+                        },
+                        value: (obj: unknown) => {
+                            receivedObject = obj;
+                        },
+                    },
+                    { type: BOOLEAN, value: false },
+                ],
+                UINT64,
+            );
+
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT, value: cancellable }], UNDEFINED);
+
+            expect(receivedObject).not.toBeNull();
+        });
+    });
+
+    describe("memory leaks", () => {
+        it("does not leak closure when signal handler disconnects", () => {
+            const button = createButton("Test");
+
+            for (let i = 0; i < 100; i++) {
+                const handlerId = connectSignal(button, "clicked", () => {});
+                disconnectSignal(button, handlerId);
+            }
+
+            forceGC();
+        });
+
+        it("does not leak when connecting many handlers in loop", () => {
+            const initialMemory = process.memoryUsage().heapUsed;
+
+            for (let i = 0; i < 100; i++) {
+                const button = createButton(`Button ${i}`);
+                connectSignal(button, "clicked", () => {});
+            }
+
+            forceGC();
+
+            const finalMemory = process.memoryUsage().heapUsed;
+            const memoryGrowth = finalMemory - initialMemory;
+
+            expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024);
+        });
+
+        it("does not leak sourceFunc closure after removal", () => {
+            for (let i = 0; i < 100; i++) {
+                const sourceId = call(
+                    GLIB_LIB,
+                    "g_idle_add",
+                    [
+                        {
+                            type: { type: "callback", trampoline: "sourceFunc", returnType: BOOLEAN },
+                            value: () => false,
+                        },
+                        { type: NULL, value: null },
+                    ],
+                    UINT32,
+                ) as number;
+
+                call(GLIB_LIB, "g_source_remove", [{ type: UINT32, value: sourceId }], BOOLEAN);
+            }
+
+            forceGC();
+        });
+
+        it("does not leak destroy callback after invocation", () => {
+            for (let i = 0; i < 100; i++) {
+                const button = createButton(`Button ${i}`);
+
+                call(
+                    GOBJECT_LIB,
+                    "g_object_set_data_full",
+                    [
+                        { type: GOBJECT, value: button },
+                        { type: STRING, value: "data" },
+                        {
+                            type: { type: "callback", trampoline: "destroy" },
+                            value: () => {},
+                        },
+                    ],
+                    UNDEFINED,
+                );
+
+                call(
+                    GOBJECT_LIB,
+                    "g_object_set_data",
+                    [
+                        { type: GOBJECT, value: button },
+                        { type: STRING, value: "data" },
+                        { type: NULL, value: null },
+                    ],
+                    UNDEFINED,
+                );
+            }
+
+            forceGC();
+        });
+    });
+
+    describe("edge cases", () => {
+        it("handles callback that throws exception gracefully", () => {
+            const cancellable = createCancellable();
+
+            call(
+                GOBJECT_LIB,
+                "g_signal_connect_closure",
+                [
+                    { type: GOBJECT, value: cancellable },
+                    { type: STRING, value: "cancelled" },
+                    {
+                        type: { type: "callback", trampoline: "closure" },
+                        value: () => {
+                            throw new Error("Test error in callback");
+                        },
+                    },
+                    { type: BOOLEAN, value: false },
+                ],
+                UINT64,
+            );
+
+            expect(() => {
+                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT, value: cancellable }], UNDEFINED);
+            }).toThrow();
+        });
+
+        it("handles multiple callbacks on same object", () => {
+            const button = createButton("Test");
+            const handlers: number[] = [];
+
+            for (let i = 0; i < 5; i++) {
+                const handlerId = connectSignal(button, "clicked", () => {});
+                handlers.push(handlerId);
+            }
+
+            for (const handlerId of handlers) {
+                const isConnected = call(
+                    GOBJECT_LIB,
+                    "g_signal_handler_is_connected",
+                    [
+                        { type: GOBJECT_BORROWED, value: button },
+                        { type: UINT64, value: handlerId },
+                    ],
+                    BOOLEAN,
+                );
+                expect(isConnected).toBe(true);
+            }
+
+            for (const handlerId of handlers) {
+                disconnectSignal(button, handlerId);
+            }
+        });
+
+        it("handles callback with no trampoline (defaults to closure)", () => {
+            const button = createButton("Test");
+
+            const handlerId = call(
+                GOBJECT_LIB,
+                "g_signal_connect_data",
+                [
+                    { type: GOBJECT, value: button },
+                    { type: STRING, value: "clicked" },
+                    { type: { type: "callback" }, value: () => {} },
+                    { type: NULL, value: null },
+                    { type: NULL, value: null },
+                    { type: INT32, value: 0 },
+                ],
+                UINT64,
+            );
+
+            expect(typeof handlerId).toBe("number");
+            expect(handlerId).toBeGreaterThan(0);
+        });
+    });
+});

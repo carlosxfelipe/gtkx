@@ -1,19 +1,5 @@
 import { getInterface, getObject } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import {
-    Accessible,
-    AccessibleRole,
-    type CheckButton,
-    type ComboBox,
-    DirectionType,
-    type DropDown,
-    Editable,
-    type ListBox,
-    type ListBoxRow,
-    type Switch,
-    type ToggleButton,
-    type Widget,
-} from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
@@ -27,30 +13,30 @@ export type TabOptions = {
 };
 
 const TOGGLEABLE_ROLES = new Set([
-    AccessibleRole.CHECKBOX,
-    AccessibleRole.RADIO,
-    AccessibleRole.TOGGLE_BUTTON,
-    AccessibleRole.SWITCH,
+    Gtk.AccessibleRole.CHECKBOX,
+    Gtk.AccessibleRole.RADIO,
+    Gtk.AccessibleRole.TOGGLE_BUTTON,
+    Gtk.AccessibleRole.SWITCH,
 ]);
 
 const isToggleable = (widget: Gtk.Widget): boolean => {
-    const accessible = getInterface(widget.id, Accessible);
+    const accessible = getInterface(widget.id, Gtk.Accessible);
     if (!accessible) return false;
     return TOGGLEABLE_ROLES.has(accessible.getAccessibleRole());
 };
 
 const click = async (element: Gtk.Widget): Promise<void> => {
     if (isToggleable(element)) {
-        const role = getInterface(element.id, Accessible)?.getAccessibleRole();
+        const role = getInterface(element.id, Gtk.Accessible)?.getAccessibleRole();
 
-        if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
-            const checkButton = element as CheckButton;
+        if (role === Gtk.AccessibleRole.CHECKBOX || role === Gtk.AccessibleRole.RADIO) {
+            const checkButton = element as Gtk.CheckButton;
             checkButton.setActive(!checkButton.getActive());
-        } else if (role === AccessibleRole.SWITCH) {
-            const switchWidget = element as Switch;
+        } else if (role === Gtk.AccessibleRole.SWITCH) {
+            const switchWidget = element as Gtk.Switch;
             switchWidget.setActive(!switchWidget.getActive());
         } else {
-            const toggleButton = element as ToggleButton;
+            const toggleButton = element as Gtk.ToggleButton;
             toggleButton.setActive(!toggleButton.getActive());
         }
 
@@ -77,11 +63,11 @@ const activate = async (element: Gtk.Widget): Promise<void> => {
 };
 
 const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
-    const direction = options?.shift ? DirectionType.TAB_BACKWARD : DirectionType.TAB_FORWARD;
+    const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
     const root = element.getRoot();
 
     if (root) {
-        (getObject(root.id) as Widget).childFocus(direction);
+        (getObject(root.id) as Gtk.Widget).childFocus(direction);
     }
 
     await tick();
@@ -92,7 +78,7 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
         throw new Error("Cannot type into element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    const editable = getInterface(element.id, Editable);
+    const editable = getInterface(element.id, Gtk.Editable);
     if (!editable) return;
 
     const currentText = editable.getText();
@@ -106,14 +92,14 @@ const clear = async (element: Gtk.Widget): Promise<void> => {
         throw new Error("Cannot clear element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    getInterface(element.id, Editable)?.setText("");
+    getInterface(element.id, Gtk.Editable)?.setText("");
     await tick();
 };
 
-const SELECTABLE_ROLES = new Set([AccessibleRole.COMBO_BOX, AccessibleRole.LIST]);
+const SELECTABLE_ROLES = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
-    const accessible = getInterface(widget.id, Accessible);
+    const accessible = getInterface(widget.id, Gtk.Accessible);
     if (!accessible) return false;
     return SELECTABLE_ROLES.has(accessible.getAccessibleRole());
 };
@@ -123,10 +109,10 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
         throw new Error("Cannot select options: element is not a selectable widget (COMBO_BOX or LIST)");
     }
 
-    const role = getInterface(element.id, Accessible)?.getAccessibleRole();
+    const role = getInterface(element.id, Gtk.Accessible)?.getAccessibleRole();
     const valueArray = Array.isArray(values) ? values : [values];
 
-    if (role === AccessibleRole.COMBO_BOX) {
+    if (role === Gtk.AccessibleRole.COMBO_BOX) {
         if (valueArray.length > 1) {
             throw new Error("Cannot select multiple options on a ComboBox/DropDown");
         }
@@ -140,12 +126,12 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
         const isDropDown = element.constructor.name === "DropDown";
 
         if (isDropDown) {
-            (element as DropDown).setSelected(value);
+            (element as Gtk.DropDown).setSelected(value);
         } else {
-            (element as ComboBox).setActive(value);
+            (element as Gtk.ComboBox).setActive(value);
         }
-    } else if (role === AccessibleRole.LIST) {
-        const listBox = element as ListBox;
+    } else if (role === Gtk.AccessibleRole.LIST) {
+        const listBox = element as Gtk.ListBox;
 
         for (const value of valueArray) {
             if (typeof value !== "number") {
@@ -165,20 +151,20 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
 };
 
 const deselectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
-    const role = getInterface(element.id, Accessible)?.getAccessibleRole();
+    const role = getInterface(element.id, Gtk.Accessible)?.getAccessibleRole();
 
-    if (role !== AccessibleRole.LIST) {
+    if (role !== Gtk.AccessibleRole.LIST) {
         throw new Error("Cannot deselect options: only ListBox supports deselection");
     }
 
-    const listBox = element as ListBox;
+    const listBox = element as Gtk.ListBox;
     const valueArray = Array.isArray(values) ? values : [values];
 
     for (const value of valueArray) {
         const row = listBox.getRowAtIndex(value);
 
         if (row) {
-            listBox.unselectRow(row as ListBoxRow);
+            listBox.unselectRow(row as Gtk.ListBoxRow);
         }
     }
 

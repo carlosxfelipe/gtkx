@@ -87,6 +87,9 @@ pub struct TrampolineCallbackValue {
     pub closure: OwnedPtr,
     /// Optional destroy notify function pointer.
     pub destroy_ptr: Option<*mut c_void>,
+    /// Whether to emit closure pointer before trampoline pointer.
+    /// Used for GDestroyNotify-style callbacks where data precedes the function.
+    pub data_first: bool,
 }
 
 impl OwnedPtr {
@@ -527,6 +530,7 @@ impl Value {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: None,
+                    data_first: false,
                 }))
             }
 
@@ -548,6 +552,7 @@ impl Value {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: None,
+                    data_first: true,
                 }))
             }
 
@@ -573,6 +578,7 @@ impl Value {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
+                    data_first: false,
                 }))
             }
 
@@ -600,6 +606,7 @@ impl Value {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
+                    data_first: false,
                 }))
             }
 
@@ -636,6 +643,7 @@ impl Value {
                     trampoline_ptr,
                     closure: OwnedPtr::new(closure, closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
+                    data_first: false,
                 }))
             }
         }

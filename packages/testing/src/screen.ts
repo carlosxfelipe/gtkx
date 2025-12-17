@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import * as queries from "./queries.js";
 import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
 
@@ -27,12 +26,13 @@ const getRoot = (): Gtk.Application => {
  * needing to destructure from render().
  */
 export const screen = {
-    findByRole: (role: AccessibleRole, options?: ByRoleOptions) => queries.findByRole(getRoot(), role, options),
+    findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => queries.findByRole(getRoot(), role, options),
     findByLabelText: (text: TextMatch, options?: TextMatchOptions) => queries.findByLabelText(getRoot(), text, options),
     findByText: (text: TextMatch, options?: TextMatchOptions) => queries.findByText(getRoot(), text, options),
     findByTestId: (testId: TextMatch, options?: TextMatchOptions) => queries.findByTestId(getRoot(), testId, options),
 
-    findAllByRole: (role: AccessibleRole, options?: ByRoleOptions) => queries.findAllByRole(getRoot(), role, options),
+    findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
+        queries.findAllByRole(getRoot(), role, options),
     findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
         queries.findAllByLabelText(getRoot(), text, options),
     findAllByText: (text: TextMatch, options?: TextMatchOptions) => queries.findAllByText(getRoot(), text, options),

@@ -80,27 +80,26 @@ export function getObject<T extends NativeObject = NativeObject>(id: unknown): T
     return instance;
 }
 
+type BoxedTypeWithFromPtr<T extends NativeObject> = {
+    glibTypeName: string;
+    prototype: T;
+    fromPtr(ptr: unknown): T;
+};
+
 /**
  * Wraps a native boxed type pointer in a class instance.
  * Unlike getObject(), this does NOT call typeNameFromInstance() because boxed
  * types don't have embedded type information like GObjects do.
  * @param id - The native pointer to wrap
- * @param glibTypeName - The GLib type name (e.g., "GdkRGBA")
+ * @param targetType - The boxed type class with fromPtr method
  * @returns A new instance with the pointer attached
- * @throws Error if the type is not registered
  */
-export function getBoxed<T extends NativeObject = NativeObject>(id: unknown, glibTypeName: string): T {
+export function getBoxed<T extends NativeObject>(id: unknown, targetType: BoxedTypeWithFromPtr<T>): T {
     if (id === null || id === undefined) {
         throw new Error("getBoxed: id cannot be null or undefined");
     }
 
-    const cls = getClassByTypeName(glibTypeName);
-    if (!cls) {
-        throw new Error(`Unknown boxed type: ${glibTypeName}. Make sure the class is registered.`);
-    }
-    const instance = Object.create(cls.prototype) as T;
-    instance.id = id;
-    return instance;
+    return targetType.fromPtr(id);
 }
 
 type TypeWithGlibTypeName<T extends NativeObject> = {

@@ -1,4 +1,4 @@
-import type { SortType } from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 
 /**
@@ -86,9 +86,9 @@ export type ColumnViewRootProps<C extends string = string> = {
     /** The ID of the currently sorted column, or null if unsorted. Controls the sort indicator UI. */
     sortColumn?: C | null;
     /** The current sort direction. Controls the sort indicator UI. */
-    sortOrder?: SortType;
+    sortOrder?: Gtk.SortType;
     /** Callback fired when the user clicks a column header to change sort. */
-    onSortChange?: (column: C | null, order: SortType) => void;
+    onSortChange?: (column: C | null, order: Gtk.SortType) => void;
 };
 
 export type NotebookPageProps = SlotProps & {
