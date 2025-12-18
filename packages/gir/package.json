@@ -31,5 +31,8 @@
     ],
     "scripts": {
         "test": "vitest run"
+    },
+    "dependencies": {
+        "fast-xml-parser": "^5.3.3"
     }
 }

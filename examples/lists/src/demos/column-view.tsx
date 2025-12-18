@@ -104,7 +104,7 @@ const generateEmployees = (count: number): Employee[] => {
     return employees;
 };
 
-const employees = generateEmployees(5000);
+const employees = generateEmployees(500);
 
 const statusColors: Record<Employee["status"], string> = {
     active: "success",

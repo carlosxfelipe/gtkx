@@ -23,9 +23,6 @@ importers:
       '@types/react-reconciler':
         specifier: ^0.32.3
         version: 0.32.3(@types/react@19.2.7)
-      fast-xml-parser:
-        specifier: ^5.3.3
-        version: 5.3.3
       knip:
         specifier: ^5.74.0
         version: 5.75.1(@types/node@25.0.3)(typescript@5.9.3)
@@ -214,7 +211,11 @@ importers:
         specifier: workspace:*
         version: link:../gir
 
-  packages/gir: {}
+  packages/gir:
+    dependencies:
+      fast-xml-parser:
+        specifier: ^5.3.3
+        version: 5.3.3
 
   packages/native:
     devDependencies:

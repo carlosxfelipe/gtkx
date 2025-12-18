@@ -34,6 +34,31 @@ impl Drop for GListGuard {
         }
     }
 }
+
+struct GListIter {
+    current: *mut glib::ffi::GList,
+}
+
+impl GListIter {
+    fn new(list: *mut glib::ffi::GList) -> Self {
+        Self { current: list }
+    }
+}
+
+impl Iterator for GListIter {
+    type Item = *mut c_void;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current.is_null() {
+            return None;
+        }
+
+        let data = unsafe { (*self.current).data };
+        self.current = unsafe { (*self.current).next };
+        Some(data)
+    }
+}
+
 use gtk4::{
     glib,
     glib::translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
@@ -366,12 +391,10 @@ impl Value {
                     }
 
                     let list_guard = GListGuard::new(list_ptr, !array_type.is_borrowed);
+                    let iter = GListIter::new(list_ptr as *mut glib::ffi::GList);
 
                     let mut values = Vec::new();
-                    let mut current = list_ptr as *mut glib::ffi::GList;
-
-                    while !current.is_null() {
-                        let data = unsafe { (*current).data };
+                    for data in iter {
                         let item_value = match &*array_type.item_type {
                             Type::GObject(_) => {
                                 if data.is_null() {
@@ -407,7 +430,6 @@ impl Value {
                             }
                         };
                         values.push(item_value);
-                        current = unsafe { (*current).next };
                     }
 
                     drop(list_guard);
@@ -463,110 +485,8 @@ impl Value {
                 };
 
                 let values = match &*array_type.item_type {
-                    Type::Integer(type_) => match (type_.size, type_.sign) {
-                        (IntegerSize::_8, IntegerSign::Unsigned) => {
-                            let u8_vec = array_ptr.value.downcast_ref::<Vec<u8>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<u8>"),
-                            )?;
-
-                            u8_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_8, IntegerSign::Signed) => {
-                            let i8_vec = array_ptr.value.downcast_ref::<Vec<i8>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<i8>"),
-                            )?;
-
-                            i8_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_16, IntegerSign::Unsigned) => {
-                            let u16_vec = array_ptr.value.downcast_ref::<Vec<u16>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<u16>"),
-                            )?;
-
-                            u16_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_16, IntegerSign::Signed) => {
-                            let i16_vec = array_ptr.value.downcast_ref::<Vec<i16>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<i16>"),
-                            )?;
-
-                            i16_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_32, IntegerSign::Unsigned) => {
-                            let u32_vec = array_ptr.value.downcast_ref::<Vec<u32>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<u32>"),
-                            )?;
-
-                            u32_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_32, IntegerSign::Signed) => {
-                            let i32_vec = array_ptr.value.downcast_ref::<Vec<i32>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<i32>"),
-                            )?;
-
-                            i32_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_64, IntegerSign::Unsigned) => {
-                            let u64_vec = array_ptr.value.downcast_ref::<Vec<u64>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<u64>"),
-                            )?;
-
-                            u64_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        (IntegerSize::_64, IntegerSign::Signed) => {
-                            let i64_vec = array_ptr.value.downcast_ref::<Vec<i64>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<i64>"),
-                            )?;
-
-                            i64_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                    },
-                    Type::Float(float_type) => match float_type.size {
-                        FloatSize::_32 => {
-                            let f32_vec = array_ptr.value.downcast_ref::<Vec<f32>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<f32>"),
-                            )?;
-
-                            f32_vec
-                                .iter()
-                                .map(|v| Value::Number(*v as f64))
-                                .collect::<Vec<Value>>()
-                        }
-                        FloatSize::_64 => {
-                            let f64_vec = array_ptr.value.downcast_ref::<Vec<f64>>().ok_or(
-                                anyhow::anyhow!("Failed to downcast array items to Vec<f64>"),
-                            )?;
-
-                            f64_vec
-                                .iter()
-                                .map(|v| Value::Number(*v))
-                                .collect::<Vec<Value>>()
-                        }
-                    },
+                    Type::Integer(type_) => type_.downcast_array_to_values(array_ptr)?,
+                    Type::Float(float_type) => float_type.downcast_array_to_values(array_ptr)?,
                     Type::String(_) => {
                         let (cstrings, _) = array_ptr
                             .value
@@ -663,39 +583,13 @@ impl Value {
                         Ok(Value::Object(ObjectId::new(Object::Boxed(boxed))))
                     }
                     Type::Integer(int_type) => {
-                        let number = match (int_type.size, int_type.sign) {
-                            (IntegerSize::_8, IntegerSign::Unsigned) => unsafe {
-                                *(ref_ptr.ptr as *const u8) as f64
-                            },
-                            (IntegerSize::_8, IntegerSign::Signed) => unsafe {
-                                *(ref_ptr.ptr as *const i8) as f64
-                            },
-                            (IntegerSize::_16, IntegerSign::Unsigned) => unsafe {
-                                *(ref_ptr.ptr as *const u16) as f64
-                            },
-                            (IntegerSize::_16, IntegerSign::Signed) => unsafe {
-                                *(ref_ptr.ptr as *const i16) as f64
-                            },
-                            (IntegerSize::_32, IntegerSign::Unsigned) => unsafe {
-                                *(ref_ptr.ptr as *const u32) as f64
-                            },
-                            (IntegerSize::_32, IntegerSign::Signed) => unsafe {
-                                *(ref_ptr.ptr as *const i32) as f64
-                            },
-                            (IntegerSize::_64, IntegerSign::Unsigned) => unsafe {
-                                *(ref_ptr.ptr as *const u64) as f64
-                            },
-                            (IntegerSize::_64, IntegerSign::Signed) => unsafe {
-                                *(ref_ptr.ptr as *const i64) as f64
-                            },
-                        };
+                        let number =
+                            unsafe { int_type.read_from_ptr(ref_ptr.ptr as *const u8) };
                         Ok(Value::Number(number))
                     }
                     Type::Float(float_type) => {
-                        let number = match float_type.size {
-                            FloatSize::_32 => unsafe { *(ref_ptr.ptr as *const f32) as f64 },
-                            FloatSize::_64 => unsafe { *(ref_ptr.ptr as *const f64) },
-                        };
+                        let number =
+                            unsafe { float_type.read_from_ptr(ref_ptr.ptr as *const u8) };
                         Ok(Value::Number(number))
                     }
                     _ => {
@@ -810,24 +704,7 @@ impl Value {
                     .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
                 Ok(Value::Boolean(boolean))
             }
-            Type::GObject(_) => {
-                let obj_ptr = unsafe {
-                    glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _)
-                };
-
-                if obj_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
-                if type_class.is_null() {
-                    bail!("GObject has invalid type class (object may have been freed)");
-                }
-
-                let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
-
-                Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
-            }
+            Type::GObject(_) => gobject_from_gvalue(gvalue),
             Type::Boxed(boxed_type) => {
                 let gvalue_type = gvalue.type_();
 
@@ -884,6 +761,24 @@ impl Value {
     }
 }
 
+fn gobject_from_gvalue(value: &glib::Value) -> anyhow::Result<Value> {
+    let obj_ptr = unsafe {
+        glib::gobject_ffi::g_value_get_object(value.to_glib_none().0 as *const _)
+    };
+
+    if obj_ptr.is_null() {
+        return Ok(Value::Null);
+    }
+
+    let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
+    if type_class.is_null() {
+        bail!("GObject has invalid type class (object may have been freed)");
+    }
+
+    let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
+    Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
+}
+
 impl TryFrom<&glib::Value> for Value {
     type Error = anyhow::Error;
 
@@ -909,22 +804,7 @@ impl TryFrom<&glib::Value> for Value {
         } else if value.is_type(glib::types::Type::BOOL) {
             Ok(Value::Boolean(value.get::<bool>()?))
         } else if value.is_type(glib::types::Type::OBJECT) {
-            let obj_ptr = unsafe {
-                glib::gobject_ffi::g_value_get_object(value.to_glib_none().0 as *const _)
-            };
-
-            if obj_ptr.is_null() {
-                return Ok(Value::Null);
-            }
-
-            let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
-            if type_class.is_null() {
-                bail!("GObject has invalid type class (object may have been freed)");
-            }
-
-            let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
-
-            Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
+            gobject_from_gvalue(value)
         } else if value.is_type(glib::types::Type::BOXED) {
             let boxed_ptr = value.as_ptr();
             if boxed_ptr.is_null() {
@@ -952,22 +832,7 @@ impl TryFrom<&glib::Value> for Value {
             };
             Ok(Value::Number(flags_value as f64))
         } else if value.type_().is_a(glib::types::Type::OBJECT) {
-            let obj_ptr = unsafe {
-                glib::gobject_ffi::g_value_get_object(value.to_glib_none().0 as *const _)
-            };
-
-            if obj_ptr.is_null() {
-                return Ok(Value::Null);
-            }
-
-            let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
-            if type_class.is_null() {
-                bail!("GObject has invalid type class (object may have been freed)");
-            }
-
-            let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
-
-            Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
+            gobject_from_gvalue(value)
         } else {
             bail!("Unsupported glib::Value type: {:?}", value.type_())
         }
@@ -991,7 +856,7 @@ mod tests {
     use super::*;
     use crate::test_utils;
     use crate::types::{ArrayType, BoxedType, GObjectType, ListType, StringType};
-    use gdk4::prelude::StaticType as _;
+    use gtk4::gdk::prelude::StaticType as _;
     use gtk4::glib::translate::IntoGlib as _;
     use gtk4::prelude::ObjectType as _;
 
@@ -1158,7 +1023,7 @@ mod tests {
     fn boxed_borrowed_creates_copy() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let original_ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed_type = BoxedType {
@@ -1184,7 +1049,7 @@ mod tests {
     fn boxed_full_transfer_takes_ownership() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed_type = BoxedType {
@@ -1224,7 +1089,7 @@ mod tests {
 
         let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
 
-        for i in 0..3 {
+        for _ in 0..3 {
             let obj = glib::Object::new::<glib::Object>();
             unsafe {
                 glib::gobject_ffi::g_object_ref(obj.as_ptr());

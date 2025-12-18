@@ -1,7 +1,6 @@
 //! Field reading from native objects.
 
 use std::ffi::{CStr, c_void};
-use std::sync::mpsc;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _};
@@ -11,7 +10,7 @@ use crate::{
     boxed::Boxed,
     gtk_dispatch,
     object::{Object, ObjectId},
-    types::{FloatSize, IntegerSign, IntegerSize, Type},
+    types::Type,
     value::Value,
 };
 
@@ -27,16 +26,8 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let offset = cx.argument::<JsNumber>(2)?.value(&mut cx) as usize;
     let type_ = Type::from_js_value(&mut cx, js_type.upcast())?;
     let object_id = *object_id.as_inner();
-    let (tx, rx) = mpsc::channel::<anyhow::Result<Value>>();
 
-    gtk_dispatch::schedule(move || {
-        tx.send(handle_read(object_id, &type_, offset))
-            .expect("Read result channel disconnected");
-    });
-
-    let value = rx
-        .recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving read result: {err}")))?
+    let value = gtk_dispatch::schedule_and_wait(move || handle_read(object_id, &type_, offset))
         .or_else(|err| cx.throw_error(format!("Error during read: {err}")))?;
 
     value.to_js_value(&mut cx)
@@ -55,15 +46,11 @@ fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Resu
 
     match type_ {
         Type::Integer(int_type) => {
-            let number = dispatch_integer_read!(int_type, field_ptr);
+            let number = unsafe { int_type.read_from_ptr(field_ptr) };
             Ok(Value::Number(number))
         }
         Type::Float(float_type) => {
-            let number = match float_type.size {
-                FloatSize::_32 => unsafe { field_ptr.cast::<f32>().read_unaligned() as f64 },
-                FloatSize::_64 => unsafe { field_ptr.cast::<f64>().read_unaligned() },
-            };
-
+            let number = unsafe { float_type.read_from_ptr(field_ptr) };
             Ok(Value::Number(number))
         }
         Type::Boolean => {

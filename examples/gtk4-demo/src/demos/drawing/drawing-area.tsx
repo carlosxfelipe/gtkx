@@ -9,9 +9,7 @@ import type { Demo } from "../types.js";
  * Draw callback that renders Cairo graphics.
  * This is called whenever the widget needs to be redrawn.
  */
-function drawCallback(...args: unknown[]) {
-    const [_self, cr, width, height] = args as [Gtk.DrawingArea, unknown, number, number];
-
+function drawCallback(_self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) {
     if (width <= 0 || height <= 0) return;
 
     // White background

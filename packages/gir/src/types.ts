@@ -348,8 +348,8 @@ export type FfiTypeDescriptor = {
     itemType?: FfiTypeDescriptor;
     /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
     listType?: "glist" | "gslist";
-    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc, drawFunc, compareDataFunc, tickFunc). Default is "closure". */
-    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc" | "tickFunc";
+    /** Trampoline type for callbacks. Default is "closure". */
+    trampoline?: "asyncReady" | "destroy" | "drawFunc" | "scaleFormatValueFunc";
     /** Source type for asyncReady callback (the GObject source). */
     sourceType?: FfiTypeDescriptor;
     /** Result type for asyncReady callback (the GAsyncResult). */
@@ -727,6 +727,7 @@ export class TypeMapper {
     private recordNames: Set<string> = new Set();
     private recordTransforms: Map<string, string> = new Map();
     private recordGlibTypes: Map<string, string> = new Map();
+    private skippedClasses: Set<string> = new Set();
     private onEnumUsed?: (enumName: string) => void;
     private onRecordUsed?: (recordName: string) => void;
     private onExternalTypeUsed?: (usage: ExternalTypeUsage) => void;
@@ -836,6 +837,14 @@ export class TypeMapper {
         this.currentNamespace = currentNamespace;
     }
 
+    registerSkippedClass(name: string): void {
+        this.skippedClasses.add(name);
+    }
+
+    clearSkippedClasses(): void {
+        this.skippedClasses.clear();
+    }
+
     /**
      * Maps a GIR type to TypeScript and FFI type descriptors.
      * @param girType - The GIR type to map
@@ -897,6 +906,12 @@ export class TypeMapper {
                 if (isExternal) {
                     this.onExternalTypeUsed?.(externalType as ExternalTypeUsage);
                 } else if (registered.kind === "class" || registered.kind === "interface") {
+                    if (this.skippedClasses.has(registered.name)) {
+                        return {
+                            ts: "unknown",
+                            ffi: { type: "gobject", borrowed: isReturn },
+                        };
+                    }
                     this.onSameNamespaceClassUsed?.(registered.transformedName, registered.name);
                 } else if (registered.kind === "enum") {
                     this.onEnumUsed?.(registered.transformedName);
@@ -1044,6 +1059,12 @@ export class TypeMapper {
                 if (isExternal) {
                     this.onExternalTypeUsed?.(externalType as ExternalTypeUsage);
                 } else if (registered.kind === "class" || registered.kind === "interface") {
+                    if (this.skippedClasses.has(registered.name)) {
+                        return {
+                            ts: "unknown",
+                            ffi: { type: "gobject", borrowed: isReturn },
+                        };
+                    }
                     this.onSameNamespaceClassUsed?.(registered.transformedName, registered.name);
                 }
                 if (registered.kind === "enum") {
@@ -1159,55 +1180,24 @@ export class TypeMapper {
             };
         }
 
-        if (param.type.name === "GLib.SourceFunc" || param.type.name === "SourceFunc") {
-            return {
-                ts: "() => boolean",
-                ffi: {
-                    type: "callback",
-                    trampoline: "sourceFunc",
-                },
-            };
-        }
-
         if (param.type.name === "Gtk.DrawingAreaDrawFunc" || param.type.name === "DrawingAreaDrawFunc") {
+            this.onExternalTypeUsed?.({
+                namespace: "Cairo",
+                name: "Context",
+                transformedName: "Context",
+                kind: "record",
+            });
+            this.onSameNamespaceClassUsed?.("DrawingArea", "DrawingArea");
             return {
-                ts: "(self: unknown, cr: unknown, width: number, height: number) => void",
+                ts: "(self: DrawingArea, cr: Cairo.Context, width: number, height: number) => void",
                 ffi: {
                     type: "callback",
                     trampoline: "drawFunc",
                     argTypes: [
                         { type: "gobject", borrowed: true },
-                        { type: "int", size: 64, unsigned: true },
+                        { type: "boxed", borrowed: true, innerType: "CairoContext" },
                         { type: "int", size: 32, unsigned: false },
                         { type: "int", size: 32, unsigned: false },
-                    ],
-                },
-            };
-        }
-
-        if (param.type.name === "GLib.CompareDataFunc" || param.type.name === "CompareDataFunc") {
-            return {
-                ts: "(a: unknown, b: unknown) => number",
-                ffi: {
-                    type: "callback",
-                    trampoline: "compareDataFunc",
-                    argTypes: [
-                        { type: "gobject", borrowed: true },
-                        { type: "gobject", borrowed: true },
-                    ],
-                },
-            };
-        }
-
-        if (param.type.name === "Gtk.TickCallback" || param.type.name === "TickCallback") {
-            return {
-                ts: "(widget: unknown, frameClock: unknown) => boolean",
-                ffi: {
-                    type: "callback",
-                    trampoline: "tickFunc",
-                    argTypes: [
-                        { type: "gobject", borrowed: true },
-                        { type: "gobject", borrowed: true },
                     ],
                 },
             };
@@ -1277,5 +1267,21 @@ export class TypeMapper {
      */
     isNullable(param: GirParameter): boolean {
         return param.nullable === true || param.optional === true;
+    }
+
+    hasUnsupportedCallback(param: GirParameter): boolean {
+        const supportedCallbacks = [
+            "Gio.AsyncReadyCallback",
+            "GLib.DestroyNotify",
+            "DestroyNotify",
+            "Gtk.DrawingAreaDrawFunc",
+            "DrawingAreaDrawFunc",
+        ];
+
+        if (supportedCallbacks.includes(param.type.name)) {
+            return false;
+        }
+
+        return param.type.name === "GLib.Closure" || this.isCallback(param.type.name);
     }
 }

@@ -8,7 +8,6 @@ import {
     disconnectSignal,
     forceGC,
     GIO_LIB,
-    GLIB_LIB,
     GOBJECT,
     GOBJECT_BORROWED,
     GOBJECT_LIB,
@@ -17,7 +16,6 @@ import {
     NULL,
     STRING,
     startMemoryMeasurement,
-    UINT32,
     UINT64,
     UNDEFINED,
 } from "../utils.js";
@@ -179,47 +177,6 @@ describe("call - callback types", () => {
         });
     });
 
-    describe("sourceFunc trampoline (idle/timeout)", () => {
-        it("invokes idle callback", () => {
-            const sourceId = call(
-                GLIB_LIB,
-                "g_idle_add_full",
-                [
-                    { type: INT32, value: 200 },
-                    {
-                        type: { type: "callback", trampoline: "sourceFunc", returnType: BOOLEAN },
-                        value: () => false,
-                    },
-                ],
-                UINT32,
-            );
-
-            expect(typeof sourceId).toBe("number");
-            expect(sourceId).toBeGreaterThan(0);
-
-            call(GLIB_LIB, "g_source_remove", [{ type: UINT32, value: sourceId }], BOOLEAN);
-        });
-
-        it("stops when returning false", () => {
-            const sourceId = call(
-                GLIB_LIB,
-                "g_idle_add_full",
-                [
-                    { type: INT32, value: 200 },
-                    {
-                        type: { type: "callback", trampoline: "sourceFunc", returnType: BOOLEAN },
-                        value: () => false,
-                    },
-                ],
-                UINT32,
-            ) as number;
-
-            if (sourceId > 0) {
-                call(GLIB_LIB, "g_source_remove", [{ type: UINT32, value: sourceId }], BOOLEAN);
-            }
-        });
-    });
-
     describe("destroy trampoline", () => {
         it("registers destroy notify callback", () => {
             const button = createButton("Test");
@@ -308,29 +265,6 @@ describe("call - callback types", () => {
             for (let i = 0; i < 100; i++) {
                 const button = createButton(`Button ${i}`);
                 connectSignal(button, "clicked", () => {});
-            }
-
-            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
-        });
-
-        it("does not leak sourceFunc closure after removal", () => {
-            const mem = startMemoryMeasurement();
-
-            for (let i = 0; i < 100; i++) {
-                const sourceId = call(
-                    GLIB_LIB,
-                    "g_idle_add_full",
-                    [
-                        { type: INT32, value: 200 },
-                        {
-                            type: { type: "callback", trampoline: "sourceFunc", returnType: BOOLEAN },
-                            value: () => false,
-                        },
-                    ],
-                    UINT32,
-                ) as number;
-
-                call(GLIB_LIB, "g_source_remove", [{ type: UINT32, value: sourceId }], BOOLEAN);
             }
 
             expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);

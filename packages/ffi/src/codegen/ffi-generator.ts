@@ -250,6 +250,10 @@ const hasRefParameter = (params: GirParameter[], typeMapper: TypeMapper): boolea
 
 const isVararg = (param: GirParameter): boolean => param.name === "..." || param.name === "";
 
+const hasUnsupportedCallbacks = (params: GirParameter[], typeMapper: TypeMapper): boolean => {
+    return params.some((p) => typeMapper.hasUnsupportedCallback(p));
+};
+
 /**
  * Generates TypeScript FFI bindings from GIR namespace definitions.
  * Creates classes, methods, properties, and signal handlers that call
@@ -303,6 +307,7 @@ export class CodeGenerator {
         const files = new Map<string, string>();
 
         this.currentSharedLibrary = namespace.sharedLibrary;
+        this.typeMapper.clearSkippedClasses();
         this.registerEnumsAndBitfields(namespace);
         this.registerRecords(namespace);
         this.registerInterfaces(namespace);
@@ -322,10 +327,12 @@ export class CodeGenerator {
 
         const sortedClasses = this.topologicalSortClasses(namespace.classes, classMap);
         for (const cls of sortedClasses) {
-            files.set(
-                `${toKebabCase(cls.name)}.ts`,
-                await this.generateClass(cls, namespace.sharedLibrary, classMap, interfaceMap),
-            );
+            const generatedClass = await this.generateClass(cls, namespace.sharedLibrary, classMap, interfaceMap);
+            if (generatedClass !== null) {
+                files.set(`${toKebabCase(cls.name)}.ts`, generatedClass);
+            } else {
+                this.typeMapper.registerSkippedClass(cls.name);
+            }
         }
 
         for (const iface of namespace.interfaces) {
@@ -442,7 +449,16 @@ export class CodeGenerator {
         sharedLibrary: string,
         classMap: Map<string, GirClass>,
         interfaceMap: Map<string, GirInterface>,
-    ): Promise<string> {
+    ): Promise<string | null> {
+        if (cls.constructors.length > 0) {
+            const hasAnySupportedConstructor = cls.constructors.some(
+                (c) => !hasUnsupportedCallbacks(c.parameters, this.typeMapper),
+            );
+            if (!hasAnySupportedConstructor) {
+                return null;
+            }
+        }
+
         this.resetState();
         this.cyclicReturnTypes = this.computeCyclicReturnTypes(cls, classMap);
 
@@ -779,18 +795,21 @@ export class CodeGenerator {
     }
 
     private generateConstructors(cls: GirClass, sharedLibrary: string, hasParent: boolean): string {
-        const mainConstructor = cls.constructors.find((c) => !c.parameters.some(isVararg));
+        const supportedConstructors = cls.constructors.filter(
+            (c) => !hasUnsupportedCallbacks(c.parameters, this.typeMapper),
+        );
+        const mainConstructor = supportedConstructors.find((c) => !c.parameters.some(isVararg));
         const sections: string[] = [];
 
         if (mainConstructor && hasParent) {
             sections.push(this.generateConstructorWithFlag(mainConstructor, sharedLibrary));
-            for (const ctor of cls.constructors) {
+            for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor) {
                     sections.push(this.generateStaticFactoryMethod(ctor, cls.name, sharedLibrary));
                 }
             }
         } else {
-            for (const ctor of cls.constructors) {
+            for (const ctor of supportedConstructors) {
                 sections.push(this.generateStaticFactoryMethod(ctor, cls.name, sharedLibrary));
             }
 
@@ -909,9 +928,10 @@ ${allArgs}
     }
 
     private generateStaticFunctions(functions: GirFunction[], sharedLibrary: string, className: string): string {
+        const supportedFunctions = functions.filter((f) => !hasUnsupportedCallbacks(f.parameters, this.typeMapper));
         const sections: string[] = [];
 
-        for (const func of functions) {
+        for (const func of supportedFunctions) {
             sections.push(this.generateStaticFunction(func, sharedLibrary, className));
         }
 
@@ -1017,6 +1037,10 @@ ${allArgs ? `${allArgs},` : ""}
             const methodKey = `${toCamelCase(method.name)}:${method.cIdentifier}`;
             if (generatedMethods.has(methodKey)) continue;
             generatedMethods.add(methodKey);
+
+            if (hasUnsupportedCallbacks(method.parameters, this.typeMapper)) {
+                continue;
+            }
 
             if (asyncMethods.has(method.name) || finishMethods.has(method.name)) {
                 const asyncWrapper = this.generateAsyncWrapper(method, methods, sharedLibrary, className);
@@ -1774,7 +1798,10 @@ ${allArgs ? `${allArgs},` : ""}
     }
 
     private generateRecordInitInterface(record: GirRecord): string | null {
-        const mainConstructor = record.constructors.find((c) => !c.parameters.some(isVararg));
+        const supportedConstructors = record.constructors.filter(
+            (c) => !hasUnsupportedCallbacks(c.parameters, this.typeMapper),
+        );
+        const mainConstructor = supportedConstructors.find((c) => !c.parameters.some(isVararg));
         if (mainConstructor) return null;
 
         const initFields = this.getWritableFields(record.fields);
@@ -1788,7 +1815,10 @@ ${allArgs ? `${allArgs},` : ""}
         const recordName = normalizeClassName(record.name, this.options.namespace);
         const sections: string[] = [];
 
-        const mainConstructor = record.constructors.find((c) => !c.parameters.some(isVararg));
+        const supportedConstructors = record.constructors.filter(
+            (c) => !hasUnsupportedCallbacks(c.parameters, this.typeMapper),
+        );
+        const mainConstructor = supportedConstructors.find((c) => !c.parameters.some(isVararg));
         if (mainConstructor) {
             const ctorDoc = formatMethodDoc(mainConstructor.doc, mainConstructor.parameters);
             const filteredParams = mainConstructor.parameters.filter((p) => !isVararg(p));
@@ -1818,7 +1848,7 @@ ${allArgs ? `${allArgs},` : ""}
                 }
             }
 
-            for (const ctor of record.constructors) {
+            for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor) {
                     sections.push(this.generateRecordStaticFactoryMethod(ctor, recordName, sharedLibrary));
                 }
@@ -1863,7 +1893,10 @@ ${allArgs ? `${allArgs},` : ""}
 
     private generateRecordCreatePtr(record: GirRecord, sharedLibrary: string): string {
         const recordName = normalizeClassName(record.name, this.options.namespace);
-        const mainConstructor = record.constructors.find((c) => !c.parameters.some(isVararg));
+        const supportedConstructors = record.constructors.filter(
+            (c) => !hasUnsupportedCallbacks(c.parameters, this.typeMapper),
+        );
+        const mainConstructor = supportedConstructors.find((c) => !c.parameters.some(isVararg));
 
         if (!mainConstructor) {
             if (record.glibTypeName && record.fields.length > 0) {
@@ -2128,12 +2161,14 @@ ${args}
     private async generateFunctions(functions: GirFunction[], sharedLibrary: string): Promise<string> {
         this.resetState();
 
-        this.usesRef = functions.some((f) => hasRefParameter(f.parameters, this.typeMapper));
-        this.usesCall = functions.length > 0;
+        const supportedFunctions = functions.filter((f) => !hasUnsupportedCallbacks(f.parameters, this.typeMapper));
+
+        this.usesRef = supportedFunctions.some((f) => hasRefParameter(f.parameters, this.typeMapper));
+        this.usesCall = supportedFunctions.length > 0;
 
         const sections: string[] = [];
 
-        for (const func of functions) {
+        for (const func of supportedFunctions) {
             sections.push(this.generateFunction(func, sharedLibrary));
         }
 

@@ -45,12 +45,19 @@ vi.mock("@gtkx/ffi", () => ({
 }));
 
 describe("createDevServer", () => {
+    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
+        consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     });
 
     afterEach(() => {
+        consoleLogSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
         vi.restoreAllMocks();
         mockEvents.removeAllListeners("stop");
     });
@@ -188,7 +195,6 @@ describe("createDevServer", () => {
     });
 
     it("completes hot reload on file change", async () => {
-        const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
@@ -199,7 +205,6 @@ describe("createDevServer", () => {
         await changeHandler("/path/to/changed-file.tsx");
 
         expect(consoleLogSpy).toHaveBeenCalledWith("[gtkx] Hot reload complete");
-        consoleLogSpy.mockRestore();
     });
 
     it("closes server on stop event", async () => {
@@ -244,7 +249,6 @@ describe("createDevServer", () => {
 
     describe("error handling", () => {
         it("handles module load errors during hot reload gracefully", async () => {
-            const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
             mockViteServer.ssrLoadModule.mockRejectedValueOnce(new Error("Module load failed"));
 
             const { createDevServer } = await import("../src/dev-server.js");
@@ -257,11 +261,9 @@ describe("createDevServer", () => {
             await changeHandler("/path/to/changed-file.tsx");
 
             expect(consoleErrorSpy).toHaveBeenCalledWith("[gtkx] Hot reload failed:", expect.any(Error));
-            consoleErrorSpy.mockRestore();
         });
 
         it("handles non-function default export during hot reload", async () => {
-            const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
             mockViteServer.ssrLoadModule.mockResolvedValueOnce({
                 default: "not-a-function",
             });
@@ -276,7 +278,6 @@ describe("createDevServer", () => {
             await changeHandler("/path/to/changed-file.tsx");
 
             expect(consoleErrorSpy).toHaveBeenCalledWith("[gtkx] Entry file must export a default function component");
-            consoleErrorSpy.mockRestore();
         });
     });
 });

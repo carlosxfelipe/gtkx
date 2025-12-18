@@ -4,6 +4,7 @@ use gtk4::glib::{self, translate::FromGlib as _};
 use libffi::middle as ffi;
 use neon::prelude::*;
 
+use crate::js_ext::JsObjectExt;
 use crate::state::GtkThreadState;
 
 /// Type descriptor for GLib boxed types.
@@ -37,26 +38,15 @@ impl BoxedType {
     /// Returns a `NeonResult` error if the object is malformed.
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let is_borrowed_prop: Handle<'_, JsValue> = obj.prop(cx, "borrowed").get()?;
-
-        let is_borrowed = is_borrowed_prop
-            .downcast::<JsBoolean, _>(cx)
-            .map(|b| b.value(cx))
-            .unwrap_or(false);
+        let is_borrowed = obj.get_bool_or_default(cx, "borrowed", false)?;
 
         let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-
         let type_ = type_prop
             .downcast::<JsString, _>(cx)
             .or_throw(cx)?
             .value(cx);
 
-        let lib_prop: Handle<'_, JsValue> = obj.prop(cx, "lib").get()?;
-
-        let lib = lib_prop
-            .downcast::<JsString, _>(cx)
-            .map(|s| s.value(cx))
-            .ok();
+        let lib = obj.get_optional_string(cx, "lib")?;
 
         Ok(Self::new(is_borrowed, type_, lib))
     }

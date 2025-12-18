@@ -98,13 +98,13 @@ impl Drop for Boxed {
 mod tests {
     use super::*;
     use crate::test_utils;
-    use gdk4::prelude::StaticType as _;
+    use gtk4::gdk::prelude::StaticType as _;
 
     #[test]
     fn from_glib_full_sets_owned_flag() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_full(Some(gtype), ptr);
@@ -118,7 +118,7 @@ mod tests {
     fn from_glib_full_null_ptr_safe() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let boxed = Boxed::from_glib_full(Some(gtype), std::ptr::null_mut());
 
         assert!(boxed.is_owned);
@@ -129,7 +129,7 @@ mod tests {
     fn from_glib_none_creates_copy() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let original_ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_none(Some(gtype), original_ptr);
@@ -147,7 +147,7 @@ mod tests {
     fn from_glib_none_null_ptr_not_owned() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut());
 
         assert!(!boxed.is_owned);
@@ -159,7 +159,7 @@ mod tests {
     fn from_glib_none_unknown_type_panics_in_debug() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_none(None, ptr);
@@ -176,7 +176,7 @@ mod tests {
     fn clone_creates_independent_copy() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_full(Some(gtype), ptr);
@@ -195,7 +195,7 @@ mod tests {
     fn as_ref_returns_ptr_reference() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_full(Some(gtype), ptr);
@@ -208,7 +208,7 @@ mod tests {
     fn drop_frees_owned_memory() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed::from_glib_full(Some(gtype), ptr);
@@ -219,7 +219,7 @@ mod tests {
     fn drop_does_not_free_borrowed_memory() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
 
         let boxed = Boxed {

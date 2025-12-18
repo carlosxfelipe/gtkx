@@ -7,6 +7,14 @@
         "packages/cli/src/dev-server.tsx": ["exports", "types"]
     },
     "workspaces": {
+        "packages/gir": {
+            "entry": [],
+            "project": ["src/**/*", "tests/**/*"]
+        },
+        "packages/native": {
+            "entry": [],
+            "project": ["src/**/*", "tests/**/*"]
+        },
         "examples/flatpak": {
             "project": ["src/**/*", "scripts/**/*"],
             "ignoreDependencies": ["postject"],

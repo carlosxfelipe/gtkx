@@ -1,6 +1,6 @@
 use std::sync::Once;
 
-use gdk4::prelude::StaticType as _;
+use gtk4::gdk::{self, prelude::StaticType as _};
 use gtk4::glib::{self, translate::IntoGlib as _};
 
 static GTK_INIT: Once = Once::new();
@@ -29,7 +29,7 @@ pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
 
 pub fn allocate_test_boxed(gtype: glib::Type) -> *mut std::ffi::c_void {
     unsafe {
-        let rgba = gdk4::RGBA::new(1.0, 0.5, 0.25, 1.0);
+        let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
         glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), rgba.as_ptr() as *const _)
     }
 }
@@ -39,9 +39,9 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, gtype: glib::Type) -> bool
         return false;
     }
 
-    if gtype == gdk4::RGBA::static_type() {
+    if gtype == gdk::RGBA::static_type() {
         unsafe {
-            let rgba: &gdk4::ffi::GdkRGBA = &*(ptr as *const gdk4::ffi::GdkRGBA);
+            let rgba: &gdk::ffi::GdkRGBA = &*(ptr as *const gdk::ffi::GdkRGBA);
             rgba.red >= 0.0 && rgba.red <= 1.0 && rgba.alpha >= 0.0 && rgba.alpha <= 1.0
         }
     } else {

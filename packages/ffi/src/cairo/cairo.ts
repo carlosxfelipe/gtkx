@@ -7,8 +7,7 @@ import { call } from "@gtkx/native";
 import type { LineCap, LineJoin, Operator } from "../generated/cairo/enums.js";
 
 const LIB = "libcairo.so.2";
-
-const CAIRO_T = { type: "int", size: 64, unsigned: true } as const;
+const CAIRO_T = { type: "boxed", innerType: "cairo_t", lib: LIB, borrowed: true } as const;
 
 /**
  * Begin a new sub-path. After this call the current point will be (x, y).

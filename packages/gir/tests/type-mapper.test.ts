@@ -397,19 +397,6 @@ describe("TypeMapper", () => {
             expect(result.ffi.trampoline).toBe("destroy");
         });
 
-        it("maps SourceFunc to sourceFunc callback", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "func",
-                type: { name: "GLib.SourceFunc" },
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("() => boolean");
-            expect(result.ffi.trampoline).toBe("sourceFunc");
-        });
-
         it("maps DrawingAreaDrawFunc to drawFunc callback", () => {
             const mapper = new TypeMapper();
             const param: GirParameter = {
@@ -419,19 +406,14 @@ describe("TypeMapper", () => {
 
             const result = mapper.mapParameter(param);
 
+            expect(result.ts).toBe("(self: DrawingArea, cr: Cairo.Context, width: number, height: number) => void");
             expect(result.ffi.trampoline).toBe("drawFunc");
-        });
-
-        it("maps CompareDataFunc to compareDataFunc callback", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "compare",
-                type: { name: "GLib.CompareDataFunc" },
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ffi.trampoline).toBe("compareDataFunc");
+            expect(result.ffi.argTypes).toEqual([
+                { type: "gobject", borrowed: true },
+                { type: "boxed", borrowed: true, innerType: "CairoContext" },
+                { type: "int", size: 32, unsigned: false },
+                { type: "int", size: 32, unsigned: false },
+            ]);
         });
 
         it("handles transfer-ownership full for gobject params", () => {

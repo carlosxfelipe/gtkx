@@ -20,6 +20,38 @@ vi.mock("node:fs/promises", async () => {
     return memfs.fs.promises;
 });
 
+vi.mock("node:child_process", () => ({
+    spawn: vi.fn(() => {
+        const emitter = {
+            on: vi.fn((event: string, callback: (code?: number) => void) => {
+                if (event === "close") {
+                    setTimeout(() => callback(0), 0);
+                }
+                return emitter;
+            }),
+        };
+        return emitter;
+    }),
+}));
+
+vi.mock("@clack/prompts", () => ({
+    intro: vi.fn(),
+    spinner: vi.fn(() => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+    })),
+    note: vi.fn(),
+    log: {
+        info: vi.fn(),
+        error: vi.fn(),
+    },
+    text: vi.fn(),
+    select: vi.fn(),
+    confirm: vi.fn(),
+    cancel: vi.fn(),
+    isCancel: vi.fn(() => false),
+}));
+
 describe("isValidProjectName", () => {
     it("accepts lowercase letters", () => {
         expect(isValidProjectName("myapp")).toBe(true);

@@ -112,7 +112,7 @@ describe("call - ref types", () => {
         });
 
         it("measures with for_size constraint", () => {
-            const label = createLabel("This is a longer label for size constrained measurement");
+            const label = createLabel("Size test");
             const minRef = createRef(0);
             const naturalRef = createRef(0);
 

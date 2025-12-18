@@ -177,7 +177,6 @@ type ColumnViewColumnState = {
     factoryHandlers: ListItemFactoryHandlers | null;
     renderCell: RenderItemFn<unknown>;
     columnId: string | null;
-    sorter: Gtk.CustomSorter | null;
     listItemCache: Map<number, ListItemInfo>;
 };
 
@@ -205,7 +204,6 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
             factoryHandlers: null,
             renderCell: props.renderCell as RenderItemFn<unknown>,
             columnId,
-            sorter: null,
             listItemCache: new Map(),
         };
 
@@ -245,19 +243,6 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
 
     setColumnView(columnView: ColumnViewNode | null): void {
         this.columnView = columnView;
-        this.updateSorter();
-    }
-
-    updateSorter(): void {
-        if (!this.columnView || this.state.columnId === null) {
-            this.state.column.setSorter(null);
-            this.state.sorter = null;
-            return;
-        }
-
-        const noOpSortFn = (): number => 0;
-        this.state.sorter = new Gtk.CustomSorter(noOpSortFn);
-        this.state.column.setSorter(this.state.sorter);
     }
 
     override attachToParent(parent: Node): void {

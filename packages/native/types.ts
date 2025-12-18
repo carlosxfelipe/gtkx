@@ -34,13 +34,11 @@ type UndefinedType = { type: "undefined" };
  * - "closure" or omitted: Use GClosure directly
  * - "asyncReady": Use async ready callback trampoline (GAsyncReadyCallback)
  * - "destroy": Use destroy notify trampoline (GDestroyNotify)
- * - "sourceFunc": Use source func trampoline (GSourceFunc)
  * - "drawFunc": Use draw func trampoline (GtkDrawingAreaDrawFunc)
- * - "compareDataFunc": Use compare data func trampoline (GCompareDataFunc)
  */
 type CallbackType = {
     type: "callback";
-    trampoline?: "closure" | "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc" | "tickFunc";
+    trampoline?: "closure" | "asyncReady" | "destroy" | "drawFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

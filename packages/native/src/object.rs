@@ -47,13 +47,17 @@ impl ObjectId {
     pub fn new(object: Object) -> Self {
         GtkThreadState::with(|state| {
             let id = state.next_object_id;
-            state.next_object_id += 1;
+            state.next_object_id = state
+                .next_object_id
+                .checked_add(1)
+                .expect("ObjectId counter overflow");
             state.object_map.insert(id, object);
             ObjectId(id)
         })
     }
 
     /// Returns the raw pointer to this object, or `None` if garbage collected.
+    #[must_use]
     pub fn as_ptr(&self) -> Option<*mut c_void> {
         GtkThreadState::with(|state| {
             state.object_map.get(&self.0).map(|object| match object {
@@ -64,6 +68,7 @@ impl ObjectId {
     }
 
     /// Returns the raw pointer as a usize, or `None` if garbage collected.
+    #[must_use]
     pub fn try_as_ptr(&self) -> Option<usize> {
         self.as_ptr().map(|ptr| ptr as usize)
     }
@@ -83,7 +88,7 @@ impl Finalize for ObjectId {
 mod tests {
     use super::*;
     use crate::test_utils;
-    use gdk4::prelude::StaticType as _;
+    use gtk4::gdk::prelude::StaticType as _;
 
     fn create_test_gobject() -> glib::Object {
         test_utils::ensure_gtk_init();
@@ -153,7 +158,7 @@ mod tests {
     fn object_boxed_stores_and_retrieves() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
         let boxed = Boxed::from_glib_full(Some(gtype), ptr);
         let object = Object::Boxed(boxed);
@@ -186,7 +191,7 @@ mod tests {
     fn object_boxed_clone_creates_copy() {
         test_utils::ensure_gtk_init();
 
-        let gtype = gdk4::RGBA::static_type();
+        let gtype = gtk4::gdk::RGBA::static_type();
         let ptr = test_utils::allocate_test_boxed(gtype);
         let boxed = Boxed::from_glib_full(Some(gtype), ptr);
         let object = Object::Boxed(boxed);
