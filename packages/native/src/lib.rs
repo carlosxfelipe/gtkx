@@ -19,6 +19,9 @@ mod state;
 mod types;
 mod value;
 
+#[cfg(test)]
+mod test_utils;
+
 use neon::prelude::*;
 
 /// Entry point for the Neon native module.

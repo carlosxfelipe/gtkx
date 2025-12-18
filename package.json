@@ -11,7 +11,7 @@
         "codegen": "turbo codegen",
         "docs": "turbo build --filter=website",
         "knip": "knip --no-gitignore --no-config-hints",
-        "lint": "biome check .",
+        "lint": "turbo lint && biome check .",
         "test": "turbo test --concurrency 1"
     },
     "devDependencies": {

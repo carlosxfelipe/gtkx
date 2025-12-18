@@ -78,3 +78,164 @@ impl Finalize for ObjectId {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+    use gdk4::prelude::StaticType as _;
+
+    fn create_test_gobject() -> glib::Object {
+        test_utils::ensure_gtk_init();
+        glib::Object::new::<glib::Object>()
+    }
+
+    #[test]
+    fn object_id_new_registers_in_map() {
+        let obj = create_test_gobject();
+        let object = Object::GObject(obj);
+        let id = ObjectId::new(object);
+
+        assert!(id.0 > 0);
+
+        GtkThreadState::with(|state| {
+            assert!(state.object_map.contains_key(&id.0));
+        });
+    }
+
+    #[test]
+    fn object_id_as_ptr_returns_correct_pointer() {
+        let obj = create_test_gobject();
+        let expected_ptr = obj.as_ptr() as *mut c_void;
+        let object = Object::GObject(obj);
+        let id = ObjectId::new(object);
+
+        let ptr = id.as_ptr();
+        assert_eq!(ptr, Some(expected_ptr));
+    }
+
+    #[test]
+    fn object_id_as_ptr_returns_none_after_removal() {
+        let obj = create_test_gobject();
+        let object = Object::GObject(obj);
+        let id = ObjectId::new(object);
+
+        GtkThreadState::with(|state| {
+            state.object_map.remove(&id.0);
+        });
+
+        assert_eq!(id.as_ptr(), None);
+    }
+
+    #[test]
+    fn object_id_try_as_ptr_returns_usize() {
+        let obj = create_test_gobject();
+        let expected_ptr = obj.as_ptr() as usize;
+        let object = Object::GObject(obj);
+        let id = ObjectId::new(object);
+
+        let ptr = id.try_as_ptr();
+        assert_eq!(ptr, Some(expected_ptr));
+    }
+
+    #[test]
+    fn object_id_increments_sequentially() {
+        let obj1 = create_test_gobject();
+        let obj2 = create_test_gobject();
+
+        let id1 = ObjectId::new(Object::GObject(obj1));
+        let id2 = ObjectId::new(Object::GObject(obj2));
+
+        assert!(id2.0 > id1.0);
+    }
+
+    #[test]
+    fn object_boxed_stores_and_retrieves() {
+        test_utils::ensure_gtk_init();
+
+        let gtype = gdk4::RGBA::static_type();
+        let ptr = test_utils::allocate_test_boxed(gtype);
+        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let object = Object::Boxed(boxed);
+        let id = ObjectId::new(object);
+
+        let retrieved_ptr = id.as_ptr();
+        assert_eq!(retrieved_ptr, Some(ptr));
+    }
+
+    #[test]
+    fn object_gobject_clone_shares_reference() {
+        let obj = create_test_gobject();
+        let object = Object::GObject(obj.clone());
+        let cloned = object.clone();
+
+        let ptr1 = match &object {
+            Object::GObject(o) => o.as_ptr(),
+            _ => panic!("Expected GObject"),
+        };
+
+        let ptr2 = match &cloned {
+            Object::GObject(o) => o.as_ptr(),
+            _ => panic!("Expected GObject"),
+        };
+
+        assert_eq!(ptr1, ptr2);
+    }
+
+    #[test]
+    fn object_boxed_clone_creates_copy() {
+        test_utils::ensure_gtk_init();
+
+        let gtype = gdk4::RGBA::static_type();
+        let ptr = test_utils::allocate_test_boxed(gtype);
+        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let object = Object::Boxed(boxed);
+        let cloned = object.clone();
+
+        let ptr1 = match &object {
+            Object::Boxed(b) => *b.as_ref(),
+            _ => panic!("Expected Boxed"),
+        };
+
+        let ptr2 = match &cloned {
+            Object::Boxed(b) => *b.as_ref(),
+            _ => panic!("Expected Boxed"),
+        };
+
+        assert_ne!(ptr1, ptr2);
+    }
+
+    #[test]
+    fn gobject_refcount_preserved_in_map() {
+        let obj = create_test_gobject();
+        let initial_ref = unsafe {
+            let ptr = obj.as_ptr();
+            (*ptr).ref_count
+        };
+
+        let _id = ObjectId::new(Object::GObject(obj.clone()));
+
+        let after_ref = unsafe {
+            let ptr = obj.as_ptr();
+            (*ptr).ref_count
+        };
+
+        assert!(after_ref >= initial_ref);
+    }
+
+    #[test]
+    fn multiple_objects_independent() {
+        let obj1 = create_test_gobject();
+        let obj2 = create_test_gobject();
+
+        let id1 = ObjectId::new(Object::GObject(obj1.clone()));
+        let id2 = ObjectId::new(Object::GObject(obj2.clone()));
+
+        GtkThreadState::with(|state| {
+            state.object_map.remove(&id1.0);
+        });
+
+        assert_eq!(id1.as_ptr(), None);
+        assert!(id2.as_ptr().is_some());
+    }
+}

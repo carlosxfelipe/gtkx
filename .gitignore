@@ -1,9 +1,10 @@
+.claude
 .turbo
 *.log
 *.node
 *.tsbuildinfo
-generated
 dist
+generated
 node_modules
 out-tsc
 packages/**/README.md

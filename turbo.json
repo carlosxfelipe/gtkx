@@ -1,6 +1,9 @@
 {
     "$schema": "https://turborepo.com/schema.json",
     "tasks": {
+        "lint": {
+            "outputs": []
+        },
         "codegen": {
             "outputs": ["src/generated/**"]
         },
@@ -11,13 +14,16 @@
         "native-build": {
             "outputs": ["target/**", "index.node", "cargo.log"]
         },
+        "native-test": {
+            "outputs": []
+        },
         "start": {
             "dependsOn": ["build"],
             "persistent": true,
             "cache": false
         },
         "test": {
-            "dependsOn": ["build"]
+            "dependsOn": ["build", "native-test"]
         },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],

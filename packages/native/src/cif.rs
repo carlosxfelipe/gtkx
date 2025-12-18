@@ -763,3 +763,179 @@ impl<'a> From<&'a Value> for libffi::Arg<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+    use std::ffi::CString;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    };
+
+    #[test]
+    fn owned_ptr_new_stores_value_and_ptr() {
+        let data = vec![1u32, 2, 3, 4, 5];
+        let ptr = data.as_ptr() as *mut c_void;
+        let owned = OwnedPtr::new(data, ptr);
+
+        assert_eq!(owned.ptr, ptr);
+    }
+
+    #[test]
+    fn owned_ptr_from_vec_captures_correct_pointer() {
+        let data = vec![10u64, 20, 30];
+        let owned = OwnedPtr::from_vec(data);
+
+        unsafe {
+            let slice = std::slice::from_raw_parts(owned.ptr as *const u64, 3);
+            assert_eq!(slice, &[10, 20, 30]);
+        }
+    }
+
+    #[test]
+    fn owned_ptr_keeps_cstring_alive() {
+        let cstring = CString::new("test string").unwrap();
+        let ptr = cstring.as_ptr() as *mut c_void;
+        let owned = OwnedPtr::new(cstring, ptr);
+
+        unsafe {
+            let s = std::ffi::CStr::from_ptr(owned.ptr as *const i8);
+            assert_eq!(s.to_str().unwrap(), "test string");
+        }
+    }
+
+    #[test]
+    fn owned_ptr_tuple_keeps_both_alive() {
+        let strings = vec![
+            CString::new("hello").unwrap(),
+            CString::new("world").unwrap(),
+        ];
+        let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
+        let tuple_ptr = ptrs.as_ptr() as *mut c_void;
+
+        let owned = OwnedPtr::new((strings, ptrs), tuple_ptr);
+
+        unsafe {
+            let ptr_slice = std::slice::from_raw_parts(owned.ptr as *const *const i8, 2);
+            let s0 = std::ffi::CStr::from_ptr(ptr_slice[0]);
+            let s1 = std::ffi::CStr::from_ptr(ptr_slice[1]);
+            assert_eq!(s0.to_str().unwrap(), "hello");
+            assert_eq!(s1.to_str().unwrap(), "world");
+        }
+    }
+
+    #[test]
+    fn owned_ptr_drops_value_when_dropped() {
+        let drop_counter = Arc::new(AtomicUsize::new(0));
+
+        struct DropTracker {
+            counter: Arc<AtomicUsize>,
+        }
+
+        impl Drop for DropTracker {
+            fn drop(&mut self) {
+                self.counter.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        {
+            let tracker = DropTracker {
+                counter: Arc::clone(&drop_counter),
+            };
+            let _owned = OwnedPtr::new(tracker, std::ptr::null_mut());
+        }
+
+        assert_eq!(drop_counter.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn closure_to_glib_full_increments_refcount() {
+        test_utils::ensure_gtk_init();
+
+        let closure = glib::Closure::new(|_| None::<glib::Value>);
+
+        let initial_ref = {
+            use glib::translate::ToGlibPtr as _;
+            let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
+            unsafe { (*ptr).ref_count }
+        };
+
+        let ptr = closure_to_glib_full(&closure);
+
+        let after_ref = unsafe { (*(ptr as *mut glib::gobject_ffi::GClosure)).ref_count };
+
+        assert!(after_ref > initial_ref);
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(ptr as *mut _);
+        }
+    }
+
+    #[test]
+    fn closure_ptr_for_transfer_returns_valid_ptr() {
+        test_utils::ensure_gtk_init();
+
+        let invoked = Arc::new(AtomicBool::new(false));
+        let invoked_clone = invoked.clone();
+
+        let closure = glib::Closure::new(move |_| {
+            invoked_clone.store(true, Ordering::SeqCst);
+            None::<glib::Value>
+        });
+
+        let ptr = closure_ptr_for_transfer(closure);
+
+        assert!(!ptr.is_null());
+
+        unsafe {
+            glib::gobject_ffi::g_closure_invoke(
+                ptr as *mut glib::gobject_ffi::GClosure,
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+            );
+        }
+
+        assert!(invoked.load(Ordering::SeqCst));
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(ptr as *mut _);
+        }
+    }
+
+    #[test]
+    fn closure_captured_values_survive_transfer() {
+        test_utils::ensure_gtk_init();
+
+        let data = Arc::new(AtomicUsize::new(0));
+        let data_clone = data.clone();
+
+        let closure = glib::Closure::new(move |_| {
+            data_clone.fetch_add(1, Ordering::SeqCst);
+            None::<glib::Value>
+        });
+
+        let ptr = closure_ptr_for_transfer(closure);
+
+        for _ in 0..5 {
+            unsafe {
+                glib::gobject_ffi::g_closure_invoke(
+                    ptr as *mut glib::gobject_ffi::GClosure,
+                    std::ptr::null_mut(),
+                    0,
+                    std::ptr::null(),
+                    std::ptr::null_mut(),
+                );
+            }
+        }
+
+        assert_eq!(data.load(Ordering::SeqCst), 5);
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(ptr as *mut _);
+        }
+    }
+}

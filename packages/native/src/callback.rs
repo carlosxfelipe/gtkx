@@ -307,3 +307,222 @@ unsafe extern "C" fn compare_data_func_trampoline(
 pub fn get_compare_data_func_trampoline_ptr() -> *mut c_void {
     compare_data_func_trampoline as *mut c_void
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+
+    fn create_test_closure_with_flag(flag: Arc<AtomicBool>) -> *mut glib::gobject_ffi::GClosure {
+        test_utils::ensure_gtk_init();
+
+        let closure = glib::Closure::new(move |_| {
+            flag.store(true, Ordering::SeqCst);
+            None::<glib::Value>
+        });
+
+        use glib::translate::ToGlibPtr as _;
+        let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
+        std::mem::forget(closure);
+        ptr
+    }
+
+    fn create_bool_returning_closure(return_val: bool) -> *mut glib::gobject_ffi::GClosure {
+        test_utils::ensure_gtk_init();
+
+        let closure = glib::Closure::new(move |_| Some(return_val.into()));
+
+        use glib::translate::ToGlibPtr as _;
+        let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
+        std::mem::forget(closure);
+        ptr
+    }
+
+    #[test]
+    fn draw_func_trampoline_null_closure_safe() {
+        test_utils::ensure_gtk_init();
+
+        unsafe {
+            draw_func_trampoline(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                100,
+                100,
+                std::ptr::null_mut(),
+            );
+        }
+    }
+
+    #[test]
+    fn draw_func_trampoline_invokes_closure() {
+        let invoked = Arc::new(AtomicBool::new(false));
+        let closure_ptr = create_test_closure_with_flag(invoked.clone());
+
+        unsafe {
+            draw_func_trampoline(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                100,
+                100,
+                closure_ptr as *mut c_void,
+            );
+        }
+
+        assert!(invoked.load(Ordering::SeqCst));
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(closure_ptr);
+        }
+    }
+
+    #[test]
+    fn destroy_trampoline_null_closure_safe() {
+        test_utils::ensure_gtk_init();
+
+        unsafe {
+            destroy_trampoline(std::ptr::null_mut());
+        }
+    }
+
+    #[test]
+    fn destroy_trampoline_invokes_and_unrefs() {
+        let invoked = Arc::new(AtomicBool::new(false));
+        let closure_ptr = create_test_closure_with_flag(invoked.clone());
+
+        unsafe {
+            destroy_trampoline(closure_ptr as *mut c_void);
+        }
+
+        assert!(invoked.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn unref_closure_trampoline_null_safe() {
+        test_utils::ensure_gtk_init();
+
+        unsafe {
+            unref_closure_trampoline(std::ptr::null_mut());
+        }
+    }
+
+    #[test]
+    fn unref_closure_trampoline_decrements_refcount() {
+        test_utils::ensure_gtk_init();
+
+        let closure = glib::Closure::new(|_| None::<glib::Value>);
+
+        use glib::translate::ToGlibPtr as _;
+        let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
+
+        unsafe {
+            glib::gobject_ffi::g_closure_ref(ptr);
+        }
+
+        let ref_before = unsafe { (*ptr).ref_count };
+
+        unsafe {
+            unref_closure_trampoline(ptr as *mut c_void);
+        }
+
+        let ref_after = unsafe { (*ptr).ref_count };
+
+        assert_eq!(ref_after, ref_before - 1);
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(ptr);
+        }
+    }
+
+    #[test]
+    fn tick_func_trampoline_null_safe() {
+        test_utils::ensure_gtk_init();
+
+        let result = unsafe {
+            tick_func_trampoline(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn source_func_trampoline_null_safe() {
+        test_utils::ensure_gtk_init();
+
+        let result = unsafe { source_func_trampoline(std::ptr::null_mut()) };
+
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn source_func_trampoline_returns_true() {
+        let closure_ptr = create_bool_returning_closure(true);
+
+        let result = unsafe { source_func_trampoline(closure_ptr as *mut c_void) };
+
+        assert_eq!(result, 1);
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(closure_ptr);
+        }
+    }
+
+    #[test]
+    fn source_func_trampoline_returns_false() {
+        let closure_ptr = create_bool_returning_closure(false);
+
+        let result = unsafe { source_func_trampoline(closure_ptr as *mut c_void) };
+
+        assert_eq!(result, 0);
+
+        unsafe {
+            glib::gobject_ffi::g_closure_unref(closure_ptr);
+        }
+    }
+
+    #[test]
+    fn async_ready_trampoline_null_safe() {
+        test_utils::ensure_gtk_init();
+
+        unsafe {
+            async_ready_trampoline(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            );
+        }
+    }
+
+    #[test]
+    fn compare_data_func_trampoline_null_safe() {
+        test_utils::ensure_gtk_init();
+
+        let result = unsafe {
+            compare_data_func_trampoline(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn get_trampoline_ptrs_not_null() {
+        assert!(!get_draw_func_trampoline_ptr().is_null());
+        assert!(!get_destroy_trampoline_ptr().is_null());
+        assert!(!get_unref_closure_trampoline_ptr().is_null());
+        assert!(!get_tick_func_trampoline_ptr().is_null());
+        assert!(!get_source_func_trampoline_ptr().is_null());
+        assert!(!get_async_ready_trampoline_ptr().is_null());
+        assert!(!get_compare_data_func_trampoline_ptr().is_null());
+    }
+}
