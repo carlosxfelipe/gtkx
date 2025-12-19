@@ -1,4 +1,4 @@
-import { getCurrentApp, getObject, start, stop } from "@gtkx/ffi";
+import { getApplication, getNativeObject, start, stop } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, ROOT_NODE_CONTAINER, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -16,7 +16,7 @@ let container: Reconciler.FiberRoot | null = null;
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
     if (!hasLabel(widget)) return null;
 
-    const accessible = getObject(widget.id, Gtk.Accessible);
+    const accessible = getNativeObject(widget.id, Gtk.Accessible);
     if (!accessible) return null;
 
     const role = accessible.getAccessibleRole();
@@ -28,7 +28,7 @@ const getWidgetLabel = (widget: Gtk.Widget): string | null => {
 
 const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
     const prefix = "  ".repeat(indent);
-    const accessibleRole = getObject(root.id, Gtk.Accessible)?.getAccessibleRole();
+    const accessibleRole = getNativeObject(root.id, Gtk.Accessible)?.getAccessibleRole();
     const role = accessibleRole !== undefined ? (Gtk.AccessibleRole[accessibleRole] ?? "UNKNOWN") : "UNKNOWN";
     const labelText = getWidgetLabel(root);
     const label = labelText ? ` label="${labelText}"` : "";
@@ -136,7 +136,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  */
 export const cleanup = async (): Promise<void> => {
     if (container) {
-        const app = getCurrentApp();
+        const app = getApplication();
         const instance = reconciler.getInstance();
         await update(instance, null, container);
         for (const window of app.getWindows()) {

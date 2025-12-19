@@ -29,6 +29,10 @@ export type NativeClass<T extends NativeObject = NativeObject> = typeof NativeOb
  */
 export let isInstantiating = false;
 
+/**
+ * Sets the instantiation flag.
+ * @param value - The new value for the instantiation flag.
+ */
 export const setInstantiating = (value: boolean): void => {
     isInstantiating = value;
 };

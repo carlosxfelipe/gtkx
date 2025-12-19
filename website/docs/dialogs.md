@@ -63,7 +63,7 @@ GTK4's `AlertDialog` and file dialogs use async/await patterns:
 ### AlertDialog
 
 ```tsx
-import { getCurrentApp } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Button, Label, Box, quit } from "@gtkx/react";
 import { useState } from "react";
@@ -72,7 +72,7 @@ const App = () => {
   const [result, setResult] = useState<string | null>(null);
 
   const showConfirmDialog = async () => {
-    const app = getCurrentApp();
+    const app = getApplication();
     const dialog = new Gtk.AlertDialog();
     dialog.setMessage("Confirm Action");
     dialog.setDetail(
@@ -111,7 +111,7 @@ const App = () => {
 ### File Dialogs
 
 ```tsx
-import { getCurrentApp } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Button, Label } from "@gtkx/react";
 import { useState } from "react";
@@ -120,7 +120,7 @@ const FilePicker = () => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   const openFile = async () => {
-    const app = getCurrentApp();
+    const app = getApplication();
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Open File");
 
@@ -138,7 +138,7 @@ const FilePicker = () => {
   };
 
   const saveFile = async () => {
-    const app = getCurrentApp();
+    const app = getApplication();
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Save File");
     dialog.setInitialName("document.txt");
@@ -164,11 +164,11 @@ const FilePicker = () => {
 ## Color and Font Dialogs
 
 ```tsx
-import { getCurrentApp } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const pickColor = async () => {
-  const app = getCurrentApp();
+  const app = getApplication();
   const dialog = new Gtk.ColorDialog();
   dialog.setTitle("Choose Color");
 
@@ -183,7 +183,7 @@ const pickColor = async () => {
 };
 
 const pickFont = async () => {
-  const app = getCurrentApp();
+  const app = getApplication();
   const dialog = new Gtk.FontDialog();
   dialog.setTitle("Choose Font");
 

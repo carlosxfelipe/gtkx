@@ -320,6 +320,36 @@ describe("TypeMapper", () => {
             expect(result.ts).toBe("Rectangle");
             expect(result.ffi.type).toBe("boxed");
         });
+
+        it("includes sharedLibrary in external record FFI descriptor", () => {
+            const registry = new TypeRegistry();
+            registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1");
+            const mapper = new TypeMapper();
+            mapper.setTypeRegistry(registry, "Gtk");
+
+            const result = mapper.mapType({ name: "Gdk.RGBA" });
+
+            expect(result.ts).toBe("Gdk.RGBA");
+            expect(result.ffi.type).toBe("boxed");
+            expect(result.ffi.innerType).toBe("GdkRGBA");
+            expect(result.ffi.lib).toBe("libgdk-4.so.1");
+            expect(result.externalType?.namespace).toBe("Gdk");
+        });
+
+        it("includes getTypeFn in external record FFI descriptor", () => {
+            const registry = new TypeRegistry();
+            registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1", "gdk_rgba_get_type");
+            const mapper = new TypeMapper();
+            mapper.setTypeRegistry(registry, "Gtk");
+
+            const result = mapper.mapType({ name: "Gdk.RGBA" });
+
+            expect(result.ts).toBe("Gdk.RGBA");
+            expect(result.ffi.type).toBe("boxed");
+            expect(result.ffi.innerType).toBe("GdkRGBA");
+            expect(result.ffi.lib).toBe("libgdk-4.so.1");
+            expect(result.ffi.getTypeFn).toBe("gdk_rgba_get_type");
+        });
     });
 
     describe("parameter mapping", () => {
@@ -406,7 +436,7 @@ describe("TypeMapper", () => {
 
             const result = mapper.mapParameter(param);
 
-            expect(result.ts).toBe("(self: DrawingArea, cr: Cairo.Context, width: number, height: number) => void");
+            expect(result.ts).toBe("(self: DrawingArea, cr: cairo.Context, width: number, height: number) => void");
             expect(result.ffi.trampoline).toBe("drawFunc");
             expect(result.ffi.argTypes).toEqual([
                 { type: "gobject", borrowed: true },

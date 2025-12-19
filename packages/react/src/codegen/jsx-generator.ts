@@ -1,5 +1,5 @@
 import type { GirClass, GirInterface, GirNamespace, GirSignal, TypeMapper, TypeRegistry } from "@gtkx/gir";
-import { toCamelCase, toPascalCase } from "@gtkx/gir";
+import { formatDoc as formatDocBase, toCamelCase, toPascalCase } from "@gtkx/gir";
 import { format } from "prettier";
 
 /**
@@ -84,34 +84,6 @@ const isStackWidget = (widgetName: string): boolean => STACK_WIDGETS.has(widgetN
 const isPopoverMenuWidget = (widgetName: string): boolean => widgetName === POPOVER_MENU_WIDGET;
 const isToolbarViewWidget = (widgetName: string): boolean => widgetName === TOOLBAR_VIEW_WIDGET;
 
-const sanitizeDoc = (doc: string): string => {
-    let result = doc;
-    result = result.replace(/<picture[^>]*>[\s\S]*?<\/picture>/gi, "");
-    result = result.replace(/<img[^>]*>/gi, "");
-    result = result.replace(/<source[^>]*>/gi, "");
-    result = result.replace(/!\[[^\]]*\]\([^)]+\.png\)/gi, "");
-    result = result.replace(/<kbd>([^<]*)<\/kbd>/gi, "`$1`");
-    result = result.replace(/<kbd>/gi, "`");
-    result = result.replace(/<\/kbd>/gi, "`");
-    result = result.replace(/\[([^\]]+)\]\([^)]+\.html[^)]*\)/gi, "$1");
-    result = result.replace(/@(\w+)\s/g, "`$1` ");
-    result = result.replace(/<(\/?)(child|object|property|signal|template)>/gi, "`<$1$2>`");
-    return result.trim();
-};
-
-const formatDoc = (doc: string | undefined, indent: string = ""): string => {
-    if (!doc) return "";
-    const sanitized = sanitizeDoc(doc);
-    if (!sanitized) return "";
-    const lines = sanitized.split("\n").map((line) => line.trim());
-    const firstLine = lines[0] ?? "";
-    if (lines.length === 1 && firstLine.length < 80) {
-        return `${indent}/** ${firstLine} */\n`;
-    }
-    const formattedLines = lines.map((line) => `${indent} * ${line}`);
-    return `${indent}/**\n${formattedLines.join("\n")}\n${indent} */\n`;
-};
-
 const isWidgetSubclass = (
     typeName: string,
     classMap: Map<string, GirClass>,
@@ -153,6 +125,13 @@ export class JsxGenerator {
         private classMap: Map<string, GirClass>,
         private options: JsxGeneratorOptions = {},
     ) {}
+
+    private formatDoc(doc: string | undefined, indent: string = ""): string {
+        return formatDocBase(doc, indent, {
+            namespace: this.currentNamespace,
+            escapeXmlTags: true,
+        });
+    }
 
     /**
      * Generates JSX type definitions for all widgets in the given namespaces.
@@ -243,7 +222,7 @@ ${widgetPropsContent}
 
     private generateWidgetPropsContent(widgetClass: GirClass | undefined): string {
         const lines: string[] = [];
-        const widgetDoc = widgetClass?.doc ? formatDoc(widgetClass.doc) : "";
+        const widgetDoc = widgetClass?.doc ? this.formatDoc(widgetClass.doc) : "";
 
         if (widgetDoc) {
             lines.push(widgetDoc.trimEnd());
@@ -256,7 +235,7 @@ ${widgetPropsContent}
                 const tsType = this.toJsxPropertyType(this.typeMapper.mapType(prop.type).ts, "Gtk");
 
                 if (prop.doc) {
-                    lines.push(formatDoc(prop.doc, "\t").trimEnd());
+                    lines.push(this.formatDoc(prop.doc, "\t").trimEnd());
                 }
                 lines.push(`\t${propName}?: ${tsType};`);
             }
@@ -265,7 +244,7 @@ ${widgetPropsContent}
                 lines.push("");
                 for (const signal of widgetClass.signals) {
                     if (signal.doc) {
-                        lines.push(formatDoc(signal.doc, "\t").trimEnd());
+                        lines.push(this.formatDoc(signal.doc, "\t").trimEnd());
                     }
                     lines.push(`\t${this.generateSignalHandler(signal, "Widget")}`);
                 }
@@ -439,7 +418,7 @@ ${widgetPropsContent}
             const isRequiredByConstructor = requiredCtorParams.has(prop.name);
             const isRequired = isRequiredByConstructor;
             if (prop.doc) {
-                lines.push(formatDoc(prop.doc, "\t").trimEnd());
+                lines.push(this.formatDoc(prop.doc, "\t").trimEnd());
             }
             lines.push(`\t${propName}${isRequired ? "" : "?"}: ${tsType};`);
         }
@@ -464,7 +443,7 @@ ${widgetPropsContent}
             lines.push("");
             for (const signal of specificSignals) {
                 if (signal.doc) {
-                    lines.push(formatDoc(signal.doc, "\t").trimEnd());
+                    lines.push(this.formatDoc(signal.doc, "\t").trimEnd());
                 }
                 lines.push(`\t${this.generateSignalHandler(signal, widget.name)}`);
             }
@@ -857,7 +836,7 @@ ${widgetPropsContent}
                 isStackWidget(widget.name) ||
                 isPopoverMenuWidget(widget.name);
 
-            const docComment = widget.doc ? formatDoc(widget.doc).trimEnd() : "";
+            const docComment = widget.doc ? this.formatDoc(widget.doc).trimEnd() : "";
 
             if (hasMeaningfulSlots) {
                 if (

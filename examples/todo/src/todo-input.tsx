@@ -1,4 +1,4 @@
-import { getObject } from "@gtkx/ffi";
+import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Entry } from "@gtkx/react";
 import { useState } from "react";
@@ -11,7 +11,7 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
     const [text, setText] = useState("");
 
     const handleChange = (entry: Gtk.Entry) => {
-        setText(getObject(entry.id, Gtk.Editable)?.getText() ?? "");
+        setText(getNativeObject(entry.id, Gtk.Editable)?.getText() ?? "");
     };
 
     const handleAdd = () => {

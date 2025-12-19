@@ -15,7 +15,14 @@ import type {
     GirSignal,
     TypeRegistry,
 } from "@gtkx/gir";
-import { TypeMapper, toCamelCase, toPascalCase } from "@gtkx/gir";
+import {
+    formatDoc as formatDocBase,
+    formatMethodDoc as formatMethodDocBase,
+    sanitizeDoc as sanitizeDocBase,
+    TypeMapper,
+    toCamelCase,
+    toPascalCase,
+} from "@gtkx/gir";
 import { format } from "prettier";
 
 /**
@@ -112,54 +119,6 @@ const toKebabCase = (str: string): string =>
         .toLowerCase();
 
 const toConstantCase = (str: string): string => str.replace(/-/g, "_").toUpperCase();
-
-const sanitizeDoc = (doc: string): string => {
-    let result = doc;
-    result = result.replace(/<picture>[\s\S]*?<\/picture>/gi, "");
-    result = result.replace(/<img[^>]*>/gi, "");
-    result = result.replace(/<source[^>]*>/gi, "");
-    result = result.replace(/!\[[^\]]*\]\([^)]+\.png\)/gi, "");
-    result = result.replace(/<kbd>([^<]*)<\/kbd>/gi, "`$1`");
-    result = result.replace(/<kbd>/gi, "`");
-    result = result.replace(/<\/kbd>/gi, "`");
-    result = result.replace(/\[([^\]]+)\]\([^)]+\.html[^)]*\)/gi, "$1");
-    result = result.replace(/@(\w+)\s/g, "`$1` ");
-    return result.trim();
-};
-
-const formatDoc = (doc: string | undefined, indent: string = ""): string => {
-    if (!doc) return "";
-    const sanitized = sanitizeDoc(doc);
-    if (!sanitized) return "";
-    const lines = sanitized.split("\n").map((line) => line.trim());
-    const firstLine = lines[0] ?? "";
-    if (lines.length === 1 && firstLine.length < 80) {
-        return `${indent}/** ${firstLine} */\n`;
-    }
-    const formattedLines = lines.map((line) => `${indent} * ${line}`);
-    return `${indent}/**\n${formattedLines.join("\n")}\n${indent} */\n`;
-};
-
-const formatMethodDoc = (doc: string | undefined, params: GirParameter[], indent: string = "  "): string => {
-    const sanitizedDoc = doc ? sanitizeDoc(doc) : undefined;
-    if (!sanitizedDoc && params.every((p) => !p.doc)) return "";
-    const lines: string[] = [];
-    if (sanitizedDoc) {
-        for (const line of sanitizedDoc.split("\n")) {
-            lines.push(` * ${line.trim()}`);
-        }
-    }
-    for (const param of params) {
-        if (param.doc && param.name && param.name !== "..." && param.name !== "") {
-            const paramName = toValidIdentifier(toCamelCase(param.name));
-            const sanitizedParamDoc = sanitizeDoc(param.doc);
-            const paramDoc = sanitizedParamDoc.split("\n")[0]?.trim() ?? "";
-            lines.push(` * @param ${paramName} - ${paramDoc}`);
-        }
-    }
-    if (lines.length === 0) return "";
-    return `${indent}/**\n${indent}${lines.join(`\n${indent}`)}\n${indent} */\n`;
-};
 
 const toValidIdentifier = (str: string): string => {
     let result = str.replace(/[^a-zA-Z0-9_$]/g, "_");
@@ -271,7 +230,7 @@ export class CodeGenerator {
     private usesAlloc = false;
     private usesNativeError = false;
     private usesNativeObject = false;
-    private usesGetObject = false;
+    private usesGetNativeObject = false;
     private usesRegisterNativeClass = false;
     private usesGetClassByTypeName = false;
     private usesSignalMeta = false;
@@ -296,6 +255,24 @@ export class CodeGenerator {
         if (options.typeRegistry) {
             this.typeMapper.setTypeRegistry(options.typeRegistry, options.namespace);
         }
+    }
+
+    private sanitizeDoc(doc: string): string {
+        return sanitizeDocBase(doc, { namespace: this.options.namespace });
+    }
+
+    private formatDoc(doc: string | undefined, indent: string = ""): string {
+        return formatDocBase(doc, indent, { namespace: this.options.namespace });
+    }
+
+    private formatMethodDoc(doc: string | undefined, params: GirParameter[], indent: string = "  "): string {
+        const formattedParams = params
+            .filter((p) => p.doc && p.name && p.name !== "..." && p.name !== "")
+            .map((p) => ({
+                name: toValidIdentifier(toCamelCase(p.name)),
+                doc: p.doc,
+            }));
+        return formatMethodDocBase(doc, formattedParams, indent, { namespace: this.options.namespace });
     }
 
     /**
@@ -422,7 +399,7 @@ export class CodeGenerator {
         this.usesAlloc = false;
         this.usesNativeError = false;
         this.usesNativeObject = false;
-        this.usesGetObject = false;
+        this.usesGetNativeObject = false;
         this.usesRegisterNativeClass = false;
         this.usesGetClassByTypeName = false;
         this.usesSignalMeta = false;
@@ -552,7 +529,7 @@ export class CodeGenerator {
         sections.push("");
 
         if (cls.doc) {
-            sections.push(formatDoc(cls.doc));
+            sections.push(this.formatDoc(cls.doc));
         }
         sections.push(`export class ${className}${parentInfo.extendsClause}${implementsClause} {`);
 
@@ -829,7 +806,7 @@ export class CodeGenerator {
 
     private generateConstructorWithFlag(ctor: GirConstructor, sharedLibrary: string): string {
         this.usesInstantiating = true;
-        const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
+        const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
         const docComment = ctorDoc ? `${ctorDoc.trimEnd()}\n` : "";
@@ -899,13 +876,13 @@ ${args ? `${args},` : ""}
 
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
-        const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
+        const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
         const borrowed = ctor.returnType.transferOwnership !== "full";
 
         const errorArg = ctor.throws ? this.generateErrorArgument() : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
-        this.usesGetObject = true;
+        this.usesGetNativeObject = true;
 
         const lines: string[] = [];
         lines.push(`${ctorDoc}  static ${methodName}(${params}): ${className} {`);
@@ -923,7 +900,7 @@ ${allArgs}
         if (ctor.throws) {
             lines.push(this.generateErrorCheck());
         }
-        lines.push(`    return getObject(ptr) as ${className};`);
+        lines.push(`    return getNativeObject(ptr) as ${className};`);
         lines.push(`  }`);
         return `${lines.join("\n")}\n`;
     }
@@ -957,7 +934,7 @@ ${allArgs}
         const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(func.parameters);
 
         const lines: string[] = [];
-        const funcDoc = formatMethodDoc(func.doc, func.parameters);
+        const funcDoc = this.formatMethodDoc(func.doc, func.parameters);
         if (funcDoc) {
             lines.push(funcDoc.trimEnd());
         }
@@ -972,7 +949,7 @@ ${allArgs}
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
         if (returnsOwnClass) {
-            this.usesGetObject = true;
+            this.usesGetNativeObject = true;
             lines.push(`    const ptr = call(
       "${sharedLibrary}",
       "${func.cIdentifier}",
@@ -985,7 +962,7 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(this.generateErrorCheck());
             }
             lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
-            lines.push(`    return getObject(ptr) as ${className};`);
+            lines.push(`    return getNativeObject(ptr) as ${className};`);
         } else {
             const hasRefRewrap = gtkAllocatesRefs.length > 0;
             const needsResultVar = func.throws || hasRefRewrap;
@@ -1129,7 +1106,7 @@ ${allArgs ? `${allArgs},` : ""}
         lines.push(`  /**`);
         lines.push(`   * Promise-based version of ${methodName}.`);
         if (method.doc) {
-            const docLines = sanitizeDoc(method.doc).split("\n").slice(0, 3);
+            const docLines = this.sanitizeDoc(method.doc).split("\n").slice(0, 3);
             for (const line of docLines) {
                 lines.push(`   * ${line.trim()}`);
             }
@@ -1266,17 +1243,17 @@ ${allArgs ? `${allArgs},` : ""}
         if (outputParams.length === 0) {
             if (hasMainReturn) {
                 if (needsBoxedWrap || needsInterfaceWrap) {
-                    this.usesGetObject = true;
+                    this.usesGetNativeObject = true;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
                     }
-                    lines.push(`          resolve(getObject(ptr, ${finishReturnType.ts})!);`);
+                    lines.push(`          resolve(getNativeObject(ptr, ${finishReturnType.ts})!);`);
                 } else if (needsGObjectWrap) {
-                    this.usesGetObject = true;
+                    this.usesGetNativeObject = true;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
                     }
-                    lines.push(`          resolve(getObject(ptr) as ${finishReturnType.ts});`);
+                    lines.push(`          resolve(getNativeObject(ptr) as ${finishReturnType.ts});`);
                 } else {
                     lines.push(`          resolve(result);`);
                 }
@@ -1287,22 +1264,22 @@ ${allArgs ? `${allArgs},` : ""}
             const resolveFields: string[] = [];
             if (hasMainReturn) {
                 if (needsBoxedWrap || needsInterfaceWrap) {
-                    this.usesGetObject = true;
+                    this.usesGetNativeObject = true;
                     if (isNullable) {
                         lines.push(
-                            `          const result = ptr === null ? null : getObject(ptr, ${finishReturnType.ts})!;`,
+                            `          const result = ptr === null ? null : getNativeObject(ptr, ${finishReturnType.ts})!;`,
                         );
                     } else {
-                        lines.push(`          const result = getObject(ptr, ${finishReturnType.ts})!;`);
+                        lines.push(`          const result = getNativeObject(ptr, ${finishReturnType.ts})!;`);
                     }
                 } else if (needsGObjectWrap) {
-                    this.usesGetObject = true;
+                    this.usesGetNativeObject = true;
                     if (isNullable) {
                         lines.push(
-                            `          const result = (ptr === null ? null : getObject(ptr)) as ${finishReturnType.ts} | null;`,
+                            `          const result = (ptr === null ? null : getNativeObject(ptr)) as ${finishReturnType.ts} | null;`,
                         );
                     } else {
-                        lines.push(`          const result = getObject(ptr) as ${finishReturnType.ts};`);
+                        lines.push(`          const result = getNativeObject(ptr) as ${finishReturnType.ts};`);
                     }
                 }
                 resolveFields.push("result");
@@ -1410,7 +1387,7 @@ ${allArgs ? `${allArgs},` : ""}
                 : `{ type: "gobject" }`;
 
         const lines: string[] = [];
-        const methodDoc = formatMethodDoc(method.doc, method.parameters);
+        const methodDoc = this.formatMethodDoc(method.doc, method.parameters);
         if (methodDoc) {
             lines.push(methodDoc.trimEnd());
         }
@@ -1448,15 +1425,15 @@ ${allArgs ? `${allArgs},` : ""}
             if (isCyclic) {
                 lines.push(this.generateCyclicTypeReturn(baseReturnType));
             } else if (needsBoxedWrap || needsInterfaceWrap) {
-                this.usesGetObject = true;
-                lines.push(`    return getObject(ptr, ${baseReturnType})!;`);
+                this.usesGetNativeObject = true;
+                lines.push(`    return getNativeObject(ptr, ${baseReturnType})!;`);
             } else {
-                this.usesGetObject = true;
-                lines.push(`    return getObject(ptr) as ${baseReturnType};`);
+                this.usesGetNativeObject = true;
+                lines.push(`    return getNativeObject(ptr) as ${baseReturnType};`);
             }
         } else if (needsArrayWrap && hasReturnValue) {
             const elementType = baseReturnType.slice(0, -2);
-            this.usesGetObject = true;
+            this.usesGetNativeObject = true;
             lines.push(`    const ptrs = call(
       "${sharedLibrary}",
       "${method.cIdentifier}",
@@ -1473,7 +1450,7 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(this.generateErrorCheck());
             }
             lines.push(...this.generateRefRewrapCode(gtkAllocatesRefs));
-            lines.push(`    return ptrs.map(ptr => getObject(ptr) as ${elementType});`);
+            lines.push(`    return ptrs.map(ptr => getNativeObject(ptr) as ${elementType});`);
         } else {
             const hasRefRewrap = gtkAllocatesRefs.length > 0;
             const needsResultVar = method.throws || hasRefRewrap;
@@ -1633,7 +1610,7 @@ ${allArgs ? `${allArgs},` : ""}
         this.addSignalCatchAllOverload(signalOverloads, methodName);
 
         this.usesType = true;
-        this.usesGetObject = true;
+        this.usesGetNativeObject = true;
         if (signalMetadata.length > 0) {
             this.usesSignalMeta = true;
         }
@@ -1656,26 +1633,26 @@ ${allArgs ? `${allArgs},` : ""}
             ? `
         if (m.type === "boxed" && signalArgs[i] != null) {
           const cls = getNativeClass(m.innerType);
-          return cls ? getObject(signalArgs[i], cls) : signalArgs[i];
+          return cls ? getNativeObject(signalArgs[i], cls) : signalArgs[i];
         }`
             : "";
 
         const wrapperCode =
             signalMetadata.length > 0
                 ? `const wrappedHandler = (...args: unknown[]) => {
-      const self = getObject(args[0]);
+      const self = getNativeObject(args[0]);
       const signalArgs = args.slice(1);
       if (!meta) return handler(self, ...signalArgs);
       const wrapped = meta.params.map((m, i) => {
         if (m.type === "gobject" && signalArgs[i] != null) {
-          return getObject(signalArgs[i]);
+          return getNativeObject(signalArgs[i]);
         }${boxedHandling}
         return signalArgs[i];
       });
       return handler(self, ...wrapped);
     };`
                 : `const wrappedHandler = (...args: unknown[]) => {
-      const self = getObject(args[0]);
+      const self = getNativeObject(args[0]);
       return handler(self, ...args.slice(1));
     };`;
 
@@ -1719,7 +1696,7 @@ ${allArgs ? `${allArgs},` : ""}
         this.usesRef = iface.methods.some((m) => hasRefParameter(m.parameters, this.typeMapper));
 
         if (iface.doc) {
-            sections.push(formatDoc(iface.doc));
+            sections.push(this.formatDoc(iface.doc));
         }
         this.usesNativeObject = true;
         sections.push(`export class ${interfaceName} extends NativeObject {`);
@@ -1761,7 +1738,7 @@ ${allArgs ? `${allArgs},` : ""}
         }
 
         if (record.doc) {
-            sections.push(formatDoc(record.doc));
+            sections.push(this.formatDoc(record.doc));
         }
         this.usesNativeObject = true;
         sections.push(`export class ${recordName} extends NativeObject {`);
@@ -1810,7 +1787,7 @@ ${allArgs ? `${allArgs},` : ""}
         );
         const mainConstructor = supportedConstructors.find((c) => !c.parameters.some(isVararg));
         if (mainConstructor) {
-            const ctorDoc = formatMethodDoc(mainConstructor.doc, mainConstructor.parameters);
+            const ctorDoc = this.formatMethodDoc(mainConstructor.doc, mainConstructor.parameters);
             const filteredParams = mainConstructor.parameters.filter((p) => !isVararg(p));
 
             if (filteredParams.length === 0) {
@@ -1991,9 +1968,9 @@ ${args}
 
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
-        const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
+        const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
 
-        this.usesGetObject = true;
+        this.usesGetNativeObject = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${recordName} {
     const ptr = call(
       "${sharedLibrary}",
@@ -2003,7 +1980,7 @@ ${args}
       ],
       { type: "boxed", borrowed: true, innerType: "${recordName}" }
     );
-    return getObject(ptr) as ${recordName};
+    return getNativeObject(ptr) as ${recordName};
   }
 `;
     }
@@ -2049,7 +2026,7 @@ ${args}
             const typeMapping = this.typeMapper.mapType(field.type);
 
             if (field.doc) {
-                sections.push(formatDoc(field.doc, "  ").trimEnd());
+                sections.push(this.formatDoc(field.doc, "  ").trimEnd());
             }
 
             if (isReadable) {
@@ -2198,7 +2175,7 @@ ${args}
         const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(func.parameters);
 
         const lines: string[] = [];
-        const funcDoc = formatMethodDoc(func.doc, func.parameters, "");
+        const funcDoc = this.formatMethodDoc(func.doc, func.parameters, "");
         if (funcDoc) {
             lines.push(funcDoc.trimEnd());
         }
@@ -2226,11 +2203,11 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(`  if (ptr === null) return null;`);
             }
             if (needsBoxedWrap || needsInterfaceWrap) {
-                this.usesGetObject = true;
-                lines.push(`  return getObject(ptr, ${baseReturnType})!;`);
+                this.usesGetNativeObject = true;
+                lines.push(`  return getNativeObject(ptr, ${baseReturnType})!;`);
             } else {
-                this.usesGetObject = true;
-                lines.push(`  return getObject(ptr) as ${baseReturnType};`);
+                this.usesGetNativeObject = true;
+                lines.push(`  return getNativeObject(ptr) as ${baseReturnType};`);
             }
         } else {
             const hasRefRewrap = gtkAllocatesRefs.length > 0;
@@ -2268,10 +2245,10 @@ ${allArgs ? `${allArgs},` : ""}
             const members = enumeration.members.map((member) => {
                 let memberName = toConstantCase(member.name);
                 if (/^\d/.test(memberName)) memberName = `_${memberName}`;
-                const memberDoc = member.doc ? `${formatDoc(member.doc, "  ").trimEnd()}\n` : "";
+                const memberDoc = member.doc ? `${this.formatDoc(member.doc, "  ").trimEnd()}\n` : "";
                 return `${memberDoc}  ${memberName} = ${member.value},`;
             });
-            const enumDoc = enumeration.doc ? formatDoc(enumeration.doc) : "";
+            const enumDoc = enumeration.doc ? this.formatDoc(enumeration.doc) : "";
             return `${enumDoc}export enum ${enumName} {\n${members.join("\n")}\n}`;
         });
 
@@ -2291,7 +2268,7 @@ ${allArgs ? `${allArgs},` : ""}
 
             const isStringType = constant.type.name === "utf8" || constant.type.name === "filename";
             const constValue = isStringType ? `"${constant.value}"` : constant.value;
-            const constDoc = constant.doc ? formatDoc(constant.doc) : "";
+            const constDoc = constant.doc ? this.formatDoc(constant.doc) : "";
             sections.push(`${constDoc}export const ${constName} = ${constValue};`);
         }
 
@@ -2390,15 +2367,15 @@ ${allArgs ? `${allArgs},` : ""}
 
         return gtkAllocatesRefs.map((ref) => {
             if (ref.isBoxed) {
-                this.usesGetObject = true;
+                this.usesGetNativeObject = true;
                 return ref.nullable
-                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value, ${ref.innerType})!;`
-                    : `    ${ref.paramName}.value = getObject(${ref.paramName}.value, ${ref.innerType})!;`;
+                    ? `    if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value, ${ref.innerType})!;`
+                    : `    ${ref.paramName}.value = getNativeObject(${ref.paramName}.value, ${ref.innerType})!;`;
             }
-            this.usesGetObject = true;
+            this.usesGetNativeObject = true;
             return ref.nullable
-                ? `    if (${ref.paramName}) ${ref.paramName}.value = getObject(${ref.paramName}.value)! as ${ref.innerType};`
-                : `    ${ref.paramName}.value = getObject(${ref.paramName}.value)! as ${ref.innerType};`;
+                ? `    if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value)! as ${ref.innerType};`
+                : `    ${ref.paramName}.value = getNativeObject(${ref.paramName}.value)! as ${ref.innerType};`;
         });
     }
 
@@ -2489,8 +2466,8 @@ ${indent}  }`;
         if (this.usesNativeError) {
             lines.push(`import { NativeError } from "../../native/error.js";`);
         }
-        if (this.usesGetObject) {
-            lines.push(`import { getObject } from "../../native/object.js";`);
+        if (this.usesGetNativeObject) {
+            lines.push(`import { getNativeObject } from "../../native/object.js";`);
         }
         const baseImports: string[] = [];
         if (this.usesInstantiating) baseImports.push("isInstantiating", "setInstantiating");

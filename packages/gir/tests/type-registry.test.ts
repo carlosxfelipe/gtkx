@@ -56,6 +56,30 @@ describe("TypeRegistry", () => {
         expect(result?.glibTypeName).toBe("GdkRectangle");
     });
 
+    it("registers record types with sharedLibrary", () => {
+        const registry = new TypeRegistry();
+        registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1");
+
+        const result = registry.resolve("Gdk.RGBA");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("record");
+        expect(result?.glibTypeName).toBe("GdkRGBA");
+        expect(result?.sharedLibrary).toBe("libgdk-4.so.1");
+    });
+
+    it("registers record types with glibGetType", () => {
+        const registry = new TypeRegistry();
+        registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1", "gdk_rgba_get_type");
+
+        const result = registry.resolve("Gdk.RGBA");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("record");
+        expect(result?.glibTypeName).toBe("GdkRGBA");
+        expect(result?.glibGetType).toBe("gdk_rgba_get_type");
+    });
+
     it("registers and resolves callback types", () => {
         const registry = new TypeRegistry();
         registry.registerCallback("Gio", "AsyncReadyCallback");
@@ -252,6 +276,7 @@ describe("TypeRegistry", () => {
             expect(registry.resolve("Gtk.Rectangle")).toBeDefined();
             expect(registry.resolve("Gtk.Rectangle")?.kind).toBe("record");
             expect(registry.resolve("Gtk.Rectangle")?.glibTypeName).toBe("GtkRectangle");
+            expect(registry.resolve("Gtk.Rectangle")?.sharedLibrary).toBe("libgtk-4.so");
 
             expect(registry.resolve("Gtk.TickCallback")).toBeDefined();
             expect(registry.resolve("Gtk.TickCallback")?.kind).toBe("callback");

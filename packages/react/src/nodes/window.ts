@@ -1,4 +1,4 @@
-import { getCurrentApp } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
@@ -21,11 +21,11 @@ export class WindowNode extends Node<Gtk.Window> {
         const widgetType = normalizeWidgetType(type);
 
         if (widgetType === "ApplicationWindow") {
-            return new Gtk.ApplicationWindow(getCurrentApp());
+            return new Gtk.ApplicationWindow(getApplication());
         }
 
         if (widgetType === "AdwApplicationWindow") {
-            return new Adw.ApplicationWindow(getCurrentApp());
+            return new Adw.ApplicationWindow(getApplication());
         }
 
         if (widgetType === "AdwWindow") {

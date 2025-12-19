@@ -18,7 +18,10 @@ import type { NativeClass, NativeObject } from "./base.js";
  * @returns A new instance with the pointer attached, or null for failed interface checks
  * @throws Error if no registered class is found (when no targetType provided)
  */
-export function getObject<T extends NativeObject = NativeObject>(id: unknown, targetType?: NativeClass<T>): T | null {
+export function getNativeObject<T extends NativeObject = NativeObject>(
+    id: unknown,
+    targetType?: NativeClass<T>,
+): T | null {
     if (id === null || id === undefined) {
         return null;
     }

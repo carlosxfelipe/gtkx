@@ -1,4 +1,4 @@
-import { getCurrentApp, getObject } from "@gtkx/ffi";
+import { getApplication, getNativeObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -167,16 +167,16 @@ export class ApplicationMenuNode extends MenuContainerNode<never> {
         if (!(this.parent instanceof RootNode)) {
             throw new Error("ApplicationMenu must be a direct child of a fragment at the root level");
         }
-        getCurrentApp().setMenubar(this.menu);
+        getApplication().setMenubar(this.menu);
     }
 
     override unmount(): void {
-        getCurrentApp().setMenubar(undefined);
+        getApplication().setMenubar(undefined);
         super.unmount();
     }
 
     protected override onMenuRebuilt(): void {
-        getCurrentApp().setMenubar(this.menu);
+        getApplication().setMenubar(this.menu);
     }
 }
 
@@ -272,8 +272,8 @@ export class MenuItemNode extends NodeClass<never> implements MenuEntryNode {
         this.action = new Gio.SimpleAction(this.actionName);
         this.signalHandlerId = this.action.connect("activate", () => this.invokeCurrentCallback());
 
-        const app = getCurrentApp();
-        const action = getObject(this.action.id, Gio.Action);
+        const app = getApplication();
+        const action = getNativeObject(this.action.id, Gio.Action);
 
         if (!action) {
             throw new Error("Failed to get Gio.Action interface from SimpleAction");
@@ -290,7 +290,7 @@ export class MenuItemNode extends NodeClass<never> implements MenuEntryNode {
 
     private cleanupAction(): void {
         if (this.actionName) {
-            const app = getCurrentApp();
+            const app = getApplication();
             app.removeAction(this.actionName);
 
             if (this.currentAccels) {
@@ -311,7 +311,7 @@ export class MenuItemNode extends NodeClass<never> implements MenuEntryNode {
     private updateAccels(accels: string | string[] | undefined): void {
         if (!this.actionName) return;
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const accelArray = accels ? (Array.isArray(accels) ? accels : [accels]) : [];
         app.setAccelsForAction(`app.${this.actionName}`, accelArray);
     }

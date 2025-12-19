@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import * as Gtk from "../src/generated/gtk/index.js";
-import { getCurrentApp, start } from "../src/index.js";
+import { getApplication, start } from "../src/index.js";
 
 describe("start", () => {
     it("returns a GTK Application instance", () => {
-        const app = getCurrentApp();
+        const app = getApplication();
         expect(app).toBeInstanceOf(Gtk.Application);
     });
 

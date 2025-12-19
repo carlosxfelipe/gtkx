@@ -1,4 +1,4 @@
-import { getCurrentApp } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -80,7 +80,7 @@ describe("render", () => {
         await findByRole(Gtk.AccessibleRole.BUTTON);
         await unmount();
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const activeWindow = app.getActiveWindow();
         expect(activeWindow).toBeNull();
     });
@@ -96,7 +96,7 @@ describe("cleanup", () => {
         await render(<Button label="Test" />);
         await cleanup();
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const windows = app.getWindows();
         expect(windows.length).toBe(0);
     });

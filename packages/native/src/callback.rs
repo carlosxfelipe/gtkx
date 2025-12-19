@@ -11,19 +11,23 @@ use gtk4::{
     gio::ffi::GAsyncResult,
     glib::{
         self, gobject_ffi,
-        translate::{FromGlib as _, FromGlibPtrNone as _, ToGlibPtrMut as _},
+        translate::{FromGlibPtrNone as _, ToGlibPtrMut as _},
         value::ToValue as _,
     },
 };
 
-use crate::state::GtkThreadState;
+/// Data for draw function callbacks, holding the closure and pre-computed GTypes.
+pub struct DrawFuncData {
+    pub closure: *mut gobject_ffi::GClosure,
+    pub arg_gtypes: Vec<glib::Type>,
+}
 
 /// Trampoline for GTK DrawingArea draw functions.
 ///
 /// # Safety
 ///
 /// This function is called from C code. The `user_data` pointer must be a valid
-/// pointer to a `GClosure`, and all other pointers must be valid GTK objects.
+/// pointer to a `DrawFuncData`, and all other pointers must be valid GTK objects.
 unsafe extern "C" fn draw_func_trampoline(
     drawing_area: *mut c_void,
     cr: *mut c_void,
@@ -31,33 +35,45 @@ unsafe extern "C" fn draw_func_trampoline(
     height: i32,
     user_data: *mut c_void,
 ) {
-    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
+    let data_ptr = user_data as *mut DrawFuncData;
+
+    if data_ptr.is_null() {
+        return;
+    }
+
+    let data = unsafe { &*data_ptr };
+    let closure_ptr = data.closure;
 
     if closure_ptr.is_null() {
         return;
     }
 
-    let cairo_context_type = GtkThreadState::with(|state| {
-        let library = state
-            .get_library("libcairo-gobject.so.2")
-            .expect("Failed to load libcairo-gobject.so.2");
-        let symbol = unsafe {
-            library
-                .get::<unsafe extern "C" fn() -> glib::ffi::GType>(
-                    b"cairo_gobject_context_get_type",
-                )
-                .expect("Failed to find cairo_gobject_context_get_type")
-        };
-        let gtype_raw = unsafe { symbol() };
-        unsafe { glib::Type::from_glib(gtype_raw) }
-    });
-
     unsafe {
         let mut args: [glib::Value; 4] = [
-            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
-            glib::Value::from_type_unchecked(cairo_context_type),
-            glib::Value::from_type_unchecked(glib::types::Type::I32),
-            glib::Value::from_type_unchecked(glib::types::Type::I32),
+            glib::Value::from_type_unchecked(
+                data.arg_gtypes
+                    .first()
+                    .copied()
+                    .unwrap_or(glib::types::Type::OBJECT),
+            ),
+            glib::Value::from_type_unchecked(
+                data.arg_gtypes
+                    .get(1)
+                    .copied()
+                    .unwrap_or(glib::types::Type::POINTER),
+            ),
+            glib::Value::from_type_unchecked(
+                data.arg_gtypes
+                    .get(2)
+                    .copied()
+                    .unwrap_or(glib::types::Type::I32),
+            ),
+            glib::Value::from_type_unchecked(
+                data.arg_gtypes
+                    .get(3)
+                    .copied()
+                    .unwrap_or(glib::types::Type::I32),
+            ),
         ];
 
         gobject_ffi::g_value_set_object(
@@ -115,29 +131,32 @@ pub fn get_destroy_trampoline_ptr() -> *mut c_void {
     destroy_trampoline as *mut c_void
 }
 
-/// Trampoline that simply unrefs a closure without invoking it.
+/// Destroy function for DrawFuncData.
 ///
-/// Used as a destroy notify for closures that shouldn't be called on cleanup.
+/// Unrefs the closure and frees the DrawFuncData struct.
 ///
 /// # Safety
 ///
 /// This function is called from C code. The `user_data` pointer must be a valid
-/// pointer to a `GClosure`.
-unsafe extern "C" fn unref_closure_trampoline(user_data: *mut c_void) {
-    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
+/// pointer to a `DrawFuncData` that was created via `Box::into_raw`.
+unsafe extern "C" fn draw_func_data_destroy(user_data: *mut c_void) {
+    let data_ptr = user_data as *mut DrawFuncData;
 
-    if closure_ptr.is_null() {
+    if data_ptr.is_null() {
         return;
     }
 
     unsafe {
-        gobject_ffi::g_closure_unref(closure_ptr);
+        let data = Box::from_raw(data_ptr);
+        if !data.closure.is_null() {
+            gobject_ffi::g_closure_unref(data.closure);
+        }
     }
 }
 
-/// Returns the function pointer to the unref closure trampoline.
-pub fn get_unref_closure_trampoline_ptr() -> *mut c_void {
-    unref_closure_trampoline as *mut c_void
+/// Returns the function pointer to the draw func data destroy function.
+pub fn get_draw_func_data_destroy_ptr() -> *mut c_void {
+    draw_func_data_destroy as *mut c_void
 }
 
 /// Trampoline for GAsyncReadyCallback (async operation completion).
@@ -229,20 +248,31 @@ mod tests {
         let invoked = Arc::new(AtomicBool::new(false));
         let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
+        let data = Box::new(DrawFuncData {
+            closure: closure_ptr,
+            arg_gtypes: vec![
+                glib::types::Type::OBJECT,
+                glib::types::Type::POINTER,
+                glib::types::Type::I32,
+                glib::types::Type::I32,
+            ],
+        });
+        let data_ptr = Box::into_raw(data);
+
         unsafe {
             draw_func_trampoline(
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
                 100,
                 100,
-                closure_ptr as *mut c_void,
+                data_ptr as *mut c_void,
             );
         }
 
         assert!(invoked.load(Ordering::SeqCst));
 
         unsafe {
-            glib::gobject_ffi::g_closure_unref(closure_ptr);
+            draw_func_data_destroy(data_ptr as *mut c_void);
         }
     }
 
@@ -268,43 +298,6 @@ mod tests {
     }
 
     #[test]
-    fn unref_closure_trampoline_null_safe() {
-        test_utils::ensure_gtk_init();
-
-        unsafe {
-            unref_closure_trampoline(std::ptr::null_mut());
-        }
-    }
-
-    #[test]
-    fn unref_closure_trampoline_decrements_refcount() {
-        test_utils::ensure_gtk_init();
-
-        let closure = glib::Closure::new(|_| None::<glib::Value>);
-
-        use glib::translate::ToGlibPtr as _;
-        let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
-
-        unsafe {
-            glib::gobject_ffi::g_closure_ref(ptr);
-        }
-
-        let ref_before = unsafe { (*ptr).ref_count };
-
-        unsafe {
-            unref_closure_trampoline(ptr as *mut c_void);
-        }
-
-        let ref_after = unsafe { (*ptr).ref_count };
-
-        assert_eq!(ref_after, ref_before - 1);
-
-        unsafe {
-            glib::gobject_ffi::g_closure_unref(ptr);
-        }
-    }
-
-    #[test]
     fn async_ready_trampoline_null_safe() {
         test_utils::ensure_gtk_init();
 
@@ -321,7 +314,6 @@ mod tests {
     fn get_trampoline_ptrs_not_null() {
         assert!(!get_draw_func_trampoline_ptr().is_null());
         assert!(!get_destroy_trampoline_ptr().is_null());
-        assert!(!get_unref_closure_trampoline_ptr().is_null());
         assert!(!get_async_ready_trampoline_ptr().is_null());
     }
 }

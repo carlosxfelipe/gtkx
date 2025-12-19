@@ -424,6 +424,8 @@ export type RegisteredType = {
     namespace: string;
     transformedName: string;
     glibTypeName?: string;
+    sharedLibrary?: string;
+    glibGetType?: string;
 };
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
@@ -496,8 +498,16 @@ export class TypeRegistry {
      * @param namespace - The namespace containing the record
      * @param name - The record name
      * @param glibTypeName - Optional GLib type name for boxed type handling
+     * @param sharedLibrary - The shared library containing this record's type
+     * @param glibGetType - The GLib get_type function name
      */
-    registerRecord(namespace: string, name: string, glibTypeName?: string): void {
+    registerRecord(
+        namespace: string,
+        name: string,
+        glibTypeName?: string,
+        sharedLibrary?: string,
+        glibGetType?: string,
+    ): void {
         const transformedName = normalizeTypeName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
             kind: "record",
@@ -505,6 +515,8 @@ export class TypeRegistry {
             namespace,
             transformedName,
             glibTypeName,
+            sharedLibrary,
+            glibGetType,
         });
     }
 
@@ -580,7 +592,13 @@ export class TypeRegistry {
             }
             for (const record of ns.records) {
                 if (record.glibTypeName && !record.disguised) {
-                    registry.registerRecord(ns.name, record.name, record.glibTypeName);
+                    registry.registerRecord(
+                        ns.name,
+                        record.name,
+                        record.glibTypeName,
+                        ns.sharedLibrary,
+                        record.glibGetType,
+                    );
                 }
             }
             for (const callback of ns.callbacks) {
@@ -944,6 +962,8 @@ export class TypeMapper {
                             type: "boxed",
                             borrowed: isReturn,
                             innerType: registered.glibTypeName ?? registered.transformedName,
+                            lib: registered.sharedLibrary,
+                            getTypeFn: registered.glibGetType,
                         },
                         externalType,
                         kind: registered.kind,
@@ -1033,6 +1053,8 @@ export class TypeMapper {
                                 type: "boxed",
                                 borrowed: isReturn,
                                 innerType: registered.glibTypeName ?? registered.transformedName,
+                                lib: registered.sharedLibrary,
+                                getTypeFn: registered.glibGetType,
                             },
                             externalType: isExternal ? externalType : undefined,
                         };
@@ -1091,6 +1113,8 @@ export class TypeMapper {
                             type: "boxed",
                             borrowed: isReturn,
                             innerType: registered.glibTypeName ?? registered.transformedName,
+                            lib: registered.sharedLibrary,
+                            getTypeFn: registered.glibGetType,
                         },
                         externalType,
                         kind: registered.kind,
@@ -1192,14 +1216,14 @@ export class TypeMapper {
 
         if (param.type.name === "Gtk.DrawingAreaDrawFunc" || param.type.name === "DrawingAreaDrawFunc") {
             this.onExternalTypeUsed?.({
-                namespace: "Cairo",
+                namespace: "cairo",
                 name: "Context",
                 transformedName: "Context",
                 kind: "record",
             });
             this.onSameNamespaceClassUsed?.("DrawingArea", "DrawingArea");
             return {
-                ts: "(self: DrawingArea, cr: Cairo.Context, width: number, height: number) => void",
+                ts: "(self: DrawingArea, cr: cairo.Context, width: number, height: number) => void",
                 ffi: {
                     type: "callback",
                     trampoline: "drawFunc",

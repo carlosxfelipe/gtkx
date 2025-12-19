@@ -1,4 +1,4 @@
-import { getCurrentApp } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, CheckButton, Entry, Expander, Frame, Label, Switch, ToggleButton } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ afterEach(async () => {
 describe("findByRole", () => {
     it("finds element by accessible role", async () => {
         await render(<Button label="Test" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const button = await findByRole(app, Gtk.AccessibleRole.BUTTON);
         expect(button).toBeDefined();
     });
@@ -35,7 +35,7 @@ describe("findByRole", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const saveButton = await findByRole(app, Gtk.AccessibleRole.BUTTON, { name: "Save" });
         expect(saveButton).toBeDefined();
     });
@@ -48,7 +48,7 @@ describe("findByRole", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const checkedBox = await findByRole(app, Gtk.AccessibleRole.CHECKBOX, { checked: true });
         expect(checkedBox).toBeDefined();
     });
@@ -61,7 +61,7 @@ describe("findByRole", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const activeToggle = await findByRole(app, Gtk.AccessibleRole.TOGGLE_BUTTON, { checked: true });
         expect(activeToggle).toBeDefined();
     });
@@ -74,7 +74,7 @@ describe("findByRole", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const activeSwitch = await findByRole(app, Gtk.AccessibleRole.SWITCH, { checked: true });
         expect(activeSwitch).toBeDefined();
     });
@@ -91,21 +91,21 @@ describe("findByRole", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const expandedButton = await findByRole(app, Gtk.AccessibleRole.BUTTON, { name: "Expanded" });
         expect(expandedButton).toBeDefined();
     });
 
     it("supports regex name matching", async () => {
         await render(<Button label="Submit Form" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const button = await findByRole(app, Gtk.AccessibleRole.BUTTON, { name: /submit/i });
         expect(button).toBeDefined();
     });
 
     it("supports function matcher for name", async () => {
         await render(<Button label="Click Here" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const button = await findByRole(app, Gtk.AccessibleRole.BUTTON, {
             name: (text) => text.includes("Click"),
         });
@@ -115,7 +115,7 @@ describe("findByRole", () => {
     describe("error handling", () => {
         it("throws when element not found", async () => {
             await render(<Label label="Test" />);
-            const app = getCurrentApp();
+            const app = getApplication();
             await expect(findByRole(app, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
                 "Unable to find any elements",
             );
@@ -128,7 +128,7 @@ describe("findByRole", () => {
                     <Button label="Second" />
                 </Box>,
             );
-            const app = getCurrentApp();
+            const app = getApplication();
             await expect(findByRole(app, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
                 "Found 2 elements",
             );
@@ -146,7 +146,7 @@ describe("findAllByRole", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const buttons = await findAllByRole(app, Gtk.AccessibleRole.BUTTON);
         expect(buttons.length).toBe(2);
     });
@@ -154,7 +154,7 @@ describe("findAllByRole", () => {
     describe("error handling", () => {
         it("throws when no elements found", async () => {
             await render(<Label label="Test" />);
-            const app = getCurrentApp();
+            const app = getApplication();
             await expect(findAllByRole(app, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
                 "Unable to find any elements",
             );
@@ -165,28 +165,28 @@ describe("findAllByRole", () => {
 describe("findByText", () => {
     it("finds element by exact text", async () => {
         await render(<Label label="Hello World" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const label = await findByText(app, "Hello World");
         expect(label).toBeDefined();
     });
 
     it("finds element by partial text with exact false", async () => {
         await render(<Label label="Hello World" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const label = await findByText(app, "Hello", { exact: false });
         expect(label).toBeDefined();
     });
 
     it("normalizes whitespace by default", async () => {
         await render(<Label label="  Hello   World  " />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const label = await findByText(app, "Hello World");
         expect(label).toBeDefined();
     });
 
     it("supports custom normalizer", async () => {
         await render(<Label label="HELLO WORLD" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const label = await findByText(app, "hello world", {
             normalizer: (text) => text.toLowerCase(),
         });
@@ -196,7 +196,7 @@ describe("findByText", () => {
     describe("error handling", () => {
         it("throws when text not found", async () => {
             await render(<Label label="Test" />);
-            const app = getCurrentApp();
+            const app = getApplication();
             await expect(findByText(app, "Nonexistent", { timeout: 100 })).rejects.toThrow(
                 "Unable to find any elements",
             );
@@ -214,7 +214,7 @@ describe("findAllByText", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const labels = await findAllByText(app, "Same");
         expect(labels.length).toBe(2);
     });
@@ -223,7 +223,7 @@ describe("findAllByText", () => {
 describe("findByLabelText", () => {
     it("finds button by label", async () => {
         await render(<Button label="Submit" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const button = await findByLabelText(app, "Submit");
         expect(button).toBeDefined();
     });
@@ -235,7 +235,7 @@ describe("findByLabelText", () => {
             </Frame.Root>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const frame = await findByRole(app, Gtk.AccessibleRole.GROUP, { name: "Settings" });
         expect(frame).toBeDefined();
     });
@@ -250,7 +250,7 @@ describe("findAllByLabelText", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const buttons = await findAllByLabelText(app, "Action");
         expect(buttons.length).toBe(2);
     });
@@ -259,14 +259,14 @@ describe("findAllByLabelText", () => {
 describe("findByTestId", () => {
     it("finds element by widget name as test id", async () => {
         await render(<Entry name="email-input" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const entry = await findByTestId(app, "email-input");
         expect(entry).toBeDefined();
     });
 
     it("supports regex matching", async () => {
         await render(<Entry name="form-field-email" />);
-        const app = getCurrentApp();
+        const app = getApplication();
         const entry = await findByTestId(app, /form-field/);
         expect(entry).toBeDefined();
     });
@@ -281,7 +281,7 @@ describe("findAllByTestId", () => {
             </Box>,
         );
 
-        const app = getCurrentApp();
+        const app = getApplication();
         const entries = await findAllByTestId(app, "field");
         expect(entries.length).toBe(2);
     });

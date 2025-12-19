@@ -4,7 +4,7 @@ import type { ApplicationFlags } from "../generated/gio/enums.js";
 import { Application } from "../generated/gtk/application.js";
 import { finalize as finalizeGtkSource, init as initGtkSource } from "../generated/gtksource/functions.js";
 import { events } from "./events.js";
-import { getObject } from "./object.js";
+import { getNativeObject } from "./object.js";
 
 declare const Deno: unknown;
 const isDeno = typeof Deno !== "undefined";
@@ -34,7 +34,7 @@ const stopPolling = (): void => {
  * @returns The GTK Application instance
  * @throws Error if GTK has not been started yet
  */
-export const getCurrentApp = (): Application => {
+export const getApplication = (): Application => {
     if (!currentApp) {
         throw new Error("GTK application not initialized. Call start() first.");
     }
@@ -55,7 +55,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     const app = nativeStart(appId, flags);
-    currentApp = getObject(app, Application);
+    currentApp = getNativeObject(app, Application);
     events.emit("start");
 
     try {

@@ -41,14 +41,7 @@ Edit your code and see changes instantly—no restart needed.
 ### Example
 
 ```tsx
-import {
-  render,
-  ApplicationWindow,
-  Box,
-  Button,
-  Label,
-  quit,
-} from "@gtkx/react";
+import { render, ApplicationWindow, Box, Button, quit } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -58,7 +51,7 @@ const App = () => {
   return (
     <ApplicationWindow title="Counter" onCloseRequest={quit}>
       <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        <Label label={`Count: ${count}`} />
+        {`Count: ${count}`}
         <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
     </ApplicationWindow>
@@ -84,8 +77,6 @@ const primary = css`
 <Button label="Click me" cssClasses={[primary]} />;
 ```
 
-GTK also provides built-in classes like `suggested-action`, `destructive-action`, `card`, and `heading`.
-
 ## Testing
 
 ```tsx
@@ -109,9 +100,8 @@ test("increments count", async () => {
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 20+ (Deno support experimental)
 - GTK4 Runtime (`gtk4` on Fedora, `libgtk-4-1` on Ubuntu)
-- Linux
 
 ## Contributing
 
