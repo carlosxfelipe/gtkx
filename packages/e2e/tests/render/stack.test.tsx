@@ -1,15 +1,15 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { Label, Stack } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { Label, Stack } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - Stack", () => {
     describe("Stack.Root", () => {
         it("creates Stack widget", async () => {
             const ref = createRef<Gtk.Stack>();
 
-            await render(<Stack.Root ref={ref} />);
+            await render(<Stack.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -25,6 +25,7 @@ describe("render - Stack", () => {
                         <Label label="Page 1" />
                     </Stack.Page>
                 </Stack.Root>,
+                { wrapper: false },
             );
 
             expect(stackRef.current?.getChildByName("page1")).not.toBeNull();
@@ -39,6 +40,7 @@ describe("render - Stack", () => {
                         <Label label="Titled Content" />
                     </Stack.Page>
                 </Stack.Root>,
+                { wrapper: false },
             );
 
             const page = stackRef.current?.getPage(stackRef.current.getChildByName("titled") as Gtk.Widget);
@@ -54,6 +56,7 @@ describe("render - Stack", () => {
                         <Label label="Unnamed Page" />
                     </Stack.Page>
                 </Stack.Root>,
+                { wrapper: false },
             );
 
             expect(stackRef.current?.getFirstChild()).not.toBeNull();
@@ -68,6 +71,7 @@ describe("render - Stack", () => {
                         <Label label="With Props" />
                     </Stack.Page>
                 </Stack.Root>,
+                { wrapper: false },
             );
 
             const child = stackRef.current?.getChildByName("props-test");
@@ -93,9 +97,9 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["first", "last"]} />);
+            await render(<App pages={["first", "last"]} />, { wrapper: false });
 
-            await render(<App pages={["first", "middle", "last"]} />);
+            await render(<App pages={["first", "middle", "last"]} />, { wrapper: false });
 
             expect(stackRef.current?.getChildByName("first")).not.toBeNull();
             expect(stackRef.current?.getChildByName("middle")).not.toBeNull();
@@ -117,9 +121,9 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["a", "b", "c"]} />);
+            await render(<App pages={["a", "b", "c"]} />, { wrapper: false });
 
-            await render(<App pages={["a", "c"]} />);
+            await render(<App pages={["a", "c"]} />, { wrapper: false });
 
             expect(stackRef.current?.getChildByName("a")).not.toBeNull();
             expect(stackRef.current?.getChildByName("b")).toBeNull();
@@ -139,13 +143,13 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App iconName="dialog-information" />);
+            await render(<App iconName="dialog-information" />, { wrapper: false });
 
             const child = stackRef.current?.getChildByName("dynamic");
             let page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-information");
 
-            await render(<App iconName="dialog-warning" />);
+            await render(<App iconName="dialog-warning" />, { wrapper: false });
 
             page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-warning");
@@ -165,6 +169,7 @@ describe("render - Stack", () => {
                         <Label label="Page 2" />
                     </Stack.Page>
                 </Stack.Root>,
+                { wrapper: false },
             );
 
             expect(stackRef.current?.getVisibleChildName()).toBe("page2");
@@ -185,9 +190,9 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["other"]} />);
+            await render(<App pages={["other"]} />, { wrapper: false });
 
-            await render(<App pages={["other", "target"]} />);
+            await render(<App pages={["other", "target"]} />, { wrapper: false });
 
             expect(stackRef.current?.getVisibleChildName()).toBe("target");
         });

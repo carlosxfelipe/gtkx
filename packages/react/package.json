@@ -36,16 +36,14 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "codegen": "tsx scripts/codegen.ts",
-        "test": "../../scripts/run-tests.sh"
+        "codegen": "tsx scripts/codegen.ts"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
-        "@gtkx/gir": "workspace:*",
-        "@gtkx/native": "workspace:*"
+        "@gtkx/gir": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19"

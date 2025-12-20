@@ -1,11 +1,10 @@
-import { stop } from "@gtkx/ffi";
+import { cleanup, teardown } from "@gtkx/testing";
 import { afterAll, afterEach } from "vitest";
-import { cleanup } from "./utils.js";
 
 afterEach(async () => {
     await cleanup();
 });
 
-afterAll(() => {
-    stop();
+afterAll(async () => {
+    await teardown();
 });

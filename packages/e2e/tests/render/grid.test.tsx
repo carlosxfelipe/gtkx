@@ -1,15 +1,15 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { Grid, Label } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { Grid, Label } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - Grid", () => {
     describe("Grid.Root", () => {
         it("creates Grid widget", async () => {
             const ref = createRef<Gtk.Grid>();
 
-            await render(<Grid.Root ref={ref} />);
+            await render(<Grid.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -26,6 +26,7 @@ describe("render - Grid", () => {
                         <Label ref={labelRef} label="Positioned" />
                     </Grid.Child>
                 </Grid.Root>,
+                { wrapper: false },
             );
 
             expect(labelRef.current?.getParent()?.id).toEqual(gridRef.current?.id);
@@ -41,6 +42,7 @@ describe("render - Grid", () => {
                         <Label ref={labelRef} label="Spanning" />
                     </Grid.Child>
                 </Grid.Root>,
+                { wrapper: false },
             );
 
             expect(labelRef.current).not.toBeNull();
@@ -56,6 +58,7 @@ describe("render - Grid", () => {
                         <Label ref={labelRef} label="Default Position" />
                     </Grid.Child>
                 </Grid.Root>,
+                { wrapper: false },
             );
 
             expect(labelRef.current?.getParent()?.id).toEqual(gridRef.current?.id);
@@ -77,9 +80,9 @@ describe("render - Grid", () => {
                 );
             }
 
-            await render(<App column={0} row={0} />);
+            await render(<App column={0} row={0} />, { wrapper: false });
 
-            await render(<App column={2} row={3} />);
+            await render(<App column={2} row={3} />, { wrapper: false });
 
             expect(labelRef.current?.getParent()?.id).toEqual(gridRef.current?.id);
         });
@@ -98,9 +101,9 @@ describe("render - Grid", () => {
                 );
             }
 
-            await render(<App columnSpan={1} rowSpan={1} />);
+            await render(<App columnSpan={1} rowSpan={1} />, { wrapper: false });
 
-            await render(<App columnSpan={3} rowSpan={2} />);
+            await render(<App columnSpan={3} rowSpan={2} />, { wrapper: false });
 
             expect(labelRef.current).not.toBeNull();
         });
@@ -122,11 +125,11 @@ describe("render - Grid", () => {
                 );
             }
 
-            await render(<App showChild={true} />);
+            await render(<App showChild={true} />, { wrapper: false });
 
             expect(gridRef.current?.getFirstChild()).not.toBeNull();
 
-            await render(<App showChild={false} />);
+            await render(<App showChild={false} />, { wrapper: false });
 
             expect(gridRef.current?.getFirstChild()).toBeNull();
         });

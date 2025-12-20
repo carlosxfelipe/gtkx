@@ -1,15 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { Box, Button, Entry, Image, Label } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { Box, Button, Entry, Image, Label } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - widget creation", () => {
     describe("basic widgets", () => {
         it("creates Label widget with text", async () => {
             const ref = createRef<Gtk.Label>();
 
-            await render(<Label ref={ref} label="Hello World" />);
+            await render(<Label ref={ref} label="Hello World" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getLabel()).toBe("Hello World");
@@ -18,7 +18,7 @@ describe("render - widget creation", () => {
         it("creates Button widget with label", async () => {
             const ref = createRef<Gtk.Button>();
 
-            await render(<Button ref={ref} label="Click Me" />);
+            await render(<Button ref={ref} label="Click Me" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getLabel()).toBe("Click Me");
@@ -27,7 +27,7 @@ describe("render - widget creation", () => {
         it("creates Box widget with orientation", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<Box ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL} />);
+            await render(<Box ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
@@ -36,7 +36,7 @@ describe("render - widget creation", () => {
         it("creates Entry widget", async () => {
             const ref = createRef<Gtk.Entry>();
 
-            await render(<Entry ref={ref} placeholderText="Enter text" />);
+            await render(<Entry ref={ref} placeholderText="Enter text" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getPlaceholderText()).toBe("Enter text");
@@ -45,7 +45,7 @@ describe("render - widget creation", () => {
         it("creates Image widget", async () => {
             const ref = createRef<Gtk.Image>();
 
-            await render(<Image ref={ref} iconName="dialog-information" />);
+            await render(<Image ref={ref} iconName="dialog-information" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getIconName()).toBe("dialog-information");
@@ -56,7 +56,7 @@ describe("render - widget creation", () => {
         it("passes constructor parameters from props", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<Box ref={ref} orientation={Gtk.Orientation.HORIZONTAL} spacing={10} />);
+            await render(<Box ref={ref} orientation={Gtk.Orientation.HORIZONTAL} spacing={10} />, { wrapper: false });
 
             expect(ref.current?.getSpacing()).toBe(10);
         });
@@ -64,7 +64,7 @@ describe("render - widget creation", () => {
         it("handles widgets with no constructor parameters", async () => {
             const ref = createRef<Gtk.Button>();
 
-            await render(<Button ref={ref} />);
+            await render(<Button ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -72,7 +72,7 @@ describe("render - widget creation", () => {
         it("handles widgets with optional constructor parameters", async () => {
             const ref = createRef<Gtk.Label>();
 
-            await render(<Label ref={ref} />);
+            await render(<Label ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -82,7 +82,7 @@ describe("render - widget creation", () => {
         it("provides GTK widget via ref", async () => {
             const ref = createRef<Gtk.Label>();
 
-            await render(<Label ref={ref} label="Test" />);
+            await render(<Label ref={ref} label="Test" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(typeof ref.current?.getLabel).toBe("function");
@@ -91,7 +91,7 @@ describe("render - widget creation", () => {
         it("ref.current is the actual GTK widget instance", async () => {
             const ref = createRef<Gtk.Label>();
 
-            await render(<Label ref={ref} label="Widget Instance" />);
+            await render(<Label ref={ref} label="Widget Instance" />, { wrapper: false });
 
             expect(ref.current?.id).toBeDefined();
             expect(ref.current?.getLabel()).toBe("Widget Instance");

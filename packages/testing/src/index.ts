@@ -11,6 +11,7 @@ export {
 } from "./queries.js";
 export { cleanup, render, teardown } from "./render.js";
 export { screen } from "./screen.js";
+export { tick } from "./timing.js";
 export type {
     BoundQueries,
     ByRoleOptions,

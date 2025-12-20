@@ -1,18 +1,17 @@
-import { getApplication } from "@gtkx/ffi";
+import { createRef as createNativeRef, getApplication } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { createRef as createNativeRef } from "@gtkx/native";
+import { AdwApplicationWindow, AdwWindow, ApplicationWindow, Label, Window } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { AdwApplicationWindow, AdwWindow, ApplicationWindow, Label, Window } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - Window", () => {
     describe("creation", () => {
         it("creates Gtk.Window", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} title="Plain Window" />);
+            await render(<Window.Root ref={ref} title="Plain Window" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getTitle()).toBe("Plain Window");
@@ -21,7 +20,7 @@ describe("render - Window", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 
-            await render(<ApplicationWindow ref={ref} title="App Window" />);
+            await render(<ApplicationWindow ref={ref} title="App Window" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()?.id).toEqual(getApplication().id);
@@ -30,7 +29,7 @@ describe("render - Window", () => {
         it("creates Adw.Window", async () => {
             const ref = createRef<Adw.Window>();
 
-            await render(<AdwWindow.Root ref={ref} />);
+            await render(<AdwWindow.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -38,7 +37,7 @@ describe("render - Window", () => {
         it("creates Adw.ApplicationWindow with current app", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
 
-            await render(<AdwApplicationWindow.Root ref={ref} />);
+            await render(<AdwApplicationWindow.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()?.id).toEqual(getApplication().id);
@@ -49,7 +48,7 @@ describe("render - Window", () => {
         it("sets default size via defaultWidth/defaultHeight", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} defaultWidth={300} defaultHeight={200} />);
+            await render(<Window.Root ref={ref} defaultWidth={300} defaultHeight={200} />, { wrapper: false });
 
             const widthRef = createNativeRef(0);
             const heightRef = createNativeRef(0);
@@ -65,7 +64,7 @@ describe("render - Window", () => {
                 return <Window.Root ref={ref} defaultWidth={width} defaultHeight={height} />;
             }
 
-            await render(<App width={200} height={150} />);
+            await render(<App width={200} height={150} />, { wrapper: false });
 
             const widthRef = createNativeRef(0);
             const heightRef = createNativeRef(0);
@@ -73,7 +72,7 @@ describe("render - Window", () => {
             const initialWidth = widthRef.value;
             const initialHeight = heightRef.value;
 
-            await render(<App width={400} height={300} />);
+            await render(<App width={400} height={300} />, { wrapper: false });
 
             ref.current?.getDefaultSize(widthRef, heightRef);
             expect(widthRef.value).toBeGreaterThanOrEqual(initialWidth);
@@ -83,7 +82,7 @@ describe("render - Window", () => {
         it("handles partial size (only width)", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} defaultWidth={300} />);
+            await render(<Window.Root ref={ref} defaultWidth={300} />, { wrapper: false });
 
             const widthRef = createNativeRef(0);
             ref.current?.getDefaultSize(widthRef);
@@ -93,7 +92,7 @@ describe("render - Window", () => {
         it("handles partial size (only height)", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} defaultHeight={200} />);
+            await render(<Window.Root ref={ref} defaultHeight={200} />, { wrapper: false });
 
             const heightRef = createNativeRef(0);
             ref.current?.getDefaultSize(undefined, heightRef);
@@ -105,7 +104,7 @@ describe("render - Window", () => {
         it("presents window on mount", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} title="Present" />);
+            await render(<Window.Root ref={ref} title="Present" />, { wrapper: false });
 
             expect(ref.current?.getVisible()).toBe(true);
         });
@@ -117,12 +116,12 @@ describe("render - Window", () => {
                 return show ? <Window.Root ref={ref} title="Destroy" /> : null;
             }
 
-            await render(<App show={true} />);
+            await render(<App show={true} />, { wrapper: false });
 
             const windowId = ref.current?.id;
             expect(windowId).toBeDefined();
 
-            await render(<App show={false} />);
+            await render(<App show={false} />, { wrapper: false });
         });
     });
 
@@ -135,6 +134,7 @@ describe("render - Window", () => {
                 <Window.Root ref={windowRef}>
                     <Label ref={labelRef} label="Window Child" />
                 </Window.Root>,
+                { wrapper: false },
             );
 
             expect(windowRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -157,11 +157,11 @@ describe("render - Window", () => {
                 );
             }
 
-            await render(<App first={true} />);
+            await render(<App first={true} />, { wrapper: false });
 
             expect(windowRef.current?.getChild()?.id).toEqual(label1Ref.current?.id);
 
-            await render(<App first={false} />);
+            await render(<App first={false} />, { wrapper: false });
 
             expect(windowRef.current?.getChild()?.id).toEqual(label2Ref.current?.id);
         });

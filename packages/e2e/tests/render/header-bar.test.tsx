@@ -1,16 +1,16 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { AdwHeaderBar, Button, HeaderBar, Label } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { AdwHeaderBar, Button, HeaderBar, Label } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - HeaderBar", () => {
     describe("HeaderBar.Root", () => {
         it("creates HeaderBar widget", async () => {
             const ref = createRef<Gtk.HeaderBar>();
 
-            await render(<HeaderBar.Root ref={ref} />);
+            await render(<HeaderBar.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -27,6 +27,7 @@ describe("render - HeaderBar", () => {
                         <Label ref={labelRef} label="Custom Title" />
                     </HeaderBar.TitleWidget>
                 </HeaderBar.Root>,
+                { wrapper: false },
             );
 
             expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(labelRef.current?.id);
@@ -47,11 +48,11 @@ describe("render - HeaderBar", () => {
                 );
             }
 
-            await render(<App showTitle={true} />);
+            await render(<App showTitle={true} />, { wrapper: false });
 
             expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
 
-            await render(<App showTitle={false} />);
+            await render(<App showTitle={false} />, { wrapper: false });
 
             expect(headerBarRef.current?.getTitleWidget()).toBeNull();
         });
@@ -66,6 +67,7 @@ describe("render - HeaderBar", () => {
                 <HeaderBar.Root ref={headerBarRef}>
                     <Button ref={buttonRef} label="Direct Child" />
                 </HeaderBar.Root>,
+                { wrapper: false },
             );
 
             expect(buttonRef.current?.getParent()?.id).toEqual(headerBarRef.current?.id);
@@ -81,6 +83,7 @@ describe("render - HeaderBar", () => {
                     <Button ref={button1Ref} label="Button 1" />
                     <Button ref={button2Ref} label="Button 2" />
                 </HeaderBar.Root>,
+                { wrapper: false },
             );
 
             expect(button1Ref.current?.getParent()?.id).toEqual(headerBarRef.current?.id);
@@ -96,11 +99,11 @@ describe("render - HeaderBar", () => {
                 return <HeaderBar.Root ref={headerBarRef}>{showButton && <Button label="Removable" />}</HeaderBar.Root>;
             }
 
-            await render(<App showButton={true} />);
+            await render(<App showButton={true} />, { wrapper: false });
 
             expect(headerBarRef.current?.getFirstChild()).not.toBeNull();
 
-            await render(<App showButton={false} />);
+            await render(<App showButton={false} />, { wrapper: false });
         });
     });
 
@@ -108,7 +111,7 @@ describe("render - HeaderBar", () => {
         it("creates Adw.HeaderBar", async () => {
             const ref = createRef<Adw.HeaderBar>();
 
-            await render(<AdwHeaderBar.Root ref={ref} />);
+            await render(<AdwHeaderBar.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -123,6 +126,7 @@ describe("render - HeaderBar", () => {
                         <Label ref={labelRef} label="Adw Title" />
                     </AdwHeaderBar.TitleWidget>
                 </AdwHeaderBar.Root>,
+                { wrapper: false },
             );
 
             expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(labelRef.current?.id);
@@ -136,6 +140,7 @@ describe("render - HeaderBar", () => {
                 <AdwHeaderBar.Root ref={headerBarRef}>
                     <Button ref={buttonRef} label="Child" />
                 </AdwHeaderBar.Root>,
+                { wrapper: false },
             );
 
             expect(buttonRef.current?.getParent()?.id).toEqual(headerBarRef.current?.id);

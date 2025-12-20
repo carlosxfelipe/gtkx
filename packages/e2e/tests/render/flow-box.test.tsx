@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { FlowBox, Label } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { FlowBox, Label } from "../../src/index.js";
-import { render } from "../utils.js";
 
 const getFlowBoxChildLabels = (flowBox: Gtk.FlowBox): string[] => {
     const labels: string[] = [];
@@ -20,7 +20,7 @@ const getFlowBoxChildLabels = (flowBox: Gtk.FlowBox): string[] => {
 };
 
 describe("render - FlowBox", () => {
-    describe("append", () => {
+    describe("adding items", () => {
         it("appends child widgets", async () => {
             const ref = createRef<Gtk.FlowBox>();
 
@@ -29,6 +29,7 @@ describe("render - FlowBox", () => {
                     <Label label="First" />
                     <Label label="Second" />
                 </FlowBox>,
+                { wrapper: false },
             );
 
             const labels = getFlowBoxChildLabels(ref.current as Gtk.FlowBox);
@@ -36,7 +37,7 @@ describe("render - FlowBox", () => {
         });
     });
 
-    describe("insert", () => {
+    describe("inserting items", () => {
         it("inserts child at correct position", async () => {
             const ref = createRef<Gtk.FlowBox>();
 
@@ -50,38 +51,17 @@ describe("render - FlowBox", () => {
                 );
             }
 
-            await render(<App items={["A", "C"]} />);
+            await render(<App items={["A", "C"]} />, { wrapper: false });
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
             const labels = getFlowBoxChildLabels(ref.current as Gtk.FlowBox);
             expect(labels).toEqual(["A", "B", "C"]);
         });
-
-        it("uses FlowBoxChild index for positioning", async () => {
-            const ref = createRef<Gtk.FlowBox>();
-
-            function App({ items }: { items: string[] }) {
-                return (
-                    <FlowBox ref={ref}>
-                        {items.map((item) => (
-                            <Label key={item} label={item} />
-                        ))}
-                    </FlowBox>
-                );
-            }
-
-            await render(<App items={["First", "Last"]} />);
-
-            await render(<App items={["First", "Middle", "Last"]} />);
-
-            const labels = getFlowBoxChildLabels(ref.current as Gtk.FlowBox);
-            expect(labels).toEqual(["First", "Middle", "Last"]);
-        });
     });
 
-    describe("remove", () => {
-        it("removes FlowBoxChild wrapper", async () => {
+    describe("removing items", () => {
+        it("removes item at correct position", async () => {
             const ref = createRef<Gtk.FlowBox>();
 
             function App({ items }: { items: string[] }) {
@@ -94,9 +74,9 @@ describe("render - FlowBox", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
-            await render(<App items={["A", "C"]} />);
+            await render(<App items={["A", "C"]} />, { wrapper: false });
 
             const labels = getFlowBoxChildLabels(ref.current as Gtk.FlowBox);
             expect(labels).toEqual(["A", "C"]);

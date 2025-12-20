@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { DropDown } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DropDown } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - DropDown", () => {
     describe("DropDown.Root", () => {
@@ -13,6 +13,7 @@ describe("render - DropDown", () => {
                 <DropDown.Root ref={ref}>
                     <DropDown.Item id="1" label="First" />
                 </DropDown.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -28,6 +29,7 @@ describe("render - DropDown", () => {
                     <DropDown.Item id="option1" label="Option 1" />
                     <DropDown.Item id="option2" label="Option 2" />
                 </DropDown.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()?.getNItems()).toBe(2);
@@ -53,6 +55,7 @@ describe("render - DropDown", () => {
                         { id: "3", label: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             await render(
@@ -63,6 +66,7 @@ describe("render - DropDown", () => {
                         { id: "3", label: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()?.getNItems()).toBe(3);
@@ -89,6 +93,7 @@ describe("render - DropDown", () => {
                         { id: "3", label: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             await render(
@@ -98,6 +103,7 @@ describe("render - DropDown", () => {
                         { id: "3", label: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()?.getNItems()).toBe(2);
@@ -114,9 +120,9 @@ describe("render - DropDown", () => {
                 );
             }
 
-            await render(<App label="Initial" />);
+            await render(<App label="Initial" />, { wrapper: false });
 
-            await render(<App label="Updated" />);
+            await render(<App label="Updated" />, { wrapper: false });
         });
     });
 
@@ -130,6 +136,7 @@ describe("render - DropDown", () => {
                     <DropDown.Item id="2" label="Second" />
                     <DropDown.Item id="3" label="Third" />
                 </DropDown.Root>,
+                { wrapper: false },
             );
         });
 
@@ -142,6 +149,7 @@ describe("render - DropDown", () => {
                     <DropDown.Item id="1" label="First" />
                     <DropDown.Item id="2" label="Second" />
                 </DropDown.Root>,
+                { wrapper: false },
             );
 
             expect(onSelectionChanged).toHaveBeenCalled();
@@ -159,9 +167,9 @@ describe("render - DropDown", () => {
                 );
             }
 
-            await render(<App selectedId="1" />);
+            await render(<App selectedId="1" />, { wrapper: false });
 
-            await render(<App selectedId="2" />);
+            await render(<App selectedId="2" />, { wrapper: false });
         });
     });
 });

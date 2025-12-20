@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { Button, HeaderBar, Label, MenuButton, Popover } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { Button, HeaderBar, Label, MenuButton, Popover } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - Slot", () => {
     it("sets slot child via Widget.SlotName pattern", async () => {
@@ -15,6 +15,7 @@ describe("render - Slot", () => {
                     <Label ref={titleRef} label="Custom Title" />
                 </HeaderBar.TitleWidget>
             </HeaderBar.Root>,
+            { wrapper: false },
         );
 
         expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(titleRef.current?.id);
@@ -30,6 +31,7 @@ describe("render - Slot", () => {
                     <Label ref={labelRef} label="Button Content" />
                 </MenuButton.Child>
             </MenuButton.Root>,
+            { wrapper: false },
         );
 
         expect(menuButtonRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -50,11 +52,11 @@ describe("render - Slot", () => {
             );
         }
 
-        await render(<App showTitle={true} />);
+        await render(<App showTitle={true} />, { wrapper: false });
 
         expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
 
-        await render(<App showTitle={false} />);
+        await render(<App showTitle={false} />, { wrapper: false });
 
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
@@ -78,11 +80,11 @@ describe("render - Slot", () => {
             );
         }
 
-        await render(<App first={true} />);
+        await render(<App first={true} />, { wrapper: false });
 
         expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(label1Ref.current?.id);
 
-        await render(<App first={false} />);
+        await render(<App first={false} />, { wrapper: false });
 
         expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(label2Ref.current?.id);
     });
@@ -97,6 +99,7 @@ describe("render - Slot", () => {
                     <Label ref={labelRef} label="Custom Child" />
                 </MenuButton.Child>
             </MenuButton.Root>,
+            { wrapper: false },
         );
 
         expect(menuButtonRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -114,6 +117,7 @@ describe("render - Slot", () => {
                     </Popover.Root>
                 </MenuButton.Popover>
             </MenuButton.Root>,
+            { wrapper: false },
         );
 
         expect(menuButtonRef.current?.getPopover()?.id).toEqual(popoverRef.current?.id);
@@ -135,6 +139,7 @@ describe("render - Slot", () => {
                     </Popover.Root>
                 </MenuButton.Popover>
             </MenuButton.Root>,
+            { wrapper: false },
         );
 
         expect(menuButtonRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -149,6 +154,7 @@ describe("render - Slot", () => {
             <HeaderBar.Root ref={headerBarRef}>
                 <Button ref={buttonRef} label="Direct Button" />
             </HeaderBar.Root>,
+            { wrapper: false },
         );
 
         expect(buttonRef.current?.getParent()?.id).toEqual(headerBarRef.current?.id);

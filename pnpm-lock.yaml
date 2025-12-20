@@ -201,6 +201,22 @@ importers:
         specifier: workspace:*
         version: link:../ffi
 
+  packages/e2e:
+    dependencies:
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../react
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../testing
+    devDependencies:
+      react:
+        specifier: ^19.1.0
+        version: 19.2.3
+
   packages/ffi:
     dependencies:
       '@gtkx/native':
@@ -238,9 +254,6 @@ importers:
       '@gtkx/gir':
         specifier: workspace:*
         version: link:../gir
-      '@gtkx/native':
-        specifier: workspace:*
-        version: link:../native
 
   packages/testing:
     dependencies:

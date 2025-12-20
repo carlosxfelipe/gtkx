@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { Box } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { Box } from "../../src/index.js";
-import { render } from "../utils.js";
 
 const getChildLabels = (box: Gtk.Box): string[] => {
     const labels: string[] = [];
@@ -24,6 +24,7 @@ describe("render - text instances", () => {
             <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 Hello World
             </Box>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);
@@ -41,11 +42,11 @@ describe("render - text instances", () => {
             );
         }
 
-        await render(<App text="Initial" />);
+        await render(<App text="Initial" />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).toContain("Initial");
 
-        await render(<App text="Updated" />);
+        await render(<App text="Updated" />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).toContain("Updated");
     });
@@ -57,6 +58,7 @@ describe("render - text instances", () => {
             <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 {""}
             </Box>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);
@@ -70,6 +72,7 @@ describe("render - text instances", () => {
             <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 你好世界 🌍 مرحبا
             </Box>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);
@@ -87,11 +90,11 @@ describe("render - text instances", () => {
             );
         }
 
-        await render(<App showText={true} />);
+        await render(<App showText={true} />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).toContain("Removable Text");
 
-        await render(<App showText={false} />);
+        await render(<App showText={false} />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).not.toContain("Removable Text");
     });
@@ -105,6 +108,7 @@ describe("render - text instances", () => {
                 {"Second"}
                 {"Third"}
             </Box>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);

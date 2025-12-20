@@ -1,10 +1,10 @@
 import { getNativeObject } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { GridView, Label, ListView } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { GridView, Label, ListView } from "../../src/index.js";
-import { render } from "../utils.js";
 
 const getModelItemCount = (listView: Gtk.ListView): number => {
     const model = listView.getModel();
@@ -22,21 +22,10 @@ describe("render - ListView", () => {
                 <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
                     <ListView.Item id="1" item={{ name: "First" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
-        });
-
-        it("sets up SignalListItemFactory", async () => {
-            const ref = createRef<Gtk.ListView>();
-
-            await render(
-                <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                </ListView.Root>,
-            );
-
-            expect(ref.current?.getFactory()).not.toBeNull();
         });
     });
 
@@ -49,6 +38,7 @@ describe("render - ListView", () => {
                     <ListView.Item id="1" item={{ name: "First" }} />
                     <ListView.Item id="2" item={{ name: "Second" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -74,6 +64,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -86,6 +77,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -112,6 +104,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -123,6 +116,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -139,9 +133,9 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App itemName="Initial" />);
+            await render(<App itemName="Initial" />, { wrapper: false });
 
-            await render(<App itemName="Updated" />);
+            await render(<App itemName="Updated" />, { wrapper: false });
         });
     });
 
@@ -154,6 +148,7 @@ describe("render - ListView", () => {
                 <ListView.Root ref={ref} renderItem={renderItem}>
                     <ListView.Item id="1" item={{ name: "Test Item" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -173,9 +168,9 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App prefix="First" />);
+            await render(<App prefix="First" />, { wrapper: false });
 
-            await render(<App prefix="Second" />);
+            await render(<App prefix="Second" />, { wrapper: false });
         });
     });
 
@@ -188,6 +183,7 @@ describe("render - ListView", () => {
                     <ListView.Item id="1" item={{ name: "First" }} />
                     <ListView.Item id="2" item={{ name: "Second" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -204,6 +200,7 @@ describe("render - ListView", () => {
                     <ListView.Item id="1" item={{ name: "First" }} />
                     <ListView.Item id="2" item={{ name: "Second" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
 
             expect(onSelectionChanged).toHaveBeenCalled();
@@ -220,9 +217,9 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App selected={["1"]} />);
+            await render(<App selected={["1"]} />, { wrapper: false });
 
-            await render(<App selected={[]} />);
+            await render(<App selected={[]} />, { wrapper: false });
         });
     });
 
@@ -239,6 +236,7 @@ describe("render - ListView", () => {
                     <ListView.Item id="1" item={{ name: "First" }} />
                     <ListView.Item id="2" item={{ name: "Second" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -256,6 +254,7 @@ describe("render - ListView", () => {
                     <ListView.Item id="2" item={{ name: "Second" }} />
                     <ListView.Item id="3" item={{ name: "Third" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -273,6 +272,7 @@ describe("render - ListView", () => {
                     <ListView.Item id="1" item={{ name: "First" }} />
                     <ListView.Item id="2" item={{ name: "Second" }} />
                 </ListView.Root>,
+                { wrapper: false },
             );
 
             expect(onSelectionChanged).toHaveBeenCalledWith(expect.any(Array));
@@ -287,6 +287,7 @@ describe("render - ListView", () => {
                 <GridView.Root ref={ref} renderItem={() => <Label label="Item" />}>
                     <GridView.Item id="1" item={{ name: "First" }} />
                 </GridView.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();

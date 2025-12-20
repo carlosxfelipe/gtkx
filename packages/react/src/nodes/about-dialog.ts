@@ -1,3 +1,4 @@
+import { getApplication } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
 
@@ -11,6 +12,7 @@ export class AboutDialogNode extends Node<Gtk.AboutDialog> {
     }
 
     override mount(): void {
+        this.widget.setTransientFor(getApplication().getActiveWindow() ?? undefined);
         this.widget.present();
     }
 

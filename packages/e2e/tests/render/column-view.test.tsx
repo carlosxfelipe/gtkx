@@ -1,8 +1,119 @@
+import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { createRef } from "react";
+import { ColumnView, Label } from "@gtkx/react";
+import { render, tick } from "@gtkx/testing";
+import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ColumnView, Label } from "../../src/index.js";
-import { render } from "../utils.js";
+
+interface Employee {
+    id: string;
+    name: string;
+    salary: number;
+}
+
+const generateEmployees = (count: number): Employee[] => {
+    const employees: Employee[] = [];
+    for (let i = 0; i < count; i++) {
+        employees.push({
+            id: String(i + 1),
+            name: `Employee ${String(i + 1).padStart(3, "0")}`,
+            salary: 50000 + ((i * 7919) % 80000),
+        });
+    }
+    return employees;
+};
+
+type SortColumn = "name" | "salary" | null;
+
+const getColumnById = (columnView: Gtk.ColumnView, columnId: string): Gtk.ColumnViewColumn | null => {
+    const columns = columnView.getColumns();
+    const nItems = columns.getNItems();
+
+    for (let i = 0; i < nItems; i++) {
+        const obj = columns.getObject(i);
+        if (obj) {
+            const column = getNativeObject(obj.id, Gtk.ColumnViewColumn);
+            if (column?.getId() === columnId) {
+                return column;
+            }
+        }
+    }
+    return null;
+};
+
+const clickColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, order: Gtk.SortType): Promise<void> => {
+    const column = getColumnById(columnView, columnId);
+    if (column) {
+        columnView.sortByColumn(order, column);
+        await tick();
+    }
+};
+
+function SortableColumnView({
+    employees,
+    columnViewRef,
+    onRenderOrder,
+}: {
+    employees: Employee[];
+    columnViewRef: React.RefObject<Gtk.ColumnView | null>;
+    onRenderOrder?: (ids: string[]) => void;
+}) {
+    const [sortColumn, setSortColumn] = useState<SortColumn>(null);
+    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+
+    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
+        setSortColumn(column as SortColumn);
+        setSortOrder(order);
+    }, []);
+
+    const sortedEmployees = useMemo(() => {
+        if (!sortColumn) return employees;
+
+        const sorted = [...employees].sort((a, b) => {
+            let comparison = 0;
+            switch (sortColumn) {
+                case "name":
+                    comparison = a.name.localeCompare(b.name);
+                    break;
+                case "salary":
+                    comparison = a.salary - b.salary;
+                    break;
+            }
+            return sortOrder === Gtk.SortType.ASCENDING ? comparison : -comparison;
+        });
+
+        return sorted;
+    }, [employees, sortColumn, sortOrder]);
+
+    if (onRenderOrder) {
+        onRenderOrder(sortedEmployees.map((e) => e.id));
+    }
+
+    return (
+        <ColumnView.Root
+            ref={columnViewRef}
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
+            onSortChange={handleSortChange}
+        >
+            <ColumnView.Column
+                id="name"
+                title="Name"
+                sortable
+                renderCell={(emp: Employee | null) => <Label label={emp?.name ?? ""} />}
+            />
+            <ColumnView.Column
+                id="salary"
+                title="Salary"
+                sortable
+                renderCell={(emp: Employee | null) => <Label label={emp ? `$${emp.salary}` : ""} />}
+            />
+            {sortedEmployees.map((emp) => (
+                <ColumnView.Item key={emp.id} id={emp.id} item={emp} />
+            ))}
+        </ColumnView.Root>
+    );
+}
 
 describe("render - ColumnView", () => {
     describe("ColumnView.Root", () => {
@@ -14,6 +125,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -29,6 +141,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Column title="Column Title" renderCell={() => <Label label="Cell" />} />
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
 
             const columns = ref.current?.getColumns();
@@ -49,9 +162,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["First", "Last"]} />);
+            await render(<App columns={["First", "Last"]} />, { wrapper: false });
 
-            await render(<App columns={["First", "Middle", "Last"]} />);
+            await render(<App columns={["First", "Middle", "Last"]} />, { wrapper: false });
 
             expect(ref.current?.getColumns()).not.toBeNull();
         });
@@ -70,9 +183,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["A", "B", "C"]} />);
+            await render(<App columns={["A", "B", "C"]} />, { wrapper: false });
 
-            await render(<App columns={["A", "C"]} />);
+            await render(<App columns={["A", "C"]} />, { wrapper: false });
 
             expect(ref.current?.getColumns()).not.toBeNull();
         });
@@ -91,6 +204,7 @@ describe("render - ColumnView", () => {
                     />
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -106,9 +220,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App title="Initial" />);
+            await render(<App title="Initial" />, { wrapper: false });
 
-            await render(<App title="Updated" />);
+            await render(<App title="Updated" />, { wrapper: false });
         });
     });
 
@@ -122,6 +236,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                     <ColumnView.Item id="2" item={{ name: "Second" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()).not.toBeNull();
@@ -148,6 +263,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             await render(
@@ -158,6 +274,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()).not.toBeNull();
@@ -185,6 +302,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             await render(
@@ -194,6 +312,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()).not.toBeNull();
@@ -210,6 +329,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Column title="Name" renderCell={renderCell} />
                     <ColumnView.Item id="1" item={{ name: "Test" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
         });
     });
@@ -223,6 +343,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -234,6 +355,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -246,6 +368,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -262,9 +385,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App sortColumn="name" />);
+            await render(<App sortColumn="name" />, { wrapper: false });
 
-            await render(<App sortColumn="age" />);
+            await render(<App sortColumn="age" />, { wrapper: false });
         });
     });
 
@@ -278,6 +401,7 @@ describe("render - ColumnView", () => {
                     <ColumnView.Item id="1" item={{ name: "First" }} />
                     <ColumnView.Item id="2" item={{ name: "Second" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
         });
 
@@ -291,7 +415,142 @@ describe("render - ColumnView", () => {
                     <ColumnView.Item id="2" item={{ name: "Second" }} />
                     <ColumnView.Item id="3" item={{ name: "Third" }} />
                 </ColumnView.Root>,
+                { wrapper: false },
             );
+        });
+    });
+
+    describe("React-side sorting with large dataset", () => {
+        it("renders 200 rows in initial order", async () => {
+            const employees = generateEmployees(200);
+            const renderOrders: string[][] = [];
+            const ref = createRef<Gtk.ColumnView>();
+
+            await render(
+                <SortableColumnView
+                    employees={employees}
+                    columnViewRef={ref}
+                    onRenderOrder={(ids) => renderOrders.push(ids)}
+                />,
+                { wrapper: false },
+            );
+
+            const initialOrder = renderOrders[renderOrders.length - 1];
+            expect(initialOrder).toBeDefined();
+            expect(initialOrder?.length).toBe(200);
+            expect(initialOrder?.[0]).toBe("1");
+            expect(initialOrder?.[199]).toBe("200");
+        });
+
+        it("sorts 200 rows when clicking salary column header", async () => {
+            const employees = generateEmployees(200);
+            const renderOrders: string[][] = [];
+            const ref = createRef<Gtk.ColumnView>();
+
+            await render(
+                <SortableColumnView
+                    employees={employees}
+                    columnViewRef={ref}
+                    onRenderOrder={(ids) => renderOrders.push(ids)}
+                />,
+                { wrapper: false },
+            );
+
+            const unsortedOrder = renderOrders[renderOrders.length - 1];
+            expect(unsortedOrder?.[0]).toBe("1");
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
+
+            const sortedBySalary = renderOrders[renderOrders.length - 1];
+            expect(sortedBySalary).toBeDefined();
+
+            const firstItemId = sortedBySalary?.[0];
+            const lastItemId = sortedBySalary?.[199];
+            expect(firstItemId).toBeDefined();
+            expect(lastItemId).toBeDefined();
+
+            const firstEmployee = employees.find((e) => e.id === firstItemId);
+            const lastEmployee = employees.find((e) => e.id === lastItemId);
+            expect(firstEmployee).toBeDefined();
+            expect(lastEmployee).toBeDefined();
+            expect(firstEmployee?.salary).toBeLessThanOrEqual(lastEmployee?.salary ?? 0);
+        });
+
+        it("sorts 200 rows descending when clicking column header with DESC order", async () => {
+            const employees = generateEmployees(200);
+            const renderOrders: string[][] = [];
+            const ref = createRef<Gtk.ColumnView>();
+
+            await render(
+                <SortableColumnView
+                    employees={employees}
+                    columnViewRef={ref}
+                    onRenderOrder={(ids) => renderOrders.push(ids)}
+                />,
+                { wrapper: false },
+            );
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
+
+            const ascendingOrder = renderOrders[renderOrders.length - 1];
+            const firstInAsc = employees.find((e) => e.id === ascendingOrder?.[0]);
+            const lastInAsc = employees.find((e) => e.id === ascendingOrder?.[199]);
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
+
+            const descendingOrder = renderOrders[renderOrders.length - 1];
+            const firstInDesc = employees.find((e) => e.id === descendingOrder?.[0]);
+            const lastInDesc = employees.find((e) => e.id === descendingOrder?.[199]);
+
+            expect(firstInDesc?.salary).toBeGreaterThanOrEqual(lastInDesc?.salary ?? 0);
+            expect(firstInDesc?.id).toBe(lastInAsc?.id);
+            expect(lastInDesc?.id).toBe(firstInAsc?.id);
+        });
+
+        it("switches sort column when clicking different column header", async () => {
+            const employees = generateEmployees(200);
+            const renderOrders: string[][] = [];
+            const ref = createRef<Gtk.ColumnView>();
+
+            await render(
+                <SortableColumnView
+                    employees={employees}
+                    columnViewRef={ref}
+                    onRenderOrder={(ids) => renderOrders.push(ids)}
+                />,
+                { wrapper: false },
+            );
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
+
+            const sortedBySalary = [...(renderOrders[renderOrders.length - 1] ?? [])];
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
+
+            const sortedByName = renderOrders[renderOrders.length - 1];
+
+            expect(sortedByName).not.toEqual(sortedBySalary);
+
+            expect(sortedByName?.[0]).toBe("1");
+            expect(sortedByName?.[99]).toBe("100");
+        });
+
+        it("maintains model integrity after multiple sort operations on 200 rows", async () => {
+            const employees = generateEmployees(200);
+            const ref = createRef<Gtk.ColumnView>();
+
+            await render(<SortableColumnView employees={employees} columnViewRef={ref} />, { wrapper: false });
+
+            expect(ref.current?.getModel()).not.toBeNull();
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
+            expect(ref.current?.getModel()).not.toBeNull();
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
+            expect(ref.current?.getModel()).not.toBeNull();
+
+            await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.DESCENDING);
+            expect(ref.current?.getModel()).not.toBeNull();
         });
     });
 });

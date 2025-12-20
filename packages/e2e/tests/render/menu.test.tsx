@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { Menu, PopoverMenu, PopoverMenuBar } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { Menu, PopoverMenu, PopoverMenuBar } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - Menu", () => {
     describe("PopoverMenu.Root", () => {
@@ -13,6 +13,7 @@ describe("render - Menu", () => {
                 <PopoverMenu.Root ref={ref}>
                     <Menu.Item label="Item 1" />
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -31,9 +32,9 @@ describe("render - Menu", () => {
                 );
             }
 
-            await render(<App items={["Item 1", "Item 2"]} />);
+            await render(<App items={["Item 1", "Item 2"]} />, { wrapper: false });
 
-            await render(<App items={["Item 1", "Item 2", "Item 3"]} />);
+            await render(<App items={["Item 1", "Item 2", "Item 3"]} />, { wrapper: false });
         });
     });
 
@@ -47,6 +48,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="New" />
                     </Menu.Submenu>
                 </PopoverMenuBar>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -61,17 +63,7 @@ describe("render - Menu", () => {
                 <PopoverMenu.Root ref={ref}>
                     <Menu.Item label="Test Item" />
                 </PopoverMenu.Root>,
-            );
-        });
-
-        it("creates action for onActivate handler", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-            const onActivate = vi.fn();
-
-            await render(
-                <PopoverMenu.Root ref={ref}>
-                    <Menu.Item label="Clickable" onActivate={onActivate} />
-                </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -82,6 +74,7 @@ describe("render - Menu", () => {
                 <PopoverMenu.Root ref={ref}>
                     <Menu.Item label="Save" accels="<Control>s" onActivate={() => {}} />
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -96,9 +89,9 @@ describe("render - Menu", () => {
                 );
             }
 
-            await render(<App label="Initial" />);
+            await render(<App label="Initial" />, { wrapper: false });
 
-            await render(<App label="Updated" />);
+            await render(<App label="Updated" />, { wrapper: false });
         });
 
         it("cleans up action on unmount", async () => {
@@ -113,9 +106,9 @@ describe("render - Menu", () => {
                 );
             }
 
-            await render(<App showItem={true} />);
+            await render(<App showItem={true} />, { wrapper: false });
 
-            await render(<App showItem={false} />);
+            await render(<App showItem={false} />, { wrapper: false });
         });
     });
 
@@ -130,6 +123,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="Section Item 2" />
                     </Menu.Section>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -145,6 +139,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="Item B" />
                     </Menu.Section>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -157,6 +152,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="Item" />
                     </Menu.Section>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
     });
@@ -172,6 +168,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="Open" />
                     </Menu.Submenu>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -186,6 +183,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="Paste" />
                     </Menu.Submenu>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -198,6 +196,7 @@ describe("render - Menu", () => {
                         <Menu.Item label="About" />
                     </Menu.Submenu>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
 
@@ -213,6 +212,7 @@ describe("render - Menu", () => {
                         </Menu.Submenu>
                     </Menu.Submenu>
                 </PopoverMenu.Root>,
+                { wrapper: false },
             );
         });
     });

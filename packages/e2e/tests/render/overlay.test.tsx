@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { Button, Label, Overlay } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { Button, Label, Overlay } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - Overlay", () => {
     describe("main child", () => {
@@ -14,6 +14,7 @@ describe("render - Overlay", () => {
                 <Overlay ref={overlayRef}>
                     <Label ref={labelRef} label="Main Child" />
                 </Overlay>,
+                { wrapper: false },
             );
 
             expect(overlayRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -26,11 +27,11 @@ describe("render - Overlay", () => {
                 return <Overlay ref={overlayRef}>{showMain && <Label label="Main" />}</Overlay>;
             }
 
-            await render(<App showMain={true} />);
+            await render(<App showMain={true} />, { wrapper: false });
 
             expect(overlayRef.current?.getChild()).not.toBeNull();
 
-            await render(<App showMain={false} />);
+            await render(<App showMain={false} />, { wrapper: false });
 
             expect(overlayRef.current?.getChild()).toBeNull();
         });
@@ -49,6 +50,7 @@ describe("render - Overlay", () => {
                     <Button ref={overlay1Ref} label="Overlay 1" />
                     <Button ref={overlay2Ref} label="Overlay 2" />
                 </Overlay>,
+                { wrapper: false },
             );
 
             expect(overlayRef.current?.getChild()?.id).toEqual(mainRef.current?.id);
@@ -70,9 +72,9 @@ describe("render - Overlay", () => {
                 );
             }
 
-            await render(<App overlays={["A", "B", "C"]} />);
+            await render(<App overlays={["A", "B", "C"]} />, { wrapper: false });
 
-            await render(<App overlays={["A", "C"]} />);
+            await render(<App overlays={["A", "C"]} />, { wrapper: false });
         });
     });
 
@@ -91,11 +93,11 @@ describe("render - Overlay", () => {
                 );
             }
 
-            await render(<App insertFirst={false} />);
+            await render(<App insertFirst={false} />, { wrapper: false });
 
             expect(overlayRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
 
-            await render(<App insertFirst={true} />);
+            await render(<App insertFirst={true} />, { wrapper: false });
         });
 
         it("inserts before overlay at correct position", async () => {
@@ -112,9 +114,9 @@ describe("render - Overlay", () => {
                 );
             }
 
-            await render(<App overlays={["First", "Last"]} />);
+            await render(<App overlays={["First", "Last"]} />, { wrapper: false });
 
-            await render(<App overlays={["First", "Middle", "Last"]} />);
+            await render(<App overlays={["First", "Middle", "Last"]} />, { wrapper: false });
         });
     });
 });

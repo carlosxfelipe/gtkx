@@ -1,14 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { AboutDialog, Box } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { AboutDialog, Box } from "../../src/index.js";
-import { render } from "../utils.js";
 
 describe("render - AboutDialog", () => {
     it("creates AboutDialog widget", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        await render(<AboutDialog ref={ref} programName="Test App" />);
+        await render(<AboutDialog ref={ref} programName="Test App" />, { wrapper: false });
 
         expect(ref.current).not.toBeNull();
     });
@@ -21,6 +21,7 @@ describe("render - AboutDialog", () => {
             <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 <AboutDialog ref={dialogRef} programName="Dialog" />
             </Box>,
+            { wrapper: false },
         );
 
         expect(dialogRef.current?.getParent()).toBeNull();
@@ -29,7 +30,7 @@ describe("render - AboutDialog", () => {
     it("presents on mount", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        await render(<AboutDialog ref={ref} programName="Mount Test" />);
+        await render(<AboutDialog ref={ref} programName="Mount Test" />, { wrapper: false });
 
         expect(ref.current?.getVisible()).toBe(true);
     });
@@ -41,12 +42,12 @@ describe("render - AboutDialog", () => {
             return show ? <AboutDialog ref={ref} programName="Unmount Test" /> : null;
         }
 
-        await render(<App show={true} />);
+        await render(<App show={true} />, { wrapper: false });
 
         const dialogId = ref.current?.id;
         expect(dialogId).toBeDefined();
 
-        await render(<App show={false} />);
+        await render(<App show={false} />, { wrapper: false });
     });
 
     it("sets dialog properties (programName, version, etc.)", async () => {
@@ -61,6 +62,7 @@ describe("render - AboutDialog", () => {
                 comments="A test application"
                 website="https://example.com"
             />,
+            { wrapper: false },
         );
 
         expect(ref.current?.getProgramName()).toBe("My Application");

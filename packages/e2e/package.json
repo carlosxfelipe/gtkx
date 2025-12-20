@@ -1,0 +1,17 @@
+{
+    "name": "@gtkx/e2e",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "test": "../../scripts/run-tests.sh"
+    },
+    "dependencies": {
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "@gtkx/testing": "workspace:*"
+    },
+    "devDependencies": {
+        "react": "^19.1.0"
+    }
+}
