@@ -112,3 +112,4 @@ See `examples/flatpak/` in the GTKX repository for a complete working example wi
 For general Flatpak and Node.js SEA documentation, refer to:
 - [Flatpak Documentation](https://docs.flatpak.org/)
 - [Node.js Single Executable Applications](https://nodejs.org/api/single-executable-applications.html)
+
