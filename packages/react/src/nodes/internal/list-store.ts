@@ -20,7 +20,11 @@ export class ListStore {
     public insertItemBefore(id: string, beforeId: string, item: unknown): void {
         const beforeIndex = this.model.find(beforeId);
         this.items.set(id, item);
-        this.model.splice(beforeIndex, 0, [id]);
+        if (beforeIndex >= this.model.getNItems()) {
+            this.model.append(id);
+        } else {
+            this.model.splice(beforeIndex, 0, [id]);
+        }
     }
 
     public updateItem(id: string, item: unknown): void {
@@ -31,7 +35,6 @@ export class ListStore {
             return;
         }
         this.items.set(id, item);
-        this.model.splice(index, 1, [id]);
     }
 
     public getItem(id: string) {

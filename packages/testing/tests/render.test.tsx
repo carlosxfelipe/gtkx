@@ -1,11 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
-
-afterEach(async () => {
-    await cleanup();
-});
 
 describe("render", () => {
     it("renders a simple element", async () => {
@@ -22,7 +18,7 @@ describe("render", () => {
             </GtkBox>,
         );
 
-        const button = await findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
         const label = await findByText("Second");
 
         expect(button).toBeDefined();
@@ -76,7 +72,7 @@ describe("render", () => {
     it("provides unmount function to remove content", async () => {
         const { container, findByRole, unmount } = await render(<GtkButton label="Test" />);
 
-        await findByRole(Gtk.AccessibleRole.BUTTON);
+        await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         await unmount();
 
         const activeWindow = container.getActiveWindow();

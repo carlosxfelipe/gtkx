@@ -245,7 +245,7 @@ describe("call - callback types", () => {
         });
     });
 
-    describe.skip("memory leaks", () => {
+    describe("memory leaks", () => {
         it("does not leak closure when signal handler disconnects", () => {
             const button = createButton("Test");
             const buttonRefCount = getRefCount(button);

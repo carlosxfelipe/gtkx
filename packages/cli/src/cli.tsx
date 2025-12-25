@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import "./refresh-runtime.js";
+
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import type * as Gio from "@gtkx/ffi/gio";

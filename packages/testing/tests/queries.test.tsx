@@ -10,9 +10,8 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-    cleanup,
     findAllByLabelText,
     findAllByRole,
     findAllByTestId,
@@ -23,10 +22,6 @@ import {
     findByText,
     render,
 } from "../src/index.js";
-
-afterEach(async () => {
-    await cleanup();
-});
 
 describe("findByRole", () => {
     it("finds element by accessible role", async () => {

@@ -1,15 +1,12 @@
 import { events } from "@gtkx/ffi";
 import { update } from "@gtkx/react";
-import react from "@vitejs/plugin-react";
 import { createServer, type InlineConfig, type ViteDevServer } from "vite";
+import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
+import { gtkxRefresh } from "./vite-plugin-gtkx-refresh.js";
+import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
 
-/**
- * Options for creating a GTKX development server.
- */
 export type DevServerOptions = {
-    /** Path to the app entry file (e.g., "./src/app.tsx"). */
     entry: string;
-    /** Vite configuration overrides for customizing the dev server. */
     vite?: InlineConfig;
 };
 
@@ -17,17 +14,17 @@ type AppModule = {
     default: () => React.ReactNode;
 };
 
-/**
- * Creates and starts a GTKX development server with HMR support.
- */
 export const createDevServer = async (options: DevServerOptions): Promise<ViteDevServer> => {
     const { entry, vite: viteConfig } = options;
+
+    const moduleExports = new Map<string, Record<string, unknown>>();
 
     const server = await createServer({
         ...viteConfig,
         appType: "custom",
         plugins: [
-            react(),
+            swcSsrRefresh(),
+            gtkxRefresh(),
             {
                 name: "gtkx:remove-react-dom-optimized",
                 enforce: "post",
@@ -55,12 +52,26 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
     });
 
     const loadModule = async (): Promise<AppModule> => {
-        return server.ssrLoadModule(entry) as Promise<AppModule>;
+        const mod = (await server.ssrLoadModule(entry)) as AppModule;
+        moduleExports.set(entry, { ...mod });
+        return mod;
     };
 
     const invalidateAllModules = (): void => {
         for (const module of server.moduleGraph.idToModuleMap.values()) {
             server.moduleGraph.invalidateModule(module);
+        }
+    };
+
+    const invalidateModuleAndImporters = (filePath: string): void => {
+        const module = server.moduleGraph.getModuleById(filePath);
+
+        if (module) {
+            server.moduleGraph.invalidateModule(module);
+
+            for (const importer of module.importers) {
+                server.moduleGraph.invalidateModule(importer);
+            }
         }
     };
 
@@ -71,9 +82,26 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
     server.watcher.on("change", async (changedPath) => {
         console.log(`[gtkx] File changed: ${changedPath}`);
 
-        invalidateAllModules();
-
         try {
+            const module = server.moduleGraph.getModuleById(changedPath);
+
+            if (module) {
+                invalidateModuleAndImporters(changedPath);
+
+                const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
+                moduleExports.set(changedPath, { ...newMod });
+
+                if (isReactRefreshBoundary(newMod)) {
+                    console.log("[gtkx] Fast refreshing...");
+                    performRefresh();
+                    console.log("[gtkx] Fast refresh complete");
+                    return;
+                }
+            }
+
+            console.log("[gtkx] Full reload...");
+            invalidateAllModules();
+
             const mod = await loadModule();
             const App = mod.default;
 
@@ -82,9 +110,8 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
                 return;
             }
 
-            console.log("[gtkx] Hot reloading...");
             update(<App />);
-            console.log("[gtkx] Hot reload complete");
+            console.log("[gtkx] Full reload complete");
         } catch (error) {
             console.error("[gtkx] Hot reload failed:", error);
         }

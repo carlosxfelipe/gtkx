@@ -44,9 +44,8 @@ pub struct GtkThreadState {
     /// Map from ObjectId values to their corresponding native objects.
     ///
     /// Wrapped in ManuallyDrop to prevent automatic dropping during TLS
-    /// destruction. Objects must be explicitly drained via `clear_objects()`
-    /// before the GTK main loop exits. This avoids panics from signal emissions
-    /// during TLS destruction trying to access already-destroyed TLS state.
+    /// destruction. This avoids panics from signal emissions during TLS
+    /// destruction trying to access already-destroyed TLS state.
     pub object_map: ManuallyDrop<HashMap<usize, Object>>,
     /// Counter for generating unique ObjectId values.
     pub next_object_id: usize,

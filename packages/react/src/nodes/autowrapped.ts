@@ -3,8 +3,8 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
-import { isContainerType } from "./internal/utils.js";
 import { isSingleChild } from "./internal/predicates.js";
+import { isContainerType } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type AutowrappingContainer = Gtk.ListBox | Gtk.FlowBox;
@@ -14,7 +14,7 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
     return obj instanceof Gtk.ListBoxRow || obj instanceof Gtk.FlowBoxChild;
 };
 
-export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
+class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
     public static override priority = 2;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {

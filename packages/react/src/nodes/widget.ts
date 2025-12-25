@@ -4,9 +4,9 @@ import { CONSTRUCTOR_PROPS, PROPS, SIGNALS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
 import { isAppendable, isInsertable, isRemovable, isReorderable, isSingleChild } from "./internal/predicates.js";
 import type { SignalHandler } from "./internal/signal-store.js";
+import { filterProps, isContainerType } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {

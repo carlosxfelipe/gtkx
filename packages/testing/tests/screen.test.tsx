@@ -1,11 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "../src/index.js";
-
-afterEach(async () => {
-    await cleanup();
-});
 
 describe("screen", () => {
     it("finds element by role", async () => {

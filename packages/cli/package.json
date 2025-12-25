@@ -33,6 +33,10 @@
         "./dev-server": {
             "types": "./dist/dev-server.d.ts",
             "default": "./dist/dev-server.js"
+        },
+        "./refresh-runtime": {
+            "types": "./dist/refresh-runtime.d.ts",
+            "default": "./dist/refresh-runtime.js"
         }
     },
     "bin": {
@@ -51,11 +55,13 @@
         "@clack/prompts": "^0.11.0",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@vitejs/plugin-react": "^5.1.2",
+        "@swc/core": "^1.15.7",
         "citty": "^0.1.6",
+        "react-refresh": "^0.18.0",
         "vite": "^7.3.0"
     },
     "devDependencies": {
+        "@types/react-refresh": "^0.14.7",
         "memfs": "^4.51.1"
     },
     "peerDependencies": {

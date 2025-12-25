@@ -4,7 +4,8 @@
         "**/src/generated/**": ["enumMembers"],
         "examples/*/src/app.tsx": ["exports", "duplicates"],
         "packages/cli/src/create.ts": ["exports", "types"],
-        "packages/cli/src/dev-server.tsx": ["exports", "types"]
+        "packages/cli/src/dev-server.tsx": ["exports", "types"],
+        "packages/cli/src/refresh-runtime.ts": ["exports"]
     },
     "workspaces": {
         "packages/native": {
@@ -31,7 +32,9 @@
         },
         "packages/cli": {
             "entry": ["src/cli.tsx", "src/index.ts"],
-            "project": ["src/**/*", "tests/**/*"]
+            "project": ["src/**/*", "tests/**/*"],
+            "ignore": ["src/global.d.ts"],
+            "ignoreDependencies": ["@swc/core"]
         },
         "packages/codegen": {
             "entry": ["src/cli.ts", "src/index.ts"],

@@ -13,12 +13,8 @@ import {
     GtkToggleButton,
     SimpleListItem,
 } from "@gtkx/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, userEvent } from "../src/index.js";
-
-afterEach(async () => {
-    await cleanup();
-});
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, userEvent } from "../src/index.js";
 
 describe("userEvent.click", () => {
     it("emits clicked signal on button", async () => {

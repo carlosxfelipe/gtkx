@@ -1,4 +1,4 @@
-import { getNativeObject, start, stop } from "@gtkx/ffi";
+import { getNativeObject, start } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -9,10 +9,10 @@ import { tick } from "./timing.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatch, TextMatchOptions } from "./types.js";
 import { hasLabel } from "./widget.js";
 
-const APP_ID = "com.gtkx.testing";
-
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
+
+const APP_ID = `com.gtkx.test${process.pid}`;
 
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
     if (!hasLabel(widget)) return null;
@@ -141,9 +141,6 @@ export const cleanup = async (): Promise<void> => {
     if (container && application) {
         const instance = reconciler.getInstance();
         await update(instance, null, container);
-        for (const window of application.getWindows()) {
-            window.destroy();
-        }
     }
     container = null;
     setScreenRoot(null);
@@ -155,5 +152,4 @@ export const cleanup = async (): Promise<void> => {
  */
 export const teardown = async (): Promise<void> => {
     await cleanup();
-    stop();
 };

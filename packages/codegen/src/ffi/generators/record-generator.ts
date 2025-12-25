@@ -109,7 +109,9 @@ export class RecordGenerator extends BaseGenerator {
 
             for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor) {
-                    sections.push(this.generateRecordStaticFactoryMethod(ctor, recordName, sharedLibrary));
+                    sections.push(
+                        this.generateRecordStaticFactoryMethod(ctor, recordName, sharedLibrary, record.glibTypeName),
+                    );
                 }
             }
         } else {
@@ -244,7 +246,12 @@ ${args}
         return Math.ceil(currentOffset / maxAlignment) * maxAlignment;
     }
 
-    private generateRecordStaticFactoryMethod(ctor: GirConstructor, recordName: string, sharedLibrary: string): string {
+    private generateRecordStaticFactoryMethod(
+        ctor: GirConstructor,
+        recordName: string,
+        sharedLibrary: string,
+        glibTypeName?: string,
+    ): string {
         let methodName = "new";
         if (ctor.cIdentifier) {
             const parts = ctor.cIdentifier.split("_");
@@ -257,6 +264,7 @@ ${args}
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
+        const innerType = glibTypeName ?? recordName;
 
         this.ctx.usesGetNativeObject = true;
         return `${ctorDoc}  static ${methodName}(${params}): ${recordName} {
@@ -266,7 +274,7 @@ ${args}
       [
 ${args}
       ],
-      { type: "boxed", borrowed: true, innerType: "${recordName}" }
+      { type: "boxed", borrowed: true, innerType: "${innerType}" }
     );
     return getNativeObject(ptr) as ${recordName};
   }

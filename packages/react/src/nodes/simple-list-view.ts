@@ -3,8 +3,8 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
+import { filterProps, isContainerType } from "./internal/utils.js";
 import { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
@@ -83,7 +83,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
         }
 
         child.setStore(this.store);
-        this.store.insertItemBefore(id, value, beforeId);
+        this.store.insertItemBefore(id, beforeId, value);
     }
 
     public override removeChild(child: Node): void {

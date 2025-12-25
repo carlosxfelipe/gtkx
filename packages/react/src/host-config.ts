@@ -62,7 +62,11 @@ export function createHostConfig(): HostConfig {
         createInstance: (type, props, rootContainer) => {
             return createNode(type, props, undefined, rootContainer);
         },
-        createTextInstance: (text) => createNode("GtkLabel", { label: text }),
+        createTextInstance: (text) => {
+            const node = createNode("GtkLabel", { label: text });
+            node.updateProps(null, { label: text });
+            return node;
+        },
         appendInitialChild: (parent, child) => {
             parent.appendChild(child);
         },

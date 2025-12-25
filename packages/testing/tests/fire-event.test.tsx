@@ -1,11 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton } from "@gtkx/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "../src/index.js";
-
-afterEach(async () => {
-    await cleanup();
-});
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "../src/index.js";
 
 describe("fireEvent", () => {
     it("emits clicked signal on button", async () => {

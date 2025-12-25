@@ -1,12 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
-
-afterEach(async () => {
-    await cleanup();
-});
+import { describe, expect, it } from "vitest";
+import { render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
 
 describe("waitFor", () => {
     it("resolves when callback succeeds", async () => {

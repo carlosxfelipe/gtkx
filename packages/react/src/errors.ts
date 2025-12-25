@@ -1,19 +1,19 @@
-export class GTKXError extends Error {
+export class GtkxError extends Error {
     constructor(
         message: string,
         public widgetType?: string,
         public componentStack?: string,
     ) {
         super(message);
-        this.name = "GTKXError";
+        this.name = "GtkxError";
 
         if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, GTKXError);
+            Error.captureStackTrace(this, GtkxError);
         }
     }
 
     override toString(): string {
-        const parts = [`GTKXError: ${this.message}`];
+        const parts = [`GtkxError: ${this.message}`];
 
         if (this.widgetType) {
             parts.push(`Widget Type: ${this.widgetType}`);
@@ -27,22 +27,22 @@ export class GTKXError extends Error {
     }
 }
 
-export function formatRenderError(error: unknown, widgetType?: string): GTKXError {
-    if (error instanceof GTKXError) {
+export function formatRenderError(error: unknown, widgetType?: string): GtkxError {
+    if (error instanceof GtkxError) {
         return error;
     }
 
     const message = error instanceof Error ? error.message : String(error);
     const formattedMessage = widgetType ? `Failed to render ${widgetType}: ${message}` : `Render error: ${message}`;
 
-    return new GTKXError(formattedMessage, widgetType);
+    return new GtkxError(formattedMessage, widgetType);
 }
 
-export function formatBoundaryError(error: unknown): GTKXError {
-    if (error instanceof GTKXError) {
+export function formatBoundaryError(error: unknown): GtkxError {
+    if (error instanceof GtkxError) {
         return error;
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    return new GTKXError(`Error caught by boundary: ${message}`);
+    return new GtkxError(`Error caught by boundary: ${message}`);
 }

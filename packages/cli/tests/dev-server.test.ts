@@ -11,10 +11,11 @@ const mockModule = {
 
 const mockModuleGraph = {
     idToModuleMap: new Map([
-        ["test-module", { id: "test-module" }],
-        ["test-module-2", { id: "test-module-2" }],
+        ["test-module", { id: "test-module", importers: new Set() }],
+        ["test-module-2", { id: "test-module-2", importers: new Set() }],
     ]),
     invalidateModule: vi.fn(),
+    getModuleById: vi.fn(),
 };
 
 const mockWatcher = {
@@ -32,8 +33,18 @@ vi.mock("vite", () => ({
     createServer: vi.fn().mockResolvedValue(mockViteServer),
 }));
 
-vi.mock("@vitejs/plugin-react", () => ({
-    default: vi.fn(() => ({ name: "vite:react-babel" })),
+vi.mock("../src/refresh-runtime.js", () => ({
+    initializeRefreshRuntime: vi.fn(),
+    isReactRefreshBoundary: vi.fn().mockReturnValue(false),
+    performRefresh: vi.fn(),
+}));
+
+vi.mock("../src/vite-plugin-swc-ssr-refresh.js", () => ({
+    swcSsrRefresh: vi.fn(() => ({ name: "gtkx:swc-ssr-refresh" })),
+}));
+
+vi.mock("../src/vite-plugin-gtkx-refresh.js", () => ({
+    gtkxRefresh: vi.fn(() => ({ name: "gtkx:refresh" })),
 }));
 
 vi.mock("@gtkx/react", () => ({
@@ -51,6 +62,7 @@ describe("createDevServer", () => {
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
+        mockModuleGraph.getModuleById.mockReset();
         consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
         consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     });
@@ -179,7 +191,7 @@ describe("createDevServer", () => {
         expect(loadedModule.appFlags).toBe(0);
     });
 
-    it("invalidates all modules on file change", async () => {
+    it("invalidates all modules on file change when not a refresh boundary", async () => {
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
@@ -194,7 +206,24 @@ describe("createDevServer", () => {
         expect(mockModuleGraph.invalidateModule).toHaveBeenCalledTimes(2);
     });
 
-    it("completes hot reload on file change", async () => {
+    it("attempts selective invalidation when module is in graph", async () => {
+        const changedModule = { id: "/path/to/changed-file.tsx", importers: new Set() };
+        mockModuleGraph.getModuleById.mockReturnValue(changedModule);
+
+        const { createDevServer } = await import("../src/dev-server.js");
+
+        await createDevServer({
+            entry: "/path/to/app.tsx",
+        });
+
+        const changeHandler = mockWatcher.on.mock.calls.find((call) => call[0] === "change")?.[1];
+
+        await changeHandler("/path/to/changed-file.tsx");
+
+        expect(mockModuleGraph.getModuleById).toHaveBeenCalledWith("/path/to/changed-file.tsx");
+    });
+
+    it("completes full reload on file change when not a refresh boundary", async () => {
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
@@ -204,7 +233,7 @@ describe("createDevServer", () => {
         const changeHandler = mockWatcher.on.mock.calls.find((call) => call[0] === "change")?.[1];
         await changeHandler("/path/to/changed-file.tsx");
 
-        expect(consoleLogSpy).toHaveBeenCalledWith("[gtkx] Hot reload complete");
+        expect(consoleLogSpy).toHaveBeenCalledWith("[gtkx] Full reload complete");
     });
 
     it("closes server on stop event", async () => {
@@ -219,7 +248,7 @@ describe("createDevServer", () => {
         expect(mockViteServer.close).toHaveBeenCalled();
     });
 
-    it("includes react plugin", async () => {
+    it("includes swc-ssr-refresh plugin", async () => {
         const { createServer } = await import("vite");
         const { createDevServer } = await import("../src/dev-server.js");
 
@@ -230,7 +259,21 @@ describe("createDevServer", () => {
         const config = vi.mocked(createServer).mock.calls[0]?.[0];
         expect(config).toBeDefined();
         const plugins = config?.plugins?.flat() as Array<{ name: string }>;
-        expect(plugins.some((p) => p.name === "vite:react-babel")).toBe(true);
+        expect(plugins.some((p) => p.name === "gtkx:swc-ssr-refresh")).toBe(true);
+    });
+
+    it("includes gtkx:refresh plugin", async () => {
+        const { createServer } = await import("vite");
+        const { createDevServer } = await import("../src/dev-server.js");
+
+        await createDevServer({
+            entry: "/path/to/app.tsx",
+        });
+
+        const config = vi.mocked(createServer).mock.calls[0]?.[0];
+        expect(config).toBeDefined();
+        const plugins = config?.plugins?.flat() as Array<{ name: string }>;
+        expect(plugins.some((p) => p.name === "gtkx:refresh")).toBe(true);
     });
 
     it("includes gtkx:remove-react-dom-optimized plugin", async () => {

@@ -187,16 +187,16 @@ export function Slot<W extends keyof import("./generated/jsx.js").WidgetSlotName
     return createElement("Slot", { id: props.id }, props.children);
 }
 
-/** Stack page wrapper. Usage: <StackPage name="page1" title="Page 1">...</StackPage> */
+/** Stack page wrapper. Usage: `<StackPage name="page1" title="Page 1">...</StackPage>` */
 export const StackPage = "StackPage" as const;
 
-/** Grid child wrapper with positioning. Usage: <GridChild row={0} column={1}>...</GridChild> */
+/** Grid child wrapper with positioning. Usage: `<GridChild row={0} column={1}>...</GridChild>` */
 export const GridChild = "GridChild" as const;
 
-/** Notebook page wrapper. Usage: <NotebookPage label="Tab 1">...</NotebookPage> */
+/** Notebook page wrapper. Usage: `<NotebookPage label="Tab 1">...</NotebookPage>` */
 export const NotebookPage = "NotebookPage" as const;
 
-/** List item for ListView/GridView. Usage: <ListItem id="1" value={data} /> */
+/** List item for ListView/GridView. Usage: `<ListItem id="1" value={data} />` */
 export const ListItem = "ListItem" as const;
 
 /**
@@ -271,7 +271,7 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactElement {
     return createElement("GtkGridView", props);
 }
 
-/** Simple list item for DropDown. Usage: <SimpleListItem id="opt1" value="Option 1" /> */
+/** Simple list item for DropDown. Usage: `<SimpleListItem id="opt1" value="Option 1" />` */
 export const SimpleListItem = "SimpleListItem" as const;
 
 /** Pack children for HeaderBar sides. */

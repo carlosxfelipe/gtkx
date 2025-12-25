@@ -66,6 +66,10 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
  * This function is idempotent - calling it when not started does nothing.
  */
 export const stop = (): void => {
+    if (!application) {
+        return;
+    }
+
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;

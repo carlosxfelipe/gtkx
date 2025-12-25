@@ -41,16 +41,8 @@ class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
     }
 
     public override updateProps(oldProps: StackProps | null, newProps: StackProps): void {
-        if (newProps.visibleChildName) {
-            if (!oldProps || oldProps.visibleChildName !== newProps.visibleChildName) {
-                this.container.setVisibleChildName(newProps.visibleChildName);
-            } else {
-                const firstPage = this.container.getPages().getObject(0) as Gtk.StackPage | Adw.ViewStackPage | null;
-
-                if (firstPage) {
-                    this.container.setVisibleChild(firstPage.getChild());
-                }
-            }
+        if (newProps.visibleChildName && this.container.getVisibleChildName() !== newProps.visibleChildName) {
+            this.container.setVisibleChildName(newProps.visibleChildName);
         }
 
         super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS));
