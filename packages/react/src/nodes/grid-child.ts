@@ -54,7 +54,7 @@ export class GridChildNode extends SlotNode<Props> {
 
         if (this.child) {
             const currentParent = this.child.getParent();
-            if (currentParent !== null && currentParent.equals(grid)) {
+            if (currentParent?.equals(grid)) {
                 grid.remove(this.child);
             }
             grid.attach(this.child, column, row, columnSpan, rowSpan);

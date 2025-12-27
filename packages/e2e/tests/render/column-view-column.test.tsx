@@ -39,7 +39,12 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={() => <GtkLabel label="Cell" />} />
+                    <ColumnViewColumn
+                        id="expand"
+                        title="Expandable"
+                        expand={true}
+                        renderCell={() => <GtkLabel label="Cell" />}
+                    />
                 </GtkColumnView>,
                 { wrapper: false },
             );
@@ -54,7 +59,12 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn id="resize" title="Resizable" resizable={true} renderCell={() => <GtkLabel label="Cell" />} />
+                    <ColumnViewColumn
+                        id="resize"
+                        title="Resizable"
+                        resizable={true}
+                        renderCell={() => <GtkLabel label="Cell" />}
+                    />
                 </GtkColumnView>,
                 { wrapper: false },
             );
@@ -106,7 +116,12 @@ describe("render - ColumnViewColumn", () => {
                 return (
                     <GtkColumnView ref={columnViewRef}>
                         {columns.map((title) => (
-                            <ColumnViewColumn key={title} id={title} title={title} renderCell={() => <GtkLabel label={title} />} />
+                            <ColumnViewColumn
+                                key={title}
+                                id={title}
+                                title={title}
+                                renderCell={() => <GtkLabel label={title} />}
+                            />
                         ))}
                     </GtkColumnView>
                 );

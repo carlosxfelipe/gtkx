@@ -1,0 +1,83 @@
+# GTKX
+
+> React framework for building native GTK4 desktop applications on Linux
+
+## What it does
+
+Write React components in TypeScript that render as native GTK4 widgets.
+Not a webview - actual native widgets through Rust FFI.
+
+## Tech stack
+
+- Frontend: React 19, TypeScript
+- Native: Rust, Neon (Node.js native modules)
+- Target: GTK4, Adwaita (Libadwaita)
+- Build: pnpm, Turbo, Vite
+- Test: Vitest
+
+## Packages
+
+@gtkx/react - React reconciler and component system
+@gtkx/ffi - Generated FFI bindings to native module
+@gtkx/native - Rust/Neon native module
+@gtkx/cli - CLI tools and dev server
+@gtkx/css - CSS-in-JS styling
+@gtkx/testing - Test utilities
+@gtkx/codegen - FFI code generator
+@gtkx/gir - GIR file parser
+
+## Architecture
+
+React JSX → @gtkx/react reconciler → @gtkx/ffi → @gtkx/native (Rust) → GTK4 C API
+
+Props: React state → FFI call() → GTK properties
+Events: GTK signals → FFI callbacks → React handlers
+
+## Entry points
+
+render() from @gtkx/react - Mount React app to GTK
+gtkx CLI - Create projects, run dev server
+
+## File layout
+
+packages/react/src/render.tsx - render() function
+packages/react/src/host-config.ts - React reconciler
+packages/react/src/nodes/*.ts - Widget implementations
+packages/native/src/lib.rs - Rust FFI exports
+packages/ffi/src/index.ts - JS FFI wrapper
+girs/*.gir - GObject Introspection files
+
+## Commands
+
+npm run build - Build all packages
+npm run codegen - Generate FFI from GIR
+npm run test - Run tests
+npm run dev - (in example) Start dev server
+
+## Examples
+
+examples/todo - Task management app
+examples/gtk4-demo - Widget gallery
+examples/lists - List components
+examples/adwaita - Libadwaita components
+examples/deploying - Flatpak packaging
+
+## Basic usage
+
+```tsx
+import { render, GtkApplicationWindow, GtkButton, quit } from "@gtkx/react";
+
+const App = () => (
+  <GtkApplicationWindow title="App" onCloseRequest={quit}>
+    <GtkButton label="Click" onClicked={() => console.log("clicked")} />
+  </GtkApplicationWindow>
+);
+
+render(<App />, "com.example.app");
+```
+
+## Links
+
+Repo: https://github.com/eugeniodepalo/gtkx
+Docs: https://eugeniodepalo.github.io/gtkx/
+License: MPL-2.0

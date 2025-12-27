@@ -172,16 +172,8 @@ const GLAreaDemo = () => {
         }
     }, []);
 
-    const handleUnrealize = useCallback((self: Gtk.Widget) => {
-        const area = self as Gtk.GLArea;
-        area.makeCurrent();
-
-        if (glResources.current) {
-            GL.glDeleteBuffer(glResources.current.vbo);
-            GL.glDeleteVertexArray(glResources.current.vao);
-            GL.glDeleteProgram(glResources.current.program);
-            glResources.current = null;
-        }
+    const handleUnrealize = useCallback((_self: Gtk.Widget) => {
+        glResources.current = null;
     }, []);
 
     const handleRender = useCallback(
