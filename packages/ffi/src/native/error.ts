@@ -1,7 +1,6 @@
 import { read } from "@gtkx/native";
 
 export class NativeError extends Error {
-
     readonly id: unknown;
 
     readonly domain: number;

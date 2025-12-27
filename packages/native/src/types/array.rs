@@ -64,3 +64,72 @@ impl From<&ArrayType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{IntegerSign, IntegerSize, IntegerType};
+
+    #[test]
+    fn list_type_default_is_array() {
+        let list_type: ListType = Default::default();
+        assert_eq!(list_type, ListType::Array);
+    }
+
+    #[test]
+    fn list_type_equality() {
+        assert_eq!(ListType::Array, ListType::Array);
+        assert_eq!(ListType::GList, ListType::GList);
+        assert_eq!(ListType::GSList, ListType::GSList);
+        assert_ne!(ListType::Array, ListType::GList);
+        assert_ne!(ListType::GList, ListType::GSList);
+    }
+
+    #[test]
+    fn array_type_new_creates_correct_type() {
+        let array_type =
+            ArrayType::new(Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed)));
+
+        if let Type::Integer(inner) = &*array_type.item_type {
+            assert_eq!(inner.size, IntegerSize::_32);
+            assert_eq!(inner.sign, IntegerSign::Signed);
+        } else {
+            panic!("Expected Integer type");
+        }
+        assert_eq!(array_type.list_type, ListType::Array);
+        assert!(!array_type.is_borrowed);
+    }
+
+    #[test]
+    fn array_type_to_ffi_type_is_pointer() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let array_type = ArrayType::new(int_type);
+        let _ffi_type: ffi::Type = (&array_type).into();
+    }
+
+    #[test]
+    fn array_type_with_glist() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let array_type = ArrayType {
+            item_type: Box::new(int_type),
+            list_type: ListType::GList,
+            is_borrowed: true,
+        };
+
+        assert_eq!(array_type.list_type, ListType::GList);
+        assert!(array_type.is_borrowed);
+    }
+
+    #[test]
+    fn array_type_with_gslist() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let array_type = ArrayType {
+            item_type: Box::new(int_type),
+            list_type: ListType::GSList,
+            is_borrowed: false,
+        };
+
+        assert_eq!(array_type.list_type, ListType::GSList);
+        assert!(!array_type.is_borrowed);
+    }
+}

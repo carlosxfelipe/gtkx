@@ -1,5 +1,3 @@
-
-
 import { call } from "@gtkx/native";
 import type { LineCap, LineJoin, Operator } from "../generated/cairo/enums.js";
 

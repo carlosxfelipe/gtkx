@@ -1,5 +1,3 @@
-
-
 export const GL_DEPTH_BUFFER_BIT = 0x00000100;
 export const GL_STENCIL_BUFFER_BIT = 0x00000400;
 export const GL_COLOR_BUFFER_BIT = 0x00004000;

@@ -62,10 +62,9 @@ const FlowBoxDemo = () => {
                         rowSpacing={8}
                         homogeneous
                     >
-                        {colors.map((color, index) => (
+                        {colors.map((color) => (
                             <GtkBox
-
-                                key={index}
+                                key={color}
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={0}
                                 widthRequest={100}

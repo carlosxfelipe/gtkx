@@ -1,5 +1,3 @@
-
-
 import { call, createRef } from "@gtkx/native";
 import { GL_INFO_LOG_LENGTH } from "./constants.js";
 

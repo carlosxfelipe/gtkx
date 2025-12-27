@@ -53,3 +53,43 @@ impl From<&FloatType> for ffi::Type {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn float_type_new_creates_correct_type() {
+        let float_type = FloatType::new(FloatSize::_32);
+        assert_eq!(float_type.size, FloatSize::_32);
+
+        let float_type = FloatType::new(FloatSize::_64);
+        assert_eq!(float_type.size, FloatSize::_64);
+    }
+
+    #[test]
+    fn float_size_equality() {
+        assert_eq!(FloatSize::_32, FloatSize::_32);
+        assert_eq!(FloatSize::_64, FloatSize::_64);
+        assert_ne!(FloatSize::_32, FloatSize::_64);
+    }
+
+    #[test]
+    fn float_type_to_ffi_type_f32() {
+        let float_type = FloatType::new(FloatSize::_32);
+        let _ffi_type: ffi::Type = (&float_type).into();
+    }
+
+    #[test]
+    fn float_type_to_ffi_type_f64() {
+        let float_type = FloatType::new(FloatSize::_64);
+        let _ffi_type: ffi::Type = (&float_type).into();
+    }
+
+    #[test]
+    fn float_type_clone() {
+        let original = FloatType::new(FloatSize::_64);
+        let cloned = original;
+        assert_eq!(original, cloned);
+    }
+}

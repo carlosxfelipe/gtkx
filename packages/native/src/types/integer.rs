@@ -93,3 +93,86 @@ impl From<&IntegerType> for ffi::Type {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn integer_type_new_creates_correct_type() {
+        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        assert_eq!(int_type.size, IntegerSize::_32);
+        assert_eq!(int_type.sign, IntegerSign::Signed);
+    }
+
+    #[test]
+    fn integer_size_equality() {
+        assert_eq!(IntegerSize::_8, IntegerSize::_8);
+        assert_eq!(IntegerSize::_16, IntegerSize::_16);
+        assert_eq!(IntegerSize::_32, IntegerSize::_32);
+        assert_eq!(IntegerSize::_64, IntegerSize::_64);
+        assert_ne!(IntegerSize::_8, IntegerSize::_16);
+    }
+
+    #[test]
+    fn integer_sign_equality() {
+        assert_eq!(IntegerSign::Signed, IntegerSign::Signed);
+        assert_eq!(IntegerSign::Unsigned, IntegerSign::Unsigned);
+        assert_ne!(IntegerSign::Signed, IntegerSign::Unsigned);
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_u8() {
+        let int_type = IntegerType::new(IntegerSize::_8, IntegerSign::Unsigned);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_i8() {
+        let int_type = IntegerType::new(IntegerSize::_8, IntegerSign::Signed);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_u16() {
+        let int_type = IntegerType::new(IntegerSize::_16, IntegerSign::Unsigned);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_i16() {
+        let int_type = IntegerType::new(IntegerSize::_16, IntegerSign::Signed);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_u32() {
+        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Unsigned);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_i32() {
+        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_u64() {
+        let int_type = IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_to_ffi_type_i64() {
+        let int_type = IntegerType::new(IntegerSize::_64, IntegerSign::Signed);
+        let _ffi_type: ffi::Type = (&int_type).into();
+    }
+
+    #[test]
+    fn integer_type_clone() {
+        let original = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        let cloned = original;
+        assert_eq!(original, cloned);
+    }
+}

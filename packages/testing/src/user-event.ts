@@ -5,7 +5,6 @@ import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
 
 export type TabOptions = {
-
     shift?: boolean;
 };
 

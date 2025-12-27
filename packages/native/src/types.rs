@@ -172,3 +172,103 @@ impl From<&Type> for ffi::Type {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn callback_trampoline_equality() {
+        assert_eq!(CallbackTrampoline::Closure, CallbackTrampoline::Closure);
+        assert_eq!(CallbackTrampoline::AsyncReady, CallbackTrampoline::AsyncReady);
+        assert_eq!(CallbackTrampoline::Destroy, CallbackTrampoline::Destroy);
+        assert_eq!(CallbackTrampoline::DrawFunc, CallbackTrampoline::DrawFunc);
+        assert_ne!(CallbackTrampoline::Closure, CallbackTrampoline::AsyncReady);
+    }
+
+    #[test]
+    fn type_to_ffi_boolean() {
+        let _ffi_type: ffi::Type = (&Type::Boolean).into();
+    }
+
+    #[test]
+    fn type_to_ffi_null() {
+        let _ffi_type: ffi::Type = (&Type::Null).into();
+    }
+
+    #[test]
+    fn type_to_ffi_undefined() {
+        let _ffi_type: ffi::Type = (&Type::Undefined).into();
+    }
+
+    #[test]
+    fn type_to_ffi_callback() {
+        let callback_type = CallbackType {
+            trampoline: CallbackTrampoline::Closure,
+            arg_types: None,
+            return_type: None,
+            source_type: None,
+            result_type: None,
+        };
+        let type_ = Type::Callback(callback_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_integer() {
+        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
+        let type_ = Type::Integer(int_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_float() {
+        let float_type = FloatType::new(FloatSize::_64);
+        let type_ = Type::Float(float_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_string() {
+        let string_type = StringType::new(false);
+        let type_ = Type::String(string_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_gobject() {
+        let gobject_type = GObjectType::new(false);
+        let type_ = Type::GObject(gobject_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_boxed() {
+        let boxed_type = BoxedType::new(false, "Test".to_string(), None, None);
+        let type_ = Type::Boxed(boxed_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_gvariant() {
+        let gvariant_type = GVariantType::new(false);
+        let type_ = Type::GVariant(gvariant_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_array() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let array_type = ArrayType::new(int_type);
+        let type_ = Type::Array(array_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_ref() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let ref_type = RefType::new(int_type);
+        let type_ = Type::Ref(ref_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+}

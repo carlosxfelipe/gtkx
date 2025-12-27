@@ -19,6 +19,10 @@ export const endBatch = (): void => {
     }
 };
 
+export const discardAllBatches = (): void => {
+    batchStack.length = 0;
+};
+
 export const call = (library: string, symbol: string, args: Arg[], returnType: Type): unknown => {
     const currentQueue = batchStack[batchStack.length - 1];
 

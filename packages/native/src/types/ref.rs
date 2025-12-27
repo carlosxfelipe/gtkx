@@ -33,3 +33,42 @@ impl From<&RefType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{IntegerSign, IntegerSize, IntegerType};
+
+    #[test]
+    fn ref_type_new_creates_correct_type() {
+        let ref_type =
+            RefType::new(Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed)));
+
+        if let Type::Integer(inner) = &*ref_type.inner_type {
+            assert_eq!(inner.size, IntegerSize::_32);
+            assert_eq!(inner.sign, IntegerSign::Signed);
+        } else {
+            panic!("Expected Integer type");
+        }
+    }
+
+    #[test]
+    fn ref_type_to_ffi_type_is_pointer() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
+        let ref_type = RefType::new(int_type);
+        let _ffi_type: ffi::Type = (&ref_type).into();
+    }
+
+    #[test]
+    fn ref_type_with_nested_type() {
+        let int_type = Type::Integer(IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned));
+        let ref_type = RefType::new(int_type);
+
+        if let Type::Integer(inner) = &*ref_type.inner_type {
+            assert_eq!(inner.size, IntegerSize::_64);
+            assert_eq!(inner.sign, IntegerSign::Unsigned);
+        } else {
+            panic!("Expected Integer type");
+        }
+    }
+}

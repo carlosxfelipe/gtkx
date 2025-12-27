@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GirClass, GirNamespace, GirParameter } from "../src/index.js";
+import type { GirParameter } from "../src/index.js";
 import { buildClassMap, registerEnumsFromNamespace, TypeMapper, TypeRegistry } from "../src/index.js";
 
 describe("TypeMapper", () => {
@@ -804,8 +804,26 @@ describe("TypeRegistry", () => {
 describe("buildClassMap", () => {
     it("builds map from class array", () => {
         const classes = [
-            { name: "Widget", cType: "GtkWidget", implements: [], methods: [], constructors: [], functions: [], properties: [], signals: [] },
-            { name: "Button", cType: "GtkButton", implements: [], methods: [], constructors: [], functions: [], properties: [], signals: [] },
+            {
+                name: "Widget",
+                cType: "GtkWidget",
+                implements: [],
+                methods: [],
+                constructors: [],
+                functions: [],
+                properties: [],
+                signals: [],
+            },
+            {
+                name: "Button",
+                cType: "GtkButton",
+                implements: [],
+                methods: [],
+                constructors: [],
+                functions: [],
+                properties: [],
+                signals: [],
+            },
         ];
 
         const map = buildClassMap(classes);
@@ -833,9 +851,7 @@ describe("registerEnumsFromNamespace", () => {
             classes: [],
             interfaces: [],
             functions: [],
-            enumerations: [
-                { name: "Orientation", cType: "GtkOrientation", members: [] },
-            ],
+            enumerations: [{ name: "Orientation", cType: "GtkOrientation", members: [] }],
             bitfields: [],
             records: [],
             callbacks: [],
@@ -860,9 +876,7 @@ describe("registerEnumsFromNamespace", () => {
             interfaces: [],
             functions: [],
             enumerations: [],
-            bitfields: [
-                { name: "StateFlags", cType: "GtkStateFlags", members: [] },
-            ],
+            bitfields: [{ name: "StateFlags", cType: "GtkStateFlags", members: [] }],
             records: [],
             callbacks: [],
             constants: [],

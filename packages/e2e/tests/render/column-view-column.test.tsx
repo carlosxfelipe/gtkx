@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { ColumnViewColumn, GtkColumnView, GtkLabel, ListItem } from "@gtkx/react";
+import { ColumnViewColumn, GtkColumnView, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

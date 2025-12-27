@@ -1,4 +1,4 @@
-import { getNativeObject, start } from "@gtkx/ffi";
+import { discardAllBatches, getNativeObject, start } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -11,6 +11,7 @@ import { hasLabel } from "./widget.js";
 
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
+let lastRenderError: Error | null = null;
 
 const APP_ID = `com.gtkx.test${process.pid}`;
 
@@ -51,8 +52,20 @@ const update = async (
     element: ReactNode,
     fiberRoot: Reconciler.FiberRoot,
 ): Promise<void> => {
+    lastRenderError = null;
     instance.updateContainer(element, fiberRoot, null, () => {});
     await tick();
+
+    if (lastRenderError) {
+        const error = lastRenderError;
+        lastRenderError = null;
+        throw error;
+    }
+};
+
+const handleError = (error: Error): void => {
+    discardAllBatches();
+    lastRenderError = error;
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
@@ -67,7 +80,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
             false,
             null,
             "",
-            (error: Error) => console.error("Test reconciler error:", error),
+            handleError,
             () => {},
             () => {},
             () => {},

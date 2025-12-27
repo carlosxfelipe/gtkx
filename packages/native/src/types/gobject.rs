@@ -33,3 +33,43 @@ impl From<&GObjectType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gobject_type_new_creates_correct_type() {
+        let gobject_type = GObjectType::new(true);
+        assert!(gobject_type.is_borrowed);
+
+        let gobject_type = GObjectType::new(false);
+        assert!(!gobject_type.is_borrowed);
+    }
+
+    #[test]
+    fn gobject_type_equality() {
+        let borrowed = GObjectType::new(true);
+        let not_borrowed = GObjectType::new(false);
+        let borrowed2 = GObjectType::new(true);
+
+        assert_eq!(borrowed, borrowed2);
+        assert_ne!(borrowed, not_borrowed);
+    }
+
+    #[test]
+    fn gobject_type_to_ffi_type_is_pointer() {
+        let borrowed = GObjectType::new(true);
+        let not_borrowed = GObjectType::new(false);
+
+        let _ffi_type_borrowed: ffi::Type = (&borrowed).into();
+        let _ffi_type_not_borrowed: ffi::Type = (&not_borrowed).into();
+    }
+
+    #[test]
+    fn gobject_type_clone() {
+        let original = GObjectType::new(true);
+        let cloned = original;
+        assert_eq!(original, cloned);
+    }
+}

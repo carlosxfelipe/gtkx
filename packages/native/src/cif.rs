@@ -866,4 +866,422 @@ mod tests {
             glib::gobject_ffi::g_closure_unref(ptr as *mut _);
         }
     }
+
+    #[test]
+    fn try_from_integer_i8() {
+        let arg = arg::Arg::new(
+            Type::Integer(IntegerType {
+                size: IntegerSize::_8,
+                sign: IntegerSign::Signed,
+            }),
+            value::Value::Number(-42.0),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::I8(v) = result.unwrap() {
+            assert_eq!(v, -42);
+        } else {
+            panic!("Expected Value::I8");
+        }
+    }
+
+    #[test]
+    fn try_from_integer_u8() {
+        let arg = arg::Arg::new(
+            Type::Integer(IntegerType {
+                size: IntegerSize::_8,
+                sign: IntegerSign::Unsigned,
+            }),
+            value::Value::Number(200.0),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::U8(v) = result.unwrap() {
+            assert_eq!(v, 200);
+        } else {
+            panic!("Expected Value::U8");
+        }
+    }
+
+    #[test]
+    fn try_from_integer_i32() {
+        let arg = arg::Arg::new(
+            Type::Integer(IntegerType {
+                size: IntegerSize::_32,
+                sign: IntegerSign::Signed,
+            }),
+            value::Value::Number(-123456.0),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::I32(v) = result.unwrap() {
+            assert_eq!(v, -123456);
+        } else {
+            panic!("Expected Value::I32");
+        }
+    }
+
+    #[test]
+    fn try_from_integer_u64() {
+        let arg = arg::Arg::new(
+            Type::Integer(IntegerType {
+                size: IntegerSize::_64,
+                sign: IntegerSign::Unsigned,
+            }),
+            value::Value::Number(9999999999.0),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::U64(v) = result.unwrap() {
+            assert_eq!(v, 9999999999);
+        } else {
+            panic!("Expected Value::U64");
+        }
+    }
+
+    #[test]
+    fn try_from_integer_optional_null() {
+        let arg = arg::Arg {
+            type_: Type::Integer(IntegerType {
+                size: IntegerSize::_32,
+                sign: IntegerSign::Signed,
+            }),
+            value: value::Value::Null,
+            optional: true,
+        };
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::I32(v) = result.unwrap() {
+            assert_eq!(v, 0);
+        } else {
+            panic!("Expected Value::I32");
+        }
+    }
+
+    #[test]
+    fn try_from_float_f32() {
+        let arg = arg::Arg::new(
+            Type::Float(FloatType { size: FloatSize::_32 }),
+            value::Value::Number(3.14),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::F32(v) = result.unwrap() {
+            assert!((v - 3.14).abs() < 0.001);
+        } else {
+            panic!("Expected Value::F32");
+        }
+    }
+
+    #[test]
+    fn try_from_float_f64() {
+        let arg = arg::Arg::new(
+            Type::Float(FloatType { size: FloatSize::_64 }),
+            value::Value::Number(2.718281828),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::F64(v) = result.unwrap() {
+            assert!((v - 2.718281828).abs() < 0.0000001);
+        } else {
+            panic!("Expected Value::F64");
+        }
+    }
+
+    #[test]
+    fn try_from_string() {
+        let arg = arg::Arg::new(
+            Type::String(StringType { is_borrowed: false }),
+            value::Value::String("hello world".to_string()),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::OwnedPtr(owned) = result.unwrap() {
+            unsafe {
+                let s = std::ffi::CStr::from_ptr(owned.ptr as *const i8);
+                assert_eq!(s.to_str().unwrap(), "hello world");
+            }
+        } else {
+            panic!("Expected Value::OwnedPtr");
+        }
+    }
+
+    #[test]
+    fn try_from_string_null() {
+        let arg = arg::Arg::new(
+            Type::String(StringType { is_borrowed: false }),
+            value::Value::Null,
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::Ptr(ptr) = result.unwrap() {
+            assert!(ptr.is_null());
+        } else {
+            panic!("Expected Value::Ptr");
+        }
+    }
+
+    #[test]
+    fn try_from_boolean_true() {
+        let arg = arg::Arg::new(Type::Boolean, value::Value::Boolean(true));
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::U8(v) = result.unwrap() {
+            assert_eq!(v, 1);
+        } else {
+            panic!("Expected Value::U8");
+        }
+    }
+
+    #[test]
+    fn try_from_boolean_false() {
+        let arg = arg::Arg::new(Type::Boolean, value::Value::Boolean(false));
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::U8(v) = result.unwrap() {
+            assert_eq!(v, 0);
+        } else {
+            panic!("Expected Value::U8");
+        }
+    }
+
+    #[test]
+    fn try_from_null() {
+        let arg = arg::Arg::new(Type::Null, value::Value::Null);
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::Ptr(ptr) = result.unwrap() {
+            assert!(ptr.is_null());
+        } else {
+            panic!("Expected Value::Ptr");
+        }
+    }
+
+    #[test]
+    fn try_from_undefined() {
+        let arg = arg::Arg::new(Type::Undefined, value::Value::Undefined);
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::Ptr(ptr) = result.unwrap() {
+            assert!(ptr.is_null());
+        } else {
+            panic!("Expected Value::Ptr");
+        }
+    }
+
+    #[test]
+    fn try_from_array_u8() {
+        let arg = arg::Arg::new(
+            Type::Array(ArrayType {
+                item_type: Box::new(Type::Integer(IntegerType {
+                    size: IntegerSize::_8,
+                    sign: IntegerSign::Unsigned,
+                })),
+                list_type: ListType::Array,
+                is_borrowed: false,
+            }),
+            value::Value::Array(vec![
+                value::Value::Number(1.0),
+                value::Value::Number(2.0),
+                value::Value::Number(3.0),
+            ]),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::OwnedPtr(owned) = result.unwrap() {
+            unsafe {
+                let slice = std::slice::from_raw_parts(owned.ptr as *const u8, 3);
+                assert_eq!(slice, &[1, 2, 3]);
+            }
+        } else {
+            panic!("Expected Value::OwnedPtr");
+        }
+    }
+
+    #[test]
+    fn try_from_array_i32() {
+        let arg = arg::Arg::new(
+            Type::Array(ArrayType {
+                item_type: Box::new(Type::Integer(IntegerType {
+                    size: IntegerSize::_32,
+                    sign: IntegerSign::Signed,
+                })),
+                list_type: ListType::Array,
+                is_borrowed: false,
+            }),
+            value::Value::Array(vec![
+                value::Value::Number(-10.0),
+                value::Value::Number(0.0),
+                value::Value::Number(10.0),
+            ]),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::OwnedPtr(owned) = result.unwrap() {
+            unsafe {
+                let slice = std::slice::from_raw_parts(owned.ptr as *const i32, 3);
+                assert_eq!(slice, &[-10, 0, 10]);
+            }
+        } else {
+            panic!("Expected Value::OwnedPtr");
+        }
+    }
+
+    #[test]
+    fn try_from_array_f64() {
+        let arg = arg::Arg::new(
+            Type::Array(ArrayType {
+                item_type: Box::new(Type::Float(FloatType {
+                    size: FloatSize::_64,
+                })),
+                list_type: ListType::Array,
+                is_borrowed: false,
+            }),
+            value::Value::Array(vec![
+                value::Value::Number(1.1),
+                value::Value::Number(2.2),
+            ]),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::OwnedPtr(owned) = result.unwrap() {
+            unsafe {
+                let slice = std::slice::from_raw_parts(owned.ptr as *const f64, 2);
+                assert!((slice[0] - 1.1).abs() < 0.001);
+                assert!((slice[1] - 2.2).abs() < 0.001);
+            }
+        } else {
+            panic!("Expected Value::OwnedPtr");
+        }
+    }
+
+    #[test]
+    fn try_from_array_string() {
+        let arg = arg::Arg::new(
+            Type::Array(ArrayType {
+                item_type: Box::new(Type::String(StringType { is_borrowed: false })),
+                list_type: ListType::Array,
+                is_borrowed: false,
+            }),
+            value::Value::Array(vec![
+                value::Value::String("foo".to_string()),
+                value::Value::String("bar".to_string()),
+            ]),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::OwnedPtr(owned) = result.unwrap() {
+            unsafe {
+                let ptrs = std::slice::from_raw_parts(owned.ptr as *const *const i8, 3);
+                let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
+                let s1 = std::ffi::CStr::from_ptr(ptrs[1]);
+                assert_eq!(s0.to_str().unwrap(), "foo");
+                assert_eq!(s1.to_str().unwrap(), "bar");
+                assert!(ptrs[2].is_null());
+            }
+        } else {
+            panic!("Expected Value::OwnedPtr");
+        }
+    }
+
+    #[test]
+    fn try_from_array_boolean() {
+        let arg = arg::Arg::new(
+            Type::Array(ArrayType {
+                item_type: Box::new(Type::Boolean),
+                list_type: ListType::Array,
+                is_borrowed: false,
+            }),
+            value::Value::Array(vec![
+                value::Value::Boolean(true),
+                value::Value::Boolean(false),
+                value::Value::Boolean(true),
+            ]),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::OwnedPtr(owned) = result.unwrap() {
+            unsafe {
+                let slice = std::slice::from_raw_parts(owned.ptr as *const u8, 3);
+                assert_eq!(slice, &[1, 0, 1]);
+            }
+        } else {
+            panic!("Expected Value::OwnedPtr");
+        }
+    }
+
+    #[test]
+    fn value_as_ptr_integer_types() {
+        let v_u8 = Value::U8(42);
+        let v_i32 = Value::I32(-100);
+        let v_u64 = Value::U64(999);
+
+        assert!(!v_u8.as_ptr().is_null());
+        assert!(!v_i32.as_ptr().is_null());
+        assert!(!v_u64.as_ptr().is_null());
+    }
+
+    #[test]
+    fn value_as_ptr_float_types() {
+        let v_f32 = Value::F32(3.14);
+        let v_f64 = Value::F64(2.718);
+
+        assert!(!v_f32.as_ptr().is_null());
+        assert!(!v_f64.as_ptr().is_null());
+    }
+
+    #[test]
+    fn value_as_ptr_void() {
+        let v = Value::Void;
+        assert!(v.as_ptr().is_null());
+    }
+
+    #[test]
+    fn value_as_ptr_null_ptr() {
+        let v = Value::Ptr(std::ptr::null_mut());
+        assert!(!v.as_ptr().is_null());
+    }
+
+    #[test]
+    fn value_to_libffi_arg_integers() {
+        let v = Value::I32(42);
+        let _arg: libffi::Arg = (&v).into();
+    }
+
+    #[test]
+    fn value_to_libffi_arg_floats() {
+        let v = Value::F64(3.14);
+        let _arg: libffi::Arg = (&v).into();
+    }
+
+    #[test]
+    fn value_to_libffi_arg_ptr() {
+        let v = Value::Ptr(std::ptr::null_mut());
+        let _arg: libffi::Arg = (&v).into();
+    }
+
+    #[test]
+    fn value_to_libffi_arg_owned_ptr() {
+        let owned = OwnedPtr::from_vec(vec![1u8, 2, 3]);
+        let v = Value::OwnedPtr(owned);
+        let _arg: libffi::Arg = (&v).into();
+    }
 }

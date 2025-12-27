@@ -4,20 +4,17 @@ import { createElement } from "react";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 
 export type SlotProps = {
-
     id?: string;
     children?: ReactNode;
 };
 
 export type ListItemProps<T = unknown> = {
-
     id: string;
 
     value: T;
 };
 
 export type StringListItemProps = {
-
     id: string;
 
     value: string;
@@ -31,12 +28,10 @@ export type GridChildProps = SlotProps & {
 };
 
 export type ListViewRenderProps<T = unknown> = {
-
     renderItem: RenderItemFn<T>;
 };
 
 export type ColumnViewColumnProps<T = unknown> = {
-
     title: string;
 
     expand?: boolean;
@@ -53,7 +48,6 @@ export type ColumnViewColumnProps<T = unknown> = {
 };
 
 export type ColumnViewRootProps<C extends string = string> = {
-
     sortColumn?: C | null;
 
     sortOrder?: Gtk.SortType;
@@ -81,7 +75,6 @@ export type StackPageProps = SlotProps & {
 };
 
 export type MenuItemProps = {
-
     id: string;
 
     label: string;
@@ -92,19 +85,16 @@ export type MenuItemProps = {
 };
 
 export type MenuSectionProps = {
-
     label?: string;
     children?: ReactNode;
 };
 
 export type MenuSubmenuProps = {
-
     label: string;
     children?: ReactNode;
 };
 
 export type OverlayChildProps = SlotProps & {
-
     measure?: boolean;
 
     clipOverlay?: boolean;
@@ -113,7 +103,6 @@ export type OverlayChildProps = SlotProps & {
 export type { WidgetSlotNames } from "./generated/jsx.js";
 
 export function Slot<W extends keyof import("./generated/jsx.js").WidgetSlotNames>(props: {
-
     for: W;
 
     id: import("./generated/jsx.js").WidgetSlotNames[W];
@@ -135,7 +124,6 @@ export function ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): 
 }
 
 export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
-
     renderItem: (item: T | null) => ReactElement;
 };
 
@@ -144,7 +132,6 @@ export function ListView<T = unknown>(props: ListViewProps<T>): ReactElement {
 }
 
 export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGridViewProps, "renderItem"> & {
-
     renderItem: (item: T | null) => ReactElement;
 };
 
@@ -176,7 +163,6 @@ declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-
                 StackPage: StackPageProps;
 
                 GridChild: GridChildProps;
@@ -185,6 +171,7 @@ declare global {
 
                 ListItem: ListItemProps;
 
+                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
                 SimpleListItem: StringListItemProps;
 

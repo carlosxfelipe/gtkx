@@ -31,3 +31,43 @@ impl From<&GVariantType> for ffi::Type {
         ffi::Type::pointer()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gvariant_type_new_creates_correct_type() {
+        let gvariant_type = GVariantType::new(true);
+        assert!(gvariant_type.is_borrowed);
+
+        let gvariant_type = GVariantType::new(false);
+        assert!(!gvariant_type.is_borrowed);
+    }
+
+    #[test]
+    fn gvariant_type_equality() {
+        let borrowed = GVariantType::new(true);
+        let not_borrowed = GVariantType::new(false);
+        let borrowed2 = GVariantType::new(true);
+
+        assert_eq!(borrowed, borrowed2);
+        assert_ne!(borrowed, not_borrowed);
+    }
+
+    #[test]
+    fn gvariant_type_to_ffi_type_is_pointer() {
+        let borrowed = GVariantType::new(true);
+        let not_borrowed = GVariantType::new(false);
+
+        let _ffi_type_borrowed: ffi::Type = (&borrowed).into();
+        let _ffi_type_not_borrowed: ffi::Type = (&not_borrowed).into();
+    }
+
+    #[test]
+    fn gvariant_type_clone() {
+        let original = GVariantType::new(true);
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+    }
+}

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { toCamelCase, toPascalCase, toKebabCase, toConstantCase, toValidIdentifier, RESERVED_WORDS } from "../src/index.js";
+import {
+    RESERVED_WORDS,
+    toCamelCase,
+    toConstantCase,
+    toKebabCase,
+    toPascalCase,
+    toValidIdentifier,
+} from "../src/index.js";
 
 describe("toCamelCase", () => {
     it("converts snake_case to camelCase", () => {

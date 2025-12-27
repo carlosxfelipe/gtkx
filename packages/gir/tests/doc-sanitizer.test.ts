@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeDoc, formatDoc, formatMethodDoc } from "../src/index.js";
+import { formatDoc, formatMethodDoc, sanitizeDoc } from "../src/index.js";
 
 describe("sanitizeDoc", () => {
     it("converts GIR links to TSDoc links", () => {
@@ -63,17 +63,13 @@ describe("formatMethodDoc", () => {
     });
 
     it("includes param documentation", () => {
-        const result = formatMethodDoc("Method description.", [
-            { name: "value", doc: "The value to set." },
-        ]);
+        const result = formatMethodDoc("Method description.", [{ name: "value", doc: "The value to set." }]);
         expect(result).toContain("@param value");
         expect(result).toContain("The value to set.");
     });
 
     it("skips params without doc", () => {
-        const result = formatMethodDoc("Method description.", [
-            { name: "value", doc: undefined },
-        ]);
+        const result = formatMethodDoc("Method description.", [{ name: "value", doc: undefined }]);
         expect(result).not.toContain("@param value");
     });
 });

@@ -36,7 +36,8 @@ describe("render - Pack", () => {
                 return (
                     <GtkBox ref={boxRef}>
                         {Array.from({ length: count }, (_, i) => (
-                            <GtkLabel key={i} label={`Label ${i}`} />
+                            // biome-ignore lint/suspicious/noArrayIndexKey: Test intentionally uses index keys
+                            <GtkLabel key={`label-${i}`} label={`Label ${i}`} />
                         ))}
                     </GtkBox>
                 );

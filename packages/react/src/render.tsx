@@ -1,4 +1,4 @@
-import { start, stop } from "@gtkx/ffi";
+import { discardAllBatches, start, stop } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
@@ -31,9 +31,11 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
         null,
         "",
         (error: unknown) => {
+            discardAllBatches();
             throw formatRenderError(error);
         },
         (error: unknown) => {
+            discardAllBatches();
             const formattedError = formatBoundaryError(error);
             console.error(formattedError.toString());
         },

@@ -3,7 +3,6 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { PackChild } from "./pack-child.js";
-import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 export type PackableWidget = Gtk.Widget & {
@@ -33,17 +32,7 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        if (child instanceof SlotNode) {
-            child.setParent(this.container);
-            return;
-        }
-
-        if (child instanceof WidgetNode) {
-            this.container.packStart(child.container);
-            return;
-        }
-
-        throw new Error(`Cannot append '${child.typeName}' to 'PackedContainer': expected PackChild`);
+        super.appendChild(child);
     }
 
     public override insertBefore(child: Node): void {
@@ -56,17 +45,7 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        if (child instanceof SlotNode) {
-            child.setParent(undefined);
-            return;
-        }
-
-        if (child instanceof WidgetNode) {
-            this.container.remove(child.container);
-            return;
-        }
-
-        throw new Error(`Cannot remove '${child.typeName}' from 'PackedContainer': expected PackChild`);
+        super.removeChild(child);
     }
 }
 

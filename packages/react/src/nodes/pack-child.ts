@@ -1,3 +1,4 @@
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { scheduleAfterCommit } from "../scheduler.js";
@@ -15,13 +16,25 @@ export class PackChild extends VirtualNode {
     }
 
     private parent?: PackableWidget;
+    private children: Gtk.Widget[] = [];
 
     private getPosition(): PackChildPosition {
         return this.typeName === "Pack.Start" ? "start" : "end";
     }
 
-    public setParent(parent?: PackableWidget): void {
-        this.parent = parent;
+    public setParent(newParent?: PackableWidget): void {
+        const oldParent = this.parent;
+        this.parent = newParent;
+
+        if (!newParent && oldParent) {
+            const childrenToRemove = [...this.children];
+            scheduleAfterCommit(() => {
+                for (const widget of childrenToRemove) {
+                    oldParent.remove(widget);
+                }
+            });
+            this.children = [];
+        }
     }
 
     public override appendChild(child: Node): void {
@@ -30,6 +43,7 @@ export class PackChild extends VirtualNode {
         }
 
         const widget = child.container;
+        this.children.push(widget);
 
         scheduleAfterCommit(() => {
             if (this.parent) {
@@ -52,10 +66,15 @@ export class PackChild extends VirtualNode {
         }
 
         const widget = child.container;
+        const parent = this.parent;
+        const index = this.children.indexOf(widget);
+        if (index !== -1) {
+            this.children.splice(index, 1);
+        }
 
         scheduleAfterCommit(() => {
-            if (this.parent) {
-                this.parent.remove(widget);
+            if (parent) {
+                parent.remove(widget);
             }
         });
     }

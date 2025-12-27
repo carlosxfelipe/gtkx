@@ -1491,4 +1491,400 @@ mod tests {
             panic!("Expected Value::Number");
         }
     }
+
+    #[test]
+    fn from_glib_value_i8() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = (-42i8).into();
+
+        let int_type = crate::types::IntegerType {
+            size: crate::types::IntegerSize::_8,
+            sign: crate::types::IntegerSign::Signed,
+        };
+        let type_ = Type::Integer(int_type);
+
+        let result = Value::from_glib_value(&gvalue, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, -42.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn from_glib_value_u8() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = 200u8.into();
+
+        let int_type = crate::types::IntegerType {
+            size: crate::types::IntegerSize::_8,
+            sign: crate::types::IntegerSign::Unsigned,
+        };
+        let type_ = Type::Integer(int_type);
+
+        let result = Value::from_glib_value(&gvalue, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, 200.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn from_glib_value_i64() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = (-999999i64).into();
+
+        let int_type = crate::types::IntegerType {
+            size: crate::types::IntegerSize::_64,
+            sign: crate::types::IntegerSign::Signed,
+        };
+        let type_ = Type::Integer(int_type);
+
+        let result = Value::from_glib_value(&gvalue, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, -999999.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn from_glib_value_u64() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = 9999999999u64.into();
+
+        let int_type = crate::types::IntegerType {
+            size: crate::types::IntegerSize::_64,
+            sign: crate::types::IntegerSign::Unsigned,
+        };
+        let type_ = Type::Integer(int_type);
+
+        let result = Value::from_glib_value(&gvalue, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, 9999999999.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn from_glib_value_f32() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = 2.5f32.into();
+
+        let float_type = crate::types::FloatType {
+            size: crate::types::FloatSize::_32,
+        };
+        let type_ = Type::Float(float_type);
+
+        let result = Value::from_glib_value(&gvalue, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert!((n - 2.5).abs() < 0.001);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn from_glib_value_null_undefined() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = glib::Value::from_type(glib::types::Type::POINTER);
+
+        let result_null = Value::from_glib_value(&gvalue, &Type::Null);
+        let result_undefined = Value::from_glib_value(&gvalue, &Type::Undefined);
+
+        assert!(result_null.is_ok());
+        assert!(result_undefined.is_ok());
+        assert!(matches!(result_null.unwrap(), Value::Null));
+        assert!(matches!(result_undefined.unwrap(), Value::Null));
+    }
+
+    #[test]
+    fn from_cif_value_gvariant_borrowed() {
+        test_utils::ensure_gtk_init();
+
+        let variant = unsafe {
+            let ptr = glib::ffi::g_variant_new_int32(42);
+            glib::ffi::g_variant_ref_sink(ptr);
+            ptr
+        };
+
+        let gvariant_type = crate::types::GVariantType { is_borrowed: true };
+        let type_ = Type::GVariant(gvariant_type);
+
+        let cif_value = cif::Value::Ptr(variant as *mut c_void);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Object(_id) = result.unwrap() {
+        } else {
+            panic!("Expected Value::Object");
+        }
+
+        unsafe {
+            glib::ffi::g_variant_unref(variant);
+        }
+    }
+
+    #[test]
+    fn from_cif_value_gvariant_null() {
+        test_utils::ensure_gtk_init();
+
+        let gvariant_type = crate::types::GVariantType { is_borrowed: false };
+        let type_ = Type::GVariant(gvariant_type);
+
+        let cif_value = cif::Value::Ptr(std::ptr::null_mut());
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), Value::Null));
+    }
+
+    #[test]
+    fn from_cif_value_ref_integer() {
+        test_utils::ensure_gtk_init();
+
+        let int_value: i32 = 12345;
+        let ptr = &int_value as *const i32 as *mut c_void;
+
+        let int_type = crate::types::IntegerType {
+            size: crate::types::IntegerSize::_32,
+            sign: crate::types::IntegerSign::Signed,
+        };
+        let ref_type = crate::types::RefType::new(Type::Integer(int_type));
+        let type_ = Type::Ref(ref_type);
+
+        let owned_ptr = cif::OwnedPtr::new(Box::new(int_value), ptr);
+        let cif_value = cif::Value::OwnedPtr(owned_ptr);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, 12345.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn from_cif_value_ref_float() {
+        test_utils::ensure_gtk_init();
+
+        let float_value: f64 = 3.14159;
+        let ptr = &float_value as *const f64 as *mut c_void;
+
+        let float_type = crate::types::FloatType {
+            size: crate::types::FloatSize::_64,
+        };
+        let ref_type = crate::types::RefType::new(Type::Float(float_type));
+        let type_ = Type::Ref(ref_type);
+
+        let owned_ptr = cif::OwnedPtr::new(Box::new(float_value), ptr);
+        let cif_value = cif::Value::OwnedPtr(owned_ptr);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert!((n - 3.14159).abs() < 0.0001);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn try_from_glib_value_i32() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = 42i32.into();
+        let result: anyhow::Result<Value> = (&gvalue).try_into();
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, 42.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn try_from_glib_value_u32() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = 100u32.into();
+        let result: anyhow::Result<Value> = (&gvalue).try_into();
+
+        assert!(result.is_ok());
+        if let Value::Number(n) = result.unwrap() {
+            assert_eq!(n, 100.0);
+        } else {
+            panic!("Expected Value::Number");
+        }
+    }
+
+    #[test]
+    fn try_from_glib_value_string() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = "hello".to_string().into();
+        let result: anyhow::Result<Value> = (&gvalue).try_into();
+
+        assert!(result.is_ok());
+        if let Value::String(s) = result.unwrap() {
+            assert_eq!(s, "hello");
+        } else {
+            panic!("Expected Value::String");
+        }
+    }
+
+    #[test]
+    fn try_from_glib_value_bool() {
+        test_utils::ensure_gtk_init();
+
+        let gvalue: glib::Value = true.into();
+        let result: anyhow::Result<Value> = (&gvalue).try_into();
+
+        assert!(result.is_ok());
+        if let Value::Boolean(b) = result.unwrap() {
+            assert!(b);
+        } else {
+            panic!("Expected Value::Boolean");
+        }
+    }
+
+    #[test]
+    fn value_into_option_glib_value_number() {
+        test_utils::ensure_gtk_init();
+
+        let value = Value::Number(42.5);
+        let gvalue: Option<glib::Value> = value.into();
+
+        assert!(gvalue.is_some());
+    }
+
+    #[test]
+    fn value_into_option_glib_value_string() {
+        test_utils::ensure_gtk_init();
+
+        let value = Value::String("test".to_string());
+        let gvalue: Option<glib::Value> = value.into();
+
+        assert!(gvalue.is_some());
+    }
+
+    #[test]
+    fn value_into_option_glib_value_boolean() {
+        test_utils::ensure_gtk_init();
+
+        let value = Value::Boolean(true);
+        let gvalue: Option<glib::Value> = value.into();
+
+        assert!(gvalue.is_some());
+    }
+
+    #[test]
+    fn value_into_option_glib_value_null() {
+        let value = Value::Null;
+        let gvalue: Option<glib::Value> = value.into();
+
+        assert!(gvalue.is_none());
+    }
+
+    #[test]
+    fn value_into_option_glib_value_undefined() {
+        let value = Value::Undefined;
+        let gvalue: Option<glib::Value> = value.into();
+
+        assert!(gvalue.is_none());
+    }
+
+    #[test]
+    fn into_glib_value_with_default_undefined_boolean() {
+        test_utils::ensure_gtk_init();
+
+        let value = Value::Undefined;
+        let result = value.into_glib_value_with_default(Some(&Type::Boolean));
+
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn into_glib_value_with_default_undefined_integer() {
+        test_utils::ensure_gtk_init();
+
+        let int_type = crate::types::IntegerType {
+            size: crate::types::IntegerSize::_32,
+            sign: crate::types::IntegerSign::Signed,
+        };
+        let value = Value::Undefined;
+        let result = value.into_glib_value_with_default(Some(&Type::Integer(int_type)));
+
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn into_glib_value_with_default_regular_value() {
+        test_utils::ensure_gtk_init();
+
+        let value = Value::Number(42.0);
+        let result = value.into_glib_value_with_default(Some(&Type::Boolean));
+
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn glist_with_string_items() {
+        test_utils::ensure_gtk_init();
+
+        let s1 = std::ffi::CString::new("hello").unwrap();
+        let s2 = std::ffi::CString::new("world").unwrap();
+
+        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
+        list = unsafe { glib::ffi::g_list_append(list, s1.as_ptr() as *mut c_void) };
+        list = unsafe { glib::ffi::g_list_append(list, s2.as_ptr() as *mut c_void) };
+
+        let string_type = StringType { is_borrowed: true };
+        let array_type = ArrayType {
+            item_type: Box::new(Type::String(string_type)),
+            list_type: ListType::GList,
+            is_borrowed: true,
+        };
+        let type_ = Type::Array(array_type);
+
+        let cif_value = cif::Value::Ptr(list as *mut c_void);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Array(arr) = result.unwrap() {
+            assert_eq!(arr.len(), 2);
+            if let Value::String(s) = &arr[0] {
+                assert_eq!(s, "hello");
+            }
+            if let Value::String(s) = &arr[1] {
+                assert_eq!(s, "world");
+            }
+        } else {
+            panic!("Expected Value::Array");
+        }
+
+        unsafe {
+            glib::ffi::g_list_free(list);
+        }
+    }
 }

@@ -4,7 +4,6 @@ import { toCamelCase, toPascalCase } from "./naming.js";
 export { toCamelCase, toPascalCase };
 
 export type GirNamespace = {
-
     name: string;
 
     version: string;
@@ -33,7 +32,6 @@ export type GirNamespace = {
 };
 
 export type GirConstant = {
-
     name: string;
 
     cType: string;
@@ -46,7 +44,6 @@ export type GirConstant = {
 };
 
 export type GirCallback = {
-
     name: string;
 
     cType: string;
@@ -59,7 +56,6 @@ export type GirCallback = {
 };
 
 export type GirInterface = {
-
     name: string;
 
     cType: string;
@@ -78,7 +74,6 @@ export type GirInterface = {
 };
 
 export type GirClass = {
-
     name: string;
 
     cType: string;
@@ -109,7 +104,6 @@ export type GirClass = {
 };
 
 export type GirRecord = {
-
     name: string;
 
     cType: string;
@@ -134,7 +128,6 @@ export type GirRecord = {
 };
 
 export type GirField = {
-
     name: string;
 
     type: GirType;
@@ -149,7 +142,6 @@ export type GirField = {
 };
 
 export type GirMethod = {
-
     name: string;
 
     cIdentifier: string;
@@ -166,7 +158,6 @@ export type GirMethod = {
 };
 
 export type GirConstructor = {
-
     name: string;
 
     cIdentifier: string;
@@ -183,7 +174,6 @@ export type GirConstructor = {
 };
 
 export type GirFunction = {
-
     name: string;
 
     cIdentifier: string;
@@ -200,7 +190,6 @@ export type GirFunction = {
 };
 
 export type GirParameter = {
-
     name: string;
 
     type: GirType;
@@ -225,7 +214,6 @@ export type GirParameter = {
 };
 
 export type GirType = {
-
     name: string;
 
     cType?: string;
@@ -240,7 +228,6 @@ export type GirType = {
 };
 
 export type GirProperty = {
-
     name: string;
 
     type: GirType;
@@ -261,7 +248,6 @@ export type GirProperty = {
 };
 
 export type GirSignal = {
-
     name: string;
 
     when?: "first" | "last" | "cleanup";
@@ -274,7 +260,6 @@ export type GirSignal = {
 };
 
 export type GirEnumeration = {
-
     name: string;
 
     cType: string;
@@ -285,7 +270,6 @@ export type GirEnumeration = {
 };
 
 export type GirEnumerationMember = {
-
     name: string;
 
     value: string;
@@ -296,7 +280,6 @@ export type GirEnumerationMember = {
 };
 
 export type FfiTypeDescriptor = {
-
     type: string;
 
     size?: number;

@@ -75,3 +75,113 @@ impl Drop for GVariant {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+
+    fn create_test_variant() -> *mut glib::ffi::GVariant {
+        test_utils::ensure_gtk_init();
+        unsafe {
+            let ptr = glib::ffi::g_variant_new_int32(42);
+            glib::ffi::g_variant_ref_sink(ptr);
+            ptr
+        }
+    }
+
+    #[test]
+    fn from_glib_full_sets_owned_flag() {
+        let ptr = create_test_variant();
+        let variant = GVariant::from_glib_full(ptr as *mut c_void);
+
+        assert!(variant.is_owned);
+        assert!(!variant.ptr.is_null());
+    }
+
+    #[test]
+    fn from_glib_full_null_ptr_safe() {
+        let variant = GVariant::from_glib_full(std::ptr::null_mut());
+
+        assert!(variant.is_owned);
+        assert!(variant.ptr.is_null());
+    }
+
+    #[test]
+    fn from_glib_none_refs_and_sinks() {
+        let ptr = create_test_variant();
+        let variant = GVariant::from_glib_none(ptr as *mut c_void);
+
+        assert!(variant.is_owned);
+        assert!(!variant.ptr.is_null());
+
+        unsafe {
+            glib::ffi::g_variant_unref(ptr);
+        }
+    }
+
+    #[test]
+    fn from_glib_none_null_ptr_not_owned() {
+        let variant = GVariant::from_glib_none(std::ptr::null_mut());
+
+        assert!(!variant.is_owned);
+        assert!(variant.ptr.is_null());
+    }
+
+    #[test]
+    fn as_ptr_returns_correct_pointer() {
+        let ptr = create_test_variant();
+        let variant = GVariant::from_glib_full(ptr as *mut c_void);
+
+        assert_eq!(variant.as_ptr(), ptr as *mut c_void);
+    }
+
+    #[test]
+    fn as_ref_returns_ptr_reference() {
+        let ptr = create_test_variant();
+        let variant = GVariant::from_glib_full(ptr as *mut c_void);
+        let ptr_ref: &*mut c_void = variant.as_ref();
+
+        assert_eq!(*ptr_ref, ptr as *mut c_void);
+    }
+
+    #[test]
+    fn clone_increments_refcount() {
+        let ptr = create_test_variant();
+        let variant = GVariant::from_glib_full(ptr as *mut c_void);
+        let cloned = variant.clone();
+
+        assert!(cloned.is_owned);
+        assert_eq!(cloned.ptr, variant.ptr);
+    }
+
+    #[test]
+    fn clone_null_does_not_increment_refcount() {
+        let variant = GVariant::from_glib_none(std::ptr::null_mut());
+        let cloned = variant.clone();
+
+        assert!(!cloned.is_owned);
+        assert!(cloned.ptr.is_null());
+    }
+
+    #[test]
+    fn drop_unrefs_owned_variant() {
+        let ptr = create_test_variant();
+        let variant = GVariant::from_glib_full(ptr as *mut c_void);
+        drop(variant);
+    }
+
+    #[test]
+    fn drop_does_not_unref_borrowed_variant() {
+        let ptr = create_test_variant();
+        let variant = GVariant {
+            ptr,
+            is_owned: false,
+        };
+        drop(variant);
+
+        unsafe {
+            glib::ffi::g_variant_unref(ptr);
+        }
+    }
+}

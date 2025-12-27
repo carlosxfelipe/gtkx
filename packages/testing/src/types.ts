@@ -6,14 +6,12 @@ export type TextMatchFunction = (content: string, widget: Gtk.Widget) => boolean
 export type TextMatch = string | RegExp | TextMatchFunction;
 
 export type NormalizerOptions = {
-
     trim?: boolean;
 
     collapseWhitespace?: boolean;
 };
 
 export type TextMatchOptions = {
-
     exact?: boolean;
 
     normalizer?: (text: string) => string;
@@ -26,7 +24,6 @@ export type TextMatchOptions = {
 };
 
 export type ByRoleOptions = TextMatchOptions & {
-
     name?: TextMatch;
 
     checked?: boolean;
@@ -41,7 +38,6 @@ export type ByRoleOptions = TextMatchOptions & {
 };
 
 export type WaitForOptions = {
-
     timeout?: number;
 
     interval?: number;
@@ -50,12 +46,10 @@ export type WaitForOptions = {
 };
 
 export type RenderOptions = {
-
     wrapper?: boolean | ComponentType<{ children: ReactNode }>;
 };
 
 export type BoundQueries = {
-
     findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
 
     findByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
@@ -74,7 +68,6 @@ export type BoundQueries = {
 };
 
 export type RenderResult = BoundQueries & {
-
     container: Gtk.Application;
 
     unmount: () => Promise<void>;
