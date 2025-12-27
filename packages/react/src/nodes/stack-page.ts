@@ -22,12 +22,12 @@ class StackPageNode extends SlotNode<Props> {
             return;
         }
 
-        if (!oldProps || oldProps.title !== newProps.title) {
-            this.page.setTitle(newProps.title ?? "");
+        if (newProps.title && (!oldProps || oldProps.title !== newProps.title)) {
+            this.page.setTitle(newProps.title);
         }
 
-        if (!oldProps || oldProps.iconName !== newProps.iconName) {
-            this.page.setIconName(newProps.iconName ?? "");
+        if (newProps.iconName && (!oldProps || oldProps.iconName !== newProps.iconName)) {
+            this.page.setIconName(newProps.iconName);
         }
 
         if (!oldProps || oldProps.needsAttention !== newProps.needsAttention) {
@@ -74,6 +74,7 @@ class StackPageNode extends SlotNode<Props> {
         }
 
         this.page = page;
+        this.updateProps(null, this.props);
     }
 
     private removePage(oldChild?: Gtk.Widget): void {
