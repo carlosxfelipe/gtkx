@@ -1,3 +1,5 @@
+import "./action-row-child.js";
+import "./action-row.js";
 import "./application.js";
 import "./autowrapped.js";
 import "./column-view-column.js";

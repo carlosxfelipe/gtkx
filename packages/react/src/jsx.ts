@@ -400,6 +400,28 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactElement {
 export const SimpleListItem = "SimpleListItem" as const;
 
 /**
+ * Slot positions for AdwActionRow, AdwEntryRow, and AdwExpanderRow widgets.
+ *
+ * @example
+ * ```tsx
+ * <AdwActionRow title="Setting">
+ *   <ActionRow.Prefix>
+ *     <GtkCheckButton />
+ *   </ActionRow.Prefix>
+ *   <ActionRow.Suffix>
+ *     <GtkButton iconName="go-next-symbolic" />
+ *   </ActionRow.Suffix>
+ * </AdwActionRow>
+ * ```
+ */
+export const ActionRow = {
+    /** Place child as a prefix (left side) of the row */
+    Prefix: "ActionRow.Prefix" as const,
+    /** Place child as a suffix (right side) of the row */
+    Suffix: "ActionRow.Suffix" as const,
+};
+
+/**
  * Slot positions for HeaderBar and ActionBar widgets.
  *
  * @example
@@ -509,6 +531,9 @@ declare global {
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
                 SimpleListItem: StringListItemProps;
+
+                "ActionRow.Prefix": SlotProps;
+                "ActionRow.Suffix": SlotProps;
 
                 "Pack.Start": SlotProps;
                 "Pack.End": SlotProps;
