@@ -18,7 +18,6 @@ describe("render - OverlayChild", () => {
                         <GtkButton ref={overlayChildRef} label="Overlay Button" />
                     </OverlayChild>
                 </GtkOverlay>,
-                { wrapper: false },
             );
 
             expect(overlayRef.current?.getChild()?.equals(mainRef.current)).toBe(true);
@@ -36,7 +35,6 @@ describe("render - OverlayChild", () => {
                         <GtkButton ref={buttonRef} label="Measured Overlay" />
                     </OverlayChild>
                 </GtkOverlay>,
-                { wrapper: false },
             );
 
             const isMeasured = overlayRef.current?.getMeasureOverlay(buttonRef.current as Gtk.Widget);
@@ -54,7 +52,6 @@ describe("render - OverlayChild", () => {
                         <GtkButton ref={buttonRef} label="Clipped Overlay" />
                     </OverlayChild>
                 </GtkOverlay>,
-                { wrapper: false },
             );
 
             const isClipped = overlayRef.current?.getClipOverlay(buttonRef.current as Gtk.Widget);
@@ -77,7 +74,7 @@ describe("render - OverlayChild", () => {
                 );
             }
 
-            await render(<App showOverlay={true} />, { wrapper: false });
+            await render(<App showOverlay={true} />);
 
             let childCount = 0;
             let child = overlayRef.current?.getFirstChild();
@@ -87,7 +84,7 @@ describe("render - OverlayChild", () => {
             }
             expect(childCount).toBe(2);
 
-            await render(<App showOverlay={false} />, { wrapper: false });
+            await render(<App showOverlay={false} />);
 
             childCount = 0;
             child = overlayRef.current?.getFirstChild();
@@ -111,7 +108,6 @@ describe("render - OverlayChild", () => {
                         <GtkButton label="Second Overlay" />
                     </OverlayChild>
                 </GtkOverlay>,
-                { wrapper: false },
             );
 
             let childCount = 0;

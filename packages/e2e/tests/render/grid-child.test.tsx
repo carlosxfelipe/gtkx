@@ -16,7 +16,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Cell" />
                     </GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const childAt = gridRef.current?.getChildAt(1, 2);
@@ -33,7 +32,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Default" />
                     </GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             const childAt = gridRef.current?.getChildAt(0, 0);
@@ -50,7 +48,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Wide" />
                     </GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
@@ -68,7 +65,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={labelRef} label="Tall" />
                     </GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
@@ -89,10 +85,10 @@ describe("render - GridChild", () => {
                 );
             }
 
-            await render(<App col={0} row={0} />, { wrapper: false });
+            await render(<App col={0} row={0} />);
             expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
 
-            await render(<App col={2} row={1} />, { wrapper: false });
+            await render(<App col={2} row={1} />);
             expect(gridRef.current?.getChildAt(2, 1)?.equals(labelRef.current)).toBe(true);
         });
 
@@ -110,7 +106,6 @@ describe("render - GridChild", () => {
                         <GtkLabel ref={label2Ref} label="Bottom Right" />
                     </GridChild>
                 </GtkGrid>,
-                { wrapper: false },
             );
 
             expect(gridRef.current?.getChildAt(0, 0)?.equals(label1Ref.current)).toBe(true);

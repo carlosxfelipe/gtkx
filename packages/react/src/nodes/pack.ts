@@ -41,6 +41,7 @@ class PackNode extends WidgetNode<PackableWidget> {
 
     public override removeChild(child: Node): void {
         if (child instanceof PackChild) {
+            child.unmount();
             return;
         }
 

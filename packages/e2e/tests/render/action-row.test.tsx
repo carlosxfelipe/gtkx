@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { ActionRow, AdwActionRow, GtkLabel } from "@gtkx/react";
+import { ActionRow, AdwActionRow, GtkLabel, GtkListBox } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -9,7 +9,11 @@ describe("render - ActionRow", () => {
         it("creates ActionRow widget", async () => {
             const ref = createRef<Adw.ActionRow>();
 
-            await render(<AdwActionRow ref={ref} title="Test Row" />);
+            await render(
+                <GtkListBox>
+                    <AdwActionRow ref={ref} title="Test Row" />
+                </GtkListBox>,
+            );
 
             expect(ref.current).not.toBeNull();
         });
@@ -18,14 +22,16 @@ describe("render - ActionRow", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             const { findByText } = await render(
-                <AdwActionRow ref={rowRef} title="Test Row">
-                    <ActionRow.Prefix>
-                        <GtkLabel label="First" />
-                    </ActionRow.Prefix>
-                    <ActionRow.Suffix>
-                        <GtkLabel label="Second" />
-                    </ActionRow.Suffix>
-                </AdwActionRow>,
+                <GtkListBox>
+                    <AdwActionRow ref={rowRef} title="Test Row">
+                        <ActionRow.Prefix>
+                            <GtkLabel label="First" />
+                        </ActionRow.Prefix>
+                        <ActionRow.Suffix>
+                            <GtkLabel label="Second" />
+                        </ActionRow.Suffix>
+                    </AdwActionRow>
+                </GtkListBox>,
             );
 
             expect(rowRef.current).not.toBeNull();
@@ -38,14 +44,16 @@ describe("render - ActionRow", () => {
 
             function App({ count }: { count: number }) {
                 return (
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        {Array.from({ length: count }, (_, i) => (
-                            // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
-                            <ActionRow.Suffix key={`suffix-label-${i}`}>
-                                <GtkLabel label={`Label ${i}`} />
-                            </ActionRow.Suffix>
-                        ))}
-                    </AdwActionRow>
+                    <GtkListBox>
+                        <AdwActionRow ref={rowRef} title="Test Row">
+                            {Array.from({ length: count }, (_, i) => (
+                                // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
+                                <ActionRow.Suffix key={`suffix-label-${i}`}>
+                                    <GtkLabel label={`Label ${i}`} />
+                                </ActionRow.Suffix>
+                            ))}
+                        </AdwActionRow>
+                    </GtkListBox>
                 );
             }
 

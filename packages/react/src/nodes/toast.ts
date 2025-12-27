@@ -1,7 +1,6 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToastProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
-import { scheduleAfterCommit } from "../scheduler.js";
 import { VirtualNode } from "./virtual.js";
 
 type Props = ToastProps;
@@ -47,7 +46,7 @@ export class ToastNode extends VirtualNode<Props> {
     }
 
     private showToast(): void {
-        if (!this.parent) return;
+        if (!this.parent || this.toast) return;
 
         this.toast = this.createToast();
 
@@ -67,33 +66,34 @@ export class ToastNode extends VirtualNode<Props> {
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
 
-        if (!oldProps) {
-            scheduleAfterCommit(() => this.showToast());
-            return;
-        }
-
         if (!this.toast) return;
 
-        if (oldProps.title !== newProps.title) {
+        if (!oldProps || oldProps.title !== newProps.title) {
             this.toast.setTitle(newProps.title);
         }
 
-        if (oldProps.buttonLabel !== newProps.buttonLabel) {
+        if (!oldProps || oldProps.buttonLabel !== newProps.buttonLabel) {
             this.toast.setButtonLabel(newProps.buttonLabel);
         }
 
-        if (oldProps.actionName !== newProps.actionName) {
+        if (!oldProps || oldProps.actionName !== newProps.actionName) {
             this.toast.setActionName(newProps.actionName);
         }
 
-        if (oldProps.useMarkup !== newProps.useMarkup && newProps.useMarkup !== undefined) {
-            this.toast.setUseMarkup(newProps.useMarkup);
+        if (!oldProps || oldProps.useMarkup !== newProps.useMarkup) {
+            this.toast.setUseMarkup(newProps.useMarkup ?? false);
         }
+    }
+
+    public override mount(): void {
+        super.mount();
+        this.showToast();
     }
 
     public override unmount(): void {
         if (this.toast) {
             this.toast.dismiss();
+            this.props.onDismissed?.();
         }
 
         this.parent = undefined;

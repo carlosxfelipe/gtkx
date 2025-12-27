@@ -41,6 +41,7 @@ class ToolbarNode extends WidgetNode<Adw.ToolbarView> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ToolbarChildNode) {
+            child.unmount();
             return;
         }
 

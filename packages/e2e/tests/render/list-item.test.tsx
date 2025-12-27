@@ -13,7 +13,6 @@ describe("render - ListItem", () => {
                 <GtkListView ref={listViewRef} renderItem={() => "Item"}>
                     <ListItem id="1" value={{ text: "First" }} />
                 </GtkListView>,
-                { wrapper: false },
             );
 
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
@@ -28,7 +27,6 @@ describe("render - ListItem", () => {
                     <ListItem id="2" value={{ text: "Second" }} />
                     <ListItem id="3" value={{ text: "Third" }} />
                 </GtkListView>,
-                { wrapper: false },
             );
 
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(3);
@@ -45,10 +43,10 @@ describe("render - ListItem", () => {
                 );
             }
 
-            await render(<App value={{ text: "Initial" }} />, { wrapper: false });
+            await render(<App value={{ text: "Initial" }} />);
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
 
-            await render(<App value={{ text: "Updated" }} />, { wrapper: false });
+            await render(<App value={{ text: "Updated" }} />);
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
         });
 
@@ -73,11 +71,10 @@ describe("render - ListItem", () => {
                         { id: "3", text: "Third" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(3);
 
-            await render(<App items={[{ id: "1", text: "First" }]} />, { wrapper: false });
+            await render(<App items={[{ id: "1", text: "First" }]} />);
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(1);
         });
 
@@ -101,7 +98,6 @@ describe("render - ListItem", () => {
                         { id: "last", text: "Last" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(2);
 
@@ -113,7 +109,6 @@ describe("render - ListItem", () => {
                         { id: "last", text: "Last" },
                     ]}
                 />,
-                { wrapper: false },
             );
             expect(listViewRef.current?.getModel()?.getNItems()).toBe(3);
         });

@@ -13,7 +13,6 @@ describe("render - NotebookPage", () => {
                 <GtkNotebook ref={notebookRef}>
                     <NotebookPage label="Page 1">Content 1</NotebookPage>
                 </GtkNotebook>,
-                { wrapper: false },
             );
 
             expect(notebookRef.current?.getNPages()).toBe(1);
@@ -29,7 +28,6 @@ describe("render - NotebookPage", () => {
                         <GtkLabel ref={contentRef} label="Content" />
                     </NotebookPage>
                 </GtkNotebook>,
-                { wrapper: false },
             );
 
             const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
@@ -50,11 +48,11 @@ describe("render - NotebookPage", () => {
                 );
             }
 
-            await render(<App tabLabel="Initial" />, { wrapper: false });
+            await render(<App tabLabel="Initial" />);
             let tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
             expect(tabLabel?.getLabel()).toBe("Initial");
 
-            await render(<App tabLabel="Updated" />, { wrapper: false });
+            await render(<App tabLabel="Updated" />);
             tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
             expect(tabLabel?.getLabel()).toBe("Updated");
         });
@@ -68,7 +66,6 @@ describe("render - NotebookPage", () => {
                     <NotebookPage label="Page 2">Content 2</NotebookPage>
                     <NotebookPage label="Page 3">Content 3</NotebookPage>
                 </GtkNotebook>,
-                { wrapper: false },
             );
 
             expect(notebookRef.current?.getNPages()).toBe(3);
@@ -89,10 +86,10 @@ describe("render - NotebookPage", () => {
                 );
             }
 
-            await render(<App pages={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App pages={["A", "B", "C"]} />);
             expect(notebookRef.current?.getNPages()).toBe(3);
 
-            await render(<App pages={["A", "C"]} />, { wrapper: false });
+            await render(<App pages={["A", "C"]} />);
             expect(notebookRef.current?.getNPages()).toBe(2);
         });
 
@@ -111,8 +108,8 @@ describe("render - NotebookPage", () => {
                 );
             }
 
-            await render(<App pages={["First", "Second", "Third"]} />, { wrapper: false });
-            await render(<App pages={["Second", "First", "Third"]} />, { wrapper: false });
+            await render(<App pages={["First", "Second", "Third"]} />);
+            await render(<App pages={["Second", "First", "Third"]} />);
 
             expect(notebookRef.current?.getNPages()).toBe(3);
         });

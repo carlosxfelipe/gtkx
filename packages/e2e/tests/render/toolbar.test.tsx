@@ -10,7 +10,7 @@ describe("render - Toolbar", () => {
         it("creates ToolbarView widget", async () => {
             const ref = createRef<Adw.ToolbarView>();
 
-            await render(<AdwToolbarView ref={ref} />, { wrapper: false });
+            await render(<AdwToolbarView ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - Toolbar", () => {
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel ref={contentRef} label="Main Content" />
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
             expect(toolbarRef.current?.getContent()?.equals(contentRef.current)).toBe(true);

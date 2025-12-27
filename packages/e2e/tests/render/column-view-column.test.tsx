@@ -13,7 +13,6 @@ describe("render - ColumnViewColumn", () => {
                 <GtkColumnView ref={columnViewRef}>
                     <ColumnViewColumn id="name" title="Name" renderCell={() => "Cell"} />
                 </GtkColumnView>,
-                { wrapper: false },
             );
 
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(1);
@@ -26,7 +25,6 @@ describe("render - ColumnViewColumn", () => {
                 <GtkColumnView ref={columnViewRef}>
                     <ColumnViewColumn id="col" title="My Column" renderCell={() => "Cell"} />
                 </GtkColumnView>,
-                { wrapper: false },
             );
 
             const columns = columnViewRef.current?.getColumns();
@@ -41,7 +39,6 @@ describe("render - ColumnViewColumn", () => {
                 <GtkColumnView ref={columnViewRef}>
                     <ColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={() => "Cell"} />
                 </GtkColumnView>,
-                { wrapper: false },
             );
 
             const columns = columnViewRef.current?.getColumns();
@@ -56,7 +53,6 @@ describe("render - ColumnViewColumn", () => {
                 <GtkColumnView ref={columnViewRef}>
                     <ColumnViewColumn id="resize" title="Resizable" resizable={true} renderCell={() => "Cell"} />
                 </GtkColumnView>,
-                { wrapper: false },
             );
 
             const columns = columnViewRef.current?.getColumns();
@@ -73,7 +69,6 @@ describe("render - ColumnViewColumn", () => {
                     <ColumnViewColumn id="col2" title="Column 2" renderCell={() => "Cell 2"} />
                     <ColumnViewColumn id="col3" title="Column 3" renderCell={() => "Cell 3"} />
                 </GtkColumnView>,
-                { wrapper: false },
             );
 
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(3);
@@ -90,11 +85,11 @@ describe("render - ColumnViewColumn", () => {
                 );
             }
 
-            await render(<App title="Initial" />, { wrapper: false });
+            await render(<App title="Initial" />);
             let column = columnViewRef.current?.getColumns()?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Initial");
 
-            await render(<App title="Updated" />, { wrapper: false });
+            await render(<App title="Updated" />);
             column = columnViewRef.current?.getColumns()?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Updated");
         });
@@ -117,10 +112,10 @@ describe("render - ColumnViewColumn", () => {
                 );
             }
 
-            await render(<App columns={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App columns={["A", "B", "C"]} />);
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(3);
 
-            await render(<App columns={["A", "C"]} />, { wrapper: false });
+            await render(<App columns={["A", "C"]} />);
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(2);
         });
     });

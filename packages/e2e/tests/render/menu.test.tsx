@@ -13,7 +13,6 @@ describe("render - Menu", () => {
                 <GtkPopoverMenu ref={ref}>
                     <Menu.Item id="item1" label="Item 1" onActivate={() => {}} />
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -32,9 +31,9 @@ describe("render - Menu", () => {
                 );
             }
 
-            await render(<App items={["Item 1", "Item 2"]} />, { wrapper: false });
+            await render(<App items={["Item 1", "Item 2"]} />);
 
-            await render(<App items={["Item 1", "Item 2", "Item 3"]} />, { wrapper: false });
+            await render(<App items={["Item 1", "Item 2", "Item 3"]} />);
         });
     });
 
@@ -48,7 +47,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="new" label="New" onActivate={() => {}} />
                     </Menu.Submenu>
                 </GtkPopoverMenuBar>,
-                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -63,7 +61,6 @@ describe("render - Menu", () => {
                 <GtkPopoverMenu ref={ref}>
                     <Menu.Item id="test" label="Test Item" onActivate={() => {}} />
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -74,7 +71,6 @@ describe("render - Menu", () => {
                 <GtkPopoverMenu ref={ref}>
                     <Menu.Item id="save" label="Save" accels="<Control>s" onActivate={() => {}} />
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -89,9 +85,9 @@ describe("render - Menu", () => {
                 );
             }
 
-            await render(<App label="Initial" />, { wrapper: false });
+            await render(<App label="Initial" />);
 
-            await render(<App label="Updated" />, { wrapper: false });
+            await render(<App label="Updated" />);
         });
 
         it("cleans up action on unmount", async () => {
@@ -106,9 +102,9 @@ describe("render - Menu", () => {
                 );
             }
 
-            await render(<App showItem={true} />, { wrapper: false });
+            await render(<App showItem={true} />);
 
-            await render(<App showItem={false} />, { wrapper: false });
+            await render(<App showItem={false} />);
         });
     });
 
@@ -123,7 +119,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="section2" label="Section Item 2" onActivate={() => {}} />
                     </Menu.Section>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -139,7 +134,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="itemB" label="Item B" onActivate={() => {}} />
                     </Menu.Section>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -152,7 +146,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="item" label="Item" onActivate={() => {}} />
                     </Menu.Section>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
     });
@@ -168,7 +161,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="open" label="Open" onActivate={() => {}} />
                     </Menu.Submenu>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -183,7 +175,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="paste" label="Paste" onActivate={() => {}} />
                     </Menu.Submenu>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -196,7 +187,6 @@ describe("render - Menu", () => {
                         <Menu.Item id="about" label="About" onActivate={() => {}} />
                     </Menu.Submenu>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
 
@@ -212,7 +202,6 @@ describe("render - Menu", () => {
                         </Menu.Submenu>
                     </Menu.Submenu>
                 </GtkPopoverMenu>,
-                { wrapper: false },
             );
         });
     });

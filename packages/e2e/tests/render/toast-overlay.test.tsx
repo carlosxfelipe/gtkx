@@ -10,7 +10,7 @@ describe("render - ToastOverlay", () => {
         it("creates ToastOverlay widget", async () => {
             const ref = createRef<Adw.ToastOverlay>();
 
-            await render(<AdwToastOverlay ref={ref} />, { wrapper: false });
+            await render(<AdwToastOverlay ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,7 +23,6 @@ describe("render - ToastOverlay", () => {
                 <AdwToastOverlay ref={overlayRef}>
                     <GtkLabel ref={labelRef} label="Content" />
                 </AdwToastOverlay>,
-                { wrapper: false },
             );
 
             expect(overlayRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -38,7 +37,6 @@ describe("render - ToastOverlay", () => {
                     <GtkLabel ref={labelRef} label="Content" />
                     <Toast title="Notification" timeout={0} />
                 </AdwToastOverlay>,
-                { wrapper: false },
             );
 
             expect(overlayRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -51,10 +49,10 @@ describe("render - ToastOverlay", () => {
                 return <AdwToastOverlay ref={overlayRef}>{showChild && <GtkLabel label="Content" />}</AdwToastOverlay>;
             }
 
-            await render(<App showChild={true} />, { wrapper: false });
+            await render(<App showChild={true} />);
             expect(overlayRef.current?.getChild()).not.toBeNull();
 
-            await render(<App showChild={false} />, { wrapper: false });
+            await render(<App showChild={false} />);
             expect(overlayRef.current?.getChild()).toBeNull();
         });
 
@@ -70,8 +68,8 @@ describe("render - ToastOverlay", () => {
                 );
             }
 
-            await render(<App showToast={true} />, { wrapper: false });
-            await render(<App showToast={false} />, { wrapper: false });
+            await render(<App showToast={true} />);
+            await render(<App showToast={false} />);
 
             expect(overlayRef.current).not.toBeNull();
         });

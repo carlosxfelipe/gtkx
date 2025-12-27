@@ -4,6 +4,9 @@ export default defineConfig({
     test: {
         include: ["tests/**/*.test.{ts,tsx}"],
         globals: false,
+        fileParallelism: false,
+        bail: 1,
+        pool: "forks",
     },
     esbuild: {
         jsx: "automatic",

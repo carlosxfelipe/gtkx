@@ -33,6 +33,7 @@ class ToastOverlayNode extends WidgetNode<Adw.ToastOverlay> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ToastNode) {
+            child.unmount();
             return;
         }
 

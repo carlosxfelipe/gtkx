@@ -41,6 +41,7 @@ class ActionRowNode extends WidgetNode<PrefixSuffixWidget> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ActionRowChild) {
+            child.unmount();
             return;
         }
 

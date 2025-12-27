@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { ActionRow, AdwActionRow, GtkLabel } from "@gtkx/react";
+import { ActionRow, AdwActionRow, GtkLabel, GtkListBox } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -10,11 +10,13 @@ describe("render - ActionRowChild", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             const { findByText } = await render(
-                <AdwActionRow ref={rowRef} title="Test Row">
-                    <ActionRow.Prefix>
-                        <GtkLabel label="Prefix" />
-                    </ActionRow.Prefix>
-                </AdwActionRow>,
+                <GtkListBox>
+                    <AdwActionRow ref={rowRef} title="Test Row">
+                        <ActionRow.Prefix>
+                            <GtkLabel label="Prefix" />
+                        </ActionRow.Prefix>
+                    </AdwActionRow>
+                </GtkListBox>,
             );
 
             expect(await findByText("Prefix")).toBeDefined();
@@ -24,11 +26,13 @@ describe("render - ActionRowChild", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             const { findByText } = await render(
-                <AdwActionRow ref={rowRef} title="Test Row">
-                    <ActionRow.Suffix>
-                        <GtkLabel label="Suffix" />
-                    </ActionRow.Suffix>
-                </AdwActionRow>,
+                <GtkListBox>
+                    <AdwActionRow ref={rowRef} title="Test Row">
+                        <ActionRow.Suffix>
+                            <GtkLabel label="Suffix" />
+                        </ActionRow.Suffix>
+                    </AdwActionRow>
+                </GtkListBox>,
             );
 
             expect(await findByText("Suffix")).toBeDefined();
@@ -38,14 +42,16 @@ describe("render - ActionRowChild", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             const { findByText } = await render(
-                <AdwActionRow ref={rowRef} title="Test Row">
-                    <ActionRow.Prefix>
-                        <GtkLabel label="Prefix" />
-                    </ActionRow.Prefix>
-                    <ActionRow.Suffix>
-                        <GtkLabel label="Suffix" />
-                    </ActionRow.Suffix>
-                </AdwActionRow>,
+                <GtkListBox>
+                    <AdwActionRow ref={rowRef} title="Test Row">
+                        <ActionRow.Prefix>
+                            <GtkLabel label="Prefix" />
+                        </ActionRow.Prefix>
+                        <ActionRow.Suffix>
+                            <GtkLabel label="Suffix" />
+                        </ActionRow.Suffix>
+                    </AdwActionRow>
+                </GtkListBox>,
             );
 
             expect(await findByText("Prefix")).toBeDefined();
@@ -57,16 +63,18 @@ describe("render - ActionRowChild", () => {
 
             function App({ showPrefix }: { showPrefix: boolean }) {
                 return (
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        {showPrefix && (
-                            <ActionRow.Prefix>
-                                <GtkLabel label="Prefix" />
-                            </ActionRow.Prefix>
-                        )}
-                        <ActionRow.Suffix>
-                            <GtkLabel label="Always" />
-                        </ActionRow.Suffix>
-                    </AdwActionRow>
+                    <GtkListBox>
+                        <AdwActionRow ref={rowRef} title="Test Row">
+                            {showPrefix && (
+                                <ActionRow.Prefix>
+                                    <GtkLabel label="Prefix" />
+                                </ActionRow.Prefix>
+                            )}
+                            <ActionRow.Suffix>
+                                <GtkLabel label="Always" />
+                            </ActionRow.Suffix>
+                        </AdwActionRow>
+                    </GtkListBox>
                 );
             }
 
@@ -85,12 +93,14 @@ describe("render - ActionRowChild", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             const { findByText } = await render(
-                <AdwActionRow ref={rowRef} title="Test Row">
-                    <ActionRow.Prefix>
-                        <GtkLabel label="First" />
-                        <GtkLabel label="Second" />
-                    </ActionRow.Prefix>
-                </AdwActionRow>,
+                <GtkListBox>
+                    <AdwActionRow ref={rowRef} title="Test Row">
+                        <ActionRow.Prefix>
+                            <GtkLabel label="First" />
+                            <GtkLabel label="Second" />
+                        </ActionRow.Prefix>
+                    </AdwActionRow>
+                </GtkListBox>,
             );
 
             expect(await findByText("First")).toBeDefined();
@@ -101,12 +111,14 @@ describe("render - ActionRowChild", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             const { findByText } = await render(
-                <AdwActionRow ref={rowRef} title="Test Row">
-                    <ActionRow.Suffix>
-                        <GtkLabel label="First" />
-                        <GtkLabel label="Second" />
-                    </ActionRow.Suffix>
-                </AdwActionRow>,
+                <GtkListBox>
+                    <AdwActionRow ref={rowRef} title="Test Row">
+                        <ActionRow.Suffix>
+                            <GtkLabel label="First" />
+                            <GtkLabel label="Second" />
+                        </ActionRow.Suffix>
+                    </AdwActionRow>
+                </GtkListBox>,
             );
 
             expect(await findByText("First")).toBeDefined();
@@ -118,12 +130,14 @@ describe("render - ActionRowChild", () => {
 
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
-                    <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Prefix>
-                            <GtkLabel label="First" />
-                            {showSecond && <GtkLabel label="Second" />}
-                        </ActionRow.Prefix>
-                    </AdwActionRow>
+                    <GtkListBox>
+                        <AdwActionRow ref={rowRef} title="Test Row">
+                            <ActionRow.Prefix>
+                                <GtkLabel label="First" />
+                                {showSecond && <GtkLabel label="Second" />}
+                            </ActionRow.Prefix>
+                        </AdwActionRow>
+                    </GtkListBox>
                 );
             }
 

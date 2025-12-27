@@ -9,7 +9,7 @@ describe("render - Pack", () => {
         it("creates Box widget", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.HORIZONTAL} />, { wrapper: false });
+            await render(<GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.HORIZONTAL} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -21,7 +21,6 @@ describe("render - Pack", () => {
                 <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
                     First Second
                 </GtkBox>,
-                { wrapper: false },
             );
 
             expect(boxRef.current?.getFirstChild()).not.toBeNull();
@@ -42,8 +41,8 @@ describe("render - Pack", () => {
                 );
             }
 
-            await render(<App count={3} />, { wrapper: false });
-            await render(<App count={1} />, { wrapper: false });
+            await render(<App count={3} />);
+            await render(<App count={1} />);
 
             expect(boxRef.current?.getFirstChild()).not.toBeNull();
             expect(boxRef.current?.getFirstChild()?.equals(boxRef.current?.getLastChild())).toBe(true);
