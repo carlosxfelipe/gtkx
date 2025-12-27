@@ -298,13 +298,26 @@ render(<App />, "com.example.myapp");
 </GtkColumnView>
 \`\`\`
 
-**GtkDropDown** - String selection widget:
+**GtkDropDown** - String selection dropdown with controlled state:
 \`\`\`tsx
-<GtkDropDown onSelectionChanged={setSelectedId}>
+<GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
     {options.map(opt => (
         <SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
     ))}
 </GtkDropDown>
+\`\`\`
+
+**GtkOverlay** - Stack widgets on top of each other (first child is base):
+\`\`\`tsx
+<GtkOverlay>
+    <GtkButton label="Notifications" />
+    <GtkLabel
+        label="3"
+        cssClasses={["badge"]}
+        halign={Gtk.Align.END}
+        valign={Gtk.Align.START}
+    />
+</GtkOverlay>
 \`\`\`
 
 ### GtkHeaderBar
@@ -400,6 +413,115 @@ import { createPortal } from "@gtkx/react";
 {createPortal(<GtkAboutDialog programName="My App" />)}
 \`\`\`
 
+## Adwaita (Libadwaita) Widgets
+
+Import Adwaita widgets and enums:
+\`\`\`tsx
+import * as Adw from "@gtkx/ffi/adw";
+import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView, Toolbar } from "@gtkx/react";
+\`\`\`
+
+### AdwToolbarView
+Modern app layout with top/bottom bars:
+\`\`\`tsx
+<AdwToolbarView>
+    <Toolbar.Top>
+        <AdwHeaderBar>
+            <Slot for={AdwHeaderBar} id="titleWidget">
+                <AdwWindowTitle title="App" subtitle="Description" />
+            </Slot>
+        </AdwHeaderBar>
+    </Toolbar.Top>
+    <MainContent />
+    <Toolbar.Bottom>
+        <GtkActionBar>...</GtkActionBar>
+    </Toolbar.Bottom>
+</AdwToolbarView>
+\`\`\`
+
+### AdwApplicationWindow
+Modern window requiring content slot:
+\`\`\`tsx
+<AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+    <Slot for={AdwApplicationWindow} id="content">
+        <AdwToolbarView>...</AdwToolbarView>
+    </Slot>
+</AdwApplicationWindow>
+\`\`\`
+
+### AdwStatusPage
+Welcome or empty state pages:
+\`\`\`tsx
+<AdwStatusPage
+    iconName="applications-system-symbolic"
+    title="Welcome"
+    description="Get started with your app"
+    vexpand
+/>
+\`\`\`
+
+### AdwBanner
+Dismissable notification banner:
+\`\`\`tsx
+<AdwBanner
+    title="Update available!"
+    buttonLabel="Dismiss"
+    revealed={showBanner}
+    onButtonClicked={() => setShowBanner(false)}
+/>
+\`\`\`
+
+### AdwPreferencesPage / AdwPreferencesGroup
+Settings UI layout:
+\`\`\`tsx
+<AdwPreferencesPage title="Settings">
+    <AdwPreferencesGroup title="Appearance" description="Customize the look">
+        <AdwSwitchRow title="Dark Mode" active={dark} onActivate={() => setDark(!dark)} />
+        <AdwActionRow title="Theme" subtitle="Select color theme">
+            <Slot for={AdwActionRow} id="activatableWidget">
+                <GtkImage iconName="go-next-symbolic" />
+            </Slot>
+        </AdwActionRow>
+    </AdwPreferencesGroup>
+</AdwPreferencesPage>
+\`\`\`
+
+### AdwExpanderRow
+Expandable row with nested content:
+\`\`\`tsx
+<AdwExpanderRow title="Advanced" subtitle="More options">
+    <AdwSwitchRow title="Option 1" active />
+    <AdwSwitchRow title="Option 2" active={false} />
+</AdwExpanderRow>
+\`\`\`
+
+### AdwEntryRow / AdwPasswordEntryRow
+Input fields in list rows:
+\`\`\`tsx
+<AdwEntryRow title="Username" text={username} onChanged={(e) => setUsername(e.getText())} />
+<AdwPasswordEntryRow title="Password" />
+\`\`\`
+
+### AdwClamp
+Limit content width for readability:
+\`\`\`tsx
+<AdwClamp maximumSize={600}>
+    <GtkBox>...</GtkBox>
+</AdwClamp>
+\`\`\`
+
+### AdwAvatar
+User avatar with initials fallback:
+\`\`\`tsx
+<AdwAvatar size={48} text="John Doe" showInitials />
+\`\`\`
+
+### AdwSpinner
+Loading indicator:
+\`\`\`tsx
+{isLoading && <AdwSpinner widthRequest={32} heightRequest={32} />}
+\`\`\`
+
 ## Constraints
 
 - **GTK is single-threaded**: All widget operations on main thread
@@ -470,6 +592,10 @@ StackPage props (consumed):
 - \`name\`: string (required, unique identifier)
 - \`title\`: string (display title)
 - \`iconName\`: string (icon name)
+- \`needsAttention\`: boolean (show attention indicator)
+- \`visible\`: boolean (visibility in switchers)
+- \`useUnderline\`: boolean (mnemonic underlines in title)
+- \`badgeNumber\`: number (badge on indicator, AdwViewStack only)
 
 ### GtkNotebook
 Tabbed container with visible tabs.
@@ -600,19 +726,42 @@ ColumnViewColumn props:
 - \`renderCell\`: \`(item: T | null) => ReactElement\`
 
 ### GtkDropDown
-String selection dropdown.
+String selection dropdown with controlled state.
 
 \`\`\`tsx
-<GtkDropDown onSelectionChanged={setSelectedId}>
+<GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
     {options.map(opt => (
         <SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
     ))}
 </GtkDropDown>
 \`\`\`
 
+Props:
+- \`selectedId\`: string (controlled selected item ID)
+- \`onSelectionChanged\`: \`(id: string) => void\`
+
 SimpleListItem props:
 - \`id\`: string (unique identifier)
 - \`value\`: string (display text)
+
+### GtkOverlay
+Stack widgets on top of each other. First child is the base layer.
+
+\`\`\`tsx
+<GtkOverlay>
+    <GtkButton label="Main" widthRequest={120} heightRequest={40} />
+    <GtkLabel
+        label="3"
+        cssClasses={["badge"]}
+        halign={Gtk.Align.END}
+        valign={Gtk.Align.START}
+        marginEnd={4}
+        marginTop={4}
+    />
+</GtkOverlay>
+\`\`\`
+
+Use \`halign\` and \`valign\` to position overlay children at corners or edges.
 
 ## Header Widgets
 
@@ -744,6 +893,159 @@ Nested submenu.
 >
     <MainContent />
 </GtkApplicationWindow>
+\`\`\`
+
+## Adwaita (Libadwaita) Widgets
+
+Import from \`@gtkx/ffi/adw\` for enums and \`@gtkx/react\` for components.
+
+### AdwApplicationWindow
+Modern application window with required content slot.
+
+\`\`\`tsx
+<AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+    <Slot for={AdwApplicationWindow} id="content">
+        <AdwToolbarView>...</AdwToolbarView>
+    </Slot>
+</AdwApplicationWindow>
+\`\`\`
+
+### AdwToolbarView
+Layout container for apps with top/bottom toolbars.
+
+\`\`\`tsx
+<AdwToolbarView>
+    <Toolbar.Top>
+        <AdwHeaderBar />
+    </Toolbar.Top>
+    <MainContent />
+    <Toolbar.Bottom>
+        <GtkActionBar />
+    </Toolbar.Bottom>
+</AdwToolbarView>
+\`\`\`
+
+### AdwHeaderBar
+Modern header bar with title widget slot.
+
+\`\`\`tsx
+<AdwHeaderBar>
+    <GtkButton iconName="go-previous-symbolic" />
+    <Slot for={AdwHeaderBar} id="titleWidget">
+        <AdwWindowTitle title="App" subtitle="Description" />
+    </Slot>
+</AdwHeaderBar>
+\`\`\`
+
+### AdwStatusPage
+Welcome, error, or empty state pages.
+
+\`\`\`tsx
+<AdwStatusPage
+    iconName="applications-system-symbolic"
+    title="Welcome"
+    description="Description text"
+    vexpand
+>
+    <GtkButton label="Get Started" cssClasses={["suggested-action", "pill"]} />
+</AdwStatusPage>
+\`\`\`
+
+### AdwBanner
+Dismissable notification banner.
+
+Props:
+- \`title\`: string
+- \`buttonLabel\`: string
+- \`revealed\`: boolean
+- \`onButtonClicked\`: \`() => void\`
+
+### AdwPreferencesPage / AdwPreferencesGroup
+Settings UI layout.
+
+\`\`\`tsx
+<AdwPreferencesPage title="Settings">
+    <AdwPreferencesGroup title="Section" description="Help text">
+        <AdwActionRow title="Item" subtitle="Description" />
+        <AdwSwitchRow title="Toggle" active={value} onActivate={toggle} />
+    </AdwPreferencesGroup>
+</AdwPreferencesPage>
+\`\`\`
+
+### AdwActionRow
+List row with title, subtitle, and optional widgets.
+
+\`\`\`tsx
+<AdwActionRow title="Setting" subtitle="Description">
+    <Slot for={AdwActionRow} id="activatableWidget">
+        <GtkImage iconName="go-next-symbolic" />
+    </Slot>
+</AdwActionRow>
+\`\`\`
+
+### AdwSwitchRow
+Toggle switch in a list row.
+
+Props:
+- \`title\`: string
+- \`subtitle\`: string
+- \`active\`: boolean
+- \`onActivate\`: \`() => void\`
+
+### AdwExpanderRow
+Expandable row with nested children.
+
+\`\`\`tsx
+<AdwExpanderRow title="Advanced" subtitle="More options" iconName="preferences-system-symbolic">
+    <AdwActionRow title="Child 1" />
+    <AdwSwitchRow title="Child 2" active />
+</AdwExpanderRow>
+\`\`\`
+
+### AdwEntryRow / AdwPasswordEntryRow
+Text input in a list row.
+
+\`\`\`tsx
+<AdwEntryRow title="Username" text={text} onChanged={(e) => setText(e.getText())} />
+<AdwPasswordEntryRow title="Password" />
+\`\`\`
+
+### AdwButtonRow
+Button styled as a list row.
+
+\`\`\`tsx
+<AdwButtonRow title="Add Item" startIconName="list-add-symbolic" />
+\`\`\`
+
+### AdwClamp
+Limits content width for readability.
+
+\`\`\`tsx
+<AdwClamp maximumSize={600}>
+    <GtkBox>...</GtkBox>
+</AdwClamp>
+\`\`\`
+
+### AdwAvatar
+User avatar with initials fallback.
+
+Props:
+- \`size\`: number (32, 48, 64, 80, etc.)
+- \`text\`: string (for initials)
+- \`showInitials\`: boolean
+
+### AdwSpinner
+Loading spinner.
+
+\`\`\`tsx
+<AdwSpinner widthRequest={32} heightRequest={32} />
+\`\`\`
+
+### AdwWindowTitle
+Title and subtitle for header bars.
+
+\`\`\`tsx
+<AdwWindowTitle title="App Name" subtitle="Page description" />
 \`\`\`
 
 ## Common Props
@@ -1005,6 +1307,127 @@ export const TodoItem = ({ todo, onToggle, onDelete }: TodoItemProps) => (
         <GtkButton iconName="edit-delete-symbolic" onClicked={() => onDelete(todo.id)} cssClasses={["flat"]} />
     </GtkBox>
 );
+\`\`\`
+
+## Adwaita App Structure
+
+### Modern Adwaita App
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToolbarView,
+    AdwWindowTitle,
+    AdwStatusPage,
+    AdwBanner,
+    GtkButton,
+    Slot,
+    Toolbar,
+    quit,
+} from "@gtkx/react";
+import { useState } from "react";
+
+export const App = () => {
+    const [showBanner, setShowBanner] = useState(true);
+
+    return (
+        <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+            <Slot for={AdwApplicationWindow} id="content">
+                <AdwToolbarView>
+                    <Toolbar.Top>
+                        <AdwHeaderBar>
+                            <Slot for={AdwHeaderBar} id="titleWidget">
+                                <AdwWindowTitle title="My App" subtitle="Welcome" />
+                            </Slot>
+                        </AdwHeaderBar>
+                    </Toolbar.Top>
+                    <AdwBanner
+                        title="Welcome to the app!"
+                        buttonLabel="Dismiss"
+                        revealed={showBanner}
+                        onButtonClicked={() => setShowBanner(false)}
+                    />
+                    <AdwStatusPage
+                        iconName="applications-system-symbolic"
+                        title="Welcome"
+                        description="Get started with your new GTKX app"
+                        vexpand
+                    >
+                        <GtkButton
+                            label="Get Started"
+                            cssClasses={["suggested-action", "pill"]}
+                            halign={Gtk.Align.CENTER}
+                        />
+                    </AdwStatusPage>
+                </AdwToolbarView>
+            </Slot>
+        </AdwApplicationWindow>
+    );
+};
+
+export const appId = "com.example.myapp";
+\`\`\`
+
+### Settings Page with Preferences
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    AdwPreferencesPage,
+    AdwPreferencesGroup,
+    AdwActionRow,
+    AdwSwitchRow,
+    AdwExpanderRow,
+    AdwEntryRow,
+    GtkImage,
+    GtkScrolledWindow,
+    Slot,
+} from "@gtkx/react";
+import { useState } from "react";
+
+const SettingsPage = () => {
+    const [darkMode, setDarkMode] = useState(false);
+    const [notifications, setNotifications] = useState(true);
+    const [username, setUsername] = useState("");
+
+    return (
+        <GtkScrolledWindow vexpand>
+            <AdwPreferencesPage title="Settings">
+                <AdwPreferencesGroup title="Appearance" description="Customize the look and feel">
+                    <AdwSwitchRow
+                        title="Dark Mode"
+                        subtitle="Use dark color scheme"
+                        active={darkMode}
+                        onActivate={() => setDarkMode(!darkMode)}
+                    />
+                </AdwPreferencesGroup>
+
+                <AdwPreferencesGroup title="Account">
+                    <AdwEntryRow
+                        title="Username"
+                        text={username}
+                        onChanged={(e) => setUsername(e.getText())}
+                    />
+                    <AdwActionRow title="Profile" subtitle="Manage your profile">
+                        <Slot for={AdwActionRow} id="activatableWidget">
+                            <GtkImage iconName="go-next-symbolic" valign={Gtk.Align.CENTER} />
+                        </Slot>
+                    </AdwActionRow>
+                </AdwPreferencesGroup>
+
+                <AdwPreferencesGroup title="Notifications">
+                    <AdwExpanderRow title="Notification Settings" subtitle="Configure alerts">
+                        <AdwSwitchRow title="Sound" active />
+                        <AdwSwitchRow title="Badges" active />
+                        <AdwSwitchRow title="Lock Screen" active={false} />
+                    </AdwExpanderRow>
+                </AdwPreferencesGroup>
+            </AdwPreferencesPage>
+        </GtkScrolledWindow>
+    );
+};
 \`\`\`
 `;
 };
