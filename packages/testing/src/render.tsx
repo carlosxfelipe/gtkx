@@ -102,6 +102,30 @@ const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = tru
     return <Wrapper>{element}</Wrapper>;
 };
 
+/**
+ * Renders a React element for testing.
+ *
+ * Creates a GTK application context and renders the element, returning
+ * query methods and utilities for interacting with the rendered widgets.
+ *
+ * @param element - The React element to render
+ * @param options - Render options including wrapper configuration
+ * @returns A promise resolving to query methods and utilities
+ *
+ * @example
+ * ```tsx
+ * import { render, screen } from "@gtkx/testing";
+ *
+ * test("button click", async () => {
+ *   await render(<MyButton />);
+ *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+ *   await userEvent.click(button);
+ * });
+ * ```
+ *
+ * @see {@link cleanup} for cleaning up after tests
+ * @see {@link screen} for global query access
+ */
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
     const { app: application, container: fiberRoot } = ensureInitialized();
     const instance = reconciler.getInstance();
@@ -140,6 +164,26 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
     };
 };
 
+/**
+ * Cleans up the rendered component tree.
+ *
+ * Unmounts all rendered components and resets the testing environment.
+ * Call this in `afterEach` to ensure tests don't affect each other.
+ *
+ * @example
+ * ```tsx
+ * import { render, cleanup } from "@gtkx/testing";
+ *
+ * afterEach(async () => {
+ *   await cleanup();
+ * });
+ *
+ * test("my test", async () => {
+ *   await render(<MyComponent />);
+ *   // ...
+ * });
+ * ```
+ */
 export const cleanup = async (): Promise<void> => {
     if (container && application) {
         const instance = reconciler.getInstance();
@@ -147,8 +191,4 @@ export const cleanup = async (): Promise<void> => {
     }
     container = null;
     setScreenRoot(null);
-};
-
-export const teardown = async (): Promise<void> => {
-    await cleanup();
 };

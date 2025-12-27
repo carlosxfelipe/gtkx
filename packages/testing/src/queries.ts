@@ -326,6 +326,21 @@ const getByTestId = (container: Container, testId: TextMatch, options?: TextMatc
     return first;
 };
 
+/**
+ * Finds a single element by accessible role.
+ *
+ * Waits for the element to appear, throwing if not found within timeout.
+ *
+ * @param container - The container to search within
+ * @param role - The GTK accessible role to match
+ * @param options - Query options including name, state filters, and timeout
+ * @returns Promise resolving to the matching widget
+ *
+ * @example
+ * ```tsx
+ * const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Submit" });
+ * ```
+ */
 export const findByRole = async (
     container: Container,
     role: Gtk.AccessibleRole,
@@ -335,6 +350,14 @@ export const findByRole = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds all elements matching an accessible role.
+ *
+ * @param container - The container to search within
+ * @param role - The GTK accessible role to match
+ * @param options - Query options including name, state filters, and timeout
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByRole = async (
     container: Container,
     role: Gtk.AccessibleRole,
@@ -344,6 +367,23 @@ export const findAllByRole = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds a single element by its label or text content.
+ *
+ * Matches button labels, input placeholders, window titles, and other
+ * accessible text content.
+ *
+ * @param container - The container to search within
+ * @param text - Text to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization and timeout
+ * @returns Promise resolving to the matching widget
+ *
+ * @example
+ * ```tsx
+ * const button = await findByLabelText(container, "Click me");
+ * const input = await findByLabelText(container, /search/i);
+ * ```
+ */
 export const findByLabelText = async (
     container: Container,
     text: TextMatch,
@@ -353,6 +393,14 @@ export const findByLabelText = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds all elements matching label or text content.
+ *
+ * @param container - The container to search within
+ * @param text - Text to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization and timeout
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByLabelText = async (
     container: Container,
     text: TextMatch,
@@ -362,6 +410,16 @@ export const findAllByLabelText = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds a single element by visible text content.
+ *
+ * Similar to {@link findByLabelText} but focuses on directly visible text.
+ *
+ * @param container - The container to search within
+ * @param text - Text to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization and timeout
+ * @returns Promise resolving to the matching widget
+ */
 export const findByText = async (
     container: Container,
     text: TextMatch,
@@ -371,6 +429,14 @@ export const findByText = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds all elements matching visible text content.
+ *
+ * @param container - The container to search within
+ * @param text - Text to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization and timeout
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByText = async (
     container: Container,
     text: TextMatch,
@@ -380,6 +446,23 @@ export const findAllByText = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds a single element by test ID (widget name).
+ *
+ * Uses the widget's `name` property as a test identifier.
+ * Set via the `name` prop on GTKX components.
+ *
+ * @param container - The container to search within
+ * @param testId - Test ID to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization and timeout
+ * @returns Promise resolving to the matching widget
+ *
+ * @example
+ * ```tsx
+ * // In component: <GtkButton name="submit-btn" />
+ * const button = await findByTestId(container, "submit-btn");
+ * ```
+ */
 export const findByTestId = async (
     container: Container,
     testId: TextMatch,
@@ -389,6 +472,14 @@ export const findByTestId = async (
         timeout: options?.timeout,
     });
 
+/**
+ * Finds all elements matching a test ID pattern.
+ *
+ * @param container - The container to search within
+ * @param testId - Test ID to match (string, RegExp, or custom matcher)
+ * @param options - Query options including normalization and timeout
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByTestId = async (
     container: Container,
     testId: TextMatch,

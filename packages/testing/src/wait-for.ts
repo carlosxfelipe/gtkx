@@ -4,6 +4,25 @@ import type { WaitForOptions } from "./types.js";
 const DEFAULT_TIMEOUT = 1000;
 const DEFAULT_INTERVAL = 50;
 
+/**
+ * Waits for a callback to succeed.
+ *
+ * Repeatedly calls the callback until it returns without throwing,
+ * or until the timeout is reached.
+ *
+ * @param callback - Function to execute repeatedly
+ * @param options - Timeout and interval configuration
+ * @returns Promise resolving to the callback's return value
+ *
+ * @example
+ * ```tsx
+ * import { waitFor } from "@gtkx/testing";
+ *
+ * await waitFor(() => {
+ *   expect(counter.value).toBe(5);
+ * }, { timeout: 2000 });
+ * ```
+ */
 export const waitFor = async <T>(callback: () => T, options?: WaitForOptions): Promise<T> => {
     const { timeout = DEFAULT_TIMEOUT, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
     const startTime = Date.now();
@@ -45,6 +64,23 @@ const isElementRemoved = (element: Gtk.Widget | null): boolean => {
     }
 };
 
+/**
+ * Waits for an element to be removed from the widget tree.
+ *
+ * Polls until the element no longer has a parent or no longer exists.
+ *
+ * @param elementOrCallback - Element or function returning element to watch
+ * @param options - Timeout and interval configuration
+ *
+ * @example
+ * ```tsx
+ * import { waitForElementToBeRemoved } from "@gtkx/testing";
+ *
+ * const loader = await screen.findByRole(Gtk.AccessibleRole.PROGRESS_BAR);
+ * await waitForElementToBeRemoved(loader);
+ * // Loader is now gone
+ * ```
+ */
 export const waitForElementToBeRemoved = async (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,

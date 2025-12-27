@@ -9,7 +9,7 @@ export {
     findByTestId,
     findByText,
 } from "./queries.js";
-export { cleanup, render, teardown } from "./render.js";
+export { cleanup, render } from "./render.js";
 export { screen } from "./screen.js";
 export { tick } from "./timing.js";
 export type {

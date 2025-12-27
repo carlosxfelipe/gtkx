@@ -4,7 +4,11 @@ import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
 
+/**
+ * Options for tab navigation.
+ */
 export type TabOptions = {
+    /** Navigate backwards (Shift+Tab) instead of forwards */
     shift?: boolean;
 };
 
@@ -201,14 +205,92 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
     await tick();
 };
 
+/**
+ * User interaction utilities for testing.
+ *
+ * Simulates user actions like clicking, typing, and selecting.
+ * All methods are async and wait for GTK event processing.
+ *
+ * @example
+ * ```tsx
+ * import { render, screen, userEvent } from "@gtkx/testing";
+ *
+ * test("form submission", async () => {
+ *   await render(<LoginForm />);
+ *
+ *   const input = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+ *   await userEvent.type(input, "username");
+ *
+ *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+ *   await userEvent.click(button);
+ * });
+ * ```
+ */
 export const userEvent = {
+    /**
+     * Clicks or toggles a widget.
+     *
+     * For toggleable widgets (checkboxes, switches, toggle buttons),
+     * toggles the active state. For buttons, emits clicked signal.
+     */
     click,
+    /**
+     * Double-clicks a widget.
+     *
+     * Emits two consecutive clicked signals.
+     */
     dblClick,
+    /**
+     * Triple-clicks a widget.
+     *
+     * Emits three consecutive clicked signals. Useful for text selection.
+     */
     tripleClick,
+    /**
+     * Activates a widget.
+     *
+     * Calls the widget's activate method.
+     */
     activate,
+    /**
+     * Simulates Tab key navigation.
+     *
+     * @param element - Starting element
+     * @param options - Use `shift: true` for backwards navigation
+     */
     tab,
+    /**
+     * Types text into an editable widget.
+     *
+     * Appends text to the current content. Works with Entry, SearchEntry,
+     * and SpinButton widgets.
+     *
+     * @param element - The editable widget
+     * @param text - Text to type
+     */
     type,
+    /**
+     * Clears an editable widget's content.
+     *
+     * Sets the text to empty string.
+     */
     clear,
+    /**
+     * Selects options in a dropdown or list.
+     *
+     * Works with DropDown, ComboBox, ListBox, ListView, GridView, and ColumnView.
+     *
+     * @param element - The selectable widget
+     * @param values - Index or array of indices to select
+     */
     selectOptions,
+    /**
+     * Deselects options in a list.
+     *
+     * Works with ListBox and multi-selection list views.
+     *
+     * @param element - The selectable widget
+     * @param values - Index or array of indices to deselect
+     */
     deselectOptions,
 };

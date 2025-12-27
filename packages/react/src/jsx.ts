@@ -189,8 +189,32 @@ export type OverlayChildProps = SlotProps & {
     clipOverlay?: boolean;
 };
 
+/**
+ * Type mapping widget names to their available slot IDs.
+ */
 export type { WidgetSlotNames } from "./generated/jsx.js";
 
+/**
+ * Type-safe slot component for placing children in named widget slots.
+ *
+ * GTK widgets often have named slots for specific child positions (e.g., titleWidget,
+ * startWidget). This component provides type-safe access to those slots.
+ *
+ * @typeParam W - The widget type containing the slot
+ *
+ * @param props.for - The widget component type (used for type inference)
+ * @param props.id - The slot identifier (type-checked against available slots)
+ * @param props.children - Content to place in the slot
+ *
+ * @example
+ * ```tsx
+ * <GtkHeaderBar>
+ *   <Slot for={GtkHeaderBar} id="titleWidget">
+ *     <GtkLabel label="App Title" />
+ *   </Slot>
+ * </GtkHeaderBar>
+ * ```
+ */
 export function Slot<W extends keyof import("./generated/jsx.js").WidgetSlotNames>(props: {
     for: W;
 
@@ -200,53 +224,265 @@ export function Slot<W extends keyof import("./generated/jsx.js").WidgetSlotName
     return createElement("Slot", { id: props.id }, props.children);
 }
 
+/**
+ * Element type for pages within a GtkStack or AdwViewStack.
+ *
+ * @example
+ * ```tsx
+ * <GtkStack>
+ *   <StackPage name="page1" title="First Page">
+ *     <GtkLabel label="Content 1" />
+ *   </StackPage>
+ *   <StackPage name="page2" title="Second Page">
+ *     <GtkLabel label="Content 2" />
+ *   </StackPage>
+ * </GtkStack>
+ * ```
+ */
 export const StackPage = "StackPage" as const;
 
+/**
+ * Element type for positioning children within a GtkGrid.
+ *
+ * @example
+ * ```tsx
+ * <GtkGrid>
+ *   <GridChild column={0} row={0}>
+ *     <GtkLabel label="Top Left" />
+ *   </GridChild>
+ *   <GridChild column={1} row={0} columnSpan={2}>
+ *     <GtkLabel label="Spans 2 columns" />
+ *   </GridChild>
+ * </GtkGrid>
+ * ```
+ */
 export const GridChild = "GridChild" as const;
 
+/**
+ * Element type for pages within a GtkNotebook (tabbed interface).
+ *
+ * @example
+ * ```tsx
+ * <GtkNotebook>
+ *   <NotebookPage label="Tab 1">
+ *     <GtkLabel label="Content 1" />
+ *   </NotebookPage>
+ *   <NotebookPage label="Tab 2">
+ *     <GtkLabel label="Content 2" />
+ *   </NotebookPage>
+ * </GtkNotebook>
+ * ```
+ */
 export const NotebookPage = "NotebookPage" as const;
 
+/**
+ * Element type for items in a ListView or GridView.
+ *
+ * @example
+ * ```tsx
+ * <ListView renderItem={(item) => <GtkLabel label={item.name} />}>
+ *   <ListItem id="1" value={{ name: "Item 1" }} />
+ *   <ListItem id="2" value={{ name: "Item 2" }} />
+ * </ListView>
+ * ```
+ */
 export const ListItem = "ListItem" as const;
 
+/**
+ * Component for defining columns in a ColumnView (table widget).
+ *
+ * @typeParam T - The type of row data
+ *
+ * @example
+ * ```tsx
+ * <GtkColumnView>
+ *   <ColumnViewColumn
+ *     id="name"
+ *     title="Name"
+ *     expand
+ *     renderCell={(item) => <GtkLabel label={item?.name ?? ""} />}
+ *   />
+ *   <ColumnViewColumn
+ *     id="status"
+ *     title="Status"
+ *     renderCell={(item) => <GtkLabel label={item?.status ?? ""} />}
+ *   />
+ * </GtkColumnView>
+ * ```
+ */
 export function ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): ReactElement {
     return createElement("ColumnViewColumn", props);
 }
 
+/**
+ * Props for the ListView component.
+ *
+ * @typeParam T - The type of items in the list
+ */
 export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
+    /** Function to render each list item */
     renderItem: (item: T | null) => ReactElement;
 };
 
+/**
+ * Virtualized list component with custom item rendering.
+ *
+ * Efficiently renders large lists by only creating widgets for visible items.
+ *
+ * @typeParam T - The type of items in the list
+ *
+ * @example
+ * ```tsx
+ * const items = [{ id: "1", name: "Apple" }, { id: "2", name: "Banana" }];
+ *
+ * <ListView renderItem={(item) => <GtkLabel label={item?.name ?? ""} />}>
+ *   {items.map((item) => (
+ *     <ListItem key={item.id} id={item.id} value={item} />
+ *   ))}
+ * </ListView>
+ * ```
+ */
 export function ListView<T = unknown>(props: ListViewProps<T>): ReactElement {
     return createElement("GtkListView", props);
 }
 
+/**
+ * Props for the GridView component.
+ *
+ * @typeParam T - The type of items in the grid
+ */
 export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGridViewProps, "renderItem"> & {
+    /** Function to render each grid item */
     renderItem: (item: T | null) => ReactElement;
 };
 
+/**
+ * Virtualized grid component with custom item rendering.
+ *
+ * Efficiently renders large grids by only creating widgets for visible items.
+ *
+ * @typeParam T - The type of items in the grid
+ *
+ * @example
+ * ```tsx
+ * <GridView renderItem={(item) => <GtkImage iconName={item?.icon ?? ""} />}>
+ *   {icons.map((icon) => (
+ *     <ListItem key={icon.id} id={icon.id} value={icon} />
+ *   ))}
+ * </GridView>
+ * ```
+ */
 export function GridView<T = unknown>(props: GridViewProps<T>): ReactElement {
     return createElement("GtkGridView", props);
 }
 
+/**
+ * Element type for simple string-based list items.
+ *
+ * Use when list items only need string values without complex data.
+ *
+ * @example
+ * ```tsx
+ * <GtkDropDown>
+ *   <SimpleListItem id="opt1" value="Option 1" />
+ *   <SimpleListItem id="opt2" value="Option 2" />
+ * </GtkDropDown>
+ * ```
+ */
 export const SimpleListItem = "SimpleListItem" as const;
 
+/**
+ * Slot positions for HeaderBar and ActionBar widgets.
+ *
+ * @example
+ * ```tsx
+ * <GtkHeaderBar>
+ *   <Pack.Start>
+ *     <GtkButton label="Back" />
+ *   </Pack.Start>
+ *   <Pack.End>
+ *     <GtkMenuButton />
+ *   </Pack.End>
+ * </GtkHeaderBar>
+ * ```
+ */
 export const Pack = {
+    /** Place child at the start (left in LTR) of the bar */
     Start: "Pack.Start" as const,
+    /** Place child at the end (right in LTR) of the bar */
     End: "Pack.End" as const,
 };
 
+/**
+ * Slot positions for AdwToolbarView.
+ *
+ * @example
+ * ```tsx
+ * <AdwToolbarView>
+ *   <Toolbar.Top>
+ *     <AdwHeaderBar />
+ *   </Toolbar.Top>
+ *   <GtkLabel label="Content" />
+ *   <Toolbar.Bottom>
+ *     <GtkActionBar />
+ *   </Toolbar.Bottom>
+ * </AdwToolbarView>
+ * ```
+ */
 export const Toolbar = {
+    /** Place toolbar at the top */
     Top: "Toolbar.Top" as const,
+    /** Place toolbar at the bottom */
     Bottom: "Toolbar.Bottom" as const,
 };
 
+/**
+ * Element type for GtkOverlay main child container.
+ */
 export const Overlay = "Overlay" as const;
 
+/**
+ * Element type for overlay children positioned above the main content.
+ *
+ * @example
+ * ```tsx
+ * <GtkOverlay>
+ *   <Overlay>
+ *     <GtkImage file="background.png" />
+ *   </Overlay>
+ *   <OverlayChild>
+ *     <GtkLabel label="Overlaid text" cssClasses={["title-1"]} />
+ *   </OverlayChild>
+ * </GtkOverlay>
+ * ```
+ */
 export const OverlayChild = "OverlayChild" as const;
 
+/**
+ * Element types for declarative menu construction.
+ *
+ * Build menus with items, sections, and submenus declaratively.
+ *
+ * @example
+ * ```tsx
+ * <GtkMenuButton>
+ *   <Menu.Section>
+ *     <Menu.Item id="open" label="Open" onActivate={handleOpen} accels="<Control>o" />
+ *     <Menu.Item id="save" label="Save" onActivate={handleSave} accels="<Control>s" />
+ *   </Menu.Section>
+ *   <Menu.Submenu label="Export">
+ *     <Menu.Item id="pdf" label="As PDF" onActivate={exportPdf} />
+ *     <Menu.Item id="png" label="As PNG" onActivate={exportPng} />
+ *   </Menu.Submenu>
+ * </GtkMenuButton>
+ * ```
+ */
 export const Menu = {
+    /** A clickable menu item with action */
     Item: "Menu.Item" as const,
+    /** A section grouping related menu items */
     Section: "Menu.Section" as const,
+    /** A submenu containing nested items */
     Submenu: "Menu.Submenu" as const,
 };
 

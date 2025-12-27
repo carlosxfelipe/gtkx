@@ -1,4 +1,4 @@
-import { cleanup, teardown } from "@gtkx/testing";
+import { cleanup } from "@gtkx/testing";
 import { afterAll, afterEach } from "vitest";
 
 afterEach(async () => {
@@ -6,5 +6,5 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-    await teardown();
+    await cleanup();
 });
