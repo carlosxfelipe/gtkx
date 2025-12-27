@@ -1,4 +1,10 @@
-
+//! String type representation for FFI.
+//!
+//! Defines [`StringType`] with an ownership flag. Strings are passed as
+//! pointers (`*const c_char`) at the FFI level.
+//!
+//! - `is_borrowed: true` - Caller must not free the string
+//! - `is_borrowed: false` - Caller takes ownership and must free
 
 use libffi::middle as ffi;
 use neon::prelude::*;

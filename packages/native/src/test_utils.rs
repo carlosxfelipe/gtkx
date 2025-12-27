@@ -1,3 +1,15 @@
+//! Testing utilities for the native module.
+//!
+//! Provides helper functions for unit tests that require GTK initialization
+//! and test fixtures like boxed values.
+//!
+//! ## Key Functions
+//!
+//! - [`ensure_gtk_init`] - One-time GTK4 initialization (safe to call multiple times)
+//! - [`allocate_test_boxed`] - Create a test `GdkRGBA` boxed value
+//! - [`is_valid_boxed_ptr`] - Validate a boxed type pointer
+//! - [`get_closure_refcount`] / [`get_gobject_refcount`] - Inspect reference counts
+
 use std::sync::Once;
 
 use gtk4::gdk;

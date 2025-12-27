@@ -1,4 +1,17 @@
-
+//! Field reading from boxed/structured memory.
+//!
+//! The [`read`] function reads a field from a boxed type at a given byte offset.
+//! This enables JavaScript to access struct fields that aren't exposed via
+//! GTK property accessors.
+//!
+//! ## Supported Types
+//!
+//! - `Integer` (all sizes and signs)
+//! - `Float` (f32, f64)
+//! - `Boolean`
+//! - `String` (as pointer to C string)
+//! - `GObject` (as pointer to object)
+//! - `Boxed` (as pointer to boxed value)
 
 use std::ffi::{CStr, c_void};
 use std::sync::mpsc;

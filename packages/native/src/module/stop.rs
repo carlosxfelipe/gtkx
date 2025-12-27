@@ -1,4 +1,15 @@
-
+//! Graceful GTK application shutdown.
+//!
+//! The [`stop`] function releases the application hold guard, marks the
+//! dispatch queue as stopped, and joins the GTK thread.
+//!
+//! ## Shutdown Sequence
+//!
+//! 1. Schedule a task on the GTK thread to:
+//!    - Mark the dispatch queue as stopped (no new tasks accepted)
+//!    - Release the application hold guard (allows GTK main loop to exit)
+//! 2. Wait for confirmation that the task completed
+//! 3. Join the GTK thread, waiting for it to fully terminate
 
 use std::sync::mpsc;
 

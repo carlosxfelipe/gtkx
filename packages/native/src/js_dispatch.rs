@@ -1,4 +1,20 @@
-
+//! Callback dispatch from GTK thread back to JavaScript.
+//!
+//! This module handles invoking JavaScript callback functions from the GTK
+//! thread. When GTK signals fire, they trigger closures that queue callbacks
+//! here for execution in the JavaScript context.
+//!
+//! ## Flow
+//!
+//! 1. GTK signal handler calls [`queue`] or [`queue_with_wakeup`] with callback and args
+//! 2. Callback is added to the pending queue
+//! 3. [`process_pending`] is called in the JS context (via poll or channel wakeup)
+//! 4. Each callback is invoked, and results are sent back via mpsc channel
+//!
+//! ## Wakeup Mechanism
+//!
+//! - [`queue`]: Queues callback without waking JavaScript (for use during blocking calls)
+//! - [`queue_with_wakeup`]: Queues and sends a Neon channel message to wake JavaScript
 
 use std::sync::{Arc, mpsc};
 

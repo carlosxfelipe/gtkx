@@ -1,4 +1,24 @@
-
+//! FFI function call execution.
+//!
+//! This module implements [`call`] and [`batch_call`], which execute native
+//! function calls via libffi. This is the core mechanism for invoking GTK
+//! and GLib functions from JavaScript.
+//!
+//! ## Call Flow
+//!
+//! 1. Parse library name, symbol name, arguments, and return type from JS
+//! 2. Convert arguments to [`cif::Value`] representations
+//! 3. Build a libffi CIF (Call Interface) with proper type signatures
+//! 4. Load the library and resolve the symbol on the GTK thread
+//! 5. Execute the FFI call with proper type dispatching
+//! 6. Convert the result back to a [`Value`] for JavaScript
+//! 7. Update any `Ref` type out-parameters with modified values
+//!
+//! ## Callback Trampolines
+//!
+//! Special handling is required for callback arguments with trampolines
+//! (AsyncReady, Destroy, DrawFunc). These expand to multiple FFI arguments:
+//! the trampoline function pointer, user data, and optionally a destroy notify.
 
 use std::{
     ffi::{c_char, c_void},

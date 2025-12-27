@@ -1,4 +1,12 @@
-
+//! Array and list type representation for FFI.
+//!
+//! Defines [`ArrayType`] for homogeneous collections. Supports three container types:
+//!
+//! - [`ListType::Array`] - C-style null-terminated arrays
+//! - [`ListType::GList`] - GLib doubly-linked lists
+//! - [`ListType::GSList`] - GLib singly-linked lists
+//!
+//! All are passed as pointers at the FFI level.
 
 use libffi::middle as ffi;
 use neon::prelude::*;

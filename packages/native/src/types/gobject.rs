@@ -1,4 +1,10 @@
-
+//! GObject type representation for FFI.
+//!
+//! Defines [`GObjectType`] with an ownership flag. GObjects are passed as
+//! pointers at the FFI level.
+//!
+//! - `is_borrowed: true` - Reference is borrowed, caller must not unref
+//! - `is_borrowed: false` - Ownership transferred, caller should unref when done
 
 use libffi::middle as ffi;
 use neon::prelude::*;

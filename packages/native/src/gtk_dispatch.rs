@@ -1,4 +1,26 @@
-
+//! Task dispatch from JavaScript thread to GTK thread.
+//!
+//! This module provides mechanisms for scheduling Rust closures to execute
+//! on the GTK main thread. GTK requires all widget operations to happen on
+//! its main thread, so this dispatcher bridges the gap from the Neon JS thread.
+//!
+//! ## Scheduling Modes
+//!
+//! - [`schedule`]: Queue a task for execution during the next GTK idle cycle.
+//!   Uses `glib::idle_add_once` for integration with GTK's event loop.
+//! - [`dispatch_pending`]: Manually execute all queued tasks immediately.
+//!   Used during blocking FFI calls to prevent deadlocks.
+//!
+//! ## JS Wait Tracking
+//!
+//! When JavaScript is blocking waiting for a GTK operation to complete,
+//! callbacks must be routed differently. The wait depth tracking functions
+//! ([`enter_js_wait`], [`exit_js_wait`], [`is_js_waiting`]) coordinate this.
+//!
+//! ## Shutdown
+//!
+//! [`mark_stopped`] signals that the application is shutting down. After this,
+//! new tasks are silently dropped to allow clean termination.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 

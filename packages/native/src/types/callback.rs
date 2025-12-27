@@ -1,4 +1,8 @@
-
+//! JavaScript callback representation for FFI.
+//!
+//! Defines [`Callback`] which wraps a JavaScript function for invocation
+//! from native code. Contains both the rooted function handle and a Neon
+//! channel for cross-thread callback dispatch.
 
 use neon::prelude::*;
 use std::sync::Arc;

@@ -1,4 +1,14 @@
-
+//! Thread-safe generic FIFO queue.
+//!
+//! [`Queue<T>`] provides a simple thread-safe queue for coordinating work
+//! between threads. Used by both [`gtk_dispatch`](crate::gtk_dispatch) and
+//! [`js_dispatch`](crate::js_dispatch) for task scheduling.
+//!
+//! ## Thread Safety
+//!
+//! All operations acquire a mutex lock, making concurrent push/pop from
+//! multiple threads safe. The queue is suitable for multi-producer,
+//! multi-consumer scenarios.
 
 use std::{collections::VecDeque, sync::Mutex};
 

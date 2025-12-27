@@ -1,4 +1,15 @@
-
+//! Field writing to boxed/structured memory.
+//!
+//! The [`write`] function writes a value to a field in a boxed type at a
+//! given byte offset. This enables JavaScript to modify struct fields that
+//! aren't exposed via GTK property mutators.
+//!
+//! ## Supported Types
+//!
+//! Currently limited to primitive types:
+//! - `Integer` (all sizes and signs)
+//! - `Float` (f32, f64)
+//! - `Boolean`
 
 use std::sync::mpsc;
 

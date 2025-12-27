@@ -1,4 +1,7 @@
-
+//! Floating-point type representation for FFI.
+//!
+//! Defines [`FloatType`] with size information for proper memory layout
+//! and libffi type selection. Supports 32-bit (f32) and 64-bit (f64) floats.
 
 use libffi::middle as ffi;
 use neon::prelude::*;

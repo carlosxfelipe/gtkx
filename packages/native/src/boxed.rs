@@ -1,4 +1,20 @@
-
+//! GObject boxed type wrapper with reference counting.
+//!
+//! [`Boxed`] wraps pointers to GObject boxed types (e.g., `GdkRGBA`, `PangoFontDescription`)
+//! with proper ownership semantics. Boxed types are value types that are copied and freed
+//! using GLib's `g_boxed_copy` and `g_boxed_free` functions.
+//!
+//! ## Ownership Modes
+//!
+//! - [`Boxed::from_glib_full`]: Takes ownership of an allocated boxed value.
+//!   The wrapper will free it on drop.
+//! - [`Boxed::from_glib_none`]: Copies a borrowed boxed value to avoid dangling pointers.
+//!   The wrapper owns the copy and frees it on drop.
+//!
+//! ## Clone Behavior
+//!
+//! Cloning always creates an independent copy via `g_boxed_copy`, ensuring each
+//! `Boxed` instance has exclusive ownership of its data.
 
 use std::ffi::c_void;
 

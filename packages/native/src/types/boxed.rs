@@ -1,4 +1,14 @@
-
+//! Boxed type representation for FFI.
+//!
+//! Defines [`BoxedType`] for GObject boxed types (value types like `GdkRGBA`,
+//! `PangoFontDescription`, etc.). Boxed types are copied and freed using
+//! GLib's boxed type system.
+//!
+//! ## Type Resolution
+//!
+//! The [`BoxedType::get_gtype`] method resolves the GLib type:
+//! 1. First checks if the type is already registered by name
+//! 2. Falls back to dynamically loading the `get_type` function from the library
 
 use gtk4::glib::{self, translate::FromGlib as _};
 use libffi::middle as ffi;

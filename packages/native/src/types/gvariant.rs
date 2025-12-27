@@ -1,4 +1,10 @@
-
+//! GVariant type representation for FFI.
+//!
+//! Defines [`GVariantType`] with an ownership flag. GVariants are passed as
+//! pointers at the FFI level and use reference counting internally.
+//!
+//! - `is_borrowed: true` - Reference is borrowed, caller must not unref
+//! - `is_borrowed: false` - Ownership transferred, caller should unref when done
 
 use libffi::middle as ffi;
 use neon::prelude::*;

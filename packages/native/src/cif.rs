@@ -1,4 +1,22 @@
-
+//! Low-level C FFI value representation for libffi calls.
+//!
+//! This module defines [`Value`], which represents typed values suitable for
+//! passing to native functions via libffi. It handles the conversion from
+//! high-level [`crate::arg::Arg`] to raw pointers and properly-typed primitives.
+//!
+//! ## Key Types
+//!
+//! - [`Value`]: Enum representing all possible FFI argument types
+//! - [`OwnedPtr`]: Pointer with associated owned data to keep values alive
+//! - [`TrampolineCallbackValue`]: Special callback representation for trampolines
+//!
+//! ## Ownership
+//!
+//! The [`OwnedPtr`] variant is critical for memory safety. It holds both:
+//! - A raw pointer to pass to native code
+//! - A `Box<dyn Any>` keeping the underlying data alive during the FFI call
+//!
+//! This prevents use-after-free when passing strings, arrays, or other heap data.
 
 use std::{
     any::Any,

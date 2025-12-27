@@ -1,4 +1,17 @@
-
+//! GTK application initialization and thread spawning.
+//!
+//! The [`start`] function creates a GTK `Application`, spawns a dedicated
+//! GTK thread, and waits for the application to activate before returning.
+//!
+//! ## Startup Sequence
+//!
+//! 1. Parse application ID and optional flags from JavaScript
+//! 2. Spawn a new OS thread for the GTK main loop
+//! 3. Create the `GtkApplication` and connect the activate signal
+//! 4. Acquire an application hold guard to prevent auto-shutdown
+//! 5. Start the GTK main loop with `app.run_with_args`
+//! 6. When activate fires, send the application's `ObjectId` back to JS
+//! 7. Return the `ObjectId` to JavaScript
 
 use std::sync::mpsc;
 

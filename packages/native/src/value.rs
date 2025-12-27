@@ -1,4 +1,31 @@
-
+//! Central value representation for FFI data interchange.
+//!
+//! [`Value`] is the core type for passing data between JavaScript, libffi (CIF),
+//! and GLib. It provides bidirectional conversion with proper ownership semantics.
+//!
+//! ## Variants
+//!
+//! - `Number` - Numeric values (JavaScript numbers as f64)
+//! - `String` - UTF-8 strings (owned)
+//! - `Boolean` - Boolean values
+//! - `Object` - Managed references via [`ObjectId`]
+//! - `Null` / `Undefined` - Null/undefined JavaScript values
+//! - `Array` - Homogeneous arrays of values
+//! - `Callback` - JavaScript callback functions
+//! - `Ref` - Reference to another value (for out parameters)
+//!
+//! ## Conversion Paths
+//!
+//! - [`Value::from_js_value`] - JavaScript → Value
+//! - [`Value::to_js_value`] - Value → JavaScript
+//! - [`Value::from_cif_value`] - CIF (libffi result) → Value
+//! - [`Value::from_glib_value`] - GValue → Value (for callbacks)
+//!
+//! ## Memory Management
+//!
+//! Conversions respect ownership flags in type descriptors:
+//! - **Borrowed** (`is_borrowed: true`): Don't free, just copy/reference
+//! - **Owned** (`is_borrowed: false`): Take ownership, responsible for freeing
 
 use std::{
     ffi::{CStr, CString, c_void},

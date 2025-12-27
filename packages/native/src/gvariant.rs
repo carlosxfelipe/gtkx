@@ -1,4 +1,17 @@
-
+//! GVariant wrapper with reference counting.
+//!
+//! [`GVariant`] wraps GLib variant values with proper reference counting.
+//! GVariants use floating references, which this module handles via `ref_sink`.
+//!
+//! ## Ownership Modes
+//!
+//! - [`GVariant::from_glib_full`]: Takes ownership of a variant (caller transfers ownership)
+//! - [`GVariant::from_glib_none`]: References and sinks a borrowed variant to safely hold it
+//!
+//! ## Clone Behavior
+//!
+//! Cloning increments the reference count, creating a shared reference to the same
+//! underlying variant data. Both the original and clone are valid independently.
 
 use std::ffi::c_void;
 

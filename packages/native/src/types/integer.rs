@@ -1,4 +1,8 @@
-
+//! Integer type representation for FFI.
+//!
+//! Defines [`IntegerType`] with size and sign information for proper
+//! memory layout and libffi type selection. Supports 8, 16, 32, and 64-bit
+//! integers in both signed and unsigned variants.
 
 use libffi::middle as ffi;
 use neon::prelude::*;

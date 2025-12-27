@@ -1,4 +1,7 @@
-
+//! Object pointer retrieval.
+//!
+//! The [`get_object_id`] function returns the raw pointer value for a managed
+//! object. This is primarily used for debugging and introspection.
 
 use std::sync::mpsc;
 

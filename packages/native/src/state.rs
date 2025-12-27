@@ -1,4 +1,23 @@
-
+//! GTK thread-local state and native library management.
+//!
+//! This module manages the thread-local state for the GTK thread, including
+//! the object map, library cache, and application hold guard.
+//!
+//! ## Key Types
+//!
+//! - [`GtkThreadState`]: Thread-local state container accessed via [`GtkThreadState::with`]
+//!
+//! ## State Contents
+//!
+//! - `object_map`: Maps object IDs to managed [`Object`] instances
+//! - `next_object_id`: Counter for generating unique object IDs
+//! - `libraries`: Cache of dynamically loaded native libraries
+//! - `app_hold_guard`: Keeps the GTK application alive while running
+//!
+//! ## Thread Management
+//!
+//! - [`set_gtk_thread_handle`]: Stores the GTK thread handle for later joining
+//! - [`join_gtk_thread`]: Waits for the GTK thread to complete during shutdown
 
 use std::{
     cell::RefCell,

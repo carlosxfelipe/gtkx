@@ -1,3 +1,15 @@
+//! Helper macros for integer type dispatch.
+//!
+//! These macros eliminate repetitive match statements when handling integers
+//! of different sizes and signs. They're used throughout the FFI layer for
+//! reading, writing, and converting integer values.
+//!
+//! ## Macros
+//!
+//! - [`dispatch_integer_read!`] - Read an integer from a pointer, return as f64
+//! - [`dispatch_integer_write!`] - Write an f64 as an integer to a pointer
+//! - [`dispatch_integer_to_cif!`] - Convert a number to the appropriate [`cif::Value`] variant
+
 macro_rules! dispatch_integer_read {
     ($int_type:expr, $ptr:expr) => {
         match ($int_type.size, $int_type.sign) {

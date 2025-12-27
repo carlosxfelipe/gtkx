@@ -1,4 +1,13 @@
-
+//! Memory allocation for boxed types.
+//!
+//! The [`alloc`] function allocates zeroed memory for structured/boxed types
+//! on the GTK thread. This is used to create instances of GTK structs like
+//! `GdkRGBA`, `GtkTextIter`, etc. that need to be populated field-by-field.
+//!
+//! ## Allocation
+//!
+//! Memory is allocated using `g_malloc0` (zeroed allocation) and wrapped
+//! in a [`Boxed`] with the specified GLib type information for proper cleanup.
 
 use std::sync::mpsc;
 

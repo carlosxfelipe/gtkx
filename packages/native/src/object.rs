@@ -1,4 +1,23 @@
-
+//! Managed object wrappers and reference tracking.
+//!
+//! This module provides [`Object`] and [`ObjectId`] for tracking GObject, Boxed,
+//! and GVariant instances across the FFI boundary. Objects are stored in a
+//! thread-local map and automatically cleaned up when their JavaScript handles
+//! are garbage collected.
+//!
+//! ## Key Types
+//!
+//! - [`Object`]: Enum wrapping GObject, Boxed, or GVariant instances
+//! - [`ObjectId`]: Newtype handle returned to JavaScript, implements [`Finalize`]
+//!
+//! ## Lifecycle
+//!
+//! 1. Native code creates an `Object` and wraps it with [`ObjectId::new`]
+//! 2. `ObjectId` is returned to JavaScript as a boxed value
+//! 3. When JS garbage collects the handle, [`Finalize::finalize`] schedules removal
+//! 4. The GTK thread removes the object from the map, dropping the Rust wrapper
+//!
+//! This ensures proper reference counting for GObjects and proper freeing for Boxed types.
 
 use std::ffi::c_void;
 

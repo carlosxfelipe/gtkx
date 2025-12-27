@@ -1,4 +1,33 @@
-
+//! FFI type system for describing GTK and GLib types.
+//!
+//! This module defines the [`Type`] enum and associated types that describe
+//! all values that can flow through the FFI boundary. Types are parsed from
+//! JavaScript objects and converted to libffi types for native calls.
+//!
+//! ## Type Hierarchy
+//!
+//! ```text
+//! Type
+//! ├── Integer(IntegerType)    - Sized integers (i8..i64, u8..u64)
+//! ├── Float(FloatType)        - Floating point (f32, f64)
+//! ├── String(StringType)      - UTF-8 strings (owned or borrowed)
+//! ├── Boolean                 - Boolean values
+//! ├── Null / Undefined        - Null pointer / void return
+//! ├── GObject(GObjectType)    - GObject instances
+//! ├── Boxed(BoxedType)        - GObject boxed types (e.g., GdkRGBA)
+//! ├── GVariant(GVariantType)  - GVariant values
+//! ├── Array(ArrayType)        - Arrays, GLists, GSLists
+//! ├── Callback(CallbackType)  - JavaScript callback functions
+//! └── Ref(RefType)            - Pointers to values (out parameters)
+//! ```
+//!
+//! ## Ownership
+//!
+//! Many types have an `is_borrowed` flag that distinguishes:
+//! - **Owned**: Caller takes ownership, responsible for freeing
+//! - **Borrowed**: Caller receives a reference, must not free
+//!
+//! This is critical for correct memory management across the FFI boundary.
 
 use libffi::middle as ffi;
 use neon::prelude::*;

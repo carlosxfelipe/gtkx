@@ -1,4 +1,25 @@
-
+//! Callback trampoline implementations for different callback patterns.
+//!
+//! This module provides C-compatible trampoline functions that bridge between
+//! GTK's callback expectations and JavaScript functions. Each trampoline type
+//! handles a specific callback signature pattern used in GTK/GLib APIs.
+//!
+//! ## Trampoline Types
+//!
+//! - **DrawFunc**: For `GtkDrawingArea` draw callbacks. Receives drawing area,
+//!   cairo context, width, and height parameters.
+//! - **Destroy**: For cleanup callbacks (e.g., `GDestroyNotify`). Called when
+//!   associated data should be freed.
+//! - **AsyncReady**: For async operation callbacks (e.g., `GAsyncReadyCallback`).
+//!   Receives source object and async result.
+//!
+//! ## Architecture
+//!
+//! Each trampoline:
+//! 1. Receives a `GClosure` pointer as user data
+//! 2. Marshals native arguments into `GValue` arrays
+//! 3. Invokes the closure, which triggers JavaScript callback dispatch
+//! 4. Handles cleanup (unref closures for one-shot callbacks)
 
 use std::ffi::c_void;
 

@@ -1,4 +1,8 @@
-
+//! Reference type representation for FFI (out parameters).
+//!
+//! Defines [`RefType`] for pointer-to-value types, used for out parameters
+//! where a function writes a result through a pointer. The inner type
+//! describes what the pointer points to.
 
 use libffi::middle as ffi;
 use neon::prelude::*;
