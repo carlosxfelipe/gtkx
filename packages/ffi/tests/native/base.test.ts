@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isInstantiating, setInstantiating } from "../src/index.js";
+import { isInstantiating, setInstantiating } from "../../src/index.js";
 
 describe("isInstantiating", () => {
     it("is false by default", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NativeError } from "../src/index.js";
+import { NativeError } from "../../src/index.js";
 
 describe("NativeError", () => {
     it("extends Error", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GirParameter } from "../src/index.js";
-import { TypeMapper, TypeRegistry } from "../src/index.js";
+import type { GirClass, GirNamespace, GirParameter } from "../src/index.js";
+import { buildClassMap, registerEnumsFromNamespace, TypeMapper, TypeRegistry } from "../src/index.js";
 
 describe("TypeMapper", () => {
     describe("basic type mapping", () => {
@@ -643,5 +643,234 @@ describe("TypeMapper", () => {
 
             expect(result.ts).toBe("Orientation");
         });
+    });
+});
+
+describe("TypeRegistry", () => {
+    it("registers and resolves class types", () => {
+        const registry = new TypeRegistry();
+        registry.registerNativeClass("Gtk", "Widget");
+
+        const result = registry.resolve("Gtk.Widget");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("class");
+        expect(result?.name).toBe("Widget");
+        expect(result?.namespace).toBe("Gtk");
+        expect(result?.transformedName).toBe("Widget");
+    });
+
+    it("registers and resolves interface types", () => {
+        const registry = new TypeRegistry();
+        registry.registerInterface("Gtk", "Buildable");
+
+        const result = registry.resolve("Gtk.Buildable");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("interface");
+        expect(result?.name).toBe("Buildable");
+    });
+
+    it("registers and resolves enum types", () => {
+        const registry = new TypeRegistry();
+        registry.registerEnum("Gtk", "Orientation");
+
+        const result = registry.resolve("Gtk.Orientation");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("enum");
+        expect(result?.name).toBe("Orientation");
+    });
+
+    it("registers and resolves record types", () => {
+        const registry = new TypeRegistry();
+        registry.registerRecord("Gdk", "Rectangle", "GdkRectangle");
+
+        const result = registry.resolve("Gdk.Rectangle");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("record");
+        expect(result?.glibTypeName).toBe("GdkRectangle");
+    });
+
+    it("registers record types with sharedLibrary and glibGetType", () => {
+        const registry = new TypeRegistry();
+        registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1", "gdk_rgba_get_type");
+
+        const result = registry.resolve("Gdk.RGBA");
+
+        expect(result?.sharedLibrary).toBe("libgdk-4.so.1");
+        expect(result?.glibGetType).toBe("gdk_rgba_get_type");
+    });
+
+    it("registers and resolves callback types", () => {
+        const registry = new TypeRegistry();
+        registry.registerCallback("Gio", "AsyncReadyCallback");
+
+        const result = registry.resolve("Gio.AsyncReadyCallback");
+
+        expect(result).toBeDefined();
+        expect(result?.kind).toBe("callback");
+    });
+
+    it("returns undefined for unregistered types", () => {
+        const registry = new TypeRegistry();
+
+        const result = registry.resolve("Gtk.NonExistent");
+
+        expect(result).toBeUndefined();
+    });
+
+    describe("type name normalization", () => {
+        it("renames Error to GError", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("GLib", "Error");
+
+            const result = registry.resolve("GLib.Error");
+
+            expect(result?.transformedName).toBe("GError");
+        });
+
+        it("prefixes Object in GObject namespace", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("GObject", "Object");
+
+            const result = registry.resolve("GObject.Object");
+
+            expect(result?.transformedName).toBe("GObject");
+        });
+
+        it("prefixes Object in other namespaces with namespace name", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("Pango", "Object");
+
+            const result = registry.resolve("Pango.Object");
+
+            expect(result?.transformedName).toBe("PangoObject");
+        });
+
+        it("converts snake_case names to PascalCase", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("Gtk", "text_view");
+
+            const result = registry.resolve("Gtk.text_view");
+
+            expect(result?.transformedName).toBe("TextView");
+        });
+    });
+
+    describe("resolveInNamespace", () => {
+        it("resolves qualified names directly", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("Gtk", "Widget");
+
+            const result = registry.resolveInNamespace("Gtk.Widget", "Gdk");
+
+            expect(result).toBeDefined();
+            expect(result?.name).toBe("Widget");
+        });
+
+        it("resolves unqualified names in current namespace first", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("Gtk", "Button");
+            registry.registerNativeClass("Custom", "Button");
+
+            const result = registry.resolveInNamespace("Button", "Gtk");
+
+            expect(result?.namespace).toBe("Gtk");
+        });
+
+        it("searches all namespaces if not in current namespace", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("Gtk", "Widget");
+
+            const result = registry.resolveInNamespace("Widget", "Gdk");
+
+            expect(result?.namespace).toBe("Gtk");
+        });
+
+        it("matches by transformed name", () => {
+            const registry = new TypeRegistry();
+            registry.registerNativeClass("Gtk", "text_view");
+
+            const result = registry.resolveInNamespace("TextView", "Gdk");
+
+            expect(result?.name).toBe("text_view");
+            expect(result?.transformedName).toBe("TextView");
+        });
+    });
+});
+
+describe("buildClassMap", () => {
+    it("builds map from class array", () => {
+        const classes = [
+            { name: "Widget", cType: "GtkWidget", implements: [], methods: [], constructors: [], functions: [], properties: [], signals: [] },
+            { name: "Button", cType: "GtkButton", implements: [], methods: [], constructors: [], functions: [], properties: [], signals: [] },
+        ];
+
+        const map = buildClassMap(classes);
+
+        expect(map.size).toBe(2);
+        expect(map.get("Widget")).toBe(classes[0]);
+        expect(map.get("Button")).toBe(classes[1]);
+    });
+
+    it("handles empty array", () => {
+        const map = buildClassMap([]);
+
+        expect(map.size).toBe(0);
+    });
+});
+
+describe("registerEnumsFromNamespace", () => {
+    it("registers enumerations from namespace", () => {
+        const typeMapper = new TypeMapper();
+        const namespace = {
+            name: "Gtk",
+            version: "4.0",
+            sharedLibrary: "",
+            cPrefix: "",
+            classes: [],
+            interfaces: [],
+            functions: [],
+            enumerations: [
+                { name: "Orientation", cType: "GtkOrientation", members: [] },
+            ],
+            bitfields: [],
+            records: [],
+            callbacks: [],
+            constants: [],
+        };
+
+        registerEnumsFromNamespace(typeMapper, namespace);
+
+        const result = typeMapper.mapType({ name: "Orientation" });
+        expect(result.ts).toBe("Orientation");
+        expect(result.ffi.type).toBe("int");
+    });
+
+    it("registers bitfields from namespace", () => {
+        const typeMapper = new TypeMapper();
+        const namespace = {
+            name: "Gtk",
+            version: "4.0",
+            sharedLibrary: "",
+            cPrefix: "",
+            classes: [],
+            interfaces: [],
+            functions: [],
+            enumerations: [],
+            bitfields: [
+                { name: "StateFlags", cType: "GtkStateFlags", members: [] },
+            ],
+            records: [],
+            callbacks: [],
+            constants: [],
+        };
+
+        registerEnumsFromNamespace(typeMapper, namespace);
+
+        const result = typeMapper.mapType({ name: "StateFlags" });
+        expect(result.ts).toBe("StateFlags");
     });
 });

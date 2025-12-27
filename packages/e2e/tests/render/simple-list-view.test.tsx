@@ -1,0 +1,131 @@
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { GtkDropDown, SimpleListItem } from "@gtkx/react";
+import { render } from "@gtkx/testing";
+import { createRef } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+describe("render - SimpleListView", () => {
+    describe("SimpleListViewNode (GtkDropDown)", () => {
+        it("creates DropDown widget", async () => {
+            const ref = createRef<Gtk.DropDown>();
+
+            await render(<GtkDropDown ref={ref} />, { wrapper: false });
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("populates with items", async () => {
+            const dropDownRef = createRef<Gtk.DropDown>();
+
+            await render(
+                <GtkDropDown ref={dropDownRef}>
+                    <SimpleListItem id="1" value="Option 1" />
+                    <SimpleListItem id="2" value="Option 2" />
+                    <SimpleListItem id="3" value="Option 3" />
+                </GtkDropDown>,
+                { wrapper: false },
+            );
+
+            const model = dropDownRef.current?.getModel();
+            expect(model?.getNItems()).toBe(3);
+        });
+
+        it("sets selected item by id", async () => {
+            const dropDownRef = createRef<Gtk.DropDown>();
+
+            await render(
+                <GtkDropDown ref={dropDownRef} selectedId="2">
+                    <SimpleListItem id="1" value="Option 1" />
+                    <SimpleListItem id="2" value="Option 2" />
+                    <SimpleListItem id="3" value="Option 3" />
+                </GtkDropDown>,
+                { wrapper: false },
+            );
+
+            expect(dropDownRef.current?.getSelected()).toBe(1);
+        });
+
+        it("calls onSelectionChanged when selection changes", async () => {
+            const dropDownRef = createRef<Gtk.DropDown>();
+            const onSelectionChanged = vi.fn();
+
+            await render(
+                <GtkDropDown ref={dropDownRef} onSelectionChanged={onSelectionChanged}>
+                    <SimpleListItem id="1" value="Option 1" />
+                    <SimpleListItem id="2" value="Option 2" />
+                </GtkDropDown>,
+                { wrapper: false },
+            );
+
+            dropDownRef.current?.setSelected(1);
+
+            expect(onSelectionChanged).toHaveBeenCalledWith("2");
+        });
+
+        it("updates items dynamically", async () => {
+            const dropDownRef = createRef<Gtk.DropDown>();
+
+            function App({ items }: { items: Array<{ id: string; value: string }> }) {
+                return (
+                    <GtkDropDown ref={dropDownRef}>
+                        {items.map((item) => (
+                            <SimpleListItem key={item.id} id={item.id} value={item.value} />
+                        ))}
+                    </GtkDropDown>
+                );
+            }
+
+            await render(
+                <App
+                    items={[
+                        { id: "1", value: "First" },
+                        { id: "2", value: "Second" },
+                    ]}
+                />,
+                { wrapper: false },
+            );
+            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(2);
+
+            await render(
+                <App
+                    items={[
+                        { id: "1", value: "First" },
+                        { id: "2", value: "Second" },
+                        { id: "3", value: "Third" },
+                    ]}
+                />,
+                { wrapper: false },
+            );
+            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
+        });
+
+        it("removes items", async () => {
+            const dropDownRef = createRef<Gtk.DropDown>();
+
+            function App({ items }: { items: Array<{ id: string; value: string }> }) {
+                return (
+                    <GtkDropDown ref={dropDownRef}>
+                        {items.map((item) => (
+                            <SimpleListItem key={item.id} id={item.id} value={item.value} />
+                        ))}
+                    </GtkDropDown>
+                );
+            }
+
+            await render(
+                <App
+                    items={[
+                        { id: "1", value: "First" },
+                        { id: "2", value: "Second" },
+                        { id: "3", value: "Third" },
+                    ]}
+                />,
+                { wrapper: false },
+            );
+            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
+
+            await render(<App items={[{ id: "1", value: "First" }]} />, { wrapper: false });
+            expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
+        });
+    });
+});
