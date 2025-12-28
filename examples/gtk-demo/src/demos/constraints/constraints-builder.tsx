@@ -30,124 +30,6 @@ const createConstraint = (options: {
 };
 
 /**
- * Demo showing constant-based constraints with different strengths.
- */
-const StrengthDemo = () => {
-    const containerRef = useRef<Gtk.Box | null>(null);
-    const requiredRef = useRef<Gtk.Button | null>(null);
-    const strongRef = useRef<Gtk.Button | null>(null);
-    const mediumRef = useRef<Gtk.Button | null>(null);
-    const weakRef = useRef<Gtk.Button | null>(null);
-    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
-
-    useEffect(() => {
-        if (
-            !containerRef.current ||
-            !requiredRef.current ||
-            !strongRef.current ||
-            !mediumRef.current ||
-            !weakRef.current
-        )
-            return;
-
-        const layout = new Gtk.ConstraintLayout();
-        layoutRef.current = layout;
-        containerRef.current.setLayoutManager(layout);
-
-        const buttons = [requiredRef, strongRef, mediumRef, weakRef];
-        const strengths = [
-            { value: Gtk.ConstraintStrength.REQUIRED, name: "Required" },
-            { value: Gtk.ConstraintStrength.STRONG, name: "Strong" },
-            { value: Gtk.ConstraintStrength.MEDIUM, name: "Medium" },
-            { value: Gtk.ConstraintStrength.WEAK, name: "Weak" },
-        ];
-
-        // Position buttons vertically with different width constraints
-        let yOffset = 8;
-        for (let i = 0; i < buttons.length; i++) {
-            const button = buttons[i]?.current;
-            if (!button) continue;
-            const strength = strengths[i]?.value ?? Gtk.ConstraintStrength.REQUIRED;
-
-            // Left align
-            layout.addConstraint(
-                createConstraint({
-                    target: button,
-                    targetAttr: Gtk.ConstraintAttribute.START,
-                    sourceAttr: Gtk.ConstraintAttribute.START,
-                    constant: 8,
-                }),
-            );
-
-            // Vertical position
-            layout.addConstraint(
-                createConstraint({
-                    target: button,
-                    targetAttr: Gtk.ConstraintAttribute.TOP,
-                    sourceAttr: Gtk.ConstraintAttribute.TOP,
-                    constant: yOffset,
-                }),
-            );
-
-            // Width constraint with varying strengths
-            layout.addConstraint(
-                Gtk.Constraint.newConstant(
-                    Gtk.ConstraintAttribute.WIDTH,
-                    Gtk.ConstraintRelation.GE,
-                    200, // Try to be at least 200px
-                    strength,
-                    button,
-                ),
-            );
-
-            yOffset += 45;
-        }
-    }, []);
-
-    return (
-        <GtkFrame label="Constraint Strengths">
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={8}
-                marginTop={12}
-                marginBottom={12}
-                marginStart={12}
-                marginEnd={12}
-            >
-                <GtkLabel
-                    label="Constraint strength determines priority when constraints conflict. Higher strength wins."
-                    cssClasses={["dim-label"]}
-                    wrap
-                    halign={Gtk.Align.START}
-                />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={200}
-                    cssClasses={["card"]}
-                >
-                    <GtkButton ref={requiredRef} label="REQUIRED (1001001000)" cssClasses={["destructive-action"]} />
-                    <GtkButton ref={strongRef} label="STRONG (1000000000)" cssClasses={["suggested-action"]} />
-                    <GtkButton ref={mediumRef} label="MEDIUM (1000)" />
-                    <GtkButton ref={weakRef} label="WEAK (1)" cssClasses={["flat"]} />
-                </GtkBox>
-                <GtkLabel
-                    label={`Strength values:
-REQUIRED = 1001001000 (highest)
-STRONG   = 1000000000
-MEDIUM   = 1000
-WEAK     = 1 (lowest)`}
-                    cssClasses={["monospace", "dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
-        </GtkFrame>
-    );
-};
-
-/**
  * Demo showing multiplier usage for proportional layouts.
  */
 const MultiplierDemo = () => {
@@ -633,7 +515,6 @@ const ConstraintsBuilderDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <StrengthDemo />
             <MultiplierDemo />
             <RelationDemo />
             <GuideDemo />

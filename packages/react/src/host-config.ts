@@ -7,11 +7,19 @@ import type { Node } from "./node.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
+declare global {
+    var __GTKX_CONTAINER_NODE_CACHE__: Map<number, Node> | undefined;
+}
+
+if (!globalThis.__GTKX_CONTAINER_NODE_CACHE__) {
+    globalThis.__GTKX_CONTAINER_NODE_CACHE__ = new Map<number, Node>();
+}
+
 let committing = false;
 
 export const isCommitting = (): boolean => committing;
 
-const containerNodeCache = new Map<number, Node>();
+const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__ as Map<number, Node>;
 
 type TextInstance = Node;
 type SuspenseInstance = never;

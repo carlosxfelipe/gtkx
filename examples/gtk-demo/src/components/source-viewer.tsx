@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSourceView } from "@gtkx/react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useDemo } from "../context/demo-context.js";
 
 export const SourceViewer = () => {
@@ -28,7 +28,8 @@ export const SourceViewer = () => {
         return buf;
     }, []);
 
-    useMemo(() => {
+    // Use useEffect for side effects, not useMemo
+    useEffect(() => {
         if (currentDemo?.sourceCode) {
             buffer.setText(currentDemo.sourceCode, -1);
         } else {

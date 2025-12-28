@@ -11,14 +11,23 @@ use neon::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StringType {
-
     pub is_borrowed: bool,
+    pub length: Option<usize>,
 }
 
 impl StringType {
-
     pub fn new(is_borrowed: bool) -> Self {
-        StringType { is_borrowed }
+        StringType {
+            is_borrowed,
+            length: None,
+        }
+    }
+
+    pub fn with_length(is_borrowed: bool, length: usize) -> Self {
+        StringType {
+            is_borrowed,
+            length: Some(length),
+        }
     }
 
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
@@ -30,7 +39,13 @@ impl StringType {
             .map(|b| b.value(cx))
             .unwrap_or(false);
 
-        Ok(Self::new(is_borrowed))
+        let length_prop: Handle<'_, JsValue> = obj.prop(cx, "length").get()?;
+        let length = length_prop
+            .downcast::<JsNumber, _>(cx)
+            .map(|n| n.value(cx) as usize)
+            .ok();
+
+        Ok(StringType { is_borrowed, length })
     }
 }
 
@@ -48,9 +63,18 @@ mod tests {
     fn string_type_new_creates_correct_type() {
         let string_type = StringType::new(true);
         assert!(string_type.is_borrowed);
+        assert!(string_type.length.is_none());
 
         let string_type = StringType::new(false);
         assert!(!string_type.is_borrowed);
+        assert!(string_type.length.is_none());
+    }
+
+    #[test]
+    fn string_type_with_length() {
+        let string_type = StringType::with_length(false, 256);
+        assert!(!string_type.is_borrowed);
+        assert_eq!(string_type.length, Some(256));
     }
 
     #[test]

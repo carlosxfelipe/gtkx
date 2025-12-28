@@ -18,10 +18,8 @@ import {
     glCompileShader,
     glCreateProgram,
     glCreateShader,
-    glDeleteBuffer,
     glDeleteProgram,
     glDeleteShader,
-    glDeleteVertexArray,
     glDrawArrays,
     glEnableVertexAttribArray,
     glGenBuffer,
@@ -55,7 +53,9 @@ import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
 // Minimal vertex shader - just passes through a fullscreen quad
-const VERTEX_SHADER = `#version 330 core
+const VERTEX_SHADER = `#version 300 es
+precision mediump float;
+
 layout (location = 0) in vec2 aPos;
 out vec2 fragCoord;
 uniform vec2 iResolution;
@@ -179,7 +179,9 @@ const SHADER_PRESETS: { name: string; code: string }[] = [
 
 // Wrap user shader with uniforms and main
 function wrapShaderCode(userCode: string): string {
-    return `#version 330 core
+    return `#version 300 es
+precision mediump float;
+
 in vec2 fragCoord;
 out vec4 FragColor;
 
@@ -206,18 +208,55 @@ interface GLState {
         resolution: number;
         mouse: number;
     };
-    initialized: boolean;
 }
+
+// Initialize GL resources - called once on first render
+const initGL = (shaderCode: string): GLState => {
+    // Create initial shaders
+    const vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, VERTEX_SHADER);
+    glCompileShader(vertexShader);
+
+    const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, wrapShaderCode(shaderCode));
+    glCompileShader(fragmentShader);
+
+    const program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Create VAO and VBO for fullscreen quad
+    const vao = glGenVertexArray();
+    glBindVertexArray(vao);
+
+    const vbo = glGenBuffer();
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, QUAD_VERTICES, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+
+    return {
+        program,
+        vao,
+        vbo,
+        uniforms: {
+            time: glGetUniformLocation(program, "iTime"),
+            resolution: glGetUniformLocation(program, "iResolution"),
+            mouse: glGetUniformLocation(program, "iMouse"),
+        },
+    };
+};
 
 const ShadertoyDemo = () => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
-    const glStateRef = useRef<GLState>({
-        program: 0,
-        vao: 0,
-        vbo: 0,
-        uniforms: { time: -1, resolution: -1, mouse: -1 },
-        initialized: false,
-    });
+    const glStateRef = useRef<GLState | null>(null);
 
     const [shaderCode, setShaderCode] = useState(DEFAULT_SHADER);
     const [compiledCode, setCompiledCode] = useState(DEFAULT_SHADER);
@@ -259,17 +298,16 @@ const ShadertoyDemo = () => {
         return () => clearInterval(intervalId);
     }, [isAnimating]);
 
-    // Queue render when time changes
+    // Queue render when time or resolution changes
     useEffect(() => {
-        if (glAreaRef.current) {
-            glAreaRef.current.queueRender();
-        }
+        glAreaRef.current?.queueRender();
     }, []);
 
     // Compile shader when compiledCode changes
     useEffect(() => {
         const area = glAreaRef.current;
-        if (!area || !glStateRef.current.initialized) return;
+        const state = glStateRef.current;
+        if (!area || !state || !area.getRealized()) return;
 
         area.makeCurrent();
 
@@ -304,16 +342,16 @@ const ShadertoyDemo = () => {
             }
 
             // Clean up old program
-            if (glStateRef.current.program) {
-                glDeleteProgram(glStateRef.current.program);
+            if (state.program) {
+                glDeleteProgram(state.program);
             }
 
             glDeleteShader(vertexShader);
             glDeleteShader(fragmentShader);
 
             // Update state with new program
-            glStateRef.current.program = program;
-            glStateRef.current.uniforms = {
+            state.program = program;
+            state.uniforms = {
                 time: glGetUniformLocation(program, "iTime"),
                 resolution: glGetUniformLocation(program, "iResolution"),
                 mouse: glGetUniformLocation(program, "iMouse"),
@@ -325,74 +363,35 @@ const ShadertoyDemo = () => {
         }
     }, [compiledCode]);
 
-    const handleRealize = useCallback((self: Gtk.Widget) => {
-        const glArea = self as Gtk.GLArea;
-        glArea.makeCurrent();
-
-        try {
-            // Create initial shaders
-            const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-            glShaderSource(vertexShader, VERTEX_SHADER);
-            glCompileShader(vertexShader);
-
-            const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-            glShaderSource(fragmentShader, wrapShaderCode(DEFAULT_SHADER));
-            glCompileShader(fragmentShader);
-
-            const program = glCreateProgram();
-            glAttachShader(program, vertexShader);
-            glAttachShader(program, fragmentShader);
-            glLinkProgram(program);
-
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
-
-            // Create VAO and VBO for fullscreen quad
-            const vao = glGenVertexArray();
-            glBindVertexArray(vao);
-
-            const vbo = glGenBuffer();
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferData(GL_ARRAY_BUFFER, QUAD_VERTICES, GL_STATIC_DRAW);
-
-            glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
-            glEnableVertexAttribArray(0);
-
-            glBindVertexArray(0);
-
-            glStateRef.current = {
-                program,
-                vao,
-                vbo,
-                uniforms: {
-                    time: glGetUniformLocation(program, "iTime"),
-                    resolution: glGetUniformLocation(program, "iResolution"),
-                    mouse: glGetUniformLocation(program, "iMouse"),
-                },
-                initialized: true,
-            };
-        } catch (e) {
-            setCompileError(`Initialization error: ${e}`);
-        }
-    }, []);
-
-    const handleUnrealize = useCallback((self: Gtk.Widget) => {
-        const glArea = self as Gtk.GLArea;
-        glArea.makeCurrent();
-
-        const state = glStateRef.current;
-        if (state.initialized) {
-            glDeleteBuffer(state.vbo);
-            glDeleteVertexArray(state.vao);
-            glDeleteProgram(state.program);
-            state.initialized = false;
-        }
+    const handleUnrealize = useCallback((_self: Gtk.Widget) => {
+        // Just clear the state reference - GL resources will be cleaned up
+        // automatically when the context is destroyed. Calling makeCurrent()
+        // here can race with the widget being unrealized.
+        glStateRef.current = null;
     }, []);
 
     const handleRender = useCallback(
-        (_self: Gtk.GLArea, _context: Gdk.GLContext) => {
+        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
+            // Lazy initialization on first render
+            if (!glStateRef.current) {
+                const glError = self.getError();
+                if (glError) {
+                    setCompileError(`GL context error: ${glError.message}`);
+                    return true;
+                }
+
+                try {
+                    glStateRef.current = initGL(compiledCode);
+                } catch (e) {
+                    setCompileError(`Initialization error: ${e}`);
+                    return true;
+                }
+            }
+
             const state = glStateRef.current;
-            if (!state.initialized) return true;
+
+            // Set viewport
+            glViewport(0, 0, resolution.x, resolution.y);
 
             glClearColor(0, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT);
@@ -418,7 +417,7 @@ const ShadertoyDemo = () => {
 
             return true;
         },
-        [time, resolution, mouse],
+        [time, resolution, mouse, compiledCode],
     );
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
@@ -532,7 +531,7 @@ const ShadertoyDemo = () => {
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
                                 <GtkGLArea
                                     ref={glAreaRef}
-                                    onRealize={handleRealize}
+                                    useEs
                                     onUnrealize={handleUnrealize}
                                     onRender={handleRender}
                                     onResize={handleResize}

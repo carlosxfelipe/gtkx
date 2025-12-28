@@ -4,7 +4,7 @@ type FloatType = { type: "float"; size: 32 | 64 };
 
 type BooleanType = { type: "boolean" };
 
-type StringType = { type: "string"; borrowed?: boolean };
+type StringType = { type: "string"; borrowed?: boolean; length?: number };
 
 type GObjectType = { type: "gobject"; borrowed?: boolean };
 

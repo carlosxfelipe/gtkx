@@ -734,6 +734,32 @@ impl Value {
                         };
                         Ok(Value::Number(number))
                     }
+                    Type::String(string_type) => {
+                        if ref_ptr.ptr.is_null() {
+                            return Ok(Value::Null);
+                        }
+
+                        if ref_ptr.value.downcast_ref::<Vec<u8>>().is_some() {
+                            let c_str = unsafe { CStr::from_ptr(ref_ptr.ptr as *const i8) };
+                            let string = c_str.to_str()?.to_string();
+                            Ok(Value::String(string))
+                        } else {
+                            let str_ptr = unsafe { *(ref_ptr.ptr as *const *const i8) };
+                            if str_ptr.is_null() {
+                                return Ok(Value::Null);
+                            }
+                            let c_str = unsafe { CStr::from_ptr(str_ptr) };
+                            let string = c_str.to_str()?.to_string();
+
+                            if !string_type.is_borrowed {
+                                unsafe {
+                                    glib::ffi::g_free(str_ptr as *mut c_void);
+                                }
+                            }
+
+                            Ok(Value::String(string))
+                        }
+                    }
                     _ => {
                         bail!(
                             "Unsupported ref inner type for reading: {:?}",
@@ -1140,7 +1166,7 @@ mod tests {
         let c_string = std::ffi::CString::new(test_string).unwrap();
         let ptr = c_string.as_ptr() as *mut c_void;
 
-        let string_type = StringType { is_borrowed: true };
+        let string_type = StringType { is_borrowed: true, length: None };
         let type_ = Type::String(string_type);
 
         let cif_value = cif::Value::Ptr(ptr);
@@ -1165,7 +1191,7 @@ mod tests {
         let c_string = std::ffi::CString::new(test_string).unwrap();
         let allocated_ptr = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
 
-        let string_type = StringType { is_borrowed: false };
+        let string_type = StringType { is_borrowed: false, length: None };
         let type_ = Type::String(string_type);
 
         let cif_value = cif::Value::Ptr(allocated_ptr as *mut c_void);
@@ -1183,7 +1209,7 @@ mod tests {
     fn string_null_returns_null_value() {
         test_utils::ensure_gtk_init();
 
-        let string_type = StringType { is_borrowed: false };
+        let string_type = StringType { is_borrowed: false, length: None };
         let type_ = Type::String(string_type);
 
         let cif_value = cif::Value::Ptr(std::ptr::null_mut());
@@ -1378,7 +1404,7 @@ mod tests {
 
         let strv_ptr = ptrs.as_ptr() as *mut c_void;
 
-        let string_type = StringType { is_borrowed: true };
+        let string_type = StringType { is_borrowed: true, length: None };
         let array_type = ArrayType {
             item_type: Box::new(Type::String(string_type)),
             list_type: ListType::Array,
@@ -1425,7 +1451,7 @@ mod tests {
             ptr
         };
 
-        let string_type = StringType { is_borrowed: false };
+        let string_type = StringType { is_borrowed: false, length: None };
         let array_type = ArrayType {
             item_type: Box::new(Type::String(string_type)),
             list_type: ListType::Array,
@@ -1472,7 +1498,7 @@ mod tests {
         let test_string = "test value";
         let gvalue: glib::Value = test_string.into();
 
-        let string_type = StringType { is_borrowed: true };
+        let string_type = StringType { is_borrowed: true, length: None };
         let type_ = Type::String(string_type);
 
         let result = Value::from_glib_value(&gvalue, &type_);
@@ -1914,7 +1940,7 @@ mod tests {
         list = unsafe { glib::ffi::g_list_append(list, s1.as_ptr() as *mut c_void) };
         list = unsafe { glib::ffi::g_list_append(list, s2.as_ptr() as *mut c_void) };
 
-        let string_type = StringType { is_borrowed: true };
+        let string_type = StringType { is_borrowed: true, length: None };
         let array_type = ArrayType {
             item_type: Box::new(Type::String(string_type)),
             list_type: ListType::GList,

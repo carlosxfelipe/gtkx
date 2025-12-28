@@ -51,76 +51,313 @@ const DOUBLE_TYPE = { type: "float", size: 64 } as const;
 
 declare module "../generated/cairo/context.js" {
     interface Context {
+        /**
+         * Begins a new sub-path by moving the current point to the specified coordinates.
+         * @param x - The X coordinate of the new position
+         * @param y - The Y coordinate of the new position
+         */
         moveTo(x: number, y: number): this;
+        /**
+         * Adds a line to the path from the current point to the specified coordinates.
+         * @param x - The X coordinate of the end of the line
+         * @param y - The Y coordinate of the end of the line
+         */
         lineTo(x: number, y: number): this;
+        /**
+         * Adds a cubic Bézier spline to the path from the current point to (x3, y3),
+         * using (x1, y1) and (x2, y2) as control points.
+         * @param x1 - X coordinate of the first control point
+         * @param y1 - Y coordinate of the first control point
+         * @param x2 - X coordinate of the second control point
+         * @param y2 - Y coordinate of the second control point
+         * @param x3 - X coordinate of the end point
+         * @param y3 - Y coordinate of the end point
+         */
         curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): this;
+        /**
+         * Adds a circular arc to the current path, going in the positive angle direction.
+         * @param xc - X coordinate of the center of the arc
+         * @param yc - Y coordinate of the center of the arc
+         * @param radius - The radius of the arc
+         * @param angle1 - The start angle in radians
+         * @param angle2 - The end angle in radians
+         */
         arc(xc: number, yc: number, radius: number, angle1: number, angle2: number): this;
+        /**
+         * Adds a circular arc to the current path, going in the negative angle direction.
+         * @param xc - X coordinate of the center of the arc
+         * @param yc - Y coordinate of the center of the arc
+         * @param radius - The radius of the arc
+         * @param angle1 - The start angle in radians
+         * @param angle2 - The end angle in radians
+         */
         arcNegative(xc: number, yc: number, radius: number, angle1: number, angle2: number): this;
+        /**
+         * Adds a closed sub-path rectangle to the current path.
+         * @param x - The X coordinate of the top-left corner
+         * @param y - The Y coordinate of the top-left corner
+         * @param width - The width of the rectangle
+         * @param height - The height of the rectangle
+         */
         rectangle(x: number, y: number, width: number, height: number): this;
+        /**
+         * Adds a line segment to the path from the current point to the beginning
+         * of the current sub-path and closes the sub-path.
+         */
         closePath(): this;
+        /**
+         * Clears the current path, leaving no defined current point.
+         */
         newPath(): this;
+        /**
+         * Begins a new sub-path without moving the current point.
+         */
         newSubPath(): this;
 
+        /**
+         * Strokes the current path using the current line width and stroke settings,
+         * then clears the path.
+         */
         stroke(): this;
+        /**
+         * Strokes the current path but preserves it for further operations.
+         */
         strokePreserve(): this;
+        /**
+         * Fills the current path using the current fill rule, then clears the path.
+         */
         fill(): this;
+        /**
+         * Fills the current path but preserves it for further operations.
+         */
         fillPreserve(): this;
+        /**
+         * Paints the current source everywhere within the current clip region.
+         */
         paint(): this;
+        /**
+         * Paints the current source with the given alpha transparency.
+         * @param alpha - The alpha value (0.0 to 1.0)
+         */
         paintWithAlpha(alpha: number): this;
+        /**
+         * Establishes a new clip region by intersecting the current clip region
+         * with the current path, then clears the path.
+         */
         clip(): this;
+        /**
+         * Establishes a new clip region but preserves the current path.
+         */
         clipPreserve(): this;
+        /**
+         * Resets the current clip region to its original, unrestricted state.
+         */
         resetClip(): this;
 
+        /**
+         * Sets the source color to an opaque RGB color.
+         * @param red - Red component (0.0 to 1.0)
+         * @param green - Green component (0.0 to 1.0)
+         * @param blue - Blue component (0.0 to 1.0)
+         */
         setSourceRgb(red: number, green: number, blue: number): this;
+        /**
+         * Sets the source color to an RGBA color with alpha transparency.
+         * @param red - Red component (0.0 to 1.0)
+         * @param green - Green component (0.0 to 1.0)
+         * @param blue - Blue component (0.0 to 1.0)
+         * @param alpha - Alpha component (0.0 to 1.0)
+         */
         setSourceRgba(red: number, green: number, blue: number, alpha: number): this;
+        /**
+         * Sets the source pattern for drawing operations.
+         * @param pattern - The pattern to use as source
+         */
         setSource(pattern: Pattern): this;
 
+        /**
+         * Sets the current line width for stroke operations.
+         * @param width - The line width in user-space units
+         */
         setLineWidth(width: number): this;
+        /**
+         * Sets the line cap style for stroke operations.
+         * @param lineCap - The line cap style
+         */
         setLineCap(lineCap: LineCap): this;
+        /**
+         * Sets the line join style for stroke operations.
+         * @param lineJoin - The line join style
+         */
         setLineJoin(lineJoin: LineJoin): this;
+        /**
+         * Sets the dash pattern for stroke operations.
+         * @param dashes - Array of dash lengths (alternating on/off)
+         * @param offset - Offset into the dash pattern to start
+         */
         setDash(dashes: number[], offset: number): this;
 
+        /**
+         * Sets the fill rule for determining which regions are inside a path.
+         * @param fillRule - The fill rule to use
+         */
         setFillRule(fillRule: FillRule): this;
+        /**
+         * Gets the current fill rule.
+         * @returns The current fill rule
+         */
         getFillRule(): FillRule;
 
+        /**
+         * Saves the current graphics state onto a stack.
+         */
         save(): this;
+        /**
+         * Restores the graphics state from the stack.
+         */
         restore(): this;
+        /**
+         * Translates the user-space origin by the specified amounts.
+         * @param tx - Translation in the X direction
+         * @param ty - Translation in the Y direction
+         */
         translate(tx: number, ty: number): this;
+        /**
+         * Scales the user-space coordinate system.
+         * @param sx - Scale factor in the X direction
+         * @param sy - Scale factor in the Y direction
+         */
         scale(sx: number, sy: number): this;
+        /**
+         * Rotates the user-space coordinate system.
+         * @param angle - The rotation angle in radians
+         */
         rotate(angle: number): this;
 
+        /**
+         * Sets the compositing operator for drawing operations.
+         * @param op - The compositing operator
+         */
         setOperator(op: Operator): this;
 
+        /**
+         * Selects a font face by family name, slant, and weight.
+         * @param family - The font family name
+         * @param slant - The font slant (normal, italic, oblique)
+         * @param weight - The font weight (normal, bold)
+         */
         selectFontFace(family: string, slant: FontSlant, weight: FontWeight): this;
+        /**
+         * Sets the current font size in user-space units.
+         * @param size - The font size
+         */
         setFontSize(size: number): this;
+        /**
+         * Draws text glyphs at the current point.
+         * @param text - The text string to display
+         */
         showText(text: string): this;
+        /**
+         * Adds closed paths for text glyphs to the current path.
+         * @param text - The text string to convert to paths
+         */
         textPath(text: string): this;
+        /**
+         * Gets the extents (dimensions and positioning) for a text string.
+         * @param text - The text string to measure
+         * @returns The text extents including width, height, and bearing
+         */
         textExtents(text: string): TextExtents;
 
+        /**
+         * Sets the font options for text rendering.
+         * @param options - The font options to apply
+         */
         setFontOptions(options: FontOptions): this;
+        /**
+         * Gets the current font options.
+         * @returns The current font options
+         */
         getFontOptions(): FontOptions;
+        /**
+         * Sets the antialiasing mode for rendering.
+         * @param antialias - The antialiasing mode
+         */
         setAntialias(antialias: Antialias): this;
+        /**
+         * Gets the current antialiasing mode.
+         * @returns The current antialiasing mode
+         */
         getAntialias(): Antialias;
     }
 }
 
 declare module "../generated/cairo/font-options.js" {
     interface FontOptions {
+        /**
+         * Sets the hint style for font rendering.
+         * @param hintStyle - The hint style value
+         */
         setHintStyle(hintStyle: number): this;
+        /**
+         * Sets the antialiasing mode for font rendering.
+         * @param antialias - The antialiasing mode
+         */
         setAntialias(antialias: Antialias): this;
+        /**
+         * Sets the metrics hinting mode.
+         * @param hintMetrics - The hint metrics value
+         */
         setHintMetrics(hintMetrics: number): this;
+        /**
+         * Sets the subpixel order for LCD font rendering.
+         * @param subpixelOrder - The subpixel order value
+         */
         setSubpixelOrder(subpixelOrder: number): this;
     }
 }
 
 declare module "../generated/cairo/pattern.js" {
     interface Pattern {
+        /**
+         * Adds an opaque RGB color stop to a gradient pattern.
+         * @param offset - Position along the gradient (0.0 to 1.0)
+         * @param red - Red component (0.0 to 1.0)
+         * @param green - Green component (0.0 to 1.0)
+         * @param blue - Blue component (0.0 to 1.0)
+         */
         addColorStopRgb(offset: number, red: number, green: number, blue: number): this;
+        /**
+         * Adds an RGBA color stop with alpha transparency to a gradient pattern.
+         * @param offset - Position along the gradient (0.0 to 1.0)
+         * @param red - Red component (0.0 to 1.0)
+         * @param green - Green component (0.0 to 1.0)
+         * @param blue - Blue component (0.0 to 1.0)
+         * @param alpha - Alpha component (0.0 to 1.0)
+         */
         addColorStopRgba(offset: number, red: number, green: number, blue: number, alpha: number): this;
     }
 
     namespace Pattern {
+        /**
+         * Creates a new linear gradient pattern along a line between two points.
+         * @param x0 - X coordinate of the start point
+         * @param y0 - Y coordinate of the start point
+         * @param x1 - X coordinate of the end point
+         * @param y1 - Y coordinate of the end point
+         * @returns A new linear gradient pattern
+         */
         function createLinear(x0: number, y0: number, x1: number, y1: number): Pattern;
+        /**
+         * Creates a new radial gradient pattern between two circles.
+         * @param cx0 - X coordinate of the start circle center
+         * @param cy0 - Y coordinate of the start circle center
+         * @param radius0 - Radius of the start circle
+         * @param cx1 - X coordinate of the end circle center
+         * @param cy1 - Y coordinate of the end circle center
+         * @param radius1 - Radius of the end circle
+         * @returns A new radial gradient pattern
+         */
         function createRadial(
             cx0: number,
             cy0: number,
@@ -539,12 +776,22 @@ Context.prototype.textPath = function (text: string): Context {
     return this;
 };
 
+/**
+ * Text extents returned by {@link Context.textExtents}.
+ * All values are in user-space units.
+ */
 export interface TextExtents {
+    /** Horizontal distance from the origin to the leftmost part of the glyphs */
     xBearing: number;
+    /** Vertical distance from the origin to the topmost part of the glyphs */
     yBearing: number;
+    /** Width of the glyphs as drawn */
     width: number;
+    /** Height of the glyphs as drawn */
     height: number;
+    /** Horizontal distance to advance after drawing the text */
     xAdvance: number;
+    /** Vertical distance to advance after drawing the text */
     yAdvance: number;
 }
 

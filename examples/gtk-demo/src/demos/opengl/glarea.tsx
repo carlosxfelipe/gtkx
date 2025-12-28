@@ -20,15 +20,14 @@ import {
     glCompileShader,
     glCreateProgram,
     glCreateShader,
-    glDeleteBuffer,
-    glDeleteProgram,
     glDeleteShader,
-    glDeleteVertexArray,
     glDrawArrays,
     glEnableVertexAttribArray,
     glGenBuffer,
     glGenVertexArray,
+    glGetProgramInfoLog,
     glGetProgramiv,
+    glGetShaderInfoLog,
     glGetShaderiv,
     glGetUniformLocation,
     glLinkProgram,
@@ -40,7 +39,7 @@ import {
 } from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
 
@@ -48,7 +47,7 @@ import sourceCode from "./glarea.tsx?raw";
 const VERTEX_SHADER = `#version 300 es
 precision mediump float;
 
-layout (location = 0) in vec3 aPos;
+in vec3 aPos;
 uniform vec4 uColor;
 out vec4 vertexColor;
 void main() {
@@ -88,126 +87,112 @@ interface GLState {
     initialized: boolean;
 }
 
+// Initialize GL resources - called once on first render
+const initGL = (): GLState => {
+    // Create and compile vertex shader
+    const vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, VERTEX_SHADER);
+    glCompileShader(vertexShader);
+
+    const vertexStatus = glGetShaderiv(vertexShader, GL_COMPILE_STATUS);
+    if (!vertexStatus) {
+        const log = glGetShaderInfoLog(vertexShader);
+        glDeleteShader(vertexShader);
+        throw new Error(`Vertex shader compilation failed: ${log}`);
+    }
+
+    // Create and compile fragment shader
+    const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, FRAGMENT_SHADER);
+    glCompileShader(fragmentShader);
+
+    const fragmentStatus = glGetShaderiv(fragmentShader, GL_COMPILE_STATUS);
+    if (!fragmentStatus) {
+        const log = glGetShaderInfoLog(fragmentShader);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        throw new Error(`Fragment shader compilation failed: ${log}`);
+    }
+
+    // Create shader program
+    const program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+
+    const linkStatus = glGetProgramiv(program, GL_LINK_STATUS);
+    if (!linkStatus) {
+        const log = glGetProgramInfoLog(program);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        throw new Error(`Shader program linking failed: ${log}`);
+    }
+
+    // Clean up shaders (they're now linked into the program)
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Create VAO and VBO
+    const vao = glGenVertexArray();
+    glBindVertexArray(vao);
+
+    const vbo = glGenBuffer();
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, TRIANGLE_VERTICES, GL_STATIC_DRAW);
+
+    // Set up vertex attributes
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * 4, 0);
+    glEnableVertexAttribArray(0);
+
+    // Get uniform location
+    const colorLocation = glGetUniformLocation(program, "uColor");
+
+    glBindVertexArray(0);
+
+    return {
+        program,
+        vao,
+        vbo,
+        colorLocation,
+        initialized: true,
+    };
+};
+
 const GLAreaDemo = () => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
-    const glStateRef = useRef<GLState>({
-        program: 0,
-        vao: 0,
-        vbo: 0,
-        colorLocation: -1,
-        initialized: false,
-    });
+    const glStateRef = useRef<GLState | null>(null);
     const [clearColor, setClearColor] = useState({ r: 0.2, g: 0.2, b: 0.3, a: 1.0 });
     const [triangleColor, setTriangleColor] = useState({ r: 0.9, g: 0.3, b: 0.3, a: 1.0 });
     const [error, setError] = useState<string | null>(null);
 
-    // Initialize GL resources when the area is realized
-    const handleRealize = useCallback((self: Gtk.Widget) => {
-        const glArea = self as Gtk.GLArea;
-        glArea.makeCurrent();
-
-        const glError = glArea.getError();
-        if (glError) {
-            setError(`GL context error: ${glError.message}`);
-            return;
-        }
-
-        try {
-            // Create and compile vertex shader
-            const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-            glShaderSource(vertexShader, VERTEX_SHADER);
-            glCompileShader(vertexShader);
-
-            // Check vertex shader compilation
-            const vertexStatus = glGetShaderiv(vertexShader, GL_COMPILE_STATUS);
-            if (!vertexStatus) {
-                glDeleteShader(vertexShader);
-                throw new Error("Vertex shader compilation failed");
-            }
-
-            // Create and compile fragment shader
-            const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-            glShaderSource(fragmentShader, FRAGMENT_SHADER);
-            glCompileShader(fragmentShader);
-
-            // Check fragment shader compilation
-            const fragmentStatus = glGetShaderiv(fragmentShader, GL_COMPILE_STATUS);
-            if (!fragmentStatus) {
-                glDeleteShader(vertexShader);
-                glDeleteShader(fragmentShader);
-                throw new Error("Fragment shader compilation failed");
-            }
-
-            // Create shader program
-            const program = glCreateProgram();
-            glAttachShader(program, vertexShader);
-            glAttachShader(program, fragmentShader);
-            glLinkProgram(program);
-
-            // Check program linking
-            const linkStatus = glGetProgramiv(program, GL_LINK_STATUS);
-            if (!linkStatus) {
-                glDeleteProgram(program);
-                glDeleteShader(vertexShader);
-                glDeleteShader(fragmentShader);
-                throw new Error("Shader program linking failed");
-            }
-
-            // Clean up shaders (they're now linked into the program)
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
-
-            // Create VAO and VBO
-            const vao = glGenVertexArray();
-            glBindVertexArray(vao);
-
-            const vbo = glGenBuffer();
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferData(GL_ARRAY_BUFFER, TRIANGLE_VERTICES, GL_STATIC_DRAW);
-
-            // Set up vertex attributes
-            glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * 4, 0);
-            glEnableVertexAttribArray(0);
-
-            // Get uniform location
-            const colorLocation = glGetUniformLocation(program, "uColor");
-
-            // Store GL state
-            glStateRef.current = {
-                program,
-                vao,
-                vbo,
-                colorLocation,
-                initialized: true,
-            };
-
-            glBindVertexArray(0);
-        } catch (e) {
-            setError(`GL initialization error: ${e}`);
-        }
-    }, []);
-
     // Clean up GL resources when the area is unrealized
-    const handleUnrealize = useCallback((self: Gtk.Widget) => {
-        const glArea = self as Gtk.GLArea;
-        glArea.makeCurrent();
-
-        const state = glStateRef.current;
-        if (state.initialized) {
-            glDeleteBuffer(state.vbo);
-            glDeleteVertexArray(state.vao);
-            glDeleteProgram(state.program);
-            glStateRef.current.initialized = false;
-        }
+    const handleUnrealize = useCallback((_self: Gtk.Widget) => {
+        // Just clear the state reference - GL resources will be cleaned up
+        // automatically when the context is destroyed. Calling makeCurrent()
+        // here can race with the widget being unrealized.
+        glStateRef.current = null;
     }, []);
 
-    // Render callback
+    // Render callback - initializes on first call, then renders
     const handleRender = useCallback(
-        (_self: Gtk.GLArea, _context: Gdk.GLContext) => {
-            const state = glStateRef.current;
-            if (!state.initialized) {
-                return true;
+        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
+            // Lazy initialization on first render
+            if (!glStateRef.current) {
+                const glError = self.getError();
+                if (glError) {
+                    setError(`GL context error: ${glError.message}`);
+                    return true;
+                }
+
+                try {
+                    glStateRef.current = initGL();
+                } catch (e) {
+                    setError(`GL initialization error: ${e}`);
+                    return true;
+                }
             }
+
+            const state = glStateRef.current;
 
             // Clear the framebuffer
             glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
@@ -234,13 +219,6 @@ const GLAreaDemo = () => {
         glViewport(0, 0, width, height);
     }, []);
 
-    // Queue redraw when colors change
-    useEffect(() => {
-        if (glAreaRef.current) {
-            glAreaRef.current.queueRender();
-        }
-    }, []);
-
     const cycleTriangleColor = () => {
         const colors = [
             { r: 0.9, g: 0.3, b: 0.3, a: 1.0 }, // Red
@@ -256,6 +234,7 @@ const GLAreaDemo = () => {
         const nextIndex = (currentIndex + 1) % colors.length;
         const nextColor = colors[nextIndex];
         if (nextColor) setTriangleColor(nextColor);
+        glAreaRef.current?.queueRender();
     };
 
     const cycleClearColor = () => {
@@ -272,6 +251,7 @@ const GLAreaDemo = () => {
         const nextIndex = (currentIndex + 1) % colors.length;
         const nextColor = colors[nextIndex];
         if (nextColor) setClearColor(nextColor);
+        glAreaRef.current?.queueRender();
     };
 
     return (
@@ -279,7 +259,7 @@ const GLAreaDemo = () => {
             <GtkLabel label="GL Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="GtkGLArea provides an OpenGL rendering context embedded in a GTK widget. Connect to the 'render' signal to draw with OpenGL, and use 'realize'/'unrealize' signals to initialize and clean up GL resources."
+                label="GtkGLArea provides an OpenGL rendering context embedded in a GTK widget. Connect to the 'render' signal to initialize and draw with OpenGL. Use 'unrealize' to clean up GL resources."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -309,9 +289,9 @@ const GLAreaDemo = () => {
                 >
                     <GtkGLArea
                         ref={glAreaRef}
-                        hasDepthBuffer
                         useEs
-                        onRealize={handleRealize}
+                        hasDepthBuffer
+                        vexpand
                         onUnrealize={handleUnrealize}
                         onRender={handleRender}
                         onResize={handleResize}
@@ -337,9 +317,8 @@ const GLAreaDemo = () => {
                 >
                     <GtkLabel label="GtkGLArea Signals:" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkLabel
-                        label={`onRealize: Initialize shaders, buffers, and GL state
+                        label={`onRender: Initialize on first call, then draw content
 onUnrealize: Clean up GL resources
-onRender: Called each frame to draw content
 onResize: Handle viewport changes`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}

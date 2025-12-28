@@ -447,7 +447,7 @@ mod tests {
         let boxed = Boxed::from_glib_full(None, ptr);
         let object_id = ObjectId::new(Object::Boxed(boxed));
 
-        let string_type = Type::String(StringType { is_borrowed: true });
+        let string_type = Type::String(StringType { is_borrowed: true, length: None });
 
         let offset = std::mem::offset_of!(TestStruct, string_ptr);
         let result = handle_read(object_id, &string_type, offset);
@@ -481,7 +481,7 @@ mod tests {
         let boxed = Boxed::from_glib_full(None, ptr);
         let object_id = ObjectId::new(Object::Boxed(boxed));
 
-        let string_type = Type::String(StringType { is_borrowed: true });
+        let string_type = Type::String(StringType { is_borrowed: true, length: None });
 
         let offset = std::mem::offset_of!(TestStruct, string_ptr);
         let result = handle_read(object_id, &string_type, offset);

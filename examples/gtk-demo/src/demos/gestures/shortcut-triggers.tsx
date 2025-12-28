@@ -250,7 +250,7 @@ const ShortcutTriggersDemo = () => {
                                 id="action3"
                                 label="Alternative Trigger Demo"
                                 onActivate={() => showTrigger("Menu Action", "Works with F5 or Ctrl+R")}
-                                accels="F5|<Control>r"
+                                accels={["F5", "<Control>r"]}
                             />
                         </Menu.Section>
                     </GtkMenuButton>
@@ -279,7 +279,9 @@ const ShortcutTriggersDemo = () => {
 "<Primary>q"           - Platform primary key (Ctrl/Cmd)
 "_s"                   - Mnemonic trigger for 's'
 "never"                - NeverTrigger
-"<Control>a|<Control>b" - Alternative trigger`}
+"<Control>a|<Control>b" - Alternative trigger (ShortcutTrigger only)
+
+Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />

@@ -1,4 +1,5 @@
 import type { Context } from "@gtkx/ffi/cairo";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -292,7 +293,10 @@ const ImageFilteringDemo = () => {
     const intensityAdj = useMemo(() => new Gtk.Adjustment(1, 0.5, 3, 0.1, 0.5, 0), []);
 
     useEffect(() => {
-        intensityAdj.connect("value-changed", (adj: Gtk.Adjustment) => setIntensity(adj.getValue()));
+        const handlerId = intensityAdj.connect("value-changed", (adj: Gtk.Adjustment) => setIntensity(adj.getValue()));
+        return () => {
+            GObject.signalHandlerDisconnect(intensityAdj, handlerId);
+        };
     }, [intensityAdj]);
 
     const filters: { filter: FilterType; label: string }[] = [

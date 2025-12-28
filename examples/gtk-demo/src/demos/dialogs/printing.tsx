@@ -1,5 +1,7 @@
 import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
+import * as Pango from "@gtkx/ffi/pango";
+import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, useApplication } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -72,32 +74,41 @@ const PrintingDemo = () => {
                 .rectangle(0, 792 - MARGIN, 612, MARGIN)
                 .fill();
 
-            // Draw text content
-            cr.setSourceRgb(0, 0, 0);
+            // Draw text content using Pango
             const startLine = previewPage * LINES_PER_PAGE;
             const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
             for (let i = startLine; i < endLine; i++) {
-                const y = MARGIN + (i - startLine) * LINE_HEIGHT + 15;
-                cr.moveTo(MARGIN, y);
-
-                // Simple text rendering (in real app, use Pango)
+                const y = MARGIN + (i - startLine) * LINE_HEIGHT;
                 const line = SAMPLE_LINES[i];
-                void line; // Text rendering would use this line
-                if (i === 0) {
-                    // Title - larger
+
+                const layout = PangoCairo.createLayout(cr);
+                layout.setText(line ?? "", -1);
+
+                if (i === startLine && previewPage === 0) {
+                    // Title - larger and blue
                     cr.setSourceRgb(0.2, 0.4, 0.8);
+                    layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
                 } else {
                     cr.setSourceRgb(0, 0, 0);
+                    layout.setFontDescription(Pango.FontDescription.fromString("Sans 10"));
                 }
+
+                cr.moveTo(MARGIN, y);
+                PangoCairo.showLayout(cr, layout);
             }
 
             // Page number
-            cr.setSourceRgb(0.5, 0.5, 0.5).moveTo(306, 792 - 30);
+            const pageLayout = PangoCairo.createLayout(cr);
+            pageLayout.setText(`Page ${previewPage + 1} of ${totalPages}`, -1);
+            pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
+            cr.setSourceRgb(0.5, 0.5, 0.5);
+            cr.moveTo(270, 792 - 30);
+            PangoCairo.showLayout(cr, pageLayout);
 
             cr.restore();
         },
-        [previewPage],
+        [previewPage, totalPages],
     );
 
     useEffect(() => {
@@ -134,23 +145,44 @@ const PrintingDemo = () => {
                 const cr = context.getCairoContext();
                 const width = context.getWidth();
 
-                // Draw page content
-                cr.setSourceRgb(0, 0, 0);
-                const startLine = pageNr * LINES_PER_PAGE;
-                const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
-
-                for (let i = startLine; i < endLine; i++) {
-                    const y = MARGIN + (i - startLine) * LINE_HEIGHT;
-                    cr.moveTo(MARGIN, y);
-                    // In a real app, use Pango for text rendering
-                }
-
                 // Draw a decorative header line
                 cr.setSourceRgb(0.2, 0.4, 0.8)
                     .setLineWidth(2)
                     .moveTo(MARGIN, MARGIN - 10)
                     .lineTo(width - MARGIN, MARGIN - 10)
                     .stroke();
+
+                // Draw page content using Pango
+                const startLine = pageNr * LINES_PER_PAGE;
+                const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
+
+                for (let i = startLine; i < endLine; i++) {
+                    const y = MARGIN + (i - startLine) * LINE_HEIGHT;
+                    const line = SAMPLE_LINES[i];
+
+                    const layout = PangoCairo.createLayout(cr);
+                    layout.setText(line ?? "", -1);
+
+                    if (i === 0 && pageNr === 0) {
+                        // Title - larger and blue
+                        cr.setSourceRgb(0.2, 0.4, 0.8);
+                        layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
+                    } else {
+                        cr.setSourceRgb(0, 0, 0);
+                        layout.setFontDescription(Pango.FontDescription.fromString("Sans 10"));
+                    }
+
+                    cr.moveTo(MARGIN, y);
+                    PangoCairo.showLayout(cr, layout);
+                }
+
+                // Draw page number
+                const pageLayout = PangoCairo.createLayout(cr);
+                pageLayout.setText(`Page ${pageNr + 1} of ${totalPages}`, -1);
+                pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
+                cr.setSourceRgb(0.5, 0.5, 0.5);
+                cr.moveTo(width / 2 - 30, context.getHeight() - 30);
+                PangoCairo.showLayout(cr, pageLayout);
             });
 
             // Handle end-print signal
@@ -225,15 +257,36 @@ const PrintingDemo = () => {
                         .lineTo(width - MARGIN, MARGIN - 10)
                         .stroke();
 
-                    // Draw content
-                    cr.setSourceRgb(0, 0, 0);
+                    // Draw content using Pango
                     const startLine = pageNr * LINES_PER_PAGE;
                     const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
                     for (let i = startLine; i < endLine; i++) {
                         const y = MARGIN + (i - startLine) * LINE_HEIGHT;
+                        const line = SAMPLE_LINES[i];
+
+                        const layout = PangoCairo.createLayout(cr);
+                        layout.setText(line ?? "", -1);
+
+                        if (i === 0 && pageNr === 0) {
+                            cr.setSourceRgb(0.2, 0.4, 0.8);
+                            layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
+                        } else {
+                            cr.setSourceRgb(0, 0, 0);
+                            layout.setFontDescription(Pango.FontDescription.fromString("Sans 10"));
+                        }
+
                         cr.moveTo(MARGIN, y);
+                        PangoCairo.showLayout(cr, layout);
                     }
+
+                    // Draw page number
+                    const pageLayout = PangoCairo.createLayout(cr);
+                    pageLayout.setText(`Page ${pageNr + 1} of ${totalPages}`, -1);
+                    pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
+                    cr.setSourceRgb(0.5, 0.5, 0.5);
+                    cr.moveTo(width / 2 - 30, context.getHeight() - 30);
+                    PangoCairo.showLayout(cr, pageLayout);
                 });
 
                 const result = printOp.run(Gtk.PrintOperationAction.EXPORT, app.getActiveWindow() ?? undefined);

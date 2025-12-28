@@ -142,7 +142,7 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
 
             setHotReloading(true);
             try {
-                update(<App />);
+                await update(<App />);
             } finally {
                 setHotReloading(false);
             }

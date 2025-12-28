@@ -1,5 +1,6 @@
 import * as Adw from "@gtkx/ffi/adw";
 import { ColorScheme } from "@gtkx/ffi/adw";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -22,7 +23,7 @@ const ThemesDemo = () => {
     const [systemSupportsColorSchemes, setSystemSupportsColorSchemes] = useState(false);
     const [isHighContrast, setIsHighContrast] = useState(false);
 
-    // Query initial state
+    // Query initial state and listen for changes
     useEffect(() => {
         setIsDark(styleManager.getDark());
         setColorScheme(styleManager.getColorScheme());
@@ -30,11 +31,15 @@ const ThemesDemo = () => {
         setIsHighContrast(styleManager.getHighContrast());
 
         // Listen for changes
-        styleManager.connect("notify", () => {
+        const handlerId = styleManager.connect("notify", () => {
             setIsDark(styleManager.getDark());
             setColorScheme(styleManager.getColorScheme());
             setIsHighContrast(styleManager.getHighContrast());
         });
+
+        return () => {
+            GObject.signalHandlerDisconnect(styleManager, handlerId);
+        };
     }, [styleManager]);
 
     const handleColorSchemeChange = (scheme: ColorScheme) => {

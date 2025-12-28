@@ -25,7 +25,11 @@ use std::{
 };
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::{FromGlibPtrNone as _, IntoGlib as _}, value::ToValue as _};
+use gtk4::glib::{
+    self,
+    translate::{FromGlibPtrNone as _, IntoGlib as _},
+    value::ToValue as _,
+};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -39,7 +43,6 @@ use crate::{
 #[derive(Debug)]
 #[repr(C)]
 pub struct OwnedPtr {
-
     pub ptr: *mut c_void,
 
     pub value: Box<dyn Any>,
@@ -47,7 +50,6 @@ pub struct OwnedPtr {
 
 #[derive(Debug)]
 pub enum Value {
-
     U8(u8),
 
     I8(i8),
@@ -79,7 +81,6 @@ pub enum Value {
 
 #[derive(Debug)]
 pub struct TrampolineCallbackValue {
-
     pub trampoline_ptr: *mut c_void,
 
     pub closure: OwnedPtr,
@@ -90,7 +91,6 @@ pub struct TrampolineCallbackValue {
 }
 
 impl OwnedPtr {
-
     pub fn new<T: 'static>(value: T, ptr: *mut c_void) -> Self {
         Self {
             value: Box::new(value),
@@ -101,10 +101,7 @@ impl OwnedPtr {
     pub fn from_vec<T: 'static>(vec: Vec<T>) -> Self {
         let boxed: Box<Vec<T>> = Box::new(vec);
         let ptr = boxed.as_ptr() as *mut c_void;
-        Self {
-            value: boxed,
-            ptr,
-        }
+        Self { value: boxed, ptr }
     }
 }
 
@@ -352,7 +349,6 @@ impl TryFrom<arg::Arg> for Value {
 }
 
 impl Value {
-
     pub fn as_ptr(&self) -> *mut c_void {
         match self {
             Value::U8(value) => value as *const u8 as *mut c_void,
@@ -574,13 +570,9 @@ impl Value {
 
                     let args_values = vec![source_value, result_value];
 
-                    invoke_and_wait_for_js_result(
-                        &channel,
-                        &callback,
-                        args_values,
-                        false,
-                        |_| None::<glib::Value>,
-                    )
+                    invoke_and_wait_for_js_result(&channel, &callback, args_values, false, |_| {
+                        None::<glib::Value>
+                    })
                 });
 
                 let closure_ptr = closure_ptr_for_transfer(closure);
@@ -596,13 +588,9 @@ impl Value {
 
             CallbackTrampoline::Destroy => {
                 let closure = glib::Closure::new(move |_args: &[glib::Value]| {
-                    invoke_and_wait_for_js_result(
-                        &channel,
-                        &callback,
-                        vec![],
-                        false,
-                        |_| None::<glib::Value>,
-                    )
+                    invoke_and_wait_for_js_result(&channel, &callback, vec![], false, |_| {
+                        None::<glib::Value>
+                    })
                 });
 
                 let closure_ptr = closure_ptr_for_transfer(closure);
@@ -624,13 +612,9 @@ impl Value {
                     let args_values = convert_glib_args(args, &arg_types)
                         .expect("Failed to convert GLib draw callback arguments");
 
-                    invoke_and_wait_for_js_result(
-                        &channel,
-                        &callback,
-                        args_values,
-                        false,
-                        |_| None::<glib::Value>,
-                    )
+                    invoke_and_wait_for_js_result(&channel, &callback, args_values, false, |_| {
+                        None::<glib::Value>
+                    })
                 });
 
                 let closure_ptr = closure_ptr_for_transfer(closure);
@@ -708,7 +692,9 @@ impl Value {
                             Ok(value::Value::Object(obj_id)) => {
                                 if let Some(ptr) = obj_id.as_ptr() {
                                     let obj: glib::Object = unsafe {
-                                        glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
+                                        glib::Object::from_glib_none(
+                                            ptr as *mut glib::gobject_ffi::GObject,
+                                        )
                                     };
                                     Some(obj.to_value())
                                 } else {
@@ -754,14 +740,12 @@ impl Value {
             Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::GVariant(_) => {
                 match &*r#ref.value {
                     value::Value::Object(id) => {
-
                         let ptr = id.as_ptr().ok_or_else(|| {
                             anyhow::anyhow!("Ref object has been garbage collected")
                         })?;
                         Ok(Value::Ptr(ptr))
                     }
                     value::Value::Null | value::Value::Undefined => {
-
                         let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
                         let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
                         Ok(Value::OwnedPtr(OwnedPtr {
@@ -775,8 +759,40 @@ impl Value {
                     ),
                 }
             }
-            _ => {
+            Type::String(string_type) => {
+                let (buffer_size, initial_content) = match (&string_type.length, &*r#ref.value) {
+                    (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
+                    (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
+                    (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
+                    (None, value::Value::Null | value::Value::Undefined) => {
+                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+                        return Ok(Value::OwnedPtr(OwnedPtr {
+                            ptr,
+                            value: ptr_storage,
+                        }));
+                    }
+                    _ => bail!(
+                        "Expected a String, Null, or length for Ref<String>, got {:?}",
+                        r#ref.value
+                    ),
+                };
 
+                let mut buffer: Vec<u8> = vec![0u8; buffer_size];
+
+                if let Some(content) = initial_content {
+                    let copy_len = content.len().min(buffer_size.saturating_sub(1));
+                    buffer[..copy_len].copy_from_slice(&content[..copy_len]);
+                }
+
+                let ptr = buffer.as_mut_ptr() as *mut c_void;
+
+                Ok(Value::OwnedPtr(OwnedPtr {
+                    ptr,
+                    value: Box::new(buffer),
+                }))
+            }
+            _ => {
                 let ref_arg = Arg::new(*type_.inner_type.clone(), *r#ref.value.clone());
                 let ref_value = Box::new(Value::try_from(ref_arg)?);
                 let ref_ptr = ref_value.as_ptr();
@@ -1087,7 +1103,9 @@ mod tests {
     #[test]
     fn try_from_float_f32() {
         let arg = arg::Arg::new(
-            Type::Float(FloatType { size: FloatSize::_32 }),
+            Type::Float(FloatType {
+                size: FloatSize::_32,
+            }),
             value::Value::Number(3.14),
         );
 
@@ -1103,7 +1121,9 @@ mod tests {
     #[test]
     fn try_from_float_f64() {
         let arg = arg::Arg::new(
-            Type::Float(FloatType { size: FloatSize::_64 }),
+            Type::Float(FloatType {
+                size: FloatSize::_64,
+            }),
             value::Value::Number(2.718281828),
         );
 
@@ -1119,7 +1139,10 @@ mod tests {
     #[test]
     fn try_from_string() {
         let arg = arg::Arg::new(
-            Type::String(StringType { is_borrowed: false }),
+            Type::String(StringType {
+                is_borrowed: false,
+                length: None,
+            }),
             value::Value::String("hello world".to_string()),
         );
 
@@ -1138,7 +1161,10 @@ mod tests {
     #[test]
     fn try_from_string_null() {
         let arg = arg::Arg::new(
-            Type::String(StringType { is_borrowed: false }),
+            Type::String(StringType {
+                is_borrowed: false,
+                length: None,
+            }),
             value::Value::Null,
         );
 
@@ -1273,10 +1299,7 @@ mod tests {
                 list_type: ListType::Array,
                 is_borrowed: false,
             }),
-            value::Value::Array(vec![
-                value::Value::Number(1.1),
-                value::Value::Number(2.2),
-            ]),
+            value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
         );
 
         let result = Value::try_from(arg);
@@ -1296,7 +1319,10 @@ mod tests {
     fn try_from_array_string() {
         let arg = arg::Arg::new(
             Type::Array(ArrayType {
-                item_type: Box::new(Type::String(StringType { is_borrowed: false })),
+                item_type: Box::new(Type::String(StringType {
+                    is_borrowed: false,
+                    length: None,
+                })),
                 list_type: ListType::Array,
                 is_borrowed: false,
             }),
@@ -1409,10 +1435,7 @@ mod tests {
     #[test]
     fn try_from_struct_null() {
         let struct_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
-        let arg = arg::Arg::new(
-            Type::Struct(struct_type),
-            value::Value::Null,
-        );
+        let arg = arg::Arg::new(Type::Struct(struct_type), value::Value::Null);
 
         let result = Value::try_from(arg);
         assert!(result.is_ok());
@@ -1426,10 +1449,7 @@ mod tests {
     #[test]
     fn try_from_struct_undefined() {
         let struct_type = crate::types::StructType::new(true, "TestRect".to_string(), None);
-        let arg = arg::Arg::new(
-            Type::Struct(struct_type),
-            value::Value::Undefined,
-        );
+        let arg = arg::Arg::new(Type::Struct(struct_type), value::Value::Undefined);
 
         let result = Value::try_from(arg);
         assert!(result.is_ok());
@@ -1455,10 +1475,7 @@ mod tests {
     #[test]
     fn try_from_struct_invalid_number() {
         let struct_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
-        let arg = arg::Arg::new(
-            Type::Struct(struct_type),
-            value::Value::Number(42.0),
-        );
+        let arg = arg::Arg::new(Type::Struct(struct_type), value::Value::Number(42.0));
 
         let result = Value::try_from(arg);
         assert!(result.is_err());
@@ -1467,10 +1484,7 @@ mod tests {
     #[test]
     fn try_from_struct_invalid_boolean() {
         let struct_type = crate::types::StructType::new(true, "TestRect".to_string(), Some(8));
-        let arg = arg::Arg::new(
-            Type::Struct(struct_type),
-            value::Value::Boolean(true),
-        );
+        let arg = arg::Arg::new(Type::Struct(struct_type), value::Value::Boolean(true));
 
         let result = Value::try_from(arg);
         assert!(result.is_err());
@@ -1482,15 +1496,9 @@ mod tests {
         let borrowed_type = crate::types::StructType::new(true, "TestStruct".to_string(), Some(16));
         let owned_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
 
-        let borrowed_arg = arg::Arg::new(
-            Type::Struct(borrowed_type),
-            value::Value::Null,
-        );
+        let borrowed_arg = arg::Arg::new(Type::Struct(borrowed_type), value::Value::Null);
 
-        let owned_arg = arg::Arg::new(
-            Type::Struct(owned_type),
-            value::Value::Null,
-        );
+        let owned_arg = arg::Arg::new(Type::Struct(owned_type), value::Value::Null);
 
         let borrowed_result = Value::try_from(borrowed_arg);
         let owned_result = Value::try_from(owned_arg);
@@ -1499,7 +1507,9 @@ mod tests {
         assert!(owned_result.is_ok());
 
         // Both should produce null pointers for null values
-        if let (Value::Ptr(ptr1), Value::Ptr(ptr2)) = (borrowed_result.unwrap(), owned_result.unwrap()) {
+        if let (Value::Ptr(ptr1), Value::Ptr(ptr2)) =
+            (borrowed_result.unwrap(), owned_result.unwrap())
+        {
             assert!(ptr1.is_null());
             assert!(ptr2.is_null());
         } else {

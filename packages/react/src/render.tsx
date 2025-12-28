@@ -50,6 +50,7 @@ export const useApplication = (): Gtk.Application => {
 };
 
 let container: unknown = null;
+let app: Gtk.Application | null = null;
 let isHotReloading = false;
 
 /**
@@ -92,7 +93,7 @@ export const setHotReloading = (value: boolean): void => {
  * @see {@link update} for hot-reloading the rendered tree
  */
 export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
-    const app = start(appId, flags);
+    app = start(appId, flags);
     const instance = reconciler.getInstance();
 
     container = instance.createContainer(
@@ -145,8 +146,17 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
  *
  * @see {@link render} for initial rendering
  */
-export const update = (element: ReactNode): void => {
-    reconciler.getInstance().updateContainer(element, container, null, () => {});
+export const update = (element: ReactNode): Promise<void> => {
+    return new Promise((resolve) => {
+        reconciler
+            .getInstance()
+            .updateContainer(
+                <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
+                container,
+                null,
+                resolve,
+            );
+    });
 };
 
 /**
@@ -181,5 +191,5 @@ export const quit = () => {
         }, 0);
     });
 
-    return false;
+    return true;
 };

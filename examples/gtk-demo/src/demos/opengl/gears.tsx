@@ -21,10 +21,7 @@ import {
     glCompileShader,
     glCreateProgram,
     glCreateShader,
-    glDeleteBuffer,
-    glDeleteProgram,
     glDeleteShader,
-    glDeleteVertexArray,
     glDepthFunc,
     glDrawArrays,
     glEnable,
@@ -47,7 +44,9 @@ import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
 
 // Vertex shader with lighting
-const VERTEX_SHADER = `#version 330 core
+const VERTEX_SHADER = `#version 300 es
+precision mediump float;
+
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 
@@ -66,7 +65,9 @@ void main() {
 }`;
 
 // Fragment shader with diffuse lighting
-const FRAGMENT_SHADER = `#version 330 core
+const FRAGMENT_SHADER = `#version 300 es
+precision mediump float;
+
 in vec3 vNormal;
 in vec3 vLightDir;
 
@@ -282,23 +283,95 @@ interface GLState {
         color: number;
         lightDir: number;
     };
-    initialized: boolean;
 }
+
+// Initialize GL resources - called once on first render
+const initGL = (): GLState => {
+    // Create shaders
+    const vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, VERTEX_SHADER);
+    glCompileShader(vertexShader);
+
+    const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, FRAGMENT_SHADER);
+    glCompileShader(fragmentShader);
+
+    const program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Get uniform locations
+    const uniforms = {
+        modelView: glGetUniformLocation(program, "uModelView"),
+        projection: glGetUniformLocation(program, "uProjection"),
+        normalMatrix: glGetUniformLocation(program, "uNormalMatrix"),
+        color: glGetUniformLocation(program, "uColor"),
+        lightDir: glGetUniformLocation(program, "uLightDir"),
+    };
+
+    // Generate gears
+    const gearConfigs = [
+        { inner: 1.0, outer: 4.0, width: 1.0, teeth: 20, depth: 0.7, color: { r: 0.8, g: 0.1, b: 0.0 } },
+        { inner: 0.5, outer: 2.0, width: 2.0, teeth: 10, depth: 0.7, color: { r: 0.0, g: 0.8, b: 0.2 } },
+        { inner: 1.3, outer: 2.0, width: 0.5, teeth: 10, depth: 0.7, color: { r: 0.2, g: 0.2, b: 1.0 } },
+    ];
+
+    const gears: GearData[] = gearConfigs.map((config) => {
+        const { vertices, normals } = generateGear(
+            config.inner,
+            config.outer,
+            config.width,
+            config.teeth,
+            config.depth,
+        );
+
+        const vao = glGenVertexArray();
+        glBindVertexArray(vao);
+
+        const vbo = glGenBuffer();
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
+        glEnableVertexAttribArray(0);
+
+        const nbo = glGenBuffer();
+        glBindBuffer(GL_ARRAY_BUFFER, nbo);
+        glBufferData(GL_ARRAY_BUFFER, normals, GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
+        glEnableVertexAttribArray(1);
+
+        glBindVertexArray(0);
+
+        return {
+            vao,
+            vbo,
+            nbo,
+            vertexCount: vertices.length / 3,
+            color: config.color,
+        };
+    });
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_CULL_FACE);
+
+    return { program, gears, uniforms };
+};
 
 const GearsDemo = () => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
-    const glStateRef = useRef<GLState>({
-        program: 0,
-        gears: [],
-        uniforms: { modelView: -1, projection: -1, normalMatrix: -1, color: -1, lightDir: -1 },
-        initialized: false,
-    });
+    const glStateRef = useRef<GLState | null>(null);
     const [angle, setAngle] = useState(0);
     const [viewRotX, setViewRotX] = useState(20);
     const [viewRotY, setViewRotY] = useState(30);
     const [isAnimating, setIsAnimating] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const aspectRef = useRef(1.0);
+    const sizeRef = useRef({ width: 500, height: 400 });
+
     const rotXAdjustment = useMemo(() => new Gtk.Adjustment(20, -90, 90, 1, 10, 0), []);
     const rotYAdjustment = useMemo(() => new Gtk.Adjustment(30, -180, 180, 1, 10, 0), []);
 
@@ -313,126 +386,47 @@ const GearsDemo = () => {
         return () => clearInterval(intervalId);
     }, [isAnimating]);
 
-    // Queue render when angle or view changes
+    // Queue render when state changes
+    // biome-ignore lint/correctness/useExhaustiveDependencies: demo
     useEffect(() => {
-        if (glAreaRef.current) {
-            glAreaRef.current.queueRender();
-        }
-    }, []);
+        glAreaRef.current?.queueRender();
+    }, [angle, viewRotX, viewRotY]);
 
-    const handleRealize = useCallback((self: Gtk.Widget) => {
-        const glArea = self as Gtk.GLArea;
-        glArea.makeCurrent();
-
-        const glError = glArea.getError();
-        if (glError) {
-            setError(`GL context error: ${glError.message}`);
-            return;
-        }
-
-        try {
-            // Create shaders
-            const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-            glShaderSource(vertexShader, VERTEX_SHADER);
-            glCompileShader(vertexShader);
-
-            const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-            glShaderSource(fragmentShader, FRAGMENT_SHADER);
-            glCompileShader(fragmentShader);
-
-            const program = glCreateProgram();
-            glAttachShader(program, vertexShader);
-            glAttachShader(program, fragmentShader);
-            glLinkProgram(program);
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
-
-            // Get uniform locations
-            const uniforms = {
-                modelView: glGetUniformLocation(program, "uModelView"),
-                projection: glGetUniformLocation(program, "uProjection"),
-                normalMatrix: glGetUniformLocation(program, "uNormalMatrix"),
-                color: glGetUniformLocation(program, "uColor"),
-                lightDir: glGetUniformLocation(program, "uLightDir"),
-            };
-
-            // Generate gears
-            const gearConfigs = [
-                { inner: 1.0, outer: 4.0, width: 1.0, teeth: 20, depth: 0.7, color: { r: 0.8, g: 0.1, b: 0.0 } },
-                { inner: 0.5, outer: 2.0, width: 2.0, teeth: 10, depth: 0.7, color: { r: 0.0, g: 0.8, b: 0.2 } },
-                { inner: 1.3, outer: 2.0, width: 0.5, teeth: 10, depth: 0.7, color: { r: 0.2, g: 0.2, b: 1.0 } },
-            ];
-
-            const gears: GearData[] = gearConfigs.map((config) => {
-                const { vertices, normals } = generateGear(
-                    config.inner,
-                    config.outer,
-                    config.width,
-                    config.teeth,
-                    config.depth,
-                );
-
-                const vao = glGenVertexArray();
-                glBindVertexArray(vao);
-
-                const vbo = glGenBuffer();
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
-                glEnableVertexAttribArray(0);
-
-                const nbo = glGenBuffer();
-                glBindBuffer(GL_ARRAY_BUFFER, nbo);
-                glBufferData(GL_ARRAY_BUFFER, normals, GL_STATIC_DRAW);
-                glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
-                glEnableVertexAttribArray(1);
-
-                glBindVertexArray(0);
-
-                return {
-                    vao,
-                    vbo,
-                    nbo,
-                    vertexCount: vertices.length / 3,
-                    color: config.color,
-                };
-            });
-
-            glStateRef.current = {
-                program,
-                gears,
-                uniforms,
-                initialized: true,
-            };
-
-            glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_LEQUAL);
-            glEnable(GL_CULL_FACE);
-        } catch (e) {
-            setError(`GL initialization error: ${e}`);
-        }
-    }, []);
-
-    const handleUnrealize = useCallback((self: Gtk.Widget) => {
-        const glArea = self as Gtk.GLArea;
-        glArea.makeCurrent();
-
-        const state = glStateRef.current;
-        if (state.initialized) {
-            for (const gear of state.gears) {
-                glDeleteBuffer(gear.vbo);
-                glDeleteBuffer(gear.nbo);
-                glDeleteVertexArray(gear.vao);
-            }
-            glDeleteProgram(state.program);
-            state.initialized = false;
-        }
+    const handleUnrealize = useCallback((_self: Gtk.Widget) => {
+        // Just clear the state reference - GL resources will be cleaned up
+        // automatically when the context is destroyed. Calling makeCurrent()
+        // here can race with the widget being unrealized.
+        glStateRef.current = null;
     }, []);
 
     const handleRender = useCallback(
-        (_self: Gtk.GLArea, _context: Gdk.GLContext) => {
+        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
+            // Lazy initialization on first render
+            if (!glStateRef.current) {
+                const glError = self.getError();
+                if (glError) {
+                    setError(`GL context error: ${glError.message}`);
+                    return true;
+                }
+
+                try {
+                    glStateRef.current = initGL();
+                } catch (e) {
+                    setError(`GL initialization error: ${e}`);
+                    return true;
+                }
+            }
+
             const state = glStateRef.current;
-            if (!state.initialized) return true;
+
+            // Get actual size from the widget (in physical pixels for GL)
+            const scale = self.getScaleFactor();
+            const width = self.getAllocatedWidth() * scale;
+            const height = self.getAllocatedHeight() * scale;
+            const aspect = width / height;
+
+            // Set viewport
+            glViewport(0, 0, width, height);
 
             glClearColor(0.1, 0.1, 0.15, 1.0);
             glClearDepth(1.0);
@@ -441,7 +435,7 @@ const GearsDemo = () => {
             glUseProgram(state.program);
 
             // Set up projection
-            const projection = mat4Perspective(Math.PI / 4, aspectRef.current, 1.0, 100.0);
+            const projection = mat4Perspective(Math.PI / 4, aspect, 1.0, 100.0);
             glUniformMatrix4fv(state.uniforms.projection, 1, false, projection);
 
             // Light direction
@@ -501,7 +495,7 @@ const GearsDemo = () => {
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
         aspectRef.current = width / height;
-        glViewport(0, 0, width, height);
+        sizeRef.current = { width, height };
     }, []);
 
     return (
@@ -539,8 +533,9 @@ const GearsDemo = () => {
                 >
                     <GtkGLArea
                         ref={glAreaRef}
+                        useEs
                         hasDepthBuffer
-                        onRealize={handleRealize}
+                        vexpand
                         onUnrealize={handleUnrealize}
                         onRender={handleRender}
                         onResize={handleResize}

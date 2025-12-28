@@ -104,7 +104,7 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     }
 
     public override unmount(): void {
-        this.container.close();
+        this.container.destroy();
         super.unmount();
     }
 
