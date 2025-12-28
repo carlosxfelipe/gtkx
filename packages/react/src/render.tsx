@@ -142,7 +142,7 @@ export const update = (element: ReactNode): void => {
  * Unmounts the React component tree and stops the GTK main loop.
  * Typically used as the `onCloseRequest` handler for the application window.
  *
- * @returns `true` to indicate the close request was handled
+ * @returns `false` to allow GTK to close the window
  *
  * @example
  * ```tsx
@@ -164,5 +164,5 @@ export const quit = () => {
         }, 0);
     });
 
-    return true;
+    return false;
 };

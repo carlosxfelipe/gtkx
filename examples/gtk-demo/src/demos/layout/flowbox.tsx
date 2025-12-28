@@ -2,52 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFlowBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import { css } from "@gtkx/css";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFlowBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
-import { useState } from "react";
-
-const colors = ["#e01b24", "#ff7800", "#f5c211", "#33d17a", "#3584e4", "#9141ac"];
-
-const colorBox = (color: string) => css\`
-    background: \${color};
-    border-radius: 4px;
-\`;
-
-const FlowBoxDemo = () => {
-    const [items, setItems] = useState([1, 2, 3, 4, 5, 6, 7, 8]);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Color Palette */}
-            <GtkFlowBox
-                selectionMode={Gtk.SelectionMode.SINGLE}
-                maxChildrenPerLine={6}
-                minChildrenPerLine={2}
-                columnSpacing={8}
-                rowSpacing={8}
-                homogeneous
-            >
-                {colors.map((color) => (
-                    <GtkBox
-                        key={color}
-                        widthRequest={80}
-                        heightRequest={60}
-                        cssClasses={[colorBox(color)]}
-                    />
-                ))}
-            </GtkFlowBox>
-
-            {/* Dynamic Items */}
-            <GtkFlowBox columnSpacing={4} rowSpacing={4}>
-                {items.map((item) => (
-                    <GtkButton key={item} label={\`Item \${item}\`} />
-                ))}
-            </GtkFlowBox>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./flowbox.tsx?raw";
 
 const colors = [
     "#e01b24",

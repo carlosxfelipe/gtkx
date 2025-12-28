@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GridChild, GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./sliding-puzzle.tsx?raw";
 
 const GRID_SIZE = 4;
 const TOTAL_TILES = GRID_SIZE * GRID_SIZE;
@@ -224,57 +225,6 @@ const SlidingPuzzleDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkGrid, GtkLabel } from "@gtkx/react";
-
-const GRID_SIZE = 4;
-type Board = (number | null)[];
-
-const SlidingPuzzleDemo = () => {
-  const [board, setBoard] = useState<Board>(shuffleBoard());
-  const [moves, setMoves] = useState(0);
-
-  const handleTileClick = (index: number) => {
-    const emptyIndex = board.indexOf(null);
-    if (!canMove(index, emptyIndex)) return;
-
-    const newBoard = [...board];
-    newBoard[emptyIndex] = newBoard[index];
-    newBoard[index] = null;
-
-    setBoard(newBoard);
-    setMoves((m) => m + 1);
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-      <GtkLabel label={\`Moves: \${moves}\`} />
-      <GtkGrid rowSpacing={4} columnSpacing={4}>
-        {board.map((tile, index) => (
-          <GridChild key={index} column={index % 4} row={Math.floor(index / 4)}>
-            {tile !== null ? (
-              <GtkButton
-                label={String(tile)}
-                widthRequest={60}
-                heightRequest={60}
-                onClicked={() => handleTileClick(index)}
-              />
-            ) : (
-              <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={0}
-                widthRequest={60}
-                heightRequest={60}
-              />
-            )}
-          </GridChild>
-        ))}
-      </GtkGrid>
-    </GtkBox>
-  );
-};`;
 
 export const slidingPuzzleDemo: Demo = {
     id: "sliding-puzzle",

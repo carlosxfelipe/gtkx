@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import sourceCode from "./application.tsx?raw";
 
 const ApplicationDemo = () => {
     return (
@@ -74,32 +75,6 @@ const ApplicationDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { render, GtkApplicationWindow, GtkBox, GtkLabel, GtkButton, useApplication } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-
-const App = () => {
-  // Get the quit function from ApplicationContext
-  const { quit } = useApplication();
-
-  return (
-    <GtkApplicationWindow
-      title="My Application"
-      defaultWidth={600}
-      defaultHeight={400}
-      onCloseRequest={quit}  // Handle window close
-    >
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-        <GtkLabel label="Welcome to GTKX!" cssClasses={["title-1"]} />
-        <GtkLabel label="Build native GTK4 apps with React" cssClasses={["dim-label"]} />
-        <GtkButton label="Quit" onClicked={quit} cssClasses={["destructive-action"]} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
-};
-
-// Application ID follows reverse-DNS convention
-render(<App />, "com.example.myapp");`;
 
 export const applicationDemo: Demo = {
     id: "application",

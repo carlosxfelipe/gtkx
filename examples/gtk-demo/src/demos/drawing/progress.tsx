@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkLevelBar, GtkProgressBar } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./progress.tsx?raw";
 
 const ProgressDemo = () => {
     const [progress, setProgress] = useState(0.4);
@@ -231,72 +232,6 @@ const ProgressDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState, useEffect } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkProgressBar, GtkLevelBar, GtkButton, GtkLabel } from "@gtkx/react";
-
-const ProgressDemo = () => {
-  const [progress, setProgress] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  useEffect(() => {
-    if (!isAnimating) return;
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 1) {
-          setIsAnimating(false);
-          return 0;
-        }
-        return prev + 0.02;
-      });
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [isAnimating]);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Progress bar with animation */}
-      <GtkProgressBar fraction={progress} showText />
-      <GtkButton
-        label="Start"
-        onClicked={() => setIsAnimating(true)}
-      />
-
-      {/* Progress bar with custom text */}
-      <GtkProgressBar
-        fraction={0.5}
-        showText
-        text="Downloading..."
-      />
-
-      {/* Continuous level bar */}
-      <GtkLevelBar
-        value={0.7}
-        minValue={0}
-        maxValue={1}
-        mode={Gtk.LevelBarMode.CONTINUOUS}
-      />
-
-      {/* Discrete level bar (rating style) */}
-      <GtkLevelBar
-        value={3}
-        minValue={0}
-        maxValue={5}
-        mode={Gtk.LevelBarMode.DISCRETE}
-      />
-
-      {/* Vertical progress bar */}
-      <GtkProgressBar
-        orientation={Gtk.Orientation.VERTICAL}
-        fraction={0.5}
-        heightRequest={100}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const progressDemo: Demo = {
     id: "progress",

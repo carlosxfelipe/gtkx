@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkPasswordEntry } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./password-entry.tsx?raw";
 
 const PasswordEntryDemo = () => {
     const [password, setPassword] = useState("");
@@ -124,43 +125,6 @@ const PasswordEntryDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPasswordEntry } from "@gtkx/react";
-import { useState } from "react";
-
-const PasswordEntryDemo = () => {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const passwordsMatch = password === confirmPassword && password.length > 0;
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkLabel label="Password:" halign={Gtk.Align.START} />
-      <GtkPasswordEntry
-        text={password}
-        placeholderText="Enter your password..."
-        showPeekIcon
-        onChanged={(entry) => setPassword(entry.getText())}
-      />
-
-      <GtkLabel label="Confirm Password:" halign={Gtk.Align.START} />
-      <GtkPasswordEntry
-        text={confirmPassword}
-        placeholderText="Confirm your password..."
-        showPeekIcon
-        onChanged={(entry) => setConfirmPassword(entry.getText())}
-      />
-
-      <GtkButton
-        label="Submit"
-        cssClasses={["suggested-action"]}
-        sensitive={passwordsMatch}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const passwordEntryDemo: Demo = {
     id: "password-entry",

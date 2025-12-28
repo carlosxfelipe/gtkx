@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkProgressBar, GtkScale } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./audio.tsx?raw";
 
 const AudioDemo = () => {
     const [isPlaying, setIsPlaying] = useState(false);
@@ -225,51 +226,6 @@ const AudioDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useMemo, useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkVideo, GtkButton, GtkScale, GtkImage } from "@gtkx/react";
-
-const AudioDemo = () => {
-  const [volume, setVolume] = useState(0.75);
-  const volumeAdjustment = useMemo(() => new Gtk.Adjustment(0.75, 0, 1, 0.05, 0.1, 0), []);
-  const progressAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 100, 1, 10, 0), []);
-
-  // GtkVideo can be used for audio playback
-  // When playing audio files, it shows only controls without video
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Using GtkVideo for audio */}
-      <GtkVideo
-        file="/path/to/audio.mp3"
-        autoplay={false}
-      />
-
-      {/* Custom audio player UI using standard widgets */}
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-        <GtkButton>
-          <GtkImage iconName="media-playback-start-symbolic" />
-        </GtkButton>
-        <GtkScale
-          orientation={Gtk.Orientation.HORIZONTAL}
-          adjustment={progressAdjustment}
-          hexpand
-        />
-        <GtkImage iconName="audio-volume-high-symbolic" />
-        <GtkScale
-          orientation={Gtk.Orientation.HORIZONTAL}
-          onValueChanged={(scale: Gtk.Range) => setVolume(scale.getValue())}
-          adjustment={volumeAdjustment}
-          widthRequest={100}
-        />
-      </GtkBox>
-    </GtkBox>
-  );
-};
-
-// Note: For advanced audio control, use GtkMediaStream directly.
-// GTK4 uses GStreamer for media playback, supporting formats like
-// MP3, OGG, FLAC, WAV depending on installed plugins.`;
 
 export const audioDemo: Demo = {
     id: "audio",

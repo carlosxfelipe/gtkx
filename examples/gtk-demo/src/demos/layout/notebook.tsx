@@ -1,34 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkImage, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
-import { useState } from "react";
-
-const NotebookDemo = () => {
-    const [currentPage, setCurrentPage] = useState(0);
-    const [tabs, setTabs] = useState([
-        { id: 1, title: "Tab 1", content: "Content for Tab 1" },
-        { id: 2, title: "Tab 2", content: "Content for Tab 2" },
-        { id: 3, title: "Tab 3", content: "Content for Tab 3" },
-    ]);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <GtkNotebook page={currentPage} onSwitchPage={(_self, _page, pageNum) => setCurrentPage(pageNum)}>
-                {tabs.map((tab) => (
-                    <Notebook.Page key={tab.id} label={tab.title}>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} margin={20}>
-                            <GtkLabel label={tab.content} />
-                        </GtkBox>
-                    </Notebook.Page>
-                ))}
-            </GtkNotebook>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./notebook.tsx?raw";
 
 interface Tab {
     id: number;
@@ -238,6 +212,73 @@ const NotebookDemo = () => {
                         </GtkNotebook>
                     </GtkBox>
                 </GtkBox>
+            </GtkBox>
+
+            {/* Custom Tab Widgets */}
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Custom Tab Widgets" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="Use Notebook.PageTab to render custom widgets (like icons) in tab labels instead of plain text."
+                    wrap
+                    cssClasses={["dim-label"]}
+                    halign={Gtk.Align.START}
+                />
+                <GtkNotebook cssClasses={["card"]}>
+                    <Notebook.Page>
+                        <Notebook.PageTab>
+                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                <GtkImage iconName="user-home-symbolic" />
+                                <GtkLabel label="Home" />
+                            </GtkBox>
+                        </Notebook.PageTab>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginStart={16}
+                            marginEnd={16}
+                            marginTop={16}
+                            marginBottom={16}
+                        >
+                            <GtkLabel label="Home page content" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </Notebook.Page>
+                    <Notebook.Page>
+                        <Notebook.PageTab>
+                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                <GtkImage iconName="emblem-documents-symbolic" />
+                                <GtkLabel label="Documents" />
+                            </GtkBox>
+                        </Notebook.PageTab>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginStart={16}
+                            marginEnd={16}
+                            marginTop={16}
+                            marginBottom={16}
+                        >
+                            <GtkLabel label="Documents page content" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </Notebook.Page>
+                    <Notebook.Page>
+                        <Notebook.PageTab>
+                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                <GtkImage iconName="emblem-system-symbolic" />
+                                <GtkLabel label="Settings" />
+                            </GtkBox>
+                        </Notebook.PageTab>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginStart={16}
+                            marginEnd={16}
+                            marginTop={16}
+                            marginBottom={16}
+                        >
+                            <GtkLabel label="Settings page content" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </Notebook.Page>
+                </GtkNotebook>
             </GtkBox>
 
             {/* Controlled Page */}

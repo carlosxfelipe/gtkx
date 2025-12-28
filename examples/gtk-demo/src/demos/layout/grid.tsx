@@ -2,60 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GridChild, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
-
-const GridDemo = () => {
-    const [gridSize, setGridSize] = useState({ rows: 3, cols: 3 });
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Basic Grid */}
-            <GtkGrid rowSpacing={8} columnSpacing={8}>
-                <GridChild column={0} row={0}>
-                    <GtkButton label="(0,0)" />
-                </GridChild>
-                <GridChild column={1} row={0}>
-                    <GtkButton label="(1,0)" />
-                </GridChild>
-                <GridChild column={0} row={1}>
-                    <GtkButton label="(0,1)" />
-                </GridChild>
-                <GridChild column={1} row={1}>
-                    <GtkButton label="(1,1)" />
-                </GridChild>
-            </GtkGrid>
-
-            {/* Column and Row Spanning */}
-            <GtkGrid rowSpacing={8} columnSpacing={8}>
-                <GridChild column={0} row={0} columnSpan={2}>
-                    <GtkButton label="Spans 2 columns" hexpand />
-                </GridChild>
-                <GridChild column={2} row={0} rowSpan={2}>
-                    <GtkButton label="Spans 2 rows" vexpand />
-                </GridChild>
-            </GtkGrid>
-
-            {/* Form Layout */}
-            <GtkGrid rowSpacing={8} columnSpacing={12}>
-                <GridChild column={0} row={0}>
-                    <GtkLabel label="Name:" halign={Gtk.Align.END} />
-                </GridChild>
-                <GridChild column={1} row={0}>
-                    <GtkEntry hexpand />
-                </GridChild>
-                <GridChild column={0} row={1}>
-                    <GtkLabel label="Email:" halign={Gtk.Align.END} />
-                </GridChild>
-                <GridChild column={1} row={1}>
-                    <GtkEntry hexpand />
-                </GridChild>
-            </GtkGrid>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./grid.tsx?raw";
 
 const GridDemo = () => {
     const [gridSize, setGridSize] = useState({ rows: 3, cols: 3 });

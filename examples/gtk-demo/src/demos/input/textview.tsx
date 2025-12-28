@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./textview.tsx?raw";
 
 const getBufferText = (buffer: Gtk.TextBuffer): string => {
     beginBatch();
@@ -163,53 +164,6 @@ const TextViewDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { beginBatch, endBatch } from "@gtkx/ffi";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useState } from "react";
-
-const getBufferText = (buffer: Gtk.TextBuffer): string => {
-  beginBatch();
-  const startIter = new Gtk.TextIter();
-  const endIter = new Gtk.TextIter();
-  buffer.getStartIter(startIter);
-  buffer.getEndIter(endIter);
-  endBatch();
-  return buffer.getText(startIter, endIter, true);
-};
-
-const TextViewDemo = () => {
-  const [buffer] = useState(() => new Gtk.TextBuffer());
-  const [charCount, setCharCount] = useState(0);
-
-  useEffect(() => {
-    const handlerId = buffer.connect("changed", () => {
-      const text = getBufferText(buffer);
-      setCharCount(text.length);
-    });
-    return () => GObject.signalHandlerDisconnect(buffer, handlerId);
-  }, [buffer]);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkFrame>
-        <GtkScrolledWindow minContentHeight={200}>
-          <GtkTextView
-            buffer={buffer}
-            leftMargin={12}
-            rightMargin={12}
-            topMargin={12}
-            bottomMargin={12}
-            wrapMode={Gtk.WrapMode.WORD_CHAR}
-          />
-        </GtkScrolledWindow>
-      </GtkFrame>
-      <GtkLabel label={\`Characters: \${charCount}\`} />
-    </GtkBox>
-  );
-};`;
 
 export const textviewDemo: Demo = {
     id: "textview",

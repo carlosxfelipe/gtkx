@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./entry.tsx?raw";
 
 const EntryDemo = () => {
     const [basicText, setBasicText] = useState("");
@@ -126,40 +127,6 @@ const EntryDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkEntry, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
-
-const EntryDemo = () => {
-  const [text, setText] = useState("");
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkEntry
-        text={text}
-        placeholderText="Enter some text..."
-        onChanged={(entry) => setText(entry.getText())}
-        onActivate={() => console.log("Enter pressed!")}
-      />
-
-      <GtkLabel label={\`Value: "\${text}"\`} cssClasses={["dim-label"]} />
-
-      {/* Entry with max length */}
-      <GtkEntry placeholderText="Max 20 chars..." maxLength={20} />
-
-      {/* Non-editable entry */}
-      <GtkEntry text="Read-only text" editable={false} />
-
-      {/* Entry with icons */}
-      <GtkEntry
-        placeholderText="Email..."
-        primaryIconName="mail-symbolic"
-        secondaryIconName="edit-clear-symbolic"
-      />
-    </GtkBox>
-  );
-};`;
 
 export const entryDemo: Demo = {
     id: "entry",

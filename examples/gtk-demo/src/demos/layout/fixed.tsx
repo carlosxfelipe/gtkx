@@ -2,34 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { FixedChild, GtkBox, GtkButton, GtkFixed, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { FixedChild, GtkBox, GtkButton, GtkFixed, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
-
-const FixedDemo = () => {
-    const [positions, setPositions] = useState([
-        { x: 20, y: 20, label: "A" },
-        { x: 100, y: 50, label: "B" },
-        { x: 50, y: 100, label: "C" },
-    ]);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <GtkLabel label="GtkFixed allows absolute positioning of widgets." />
-
-            <GtkFixed widthRequest={300} heightRequest={200}>
-                {positions.map((pos) => (
-                    <FixedChild key={pos.label} x={pos.x} y={pos.y}>
-                        <GtkLabel label={pos.label} />
-                    </FixedChild>
-                ))}
-            </GtkFixed>
-
-            <GtkLabel label="Warning: Fixed positioning doesn't adapt to themes or translations." />
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./fixed.tsx?raw";
 
 interface Position {
     x: number;

@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkExpander, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./expander.tsx?raw";
 
 const ExpanderDemo = () => {
     const [basicExpanded, setBasicExpanded] = useState(false);
@@ -178,58 +179,6 @@ const ExpanderDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkExpander, GtkLabel, GtkCheckButton } from "@gtkx/react";
-
-const ExpanderDemo = () => {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      {/* Basic Expander */}
-      <GtkExpander
-        label="Click to expand"
-        expanded={expanded}
-        onNotifyExpanded={() => setExpanded(!expanded)}
-      >
-        <GtkLabel label="Hidden content revealed!" />
-      </GtkExpander>
-
-      {/* Details Section */}
-      <GtkExpander label="More details">
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-          <GtkLabel label="Size: 2.4 MB" />
-          <GtkLabel label="Created: December 15, 2024" />
-        </GtkBox>
-      </GtkExpander>
-
-      {/* Settings with checkboxes */}
-      <GtkExpander label="Advanced Options" expanded>
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-          <GtkCheckButton label="Enable debug mode" />
-          <GtkCheckButton label="Show hidden files" />
-          <GtkCheckButton label="Auto-save on exit" active />
-        </GtkBox>
-      </GtkExpander>
-
-      {/* FAQ Style - multiple expanders */}
-      <GtkExpander label="What is GTKX?">
-        <GtkLabel
-          label="GTKX is a React framework for GTK4 apps."
-          wrap
-        />
-      </GtkExpander>
-      <GtkExpander label="How do I get started?">
-        <GtkLabel
-          label="Use 'npx gtkx create my-app' to start."
-          wrap
-        />
-      </GtkExpander>
-    </GtkBox>
-  );
-};`;
 
 export const expanderDemo: Demo = {
     id: "expander",

@@ -12,6 +12,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./gridview.tsx?raw";
 
 interface IconItem {
     id: string;
@@ -100,7 +101,7 @@ const allIcons: IconItem[] = iconCategories.flatMap((cat) =>
     })),
 );
 
-const IconViewDemo = () => {
+const GridViewDemo = () => {
     const [searchText, setSearchText] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedIcon, setSelectedIcon] = useState<IconItem | null>(null);
@@ -130,7 +131,7 @@ const IconViewDemo = () => {
             marginTop={20}
             marginBottom={20}
         >
-            <GtkLabel label="Icon View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Grid View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
                 label="GridView displays items in a grid layout with icons and labels. It supports selection, activation, and efficient virtualization for large collections."
@@ -261,58 +262,11 @@ const IconViewDemo = () => {
     );
 };
 
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  GtkBox,
-  GtkImage,
-  GtkLabel,
-  GtkScrolledWindow,
-  GridView,
-  ListItem,
-} from "@gtkx/react";
-
-interface IconItem {
-  id: string;
-  name: string;
-  icon: string;
-}
-
-const icons: IconItem[] = [
-  { id: "new", name: "New", icon: "document-new-symbolic" },
-  { id: "open", name: "Open", icon: "document-open-symbolic" },
-  { id: "save", name: "Save", icon: "document-save-symbolic" },
-];
-
-const IconViewDemo = () => {
-  const [selected, setSelected] = useState<IconItem | null>(null);
-
-  return (
-    <GtkScrolledWindow heightRequest={200}>
-      <GridView<IconItem>
-        minColumns={3}
-        maxColumns={6}
-        onActivate={(_, position) => setSelected(icons[position])}
-        renderItem={(item) => (
-          <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-            <GtkImage iconName={item?.icon ?? ""} pixelSize={32} />
-            <GtkLabel label={item?.name ?? ""} />
-          </GtkBox>
-        )}
-      >
-        {icons.map((icon) => (
-          <ListItem key={icon.id} id={icon.id} value={icon} />
-        ))}
-      </GridView>
-    </GtkScrolledWindow>
-  );
-};`;
-
-export const iconviewDemo: Demo = {
-    id: "iconview",
-    title: "Icon View",
-    description: "Grid display of icons with labels using GridView",
+export const gridviewDemo: Demo = {
+    id: "gridview",
+    title: "Grid View",
+    description: "Grid display of items with icons and labels",
     keywords: ["gridview", "icons", "grid", "thumbnails", "GtkGridView", "gallery"],
-    component: IconViewDemo,
+    component: GridViewDemo,
     sourceCode,
 };

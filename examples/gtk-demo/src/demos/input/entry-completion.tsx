@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkEntry, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./entry-completion.tsx?raw";
 
 const countries = [
     "Argentina",
@@ -108,7 +109,7 @@ const EntryCompletionDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="This demo filters a list of countries as you type. In a real GTK application, you would use GtkEntryCompletion attached to a GtkEntry for native completion popups. This React-based demo shows the concept with a custom suggestion display."
+                    label="This demo filters a list of countries as you type, displaying matching suggestions as you enter text. The filtering is performed in React state, making it easy to customize the matching logic and presentation."
                     wrap
                     cssClasses={["dim-label"]}
                 />
@@ -116,54 +117,6 @@ const EntryCompletionDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkEntry, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
-
-const countries = [
-  "Argentina", "Australia", "Austria", "Belgium", "Brazil",
-  "Canada", "Chile", "China", "Colombia", "Denmark",
-  // ... more countries
-];
-
-const EntryCompletionDemo = () => {
-  const [text, setText] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const handleTextChange = (newText: string) => {
-    setText(newText);
-    if (newText.length > 0) {
-      const filtered = countries.filter((country) =>
-        country.toLowerCase().startsWith(newText.toLowerCase()),
-      );
-      setSuggestions(filtered.slice(0, 5));
-      setShowSuggestions(filtered.length > 0);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkEntry
-        text={text}
-        placeholderText="Type a country name..."
-        onChanged={(entry) => handleTextChange(entry.getText())}
-      />
-
-      {showSuggestions && suggestions.length > 0 && (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-          {suggestions.map((suggestion) => (
-            <GtkLabel key={suggestion} label={suggestion} />
-          ))}
-        </GtkBox>
-      )}
-    </GtkBox>
-  );
-};`;
 
 export const entryCompletionDemo: Demo = {
     id: "entry-completion",

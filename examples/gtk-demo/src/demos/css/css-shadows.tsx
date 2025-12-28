@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./css-shadows.tsx?raw";
 
 const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
 
@@ -301,53 +302,6 @@ const CssShadowsDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { injectGlobal } from "@gtkx/css";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/react";
-
-// Define shadow styles
-injectGlobal\`
-  .shadow-subtle {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  }
-
-  .shadow-medium {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-  }
-
-  .shadow-large {
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-  }
-
-  .shadow-colored {
-    box-shadow: 0 8px 20px rgba(53, 132, 228, 0.4);
-  }
-
-  .shadow-glow {
-    box-shadow: 0 0 20px rgba(53, 132, 228, 0.6);
-  }
-\`;
-
-const ShadowDemo = () => (
-  <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
-    <GtkBox cssClasses={["card", "shadow-subtle"]}>
-      <GtkLabel label="Subtle" />
-    </GtkBox>
-
-    <GtkBox cssClasses={["card", "shadow-medium"]}>
-      <GtkLabel label="Medium" />
-    </GtkBox>
-
-    <GtkBox cssClasses={["card", "shadow-large"]}>
-      <GtkLabel label="Large" />
-    </GtkBox>
-
-    <GtkBox cssClasses={["card", "shadow-glow"]}>
-      <GtkLabel label="Glow" />
-    </GtkBox>
-  </GtkBox>
-);`;
 
 export const cssShadowsDemo: Demo = {
     id: "css-shadows",

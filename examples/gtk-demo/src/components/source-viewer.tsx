@@ -1,9 +1,40 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import * as GtkSource from "@gtkx/ffi/gtksource";
+import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSourceView } from "@gtkx/react";
+import { useMemo } from "react";
 import { useDemo } from "../context/demo-context.js";
 
 export const SourceViewer = () => {
     const { currentDemo } = useDemo();
+
+    const buffer = useMemo(() => {
+        const buf = new GtkSource.Buffer();
+        const langManager = GtkSource.LanguageManager.getDefault();
+        const language = langManager.guessLanguage("example.tsx");
+
+        if (language) {
+            buf.setLanguage(language);
+        }
+
+        const schemeManager = GtkSource.StyleSchemeManager.getDefault();
+        const scheme = schemeManager.getScheme("Adwaita-dark");
+
+        if (scheme) {
+            buf.setStyleScheme(scheme);
+        }
+
+        buf.setHighlightSyntax(true);
+
+        return buf;
+    }, []);
+
+    useMemo(() => {
+        if (currentDemo?.sourceCode) {
+            buffer.setText(currentDemo.sourceCode, -1);
+        } else {
+            buffer.setText("", 0);
+        }
+    }, [buffer, currentDemo?.sourceCode]);
 
     if (!currentDemo) {
         return (
@@ -34,16 +65,17 @@ export const SourceViewer = () => {
             </GtkBox>
 
             <GtkScrolledWindow vexpand hexpand>
-                <GtkLabel
-                    label={currentDemo.sourceCode}
-                    selectable
-                    halign={Gtk.Align.START}
-                    valign={Gtk.Align.START}
-                    cssClasses={["monospace"]}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+                <GtkSourceView
+                    buffer={buffer}
+                    editable={false}
+                    showLineNumbers
+                    highlightCurrentLine={false}
+                    tabWidth={4}
+                    leftMargin={12}
+                    rightMargin={12}
+                    topMargin={12}
+                    bottomMargin={12}
+                    monospace
                 />
             </GtkScrolledWindow>
         </GtkBox>

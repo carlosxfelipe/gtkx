@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkStack, StackPage } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./stack.tsx?raw";
 
 const StackDemo = () => {
     const [currentPage, setCurrentPage] = useState("home");
@@ -187,42 +188,6 @@ const StackDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkStack, StackPage } from "@gtkx/react";
-
-const StackDemo = () => {
-    const [currentPage, setCurrentPage] = useState("home");
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-            {/* Navigation buttons */}
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                <GtkButton label="Home" onClicked={() => setCurrentPage("home")} />
-                <GtkButton label="Search" onClicked={() => setCurrentPage("search")} />
-                <GtkButton label="Settings" onClicked={() => setCurrentPage("settings")} />
-            </GtkBox>
-
-            {/* Stack with animated transitions */}
-            <GtkStack
-                visibleChildName={currentPage}
-                transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT}
-                transitionDuration={300}
-            >
-                <StackPage name="home" title="Home" iconName="go-home-symbolic">
-                    <GtkLabel label="Home Page" cssClasses={["title-1"]} />
-                </StackPage>
-                <StackPage name="search" title="Search" iconName="system-search-symbolic">
-                    <GtkLabel label="Search Page" cssClasses={["title-1"]} />
-                </StackPage>
-                <StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
-                    <GtkLabel label="Settings Page" cssClasses={["title-1"]} />
-                </StackPage>
-            </GtkStack>
-        </GtkBox>
-    );
-};`;
 
 export const stackDemo: Demo = {
     id: "stack",

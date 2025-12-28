@@ -14,6 +14,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./preferences.tsx?raw";
 
 const PreferencesDemo = () => {
     const [notifications, setNotifications] = useState(true);
@@ -107,61 +108,6 @@ const PreferencesDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  ActionRow,
-  AdwActionRow,
-  AdwPreferencesGroup,
-  AdwPreferencesPage,
-  AdwSwitchRow,
-  AdwComboRow,
-  GtkBox,
-  GtkImage,
-  GtkSwitch,
-  SimpleListItem,
-} from "@gtkx/react";
-
-const PreferencesDemo = () => {
-  return (
-    <AdwPreferencesPage title="Settings" iconName="preferences-system-symbolic">
-      <AdwPreferencesGroup
-        title="Editor"
-        description="Configure editing behavior"
-      >
-        <AdwSwitchRow
-          title="Auto-save"
-          subtitle="Save changes automatically"
-          active
-        />
-      </AdwPreferencesGroup>
-
-      <AdwPreferencesGroup title="Appearance">
-        <AdwComboRow
-          title="Theme"
-          subtitle="Application color scheme"
-          selected={0}
-        >
-          <SimpleListItem id="system" value="System Default" />
-          <SimpleListItem id="light" value="Light" />
-          <SimpleListItem id="dark" value="Dark" />
-        </AdwComboRow>
-      </AdwPreferencesGroup>
-
-      <AdwPreferencesGroup title="Notifications">
-        <AdwActionRow title="Push Notifications">
-          <ActionRow.Prefix>
-            <GtkImage iconName="preferences-system-notifications-symbolic" />
-          </ActionRow.Prefix>
-          <ActionRow.Suffix>
-            <GtkSwitch valign={Gtk.Align.CENTER} />
-          </ActionRow.Suffix>
-        </AdwActionRow>
-      </AdwPreferencesGroup>
-    </AdwPreferencesPage>
-  );
-};`;
 
 export const preferencesDemo: Demo = {
     id: "preferences",

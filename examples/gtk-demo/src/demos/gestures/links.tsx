@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkLinkButton } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./links.tsx?raw";
 
 const LinksDemo = () => {
     const [clickedLink, setClickedLink] = useState<string | null>(null);
@@ -194,48 +195,6 @@ const LinksDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkLinkButton } from "@gtkx/react";
-
-const LinksDemo = () => {
-  const [clickedUri, setClickedUri] = useState<string | null>(null);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Basic link button - shows URL as label */}
-      <GtkLinkButton uri="https://gtk.org" />
-
-      {/* Link button with custom label */}
-      <GtkLinkButton
-        uri="https://gnome.org"
-        label="Visit GNOME"
-      />
-
-      {/* Intercept link clicks to handle them yourself */}
-      <GtkLinkButton
-        uri="app://settings"
-        label="Open Settings"
-        onActivateLink={(self) => {
-          setClickedUri(self.getUri());
-          return true; // Return true to prevent default browser opening
-        }}
-      />
-
-      {/* Control visited state */}
-      <GtkLinkButton
-        uri="https://example.com"
-        label="Already Visited"
-        visited
-      />
-
-      {clickedUri && (
-        <GtkLabel label={\`Clicked: \${clickedUri}\`} />
-      )}
-    </GtkBox>
-  );
-};`;
 
 export const linksDemo: Demo = {
     id: "links",

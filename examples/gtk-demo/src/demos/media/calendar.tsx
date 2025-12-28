@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCalendar, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./calendar.tsx?raw";
 
 const CalendarDemo = () => {
     const [selectedDay, setSelectedDay] = useState(new Date().getDate());
@@ -210,55 +211,6 @@ const CalendarWithNavigation = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkCalendar, GtkLabel, GtkButton } from "@gtkx/react";
-
-const CalendarDemo = () => {
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Basic calendar with date selection */}
-      <GtkCalendar
-        day={selectedDay}
-        month={selectedMonth}
-        year={selectedYear}
-        showHeading
-        showDayNames
-        onDaySelected={(self) => {
-          setSelectedDay(self.getDay());
-          setSelectedMonth(self.getMonth());
-          setSelectedYear(self.getYear());
-        }}
-      />
-
-      {/* Calendar with week numbers */}
-      <GtkCalendar
-        showHeading
-        showDayNames
-        showWeekNumbers
-      />
-
-      {/* Minimal calendar */}
-      <GtkCalendar
-        showHeading={false}
-        showDayNames={false}
-      />
-
-      {/* Navigation events */}
-      <GtkCalendar
-        onNextMonth={(self) => console.log("Next month:", self.getMonth())}
-        onPrevMonth={(self) => console.log("Previous month:", self.getMonth())}
-        onNextYear={(self) => console.log("Next year:", self.getYear())}
-        onPrevYear={(self) => console.log("Previous year:", self.getYear())}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const calendarDemo: Demo = {
     id: "calendar",

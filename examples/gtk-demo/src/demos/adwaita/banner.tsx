@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwBanner, GtkBox, GtkButton, GtkEntry, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./banner.tsx?raw";
 
 const BannerDemo = () => {
     const [showInfo, setShowInfo] = useState(true);
@@ -230,47 +231,6 @@ const BannerDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Adw from "@gtkx/ffi/adw";
-import { AdwBanner, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
-
-const BannerDemo = () => {
-  const [isOffline, setIsOffline] = useState(true);
-  const [hasUpdate, setHasUpdate] = useState(true);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Connectivity status banner */}
-      <AdwBanner
-        title="You are currently offline"
-        buttonLabel="Retry"
-        revealed={isOffline}
-        onButtonClicked={() => setIsOffline(false)}
-      />
-
-      {/* Update available banner */}
-      <AdwBanner
-        title="A new version is available"
-        buttonLabel="Update Now"
-        buttonStyle={Adw.BannerButtonStyle.SUGGESTED}
-        revealed={hasUpdate}
-        onButtonClicked={() => {
-          setHasUpdate(false);
-          // Trigger update...
-        }}
-      />
-
-      {/* App content */}
-      <GtkLabel label="Your app content here" />
-
-      <GtkButton
-        label="Toggle Offline"
-        onClicked={() => setIsOffline(!isOffline)}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const bannerDemo: Demo = {
     id: "banner",

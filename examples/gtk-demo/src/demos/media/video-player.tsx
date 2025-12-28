@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkVideo } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import sourceCode from "./video-player.tsx?raw";
 
 const VideoPlayerDemo = () => {
     return (
@@ -204,42 +205,6 @@ const VideoPlayerDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkVideo, GtkMediaControls } from "@gtkx/react";
-
-const VideoPlayerDemo = () => {
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Basic video player */}
-      <GtkVideo
-        file="/path/to/video.mp4"
-        widthRequest={640}
-        heightRequest={360}
-      />
-
-      {/* Autoplay video */}
-      <GtkVideo
-        file="/path/to/intro.webm"
-        autoplay
-        widthRequest={400}
-        heightRequest={225}
-      />
-
-      {/* Looping video */}
-      <GtkVideo
-        file="/path/to/animation.mp4"
-        autoplay
-        loop
-        widthRequest={300}
-        heightRequest={300}
-      />
-
-      {/* Standalone media controls (requires a MediaStream) */}
-      {/* <GtkMediaControls mediaStream={stream} /> */}
-    </GtkBox>
-  );
-};`;
 
 export const videoPlayerDemo: Demo = {
     id: "video-player",

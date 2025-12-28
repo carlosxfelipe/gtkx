@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./textundo.tsx?raw";
 
 const TextUndoDemo = () => {
     const [buffer] = useState(() => new Gtk.TextBuffer());
@@ -130,42 +131,6 @@ const TextUndoDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useState } from "react";
-
-const TextUndoDemo = () => {
-  const [buffer] = useState(() => new Gtk.TextBuffer());
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
-  useEffect(() => {
-    buffer.setEnableUndo(true);
-
-    const handler = buffer.connect("changed", () => {
-      setCanUndo(buffer.getCanUndo());
-      setCanRedo(buffer.getCanRedo());
-    });
-
-    return () => GObject.signalHandlerDisconnect(buffer, handler);
-  }, [buffer]);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-        <GtkButton label="Undo" onClicked={() => buffer.undo()} sensitive={canUndo} />
-        <GtkButton label="Redo" onClicked={() => buffer.redo()} sensitive={canRedo} />
-      </GtkBox>
-
-      <GtkFrame>
-        <GtkScrolledWindow minContentHeight={150}>
-          <GtkTextView buffer={buffer} wrapMode={Gtk.WrapMode.WORD_CHAR} />
-        </GtkScrolledWindow>
-      </GtkFrame>
-    </GtkBox>
-  );
-};`;
 
 export const textundoDemo: Demo = {
     id: "textundo",

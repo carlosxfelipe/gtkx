@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkLabel, GtkSpinButton } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./spinbutton.tsx?raw";
 
 const SpinButtonDemo = () => {
     const [basicValue, setBasicValue] = useState(50);
@@ -135,71 +136,6 @@ const SpinButtonDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkSpinButton, GtkLabel, GtkFrame } from "@gtkx/react";
-
-const SpinButtonDemo = () => {
-  const [basicValue, setBasicValue] = useState(50);
-  const [floatValue, setFloatValue] = useState(2.5);
-  const [hours, setHours] = useState(12);
-  const [minutes, setMinutes] = useState(0);
-  const [seconds, setSeconds] = useState(0);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      {/* Basic Integer Spin Button */}
-      <GtkFrame label="Basic Integer">
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-          <GtkLabel label="Value (0-100):" />
-          <GtkSpinButton
-            value={basicValue}
-            onValueChanged={setBasicValue}
-            adjustment={{ lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }}
-            digits={0}
-          />
-        </GtkBox>
-      </GtkFrame>
-
-      {/* Floating Point Spin Button */}
-      <GtkFrame label="Floating Point">
-        <GtkSpinButton
-          value={floatValue}
-          onValueChanged={setFloatValue}
-          adjustment={{ lower: 0, upper: 10, stepIncrement: 0.1, pageIncrement: 1 }}
-          digits={2}
-        />
-      </GtkFrame>
-
-      {/* Time Input with wrap enabled */}
-      <GtkFrame label="Time Input">
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-          <GtkSpinButton
-            value={hours}
-            onValueChanged={setHours}
-            adjustment={{ lower: 0, upper: 23, stepIncrement: 1 }}
-            wrap
-          />
-          <GtkLabel label=":" />
-          <GtkSpinButton
-            value={minutes}
-            onValueChanged={setMinutes}
-            adjustment={{ lower: 0, upper: 59, stepIncrement: 1 }}
-            wrap
-          />
-          <GtkLabel label=":" />
-          <GtkSpinButton
-            value={seconds}
-            onValueChanged={setSeconds}
-            adjustment={{ lower: 0, upper: 59, stepIncrement: 1 }}
-            wrap
-          />
-        </GtkBox>
-      </GtkFrame>
-    </GtkBox>
-  );
-};`;
 
 export const spinbuttonDemo: Demo = {
     id: "spinbutton",

@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkEntry, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./clipboard.tsx?raw";
 
 const ClipboardDemo = () => {
     const [_clipboardStatus, _setClipboardStatus] = useState<string | null>(null);
@@ -183,6 +184,7 @@ const ClipboardDemo = () => {
                     <GtkLabel
                         label={`import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
+import sourceCode from "./clipboard.tsx?raw";
 
 // Get clipboard from a window
 const display = window.getDisplay();
@@ -285,50 +287,6 @@ clipboard.connect("changed", () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useRef } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
-import {
-  GtkBox,
-  GtkButton,
-  GtkEntry,
-  GtkApplicationWindow,
-} from "@gtkx/react";
-
-const ClipboardDemo = () => {
-  const windowRef = useRef<Gtk.ApplicationWindow | null>(null);
-
-  const copyToClipboard = (text: string) => {
-    if (!windowRef.current) return;
-
-    const display = windowRef.current.getDisplay();
-    const clipboard = display.getClipboard();
-
-    // Create a GValue containing the text
-    const value = new GObject.Value();
-    // ... initialize value with string type and text ...
-
-    // Create content provider and set clipboard
-    const provider = Gdk.ContentProvider.providerNewForValue(value);
-    clipboard.setContent(provider);
-  };
-
-  return (
-    <GtkApplicationWindow ref={windowRef} visible={false}>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        <GtkButton
-          label="Copy 'Hello'"
-          onClicked={() => copyToClipboard("Hello")}
-        />
-
-        {/* GtkEntry has built-in Ctrl+C/X/V support */}
-        <GtkEntry placeholderText="Use Ctrl+C/V here..." />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
-};`;
 
 export const clipboardDemo: Demo = {
     id: "clipboard",

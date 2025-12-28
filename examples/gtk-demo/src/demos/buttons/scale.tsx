@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./scale.tsx?raw";
 
 const ScaleDemo = () => {
     const [horizontalValue, setHorizontalValue] = useState(50);
@@ -127,63 +128,6 @@ const ScaleDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkScale, GtkLabel, GtkFrame } from "@gtkx/react";
-
-const ScaleDemo = () => {
-  const [horizontalValue, setHorizontalValue] = useState(50);
-  const [verticalValue, setVerticalValue] = useState(25);
-  const [markedValue, setMarkedValue] = useState(0);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      {/* Horizontal Scale with value display */}
-      <GtkScale
-        orientation={Gtk.Orientation.HORIZONTAL}
-        value={horizontalValue}
-        onValueChanged={setHorizontalValue}
-        adjustment={{ lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }}
-        drawValue
-        valuePos={Gtk.PositionType.TOP}
-      />
-
-      {/* Vertical Scale (inverted for volume-style) */}
-      <GtkScale
-        orientation={Gtk.Orientation.VERTICAL}
-        value={verticalValue}
-        onValueChanged={setVerticalValue}
-        adjustment={{ lower: 0, upper: 100, stepIncrement: 1 }}
-        drawValue
-        inverted
-        heightRequest={150}
-      />
-
-      {/* Scale with marks */}
-      <GtkScale
-        orientation={Gtk.Orientation.HORIZONTAL}
-        value={markedValue}
-        onValueChanged={setMarkedValue}
-        adjustment={{ lower: -10, upper: 10, stepIncrement: 1 }}
-        drawValue
-        hasOrigin
-        marks={[
-          { value: -10, position: Gtk.PositionType.BOTTOM, markup: "Cold" },
-          { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Normal" },
-          { value: 10, position: Gtk.PositionType.BOTTOM, markup: "Hot" },
-        ]}
-      />
-
-      {/* Minimal scale without value */}
-      <GtkScale
-        orientation={Gtk.Orientation.HORIZONTAL}
-        adjustment={{ lower: 0, upper: 100, stepIncrement: 1 }}
-        drawValue={false}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const scaleDemo: Demo = {
     id: "scale",

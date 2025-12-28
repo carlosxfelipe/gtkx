@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDropDown, GtkFrame, GtkLabel, SimpleListItem } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./dropdown.tsx?raw";
 
 const fonts = [
     { id: "sans", name: "Sans Serif" },
@@ -215,35 +216,6 @@ const DropDownDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDropDown, GtkLabel, SimpleListItem } from "@gtkx/react";
-
-const fonts = [
-  { id: "sans", name: "Sans Serif" },
-  { id: "serif", name: "Serif" },
-  { id: "mono", name: "Monospace" },
-];
-
-const DropDownDemo = () => {
-  const [selectedFont, setSelectedFont] = useState("sans");
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkLabel label="Select a font:" />
-      <GtkDropDown
-        selectedId={selectedFont}
-        onSelectionChanged={setSelectedFont}
-      >
-        {fonts.map((font) => (
-          <SimpleListItem key={font.id} id={font.id} value={font.name} />
-        ))}
-      </GtkDropDown>
-      <GtkLabel label={\`Selected: \${selectedFont}\`} />
-    </GtkBox>
-  );
-};`;
 
 export const dropdownDemo: Demo = {
     id: "dropdown",

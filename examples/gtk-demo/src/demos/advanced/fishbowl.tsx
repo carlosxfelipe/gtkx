@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFlowBox, GtkFrame, GtkLabel, GtkScale, GtkScrolledWindow } from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./fishbowl.tsx?raw";
 
 const fishColors = [
     "#e01b24",
@@ -180,45 +181,6 @@ const FishbowlDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState, useEffect, useMemo } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFlowBox, GtkLabel, GtkScale } from "@gtkx/react";
-
-const FishbowlDemo = () => {
-  const [fishCount, setFishCount] = useState(50);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [fishes, setFishes] = useState([]);
-
-  const fishCountAdjustment = useMemo(() => new Gtk.Adjustment(50, 10, 500, 10, 50, 0), []);
-
-  // Initialize fishes
-  useEffect(() => {
-    const newFishes = [];
-    for (let i = 0; i < fishCount; i++) {
-      newFishes.push({ id: i });
-    }
-    setFishes(newFishes);
-  }, [fishCount]);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-      <GtkScale
-        adjustment={fishCountAdjustment}
-        onValueChanged={(scale) => setFishCount(Math.round(scale.getValue()))}
-      />
-      <GtkButton
-        label={isAnimating ? "Stop" : "Start"}
-        onClicked={() => setIsAnimating(!isAnimating)}
-      />
-      <GtkFlowBox>
-        {fishes.map((fish) => (
-          <GtkLabel key={fish.id} label="🐟" />
-        ))}
-      </GtkFlowBox>
-    </GtkBox>
-  );
-};`;
 
 export const fishbowlDemo: Demo = {
     id: "fishbowl",

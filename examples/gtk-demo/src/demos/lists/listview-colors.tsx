@@ -11,6 +11,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./listview-colors.tsx?raw";
 
 interface ColorItem {
     id: string;
@@ -255,43 +256,6 @@ const ListViewColorsDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkFrame, ListView, ListItem } from "@gtkx/react";
-
-interface ColorItem {
-  id: string;
-  name: string;
-  hex: string;
-}
-
-const colors: ColorItem[] = [
-  { id: "red", name: "Red", hex: "#e01b24" },
-  { id: "green", name: "Green", hex: "#33d17a" },
-  { id: "blue", name: "Blue", hex: "#3584e4" },
-];
-
-const ColorListDemo = () => {
-  return (
-    <ListView<ColorItem>
-      showSeparators
-      renderItem={(item) => (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-          <GtkFrame widthRequest={32} heightRequest={32} cssClasses={["card"]}>
-            <GtkLabel label="" />
-          </GtkFrame>
-          <GtkLabel label={item?.name ?? ""} />
-          <GtkLabel label={item?.hex ?? ""} cssClasses={["dim-label"]} />
-        </GtkBox>
-      )}
-    >
-      {colors.map((color) => (
-        <ListItem key={color.id} id={color.id} value={color} />
-      ))}
-    </ListView>
-  );
-};`;
 
 export const listviewColorsDemo: Demo = {
     id: "listview-colors",

@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwToastOverlay, GtkBox, GtkButton, GtkEntry, GtkFrame, GtkLabel, Toast } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./toast.tsx?raw";
 
 interface ToastState {
     id: number;
@@ -217,52 +218,6 @@ const ToastDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Adw from "@gtkx/ffi/adw";
-import { AdwToastOverlay, GtkBox, GtkButton, GtkLabel, Toast } from "@gtkx/react";
-
-const ToastDemo = () => {
-  const [toasts, setToasts] = useState<{ id: number; title: string }[]>([]);
-
-  const showToast = (title: string) => {
-    setToasts([...toasts, { id: Date.now(), title }]);
-  };
-
-  const dismissToast = (id: number) => {
-    setToasts(toasts.filter((t) => t.id !== id));
-  };
-
-  return (
-    <AdwToastOverlay>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        <GtkLabel label="Click a button to show a toast" />
-
-        <GtkButton
-          label="Show Toast"
-          onClicked={() => showToast("Operation completed")}
-        />
-
-        <GtkButton
-          label="Toast with Button"
-          onClicked={() => showToast("Item deleted")}
-        />
-      </GtkBox>
-
-      {/* Declarative toasts - they appear when added to state */}
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          title={toast.title}
-          timeout={3}
-          buttonLabel="Undo"
-          onButtonClicked={() => console.log("Undo clicked")}
-          onDismissed={() => dismissToast(toast.id)}
-        />
-      ))}
-    </AdwToastOverlay>
-  );
-};`;
 
 export const toastDemo: Demo = {
     id: "toast",

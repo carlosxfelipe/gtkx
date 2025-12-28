@@ -12,6 +12,7 @@ import {
 } from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./carousel.tsx?raw";
 
 const carouselPages = [
     { title: "Welcome", description: "Get started with our application", icon: "starred-symbolic", color: "#3584e4" },
@@ -212,55 +213,6 @@ const CarouselWithLines = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useRef, useState } from "react";
-import * as Adw from "@gtkx/ffi/adw";
-import {
-  AdwCarousel,
-  AdwCarouselIndicatorDots,
-  GtkBox,
-  GtkButton,
-  GtkLabel,
-} from "@gtkx/react";
-
-const CarouselDemo = () => {
-  const carouselRef = useRef<Adw.Carousel | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-
-  const scrollTo = (index: number) => {
-    const page = carouselRef.current?.getNthPage(index);
-    if (page) {
-      carouselRef.current?.scrollTo(page, true);
-    }
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <AdwCarousel
-        ref={carouselRef}
-        allowMouseDrag
-        onNotifyPosition={(self) => setCurrentPage(Math.round(self.position))}
-      >
-        <GtkBox valign={Gtk.Align.CENTER}>
-          <GtkLabel label="Page 1" cssClasses={["title-1"]} />
-        </GtkBox>
-        <GtkBox valign={Gtk.Align.CENTER}>
-          <GtkLabel label="Page 2" cssClasses={["title-1"]} />
-        </GtkBox>
-        <GtkBox valign={Gtk.Align.CENTER}>
-          <GtkLabel label="Page 3" cssClasses={["title-1"]} />
-        </GtkBox>
-      </AdwCarousel>
-
-      <AdwCarouselIndicatorDots carousel={carouselRef.current} />
-
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-        <GtkButton label="Previous" onClicked={() => scrollTo(currentPage - 1)} />
-        <GtkButton label="Next" onClicked={() => scrollTo(currentPage + 1)} />
-      </GtkBox>
-    </GtkBox>
-  );
-};`;
 
 export const carouselDemo: Demo = {
     id: "carousel",

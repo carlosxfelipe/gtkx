@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, Menu } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./shortcuts.tsx?raw";
 
 const ShortcutsDemo = () => {
     const [menuActionTriggered, setMenuActionTriggered] = useState<string | null>(null);
@@ -264,64 +265,6 @@ const ShortcutsDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkMenuButton, Menu } from "@gtkx/react";
-
-const ShortcutsDemo = () => {
-  const handleAction = (action: string) => {
-    console.log("Action:", action);
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Menu with keyboard accelerators */}
-      <GtkMenuButton label="File">
-        <Menu.Section>
-          <Menu.Item
-            id="new"
-            label="New"
-            onActivate={() => handleAction("New")}
-            accels="<Control>n"
-          />
-          <Menu.Item
-            id="open"
-            label="Open"
-            onActivate={() => handleAction("Open")}
-            accels="<Control>o"
-          />
-          <Menu.Item
-            id="save"
-            label="Save"
-            onActivate={() => handleAction("Save")}
-            accels="<Control>s"
-          />
-          <Menu.Item
-            id="save-as"
-            label="Save As..."
-            onActivate={() => handleAction("Save As")}
-            accels="<Control><Shift>s"
-          />
-        </Menu.Section>
-      </GtkMenuButton>
-
-      {/* Button with mnemonic (Alt+S activates) */}
-      <GtkButton
-        label="_Save"
-        useUnderline
-        onClicked={() => handleAction("Save")}
-      />
-
-      {/* Accelerator syntax examples:
-       * <Control>s       -> Ctrl+S
-       * <Control><Shift>s -> Ctrl+Shift+S
-       * <Alt>F4          -> Alt+F4
-       * <Primary>q       -> Ctrl+Q (Linux) or Cmd+Q (macOS)
-       * F5               -> F5 key alone
-       */}
-    </GtkBox>
-  );
-};`;
 
 export const shortcutsDemo: Demo = {
     id: "shortcuts",

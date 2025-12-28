@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkFrame, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./markup.tsx?raw";
 
 interface MarkupExample {
     name: string;
@@ -241,48 +242,6 @@ const MarkupDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkEntry } from "@gtkx/react";
-
-const MarkupDemo = () => {
-  const [markup, setMarkup] = useState("<b>Bold</b> and <i>italic</i>");
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-      <GtkEntry
-        text={markup}
-        onChanged={(entry) => setMarkup(entry.getText())}
-        hexpand
-      />
-
-      {/* Preview with useMarkup */}
-      <GtkLabel
-        label={markup}
-        useMarkup
-      />
-
-      {/* Various markup examples */}
-      <GtkLabel
-        label='<span foreground="red" size="large"><b>Styled Text</b></span>'
-        useMarkup
-      />
-
-      <GtkLabel
-        label="H<sub>2</sub>O and E=mc<sup>2</sup>"
-        useMarkup
-      />
-
-      <GtkLabel
-        label='<a href="https://gtk.org">GTK Website</a>'
-        useMarkup
-      />
-    </GtkBox>
-  );
-};
-
-// Key prop: useMarkup={true} enables Pango markup parsing`;
 
 export const markupDemo: Demo = {
     id: "markup",

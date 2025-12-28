@@ -13,6 +13,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./listbox-controls.tsx?raw";
 
 interface SettingItem {
     id: string;
@@ -250,58 +251,6 @@ const ListBoxControlsDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  GtkBox,
-  GtkListBox,
-  GtkListBoxRow,
-  GtkLabel,
-  GtkSwitch,
-  GtkCheckButton,
-} from "@gtkx/react";
-
-const SettingsPanel = () => {
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-
-  return (
-    <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-      <GtkListBoxRow activatable={false}>
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-          <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand>
-            <GtkLabel label="Enable Notifications" />
-            <GtkLabel label="Receive alerts" cssClasses={["dim-label"]} />
-          </GtkBox>
-          <GtkSwitch
-            active={notifications}
-            onStateSet={() => {
-              setNotifications(!notifications);
-              return true;
-            }}
-          />
-        </GtkBox>
-      </GtkListBoxRow>
-
-      <GtkListBoxRow activatable={false}>
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-          <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand>
-            <GtkLabel label="Dark Mode" />
-            <GtkLabel label="Use dark colors" cssClasses={["dim-label"]} />
-          </GtkBox>
-          <GtkSwitch
-            active={darkMode}
-            onStateSet={() => {
-              setDarkMode(!darkMode);
-              return true;
-            }}
-          />
-        </GtkBox>
-      </GtkListBoxRow>
-    </GtkListBox>
-  );
-};`;
 
 export const listboxControlsDemo: Demo = {
     id: "listbox-controls",

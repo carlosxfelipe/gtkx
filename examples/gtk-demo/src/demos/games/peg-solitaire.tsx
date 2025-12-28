@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GridChild, GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./peg-solitaire.tsx?raw";
 
 // Board layout: -1 = invalid, 0 = empty, 1 = peg
 // English board (cross shape)
@@ -324,63 +325,6 @@ const PegSolitaireDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkGrid } from "@gtkx/react";
-
-// Board: -1 = invalid, 0 = empty, 1 = peg
-const INITIAL_BOARD = [
-  [-1, -1, 1, 1, 1, -1, -1],
-  [-1, -1, 1, 1, 1, -1, -1],
-  [1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 0, 1, 1, 1], // Center empty
-  [1, 1, 1, 1, 1, 1, 1],
-  [-1, -1, 1, 1, 1, -1, -1],
-  [-1, -1, 1, 1, 1, -1, -1],
-];
-
-const PegSolitaireDemo = () => {
-  const [board, setBoard] = useState(INITIAL_BOARD);
-  const [selected, setSelected] = useState(null);
-
-  const handleCellClick = (row, col) => {
-    // Game logic here...
-  };
-
-  return (
-    <GtkGrid rowSpacing={4} columnSpacing={4}>
-      {board.map((row, r) =>
-        row.map((cell, c) => (
-          <GridChild key={\`\${r}-\${c}\`} column={c} row={r}>
-            {cell === 1 ? (
-              <GtkButton
-                widthRequest={40}
-                heightRequest={40}
-                cssClasses={["circular", "raised"]}
-                onClicked={() => handleCellClick(r, c)}
-              />
-            ) : cell === 0 ? (
-              <GtkButton
-                widthRequest={40}
-                heightRequest={40}
-                cssClasses={["circular", "flat"]}
-                onClicked={() => handleCellClick(r, c)}
-              />
-            ) : (
-              <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={0}
-                widthRequest={40}
-                heightRequest={40}
-              />
-            )}
-          </GridChild>
-        ))
-      )}
-    </GtkGrid>
-  );
-};`;
 
 export const pegSolitaireDemo: Demo = {
     id: "peg-solitaire",

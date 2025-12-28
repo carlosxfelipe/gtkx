@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import sourceCode from "./gestures.tsx?raw";
 
 const GesturesDemo = () => {
     return (
@@ -315,77 +316,6 @@ useEffect(() => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useRef, useEffect } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkDrawingArea } from "@gtkx/react";
-
-const GesturesDemo = () => {
-  const areaRef = useRef<Gtk.Widget | null>(null);
-
-  useEffect(() => {
-    if (!areaRef.current) return;
-
-    // Click gesture - handles single, double, triple clicks
-    const click = new Gtk.GestureClick();
-    click.connect("pressed", (gesture, nPress, x, y) => {
-      if (nPress === 1) {
-        console.log("Single click at", x, y);
-      } else if (nPress === 2) {
-        console.log("Double click at", x, y);
-      }
-    });
-    areaRef.current.addController(click);
-
-    // Drag gesture - for drawing, moving objects
-    const drag = new Gtk.GestureDrag();
-    drag.connect("drag-begin", (gesture, startX, startY) => {
-      console.log("Drag started at", startX, startY);
-    });
-    drag.connect("drag-update", (gesture, offsetX, offsetY) => {
-      console.log("Dragged by", offsetX, offsetY);
-    });
-    drag.connect("drag-end", (gesture, offsetX, offsetY) => {
-      console.log("Drag ended with offset", offsetX, offsetY);
-    });
-    areaRef.current.addController(drag);
-
-    // Swipe gesture - for navigation, dismissal
-    const swipe = new Gtk.GestureSwipe();
-    swipe.connect("swipe", (gesture, velocityX, velocityY) => {
-      const direction = Math.abs(velocityX) > Math.abs(velocityY)
-        ? (velocityX > 0 ? "right" : "left")
-        : (velocityY > 0 ? "down" : "up");
-      console.log("Swiped", direction);
-    });
-    areaRef.current.addController(swipe);
-
-    // Zoom gesture (requires multi-touch)
-    const zoom = new Gtk.GestureZoom();
-    zoom.connect("scale-changed", (gesture, scale) => {
-      console.log("Zoom scale:", scale);
-    });
-    areaRef.current.addController(zoom);
-
-    // Rotate gesture (requires multi-touch)
-    const rotate = new Gtk.GestureRotate();
-    rotate.connect("angle-changed", (gesture, angle, delta) => {
-      console.log("Rotation:", angle, "radians");
-    });
-    areaRef.current.addController(rotate);
-  }, []);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkLabel label="Gesture Demo" cssClasses={["title-2"]} />
-      <GtkDrawingArea
-        ref={areaRef}
-        widthRequest={400}
-        heightRequest={300}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const gesturesDemo: Demo = {
     id: "gestures",

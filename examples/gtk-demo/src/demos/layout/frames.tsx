@@ -2,42 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkFrame, GtkLabel, Slot } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, Slot } from "@gtkx/react";
-
-const FramesDemo = () => {
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Basic Frame */}
-            <GtkFrame label="Section Title">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} margin={12}>
-                    <GtkLabel label="Content inside a frame" />
-                </GtkBox>
-            </GtkFrame>
-
-            {/* Frame without Label */}
-            <GtkFrame>
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} margin={12}>
-                    <GtkLabel label="Frame without a label" />
-                </GtkBox>
-            </GtkFrame>
-
-            {/* Custom Label Widget */}
-            <GtkFrame>
-                <Slot for={GtkFrame} id="labelWidget">
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-                        <GtkLabel label="Custom Header" cssClasses={["heading"]} />
-                        <GtkButton label="Action" cssClasses={["flat"]} />
-                    </GtkBox>
-                </Slot>
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} margin={12}>
-                    <GtkLabel label="Frame with custom label widget" />
-                </GtkBox>
-            </GtkFrame>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./frames.tsx?raw";
 
 const FramesDemo = () => {
     const [expanded, setExpanded] = useState(true);

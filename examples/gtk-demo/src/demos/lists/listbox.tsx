@@ -11,6 +11,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./listbox.tsx?raw";
 
 interface Contact {
     id: number;
@@ -267,54 +268,6 @@ const ListBoxDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  GtkBox,
-  GtkListBox,
-  GtkListBoxRow,
-  GtkLabel,
-  GtkImage,
-  GtkButton,
-} from "@gtkx/react";
-
-interface Contact {
-  id: number;
-  name: string;
-  email: string;
-}
-
-const ListBoxDemo = () => {
-  const [contacts, setContacts] = useState([
-    { id: 1, name: "Alice", email: "alice@example.com" },
-    { id: 2, name: "Bob", email: "bob@example.com" },
-  ]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  return (
-    <GtkListBox
-      selectionMode={Gtk.SelectionMode.SINGLE}
-      onRowSelected={(_, row) => {
-        const index = row?.getIndex() ?? -1;
-        setSelectedId(index >= 0 ? contacts[index].id : null);
-      }}
-      cssClasses={["boxed-list"]}
-    >
-      {contacts.map((contact) => (
-        <GtkListBoxRow key={contact.id}>
-          <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-            <GtkImage iconName="avatar-default-symbolic" />
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-              <GtkLabel label={contact.name} />
-              <GtkLabel label={contact.email} cssClasses={["dim-label"]} />
-            </GtkBox>
-          </GtkBox>
-        </GtkListBoxRow>
-      ))}
-    </GtkListBox>
-  );
-};`;
 
 export const listboxDemo: Demo = {
     id: "listbox",

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import sourceCode from "./images.tsx?raw";
 
 const ImagesDemo = () => {
     return (
@@ -203,41 +204,6 @@ const ImagesDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkPicture, GtkLabel } from "@gtkx/react";
-
-const ImagesDemo = () => {
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      {/* Themed icon with iconName */}
-      <GtkImage iconName="dialog-information-symbolic" />
-
-      {/* Icon with specific size */}
-      <GtkImage iconName="folder-symbolic" iconSize={Gtk.IconSize.LARGE} />
-
-      {/* Icon with pixel size */}
-      <GtkImage iconName="document-new-symbolic" pixelSize={48} />
-
-      {/* Picture from file */}
-      <GtkPicture
-        file="/path/to/image.png"
-        canShrink
-        contentFit={Gtk.ContentFit.CONTAIN}
-        widthRequest={300}
-        heightRequest={200}
-      />
-
-      {/* Picture with different content fit modes */}
-      <GtkPicture
-        file="/path/to/image.jpg"
-        contentFit={Gtk.ContentFit.COVER}
-        widthRequest={200}
-        heightRequest={200}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const imagesDemo: Demo = {
     id: "images",

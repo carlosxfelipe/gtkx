@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkFlowBox, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./tagged-entry.tsx?raw";
 
 const TaggedEntryDemo = () => {
     const [tags, setTags] = useState<string[]>(["react", "gtk4"]);
@@ -163,53 +164,6 @@ const EmailTagInput = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
-
-const TaggedEntryDemo = () => {
-  const [tags, setTags] = useState<string[]>(["react", "gtk4"]);
-  const [inputText, setInputText] = useState("");
-
-  const addTag = () => {
-    const trimmedText = inputText.trim().toLowerCase();
-    if (trimmedText && !tags.includes(trimmedText)) {
-      setTags([...tags, trimmedText]);
-      setInputText("");
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-        <GtkEntry
-          text={inputText}
-          placeholderText="Type a tag..."
-          hexpand
-          onChanged={(entry) => setInputText(entry.getText())}
-          onActivate={addTag}
-        />
-        <GtkButton label="Add" onClicked={addTag} />
-      </GtkBox>
-
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-        {tags.map((tag) => (
-          <GtkButton
-            key={tag}
-            label={\`\${tag} x\`}
-            cssClasses={["pill"]}
-            onClicked={() => removeTag(tag)}
-          />
-        ))}
-      </GtkBox>
-    </GtkBox>
-  );
-};`;
 
 export const taggedEntryDemo: Demo = {
     id: "tagged-entry",

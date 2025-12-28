@@ -2,47 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GridChild, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/react";
-
-// GtkSizeGroup is a utility object that groups widgets so they all request
-// the same size. This is useful for making form labels the same width,
-// or buttons in a dialog the same size.
-
-// In GTKX, you can achieve similar effects using:
-// 1. GtkGrid - naturally aligns columns
-// 2. Homogeneous GtkBox - all children same size
-// 3. widthRequest/heightRequest - explicit sizing
-
-const SizeGroupDemo = () => {
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Using GtkGrid for aligned labels */}
-            <GtkGrid columnSpacing={12} rowSpacing={8}>
-                <GridChild column={0} row={0}>
-                    <GtkLabel label="Name:" halign={Gtk.Align.END} />
-                </GridChild>
-                <GridChild column={1} row={0}>
-                    <GtkEntry hexpand />
-                </GridChild>
-                <GridChild column={0} row={1}>
-                    <GtkLabel label="Email Address:" halign={Gtk.Align.END} />
-                </GridChild>
-                <GridChild column={1} row={1}>
-                    <GtkEntry hexpand />
-                </GridChild>
-            </GtkGrid>
-
-            {/* Using homogeneous GtkBox for equal buttons */}
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} homogeneous>
-                <GtkButton label="OK" />
-                <GtkButton label="Cancel" />
-                <GtkButton label="Help" />
-            </GtkBox>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./sizegroup.tsx?raw";
 
 const SizeGroupDemo = () => {
     const [useHomogeneous, setUseHomogeneous] = useState(true);

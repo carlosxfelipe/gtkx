@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./textscroll.tsx?raw";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
 
@@ -165,58 +166,6 @@ const TextScrollDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { beginBatch, endBatch } from "@gtkx/ffi";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  GtkBox,
-  GtkFrame,
-  GtkScrolledWindow,
-  GtkTextView,
-} from "@gtkx/react";
-import { useState } from "react";
-
-const TextScrollDemo = () => {
-  const [buffer] = useState(() => {
-    const buf = new Gtk.TextBuffer();
-    buf.setText("Long content here...", -1);
-    return buf;
-  });
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      {/* Vertical scrolling */}
-      <GtkFrame>
-        <GtkScrolledWindow
-          minContentHeight={150}
-          maxContentHeight={150}
-          hscrollbarPolicy={Gtk.PolicyType.NEVER}
-          vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-        >
-          <GtkTextView
-            buffer={buffer}
-            wrapMode={Gtk.WrapMode.WORD}
-            editable={false}
-          />
-        </GtkScrolledWindow>
-      </GtkFrame>
-
-      {/* Horizontal scrolling */}
-      <GtkFrame>
-        <GtkScrolledWindow
-          minContentHeight={100}
-          hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-          vscrollbarPolicy={Gtk.PolicyType.NEVER}
-        >
-          <GtkTextView
-            wrapMode={Gtk.WrapMode.NONE}
-            editable={false}
-          />
-        </GtkScrolledWindow>
-      </GtkFrame>
-    </GtkBox>
-  );
-};`;
 
 export const textscrollDemo: Demo = {
     id: "textscroll",

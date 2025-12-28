@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkSearchEntry } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./search-entry.tsx?raw";
 
 const items = [
     { id: 1, name: "Apple", category: "Fruit" },
@@ -120,46 +121,6 @@ const SearchEntryDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkSearchEntry } from "@gtkx/react";
-import { useState } from "react";
-
-const items = [
-  { id: 1, name: "Apple", category: "Fruit" },
-  { id: 2, name: "Banana", category: "Fruit" },
-  { id: 3, name: "Carrot", category: "Vegetable" },
-  // ... more items
-];
-
-const SearchEntryDemo = () => {
-  const [searchText, setSearchText] = useState("");
-
-  const filteredItems = items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchText.toLowerCase()),
-  );
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkSearchEntry
-        text={searchText}
-        placeholderText="Search..."
-        onSearchChanged={(entry) => setSearchText(entry.getText())}
-      />
-
-      <GtkLabel label={\`Showing \${filteredItems.length} items\`} />
-
-      {filteredItems.map((item) => (
-        <GtkBox key={item.id} orientation={Gtk.Orientation.HORIZONTAL}>
-          <GtkLabel label={item.name} hexpand />
-          <GtkLabel label={item.category} cssClasses={["dim-label"]} />
-        </GtkBox>
-      ))}
-    </GtkBox>
-  );
-};`;
 
 export const searchEntryDemo: Demo = {
     id: "search-entry",

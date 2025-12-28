@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./hello-world.tsx?raw";
 
 const HelloWorldDemo = () => {
     const [count, setCount] = useState(0);
@@ -31,25 +32,6 @@ const HelloWorldDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { render, GtkApplicationWindow, GtkBox, GtkLabel, GtkButton } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
-
-const App = () => {
-  const [count, setCount] = useState(0);
-
-  return (
-    <GtkApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300}>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-        <GtkLabel label={\`Hello from GTKX! Count: \${count}\`} />
-        <GtkButton label="Click Me" onClicked={() => setCount(count + 1)} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
-};
-
-render(<App />, "com.example.hello");`;
 
 export const helloWorldDemo: Demo = {
     id: "hello-world",

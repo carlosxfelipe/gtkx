@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import sourceCode from "./drawingarea.tsx?raw";
 
 const DrawingAreaDemo = () => {
     return (
@@ -87,35 +88,6 @@ const DrawingAreaDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDrawingArea, GtkLabel } from "@gtkx/react";
-
-const DrawingAreaDemo = () => {
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      {/* Basic drawing area with size */}
-      <GtkDrawingArea
-        contentWidth={300}
-        contentHeight={200}
-      />
-
-      {/* Note: Custom drawing with Cairo is not yet supported */}
-      {/* In native GTK4, you would use gtk_drawing_area_set_draw_func */}
-      {/* to provide a callback for custom rendering */}
-    </GtkBox>
-  );
-};
-
-// Native GTK4 example (not available in GTKX):
-// gtk_drawing_area_set_draw_func(area, draw_callback, NULL, NULL);
-//
-// static void draw_callback(GtkDrawingArea *area, cairo_t *cr,
-//                           int width, int height, gpointer data) {
-//   cairo_set_source_rgb(cr, 1, 0, 0);
-//   cairo_rectangle(cr, 10, 10, width - 20, height - 20);
-//   cairo_fill(cr);
-// }`;
 
 export const drawingAreaDemo: Demo = {
     id: "drawingarea",

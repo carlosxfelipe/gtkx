@@ -16,6 +16,7 @@ import {
 } from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./navigation-view.tsx?raw";
 
 // AdwNavigationPage requires child prop in TypeScript types, but Slot handles it at runtime
 const NavigationPage = AdwNavigationPage as unknown as React.FC<
@@ -188,65 +189,6 @@ const NavigationViewDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useRef } from "react";
-import * as Adw from "@gtkx/ffi/adw";
-import {
-  AdwHeaderBar,
-  AdwNavigationPage,
-  AdwNavigationView,
-  AdwToolbarView,
-  GtkBox,
-  GtkButton,
-  GtkLabel,
-  Slot,
-  Toolbar,
-} from "@gtkx/react";
-
-const NavigationDemo = () => {
-  const navRef = useRef<Adw.NavigationView | null>(null);
-
-  const navigateTo = (tag: string) => {
-    navRef.current?.pushByTag(tag);
-  };
-
-  const goBack = () => {
-    navRef.current?.pop();
-  };
-
-  return (
-    <AdwNavigationView ref={navRef}>
-      {/* Home Page */}
-      <AdwNavigationPage tag="home" title="Home">
-        <Slot for={AdwNavigationPage} id="child">
-          <AdwToolbarView>
-            <Toolbar.Top>
-              <AdwHeaderBar />
-            </Toolbar.Top>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-              <GtkButton label="Go to Details" onClicked={() => navigateTo("details")} />
-            </GtkBox>
-          </AdwToolbarView>
-        </Slot>
-      </AdwNavigationPage>
-
-      {/* Detail Page */}
-      <AdwNavigationPage tag="details" title="Details">
-        <Slot for={AdwNavigationPage} id="child">
-          <AdwToolbarView>
-            <Toolbar.Top>
-              <AdwHeaderBar /> {/* Back button appears automatically */}
-            </Toolbar.Top>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-              <GtkLabel label="Detail Page Content" />
-              <GtkButton label="Go Back" onClicked={goBack} />
-            </GtkBox>
-          </AdwToolbarView>
-        </Slot>
-      </AdwNavigationPage>
-    </AdwNavigationView>
-  );
-};`;
 
 export const navigationViewDemo: Demo = {
     id: "navigation-view",

@@ -18,6 +18,7 @@ import {
 } from "@gtkx/react";
 import { createRef, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./sidebar.tsx?raw";
 
 interface NavItem {
     id: string;
@@ -369,62 +370,6 @@ const SidebarDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState, createRef } from "react";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import * as GtkEnum from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkStack,
-    GtkStackSidebar,
-    GtkListBox,
-    GtkListBoxRow,
-    GtkLabel,
-    GtkImage,
-    StackPage,
-} from "@gtkx/react";
-
-const SidebarDemo = () => {
-    const [selectedItem, setSelectedItem] = useState("inbox");
-    const stackRef = createRef<Gtk.Stack>();
-
-    const navItems = [
-        { id: "inbox", title: "Inbox", icon: "mail-inbox-symbolic" },
-        { id: "sent", title: "Sent", icon: "mail-send-symbolic" },
-        { id: "trash", title: "Trash", icon: "user-trash-symbolic" },
-    ];
-
-    return (
-        <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL}>
-            {/* GtkStackSidebar automatically syncs with Stack */}
-            <GtkStackSidebar stack={stackRef.current ?? undefined} />
-
-            <GtkStack ref={stackRef}>
-                <StackPage name="home" title="Home" iconName="go-home-symbolic">
-                    <GtkLabel label="Home Page" />
-                </StackPage>
-                <StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
-                    <GtkLabel label="Settings Page" />
-                </StackPage>
-            </GtkStack>
-
-            {/* Or use custom ListBox sidebar */}
-            <GtkListBox selectionMode={GtkEnum.SelectionMode.SINGLE}>
-                {navItems.map((item) => (
-                    <GtkListBoxRow
-                        key={item.id}
-                        onActivate={() => setSelectedItem(item.id)}
-                    >
-                        <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL} spacing={12}>
-                            <GtkImage iconName={item.icon} />
-                            <GtkLabel label={item.title} />
-                        </GtkBox>
-                    </GtkListBoxRow>
-                ))}
-            </GtkListBox>
-        </GtkBox>
-    );
-};`;
 
 export const sidebarDemo: Demo = {
     id: "sidebar",

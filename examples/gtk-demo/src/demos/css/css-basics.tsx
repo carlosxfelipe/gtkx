@@ -5,6 +5,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./css-basics.tsx?raw";
 
 const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
 
@@ -203,60 +204,6 @@ const CssBasicsDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { beginBatch, endBatch } from "@gtkx/ffi";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
-import { useEffect, useState } from "react";
-
-const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
-
-const CssEditor = () => {
-  const [buffer] = useState(() => new Gtk.TextBuffer());
-  const [cssProvider] = useState(() => new Gtk.CssProvider());
-
-  useEffect(() => {
-    // Register the CSS provider globally
-    const display = Gdk.DisplayManager.get().getDefaultDisplay();
-    if (display) {
-      Gtk.StyleContext.addProviderForDisplay(
-        display,
-        cssProvider,
-        STYLE_PROVIDER_PRIORITY_APPLICATION,
-      );
-    }
-
-    // Listen for buffer changes
-    buffer.connect("changed", () => {
-      const css = getBufferText(buffer);
-      try {
-        cssProvider.loadFromString(css);
-      } catch (e) {
-        console.error("Invalid CSS:", e);
-      }
-    });
-
-    return () => {
-      if (display) {
-        Gtk.StyleContext.removeProviderForDisplay(display, cssProvider);
-      }
-    };
-  }, [buffer, cssProvider]);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkScrolledWindow minContentHeight={200}>
-        <GtkTextView buffer={buffer} monospace />
-      </GtkScrolledWindow>
-
-      {/* Preview widgets with custom CSS classes */}
-      <GtkBox cssClasses={["demo-box"]}>
-        <GtkLabel label="Styled content" cssClasses={["demo-label"]} />
-      </GtkBox>
-    </GtkBox>
-  );
-};`;
 
 export const cssBasicsDemo: Demo = {
     id: "css-basics",

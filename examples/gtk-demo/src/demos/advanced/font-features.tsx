@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./font-features.tsx?raw";
 
 interface FontFeature {
     tag: string;
@@ -190,55 +191,6 @@ const FontFeaturesDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkCheckButton } from "@gtkx/react";
-
-const fontFeatures = [
-  { tag: "liga", name: "Standard Ligatures" },
-  { tag: "smcp", name: "Small Caps" },
-  { tag: "onum", name: "Oldstyle Figures" },
-  { tag: "frac", name: "Fractions" },
-];
-
-const FontFeaturesDemo = () => {
-  const [enabledFeatures, setEnabledFeatures] = useState(new Set(["liga"]));
-
-  const toggleFeature = (tag: string) => {
-    setEnabledFeatures((prev) => {
-      const next = new Set(prev);
-      if (next.has(tag)) {
-        next.delete(tag);
-      } else {
-        next.add(tag);
-      }
-      return next;
-    });
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-      <GtkLabel
-        label="Office Affluent 1/2 3/4"
-        cssClasses={["title-1"]}
-      />
-
-      {fontFeatures.map((feature) => (
-        <GtkBox key={feature.tag} orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-          <GtkCheckButton
-            active={enabledFeatures.has(feature.tag)}
-            onToggled={() => toggleFeature(feature.tag)}
-          />
-          <GtkLabel label={\`\${feature.tag} - \${feature.name}\`} />
-        </GtkBox>
-      ))}
-    </GtkBox>
-  );
-};
-
-// CSS usage:
-// font-feature-settings: "liga" 1, "smcp" 1;`;
 
 export const fontFeaturesDemo: Demo = {
     id: "font-features",

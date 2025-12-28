@@ -12,6 +12,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./action-row.tsx?raw";
 
 const ActionRowDemo = () => {
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -154,58 +155,6 @@ const ActionRowDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  ActionRow,
-  AdwActionRow,
-  AdwPreferencesGroup,
-  GtkBox,
-  GtkImage,
-  GtkSwitch,
-} from "@gtkx/react";
-
-const ActionRowDemo = () => {
-  const [enabled, setEnabled] = useState(true);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      <AdwPreferencesGroup title="Settings">
-        {/* Basic row with icon */}
-        <AdwActionRow title="Row with Icon" subtitle="Description text">
-          <ActionRow.Prefix>
-            <GtkImage iconName="emblem-favorite-symbolic" />
-          </ActionRow.Prefix>
-        </AdwActionRow>
-
-        {/* Row with switch */}
-        <AdwActionRow title="Notifications" subtitle="Receive alerts">
-          <ActionRow.Prefix>
-            <GtkImage iconName="preferences-system-notifications-symbolic" />
-          </ActionRow.Prefix>
-          <ActionRow.Suffix>
-            <GtkSwitch
-              active={enabled}
-              onStateSet={() => {
-                setEnabled(!enabled);
-                return true;
-              }}
-              valign={Gtk.Align.CENTER}
-            />
-          </ActionRow.Suffix>
-        </AdwActionRow>
-
-        {/* Clickable row with arrow */}
-        <AdwActionRow title="More Options" subtitle="View additional settings">
-          <ActionRow.Suffix>
-            <GtkImage iconName="go-next-symbolic" cssClasses={["dim-label"]} />
-          </ActionRow.Suffix>
-        </AdwActionRow>
-      </AdwPreferencesGroup>
-    </GtkBox>
-  );
-};`;
 
 export const actionRowDemo: Demo = {
     id: "action-row",

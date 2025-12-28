@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./dnd.tsx?raw";
 
 const DndDemo = () => {
     const [_dropHistory, setDropHistory] = useState<string[]>([]);
@@ -264,73 +265,6 @@ useEffect(() => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useRef, useEffect } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Gdk from "@gtkx/ffi/gdk";
-import { GtkBox, GtkLabel } from "@gtkx/react";
-
-const DndDemo = () => {
-  const sourceRef = useRef<Gtk.Widget | null>(null);
-  const targetRef = useRef<Gtk.Widget | null>(null);
-
-  useEffect(() => {
-    // Set up drag source
-    if (sourceRef.current) {
-      const dragSource = new Gtk.DragSource();
-      dragSource.setActions(Gdk.DragAction.COPY);
-
-      dragSource.connect("prepare", (source, x, y) => {
-        // Return the data to be transferred
-        return Gdk.ContentProvider.newForValue("Hello, Drop!");
-      });
-
-      dragSource.connect("drag-begin", (source, drag) => {
-        console.log("Drag started");
-      });
-
-      dragSource.connect("drag-end", (source, drag, deleteData) => {
-        console.log("Drag ended, deleted:", deleteData);
-      });
-
-      sourceRef.current.addController(dragSource);
-    }
-
-    // Set up drop target
-    if (targetRef.current) {
-      const dropTarget = new Gtk.DropTarget(
-        0, // G_TYPE_STRING
-        Gdk.DragAction.COPY
-      );
-
-      dropTarget.connect("drop", (target, value, x, y) => {
-        console.log("Dropped:", value, "at", x, y);
-        return true; // Accept the drop
-      });
-
-      dropTarget.connect("enter", (target, x, y) => {
-        return Gdk.DragAction.COPY;
-      });
-
-      targetRef.current.addController(dropTarget);
-    }
-  }, []);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      <GtkLabel
-        ref={sourceRef}
-        label="Drag me!"
-        cssClasses={["title-2"]}
-      />
-      <GtkLabel
-        ref={targetRef}
-        label="Drop here!"
-        cssClasses={["title-2"]}
-      />
-    </GtkBox>
-  );
-};`;
 
 export const dndDemo: Demo = {
     id: "dnd",

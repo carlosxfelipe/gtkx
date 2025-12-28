@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./style-classes.tsx?raw";
 
 interface StyleClassInfo {
     name: string;
@@ -312,52 +313,6 @@ const StyleClassesDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkButton } from "@gtkx/react";
-
-const StyleClassesExample = () => (
-  <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-    {/* Typography */}
-    <GtkLabel label="Large Title" cssClasses={["title-1"]} />
-    <GtkLabel label="Section Heading" cssClasses={["title-2"]} />
-    <GtkLabel label="Secondary text" cssClasses={["dim-label"]} />
-    <GtkLabel label="const code = 'example';" cssClasses={["monospace"]} />
-
-    {/* Buttons */}
-    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-      <GtkButton label="Default" />
-      <GtkButton label="Suggested" cssClasses={["suggested-action"]} />
-      <GtkButton label="Destructive" cssClasses={["destructive-action"]} />
-      <GtkButton label="Flat" cssClasses={["flat"]} />
-      <GtkButton iconName="starred" cssClasses={["circular"]} />
-      <GtkButton label="Pill" cssClasses={["pill"]} />
-    </GtkBox>
-
-    {/* Linked buttons */}
-    <GtkBox cssClasses={["linked"]}>
-      <GtkButton label="Left" />
-      <GtkButton label="Center" />
-      <GtkButton label="Right" />
-    </GtkBox>
-
-    {/* Cards */}
-    <GtkBox cssClasses={["card"]}>
-      <GtkLabel label="Card content" />
-    </GtkBox>
-
-    {/* Colors */}
-    <GtkBox cssClasses={["accent"]}>
-      <GtkLabel label="Accent colored" />
-    </GtkBox>
-    <GtkBox cssClasses={["success"]}>
-      <GtkLabel label="Success message" />
-    </GtkBox>
-    <GtkBox cssClasses={["error"]}>
-      <GtkLabel label="Error message" />
-    </GtkBox>
-  </GtkBox>
-);`;
 
 export const styleClassesDemo: Demo = {
     id: "style-classes",

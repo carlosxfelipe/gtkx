@@ -1,13 +1,14 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, useApplication } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./dialog.tsx?raw";
 
 const DialogDemo = () => {
     const [lastResponse, setLastResponse] = useState<string | null>(null);
     const [confirmResult, setConfirmResult] = useState<string | null>(null);
-    const windowRef = useRef<Gtk.ApplicationWindow | null>(null);
+    const app = useApplication();
 
     const showSimpleDialog = async () => {
         const dialog = new Adw.AlertDialog("Simple Dialog", "This is a basic alert dialog with a single button.");
@@ -15,7 +16,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("ok");
         dialog.setCloseResponse("ok");
 
-        const response = await dialog.choose(windowRef.current ?? undefined);
+        const response = await dialog.choose(app.activeWindow ?? undefined);
         setLastResponse(response);
     };
 
@@ -30,7 +31,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("confirm");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(windowRef.current ?? undefined);
+        const response = await dialog.choose(app.activeWindow ?? undefined);
         setConfirmResult(response === "confirm" ? "Confirmed" : "Cancelled");
     };
 
@@ -45,7 +46,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("cancel");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(windowRef.current ?? undefined);
+        const response = await dialog.choose(app.activeWindow ?? undefined);
         setLastResponse(response === "delete" ? "Item deleted" : "Delete cancelled");
     };
 
@@ -59,7 +60,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("save");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(windowRef.current ?? undefined);
+        const response = await dialog.choose(app.activeWindow ?? undefined);
         const messages: Record<string, string> = {
             save: "Changes saved",
             discard: "Changes discarded",
@@ -69,167 +70,110 @@ const DialogDemo = () => {
     };
 
     return (
-        <GtkApplicationWindow ref={windowRef} visible={false}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-                <GtkLabel label="Modal Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
+            <GtkLabel label="Modal Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-                <GtkLabel
-                    label="AdwAlertDialog provides a simple way to show modal dialogs with a heading, body text, and response buttons. Dialogs are presented using the async choose() method."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
+            <GtkLabel
+                label="AdwAlertDialog provides a simple way to show modal dialogs with a heading, body text, and response buttons. Dialogs are presented using the async choose() method."
+                wrap
+                halign={Gtk.Align.START}
+                cssClasses={["dim-label"]}
+            />
 
-                {/* Simple Alert */}
-                <GtkFrame label="Simple Alert">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkLabel
-                            label="A basic dialog with a single OK button."
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkButton label="Show Simple Dialog" onClicked={showSimpleDialog} halign={Gtk.Align.START} />
-                    </GtkBox>
-                </GtkFrame>
-
-                {/* Confirmation Dialog */}
-                <GtkFrame label="Confirmation Dialog">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkLabel
-                            label="A dialog asking the user to confirm an action with Cancel and Confirm buttons."
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                            <GtkButton label="Show Confirm Dialog" onClicked={showConfirmDialog} />
-                            {confirmResult && (
-                                <GtkLabel label={`Result: ${confirmResult}`} cssClasses={["dim-label"]} />
-                            )}
-                        </GtkBox>
-                    </GtkBox>
-                </GtkFrame>
-
-                {/* Destructive Dialog */}
-                <GtkFrame label="Destructive Action">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkLabel
-                            label="A dialog with a destructive action button (styled in red) for dangerous operations."
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkButton
-                            label="Show Delete Dialog"
-                            onClicked={showDestructiveDialog}
-                            halign={Gtk.Align.START}
-                        />
-                    </GtkBox>
-                </GtkFrame>
-
-                {/* Multiple Choice Dialog */}
-                <GtkFrame label="Multiple Choices">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkLabel
-                            label="A dialog with three response options: Save, Discard, and Cancel."
-                            halign={Gtk.Align.START}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkButton
-                            label="Show Save Changes Dialog"
-                            onClicked={showMultipleChoiceDialog}
-                            halign={Gtk.Align.START}
-                        />
-                    </GtkBox>
-                </GtkFrame>
-
-                {/* Last Response */}
-                {lastResponse && (
+            {/* Simple Alert */}
+            <GtkFrame label="Simple Alert">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
                     <GtkLabel
-                        label={`Last response: ${lastResponse}`}
+                        label="A basic dialog with a single OK button."
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                )}
-            </GtkBox>
-        </GtkApplicationWindow>
+                    <GtkButton label="Show Simple Dialog" onClicked={showSimpleDialog} halign={Gtk.Align.START} />
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Confirmation Dialog */}
+            <GtkFrame label="Confirmation Dialog">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="A dialog asking the user to confirm an action with Cancel and Confirm buttons."
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkButton label="Show Confirm Dialog" onClicked={showConfirmDialog} />
+                        {confirmResult && <GtkLabel label={`Result: ${confirmResult}`} cssClasses={["dim-label"]} />}
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Destructive Dialog */}
+            <GtkFrame label="Destructive Action">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="A dialog with a destructive action button (styled in red) for dangerous operations."
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                    <GtkButton label="Show Delete Dialog" onClicked={showDestructiveDialog} halign={Gtk.Align.START} />
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Multiple Choice Dialog */}
+            <GtkFrame label="Multiple Choices">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="A dialog with three response options: Save, Discard, and Cancel."
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                    <GtkButton
+                        label="Show Save Changes Dialog"
+                        onClicked={showMultipleChoiceDialog}
+                        halign={Gtk.Align.START}
+                    />
+                </GtkBox>
+            </GtkFrame>
+
+            {/* Last Response */}
+            {lastResponse && (
+                <GtkLabel
+                    label={`Last response: ${lastResponse}`}
+                    halign={Gtk.Align.START}
+                    cssClasses={["dim-label"]}
+                />
+            )}
+        </GtkBox>
     );
 };
-
-const sourceCode = `import { useRef, useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Adw from "@gtkx/ffi/adw";
-import { GtkBox, GtkButton, GtkLabel, GtkApplicationWindow } from "@gtkx/react";
-
-const DialogDemo = () => {
-  const [lastResponse, setLastResponse] = useState<string | null>(null);
-  const windowRef = useRef<Gtk.ApplicationWindow | null>(null);
-
-  const showConfirmDialog = async () => {
-    const dialog = new Adw.AlertDialog(
-      "Confirm Action",
-      "Are you sure you want to proceed?"
-    );
-    dialog.addResponse("cancel", "Cancel");
-    dialog.addResponse("confirm", "Confirm");
-    dialog.setResponseAppearance("confirm", Adw.ResponseAppearance.SUGGESTED);
-    dialog.setDefaultResponse("confirm");
-    dialog.setCloseResponse("cancel");
-
-    const response = await dialog.choose(windowRef.current ?? undefined);
-    setLastResponse(response);
-  };
-
-  const showDestructiveDialog = async () => {
-    const dialog = new Adw.AlertDialog(
-      "Delete Item?",
-      "This action cannot be undone."
-    );
-    dialog.addResponse("cancel", "Cancel");
-    dialog.addResponse("delete", "Delete");
-    dialog.setResponseAppearance("delete", Adw.ResponseAppearance.DESTRUCTIVE);
-    dialog.setCloseResponse("cancel");
-
-    const response = await dialog.choose(windowRef.current ?? undefined);
-    setLastResponse(response);
-  };
-
-  return (
-    <GtkApplicationWindow ref={windowRef} visible={false}>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        <GtkButton label="Confirm Dialog" onClicked={showConfirmDialog} />
-        <GtkButton label="Delete Dialog" onClicked={showDestructiveDialog} />
-        {lastResponse && <GtkLabel label={\`Response: \${lastResponse}\`} />}
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
-};`;
 
 export const dialogDemo: Demo = {
     id: "dialog",

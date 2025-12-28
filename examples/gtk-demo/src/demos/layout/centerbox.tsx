@@ -2,41 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCenterBox, GtkLabel, Slot } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCenterBox, GtkLabel, Slot } from "@gtkx/react";
-
-const CenterBoxDemo = () => {
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Horizontal CenterBox */}
-            <GtkCenterBox orientation={Gtk.Orientation.HORIZONTAL}>
-                <Slot for={GtkCenterBox} id="startWidget">
-                    <GtkButton label="Start" />
-                </Slot>
-                <Slot for={GtkCenterBox} id="centerWidget">
-                    <GtkLabel label="Center" />
-                </Slot>
-                <Slot for={GtkCenterBox} id="endWidget">
-                    <GtkButton label="End" />
-                </Slot>
-            </GtkCenterBox>
-
-            {/* Vertical CenterBox */}
-            <GtkCenterBox orientation={Gtk.Orientation.VERTICAL}>
-                <Slot for={GtkCenterBox} id="startWidget">
-                    <GtkButton label="Top" />
-                </Slot>
-                <Slot for={GtkCenterBox} id="centerWidget">
-                    <GtkLabel label="Middle" />
-                </Slot>
-                <Slot for={GtkCenterBox} id="endWidget">
-                    <GtkButton label="Bottom" />
-                </Slot>
-            </GtkCenterBox>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./centerbox.tsx?raw";
 
 const CenterBoxDemo = () => {
     const [showStart, setShowStart] = useState(true);

@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkExpander, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./css-accordion.tsx?raw";
 
 const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
 
@@ -347,71 +348,6 @@ const CssAccordionDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { injectGlobal } from "@gtkx/css";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkExpander } from "@gtkx/react";
-import { useState } from "react";
-
-// Define transition styles
-injectGlobal\`
-  .accordion-panel {
-    background-color: @theme_bg_color;
-    border-radius: 8px;
-    padding: 12px 16px;
-    transition: background-color 200ms ease, box-shadow 200ms ease;
-  }
-
-  .accordion-panel:hover {
-    background-color: alpha(@accent_bg_color, 0.1);
-  }
-
-  .accordion-panel.active {
-    background-color: alpha(@accent_bg_color, 0.15);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-
-  .animated-button {
-    transition: all 200ms ease-out;
-  }
-
-  .animated-button:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-\`;
-
-const AccordionDemo = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-  const items = ["First Panel", "Second Panel", "Third Panel"];
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-      {items.map((item, index) => (
-        <GtkBox
-          key={index}
-          cssClasses={["accordion-panel", openIndex === index ? "active" : ""]}
-        >
-          <GtkButton
-            cssClasses={["flat"]}
-            onClicked={() => setOpenIndex(openIndex === index ? null : index)}
-          >
-            <GtkLabel label={item} />
-          </GtkButton>
-          {openIndex === index && (
-            <GtkLabel label="Expanded content here" />
-          )}
-        </GtkBox>
-      ))}
-    </GtkBox>
-  );
-};
-
-// GtkExpander has built-in animation
-const ExpanderDemo = () => (
-  <GtkExpander label="Click to expand">
-    <GtkLabel label="Animated content" />
-  </GtkExpander>
-);`;
 
 export const cssAccordionDemo: Demo = {
     id: "css-accordion",

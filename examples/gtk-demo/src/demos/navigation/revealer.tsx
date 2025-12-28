@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkFrame, GtkImage, GtkLabel, GtkRevealer } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./revealer.tsx?raw";
 
 const RevealerDemo = () => {
     const [basicRevealed, setBasicRevealed] = useState(true);
@@ -316,49 +317,6 @@ const RevealerDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkRevealer, GtkLabel, GtkFrame } from "@gtkx/react";
-
-const RevealerDemo = () => {
-    const [revealed, setRevealed] = useState(true);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-            <GtkButton
-                label={revealed ? "Hide" : "Show"}
-                onClicked={() => setRevealed(!revealed)}
-            />
-
-            <GtkRevealer
-                revealChild={revealed}
-                transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-                transitionDuration={300}
-            >
-                <GtkFrame cssClasses={["card"]}>
-                    <GtkBox margin={12}>
-                        <GtkLabel label="This content slides in and out" />
-                    </GtkBox>
-                </GtkFrame>
-            </GtkRevealer>
-
-            {/* Notification pattern */}
-            <GtkRevealer
-                revealChild={notificationVisible}
-                transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-            >
-                <GtkBox cssClasses={["card"]} orientation={Gtk.Orientation.HORIZONTAL}>
-                    <GtkLabel label="Notification message" hexpand />
-                    <GtkButton
-                        iconName="window-close-symbolic"
-                        onClicked={() => setNotificationVisible(false)}
-                    />
-                </GtkBox>
-            </GtkRevealer>
-        </GtkBox>
-    );
-};`;
 
 export const revealerDemo: Demo = {
     id: "revealer",

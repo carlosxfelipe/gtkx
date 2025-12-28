@@ -13,6 +13,7 @@ import {
 } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./themes.tsx?raw";
 
 const ThemesDemo = () => {
     const [styleManager] = useState(() => Adw.StyleManager.getDefault());
@@ -259,52 +260,6 @@ const ThemesDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import * as Adw from "@gtkx/ffi/adw";
-import { ColorScheme } from "@gtkx/ffi/adw";
-import { GtkBox, GtkLabel, GtkSwitch } from "@gtkx/react";
-import { useEffect, useState } from "react";
-
-const ThemeToggle = () => {
-  const [styleManager] = useState(() => Adw.StyleManager.getDefault());
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // Get initial state
-    setIsDark(styleManager.getDark());
-
-    // Listen for changes
-    styleManager.connect("notify", () => {
-      setIsDark(styleManager.getDark());
-    });
-  }, [styleManager]);
-
-  const toggleDarkMode = () => {
-    const newScheme = isDark ? ColorScheme.FORCE_LIGHT : ColorScheme.FORCE_DARK;
-    styleManager.setColorScheme(newScheme);
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-      <GtkLabel label="Dark Mode" hexpand />
-      <GtkSwitch
-        active={isDark}
-        onStateSet={() => {
-          toggleDarkMode();
-          return true;
-        }}
-      />
-    </GtkBox>
-  );
-};
-
-// ColorScheme options:
-// - DEFAULT: Follow system preference
-// - FORCE_LIGHT: Always light
-// - PREFER_LIGHT: Light unless system prefers dark
-// - PREFER_DARK: Dark unless system prefers light
-// - FORCE_DARK: Always dark`;
 
 export const themesDemo: Demo = {
     id: "themes",

@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, ListItem, ListView } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./listview-weather.tsx?raw";
 
 interface WeatherDay {
     id: string;
@@ -298,54 +299,6 @@ const ListViewWeatherDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import {
-  GtkBox,
-  GtkLabel,
-  GtkImage,
-  ListView,
-  ListItem,
-} from "@gtkx/react";
-
-interface WeatherDay {
-  id: string;
-  day: string;
-  icon: string;
-  condition: string;
-  high: number;
-  low: number;
-}
-
-const forecast: WeatherDay[] = [
-  { id: "1", day: "Monday", icon: "weather-clear-symbolic", condition: "Sunny", high: 28, low: 18 },
-  { id: "2", day: "Tuesday", icon: "weather-few-clouds-symbolic", condition: "Cloudy", high: 25, low: 17 },
-  // ... more days
-];
-
-const WeatherList = () => {
-  const [selected, setSelected] = useState<WeatherDay | null>(null);
-
-  return (
-    <ListView<WeatherDay>
-      showSeparators
-      onActivate={(_, pos) => setSelected(forecast[pos])}
-      renderItem={(item) => (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-          <GtkLabel label={item?.day ?? ""} widthRequest={80} />
-          <GtkImage iconName={item?.icon ?? ""} pixelSize={24} />
-          <GtkLabel label={item?.condition ?? ""} hexpand />
-          <GtkLabel label={\`\${item?.high}° / \${item?.low}°\`} />
-        </GtkBox>
-      )}
-    >
-      {forecast.map((day) => (
-        <ListItem key={day.id} id={day.id} value={day} />
-      ))}
-    </ListView>
-  );
-};`;
 
 export const listviewWeatherDemo: Demo = {
     id: "listview-weather",

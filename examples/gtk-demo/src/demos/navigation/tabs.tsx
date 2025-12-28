@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./tabs.tsx?raw";
 
 interface Tab {
     id: number;
@@ -264,54 +265,6 @@ const TabsDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkNotebook, GtkLabel, Notebook } from "@gtkx/react";
-
-const TabsDemo = () => {
-    const [currentPage, setCurrentPage] = useState(0);
-    const [tabs, setTabs] = useState([
-        { id: 1, title: "Documents", content: "Your documents" },
-        { id: 2, title: "Downloads", content: "Downloaded files" },
-    ]);
-
-    const addTab = () => {
-        const id = tabs.length + 1;
-        setTabs([...tabs, { id, title: \`Tab \${id}\`, content: \`Content \${id}\` }]);
-        setCurrentPage(tabs.length);
-    };
-
-    const closeTab = (id: number) => {
-        if (tabs.length > 1) {
-            setTabs(tabs.filter((t) => t.id !== id));
-        }
-    };
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-            <GtkButton label="Add Tab" onClicked={addTab} />
-
-            <GtkNotebook
-                page={currentPage}
-                onSwitchPage={(_self, _page, pageNum) => setCurrentPage(pageNum)}
-                scrollable
-            >
-                {tabs.map((tab) => (
-                    <Notebook.Page key={tab.id} label={tab.title}>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                            <GtkLabel label={tab.content} />
-                            <GtkButton
-                                label="Close"
-                                onClicked={() => closeTab(tab.id)}
-                            />
-                        </GtkBox>
-                    </Notebook.Page>
-                ))}
-            </GtkNotebook>
-        </GtkBox>
-    );
-};`;
 
 export const tabsDemo: Demo = {
     id: "tabs",

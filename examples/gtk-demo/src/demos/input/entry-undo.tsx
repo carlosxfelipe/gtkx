@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./entry-undo.tsx?raw";
 
 const EntryUndoDemo = () => {
     const [history, setHistory] = useState<string[]>([""]);
@@ -105,59 +106,6 @@ const EntryUndoDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
-
-const EntryUndoDemo = () => {
-  const [history, setHistory] = useState<string[]>([""]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [currentText, setCurrentText] = useState("");
-
-  const handleTextChange = (newText: string) => {
-    if (newText !== currentText) {
-      const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(newText);
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-      setCurrentText(newText);
-    }
-  };
-
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      setCurrentText(history[newIndex]);
-    }
-  };
-
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      setCurrentText(history[newIndex]);
-    }
-  };
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkEntry
-        text={currentText}
-        placeholderText="Type something..."
-        onChanged={(entry) => handleTextChange(entry.getText())}
-      />
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-        <GtkButton label="Undo" onClicked={handleUndo} sensitive={historyIndex > 0} />
-        <GtkButton label="Redo" onClicked={handleRedo} sensitive={historyIndex < history.length - 1} />
-      </GtkBox>
-
-      {/* Native undo support */}
-      <GtkEntry placeholderText="Native undo (Ctrl+Z)..." enableUndo />
-    </GtkBox>
-  );
-};`;
 
 export const entryUndoDemo: Demo = {
     id: "entry-undo",

@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkSpinner } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
+import sourceCode from "./spinner.tsx?raw";
 
 const SpinnerDemo = () => {
     const [isSpinning, setIsSpinning] = useState(true);
@@ -152,66 +153,6 @@ const SpinnerDemo = () => {
         </GtkBox>
     );
 };
-
-const sourceCode = `import { useState, useEffect } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkSpinner, GtkLabel, GtkButton, GtkFrame } from "@gtkx/react";
-
-const SpinnerDemo = () => {
-  const [isSpinning, setIsSpinning] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading) return;
-
-    const timeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-
-    return () => clearTimeout(timeout);
-  }, [isLoading]);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-      {/* Basic Spinner with toggle */}
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-        <GtkSpinner spinning={isSpinning} />
-        <GtkButton
-          label={isSpinning ? "Stop" : "Start"}
-          onClicked={() => setIsSpinning(!isSpinning)}
-        />
-      </GtkBox>
-
-      {/* Different sizes */}
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
-        <GtkSpinner spinning widthRequest={16} heightRequest={16} />
-        <GtkSpinner spinning widthRequest={32} heightRequest={32} />
-        <GtkSpinner spinning widthRequest={48} heightRequest={48} />
-      </GtkBox>
-
-      {/* Loading state example */}
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-        {isLoading ? (
-          <>
-            <GtkSpinner spinning />
-            <GtkLabel label="Loading..." />
-          </>
-        ) : (
-          <GtkButton
-            label="Start Loading"
-            onClicked={() => setIsLoading(true)}
-          />
-        )}
-      </GtkBox>
-
-      {/* Inline with text */}
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-        <GtkSpinner spinning widthRequest={16} heightRequest={16} />
-        <GtkLabel label="Processing..." />
-      </GtkBox>
-    </GtkBox>
-  );
-};`;
 
 export const spinnerDemo: Demo = {
     id: "spinner",

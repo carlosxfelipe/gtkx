@@ -2,50 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkOverlay, GtkProgressBar, GtkSpinner, Slot } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import { css } from "@gtkx/css";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkOverlay, Slot } from "@gtkx/react";
-
-const badgeStyle = css\`
-    background: @error_bg_color;
-    color: @error_fg_color;
-    border-radius: 9999px;
-    padding: 4px 8px;
-    font-weight: bold;
-    font-size: 12px;
-\`;
-
-const OverlayDemo = () => {
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Badge Overlay */}
-            <GtkOverlay>
-                <Slot for={GtkOverlay} id="child">
-                    <GtkButton label="Inbox" widthRequest={80} />
-                </Slot>
-                <GtkLabel
-                    label="5"
-                    cssClasses={["error", "pill", "numeric"]}
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.START}
-                    marginEnd={4}
-                    marginTop={4}
-                />
-            </GtkOverlay>
-
-            {/* Loading Overlay */}
-            <GtkOverlay>
-                <Slot for={GtkOverlay} id="child">
-                    <GtkBox widthRequest={200} heightRequest={100} cssClasses={["card"]}>
-                        <GtkLabel label="Content" />
-                    </GtkBox>
-                </Slot>
-                <GtkSpinner spinning halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-            </GtkOverlay>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./overlay.tsx?raw";
 
 const OverlayDemo = () => {
     const [loading, setLoading] = useState(false);

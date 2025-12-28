@@ -62,6 +62,9 @@ const CONTAINER_METHODS = new Set([
     "add_overlay",
     "put",
     "attach",
+    "add_child",
+    "add",
+    "push",
 ]);
 
 const isWidgetSubclass = (
@@ -427,7 +430,7 @@ export class JsxGenerator {
             lines.push(`\tonSelectionChanged?: (id: string) => void;`);
         }
 
-        if (this.canHaveChildren(widget)) {
+        if (this.canHaveChildren(widget, widgetName)) {
             lines.push("");
             lines.push(`\tchildren?: ReactNode;`);
         }
@@ -689,12 +692,29 @@ export class JsxGenerator {
         return interfaces;
     }
 
-    private canHaveChildren(widget: GirClass): boolean {
+    private canHaveChildren(widget: GirClass, widgetName: string): boolean {
+        if (isListWidget(widgetName) || isDropDownWidget(widgetName)) {
+            return true;
+        }
+
         let current: GirClass | undefined = widget;
         while (current) {
             for (const method of current.methods) {
                 if (CONTAINER_METHODS.has(method.name)) {
                     return true;
+                }
+            }
+
+            for (const prop of current.properties) {
+                if (prop.writable) {
+                    const typeName = prop.type.name;
+                    if (
+                        typeName === "Gtk.Widget" ||
+                        typeName === "Widget" ||
+                        isWidgetSubclass(typeName, this.classMap)
+                    ) {
+                        return true;
+                    }
                 }
             }
 

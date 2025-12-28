@@ -2,45 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, Slot } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-
-const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkPaned, GtkScrolledWindow, Slot } from "@gtkx/react";
-
-const PanedDemo = () => {
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            {/* Horizontal Paned */}
-            <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} wideHandle position={200}>
-                <Slot for={GtkPaned} id="startChild">
-                    <GtkScrolledWindow>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                            <GtkLabel label="Left Pane" cssClasses={["heading"]} />
-                            <GtkLabel label="Start child content" />
-                        </GtkBox>
-                    </GtkScrolledWindow>
-                </Slot>
-                <Slot for={GtkPaned} id="endChild">
-                    <GtkScrolledWindow>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                            <GtkLabel label="Right Pane" cssClasses={["heading"]} />
-                            <GtkLabel label="End child content" />
-                        </GtkBox>
-                    </GtkScrolledWindow>
-                </Slot>
-            </GtkPaned>
-
-            {/* Vertical Paned */}
-            <GtkPaned orientation={Gtk.Orientation.VERTICAL} wideHandle position={100}>
-                <Slot for={GtkPaned} id="startChild">
-                    <GtkLabel label="Top Pane" />
-                </Slot>
-                <Slot for={GtkPaned} id="endChild">
-                    <GtkLabel label="Bottom Pane" />
-                </Slot>
-            </GtkPaned>
-        </GtkBox>
-    );
-};`;
+import sourceCode from "./paned.tsx?raw";
 
 const PanedDemo = () => {
     const [position, setPosition] = useState(200);
