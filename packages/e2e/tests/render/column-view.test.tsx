@@ -138,6 +138,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="name" title="Name" renderCell={() => "Cell"} />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -153,6 +154,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="column-title" title="Column Title" renderCell={() => "Cell"} />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
 
             const columns = ref.current?.getColumns();
@@ -173,9 +175,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["First", "Last"]} />);
+            await render(<App columns={["First", "Last"]} />, { wrapper: false });
 
-            await render(<App columns={["First", "Middle", "Last"]} />);
+            await render(<App columns={["First", "Middle", "Last"]} />, { wrapper: false });
 
             expect(ref.current?.getColumns()).not.toBeNull();
         });
@@ -194,9 +196,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["A", "B", "C"]} />);
+            await render(<App columns={["A", "B", "C"]} />, { wrapper: false });
 
-            await render(<App columns={["A", "C"]} />);
+            await render(<App columns={["A", "C"]} />, { wrapper: false });
 
             expect(ref.current?.getColumns()).not.toBeNull();
         });
@@ -216,6 +218,7 @@ describe("render - ColumnView", () => {
                     />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
 
@@ -231,9 +234,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App title="Initial" />);
+            await render(<App title="Initial" />, { wrapper: false });
 
-            await render(<App title="Updated" />);
+            await render(<App title="Updated" />, { wrapper: false });
         });
     });
 
@@ -247,6 +250,7 @@ describe("render - ColumnView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()).not.toBeNull();
@@ -273,6 +277,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             await render(
@@ -283,6 +288,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()).not.toBeNull();
@@ -310,6 +316,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             await render(
@@ -319,6 +326,7 @@ describe("render - ColumnView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(ref.current?.getModel()).not.toBeNull();
@@ -335,6 +343,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="name" title="Name" renderCell={renderCell} />
                     <ListItem id="1" value={{ name: "Test" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
     });
@@ -348,6 +357,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="name" title="Name" renderCell={() => "Cell"} />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
 
@@ -359,6 +369,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="name" title="Name" renderCell={() => "Cell"} />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
 
@@ -371,6 +382,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="name" title="Name" renderCell={() => "Cell"} />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
 
@@ -387,9 +399,9 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App sortColumn="name" />);
+            await render(<App sortColumn="name" />, { wrapper: false });
 
-            await render(<App sortColumn="age" />);
+            await render(<App sortColumn="age" />, { wrapper: false });
         });
     });
 
@@ -403,6 +415,7 @@ describe("render - ColumnView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
 
@@ -416,6 +429,7 @@ describe("render - ColumnView", () => {
                     <ListItem id="2" value={{ name: "Second" }} />
                     <ListItem id="3" value={{ name: "Third" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
         });
     });
@@ -432,6 +446,7 @@ describe("render - ColumnView", () => {
                     columnViewRef={ref}
                     onRenderOrder={(ids) => renderOrders.push(ids)}
                 />,
+                { wrapper: false },
             );
 
             const initialOrder = renderOrders[renderOrders.length - 1];
@@ -452,6 +467,7 @@ describe("render - ColumnView", () => {
                     columnViewRef={ref}
                     onRenderOrder={(ids) => renderOrders.push(ids)}
                 />,
+                { wrapper: false },
             );
 
             const unsortedOrder = renderOrders[renderOrders.length - 1];
@@ -485,6 +501,7 @@ describe("render - ColumnView", () => {
                     columnViewRef={ref}
                     onRenderOrder={(ids) => renderOrders.push(ids)}
                 />,
+                { wrapper: false },
             );
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
@@ -515,6 +532,7 @@ describe("render - ColumnView", () => {
                     columnViewRef={ref}
                     onRenderOrder={(ids) => renderOrders.push(ids)}
                 />,
+                { wrapper: false },
             );
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
@@ -535,7 +553,7 @@ describe("render - ColumnView", () => {
             const employees = generateEmployees(200);
             const ref = createRef<Gtk.ColumnView>();
 
-            await render(<SortableColumnView employees={employees} columnViewRef={ref} />);
+            await render(<SortableColumnView employees={employees} columnViewRef={ref} />, { wrapper: false });
 
             expect(ref.current?.getModel()).not.toBeNull();
 
@@ -565,6 +583,7 @@ describe("render - ColumnView", () => {
                     <ListItem id="a" value={{ name: "A" }} />
                     <ListItem id="b" value={{ name: "B" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
 
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["c", "a", "b"]);
@@ -584,10 +603,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D", "E"]} />);
+            await render(<App items={["A", "B", "C", "D", "E"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App items={["E", "D", "C", "B", "A"]} />);
+            await render(<App items={["E", "D", "C", "B", "A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -605,10 +624,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "D", "A", "C"]} />);
+            await render(<App items={["B", "D", "A", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -626,10 +645,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["D", "B", "E"]} />);
+            await render(<App items={["D", "B", "E"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["D", "B", "E"]);
         });
 
@@ -647,10 +666,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["B", "C"]} />);
+            await render(<App items={["B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["B", "C"]);
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
         });
 
@@ -668,10 +687,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A"]} />);
+            await render(<App items={["A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A"]);
 
-            await render(<App items={["X", "A", "Y"]} />);
+            await render(<App items={["X", "A", "Y"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["X", "A", "Y"]);
         });
 
@@ -689,10 +708,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
-            await render(<App items={["C", "A", "B"]} />);
-            await render(<App items={["B", "C", "A"]} />);
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["C", "A", "B"]} />, { wrapper: false });
+            await render(<App items={["B", "C", "A"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
         });
@@ -714,10 +733,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={initialItems} />);
+            await render(<App items={initialItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(initialItems);
 
-            await render(<App items={reversedItems} />);
+            await render(<App items={reversedItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(reversedItems);
         });
 
@@ -735,10 +754,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "C", "D", "A"]} />);
+            await render(<App items={["B", "C", "D", "A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["B", "C", "D", "A"]);
         });
 
@@ -756,10 +775,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["D", "A", "B", "C"]} />);
+            await render(<App items={["D", "A", "B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["D", "A", "B", "C"]);
         });
 
@@ -777,10 +796,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["A", "C", "B", "D"]} />);
+            await render(<App items={["A", "C", "B", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["A", "C", "B", "D"]);
         });
 
@@ -814,16 +833,16 @@ describe("render - ColumnView", () => {
                 { id: "5", active: true },
             ];
 
-            await render(<App filter="all" items={items} />);
+            await render(<App filter="all" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3", "4", "5"]);
 
-            await render(<App filter="active" items={items} />);
+            await render(<App filter="active" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "3", "5"]);
 
-            await render(<App filter="inactive" items={items} />);
+            await render(<App filter="inactive" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["2", "4"]);
 
-            await render(<App filter="all" items={items} />);
+            await render(<App filter="all" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3", "4", "5"]);
         });
 
@@ -886,13 +905,19 @@ describe("render - ColumnView", () => {
                 { id: "2", name: "Bob", salary: 55000 },
             ];
 
-            await render(<App items={items} sortColumn={null} sortOrder={Gtk.SortType.ASCENDING} />);
+            await render(<App items={items} sortColumn={null} sortOrder={Gtk.SortType.ASCENDING} />, {
+                wrapper: false,
+            });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["3", "1", "2"]);
 
-            await render(<App items={items} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} />);
+            await render(<App items={items} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} />, {
+                wrapper: false,
+            });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
 
-            await render(<App items={items} sortColumn={null} sortOrder={Gtk.SortType.ASCENDING} />);
+            await render(<App items={items} sortColumn={null} sortOrder={Gtk.SortType.ASCENDING} />, {
+                wrapper: false,
+            });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["3", "1", "2"]);
         });
 
@@ -922,7 +947,7 @@ describe("render - ColumnView", () => {
                 { id: "3", name: "Charlie" },
             ];
 
-            await render(<App items={initialItems} />);
+            await render(<App items={initialItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
 
             const updatedItems: Item[] = [
@@ -931,7 +956,7 @@ describe("render - ColumnView", () => {
                 { id: "3", name: "Charlie Updated" },
             ];
 
-            await render(<App items={updatedItems} />);
+            await render(<App items={updatedItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
         });
 
@@ -963,7 +988,7 @@ describe("render - ColumnView", () => {
                 { id: "3", name: "Counter C", count: 0 },
             ];
 
-            await render(<App items={initialItems} />);
+            await render(<App items={initialItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
 
             const updatedItems: Item[] = [
@@ -972,7 +997,7 @@ describe("render - ColumnView", () => {
                 { id: "3", name: "Counter C", count: 0 },
             ];
 
-            await render(<App items={updatedItems} />);
+            await render(<App items={updatedItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
         });
 
@@ -1002,7 +1027,7 @@ describe("render - ColumnView", () => {
                 { id: "3", value: 0 },
             ];
 
-            await render(<App items={baseItems} />);
+            await render(<App items={baseItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
 
             for (let i = 1; i <= 10; i++) {
@@ -1011,7 +1036,7 @@ describe("render - ColumnView", () => {
                     { id: "2", value: i * 2 },
                     { id: "3", value: i * 3 },
                 ];
-                await render(<App items={updatedItems} />);
+                await render(<App items={updatedItems} />, { wrapper: false });
                 expect(getModelItemOrder(ref.current as Gtk.ColumnView)).toEqual(["1", "2", "3"]);
             }
         });
@@ -1045,6 +1070,7 @@ describe("render - ColumnView", () => {
                     <ColumnViewColumn id="B" title="B" renderCell={() => "Cell"} />
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkColumnView>,
+                { wrapper: false },
             );
 
             expect(getColumnTitles(ref.current as Gtk.ColumnView)).toEqual(["C", "A", "B"]);
@@ -1064,10 +1090,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["A", "B", "C", "D", "E"]} />);
+            await render(<App columns={["A", "B", "C", "D", "E"]} />, { wrapper: false });
             expect(getColumnTitles(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App columns={["E", "D", "C", "B", "A"]} />);
+            await render(<App columns={["E", "D", "C", "B", "A"]} />, { wrapper: false });
             expect(getColumnTitles(ref.current as Gtk.ColumnView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -1085,10 +1111,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["A", "B", "C", "D"]} />);
+            await render(<App columns={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getColumnTitles(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App columns={["B", "D", "A", "C"]} />);
+            await render(<App columns={["B", "D", "A", "C"]} />, { wrapper: false });
             expect(getColumnTitles(ref.current as Gtk.ColumnView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -1106,10 +1132,10 @@ describe("render - ColumnView", () => {
                 );
             }
 
-            await render(<App columns={["A", "B", "C"]} />);
-            await render(<App columns={["C", "A", "B"]} />);
-            await render(<App columns={["B", "C", "A"]} />);
-            await render(<App columns={["A", "B", "C"]} />);
+            await render(<App columns={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App columns={["C", "A", "B"]} />, { wrapper: false });
+            await render(<App columns={["B", "C", "A"]} />, { wrapper: false });
+            await render(<App columns={["A", "B", "C"]} />, { wrapper: false });
 
             expect(getColumnTitles(ref.current as Gtk.ColumnView)).toEqual(["A", "B", "C"]);
         });

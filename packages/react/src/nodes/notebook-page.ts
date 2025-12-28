@@ -1,7 +1,11 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { NotebookPageProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
+import { scheduleAfterCommit } from "../scheduler.js";
+import { NotebookPageTabNode } from "./notebook-page-tab.js";
 import { SlotNode } from "./slot.js";
+import { WidgetNode } from "./widget.js";
 
 type Props = Partial<NotebookPageProps>;
 
@@ -9,13 +13,15 @@ export class NotebookPageNode extends SlotNode<Props> {
     public static override priority = 1;
 
     position?: number;
+    private tabNode?: NotebookPageTabNode;
 
     public static override matches(type: string): boolean {
-        return type === "NotebookPage";
+        return type === "Notebook.Page";
     }
 
     public setNotebook(notebook?: Gtk.Notebook): void {
         this.setParent(notebook);
+        this.updateTabNode();
     }
 
     public setPosition(position?: number): void {
@@ -30,9 +36,57 @@ export class NotebookPageNode extends SlotNode<Props> {
         return this.parent as Gtk.Notebook;
     }
 
+    private updateTabNode(): void {
+        if (this.tabNode) {
+            this.tabNode.setPage(this.parent as Gtk.Notebook | undefined, this.child);
+        }
+    }
+
+    public override appendChild(child: Node): void {
+        if (child instanceof NotebookPageTabNode) {
+            this.tabNode = child;
+            scheduleAfterCommit(() => {
+                this.updateTabNode();
+            });
+            return;
+        }
+
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(
+                `Cannot append '${child.typeName}' to 'Notebook.Page': expected Widget or Notebook.PageTab`,
+            );
+        }
+
+        const oldChild = this.child;
+        this.child = child.container;
+
+        scheduleAfterCommit(() => {
+            if (this.parent) {
+                this.onChildChange(oldChild);
+            }
+            this.updateTabNode();
+        });
+    }
+
+    public override removeChild(child?: Node): void {
+        if (child instanceof NotebookPageTabNode) {
+            this.tabNode = undefined;
+            return;
+        }
+
+        // For content widget, use SlotNode's removeChild logic
+        super.removeChild();
+    }
+
+    public override unmount(): void {
+        this.tabNode = undefined;
+        super.unmount();
+    }
+
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         if (!oldProps || oldProps.label !== newProps.label) {
-            if (this.child && this.parent) {
+            // Only update if using text label (no custom tab node)
+            if (this.child && this.parent && !this.tabNode?.child) {
                 const tabLabel = this.getNotebook().getTabLabel(this.child) as Gtk.Label;
                 tabLabel.setLabel(newProps.label ?? "");
             }
@@ -42,8 +96,16 @@ export class NotebookPageNode extends SlotNode<Props> {
     private attachPage(): void {
         const child = this.getChild();
         const notebook = this.getNotebook();
-        const tabLabel = new Gtk.Label();
-        tabLabel.setLabel(this.props.label ?? "");
+
+        // Use custom tab widget if provided, otherwise create a Label
+        let tabLabel: Gtk.Widget;
+        if (this.tabNode?.child) {
+            tabLabel = this.tabNode.child;
+        } else {
+            const label = new Gtk.Label();
+            label.setLabel(this.props.label ?? "");
+            tabLabel = label;
+        }
 
         if (this.position !== undefined) {
             notebook.insertPage(child, this.position, tabLabel);

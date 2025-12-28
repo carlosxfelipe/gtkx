@@ -1,4 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { ActionRow, AdwActionRow, GtkLabel, GtkListBox } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -13,6 +14,7 @@ describe("render - ActionRow", () => {
                 <GtkListBox>
                     <AdwActionRow ref={ref} title="Test Row" />
                 </GtkListBox>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -20,27 +22,31 @@ describe("render - ActionRow", () => {
 
         it("appends prefix and suffix children", async () => {
             const rowRef = createRef<Adw.ActionRow>();
+            const prefixRef = createRef<Gtk.Label>();
+            const suffixRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
                         <ActionRow.Prefix>
-                            <GtkLabel label="First" />
+                            <GtkLabel ref={prefixRef} label="First" />
                         </ActionRow.Prefix>
                         <ActionRow.Suffix>
-                            <GtkLabel label="Second" />
+                            <GtkLabel ref={suffixRef} label="Second" />
                         </ActionRow.Suffix>
                     </AdwActionRow>
                 </GtkListBox>,
+                { wrapper: false },
             );
 
             expect(rowRef.current).not.toBeNull();
-            expect(await findByText("First")).toBeDefined();
-            expect(await findByText("Second")).toBeDefined();
+            expect(prefixRef.current).not.toBeNull();
+            expect(suffixRef.current).not.toBeNull();
         });
 
         it("removes prefix and suffix children", async () => {
             const rowRef = createRef<Adw.ActionRow>();
+            const labelRefs = [createRef<Gtk.Label>(), createRef<Gtk.Label>(), createRef<Gtk.Label>()];
 
             function App({ count }: { count: number }) {
                 return (
@@ -49,7 +55,7 @@ describe("render - ActionRow", () => {
                             {Array.from({ length: count }, (_, i) => (
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
                                 <ActionRow.Suffix key={`suffix-label-${i}`}>
-                                    <GtkLabel label={`Label ${i}`} />
+                                    <GtkLabel ref={labelRefs[i]} label={`Label ${i}`} />
                                 </ActionRow.Suffix>
                             ))}
                         </AdwActionRow>
@@ -57,17 +63,17 @@ describe("render - ActionRow", () => {
                 );
             }
 
-            const { rerender, findByText } = await render(<App count={3} />);
+            const { rerender } = await render(<App count={3} />, { wrapper: false });
 
-            expect(await findByText("Label 0")).toBeDefined();
-            expect(await findByText("Label 1")).toBeDefined();
-            expect(await findByText("Label 2")).toBeDefined();
+            expect(labelRefs[0]?.current).not.toBeNull();
+            expect(labelRefs[1]?.current).not.toBeNull();
+            expect(labelRefs[2]?.current).not.toBeNull();
 
             await rerender(<App count={1} />);
 
-            expect(await findByText("Label 0")).toBeDefined();
-            await expect(findByText("Label 1")).rejects.toThrow();
-            await expect(findByText("Label 2")).rejects.toThrow();
+            expect(labelRefs[0]?.current).not.toBeNull();
+            expect(labelRefs[1]?.current).toBeNull();
+            expect(labelRefs[2]?.current).toBeNull();
         });
     });
 });

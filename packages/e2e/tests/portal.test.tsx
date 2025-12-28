@@ -39,8 +39,8 @@ describe("createPortal", () => {
             );
         }
 
-        await render(<App />);
-        await render(<App />);
+        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false });
 
         expect(labelRef.current).not.toBeNull();
         expect(labelRef.current?.getParent()?.id).toEqual(boxRef.current?.id);
@@ -53,6 +53,7 @@ describe("createPortal", () => {
             <Portal portalKey="my-key">
                 <GtkLabel ref={labelRef} label="Keyed" />
             </Portal>,
+            { wrapper: false },
         );
 
         await tick();
@@ -106,8 +107,8 @@ describe("createPortal", () => {
             );
         }
 
-        await render(<App />);
-        await render(<App />);
+        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false });
 
         expect(label1Ref.current).not.toBeNull();
         expect(label2Ref.current).not.toBeNull();
@@ -131,8 +132,8 @@ describe("createPortal", () => {
             );
         }
 
-        await render(<App />);
-        await render(<App />);
+        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false });
 
         expect(buttonRef.current).not.toBeNull();
         expect(buttonRef.current?.getParent()?.id).toEqual(innerBoxRef.current?.id);

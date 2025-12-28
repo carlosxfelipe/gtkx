@@ -33,6 +33,7 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={labelRef} label="Positioned" />
                     </FixedChild>
                 </GtkFixed>,
+                { wrapper: false },
             );
 
             if (!fixedRef.current || !labelRef.current) {
@@ -54,6 +55,7 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={labelRef} label="Default" />
                     </FixedChild>
                 </GtkFixed>,
+                { wrapper: false },
             );
 
             if (!fixedRef.current || !labelRef.current) {
@@ -79,7 +81,7 @@ describe("render - FixedChild", () => {
                 );
             }
 
-            await render(<App x={0} y={0} />);
+            await render(<App x={0} y={0} />, { wrapper: false });
 
             if (!fixedRef.current || !labelRef.current) {
                 throw new Error("Refs should be set after render");
@@ -89,7 +91,7 @@ describe("render - FixedChild", () => {
             expect(pos1.x).toBe(0);
             expect(pos1.y).toBe(0);
 
-            await render(<App x={200} y={150} />);
+            await render(<App x={200} y={150} />, { wrapper: false });
 
             const pos2 = getChildPosition(fixedRef.current, labelRef.current);
             expect(pos2.x).toBe(200);
@@ -110,6 +112,7 @@ describe("render - FixedChild", () => {
                         <GtkLabel ref={label2Ref} label="Second" />
                     </FixedChild>
                 </GtkFixed>,
+                { wrapper: false },
             );
 
             if (!fixedRef.current || !label1Ref.current || !label2Ref.current) {
@@ -141,10 +144,10 @@ describe("render - FixedChild", () => {
                 );
             }
 
-            await render(<App showChild={true} />);
+            await render(<App showChild={true} />, { wrapper: false });
             expect(fixedRef.current?.getFirstChild()).not.toBeNull();
 
-            await render(<App showChild={false} />);
+            await render(<App showChild={false} />, { wrapper: false });
             expect(fixedRef.current?.getFirstChild()).toBeNull();
         });
     });

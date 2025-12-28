@@ -13,6 +13,7 @@ describe("render - StackPage", () => {
                 <GtkStack ref={stackRef}>
                     <StackPage name="test-page">Content</StackPage>
                 </GtkStack>,
+                { wrapper: false },
             );
 
             expect(stackRef.current?.getChildByName("test-page")).not.toBeNull();
@@ -27,6 +28,7 @@ describe("render - StackPage", () => {
                         Content
                     </StackPage>
                 </GtkStack>,
+                { wrapper: false },
             );
 
             const child = stackRef.current?.getChildByName("titled");
@@ -43,6 +45,7 @@ describe("render - StackPage", () => {
                         Content
                     </StackPage>
                 </GtkStack>,
+                { wrapper: false },
             );
 
             const child = stackRef.current?.getChildByName("iconic");
@@ -65,10 +68,10 @@ describe("render - StackPage", () => {
                 );
             }
 
-            await render(<App pages={["a", "b"]} />);
+            await render(<App pages={["a", "b"]} />, { wrapper: false });
             expect(stackRef.current?.getChildByName("b")).not.toBeNull();
 
-            await render(<App pages={["a"]} />);
+            await render(<App pages={["a"]} />, { wrapper: false });
             expect(stackRef.current?.getChildByName("b")).toBeNull();
         });
     });

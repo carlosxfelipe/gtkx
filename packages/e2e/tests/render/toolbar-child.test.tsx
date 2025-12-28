@@ -1,5 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { AdwHeaderBar, AdwToolbarView, Toolbar } from "@gtkx/react";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { AdwHeaderBar, AdwToolbarView, GtkLabel, Toolbar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -8,55 +9,65 @@ describe("render - ToolbarChild", () => {
     describe("ToolbarChildNode", () => {
         it("adds child to top bar via Toolbar.Top", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const contentRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    Content
+                    <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
-            await findByText("Content");
+            expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds child to bottom bar via Toolbar.Bottom", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const contentRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    Content
+                    <GtkLabel ref={contentRef} label="Content" />
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
-            await findByText("Content");
+            expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("handles multiple top bars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const secondTopRef = createRef<Gtk.Label>();
+            const contentRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    <Toolbar.Top>Second Top Bar</Toolbar.Top>
-                    Content
+                    <Toolbar.Top>
+                        <GtkLabel ref={secondTopRef} label="Second Top Bar" />
+                    </Toolbar.Top>
+                    <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
-            await findByText("Second Top Bar");
-            await findByText("Content");
+            expect(secondTopRef.current).not.toBeNull();
+            expect(contentRef.current).not.toBeNull();
         });
 
         it("handles dynamic toolbar addition", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const contentRef = createRef<Gtk.Label>();
 
             function App({ showTop }: { showTop: boolean }) {
                 return (
@@ -66,15 +77,15 @@ describe("render - ToolbarChild", () => {
                                 <AdwHeaderBar />
                             </Toolbar.Top>
                         )}
-                        Content
+                        <GtkLabel ref={contentRef} label="Content" />
                     </AdwToolbarView>
                 );
             }
 
-            const { findByText, rerender } = await render(<App showTop={false} />);
-            await rerender(<App showTop={true} />);
+            await render(<App showTop={false} />, { wrapper: false });
+            await render(<App showTop={true} />, { wrapper: false });
 
-            await findByText("Content");
+            expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
     });

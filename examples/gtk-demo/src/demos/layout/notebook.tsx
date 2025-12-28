@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkNotebook, NotebookPage } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
 const sourceCode = `import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkNotebook, NotebookPage } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
 import { useState } from "react";
 
 const NotebookDemo = () => {
@@ -19,11 +19,11 @@ const NotebookDemo = () => {
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20}>
             <GtkNotebook page={currentPage} onSwitchPage={(_self, _page, pageNum) => setCurrentPage(pageNum)}>
                 {tabs.map((tab) => (
-                    <NotebookPage key={tab.id} label={tab.title}>
+                    <Notebook.Page key={tab.id} label={tab.title}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} margin={20}>
                             <GtkLabel label={tab.content} />
                         </GtkBox>
-                    </NotebookPage>
+                    </Notebook.Page>
                 ))}
             </GtkNotebook>
         </GtkBox>
@@ -85,7 +85,7 @@ const NotebookDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About Notebook" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="GtkNotebook is a container that shows one page at a time with tabs for switching. Use NotebookPage to define each tab with its label and content."
+                    label="GtkNotebook is a container that shows one page at a time with tabs for switching. Use Notebook.Page to define each tab with its label and content."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
@@ -102,7 +102,7 @@ const NotebookDemo = () => {
                     halign={Gtk.Align.START}
                 />
                 <GtkNotebook cssClasses={["card"]}>
-                    <NotebookPage label="Overview">
+                    <Notebook.Page label="Overview">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -119,8 +119,8 @@ const NotebookDemo = () => {
                                 halign={Gtk.Align.START}
                             />
                         </GtkBox>
-                    </NotebookPage>
-                    <NotebookPage label="Details">
+                    </Notebook.Page>
+                    <Notebook.Page label="Details">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -137,8 +137,8 @@ const NotebookDemo = () => {
                                 halign={Gtk.Align.START}
                             />
                         </GtkBox>
-                    </NotebookPage>
-                    <NotebookPage label="Actions">
+                    </Notebook.Page>
+                    <Notebook.Page label="Actions">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -153,7 +153,7 @@ const NotebookDemo = () => {
                                 <GtkButton label="Cancel" />
                             </GtkBox>
                         </GtkBox>
-                    </NotebookPage>
+                    </Notebook.Page>
                 </GtkNotebook>
             </GtkBox>
 
@@ -176,7 +176,7 @@ const NotebookDemo = () => {
                     cssClasses={["card"]}
                 >
                     {tabs.map((tab) => (
-                        <NotebookPage key={tab.id} label={tab.title}>
+                        <Notebook.Page key={tab.id} label={tab.title}>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -200,7 +200,7 @@ const NotebookDemo = () => {
                                     sensitive={tabs.length > 1}
                                 />
                             </GtkBox>
-                        </NotebookPage>
+                        </Notebook.Page>
                     ))}
                 </GtkNotebook>
             </GtkBox>
@@ -218,23 +218,23 @@ const NotebookDemo = () => {
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                         <GtkLabel label="Left Tabs" cssClasses={["dim-label"]} />
                         <GtkNotebook tabPos={Gtk.PositionType.LEFT} cssClasses={["card"]} heightRequest={120}>
-                            <NotebookPage label="A">
+                            <Notebook.Page label="A">
                                 <GtkLabel label="Page A" marginStart={12} marginEnd={12} />
-                            </NotebookPage>
-                            <NotebookPage label="B">
+                            </Notebook.Page>
+                            <Notebook.Page label="B">
                                 <GtkLabel label="Page B" marginStart={12} marginEnd={12} />
-                            </NotebookPage>
+                            </Notebook.Page>
                         </GtkNotebook>
                     </GtkBox>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                         <GtkLabel label="Bottom Tabs" cssClasses={["dim-label"]} />
                         <GtkNotebook tabPos={Gtk.PositionType.BOTTOM} cssClasses={["card"]} heightRequest={120}>
-                            <NotebookPage label="A">
+                            <Notebook.Page label="A">
                                 <GtkLabel label="Page A" />
-                            </NotebookPage>
-                            <NotebookPage label="B">
+                            </Notebook.Page>
+                            <Notebook.Page label="B">
                                 <GtkLabel label="Page B" />
-                            </NotebookPage>
+                            </Notebook.Page>
                         </GtkNotebook>
                     </GtkBox>
                 </GtkBox>

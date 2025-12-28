@@ -13,19 +13,19 @@ export const FilterBar = ({ filter, onFilterChange }: FilterBarProps) => {
             <GtkToggleButton
                 label="All"
                 active={filter === "all"}
-                onClicked={() => onFilterChange("all")}
+                onToggled={() => onFilterChange("all")}
                 name="filter-all"
             />
             <GtkToggleButton
                 label="Active"
                 active={filter === "active"}
-                onClicked={() => onFilterChange("active")}
+                onToggled={() => onFilterChange("active")}
                 name="filter-active"
             />
             <GtkToggleButton
                 label="Completed"
                 active={filter === "completed"}
-                onClicked={() => onFilterChange("completed")}
+                onToggled={() => onFilterChange("completed")}
                 name="filter-completed"
             />
         </GtkBox>

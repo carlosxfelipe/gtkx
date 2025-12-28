@@ -10,7 +10,7 @@ describe("render - Toolbar", () => {
         it("creates ToolbarView widget", async () => {
             const ref = createRef<Adw.ToolbarView>();
 
-            await render(<AdwToolbarView ref={ref} />);
+            await render(<AdwToolbarView ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -23,6 +23,7 @@ describe("render - Toolbar", () => {
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel ref={contentRef} label="Main Content" />
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
             expect(toolbarRef.current?.getContent()?.equals(contentRef.current)).toBe(true);
@@ -30,52 +31,58 @@ describe("render - Toolbar", () => {
 
         it("adds top toolbar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const contentRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    Content
+                    <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
-            await findByText("Content");
+            expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds bottom toolbar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const contentRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    Content
+                    <GtkLabel ref={contentRef} label="Content" />
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
-            await findByText("Content");
+            expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds both top and bottom toolbars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const contentRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    Content
+                    <GtkLabel ref={contentRef} label="Content" />
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
                 </AdwToolbarView>,
+                { wrapper: false },
             );
 
-            await findByText("Content");
+            expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
     });

@@ -13,6 +13,7 @@ describe("render - SimpleListItem", () => {
                 <GtkDropDown ref={dropDownRef}>
                     <SimpleListItem id="item1" value="Item Value" />
                 </GtkDropDown>,
+                { wrapper: false },
             );
 
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
@@ -25,6 +26,7 @@ describe("render - SimpleListItem", () => {
                 <GtkDropDown ref={dropDownRef}>
                     <SimpleListItem id="test" value="Test String" />
                 </GtkDropDown>,
+                { wrapper: false },
             );
 
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
@@ -41,10 +43,10 @@ describe("render - SimpleListItem", () => {
                 );
             }
 
-            await render(<App value="Initial" />);
+            await render(<App value="Initial" />, { wrapper: false });
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
 
-            await render(<App value="Updated" />);
+            await render(<App value="Updated" />, { wrapper: false });
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(1);
         });
 
@@ -57,6 +59,7 @@ describe("render - SimpleListItem", () => {
                     <SimpleListItem id="b" value="Second" />
                     <SimpleListItem id="c" value="Third" />
                 </GtkDropDown>,
+                { wrapper: false },
             );
 
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
@@ -75,10 +78,10 @@ describe("render - SimpleListItem", () => {
                 );
             }
 
-            await render(<App items={["first", "last"]} />);
+            await render(<App items={["first", "last"]} />, { wrapper: false });
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(2);
 
-            await render(<App items={["first", "middle", "last"]} />);
+            await render(<App items={["first", "middle", "last"]} />, { wrapper: false });
             expect(dropDownRef.current?.getModel()?.getNItems()).toBe(3);
         });
     });

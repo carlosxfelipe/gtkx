@@ -3,6 +3,8 @@ import { cleanup, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
+const TestApp = () => <App onCloseRequest={() => false} />;
+
 describe("Todo App", () => {
     afterEach(async () => {
         await cleanup();
@@ -10,7 +12,7 @@ describe("Todo App", () => {
 
     describe("adding todos", () => {
         it("adds a new todo when clicking Add button", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Buy groceries");
@@ -23,7 +25,7 @@ describe("Todo App", () => {
         });
 
         it("adds a new todo when pressing Enter", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Walk the dog");
@@ -34,7 +36,7 @@ describe("Todo App", () => {
         });
 
         it("clears input after adding todo", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Buy groceries");
@@ -49,7 +51,7 @@ describe("Todo App", () => {
         });
 
         it("does not add empty todos", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             const addButton = await screen.findByTestId("add-button");
             expect((addButton as Gtk.Button).getSensitive()).toBe(false);
@@ -58,7 +60,7 @@ describe("Todo App", () => {
 
     describe("completing todos", () => {
         it("can toggle a todo as completed", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add a todo first
             const input = await screen.findByTestId("todo-input");
@@ -75,7 +77,7 @@ describe("Todo App", () => {
         });
 
         it("can toggle a completed todo back to active", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add and complete a todo
             const input = await screen.findByTestId("todo-input");
@@ -95,7 +97,7 @@ describe("Todo App", () => {
 
     describe("deleting todos", () => {
         it("can delete a todo", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add a todo
             const input = await screen.findByTestId("todo-input");
@@ -122,7 +124,7 @@ describe("Todo App", () => {
 
     describe("filtering todos", () => {
         it("shows filter bar when todos exist", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Initially no filter bar
             await expect(screen.findByTestId("filter-all", { timeout: 100 })).rejects.toThrow();
@@ -139,7 +141,7 @@ describe("Todo App", () => {
         });
 
         it("filters to show only active todos", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add two todos
             const input = await screen.findByTestId("todo-input");
@@ -158,15 +160,16 @@ describe("Todo App", () => {
             const filterActive = await screen.findByTestId("filter-active");
             await userEvent.click(filterActive);
 
-            // Should only see active todo
-            const activeTodo = await screen.findByText("Active todo");
-            expect(activeTodo).toBeDefined();
-
-            await expect(screen.findByText("Completed todo", { timeout: 100 })).rejects.toThrow();
+            // Wait for filter to apply and verify only active todo is shown
+            await waitFor(async () => {
+                const activeTodo = await screen.findByText("Active todo", { timeout: 100 });
+                expect(activeTodo).toBeDefined();
+                await expect(screen.findByText("Completed todo", { timeout: 100 })).rejects.toThrow();
+            });
         });
 
         it("filters to show only completed todos", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add two todos
             const input = await screen.findByTestId("todo-input");
@@ -185,17 +188,18 @@ describe("Todo App", () => {
             const filterCompleted = await screen.findByTestId("filter-completed");
             await userEvent.click(filterCompleted);
 
-            // Should only see completed todo
-            const completedTodo = await screen.findByText("Completed todo");
-            expect(completedTodo).toBeDefined();
-
-            await expect(screen.findByText("Active todo", { timeout: 100 })).rejects.toThrow();
+            // Wait for filter to apply and verify only completed todo is shown
+            await waitFor(async () => {
+                const completedTodo = await screen.findByText("Completed todo", { timeout: 100 });
+                expect(completedTodo).toBeDefined();
+                await expect(screen.findByText("Active todo", { timeout: 100 })).rejects.toThrow();
+            });
         });
     });
 
     describe("clear completed", () => {
         it("shows clear completed button when there are completed todos", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add and complete a todo
             const input = await screen.findByTestId("todo-input");
@@ -216,7 +220,7 @@ describe("Todo App", () => {
         });
 
         it("removes all completed todos when clicking clear", async () => {
-            await render(<App />, { wrapper: false });
+            await render(<TestApp />, { wrapper: false });
 
             // Add two todos
             const input = await screen.findByTestId("todo-input");

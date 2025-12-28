@@ -143,9 +143,14 @@ export type ColumnViewRootProps<C extends string = string> = {
  * Props for notebook (tabbed) pages.
  */
 export type NotebookPageProps = SlotProps & {
-    /** Tab label text */
-    label: string;
+    /** Tab label text (optional when using Notebook.PageTab) */
+    label?: string;
 };
+
+/**
+ * Props for custom notebook page tab widgets.
+ */
+export type NotebookPageTabProps = SlotProps;
 
 /**
  * Props for the root Stack component.
@@ -338,21 +343,41 @@ export const FixedChild = "FixedChild" as const;
 export const Toast = "Toast" as const;
 
 /**
- * Element type for pages within a GtkNotebook (tabbed interface).
+ * Element types for pages within a GtkNotebook (tabbed interface).
  *
- * @example
+ * @example Simple text tabs
  * ```tsx
  * <GtkNotebook>
- *   <NotebookPage label="Tab 1">
+ *   <Notebook.Page label="Tab 1">
  *     <GtkLabel label="Content 1" />
- *   </NotebookPage>
- *   <NotebookPage label="Tab 2">
+ *   </Notebook.Page>
+ *   <Notebook.Page label="Tab 2">
  *     <GtkLabel label="Content 2" />
- *   </NotebookPage>
+ *   </Notebook.Page>
+ * </GtkNotebook>
+ * ```
+ *
+ * @example Custom tab widgets
+ * ```tsx
+ * <GtkNotebook>
+ *   <Notebook.Page>
+ *     <Notebook.PageTab>
+ *       <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
+ *         <GtkImage iconName="folder-symbolic" />
+ *         <GtkLabel label="Files" />
+ *       </GtkBox>
+ *     </Notebook.PageTab>
+ *     <GtkLabel label="Content" />
+ *   </Notebook.Page>
  * </GtkNotebook>
  * ```
  */
-export const NotebookPage = "NotebookPage" as const;
+export const Notebook = {
+    /** A page within the notebook */
+    Page: "Notebook.Page" as const,
+    /** Custom widget for the page tab label */
+    PageTab: "Notebook.PageTab" as const,
+};
 
 /**
  * Element type for items in a ListView or GridView.
@@ -605,7 +630,8 @@ declare global {
 
                 Toast: ToastProps;
 
-                NotebookPage: NotebookPageProps;
+                "Notebook.Page": NotebookPageProps;
+                "Notebook.PageTab": NotebookPageTabProps;
 
                 ListItem: ListItemProps;
 

@@ -15,6 +15,7 @@ describe("render - Toast", () => {
                     <GtkLabel label="Content" />
                     <Toast title="Hello" timeout={0} onDismissed={onDismissed} />
                 </AdwToastOverlay>,
+                { wrapper: false },
             );
 
             expect(overlayRef.current).not.toBeNull();
@@ -33,8 +34,8 @@ describe("render - Toast", () => {
                 );
             }
 
-            const { rerender } = await render(<App showToast={true} />);
-            await rerender(<App showToast={false} />);
+            await render(<App showToast={true} />, { wrapper: false });
+            await render(<App showToast={false} />, { wrapper: false });
 
             expect(onDismissed).toHaveBeenCalled();
         });
@@ -48,6 +49,7 @@ describe("render - Toast", () => {
                     <GtkLabel label="Content" />
                     <Toast title="Hello" timeout={0} buttonLabel="Click me" onButtonClicked={onButtonClicked} />
                 </AdwToastOverlay>,
+                { wrapper: false },
             );
 
             expect(overlayRef.current).not.toBeNull();
@@ -63,6 +65,7 @@ describe("render - Toast", () => {
                     <Toast title="Second" timeout={0} />
                     <Toast title="Third" timeout={0} />
                 </AdwToastOverlay>,
+                { wrapper: false },
             );
 
             expect(overlayRef.current).not.toBeNull();
@@ -80,8 +83,8 @@ describe("render - Toast", () => {
                 );
             }
 
-            await render(<App title="Initial" />);
-            await render(<App title="Updated" />);
+            await render(<App title="Initial" />, { wrapper: false });
+            await render(<App title="Updated" />, { wrapper: false });
 
             expect(overlayRef.current).not.toBeNull();
         });

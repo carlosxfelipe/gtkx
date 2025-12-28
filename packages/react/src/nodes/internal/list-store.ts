@@ -4,26 +4,28 @@ import { scheduleAfterCommit } from "../../scheduler.js";
 export class ListStore {
     private items: Map<string, unknown> = new Map();
     private model: Gtk.StringList = new Gtk.StringList();
-    private order: string[] = [];
-    private committedOrder: string[] = [];
-    private syncScheduled = false;
+    private newSortedIds: string[] = [];
+    private sortedIds: string[] = [];
+    private shouldSync = false;
 
     public addItem(id: string, item: unknown): void {
         this.items.set(id, item);
 
-        const existingIndex = this.order.indexOf(id);
+        const existingIndex = this.newSortedIds.indexOf(id);
+
         if (existingIndex !== -1) {
-            this.order.splice(existingIndex, 1);
+            this.newSortedIds.splice(existingIndex, 1);
         }
 
-        this.order.push(id);
+        this.newSortedIds.push(id);
         this.scheduleSync();
     }
 
     public removeItem(id: string): void {
-        const index = this.order.indexOf(id);
+        const index = this.newSortedIds.indexOf(id);
+
         if (index !== -1) {
-            this.order.splice(index, 1);
+            this.newSortedIds.splice(index, 1);
             this.items.delete(id);
             this.scheduleSync();
         }
@@ -32,16 +34,18 @@ export class ListStore {
     public insertItemBefore(id: string, beforeId: string, item: unknown): void {
         this.items.set(id, item);
 
-        const existingIndex = this.order.indexOf(id);
+        const existingIndex = this.newSortedIds.indexOf(id);
+
         if (existingIndex !== -1) {
-            this.order.splice(existingIndex, 1);
+            this.newSortedIds.splice(existingIndex, 1);
         }
 
-        const beforeIndex = this.order.indexOf(beforeId);
+        const beforeIndex = this.newSortedIds.indexOf(beforeId);
+
         if (beforeIndex === -1) {
-            this.order.push(id);
+            this.newSortedIds.push(id);
         } else {
-            this.order.splice(beforeIndex, 0, id);
+            this.newSortedIds.splice(beforeIndex, 0, id);
         }
 
         this.scheduleSync();
@@ -64,21 +68,19 @@ export class ListStore {
     }
 
     private scheduleSync(): void {
-        if (this.syncScheduled) {
+        if (this.shouldSync) {
             return;
         }
 
-        this.syncScheduled = true;
+        this.shouldSync = true;
         scheduleAfterCommit(() => this.sync());
     }
 
     private sync(): void {
-        this.syncScheduled = false;
-
-        const newOrder = this.order;
-        const oldLength = this.committedOrder.length;
-
+        this.shouldSync = false;
+        const newOrder = this.newSortedIds;
+        const oldLength = this.sortedIds.length;
         this.model.splice(0, oldLength, newOrder.length > 0 ? newOrder : undefined);
-        this.committedOrder = [...newOrder];
+        this.sortedIds = [...newOrder];
     }
 }

@@ -34,6 +34,7 @@ describe("render - ListView", () => {
                 <GtkListView ref={ref} renderItem={() => "Item"}>
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -49,6 +50,7 @@ describe("render - ListView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -74,6 +76,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -86,6 +89,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "Third" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -112,6 +116,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
@@ -123,6 +128,7 @@ describe("render - ListView", () => {
                         { id: "3", name: "C" },
                     ]}
                 />,
+                { wrapper: false },
             );
 
             expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(2);
@@ -139,9 +145,9 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App itemName="Initial" />);
+            await render(<App itemName="Initial" />, { wrapper: false });
 
-            await render(<App itemName="Updated" />);
+            await render(<App itemName="Updated" />, { wrapper: false });
         });
     });
 
@@ -154,6 +160,7 @@ describe("render - ListView", () => {
                 <GtkListView ref={ref} renderItem={renderItem}>
                     <ListItem id="1" value={{ name: "Test Item" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
         });
 
@@ -173,9 +180,9 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App prefix="First" />);
+            await render(<App prefix="First" />, { wrapper: false });
 
-            await render(<App prefix="Second" />);
+            await render(<App prefix="Second" />, { wrapper: false });
         });
     });
 
@@ -188,6 +195,7 @@ describe("render - ListView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
         });
 
@@ -200,6 +208,7 @@ describe("render - ListView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
 
             await userEvent.selectOptions(ref.current as Gtk.ListView, 0);
@@ -218,9 +227,9 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App selected={["1"]} />);
+            await render(<App selected={["1"]} />, { wrapper: false });
 
-            await render(<App selected={[]} />);
+            await render(<App selected={[]} />, { wrapper: false });
         });
     });
 
@@ -233,6 +242,7 @@ describe("render - ListView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
         });
 
@@ -250,6 +260,7 @@ describe("render - ListView", () => {
                     <ListItem id="2" value={{ name: "Second" }} />
                     <ListItem id="3" value={{ name: "Third" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
         });
 
@@ -267,6 +278,7 @@ describe("render - ListView", () => {
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
 
             await userEvent.selectOptions(ref.current as Gtk.ListView, [0, 1]);
@@ -283,6 +295,7 @@ describe("render - ListView", () => {
                 <GtkGridView ref={ref} renderItem={() => "Item"}>
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkGridView>,
+                { wrapper: false },
             );
 
             expect(ref.current).not.toBeNull();
@@ -303,6 +316,7 @@ describe("render - ListView", () => {
                     <ListItem id="a" value={{ name: "A" }} />
                     <ListItem id="b" value={{ name: "B" }} />
                 </GtkListView>,
+                { wrapper: false },
             );
 
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["c", "a", "b"]);
@@ -321,10 +335,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D", "E"]} />);
+            await render(<App items={["A", "B", "C", "D", "E"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App items={["E", "D", "C", "B", "A"]} />);
+            await render(<App items={["E", "D", "C", "B", "A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -341,10 +355,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "D", "A", "C"]} />);
+            await render(<App items={["B", "D", "A", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -361,10 +375,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["D", "B", "E"]} />);
+            await render(<App items={["D", "B", "E"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "B", "E"]);
         });
 
@@ -381,10 +395,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["B", "C"]} />);
+            await render(<App items={["B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "C"]);
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
 
@@ -401,10 +415,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A"]} />);
+            await render(<App items={["A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A"]);
 
-            await render(<App items={["X", "A", "Y"]} />);
+            await render(<App items={["X", "A", "Y"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["X", "A", "Y"]);
         });
 
@@ -421,10 +435,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
-            await render(<App items={["C", "A", "B"]} />);
-            await render(<App items={["B", "C", "A"]} />);
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["C", "A", "B"]} />, { wrapper: false });
+            await render(<App items={["B", "C", "A"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
@@ -445,10 +459,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={initialItems} />);
+            await render(<App items={initialItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(initialItems);
 
-            await render(<App items={reversedItems} />);
+            await render(<App items={reversedItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(reversedItems);
         });
 
@@ -465,10 +479,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "C", "D", "A"]} />);
+            await render(<App items={["B", "C", "D", "A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["B", "C", "D", "A"]);
         });
 
@@ -485,10 +499,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["D", "A", "B", "C"]} />);
+            await render(<App items={["D", "A", "B", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["D", "A", "B", "C"]);
         });
 
@@ -505,10 +519,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["A", "C", "B", "D"]} />);
+            await render(<App items={["A", "C", "B", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "C", "B", "D"]);
         });
 
@@ -541,16 +555,16 @@ describe("render - ListView", () => {
                 { id: "5", active: true },
             ];
 
-            await render(<App filter="all" items={items} />);
+            await render(<App filter="all" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
 
-            await render(<App filter="active" items={items} />);
+            await render(<App filter="active" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "3", "5"]);
 
-            await render(<App filter="inactive" items={items} />);
+            await render(<App filter="inactive" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["2", "4"]);
 
-            await render(<App filter="all" items={items} />);
+            await render(<App filter="all" items={items} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3", "4", "5"]);
         });
 
@@ -584,7 +598,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Charlie" },
             ];
 
-            await render(<App items={initialItems} />);
+            await render(<App items={initialItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
 
             renderCalls.length = 0;
@@ -595,7 +609,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Charlie Updated" },
             ];
 
-            await render(<App items={updatedItems} />);
+            await render(<App items={updatedItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
         });
 
@@ -625,7 +639,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Counter C", count: 0 },
             ];
 
-            await render(<App items={initialItems} />);
+            await render(<App items={initialItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
 
             const updatedItems: Item[] = [
@@ -634,7 +648,7 @@ describe("render - ListView", () => {
                 { id: "3", name: "Counter C", count: 0 },
             ];
 
-            await render(<App items={updatedItems} />);
+            await render(<App items={updatedItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
         });
 
@@ -662,7 +676,7 @@ describe("render - ListView", () => {
                 { id: "3", value: 0 },
             ];
 
-            await render(<App items={baseItems} />);
+            await render(<App items={baseItems} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
 
             for (let i = 1; i <= 10; i++) {
@@ -671,7 +685,7 @@ describe("render - ListView", () => {
                     { id: "2", value: i * 2 },
                     { id: "3", value: i * 3 },
                 ];
-                await render(<App items={updatedItems} />);
+                await render(<App items={updatedItems} />, { wrapper: false });
                 expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["1", "2", "3"]);
             }
         });
@@ -695,10 +709,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D", "E"]} />);
+            await render(<App items={["A", "B", "C", "D", "E"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await render(<App items={["E", "D", "C", "B", "A"]} />);
+            await render(<App items={["E", "D", "C", "B", "A"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
@@ -715,10 +729,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C", "D"]} />);
+            await render(<App items={["A", "B", "C", "D"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C", "D"]);
 
-            await render(<App items={["B", "D", "A", "C"]} />);
+            await render(<App items={["B", "D", "A", "C"]} />, { wrapper: false });
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["B", "D", "A", "C"]);
         });
 
@@ -735,10 +749,10 @@ describe("render - ListView", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
-            await render(<App items={["C", "A", "B"]} />);
-            await render(<App items={["B", "C", "A"]} />);
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
+            await render(<App items={["C", "A", "B"]} />, { wrapper: false });
+            await render(<App items={["B", "C", "A"]} />, { wrapper: false });
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
             expect(getModelItemOrder(ref.current as Gtk.GridView)).toEqual(["A", "B", "C"]);
         });

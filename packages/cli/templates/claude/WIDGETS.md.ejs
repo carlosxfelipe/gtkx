@@ -61,17 +61,30 @@ Tabbed container with visible tabs.
 
 ```tsx
 <GtkNotebook>
-    <NotebookPage label="Tab 1">
+    <Notebook.Page label="Tab 1">
         <Content1 />
-    </NotebookPage>
-    <NotebookPage label="Tab 2">
+    </Notebook.Page>
+    <Notebook.Page label="Tab 2">
         <Content2 />
-    </NotebookPage>
+    </Notebook.Page>
 </GtkNotebook>
 ```
 
-NotebookPage props (consumed):
-- `label`: string (tab label)
+Notebook.Page props (consumed):
+- `label`: string (tab label, optional when using Notebook.PageTab)
+
+Custom tab widgets with Notebook.PageTab:
+```tsx
+<Notebook.Page>
+    <Notebook.PageTab>
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+            <GtkImage iconName="folder-symbolic" />
+            <GtkLabel label="Files" />
+        </GtkBox>
+    </Notebook.PageTab>
+    <Content />
+</Notebook.Page>
+```
 
 ### GtkPaned
 Resizable split container with draggable divider.

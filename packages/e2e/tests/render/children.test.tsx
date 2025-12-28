@@ -30,6 +30,7 @@ describe("render - children", () => {
                 <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel ref={labelRef} label="Child" />
                 </GtkBox>,
+                { wrapper: false },
             );
 
             expect(labelRef.current?.getParent()?.id).toEqual(boxRef.current?.id);
@@ -43,6 +44,7 @@ describe("render - children", () => {
                 <GtkFrame ref={frameRef}>
                     <GtkLabel ref={labelRef} label="Single Child" />
                 </GtkFrame>,
+                { wrapper: false },
             );
 
             expect(frameRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
@@ -61,11 +63,11 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App showChild={true} />);
+            await render(<App showChild={true} />, { wrapper: false });
 
             expect(getChildWidgets(boxRef.current as Gtk.Box).length).toBe(1);
 
-            await render(<App showChild={false} />);
+            await render(<App showChild={false} />, { wrapper: false });
 
             expect(getChildWidgets(boxRef.current as Gtk.Box).length).toBe(0);
         });
@@ -77,11 +79,11 @@ describe("render - children", () => {
                 return <GtkFrame ref={frameRef}>{showChild && "Child"}</GtkFrame>;
             }
 
-            await render(<App showChild={true} />);
+            await render(<App showChild={true} />, { wrapper: false });
 
             expect(frameRef.current?.getChild()).not.toBeNull();
 
-            await render(<App showChild={false} />);
+            await render(<App showChild={false} />, { wrapper: false });
 
             expect(frameRef.current?.getChild()).toBeNull();
         });
@@ -101,11 +103,11 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "C"]} />);
+            await render(<App items={["A", "C"]} />, { wrapper: false });
 
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
@@ -123,9 +125,9 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B"]} />);
+            await render(<App items={["A", "B"]} />, { wrapper: false });
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
 
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
@@ -188,13 +190,13 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["A", "D", "B", "C"]} />);
+            await render(<App items={["A", "D", "B", "C"]} />, { wrapper: false });
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
 
-            await render(<App items={["D", "C"]} />);
+            await render(<App items={["D", "C"]} />, { wrapper: false });
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
@@ -211,10 +213,10 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await render(<App items={["C", "B", "A"]} />);
+            await render(<App items={["C", "B", "A"]} />, { wrapper: false });
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });

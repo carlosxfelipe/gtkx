@@ -9,7 +9,7 @@ describe("render - PopoverMenu", () => {
         it("creates PopoverMenu widget", async () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
-            await render(<GtkPopoverMenu ref={ref} />);
+            await render(<GtkPopoverMenu ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -22,6 +22,7 @@ describe("render - PopoverMenu", () => {
                     <Menu.Item id="item1" label="Item 1" onActivate={() => {}} />
                     <Menu.Item id="item2" label="Item 2" onActivate={() => {}} />
                 </GtkPopoverMenu>,
+                { wrapper: false },
             );
 
             expect(popoverRef.current?.getMenuModel()?.getNItems()).toBeGreaterThan(0);
@@ -35,6 +36,7 @@ describe("render - PopoverMenu", () => {
                     <Menu.Item id="opt1" label="Option 1" onActivate={() => {}} />
                     <Menu.Item id="opt2" label="Option 2" onActivate={() => {}} />
                 </GtkMenuButton>,
+                { wrapper: false },
             );
 
             expect(buttonRef.current?.getMenuModel()?.getNItems()).toBeGreaterThan(0);
@@ -49,6 +51,7 @@ describe("render - PopoverMenu", () => {
                     <Menu.Item id="second" label="Second" onActivate={() => {}} />
                     <Menu.Item id="third" label="Third" onActivate={() => {}} />
                 </GtkPopoverMenu>,
+                { wrapper: false },
             );
 
             expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(3);
@@ -62,6 +65,7 @@ describe("render - PopoverMenu", () => {
                 <GtkPopoverMenu ref={popoverRef}>
                     <Menu.Item id="click" label="Click Me" onActivate={onActivate} />
                 </GtkPopoverMenu>,
+                { wrapper: false },
             );
 
             expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(1);
@@ -80,10 +84,10 @@ describe("render - PopoverMenu", () => {
                 );
             }
 
-            await render(<App items={["A", "B", "C"]} />);
+            await render(<App items={["A", "B", "C"]} />, { wrapper: false });
             expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(3);
 
-            await render(<App items={["A"]} />);
+            await render(<App items={["A"]} />, { wrapper: false });
             expect(popoverRef.current?.getMenuModel()?.getNItems()).toBe(1);
         });
 
@@ -99,6 +103,7 @@ describe("render - PopoverMenu", () => {
                         <Menu.Item id="s2item" label="Section 2 Item" onActivate={() => {}} />
                     </Menu.Section>
                 </GtkPopoverMenu>,
+                { wrapper: false },
             );
 
             expect(popoverRef.current?.getMenuModel()).not.toBeNull();

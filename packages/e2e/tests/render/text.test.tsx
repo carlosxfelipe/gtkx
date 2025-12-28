@@ -24,6 +24,7 @@ describe("render - text instances", () => {
             <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 Hello World
             </GtkBox>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);
@@ -41,11 +42,11 @@ describe("render - text instances", () => {
             );
         }
 
-        await render(<App text="Initial" />);
+        await render(<App text="Initial" />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).toContain("Initial");
 
-        await render(<App text="Updated" />);
+        await render(<App text="Updated" />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).toContain("Updated");
     });
@@ -57,6 +58,7 @@ describe("render - text instances", () => {
             <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 {""}
             </GtkBox>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);
@@ -70,6 +72,7 @@ describe("render - text instances", () => {
             <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 你好世界 🌍 مرحبا
             </GtkBox>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);
@@ -87,11 +90,11 @@ describe("render - text instances", () => {
             );
         }
 
-        await render(<App showText={true} />);
+        await render(<App showText={true} />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).toContain("Removable Text");
 
-        await render(<App showText={false} />);
+        await render(<App showText={false} />, { wrapper: false });
 
         expect(getChildLabels(boxRef.current as Gtk.Box)).not.toContain("Removable Text");
     });
@@ -105,6 +108,7 @@ describe("render - text instances", () => {
                 {"Second"}
                 {"Third"}
             </GtkBox>,
+            { wrapper: false },
         );
 
         const labels = getChildLabels(boxRef.current as Gtk.Box);

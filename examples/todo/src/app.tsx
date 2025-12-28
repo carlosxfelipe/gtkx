@@ -69,7 +69,11 @@ interface ToastMessage {
     message: string;
 }
 
-export const App = () => {
+interface AppProps {
+    onCloseRequest?: () => boolean;
+}
+
+export const App = ({ onCloseRequest = quit }: AppProps) => {
     const {
         todos,
         filter,
@@ -104,7 +108,7 @@ export const App = () => {
     };
 
     return (
-        <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onCloseRequest={quit}>
+        <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onCloseRequest={onCloseRequest}>
             <AdwToolbarView>
                 <Toolbar.Top>
                     <AdwHeaderBar>

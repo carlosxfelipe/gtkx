@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkNotebook, NotebookPage } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -84,7 +84,7 @@ const TabsDemo = () => {
                 >
                     <GtkLabel label="Basic Tabbed Interface" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkNotebook cssClasses={["card"]}>
-                        <NotebookPage label="Overview">
+                        <Notebook.Page label="Overview">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={8}
@@ -100,8 +100,8 @@ const TabsDemo = () => {
                                     cssClasses={["dim-label"]}
                                 />
                             </GtkBox>
-                        </NotebookPage>
-                        <NotebookPage label="Details">
+                        </Notebook.Page>
+                        <Notebook.Page label="Details">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={8}
@@ -117,8 +117,8 @@ const TabsDemo = () => {
                                     cssClasses={["dim-label"]}
                                 />
                             </GtkBox>
-                        </NotebookPage>
-                        <NotebookPage label="Actions">
+                        </Notebook.Page>
+                        <Notebook.Page label="Actions">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={8}
@@ -134,7 +134,7 @@ const TabsDemo = () => {
                                     <GtkButton label="Delete" cssClasses={["destructive-action"]} />
                                 </GtkBox>
                             </GtkBox>
-                        </NotebookPage>
+                        </Notebook.Page>
                     </GtkNotebook>
                 </GtkBox>
             </GtkFrame>
@@ -173,7 +173,7 @@ const TabsDemo = () => {
                         heightRequest={150}
                     >
                         {tabs.map((tab) => (
-                            <NotebookPage key={tab.id} label={tab.title}>
+                            <Notebook.Page key={tab.id} label={tab.title}>
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={12}
@@ -200,7 +200,7 @@ const TabsDemo = () => {
                                         sensitive={tabs.length > 1}
                                     />
                                 </GtkBox>
-                            </NotebookPage>
+                            </Notebook.Page>
                         ))}
                     </GtkNotebook>
                 </GtkBox>
@@ -267,7 +267,7 @@ const TabsDemo = () => {
 
 const sourceCode = `import { useState } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkNotebook, GtkLabel, NotebookPage } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkNotebook, GtkLabel, Notebook } from "@gtkx/react";
 
 const TabsDemo = () => {
     const [currentPage, setCurrentPage] = useState(0);
@@ -298,7 +298,7 @@ const TabsDemo = () => {
                 scrollable
             >
                 {tabs.map((tab) => (
-                    <NotebookPage key={tab.id} label={tab.title}>
+                    <Notebook.Page key={tab.id} label={tab.title}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                             <GtkLabel label={tab.content} />
                             <GtkButton
@@ -306,7 +306,7 @@ const TabsDemo = () => {
                                 onClicked={() => closeTab(tab.id)}
                             />
                         </GtkBox>
-                    </NotebookPage>
+                    </Notebook.Page>
                 ))}
             </GtkNotebook>
         </GtkBox>
@@ -317,7 +317,7 @@ export const tabsDemo: Demo = {
     id: "tabs",
     title: "Tabs",
     description: "Tabbed interface with GtkNotebook for organizing content.",
-    keywords: ["tabs", "notebook", "pages", "tabbed", "navigation", "GtkNotebook", "NotebookPage"],
+    keywords: ["tabs", "notebook", "pages", "tabbed", "navigation", "GtkNotebook", "Notebook.Page"],
     component: TabsDemo,
     sourceCode,
 };

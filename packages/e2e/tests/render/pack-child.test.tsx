@@ -8,122 +8,153 @@ describe("render - PackChild", () => {
     describe("PackChild (Pack.Start/Pack.End)", () => {
         it("packs child at start via Pack.Start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const startRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>Start</Pack.Start>
+                    <Pack.Start>
+                        <GtkLabel ref={startRef} label="Start" />
+                    </Pack.Start>
                 </GtkHeaderBar>,
+                { wrapper: false },
             );
 
-            expect(await findByText("Start")).toBeDefined();
+            expect(startRef.current).not.toBeNull();
+            expect(startRef.current?.getLabel()).toBe("Start");
         });
 
         it("packs child at end via Pack.End", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const endRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.End>End</Pack.End>
+                    <Pack.End>
+                        <GtkLabel ref={endRef} label="End" />
+                    </Pack.End>
                 </GtkHeaderBar>,
+                { wrapper: false },
             );
 
-            expect(await findByText("End")).toBeDefined();
+            expect(endRef.current).not.toBeNull();
+            expect(endRef.current?.getLabel()).toBe("End");
         });
 
         it("combines Pack.Start and Pack.End", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const startRef = createRef<Gtk.Label>();
+            const endRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>Start</Pack.Start>
-                    <Pack.End>End</Pack.End>
+                    <Pack.Start>
+                        <GtkLabel ref={startRef} label="Start" />
+                    </Pack.Start>
+                    <Pack.End>
+                        <GtkLabel ref={endRef} label="End" />
+                    </Pack.End>
                 </GtkHeaderBar>,
+                { wrapper: false },
             );
 
-            expect(await findByText("Start")).toBeDefined();
-            expect(await findByText("End")).toBeDefined();
+            expect(startRef.current).not.toBeNull();
+            expect(endRef.current).not.toBeNull();
         });
 
         it("removes packed child", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const startRef = createRef<Gtk.Label>();
+            const alwaysRef = createRef<Gtk.Label>();
 
             function App({ showStart }: { showStart: boolean }) {
                 return (
                     <GtkHeaderBar ref={headerBarRef}>
-                        {showStart && <Pack.Start>Start</Pack.Start>}
+                        {showStart && (
+                            <Pack.Start>
+                                <GtkLabel ref={startRef} label="Start" />
+                            </Pack.Start>
+                        )}
                         <Slot for={GtkHeaderBar} id="titleWidget">
-                            Always
+                            <GtkLabel ref={alwaysRef} label="Always" />
                         </Slot>
                     </GtkHeaderBar>
                 );
             }
 
-            const { findByText, rerender } = await render(<App showStart={true} />);
+            await render(<App showStart={true} />, { wrapper: false });
 
-            expect(await findByText("Start")).toBeDefined();
-            expect(await findByText("Always")).toBeDefined();
+            expect(startRef.current).not.toBeNull();
+            expect(alwaysRef.current).not.toBeNull();
 
-            await rerender(<App showStart={false} />);
+            await render(<App showStart={false} />, { wrapper: false });
 
-            await expect(findByText("Start")).rejects.toThrow();
-            expect(await findByText("Always")).toBeDefined();
+            expect(startRef.current).toBeNull();
+            expect(alwaysRef.current).not.toBeNull();
         });
 
         it("packs multiple children at start via Pack.Start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const firstRef = createRef<Gtk.Label>();
+            const secondRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <GtkHeaderBar ref={headerBarRef}>
                     <Pack.Start>
-                        <GtkLabel label="First" />
-                        <GtkLabel label="Second" />
+                        <GtkLabel ref={firstRef} label="First" />
+                        <GtkLabel ref={secondRef} label="Second" />
                     </Pack.Start>
                 </GtkHeaderBar>,
+                { wrapper: false },
             );
 
-            expect(await findByText("First")).toBeDefined();
-            expect(await findByText("Second")).toBeDefined();
+            expect(firstRef.current).not.toBeNull();
+            expect(secondRef.current).not.toBeNull();
         });
 
         it("packs multiple children at end via Pack.End", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const firstRef = createRef<Gtk.Label>();
+            const secondRef = createRef<Gtk.Label>();
 
-            const { findByText } = await render(
+            await render(
                 <GtkHeaderBar ref={headerBarRef}>
                     <Pack.End>
-                        <GtkLabel label="First" />
-                        <GtkLabel label="Second" />
+                        <GtkLabel ref={firstRef} label="First" />
+                        <GtkLabel ref={secondRef} label="Second" />
                     </Pack.End>
                 </GtkHeaderBar>,
+                { wrapper: false },
             );
 
-            expect(await findByText("First")).toBeDefined();
-            expect(await findByText("Second")).toBeDefined();
+            expect(firstRef.current).not.toBeNull();
+            expect(secondRef.current).not.toBeNull();
         });
 
         it("removes individual children from Pack.Start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
+            const firstRef = createRef<Gtk.Label>();
+            const secondRef = createRef<Gtk.Label>();
 
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
                     <GtkHeaderBar ref={headerBarRef}>
                         <Pack.Start>
-                            <GtkLabel label="First" />
-                            {showSecond && <GtkLabel label="Second" />}
+                            <GtkLabel ref={firstRef} label="First" />
+                            {showSecond && <GtkLabel ref={secondRef} label="Second" />}
                         </Pack.Start>
                     </GtkHeaderBar>
                 );
             }
 
-            const { findByText, rerender } = await render(<App showSecond={true} />);
+            await render(<App showSecond={true} />, { wrapper: false });
 
-            expect(await findByText("First")).toBeDefined();
-            expect(await findByText("Second")).toBeDefined();
+            expect(firstRef.current).not.toBeNull();
+            expect(secondRef.current).not.toBeNull();
 
-            await rerender(<App showSecond={false} />);
+            await render(<App showSecond={false} />, { wrapper: false });
 
-            expect(await findByText("First")).toBeDefined();
-            await expect(findByText("Second")).rejects.toThrow();
+            expect(firstRef.current).not.toBeNull();
+            expect(secondRef.current).toBeNull();
         });
     });
 });
