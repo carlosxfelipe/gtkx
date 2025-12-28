@@ -46,6 +46,24 @@ const isListWidget = (widgetName: string): boolean => LIST_WIDGETS.has(widgetNam
 const isColumnViewWidget = (widgetName: string): boolean => widgetName === COLUMN_VIEW_WIDGET;
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
 
+const CONTAINER_METHODS = new Set([
+    "append",
+    "set_child",
+    "insert",
+    "insert_child_after",
+    "reorder_child_after",
+    "add_named",
+    "append_page",
+    "add_prefix",
+    "add_suffix",
+    "pack_start",
+    "pack_end",
+    "set_content",
+    "add_overlay",
+    "put",
+    "attach",
+]);
+
 const isWidgetSubclass = (
     typeName: string,
     classMap: Map<string, GirClass>,
@@ -220,8 +238,6 @@ export class JsxGenerator {
             }
         }
 
-        lines.push("");
-        lines.push("\tchildren?: ReactNode;");
         lines.push("}");
 
         return lines.join("\n");
@@ -409,6 +425,11 @@ export class JsxGenerator {
             lines.push(`\tselectedId?: string;`);
             lines.push(`\t/** Called when selection changes with the selected item's ID */`);
             lines.push(`\tonSelectionChanged?: (id: string) => void;`);
+        }
+
+        if (this.canHaveChildren(widget)) {
+            lines.push("");
+            lines.push(`\tchildren?: ReactNode;`);
         }
 
         lines.push("");
@@ -666,6 +687,27 @@ export class JsxGenerator {
             current = current.parent ? this.classMap.get(current.parent) : undefined;
         }
         return interfaces;
+    }
+
+    private canHaveChildren(widget: GirClass): boolean {
+        let current: GirClass | undefined = widget;
+        while (current) {
+            for (const method of current.methods) {
+                if (CONTAINER_METHODS.has(method.name)) {
+                    return true;
+                }
+            }
+
+            if (current.parent) {
+                current =
+                    this.classMap.get(current.parent) ??
+                    this.classMap.get(`${this.currentNamespace}.${current.parent}`) ??
+                    this.classMap.get(`Gtk.${current.parent}`);
+            } else {
+                current = undefined;
+            }
+        }
+        return false;
     }
 
     private findInheritedProperty(widget: GirClass, propName: string): { type: { name: string } } | undefined {
