@@ -1,3 +1,4 @@
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -58,12 +59,25 @@ const colorPalette: ColorItem[] = [
 
 const categories = ["All", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Brown", "Gray"];
 
-// Color swatch component that uses a GtkDrawingArea or colored frame
-const ColorSwatch = ({ color: _color, size = 48 }: { color: string; size?: number }) => (
-    <GtkFrame widthRequest={size} heightRequest={size} cssClasses={["card"]}>
-        <GtkLabel label="" widthRequest={size} heightRequest={size} />
-    </GtkFrame>
-);
+// Color swatch component using dynamic CSS background
+const ColorSwatch = ({ color, size = 48 }: { color: string; size?: number }) => {
+    const swatchStyle = css`
+        background-color: ${color};
+        border-radius: 8px;
+        min-width: ${size}px;
+        min-height: ${size}px;
+    `;
+
+    return (
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={0}
+            cssClasses={[swatchStyle, "card"]}
+            widthRequest={size}
+            heightRequest={size}
+        />
+    );
+};
 
 const ListViewColorsDemo = () => {
     const [searchText, setSearchText] = useState("");
