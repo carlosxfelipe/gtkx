@@ -63,8 +63,8 @@ Exported from `@gtkx/native`:
 | `call(method, args)`            | Invoke a GTK method                       |
 | `batchCall(calls)`              | Multiple operations in one FFI round-trip |
 | `alloc(type)`                   | Allocate a boxed type                     |
-| `read(objectId, field)`         | Read boxed type field                     |
-| `write(objectId, field, value)` | Write boxed type field                    |
+| `read(objectId, type, offset)`         | Read value from boxed memory              |
+| `write(objectId, type, offset, value)` | Write value to boxed memory               |
 | `getObjectId(object)`           | Get internal object ID                    |
 | `poll()`                        | Process GTK events                        |
 
@@ -171,12 +171,15 @@ render(<App />, "com.example.app");
 Use `@gtkx/testing` for component tests:
 
 ```tsx
-import { render, screen } from "@gtkx/testing";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { render, screen, userEvent } from "@gtkx/testing";
 
 test("button click", async () => {
-  render(<MyComponent />);
-  await screen.findByName("my-button").click();
-  expect(await screen.findByName("result")).toHaveLabel("clicked");
+  await render(<MyComponent />);
+  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "my-button" });
+  await userEvent.click(button);
+  const result = await screen.findByTestId("result");
+  expect((result as Gtk.Label).getLabel()).toBe("clicked");
 });
 ```
 

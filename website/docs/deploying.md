@@ -72,4 +72,4 @@ GTKX applications can be packaged as:
 - **Snap** — Alternative sandboxed packaging for Ubuntu
 - **Native packages** — Distribution-specific (.deb, .rpm)
 
-For complete examples including Flatpak manifests, Snap configurations, desktop entries, and build scripts, see the [deploying example](https://github.com/anthropics/gtkx/tree/main/examples/deploying) in the repository.
+For complete examples including Flatpak manifests, Snap configurations, desktop entries, and build scripts, see the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying) in the repository.
