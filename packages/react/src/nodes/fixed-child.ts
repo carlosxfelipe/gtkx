@@ -1,3 +1,4 @@
+import { batch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -38,13 +39,15 @@ class FixedChildNode extends SlotNode<Props> {
         if (this.child) {
             const child = this.child;
 
-            const currentParent = child.getParent();
+            batch(() => {
+                const currentParent = child.getParent();
 
-            if (currentParent?.equals(fixed)) {
-                fixed.remove(child);
-            }
+                if (currentParent?.equals(fixed)) {
+                    fixed.remove(child);
+                }
 
-            fixed.put(child, x, y);
+                fixed.put(child, x, y);
+            });
         }
     }
 
@@ -52,7 +55,11 @@ class FixedChildNode extends SlotNode<Props> {
         const fixed = this.getFixed();
 
         if (oldChild) {
-            fixed.remove(oldChild);
+            const parent = oldChild.getParent();
+
+            if (parent?.equals(fixed)) {
+                fixed.remove(oldChild);
+            }
         }
 
         if (this.child) {

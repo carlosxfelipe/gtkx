@@ -38,7 +38,11 @@ export class PackChild extends VirtualNode {
         if (parent && childrenToRemove.length > 0) {
             scheduleAfterCommit(() => {
                 for (const widget of childrenToRemove) {
-                    parent.remove(widget);
+                    const currentParent = widget.getParent();
+
+                    if (currentParent?.equals(parent)) {
+                        parent.remove(widget);
+                    }
                 }
             });
         }
@@ -77,6 +81,7 @@ export class PackChild extends VirtualNode {
         }
 
         const widget = child.container;
+        const parent = this.parent;
         const index = this.children.indexOf(widget);
 
         if (index !== -1) {
@@ -84,8 +89,12 @@ export class PackChild extends VirtualNode {
         }
 
         scheduleAfterCommit(() => {
-            if (this.parent) {
-                this.parent.remove(widget);
+            if (parent) {
+                const currentParent = widget.getParent();
+
+                if (currentParent?.equals(parent)) {
+                    parent.remove(widget);
+                }
             }
         });
     }

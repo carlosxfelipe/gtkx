@@ -1,3 +1,4 @@
+import { batch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -42,28 +43,35 @@ class GridChildNode extends SlotNode<Props> {
         const row = this.props.row ?? 0;
         const columnSpan = this.props.columnSpan ?? 1;
         const rowSpan = this.props.rowSpan ?? 1;
-        const existingChild = grid.getChildAt(column, row);
 
-        if (existingChild && !existingChild.equals(this.child)) {
-            grid.remove(existingChild);
-        }
+        batch(() => {
+            const existingChild = grid.getChildAt(column, row);
 
-        if (this.child) {
-            const currentParent = this.child.getParent();
-
-            if (currentParent?.equals(grid)) {
-                grid.remove(this.child);
+            if (existingChild && !existingChild.equals(this.child)) {
+                grid.remove(existingChild);
             }
 
-            grid.attach(this.child, column, row, columnSpan, rowSpan);
-        }
+            if (this.child) {
+                const currentParent = this.child.getParent();
+
+                if (currentParent?.equals(grid)) {
+                    grid.remove(this.child);
+                }
+
+                grid.attach(this.child, column, row, columnSpan, rowSpan);
+            }
+        });
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
         const grid = this.getGrid();
 
         if (oldChild) {
-            grid.remove(oldChild);
+            const parent = oldChild.getParent();
+
+            if (parent?.equals(grid)) {
+                grid.remove(oldChild);
+            }
         }
 
         if (this.child) {

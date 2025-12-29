@@ -28,7 +28,11 @@ export class ToolbarChildNode extends SlotNode {
         const toolbar = this.getToolbar();
 
         if (oldChild) {
-            toolbar.remove(oldChild);
+            const parent = oldChild.getParent();
+
+            if (parent?.equals(toolbar)) {
+                toolbar.remove(oldChild);
+            }
         }
 
         if (this.child) {

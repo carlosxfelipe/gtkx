@@ -84,7 +84,11 @@ class StackPageNode extends SlotNode<Props> {
             return;
         }
 
-        parent.remove(oldChild);
+        const currentParent = oldChild.getParent();
+
+        if (currentParent?.equals(parent)) {
+            parent.remove(oldChild);
+        }
     }
 
     protected override onChildChange(oldChild?: Gtk.Widget): void {

@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
+import { FixedChild, GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager.tsx?raw";
@@ -65,31 +65,29 @@ const CircularLayoutDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    {/* Simulated circular layout using overlay */}
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
-                        cssClasses={[circularContainerStyle]}
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                    >
-                        {/* We use a fixed container approach conceptually */}
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
-                            widthRequest={300}
-                            heightRequest={300}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                        >
+                    {/* Circular layout using GtkFixed */}
+                    <GtkFixed cssClasses={[circularContainerStyle]} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                        {items.map((item) => {
+                            const pos = getItemPosition(item.angle);
+                            return (
+                                <FixedChild key={item.id} x={pos.x} y={pos.y}>
+                                    <GtkButton
+                                        label={item.label}
+                                        cssClasses={["circular"]}
+                                        widthRequest={40}
+                                        heightRequest={40}
+                                    />
+                                </FixedChild>
+                            );
+                        })}
+                        <FixedChild x={115} y={135}>
                             <GtkLabel
-                                label={`Radius: ${radius}px\nRotation: ${rotation}deg`}
+                                label={`${radius}px\n${rotation}°`}
                                 halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
                                 cssClasses={["caption", "dim-label"]}
                             />
-                        </GtkBox>
-                    </GtkBox>
+                        </FixedChild>
+                    </GtkFixed>
 
                     {/* Controls */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>

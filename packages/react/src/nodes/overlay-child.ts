@@ -24,7 +24,11 @@ class OverlayChildNode extends SlotNode<Props> {
         const overlay = this.getOverlay();
 
         if (oldChild) {
-            overlay.removeOverlay(oldChild);
+            const parent = oldChild.getParent();
+
+            if (parent?.equals(overlay)) {
+                overlay.removeOverlay(oldChild);
+            }
         }
 
         if (this.child) {

@@ -69,7 +69,11 @@ export class ActionRowChild extends VirtualNode {
 
         scheduleAfterCommit(() => {
             if (parent) {
-                parent.remove(widget);
+                const currentParent = widget.getParent();
+
+                if (currentParent?.equals(parent)) {
+                    parent.remove(widget);
+                }
             }
         });
     }
@@ -81,7 +85,11 @@ export class ActionRowChild extends VirtualNode {
         if (parent && childrenToRemove.length > 0) {
             scheduleAfterCommit(() => {
                 for (const widget of childrenToRemove) {
-                    parent.remove(widget);
+                    const currentParent = widget.getParent();
+
+                    if (currentParent?.equals(parent)) {
+                        parent.remove(widget);
+                    }
                 }
             });
         }
