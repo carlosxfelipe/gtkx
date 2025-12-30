@@ -15,46 +15,62 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 jobs:
-  build-and-test:
+  lint:
     runs-on: ubuntu-latest
-    container:
-      image: fedora:43
-    env:
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup environment
-        uses: ./.github/actions/setup
+      - name: Lint
+        uses: ./.github/actions/run-in-container
         with:
-          install-xvfb: "true"
+          command: pnpm install --frozen-lockfile && pnpm lint
+          cache-cargo: "true"
+          cache-pnpm: "true"
 
-      - name: Set runtime versions for Turbo cache
-        run: |
-          echo "NODE_VERSION=$(node -v)" >> $GITHUB_ENV
-          echo "GTK4_VERSION=$(pkg-config --modversion gtk4)" >> $GITHUB_ENV
-          echo "VERSION=$(cat packages/*/package.json | grep '"version"' | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
-
-      - name: Build all packages
-        run: pnpm build
-
-      - name: Build docs
-        run: pnpm run docs
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
-
-      - name: Lint all packages
-        run: pnpm lint
+  knip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Check dead code
-        run: pnpm knip
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm codegen && pnpm knip
+          cache-cargo: "true"
+          cache-pnpm: "true"
+          turbo-env: "false"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Run tests
-        run: |
-          Xvfb :99 -screen 0 1024x768x24 2>/dev/null &
-          pnpm test
-        env:
-          DISPLAY: ":99"
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm test
+          cache-cargo: "true"
+          cache-pnpm: "true"
+          xvfb: "true"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build docs
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm run docs
+          cache-cargo: "true"
+          cache-pnpm: "true"
+          extra-env: -e NODE_OPTIONS="--max-old-space-size=8192"

@@ -1,4 +1,4 @@
-name: Documentation
+name: Website
 
 on:
   release:
@@ -14,21 +14,23 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: fedora:43
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup environment
-        uses: ./.github/actions/setup
-
       - name: Build documentation
-        working-directory: website
-        run: pnpm turbo build
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && cd website && pnpm turbo build
+          cache-pnpm: "true"
+          extra-env: -e NODE_OPTIONS="--max-old-space-size=8192"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

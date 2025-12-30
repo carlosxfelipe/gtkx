@@ -9,20 +9,21 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    container:
-      image: fedora:43
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup environment
-        uses: ./.github/actions/setup
-
-      - name: Build all packages
-        run: pnpm build
-
-      - name: Publish packages
-        run: pnpm -r publish --access public --no-git-checks --provenance
+      - name: Build and publish
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm install --frozen-lockfile && pnpm build && pnpm -r publish --access public --no-git-checks
+          cache-cargo: "true"
+          cache-pnpm: "true"
+          extra-env: -e NPM_CONFIG_PROVENANCE=true

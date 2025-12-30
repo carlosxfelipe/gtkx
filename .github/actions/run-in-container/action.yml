@@ -1,0 +1,94 @@
+name: Run in Container
+description: Run a command in the CI Docker container with optional caching
+
+inputs:
+  command:
+    description: Command to run inside the container
+    required: true
+  cache-cargo:
+    description: Cache cargo registry and git
+    default: "false"
+  cache-pnpm:
+    description: Cache pnpm store
+    default: "false"
+  extra-env:
+    description: Extra environment variables (space-separated -e flags)
+    default: ""
+  xvfb:
+    description: Run with Xvfb display server
+    default: "false"
+  turbo-env:
+    description: Pass TURBO_TOKEN and TURBO_TEAM
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Build CI image
+      uses: ./.github/actions/build-image
+
+    - name: Cache cargo
+      if: inputs.cache-cargo == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: cargo-${{ runner.os }}-${{ hashFiles('packages/native/Cargo.lock') }}
+        restore-keys: |
+          cargo-${{ runner.os }}-
+
+    - name: Cache pnpm store
+      if: inputs.cache-pnpm == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/share/pnpm/store
+        key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-
+
+    - name: Run command
+      shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_CACHE_CARGO: ${{ inputs.cache-cargo }}
+        INPUT_CACHE_PNPM: ${{ inputs.cache-pnpm }}
+        INPUT_EXTRA_ENV: ${{ inputs.extra-env }}
+        INPUT_XVFB: ${{ inputs.xvfb }}
+        INPUT_TURBO_ENV: ${{ inputs.turbo-env }}
+      run: |
+        DOCKER_ARGS="-v ${{ github.workspace }}:/workspace -w /workspace"
+
+        if [ "$INPUT_CACHE_CARGO" = "true" ]; then
+          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git"
+          DOCKER_ARGS="$DOCKER_ARGS -v $HOME/.cargo/registry:/usr/local/cargo/registry"
+          DOCKER_ARGS="$DOCKER_ARGS -v $HOME/.cargo/git:/usr/local/cargo/git"
+        fi
+
+        if [ "$INPUT_CACHE_PNPM" = "true" ]; then
+          mkdir -p "$HOME/.local/share/pnpm/store"
+          DOCKER_ARGS="$DOCKER_ARGS -v $HOME/.local/share/pnpm/store:/root/.local/share/pnpm/store"
+        fi
+
+        if [ "$INPUT_TURBO_ENV" = "true" ]; then
+          DOCKER_ARGS="$DOCKER_ARGS -e TURBO_TOKEN -e TURBO_TEAM"
+        fi
+
+        if [ -n "$INPUT_EXTRA_ENV" ]; then
+          DOCKER_ARGS="$DOCKER_ARGS $INPUT_EXTRA_ENV"
+        fi
+
+        if [ "$INPUT_XVFB" = "true" ]; then
+          WRAPPED_COMMAND="Xvfb :99 -screen 0 1024x768x24 &>/dev/null & export DISPLAY=:99; $INPUT_COMMAND"
+        else
+          WRAPPED_COMMAND="$INPUT_COMMAND"
+        fi
+
+        FULL_COMMAND="
+          export NODE_VERSION=\$(node -v)
+          export GTK4_VERSION=\$(pkg-config --modversion gtk4)
+          export VERSION=\$(cat packages/*/package.json | grep '\"version\"' | sha256sum | cut -d' ' -f1)
+          $WRAPPED_COMMAND
+        "
+
+        docker run --rm $DOCKER_ARGS gtkx-ci:local bash -c "$FULL_COMMAND"

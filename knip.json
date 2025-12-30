@@ -39,7 +39,7 @@
         "packages/cli": {
             "entry": ["src/cli.tsx", "src/index.ts"],
             "project": ["src/**/*"],
-            "ignore": ["src/global.d.ts"]
+            "ignore": ["src/global.d.ts", "bin/gtkx.js"]
         },
         "packages/codegen": {
             "entry": ["src/cli.ts", "src/index.ts"],

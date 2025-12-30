@@ -2,11 +2,14 @@
     "$schema": "https://turborepo.com/schema.json",
     "globalDependencies": ["tsconfig.base.json", "biome.json"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
+    "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM"],
+    "cacheDir": ".turbo",
     "tasks": {
         "lint": {
             "inputs": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts"],
             "outputs": [],
-            "outputLogs": "new-only"
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "codegen": {
             "dependsOn": ["@gtkx/codegen#build"],
@@ -30,12 +33,14 @@
         "native-build": {
             "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
             "outputs": ["index.node"],
-            "outputLogs": "new-only"
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
         },
         "native-test": {
             "inputs": ["Cargo.toml", "src/**/*.rs"],
             "outputs": [],
-            "outputLogs": "new-only"
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "start": {
             "dependsOn": ["build"],

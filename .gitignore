@@ -1,4 +1,5 @@
 .claude
+.pnpm-store
 .turbo
 *.log
 *.node
