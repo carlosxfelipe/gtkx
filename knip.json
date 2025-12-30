@@ -55,7 +55,11 @@
         },
         "packages/e2e": {
             "project": ["tests/**/*"],
-            "entry": ["tests/**/*.test.tsx"]
+            "entry": ["tests/**/*.test.tsx", "tests/setup.ts"]
+        },
+        "packages/vitest": {
+            "project": ["src/**/*"],
+            "entry": ["src/index.ts", "src/global-setup.ts", "src/worker-setup.ts"]
         }
     }
 }

@@ -80,7 +80,7 @@ const create = defineCommand({
         },
         testing: {
             type: "string",
-            description: "Testing framework (vitest, jest, node, none)",
+            description: "Testing setup (vitest, none)",
         },
         "claude-skills": {
             type: "boolean",
@@ -92,7 +92,7 @@ const create = defineCommand({
             name: args.name,
             appId: args["app-id"],
             packageManager: args.pm as "pnpm" | "npm" | "yarn" | "bun" | undefined,
-            testing: args.testing as "vitest" | "jest" | "node" | "none" | undefined,
+            testing: args.testing as "vitest" | "none" | undefined,
             claudeSkills: args["claude-skills"],
         });
     },

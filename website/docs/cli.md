@@ -33,7 +33,7 @@ npx @gtkx/cli create [project-name]
 | Project name      | Directory name for your project | Lowercase, numbers, hyphens only         |
 | App ID            | Unique application identifier   | Reverse domain (e.g., `com.example.app`) |
 | Package manager   | Dependency manager              | pnpm, npm, yarn, bun                     |
-| Testing framework | Test runner setup               | vitest, jest, node, none                 |
+| Testing           | Include Vitest testing setup    | yes, no                                  |
 
 **Generated Project:**
 
@@ -68,7 +68,7 @@ Dev:
 Testing (if enabled):
 
 - `@gtkx/testing` — Testing utilities
-- Test runner (`vitest`, `jest`, or Node.js test)
+- `vitest` — Test runner
 
 ### `gtkx dev`
 

@@ -59,7 +59,6 @@ jobs:
           command: pnpm install --frozen-lockfile && pnpm test
           cache-cargo: "true"
           cache-pnpm: "true"
-          xvfb: "true"
 
   docs:
     runs-on: ubuntu-latest

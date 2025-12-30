@@ -1,4 +1,10 @@
-import { mergeConfig } from "vitest/config";
-import baseConfig from "../../vitest.config.js";
+import gtkx from "@gtkx/vitest";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(baseConfig, {});
+export default defineConfig({
+    plugins: [gtkx()],
+    test: {
+        include: ["tests/**/*.test.{ts,tsx}"],
+        bail: 1,
+    },
+});

@@ -14,9 +14,6 @@ inputs:
   extra-env:
     description: Extra environment variables (space-separated -e flags)
     default: ""
-  xvfb:
-    description: Run with Xvfb display server
-    default: "false"
   turbo-env:
     description: Pass TURBO_TOKEN and TURBO_TEAM
     default: "true"
@@ -54,7 +51,6 @@ runs:
         INPUT_CACHE_CARGO: ${{ inputs.cache-cargo }}
         INPUT_CACHE_PNPM: ${{ inputs.cache-pnpm }}
         INPUT_EXTRA_ENV: ${{ inputs.extra-env }}
-        INPUT_XVFB: ${{ inputs.xvfb }}
         INPUT_TURBO_ENV: ${{ inputs.turbo-env }}
       run: |
         DOCKER_ARGS="-v ${{ github.workspace }}:/workspace -w /workspace"
@@ -86,17 +82,11 @@ runs:
           done
         fi
 
-        if [ "$INPUT_XVFB" = "true" ]; then
-          WRAPPED_COMMAND="Xvfb :99 -screen 0 1024x768x24 &>/dev/null & export DISPLAY=:99; $INPUT_COMMAND"
-        else
-          WRAPPED_COMMAND="$INPUT_COMMAND"
-        fi
-
         FULL_COMMAND="
           export NODE_VERSION=\$(node -v)
           export GTK4_VERSION=\$(pkg-config --modversion gtk4)
           export VERSION=\$(cat packages/*/package.json | grep '\"version\"' | sha256sum | cut -d' ' -f1)
-          $WRAPPED_COMMAND
+          $INPUT_COMMAND
         "
 
         docker run --rm $DOCKER_ARGS gtkx-ci:local bash -c "$FULL_COMMAND"

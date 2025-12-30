@@ -400,39 +400,6 @@ describe("createApp", () => {
         expect(content).toContain("defineConfig");
     });
 
-    it("creates jest.config.js for jest", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "jest",
-            claudeSkills: false,
-        });
-
-        expect(vol.existsSync(`${testDir}/test-app/jest.config.js`)).toBe(true);
-
-        const content = vol.readFileSync(`${testDir}/test-app/jest.config.js`, "utf-8") as string;
-        expect(content).toContain("ts-jest");
-    });
-
-    it("creates test file for node runner without config", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "node",
-            claudeSkills: false,
-        });
-
-        expect(vol.existsSync(`${testDir}/test-app/tests`)).toBe(true);
-        expect(vol.existsSync(`${testDir}/test-app/tests/app.test.tsx`)).toBe(true);
-
-        const content = vol.readFileSync(`${testDir}/test-app/tests/app.test.tsx`, "utf-8") as string;
-        expect(content).toContain('import { describe, it, after } from "node:test"');
-    });
-
     it("does not create tests directory for none", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({

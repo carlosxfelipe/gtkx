@@ -39,6 +39,7 @@ packages/
 ├── gir/        # GObject Introspection XML parser
 ├── css/        # CSS-in-JS styling system (Emotion-based)
 ├── testing/    # Component testing utilities
+├── vitest/     # Vitest plugin for Xvfb display management
 └── e2e/        # End-to-end tests
 ```
 
@@ -75,7 +76,7 @@ Exported from `@gtkx/native`:
 ```bash
 pnpm build           # Build all packages
 pnpm codegen         # Regenerate FFI bindings from GIR files
-pnpm test            # Run test suite (uses xvfb locally)
+pnpm test            # Run test suite (uses @gtkx/vitest for Xvfb)
 pnpm lint            # Lint TypeScript (Biome) and Rust (Clippy)
 pnpm docs            # Build documentation website
 pnpm knip            # Check for dead code
@@ -205,7 +206,7 @@ pnpm run codegen
 - **Native:** Rust, Neon (Node.js native modules)
 - **Target:** GTK4, Adwaita (Libadwaita)
 - **Build:** pnpm workspaces, Turborepo, Vite
-- **Test:** Vitest (runs under xvfb with `pool: "forks"`)
+- **Test:** Vitest with `@gtkx/vitest` plugin (auto-manages Xvfb displays)
 - **Lint:** Biome (TypeScript), Clippy (Rust)
 
 ## Code Style

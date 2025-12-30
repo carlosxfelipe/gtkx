@@ -33,7 +33,7 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "test": "../../scripts/run-tests.sh"
+        "test": "vitest run"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
@@ -41,6 +41,7 @@
         "@gtkx/react": "workspace:*"
     },
     "devDependencies": {
+        "@gtkx/vitest": "workspace:*",
         "@types/react-reconciler": "^0.32.3",
         "react-reconciler": "^0.33.0"
     }

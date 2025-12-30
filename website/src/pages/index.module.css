@@ -26,15 +26,15 @@
 
 .heroHeader {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: center;
     margin-bottom: 1rem;
 }
 
 .heroLogo {
-    width: 72px;
-    height: 72px;
-    margin-left: -19px;
+    height: 2.6rem;
+    width: auto;
+    vertical-align: baseline;
 }
 
 .heroTitle {
@@ -251,10 +251,9 @@
 /* Responsive */
 @media (max-width: 768px) {
     .heroLogo {
-        width: 52px;
-        height: 52px;
-        margin-left: -14px;
-        margin-top: 1px;
+        height: 1.85rem;
+        width: auto;
+        vertical-align: baseline;
     }
 
     .heroTitle {

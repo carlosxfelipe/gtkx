@@ -117,6 +117,9 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../../packages/testing
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../../packages/vitest
 
   packages/cli:
     dependencies:
@@ -184,6 +187,10 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+    devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
 
   packages/e2e:
     dependencies:
@@ -197,6 +204,9 @@ importers:
         specifier: workspace:*
         version: link:../testing
     devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -210,6 +220,9 @@ importers:
       '@gtkx/codegen':
         specifier: workspace:*
         version: link:../codegen
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
 
   packages/gir:
     dependencies:
@@ -219,6 +232,9 @@ importers:
 
   packages/native:
     devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
       '@neon-rs/cli':
         specifier: ^0.1.82
         version: 0.1.82
@@ -257,12 +273,21 @@ importers:
         specifier: workspace:*
         version: link:../react
     devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
       '@types/react-reconciler':
         specifier: ^0.32.3
         version: 0.32.3(@types/react@19.2.7)
       react-reconciler:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.3)
+
+  packages/vitest:
+    devDependencies:
+      vitest:
+        specifier: ^4.0.0
+        version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(@vitest/ui@4.0.16)(jiti@2.6.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   website:
     dependencies:

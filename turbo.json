@@ -37,6 +37,7 @@
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
         },
         "native-test": {
+            "dependsOn": ["native-build"],
             "inputs": ["Cargo.toml", "src/**/*.rs"],
             "outputs": [],
             "outputLogs": "new-only",

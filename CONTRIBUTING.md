@@ -146,6 +146,7 @@ packages/
 ├── gir/        # GObject Introspection XML parser
 ├── css/        # CSS-in-JS styling system
 ├── testing/    # Component testing utilities
+├── vitest/     # Vitest plugin for Xvfb display management
 └── e2e/        # End-to-end tests
 
 examples/       # Example applications
@@ -188,14 +189,11 @@ Run all tests:
 pnpm test
 ```
 
-Tests require a display server. Locally, tests run under `xvfb-run` automatically. The test script sets these environment variables:
+Tests require a display server. The `@gtkx/vitest` plugin automatically:
 
-```bash
-GDK_BACKEND=x11
-GSK_RENDERER=cairo
-LIBGL_ALWAYS_SOFTWARE=1
-NO_AT_BRIDGE=1
-```
+- Starts Xvfb instances for headless display
+- Sets required GTK environment variables (`GDK_BACKEND`, `GSK_RENDERER`, etc.)
+- Ensures proper display isolation between test workers
 
 Run tests for a specific package:
 

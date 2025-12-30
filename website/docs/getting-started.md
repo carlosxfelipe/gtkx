@@ -22,7 +22,7 @@ The CLI will prompt you for:
 - **Project name** — lowercase letters, numbers, and hyphens
 - **App ID** — reverse domain notation (e.g., `com.example.myapp`)
 - **Package manager** — pnpm (recommended), npm, yarn, or bun
-- **Testing framework** — vitest (recommended), jest, node test runner, or none
+- **Testing** — whether to include Vitest testing setup
 
 After the prompts, the CLI creates your project and installs dependencies.
 
@@ -124,13 +124,13 @@ npm start
 
 ## Run Tests
 
-If you selected a testing framework:
+If you enabled testing:
 
 ```bash
 npm test
 ```
 
-Tests run in a real GTK environment using `xvfb-run` for headless execution.
+Tests run in a real GTK environment using the `@gtkx/vitest` plugin, which automatically manages Xvfb displays for headless execution.
 
 ## Understanding the Basics
 

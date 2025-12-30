@@ -2,13 +2,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ejs from "ejs";
-import type { TestingFramework } from "./create.js";
+import type { TestingOption } from "./create.js";
 
 export interface TemplateContext {
     name: string;
     appId: string;
     title: string;
-    testing: TestingFramework;
+    testing: TestingOption;
 }
 
 const __filename = fileURLToPath(import.meta.url);

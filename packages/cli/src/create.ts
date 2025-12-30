@@ -10,9 +10,9 @@ import { renderFile, type TemplateContext } from "./templates.js";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
 
 /**
- * Supported testing frameworks for GTKX projects.
+ * Whether to include testing setup in GTKX projects.
  */
-export type TestingFramework = "vitest" | "jest" | "node" | "none";
+export type TestingOption = "vitest" | "none";
 
 /**
  * Options for creating a new GTKX project.
@@ -23,7 +23,7 @@ export type CreateOptions = {
     name?: string;
     appId?: string;
     packageManager?: PackageManager;
-    testing?: TestingFramework;
+    testing?: TestingOption;
     claudeSkills?: boolean;
 };
 
@@ -31,13 +31,9 @@ const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript"];
 
-const TESTING_DEV_DEPENDENCIES: Record<Exclude<TestingFramework, "none">, string[]> = {
-    vitest: ["@gtkx/testing", "vitest"],
-    jest: ["@gtkx/testing", "jest", "@types/jest", "ts-jest"],
-    node: ["@gtkx/testing", "@types/node"],
-};
+const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "@gtkx/vitest", "vitest"];
 
-const createTemplateContext = (name: string, appId: string, testing: TestingFramework): TemplateContext => {
+const createTemplateContext = (name: string, appId: string, testing: TestingOption): TemplateContext => {
     const title = name
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -102,7 +98,7 @@ type ResolvedOptions = {
     name: string;
     appId: string;
     packageManager: PackageManager;
-    testing: TestingFramework;
+    testing: TestingOption;
     claudeSkills: boolean;
 };
 
@@ -165,20 +161,16 @@ const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions
             }),
         );
 
-    const testing =
+    const testing: TestingOption =
         options.testing ??
-        checkCancelled(
-            await p.select({
-                message: "Testing framework",
-                options: [
-                    { value: "vitest", label: "Vitest", hint: "recommended" },
-                    { value: "jest", label: "Jest" },
-                    { value: "node", label: "Node.js Test Runner" },
-                    { value: "none", label: "None" },
-                ],
-                initialValue: "vitest",
+        (checkCancelled(
+            await p.confirm({
+                message: "Include testing setup (Vitest)?",
+                initialValue: true,
             }),
-        );
+        )
+            ? "vitest"
+            : "none");
 
     const claudeSkills =
         options.claudeSkills ??
@@ -221,21 +213,13 @@ const scaffoldProject = (projectPath: string, resolved: ResolvedOptions): void =
     if (testing === "vitest") {
         writeFileSync(join(projectPath, "vitest.config.ts"), renderFile("config/vitest.config.ts.ejs", context));
         writeFileSync(join(projectPath, "tests", "app.test.tsx"), renderFile("tests/app.test.tsx.ejs", context));
-    } else if (testing === "jest") {
-        writeFileSync(join(projectPath, "jest.config.js"), renderFile("config/jest.config.js.ejs", context));
-        writeFileSync(join(projectPath, "tests", "app.test.tsx"), renderFile("tests/app.test.tsx.ejs", context));
-    } else if (testing === "node") {
-        writeFileSync(join(projectPath, "tests", "app.test.tsx"), renderFile("tests/app.test.tsx.ejs", context));
     }
 };
 
-const getDevDependencies = (testing: TestingFramework): string[] => {
+const getDevDependencies = (testing: TestingOption): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
-    if (testing !== "none") {
-        devDeps.push(...TESTING_DEV_DEPENDENCIES[testing]);
-        if (testing === "node") {
-            devDeps.push("tsx");
-        }
+    if (testing === "vitest") {
+        devDeps.push(...TESTING_DEV_DEPENDENCIES);
     }
     return devDeps;
 };
@@ -267,7 +251,7 @@ const installDependencies = async (
     }
 };
 
-const printNextSteps = (name: string, packageManager: PackageManager, testing: TestingFramework): void => {
+const printNextSteps = (name: string, packageManager: PackageManager, testing: TestingOption): void => {
     const runCmd = getRunCommand(packageManager);
     const nextSteps = `cd ${name}\n${runCmd}`;
 

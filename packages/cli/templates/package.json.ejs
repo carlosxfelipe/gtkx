@@ -6,8 +6,8 @@
     "scripts": {
         "dev": "gtkx dev src/dev.tsx",
         "build": "tsc -b",
-        "start": "node dist/index.js"<% if (testing !== 'none') { %>,
-        "test": "<% if (testing === 'vitest') { %>GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a vitest<% } else if (testing === 'jest') { %>GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a jest<% } else if (testing === 'node') { %>GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a node --import tsx --test tests/**/*.test.ts<% } %>"<% } %>
+        "start": "node dist/index.js"<% if (testing === 'vitest') { %>,
+        "test": "vitest"<% } %>
     },
     "gtkx": {
         "appId": "<%= appId %>"

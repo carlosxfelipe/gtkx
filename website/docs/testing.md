@@ -4,10 +4,24 @@ GTKX provides testing utilities through `@gtkx/testing`, offering an API similar
 
 ## Setup
 
-Install the testing package and a test runner:
+Install the testing and vitest packages:
 
 ```bash
-npm install -D @gtkx/testing vitest
+npm install -D @gtkx/testing @gtkx/vitest vitest
+```
+
+Create a `vitest.config.ts` file:
+
+```typescript
+import gtkx from "@gtkx/vitest";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+    plugins: [gtkx()],
+    test: {
+        include: ["tests/**/*.test.{ts,tsx}"],
+    },
+});
 ```
 
 Configure your test script in `package.json`:
@@ -15,12 +29,17 @@ Configure your test script in `package.json`:
 ```json
 {
   "scripts": {
-    "test": "GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a vitest"
+    "test": "vitest run"
   }
 }
 ```
 
-The environment variables enable headless GTK testing in CI environments.
+The `@gtkx/vitest` plugin automatically:
+- Starts Xvfb instances for headless display
+- Sets required GTK environment variables (`GDK_BACKEND`, `GSK_RENDERER`, etc.)
+- Ensures proper display isolation between test workers
+
+The `render()` function from `@gtkx/testing` handles GTK application lifecycle automatically, so no additional setup is needed.
 
 ## Basic Test
 

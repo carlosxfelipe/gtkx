@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "build": "tsc -b",
-        "test": "../../scripts/run-tests.sh"
+        "test": "vitest run"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
@@ -13,6 +13,7 @@
         "@gtkx/testing": "workspace:*"
     },
     "devDependencies": {
+        "@gtkx/vitest": "workspace:*",
         "react": "^19.2.3"
     }
 }
