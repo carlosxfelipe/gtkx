@@ -115,18 +115,20 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
         try {
             const module = server.moduleGraph.getModuleById(changedPath);
 
-            if (module) {
-                invalidateModuleAndImporters(changedPath);
+            if (!module) {
+                return;
+            }
 
-                const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
-                moduleExports.set(changedPath, { ...newMod });
+            invalidateModuleAndImporters(changedPath);
 
-                if (isReactRefreshBoundary(newMod)) {
-                    console.log("[gtkx] Fast refreshing...");
-                    performRefresh();
-                    console.log("[gtkx] Fast refresh complete");
-                    return;
-                }
+            const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
+            moduleExports.set(changedPath, { ...newMod });
+
+            if (isReactRefreshBoundary(newMod)) {
+                console.log("[gtkx] Fast refreshing...");
+                performRefresh();
+                console.log("[gtkx] Fast refresh complete");
+                return;
             }
 
             console.log("[gtkx] Full reload...");

@@ -192,7 +192,28 @@ describe("createDevServer", () => {
         expect(loadedModule.appFlags).toBe(0);
     });
 
+    it("ignores file change when file is not in module graph", async () => {
+        mockModuleGraph.getModuleById.mockReturnValue(undefined);
+
+        const { createDevServer } = await import("../src/dev-server.js");
+
+        await createDevServer({
+            entry: "/path/to/app.tsx",
+        });
+
+        const changeHandler = mockWatcher.on.mock.calls.find((call) => call[0] === "change")?.[1];
+        expect(changeHandler).toBeDefined();
+
+        await changeHandler("/path/to/unused-file.tsx");
+
+        expect(consoleLogSpy).toHaveBeenCalledWith("[gtkx] File not in module graph, ignoring");
+        expect(mockModuleGraph.invalidateModule).not.toHaveBeenCalled();
+    });
+
     it("invalidates all modules on file change when not a refresh boundary", async () => {
+        const changedModule = { id: "/path/to/changed-file.tsx", importers: new Set() };
+        mockModuleGraph.getModuleById.mockReturnValue(changedModule);
+
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
@@ -204,7 +225,7 @@ describe("createDevServer", () => {
 
         await changeHandler("/path/to/changed-file.tsx");
 
-        expect(mockModuleGraph.invalidateModule).toHaveBeenCalledTimes(2);
+        expect(mockModuleGraph.invalidateModule).toHaveBeenCalledTimes(3);
     });
 
     it("attempts selective invalidation when module is in graph", async () => {
@@ -225,6 +246,9 @@ describe("createDevServer", () => {
     });
 
     it("completes full reload on file change when not a refresh boundary", async () => {
+        const changedModule = { id: "/path/to/changed-file.tsx", importers: new Set() };
+        mockModuleGraph.getModuleById.mockReturnValue(changedModule);
+
         const { createDevServer } = await import("../src/dev-server.js");
 
         await createDevServer({
@@ -293,6 +317,8 @@ describe("createDevServer", () => {
 
     describe("error handling", () => {
         it("handles module load errors during hot reload gracefully", async () => {
+            const changedModule = { id: "/path/to/changed-file.tsx", importers: new Set() };
+            mockModuleGraph.getModuleById.mockReturnValue(changedModule);
             mockViteServer.ssrLoadModule.mockRejectedValueOnce(new Error("Module load failed"));
 
             const { createDevServer } = await import("../src/dev-server.js");
@@ -308,9 +334,12 @@ describe("createDevServer", () => {
         });
 
         it("handles non-function default export during hot reload", async () => {
-            mockViteServer.ssrLoadModule.mockResolvedValueOnce({
-                default: "not-a-function",
-            });
+            const changedModule = { id: "/path/to/changed-file.tsx", importers: new Set() };
+            mockModuleGraph.getModuleById.mockReturnValue(changedModule);
+            // First call loads the changed module, second call loads the entry module
+            mockViteServer.ssrLoadModule
+                .mockResolvedValueOnce({ default: vi.fn() })
+                .mockResolvedValueOnce({ default: "not-a-function" });
 
             const { createDevServer } = await import("../src/dev-server.js");
 
