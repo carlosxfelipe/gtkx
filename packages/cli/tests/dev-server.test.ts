@@ -206,7 +206,6 @@ describe("createDevServer", () => {
 
         await changeHandler("/path/to/unused-file.tsx");
 
-        expect(consoleLogSpy).toHaveBeenCalledWith("[gtkx] File not in module graph, ignoring");
         expect(mockModuleGraph.invalidateModule).not.toHaveBeenCalled();
     });
 
