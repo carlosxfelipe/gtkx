@@ -1,5 +1,6 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
+    "ignore": ["**/node_modules/**", "**/.pnpm-store/**", "**/.turbo/**"],
     "ignoreIssues": {
         "**/src/generated/**": ["enumMembers"],
         "examples/*/src/app.tsx": ["exports", "duplicates"],

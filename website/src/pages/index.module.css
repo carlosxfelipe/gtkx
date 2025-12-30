@@ -32,7 +32,7 @@
 }
 
 .heroLogo {
-    height: 2.6rem;
+    height: 2.5rem;
     width: auto;
     vertical-align: baseline;
 }
@@ -251,7 +251,7 @@
 /* Responsive */
 @media (max-width: 768px) {
     .heroLogo {
-        height: 1.85rem;
+        height: 1.8rem;
         width: auto;
         vertical-align: baseline;
     }

@@ -106,7 +106,7 @@ After `gtkx create`, your `package.json` includes:
     "dev": "gtkx dev src/dev.tsx",
     "build": "tsc -b",
     "start": "node dist/index.js",
-    "test": "..."
+    "test": "vitest"
   }
 }
 ```
