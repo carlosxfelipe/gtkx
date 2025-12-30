@@ -32,7 +32,7 @@ npx @gtkx/cli create [project-name]
 | ----------------- | ------------------------------- | ---------------------------------------- |
 | Project name      | Directory name for your project | Lowercase, numbers, hyphens only         |
 | App ID            | Unique application identifier   | Reverse domain (e.g., `com.example.app`) |
-| Package manager   | Dependency manager              | pnpm, npm, yarn, bun                     |
+| Package manager   | Dependency manager              | pnpm, npm, yarn                          |
 | Testing           | Include Vitest testing setup    | yes, no                                  |
 
 **Generated Project:**

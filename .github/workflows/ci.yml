@@ -42,7 +42,7 @@ jobs:
       - name: Check dead code
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm codegen && pnpm knip
+          command: pnpm install --frozen-lockfile && pnpm knip
           cache-cargo: "true"
           cache-pnpm: "true"
           turbo-env: "false"

@@ -7,7 +7,7 @@ import { renderFile, type TemplateContext } from "./templates.js";
 /**
  * Supported package managers for GTKX projects.
  */
-export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
+export type PackageManager = "pnpm" | "npm" | "yarn";
 
 /**
  * Whether to include testing setup in GTKX projects.
@@ -53,8 +53,6 @@ export const getAddCommand = (pm: PackageManager, deps: string[], dev: boolean):
             return `yarn add ${parts}`;
         case "pnpm":
             return `pnpm add ${parts}`;
-        case "bun":
-            return `bun add ${parts}`;
     }
 };
 
@@ -66,8 +64,6 @@ export const getRunCommand = (pm: PackageManager): string => {
             return "yarn dev";
         case "pnpm":
             return "pnpm dev";
-        case "bun":
-            return "bun dev";
     }
 };
 
@@ -155,7 +151,6 @@ const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions
                     { value: "pnpm", label: "pnpm", hint: "recommended" },
                     { value: "npm", label: "npm" },
                     { value: "yarn", label: "yarn" },
-                    { value: "bun", label: "bun" },
                 ],
                 initialValue: "pnpm",
             }),

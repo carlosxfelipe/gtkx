@@ -76,7 +76,7 @@ const create = defineCommand({
         },
         pm: {
             type: "string",
-            description: "Package manager (pnpm, npm, yarn, bun)",
+            description: "Package manager (pnpm, npm, yarn)",
         },
         testing: {
             type: "string",
@@ -91,7 +91,7 @@ const create = defineCommand({
         await createApp({
             name: args.name,
             appId: args["app-id"],
-            packageManager: args.pm as "pnpm" | "npm" | "yarn" | "bun" | undefined,
+            packageManager: args.pm as "pnpm" | "npm" | "yarn" | undefined,
             testing: args.testing as "vitest" | "none" | undefined,
             claudeSkills: args["claude-skills"],
         });

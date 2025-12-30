@@ -49,15 +49,8 @@
             "cache": false
         },
         "test": {
-            "dependsOn": ["build", "native-test"],
-            "inputs": [
-                "src/**/*.ts",
-                "src/**/*.tsx",
-                "tests/**/*.ts",
-                "tests/**/*.tsx",
-                "$TURBO_ROOT$/vitest.config.ts",
-                "$TURBO_ROOT$/vitest.setup.ts"
-            ],
+            "dependsOn": ["^build", "native-test"],
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
         "@gtkx/gir#build": {

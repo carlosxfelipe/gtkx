@@ -21,7 +21,7 @@ The CLI will prompt you for:
 
 - **Project name** — lowercase letters, numbers, and hyphens
 - **App ID** — reverse domain notation (e.g., `com.example.myapp`)
-- **Package manager** — pnpm (recommended), npm, yarn, or bun
+- **Package manager** — pnpm (recommended), npm, or yarn
 - **Testing** — whether to include Vitest testing setup
 
 After the prompts, the CLI creates your project and installs dependencies.

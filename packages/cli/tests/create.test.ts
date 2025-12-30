@@ -218,14 +218,6 @@ describe("getAddCommand", () => {
         expect(getAddCommand("yarn", testDeps, true)).toBe("yarn add -D react typescript");
     });
 
-    it("generates bun add command", () => {
-        expect(getAddCommand("bun", testDeps, false)).toBe("bun add react typescript");
-    });
-
-    it("generates bun add -D command", () => {
-        expect(getAddCommand("bun", testDeps, true)).toBe("bun add -D react typescript");
-    });
-
     describe("edge cases", () => {
         it("handles single dependency", () => {
             expect(getAddCommand("pnpm", ["react"], false)).toBe("pnpm add react");
@@ -248,10 +240,6 @@ describe("getRunCommand", () => {
 
     it("returns yarn dev", () => {
         expect(getRunCommand("yarn")).toBe("yarn dev");
-    });
-
-    it("returns bun dev", () => {
-        expect(getRunCommand("bun")).toBe("bun dev");
     });
 });
 
@@ -483,20 +471,6 @@ describe("createApp", () => {
 
         expect(vol.existsSync(`${testDir}/test-app-yarn`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app-yarn/package.json`)).toBe(true);
-    });
-
-    it("scaffolds project with bun", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app-bun",
-            appId: "org.test.app",
-            packageManager: "bun",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
-        expect(vol.existsSync(`${testDir}/test-app-bun`)).toBe(true);
-        expect(vol.existsSync(`${testDir}/test-app-bun/package.json`)).toBe(true);
     });
 
     describe("error handling", () => {
