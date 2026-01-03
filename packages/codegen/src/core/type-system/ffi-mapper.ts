@@ -265,6 +265,25 @@ export class FfiMapper {
         return param.type.name === "GLib.Closure" || this.isCallback(param.type.name);
     }
 
+    getCallbackParamMappings(param: NormalizedParameter): Array<{ name: string; mapped: MappedType }> | null {
+        const qualifiedName = this.qualifyTypeName(param.type.name);
+        if (!isSupportedCallback(qualifiedName)) {
+            return null;
+        }
+
+        const callback = this.repo.resolveCallback(qualifiedName as QualifiedName);
+        if (!callback) {
+            return null;
+        }
+
+        return callback.parameters
+            .filter((p) => p.name !== "user_data" && p.name !== "data")
+            .map((p) => ({
+                name: p.name,
+                mapped: this.mapType(p.type),
+            }));
+    }
+
     /**
      * Registers a class as skipped (won't be generated).
      */

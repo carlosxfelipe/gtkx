@@ -115,6 +115,8 @@ export class ConstructorBuilder {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
 
         return (writer) => {
+            this.methodBody.writeCallbackWrapperDeclarations(writer, args);
+
             writer.writeLine("if (!isInstantiating) {");
             writer.indent(() => {
                 writer.writeLine("setInstantiating(true);");

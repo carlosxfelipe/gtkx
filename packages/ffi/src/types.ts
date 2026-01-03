@@ -6,6 +6,7 @@ import type { Type } from "@gtkx/native";
 export type SignalMetaEntry = {
     params: Type[];
     returnType?: Type;
+    wrapParams?: (args: unknown[]) => unknown[];
 };
 
 /**
@@ -37,7 +38,7 @@ export type RuntimeWidgetMeta = {
     /** Property names that can be set as props */
     propNames: readonly string[];
     /** Signal metadata for this class (own signals only, not inherited) */
-    signals: Record<string, { params: unknown[]; returnType?: unknown }>;
+    signals: Record<string, { params: unknown[]; returnType?: unknown; wrapParams?: (args: unknown[]) => unknown[] }>;
 };
 
 /**

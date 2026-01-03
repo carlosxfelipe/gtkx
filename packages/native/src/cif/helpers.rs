@@ -66,10 +66,8 @@ pub fn closure_to_glib_full(closure: &glib::Closure) -> *mut c_void {
 }
 
 pub fn closure_ptr_for_transfer(closure: glib::Closure) -> *mut c_void {
-    let stash: glib::translate::Stash<*mut glib::gobject_ffi::GClosure, _> = closure.to_glib_none();
-    let ptr = stash.0 as *mut c_void;
-    std::mem::forget(closure);
-    ptr
+    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
+    ptr as *mut c_void
 }
 
 pub(super) fn convert_glib_args(

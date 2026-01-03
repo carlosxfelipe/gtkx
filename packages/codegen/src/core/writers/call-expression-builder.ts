@@ -10,6 +10,16 @@ import type { FfiTypeDescriptor, MappedType } from "../type-system/ffi-types.js"
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 
 /**
+ * Callback wrapper info for generating wrapped callback arguments.
+ */
+export type CallbackWrapperInfo = {
+    paramName: string;
+    wrappedName: string;
+    wrapExpression: WriterFunction;
+    isOptional: boolean;
+};
+
+/**
  * Represents a single argument to a call() expression.
  */
 export type CallArgument = {
@@ -19,6 +29,8 @@ export type CallArgument = {
     value: string;
     /** Whether this argument is optional */
     optional?: boolean;
+    /** Callback wrapper info if this is a callback that needs wrapping */
+    callbackWrapper?: CallbackWrapperInfo;
 };
 
 /**

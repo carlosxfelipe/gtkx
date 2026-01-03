@@ -19,6 +19,7 @@ import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import type { Writers } from "../../../core/writers/index.js";
+import { ParamWrapWriter } from "../../../core/writers/param-wrap-writer.js";
 
 /**
  * Structured signal metadata entry.
@@ -31,6 +32,8 @@ export type SignalMetaEntry = {
     params: WriterFunction[];
     /** FFI type descriptor for return type */
     returnType: WriterFunction;
+    /** Generated function to wrap incoming signal parameters, or null if no wrapping needed */
+    wrapParams: WriterFunction | null;
 };
 
 /**
@@ -66,27 +69,40 @@ export class SignalBuilder {
     buildSignalMetaEntries(): SignalMetaEntry[] {
         const ownSignals = this.collectOwnSignals();
         const entries: SignalMetaEntry[] = [];
+        const paramWrapWriter = new ParamWrapWriter();
 
         for (const signal of ownSignals) {
-            const params = signal.parameters
-                .filter((p) => p.name !== "..." && p.name !== "")
-                .map((p) => {
-                    const mapped = this.ffiMapper.mapParameter(p);
-                    this.ctx.addTypeImports(mapped.imports);
-                    if (mapped.ffi.type === "ref") {
-                        this.ctx.usesRef = true;
-                    }
-                    return this.writers.ffiTypeWriter.toWriter(mapped.ffi);
-                });
+            const filteredParams = signal.parameters.filter((p) => p.name !== "..." && p.name !== "");
+            const mappedParams = filteredParams.map((p) => {
+                const mapped = this.ffiMapper.mapParameter(p);
+                this.ctx.addTypeImports(mapped.imports);
+                if (mapped.ffi.type === "ref") {
+                    this.ctx.usesRef = true;
+                }
+                return mapped;
+            });
+
+            const params = mappedParams.map((mapped) => this.writers.ffiTypeWriter.toWriter(mapped.ffi));
 
             const returnType = signal.returnType
                 ? this.writers.ffiTypeWriter.toWriter(this.ffiMapper.mapType(signal.returnType, true).ffi)
                 : TsMorphWriters.object({ type: '"undefined"' });
 
+            const wrapParamsInput = mappedParams.map((mapped, i) => ({
+                mappedType: mapped,
+                paramName: toValidIdentifier(toCamelCase(filteredParams[i]!.name)),
+            }));
+            const wrapParams = paramWrapWriter.buildWrapParamsFunction(wrapParamsInput);
+
+            if (wrapParams) {
+                this.ctx.usesGetNativeObject = true;
+            }
+
             entries.push({
                 name: signal.name,
                 params,
                 returnType,
+                wrapParams,
             });
         }
 
@@ -183,25 +199,8 @@ export class SignalBuilder {
             writer.indent(() => {
                 writer.writeLine("const self = getNativeObject(args[0]);");
                 writer.writeLine("const callbackArgs = args.slice(1);");
-                writer.writeLine("if (!meta) return handler(self, ...callbackArgs);");
-                writer.writeLine("const wrapped = meta.params.map((t, i) => {");
-                writer.indent(() => {
-                    writer.writeLine('if (t?.type === "gobject" && callbackArgs[i] != null) {');
-                    writer.indent(() => {
-                        writer.writeLine("return getNativeObject(callbackArgs[i]);");
-                    });
-                    writer.writeLine("}");
-                    writer.writeLine('if (t?.type === "gparam" && callbackArgs[i] != null) {');
-                    writer.indent(() => {
-                        const paramSpecRef = this.options.namespace === "GObject" ? "ParamSpec" : "GObject.ParamSpec";
-                        writer.writeLine(`return getNativeObject(callbackArgs[i], ${paramSpecRef});`);
-                    });
-                    writer.writeLine("}");
-                    writer.writeLine("return callbackArgs[i];");
-                });
-                writer.writeLine("});");
-                writer.writeLine("const result = handler(self, ...wrapped);");
-                writer.writeLine("return result;");
+                writer.writeLine("const wrapped = meta?.wrapParams?.(callbackArgs) ?? callbackArgs;");
+                writer.writeLine("return handler(self, ...wrapped);");
             });
             writer.writeLine("};");
 

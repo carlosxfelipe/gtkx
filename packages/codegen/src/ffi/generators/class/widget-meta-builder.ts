@@ -33,7 +33,7 @@ export type RuntimeWidgetMeta = {
     /** Property names that can be set as props */
     propNames: readonly string[];
     /** Signal metadata for this class (own signals only, not inherited) */
-    signals: Record<string, { params: unknown[]; returnType?: unknown }>;
+    signals: Record<string, { params: unknown[]; returnType?: unknown; wrapParams?: (args: unknown[]) => unknown[] }>;
 };
 
 /**
@@ -131,7 +131,7 @@ export class WidgetMetaBuilder {
 
         const signalsObject: Record<string, WriterFunction> = {};
         for (const entry of this.signalEntries) {
-            signalsObject[`"${entry.name}"`] = Writers.object({
+            const signalObjectProps: Record<string, string | WriterFunction> = {
                 params: (writer: CodeBlockWriter) => {
                     writer.write("[");
                     entry.params.forEach((param, i) => {
@@ -141,7 +141,13 @@ export class WidgetMetaBuilder {
                     writer.write("]");
                 },
                 returnType: entry.returnType,
-            });
+            };
+
+            if (entry.wrapParams) {
+                signalObjectProps.wrapParams = entry.wrapParams;
+            }
+
+            signalsObject[`"${entry.name}"`] = Writers.object(signalObjectProps);
         }
 
         return Writers.object({

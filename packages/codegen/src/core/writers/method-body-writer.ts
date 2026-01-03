@@ -14,8 +14,9 @@ import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { toCamelCase, toValidIdentifier } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
-import { type CallArgument, CallExpressionBuilder } from "./call-expression-builder.js";
+import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
+import { ParamWrapWriter } from "./param-wrap-writer.js";
 
 /**
  * Information about a Ref parameter that GTK allocates.
@@ -139,6 +140,7 @@ export type ConstructorSelection = {
 export class MethodBodyWriter {
     private ffiTypeWriter: FfiTypeWriter;
     private callExpression: CallExpressionBuilder;
+    private paramWrapWriter: ParamWrapWriter;
 
     constructor(
         private readonly ffiMapper: FfiMapper,
@@ -147,6 +149,7 @@ export class MethodBodyWriter {
     ) {
         this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
         this.callExpression = new CallExpressionBuilder(this.ffiTypeWriter);
+        this.paramWrapWriter = new ParamWrapWriter();
     }
 
     /**
@@ -425,6 +428,20 @@ export class MethodBodyWriter {
         };
     }
 
+    writeCallbackWrapperDeclarations(
+        writer: Parameters<WriterFunction>[0],
+        args: readonly CallArgument[],
+    ): void {
+        for (const arg of args) {
+            if (arg.callbackWrapper) {
+                writer.write(`const ${arg.callbackWrapper.wrappedName} = `);
+                arg.callbackWrapper.wrapExpression(writer);
+                writer.write(";");
+                writer.newLine();
+            }
+        }
+    }
+
     /**
      * Builds call arguments as an array of CallArgument objects.
      * Used with CallExpressionBuilder.toWriter() for ts-morph generation.
@@ -438,12 +455,53 @@ export class MethodBodyWriter {
             const valueName = this.callExpression.buildValueExpression(jsParamName, mapped);
             const isOptional = this.ffiMapper.isNullable(param);
 
+            const callbackWrapper = this.buildCallbackWrapper(param, jsParamName, isOptional);
+
             return {
                 type: mapped.ffi,
-                value: valueName,
+                value: callbackWrapper ? callbackWrapper.wrappedName : valueName,
                 optional: isOptional,
+                callbackWrapper,
             };
         });
+    }
+
+    private buildCallbackWrapper(
+        param: NormalizedParameter,
+        jsParamName: string,
+        isOptional: boolean,
+    ): CallbackWrapperInfo | undefined {
+        const callbackParams = this.ffiMapper.getCallbackParamMappings(param);
+        if (!callbackParams || callbackParams.length === 0) {
+            return undefined;
+        }
+
+        const wrapInfos = callbackParams.map((p) => ({
+            ...p,
+            wrapInfo: this.paramWrapWriter.needsParamWrap(p.mapped),
+        }));
+
+        const anyNeedsWrap = wrapInfos.some((w) => w.wrapInfo.needsWrap);
+        if (!anyNeedsWrap) {
+            return undefined;
+        }
+
+        for (const w of wrapInfos) {
+            if (w.wrapInfo.needsWrap) {
+                this.ctx.usesGetNativeObject = true;
+            }
+            this.ctx.addTypeImports(w.mapped.imports);
+        }
+
+        const wrappedName = `wrapped${jsParamName.charAt(0).toUpperCase()}${jsParamName.slice(1)}`;
+        const wrapExpression = this.paramWrapWriter.buildCallbackWrapperExpression(jsParamName, wrapInfos);
+
+        return {
+            paramName: jsParamName,
+            wrappedName,
+            wrapExpression,
+            isOptional,
+        };
     }
 
     /**
@@ -527,6 +585,8 @@ export class MethodBodyWriter {
             }
 
             const args = this.buildCallArgumentsArray(options.parameters);
+
+            this.writeCallbackWrapperDeclarations(writer, args);
 
             if (options.throws) {
                 args.push({
@@ -747,6 +807,8 @@ export class MethodBodyWriter {
             options;
 
         return (writer) => {
+            this.writeCallbackWrapperDeclarations(writer, args);
+
             if (throws) {
                 writer.writeLine("const error = { value: null as unknown };");
                 args.push({
