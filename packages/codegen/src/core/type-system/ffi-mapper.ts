@@ -8,10 +8,10 @@
 
 import type {
     GirRepository,
-    NormalizedCallback,
-    NormalizedNamespace,
-    NormalizedParameter,
-    NormalizedType,
+    GirCallback,
+    GirNamespace,
+    GirParameter,
+    GirType,
     QualifiedName,
 } from "@gtkx/gir";
 import { isIntrinsicType, isStringType, parseQualifiedName } from "@gtkx/gir";
@@ -41,7 +41,7 @@ import {
 /**
  * Maps normalized GIR types to TypeScript and FFI representations.
  *
- * Works with NormalizedType from GirRepository and returns type mappings
+ * Works with GirType from GirRepository and returns type mappings
  * including TypeScript type strings, FFI descriptors, and required imports.
  *
  * @example
@@ -73,7 +73,7 @@ export class FfiMapper {
      * @param parentTransferOwnership - Transfer ownership from parent context
      * @returns Mapped type with TypeScript string, FFI descriptor, and required imports
      */
-    mapType(type: NormalizedType, isReturn = false, parentTransferOwnership?: string): MappedType {
+    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string): MappedType {
         const imports: TypeImport[] = [];
 
         if (type.isHashTable()) {
@@ -168,7 +168,7 @@ export class FfiMapper {
      * Handles special cases like out parameters, callbacks, and
      * ownership transfer.
      */
-    mapParameter(param: NormalizedParameter): MappedType {
+    mapParameter(param: GirParameter): MappedType {
         const imports: TypeImport[] = [];
 
         if (param.direction === "out" || param.direction === "inout") {
@@ -240,7 +240,7 @@ export class FfiMapper {
      * Checks if a parameter is a closure target (user_data or destroy notify).
      * Closure targets are associated with supported callback parameters.
      */
-    isClosureTarget(param: NormalizedParameter, allParams: readonly NormalizedParameter[]): boolean {
+    isClosureTarget(param: GirParameter, allParams: readonly GirParameter[]): boolean {
         const paramIndex = allParams.indexOf(param);
         return allParams.some((p) => {
             const qualifiedName = this.qualifyTypeName(p.type.name);
@@ -251,7 +251,7 @@ export class FfiMapper {
     /**
      * Checks if a parameter is nullable.
      */
-    isNullable(param: NormalizedParameter): boolean {
+    isNullable(param: GirParameter): boolean {
         return param.nullable || param.optional;
     }
 
@@ -259,7 +259,7 @@ export class FfiMapper {
      * Checks if a parameter has an unsupported callback type.
      * Supported callbacks are those with trampolines in CALLBACK_TRAMPOLINES.
      */
-    hasUnsupportedCallback(param: NormalizedParameter): boolean {
+    hasUnsupportedCallback(param: GirParameter): boolean {
         const qualifiedName = this.qualifyTypeName(param.type.name);
         if (isSupportedCallback(qualifiedName)) {
             return false;
@@ -268,7 +268,7 @@ export class FfiMapper {
         return param.type.name === "GLib.Closure" || this.isCallback(param.type.name);
     }
 
-    getCallbackParamMappings(param: NormalizedParameter): Array<{ name: string; mapped: MappedType }> | null {
+    getCallbackParamMappings(param: GirParameter): Array<{ name: string; mapped: MappedType }> | null {
         const qualifiedName = this.qualifyTypeName(param.type.name);
         if (!isSupportedCallback(qualifiedName)) {
             return null;
@@ -285,6 +285,20 @@ export class FfiMapper {
                 name: p.name,
                 mapped: this.mapType(p.type, false, p.transferOwnership),
             }));
+    }
+
+    getCallbackReturnType(param: GirParameter): MappedType | null {
+        const qualifiedName = this.qualifyTypeName(param.type.name);
+        if (!isSupportedCallback(qualifiedName)) {
+            return null;
+        }
+
+        const callback = this.repo.resolveCallback(qualifiedName as QualifiedName);
+        if (!callback) {
+            return null;
+        }
+
+        return this.mapType(callback.returnType, true, callback.returnType.transferOwnership);
     }
 
     /**
@@ -323,7 +337,7 @@ export class FfiMapper {
     }
 
     private resolveFromNamespace(
-        ns: NormalizedNamespace,
+        ns: GirNamespace,
         name: string,
         namespace: string,
         isExternal: boolean,
@@ -564,7 +578,7 @@ export class FfiMapper {
         return { ts, ffi, imports };
     }
 
-    private buildCallbackTsParams(callback: NormalizedCallback, imports: TypeImport[]): string[] {
+    private buildCallbackTsParams(callback: GirCallback, imports: TypeImport[]): string[] {
         const result: string[] = [];
 
         for (const param of callback.parameters) {
@@ -580,7 +594,7 @@ export class FfiMapper {
         return result;
     }
 
-    private buildCallbackTsReturn(returnType: NormalizedType): string {
+    private buildCallbackTsReturn(returnType: GirType): string {
         if (returnType.name === "none" || returnType.name === "void") {
             return "void";
         }
@@ -590,7 +604,7 @@ export class FfiMapper {
     }
 
     private buildCallbackFfiDescriptor(
-        callback: NormalizedCallback,
+        callback: GirCallback,
         trampoline: TrampolineName,
     ): {
         type: "callback";
@@ -616,7 +630,7 @@ export class FfiMapper {
     }
 
     private mapGLibArrayContainer(
-        type: NormalizedType,
+        type: GirType,
         isReturn: boolean,
         parentTransferOwnership: string | undefined,
         imports: TypeImport[],
@@ -643,7 +657,7 @@ export class FfiMapper {
         return { ts: "unknown[]", ffi: fallbackFfi, imports };
     }
 
-    private getElementSize(type: NormalizedType): number {
+    private getElementSize(type: GirType): number {
         if (type.isNumeric()) {
             const primitive = PRIMITIVE_TYPE_MAP.get(type.name as string);
             if (primitive?.ffi.size) {

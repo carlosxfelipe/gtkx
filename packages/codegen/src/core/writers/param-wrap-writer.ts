@@ -8,7 +8,24 @@ export type ParamWrapInfo = {
     tsType: string;
 };
 
+export type ReturnUnwrapInfo = {
+    needsUnwrap: boolean;
+};
+
+export type CallbackWrapperOptions = {
+    paramWrapInfos: Array<{ wrapInfo: ParamWrapInfo }>;
+    returnUnwrapInfo?: ReturnUnwrapInfo;
+};
+
 export class ParamWrapWriter {
+    needsReturnUnwrap(mappedType: MappedType | null): ReturnUnwrapInfo {
+        if (!mappedType) {
+            return { needsUnwrap: false };
+        }
+        const ffiType = mappedType.ffi.type;
+        const needsUnwrap = ffiType === "gobject" || ffiType === "boxed" || ffiType === "struct";
+        return { needsUnwrap };
+    }
     needsParamWrap(mappedType: MappedType): ParamWrapInfo {
         const ffiType = mappedType.ffi.type;
         const tsType = mappedType.ts;
@@ -77,13 +94,36 @@ export class ParamWrapWriter {
         };
     }
 
-    buildCallbackWrapperExpression(jsParamName: string, wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>): WriterFunction {
+    buildCallbackWrapperExpression(
+        jsParamName: string,
+        wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
+        returnUnwrapInfo?: ReturnUnwrapInfo,
+    ): WriterFunction {
         return (writer) => {
-            writer.write(`${jsParamName} ? (...args: unknown[]) => `);
-            writer.write(`${jsParamName}(`);
+            writer.write(`${jsParamName}`);
             writer.newLine();
-            writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
-            writer.write(") : null");
+            writer.indent(() => {
+                writer.write("? (...args: unknown[]) => ");
+                if (returnUnwrapInfo?.needsUnwrap) {
+                    writer.write("{");
+                    writer.newLine();
+                    writer.indent(() => {
+                        writer.write(`const _result = ${jsParamName}(`);
+                        writer.newLine();
+                        writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
+                        writer.writeLine(");");
+                        writer.writeLine("return (_result as { id: unknown } | null)?.id ?? null;");
+                    });
+                    writer.write("}");
+                } else {
+                    writer.write(`${jsParamName}(`);
+                    writer.newLine();
+                    writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
+                    writer.write(")");
+                }
+                writer.newLine();
+                writer.write(": null");
+            });
         };
     }
 

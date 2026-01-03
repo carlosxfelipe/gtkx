@@ -5,7 +5,7 @@
  * Extracts common patterns from RecordGenerator, InterfaceGenerator, ClassGenerator.
  */
 
-import type { NormalizedConstructor, NormalizedFunction, NormalizedMethod, NormalizedParameter } from "@gtkx/gir";
+import type { GirConstructor, GirFunction, GirMethod, GirParameter } from "@gtkx/gir";
 import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../generation-context.js";
@@ -64,7 +64,7 @@ type CallableBodyOptions = {
     /** C identifier for the FFI call */
     cIdentifier: string;
     /** Parameters for the callable */
-    parameters: readonly NormalizedParameter[];
+    parameters: readonly GirParameter[];
     /** Return type info */
     returnType: { nullable?: boolean };
     /** Mapped return type info */
@@ -109,9 +109,9 @@ export type StaticFunctionStructureOptions = {
  */
 export type ConstructorSelection = {
     /** Constructors that don't have unsupported callbacks */
-    supported: NormalizedConstructor[];
+    supported: GirConstructor[];
     /** The main constructor (first non-vararg supported constructor) */
-    main: NormalizedConstructor | undefined;
+    main: GirConstructor | undefined;
 };
 
 /**
@@ -157,21 +157,21 @@ export class MethodBodyWriter {
      * Filters parameters to get only the ones that should be in the function signature.
      * Removes varargs and closure target parameters.
      */
-    filterParameters(parameters: readonly NormalizedParameter[]): NormalizedParameter[] {
+    filterParameters(parameters: readonly GirParameter[]): GirParameter[] {
         return parameters.filter((p) => !isVararg(p) && !this.ffiMapper.isClosureTarget(p, parameters));
     }
 
     /**
      * Checks if any parameter is a Ref type.
      */
-    hasRefParameter(params: readonly NormalizedParameter[]): boolean {
+    hasRefParameter(params: readonly GirParameter[]): boolean {
         return params.some((p) => this.ffiMapper.mapParameter(p).ts.startsWith("Ref<"));
     }
 
     /**
      * Checks if any parameter has an unsupported callback type.
      */
-    hasUnsupportedCallbacks(params: readonly NormalizedParameter[]): boolean {
+    hasUnsupportedCallbacks(params: readonly GirParameter[]): boolean {
         return params.some((p) => this.ffiMapper.hasUnsupportedCallback(p));
     }
 
@@ -197,7 +197,7 @@ export class MethodBodyWriter {
      * }
      * ```
      */
-    selectConstructors(constructors: readonly NormalizedConstructor[]): ConstructorSelection {
+    selectConstructors(constructors: readonly GirConstructor[]): ConstructorSelection {
         const supported = constructors.filter((c) => !this.hasUnsupportedCallbacks(c.parameters));
         const main = supported.find((c) => !c.parameters.some(isVararg));
         return { supported, main };
@@ -206,7 +206,7 @@ export class MethodBodyWriter {
     /**
      * Converts a parameter name to a valid JavaScript identifier.
      */
-    toJsParamName(param: NormalizedParameter): string {
+    toJsParamName(param: GirParameter): string {
         return toValidIdentifier(toCamelCase(param.name));
     }
 
@@ -214,7 +214,7 @@ export class MethodBodyWriter {
      * Identifies Ref parameters where GTK allocates the referenced object.
      * These need to be rewrapped after the call.
      */
-    identifyGtkAllocatedRefs(parameters: readonly NormalizedParameter[]): GtkAllocatedRef[] {
+    identifyGtkAllocatedRefs(parameters: readonly GirParameter[]): GtkAllocatedRef[] {
         const filtered = this.filterParameters(parameters);
 
         return filtered
@@ -301,7 +301,7 @@ export class MethodBodyWriter {
      * Generates a unique result variable name.
      * Avoids collision with a parameter named "result".
      */
-    getResultVarName(parameters: readonly NormalizedParameter[]): string {
+    getResultVarName(parameters: readonly GirParameter[]): string {
         const hasResultParam = parameters.some((p) => this.toJsParamName(p) === "result");
         return hasResultParam ? "_result" : "result";
     }
@@ -322,7 +322,7 @@ export class MethodBodyWriter {
      * ```
      */
     buildParameterList(
-        parameters: readonly NormalizedParameter[],
+        parameters: readonly GirParameter[],
     ): Array<{ name: string; type: string; hasQuestionToken?: boolean }> {
         const filteredParams = this.filterParameters(parameters);
 
@@ -369,7 +369,7 @@ export class MethodBodyWriter {
      * classDecl.addMethod(structure);
      * ```
      */
-    buildMethodStructure(method: NormalizedMethod, options: MethodStructureOptions): MethodDeclarationStructure {
+    buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodDeclarationStructure {
         const params = this.buildParameterList(method.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(method.returnType, true, method.returnType.transferOwnership);
         this.ctx.addTypeImports(returnTypeMapping.imports);
@@ -391,7 +391,7 @@ export class MethodBodyWriter {
     }
 
     buildStaticFunctionStructure(
-        func: NormalizedFunction,
+        func: GirFunction,
         options: StaticFunctionStructureOptions,
     ): MethodDeclarationStructure {
         const funcName = toValidIdentifier(toCamelCase(func.name));
@@ -443,7 +443,7 @@ export class MethodBodyWriter {
      * Builds call arguments as an array of CallArgument objects.
      * Used with CallExpressionBuilder.toWriter() for ts-morph generation.
      */
-    buildCallArgumentsArray(parameters: readonly NormalizedParameter[]): CallArgument[] {
+    buildCallArgumentsArray(parameters: readonly GirParameter[]): CallArgument[] {
         const filtered = this.filterParameters(parameters);
 
         return filtered.map((param) => {
@@ -464,22 +464,25 @@ export class MethodBodyWriter {
     }
 
     private buildCallbackWrapper(
-        param: NormalizedParameter,
+        param: GirParameter,
         jsParamName: string,
         isOptional: boolean,
     ): CallbackWrapperInfo | undefined {
         const callbackParams = this.ffiMapper.getCallbackParamMappings(param);
-        if (!callbackParams || callbackParams.length === 0) {
-            return undefined;
-        }
+        const callbackReturnType = this.ffiMapper.getCallbackReturnType(param);
+        const returnUnwrapInfo = this.paramWrapWriter.needsReturnUnwrap(callbackReturnType);
 
-        const wrapInfos = callbackParams.map((p) => ({
-            ...p,
-            wrapInfo: this.paramWrapWriter.needsParamWrap(p.mapped),
-        }));
+        const wrapInfos = callbackParams
+            ? callbackParams.map((p) => ({
+                  ...p,
+                  wrapInfo: this.paramWrapWriter.needsParamWrap(p.mapped),
+              }))
+            : [];
 
-        const anyNeedsWrap = wrapInfos.some((w) => w.wrapInfo.needsWrap);
-        if (!anyNeedsWrap) {
+        const anyParamNeedsWrap = wrapInfos.some((w) => w.wrapInfo.needsWrap);
+        const needsWrapper = anyParamNeedsWrap || returnUnwrapInfo.needsUnwrap;
+
+        if (!needsWrapper) {
             return undefined;
         }
 
@@ -491,7 +494,11 @@ export class MethodBodyWriter {
         }
 
         const wrappedName = `wrapped${jsParamName.charAt(0).toUpperCase()}${jsParamName.slice(1)}`;
-        const wrapExpression = this.paramWrapWriter.buildCallbackWrapperExpression(jsParamName, wrapInfos);
+        const wrapExpression = this.paramWrapWriter.buildCallbackWrapperExpression(
+            jsParamName,
+            wrapInfos,
+            returnUnwrapInfo,
+        );
 
         return {
             paramName: jsParamName,
@@ -518,7 +525,7 @@ export class MethodBodyWriter {
      * ```
      */
     writeMethodBody(
-        method: NormalizedMethod,
+        method: GirMethod,
         returnTypeMapping: MappedType,
         options: MethodBodyStatementsOptions,
     ): WriterFunction {
@@ -550,7 +557,7 @@ export class MethodBodyWriter {
      * ```
      */
     writeFunctionBody(
-        func: NormalizedFunction,
+        func: GirFunction,
         returnTypeMapping: MappedType,
         options: FunctionBodyStatementsOptions,
     ): WriterFunction {
