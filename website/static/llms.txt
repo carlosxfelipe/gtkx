@@ -1,36 +1,40 @@
 # GTKX
 
-> React framework for building native GTK4 desktop applications on Linux. Uses a custom React reconciler to render real GTK widgets through a Rust FFI bridge — not a webview.
+> React framework for building native GTK4 desktop applications on Linux. Uses a custom React reconciler to render real GTK widgets through a Rust FFI bridge — no webviews, no Electron.
 
-GTKX lets React developers build Linux desktop apps using familiar patterns (hooks, JSX, component composition) while targeting native GTK4 widgets. Apps integrate properly with the Linux desktop and support Libadwaita for modern GNOME styling.
+GTKX enables React developers to build Linux desktop applications using familiar patterns (hooks, JSX, component composition) while rendering native GTK4 widgets. Apps integrate properly with the Linux desktop and support Libadwaita for modern GNOME styling.
 
-## Packages
+## Core Packages
 
-- `@gtkx/react`: Core framework with React reconciler, GTK/Adw components, and render()
-- `@gtkx/ffi`: TypeScript FFI bindings to native module, GTK type definitions and enums
-- `@gtkx/css`: CSS-in-JS styling system (Emotion-like API for GTK CSS)
-- `@gtkx/testing`: Component testing utilities (Testing Library-style API)
-- `@gtkx/cli`: CLI for project scaffolding and dev server with HMR
+- `@gtkx/react`: React reconciler, GTK/Adwaita components, render() function, portals
+- `@gtkx/ffi`: TypeScript FFI bindings, GTK/GLib/Adwaita type definitions and enums
+- `@gtkx/css`: CSS-in-JS styling (Emotion-like API adapted for GTK CSS syntax)
+- `@gtkx/testing`: Component testing utilities (Testing Library-style API for GTK)
+- `@gtkx/cli`: Project scaffolding (gtkx create) and dev server with hot module replacement
 
 ## Documentation
 
-- [Introduction](https://eugeniodepalo.github.io/gtkx/introduction): Overview of GTKX, how it works, and who it's for
-- [Getting Started](https://eugeniodepalo.github.io/gtkx/getting-started): Create your first app, project structure, basic concepts
-- [CLI Reference](https://eugeniodepalo.github.io/gtkx/cli): gtkx create, gtkx dev, npm scripts, programmatic API
+- [Introduction](https://eugeniodepalo.github.io/gtkx/introduction): What GTKX is, how it works, architecture overview, and target audience
+- [Getting Started](https://eugeniodepalo.github.io/gtkx/getting-started): Create first app, project structure, basic component patterns
+- [CLI Reference](https://eugeniodepalo.github.io/gtkx/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
 - [Slots](https://eugeniodepalo.github.io/gtkx/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
-- [Styling](https://eugeniodepalo.github.io/gtkx/styling): css(), cx(), injectGlobal(), GTK CSS syntax, Adwaita classes
-- [Lists](https://eugeniodepalo.github.io/gtkx/lists): ListView, GridView, ColumnView, TreeListView, DropDown, ListBox, FlowBox
-- [Menus](https://eugeniodepalo.github.io/gtkx/menus): Menu.Item, Menu.Section, Menu.Submenu, keyboard shortcuts, menu bars
-- [Adwaita](https://eugeniodepalo.github.io/gtkx/adwaita): Libadwaita components — AdwHeaderBar, AdwActionRow, AdwNavigationView, etc.
-- [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, popovers
-- [Async Operations](https://eugeniodepalo.github.io/gtkx/async-operations): Async event handlers, loading states, file I/O, network requests, cancellation
-- [Error Handling](https://eugeniodepalo.github.io/gtkx/error-handling): Try/catch patterns, error states, toast notifications, validation
-- [Testing](https://eugeniodepalo.github.io/gtkx/testing): render(), screen queries, userEvent, waitFor, cleanup
-- [Deploying](https://eugeniodepalo.github.io/gtkx/deploying): Single Executable Application (SEA), Flatpak packaging
+- [Styling](https://eugeniodepalo.github.io/gtkx/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
+- [Lists](https://eugeniodepalo.github.io/gtkx/lists): ListView, GridView, ColumnView, TreeListView, DropDown with virtual scrolling
+- [Menus](https://eugeniodepalo.github.io/gtkx/menus): Menu.Item, Menu.Section, Menu.Submenu, keyboard shortcuts, GtkPopoverMenu
+- [Adwaita](https://eugeniodepalo.github.io/gtkx/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView
+- [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, modal windows
+- [Async Operations](https://eugeniodepalo.github.io/gtkx/async-operations): Async event handlers, loading states, file I/O, network requests
+- [Error Handling](https://eugeniodepalo.github.io/gtkx/error-handling): Try/catch patterns, error states, toast notifications, form validation
+- [Testing](https://eugeniodepalo.github.io/gtkx/testing): render(), screen queries, userEvent, waitFor, Xvfb setup for CI
+- [Deploying](https://eugeniodepalo.github.io/gtkx/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
+
+## API Reference
+
+- [React Package API](https://eugeniodepalo.github.io/gtkx/api/react): Component props, render functions, hooks, and utilities
 
 ## Optional
 
-- [GitHub Repository](https://github.com/eugeniodepalo/gtkx): Source code, examples, issues
-- [GTK4 Documentation](https://docs.gtk.org/gtk4/): Official GTK4 reference
-- [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/): Official Libadwaita reference
-- [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/): Design patterns for GNOME apps
+- [GitHub Repository](https://github.com/eugeniodepalo/gtkx): Source code, examples, issue tracker
+- [GTK4 Documentation](https://docs.gtk.org/gtk4/): Official GTK4 widget reference and concepts
+- [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/): Official Libadwaita component reference
+- [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/): Design patterns and UX guidelines for GNOME apps

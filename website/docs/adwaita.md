@@ -49,7 +49,7 @@ const TabbedView = () => {
   const [currentPage, setCurrentPage] = useState("home");
 
   return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
       <AdwViewSwitcher stack={stackRef.current ?? undefined} />
 
       <AdwViewStack
@@ -166,7 +166,7 @@ import {
     <GtkSwitch valign={Gtk.Align.CENTER} />
   </AdwActionRow>
   <AdwActionRow title="Font Size">
-    <GtkSpinButton valign={Gtk.Align.CENTER} />
+    <GtkSpinButton valign={Gtk.Align.CENTER} climbRate={1} digits={0} />
   </AdwActionRow>
 </AdwPreferencesGroup>;
 ```
@@ -246,7 +246,7 @@ const NavigationExample = () => {
   return (
     <AdwNavigationView ref={navViewRef}>
       <AdwNavigationPage title="Main" tag="main">
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
           <AdwHeaderBar />
           <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -267,7 +267,7 @@ const NavigationExample = () => {
 
       {showDetail && (
         <AdwNavigationPage title="Details" tag="detail">
-          <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+          <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
             <AdwHeaderBar />
             <GtkBox
               orientation={Gtk.Orientation.VERTICAL}
@@ -315,8 +315,8 @@ navViewRef.current?.pop();
 // Pop to a specific page
 navViewRef.current?.popToTag("main");
 
-// Replace the visible page
-navViewRef.current?.replaceWithTags(["main", "settings"]);
+// Replace the navigation stack
+navViewRef.current?.replaceWithTags(["main", "settings"], 2);
 ```
 
 ## Settings Page Example
@@ -348,7 +348,7 @@ const SettingsPage = () => {
       defaultHeight={600}
       onCloseRequest={quit}
     >
-      <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
         <AdwHeaderBar />
 
         <GtkScrolledWindow vexpand>

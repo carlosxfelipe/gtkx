@@ -143,7 +143,7 @@ const cardStyle = css`
     }
 `;
 
-<GtkBox cssClasses={[cardStyle]} orientation={Gtk.Orientation.VERTICAL}>
+<GtkBox cssClasses={[cardStyle]} orientation={Gtk.Orientation.VERTICAL} spacing={8}>
     <GtkLabel label="Card Title" cssClasses={["title-3"]} />
     <GtkLabel label="Card content goes here" cssClasses={["dim-label"]} />
 </GtkBox>
@@ -162,7 +162,7 @@ const selectedStyle = css`
     color: @theme_selected_fg_color;
 `;
 
-<GtkBox cssClasses={[cx(itemStyle, isSelected && selectedStyle)]}>
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cx(itemStyle, isSelected && selectedStyle)]}>
     {item.name}
 </GtkBox>
 ```

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkOverlay, GtkProgressBar, GtkSpinner, Slot } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkOverlay, GtkProgressBar, GtkSpinner, OverlayChild } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
@@ -44,16 +44,16 @@ const OverlayDemo = () => {
                 />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
                     <GtkOverlay>
-                        <Slot for={GtkOverlay} id="child">
-                            <GtkButton iconName="mail-unread-symbolic" widthRequest={48} heightRequest={48} />
-                        </Slot>
+                        <GtkButton iconName="mail-unread-symbolic" widthRequest={48} heightRequest={48} />
                         {notificationCount > 0 && (
-                            <GtkLabel
-                                label={String(notificationCount)}
-                                cssClasses={["error", "pill", "numeric"]}
-                                halign={Gtk.Align.END}
-                                valign={Gtk.Align.START}
-                            />
+                            <OverlayChild>
+                                <GtkLabel
+                                    label={String(notificationCount)}
+                                    cssClasses={["error", "pill", "numeric"]}
+                                    halign={Gtk.Align.END}
+                                    valign={Gtk.Align.START}
+                                />
+                            </OverlayChild>
                         )}
                     </GtkOverlay>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} valign={Gtk.Align.CENTER}>
@@ -84,58 +84,58 @@ const OverlayDemo = () => {
                     halign={Gtk.Align.START}
                 />
                 <GtkOverlay>
-                    <Slot for={GtkOverlay} id="child">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            cssClasses={["card"]}
-                            marginTop={8}
-                            marginBottom={8}
-                            marginStart={12}
-                            marginEnd={12}
-                            widthRequest={300}
-                            heightRequest={120}
-                        >
-                            <GtkLabel
-                                label="Content Area"
-                                cssClasses={["heading"]}
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                                vexpand
-                            />
-                            <GtkLabel
-                                label="This is the main content that can be covered by an overlay."
-                                cssClasses={["dim-label"]}
-                                wrap
-                                halign={Gtk.Align.CENTER}
-                            />
-                        </GtkBox>
-                    </Slot>
-                    {loading && (
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            cssClasses={["background", "osd"]}
-                            halign={Gtk.Align.FILL}
-                            valign={Gtk.Align.FILL}
-                            hexpand
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
+                        cssClasses={["card"]}
+                        marginTop={8}
+                        marginBottom={8}
+                        marginStart={12}
+                        marginEnd={12}
+                        widthRequest={300}
+                        heightRequest={120}
+                    >
+                        <GtkLabel
+                            label="Content Area"
+                            cssClasses={["heading"]}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
                             vexpand
-                        >
-                            <GtkSpinner
-                                spinning
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
+                        />
+                        <GtkLabel
+                            label="This is the main content that can be covered by an overlay."
+                            cssClasses={["dim-label"]}
+                            wrap
+                            halign={Gtk.Align.CENTER}
+                        />
+                    </GtkBox>
+                    {loading && (
+                        <OverlayChild>
+                            <GtkBox
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={8}
+                                cssClasses={["background", "osd"]}
+                                halign={Gtk.Align.FILL}
+                                valign={Gtk.Align.FILL}
+                                hexpand
                                 vexpand
-                                widthRequest={32}
-                                heightRequest={32}
-                            />
-                            <GtkLabel
-                                label="Loading..."
-                                cssClasses={["dim-label"]}
-                                halign={Gtk.Align.CENTER}
-                                marginBottom={12}
-                            />
-                        </GtkBox>
+                            >
+                                <GtkSpinner
+                                    spinning
+                                    halign={Gtk.Align.CENTER}
+                                    valign={Gtk.Align.CENTER}
+                                    vexpand
+                                    widthRequest={32}
+                                    heightRequest={32}
+                                />
+                                <GtkLabel
+                                    label="Loading..."
+                                    cssClasses={["dim-label"]}
+                                    halign={Gtk.Align.CENTER}
+                                    marginBottom={12}
+                                />
+                            </GtkBox>
+                        </OverlayChild>
                     )}
                 </GtkOverlay>
             </GtkBox>
@@ -149,55 +149,61 @@ const OverlayDemo = () => {
                     halign={Gtk.Align.START}
                 />
                 <GtkOverlay>
-                    <Slot for={GtkOverlay} id="child">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
-                            cssClasses={["card"]}
-                            widthRequest={280}
-                            heightRequest={140}
-                        >
-                            <GtkLabel
-                                label="Image or Content"
-                                cssClasses={["dim-label"]}
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                                vexpand
-                            />
-                        </GtkBox>
-                    </Slot>
-                    <GtkLabel
-                        label="Top Left"
-                        cssClasses={["accent", "caption"]}
-                        halign={Gtk.Align.START}
-                        valign={Gtk.Align.START}
-                        marginStart={8}
-                        marginTop={8}
-                    />
-                    <GtkLabel
-                        label="Top Right"
-                        cssClasses={["accent", "caption"]}
-                        halign={Gtk.Align.END}
-                        valign={Gtk.Align.START}
-                        marginEnd={8}
-                        marginTop={8}
-                    />
-                    <GtkLabel
-                        label="Bottom Left"
-                        cssClasses={["accent", "caption"]}
-                        halign={Gtk.Align.START}
-                        valign={Gtk.Align.END}
-                        marginStart={8}
-                        marginBottom={8}
-                    />
-                    <GtkLabel
-                        label="Bottom Right"
-                        cssClasses={["accent", "caption"]}
-                        halign={Gtk.Align.END}
-                        valign={Gtk.Align.END}
-                        marginEnd={8}
-                        marginBottom={8}
-                    />
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        cssClasses={["card"]}
+                        widthRequest={280}
+                        heightRequest={140}
+                    >
+                        <GtkLabel
+                            label="Image or Content"
+                            cssClasses={["dim-label"]}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                            vexpand
+                        />
+                    </GtkBox>
+                    <OverlayChild>
+                        <GtkLabel
+                            label="Top Left"
+                            cssClasses={["accent", "caption"]}
+                            halign={Gtk.Align.START}
+                            valign={Gtk.Align.START}
+                            marginStart={8}
+                            marginTop={8}
+                        />
+                    </OverlayChild>
+                    <OverlayChild>
+                        <GtkLabel
+                            label="Top Right"
+                            cssClasses={["accent", "caption"]}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.START}
+                            marginEnd={8}
+                            marginTop={8}
+                        />
+                    </OverlayChild>
+                    <OverlayChild>
+                        <GtkLabel
+                            label="Bottom Left"
+                            cssClasses={["accent", "caption"]}
+                            halign={Gtk.Align.START}
+                            valign={Gtk.Align.END}
+                            marginStart={8}
+                            marginBottom={8}
+                        />
+                    </OverlayChild>
+                    <OverlayChild>
+                        <GtkLabel
+                            label="Bottom Right"
+                            cssClasses={["accent", "caption"]}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.END}
+                            marginEnd={8}
+                            marginBottom={8}
+                        />
+                    </OverlayChild>
                 </GtkOverlay>
             </GtkBox>
 
@@ -217,24 +223,24 @@ const OverlayDemo = () => {
                     <GtkButton label="100%" onClicked={() => setProgress(1)} />
                 </GtkBox>
                 <GtkOverlay>
-                    <Slot for={GtkOverlay} id="child">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
-                            cssClasses={["card"]}
-                            widthRequest={300}
-                            heightRequest={80}
-                        >
-                            <GtkLabel
-                                label={`Download: ${Math.round(progress * 100)}%`}
-                                cssClasses={["heading"]}
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                                vexpand
-                            />
-                        </GtkBox>
-                    </Slot>
-                    <GtkProgressBar fraction={progress} halign={Gtk.Align.FILL} valign={Gtk.Align.END} hexpand />
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        cssClasses={["card"]}
+                        widthRequest={300}
+                        heightRequest={80}
+                    >
+                        <GtkLabel
+                            label={`Download: ${Math.round(progress * 100)}%`}
+                            cssClasses={["heading"]}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                            vexpand
+                        />
+                    </GtkBox>
+                    <OverlayChild>
+                        <GtkProgressBar fraction={progress} halign={Gtk.Align.FILL} valign={Gtk.Align.END} hexpand />
+                    </OverlayChild>
                 </GtkOverlay>
             </GtkBox>
         </GtkBox>

@@ -83,14 +83,12 @@ import * as Gtk from "@gtkx/ffi/gtk";
 Layer widgets on top of each other:
 
 ```tsx
-import { GtkOverlay, GtkImage, GtkLabel, OverlayChild, Slot } from "@gtkx/react";
+import { GtkOverlay, GtkImage, GtkLabel, OverlayChild } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 <GtkOverlay>
-    {/* Base content using Slot */}
-    <Slot for={GtkOverlay} id="child">
-        <GtkImage file="background.png" />
-    </Slot>
+    {/* Base content as direct child */}
+    <GtkImage file="background.png" />
 
     {/* Overlay content using OverlayChild element */}
     <OverlayChild>
@@ -111,12 +109,10 @@ The `OverlayChild` element supports `measure` and `clipOverlay` props to control
 ### GtkExpander
 
 ```tsx
-import { GtkExpander, Slot } from "@gtkx/react";
+import { GtkExpander, GtkLabel } from "@gtkx/react";
 
 <GtkExpander label="Show Details">
-    <Slot for={GtkExpander} id="child">
-        Hidden content revealed when expanded
-    </Slot>
+    <GtkLabel label="Hidden content revealed when expanded" />
 </GtkExpander>
 ```
 
@@ -129,19 +125,19 @@ import * as Gtk from "@gtkx/ffi/gtk";
 const ThreePaneLayout = () => (
     <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={200}>
         <Slot for={GtkPaned} id="startChild">
-            <GtkBox cssClasses={["sidebar"]}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["sidebar"]}>
                 Sidebar
             </GtkBox>
         </Slot>
         <Slot for={GtkPaned} id="endChild">
             <GtkPaned orientation={Gtk.Orientation.VERTICAL} position={400}>
                 <Slot for={GtkPaned} id="startChild">
-                    <GtkBox cssClasses={["content"]}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["content"]}>
                         Main Content
                     </GtkBox>
                 </Slot>
                 <Slot for={GtkPaned} id="endChild">
-                    <GtkBox cssClasses={["panel"]}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["panel"]}>
                         Bottom Panel
                     </GtkBox>
                 </Slot>

@@ -13,7 +13,7 @@ GTK4 uses callbacks for async operations. GTKX wraps these into Promises:
 // });
 
 // With GTKX:
-const file = await dialog.open(window);
+const file = await dialog.openAsync(window);
 ```
 
 ## Promise-Wrapped APIs
@@ -22,15 +22,15 @@ GTKX provides Promise wrappers for these GTK async operations:
 
 | Class | Methods |
 |-------|---------|
-| `Gtk.FileDialog` | `open`, `openMultiple`, `save`, `selectFolder`, `selectMultipleFolders` |
-| `Gtk.ColorDialog` | `chooseRgba`, `chooseRgbaAndWait` |
-| `Gtk.FontDialog` | `chooseFont`, `chooseFace`, `chooseFontAndFeatures` |
-| `Gtk.AlertDialog` | `choose` |
-| `Gtk.PrintDialog` | `print`, `printFile`, `setup` |
-| `Gtk.UriLauncher` | `launch` |
-| `Gtk.FileLauncher` | `launch`, `openContainingFolder` |
-| `Adw.AlertDialog` | `choose` |
-| `Adw.MessageDialog` | `choose` |
+| `Gtk.FileDialog` | `openAsync`, `openMultipleAsync`, `saveAsync`, `selectFolderAsync`, `selectMultipleFoldersAsync` |
+| `Gtk.ColorDialog` | `chooseRgbaAsync` |
+| `Gtk.FontDialog` | `chooseFontAsync`, `chooseFaceAsync`, `chooseFontAndFeaturesAsync` |
+| `Gtk.AlertDialog` | `chooseAsync` |
+| `Gtk.PrintDialog` | `printAsync`, `printFileAsync`, `setupAsync` |
+| `Gtk.UriLauncher` | `launchAsync` |
+| `Gtk.FileLauncher` | `launchAsync`, `openContainingFolderAsync` |
+| `Adw.AlertDialog` | `chooseAsync` |
+| `Adw.MessageDialog` | `chooseAsync` |
 
 ## Usage Pattern
 
@@ -48,7 +48,7 @@ const FilePickerButton = () => {
         const dialog = new Gtk.FileDialog();
 
         try {
-            const file = await dialog.open(app.getActiveWindow() ?? undefined);
+            const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
             console.log("Selected:", file.getPath());
         } catch (error) {
             if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
@@ -58,7 +58,7 @@ const FilePickerButton = () => {
         }
     };
 
-    return <GtkButton label="Open File" onClicked={pickFile} />;
+    return <GtkButton label="Open File" onClicked={() => pickFile()} />;
 };
 ```
 
@@ -66,13 +66,13 @@ The same pattern works for all dialog types:
 
 ```tsx
 // Alert dialog - returns button index
-const response = await new Gtk.AlertDialog().choose(window);
+const response = await new Gtk.AlertDialog().chooseAsync(window);
 
 // Color dialog - returns Gdk.RGBA
-const color = await new Gtk.ColorDialog().chooseRgba(window);
+const color = await new Gtk.ColorDialog().chooseRgbaAsync(window);
 
 // Font dialog - returns Pango.FontDescription
-const font = await new Gtk.FontDialog().chooseFont(window);
+const font = await new Gtk.FontDialog().chooseFontAsync(window);
 ```
 
 ## Cancellation
@@ -88,7 +88,7 @@ const cancellable = new Gio.Cancellable();
 setTimeout(() => cancellable.cancel(), 30000);
 
 try {
-    const file = await dialog.open(window, cancellable);
+    const file = await dialog.openAsync(window, cancellable);
 } catch (error) {
     if (error instanceof NativeError && error.code === Gio.IOErrorEnum.CANCELLED) {
         console.log("Operation was cancelled");

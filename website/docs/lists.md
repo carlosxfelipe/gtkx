@@ -104,7 +104,7 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
             maxColumns={6}
             renderItem={(photo: Photo | null) => (
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                    <GtkBox heightRequest={100} cssClasses={[photoTile(photo?.color ?? "#ccc")]} />
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} heightRequest={100} cssClasses={[photoTile(photo?.color ?? "#ccc")]} />
                     {photo?.title ?? ""}
                 </GtkBox>
             )}

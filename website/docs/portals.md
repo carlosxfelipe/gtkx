@@ -81,7 +81,7 @@ Best for quick confirmations and file pickers. These are GTK's native dialog API
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { useApplication } from "@gtkx/react";
+import { GtkButton, useApplication } from "@gtkx/react";
 
 const FilePickerButton = () => {
     const app = useApplication();
@@ -89,14 +89,14 @@ const FilePickerButton = () => {
     const pickFile = async () => {
         const dialog = new Gtk.FileDialog();
         try {
-            const file = await dialog.open(app.getActiveWindow() ?? undefined);
+            const file = await dialog.openAsync(app.getActiveWindow() ?? undefined);
             console.log("Selected:", file.getPath());
         } catch {
             // User cancelled
         }
     };
 
-    return <GtkButton label="Open File" onClicked={pickFile} />;
+    return <GtkButton label="Open File" onClicked={() => pickFile()} />;
 };
 ```
 

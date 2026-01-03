@@ -52,7 +52,7 @@ import { NativeError } from "@gtkx/ffi";
 
 const pickFile = async (window: Gtk.Window) => {
     try {
-        return await new Gtk.FileDialog().open(window);
+        return await new Gtk.FileDialog().openAsync(window);
     } catch (error) {
         if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
             return null; // User cancelled - not an error
