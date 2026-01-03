@@ -4,11 +4,13 @@ import "./refresh-runtime.js";
 
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { events } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import { render } from "@gtkx/react";
 import { defineCommand, runMain } from "citty";
 import { createApp } from "./create.js";
 import { createDevServer } from "./dev-server.js";
+import { startMcpClient, stopMcpClient } from "./mcp-client.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -54,6 +56,11 @@ const dev = defineCommand({
 
         console.log(`[gtkx] Rendering app with ID: ${appId}`);
         render(<App />, appId, appFlags);
+
+        startMcpClient(appId);
+        events.on("stop", () => {
+            stopMcpClient();
+        });
 
         console.log("[gtkx] HMR enabled - watching for changes...");
     },

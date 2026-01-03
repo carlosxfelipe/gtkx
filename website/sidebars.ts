@@ -18,7 +18,7 @@ const sidebars: SidebarsConfig = {
         {
             type: "category",
             label: "Testing & Deployment",
-            items: ["testing", "deploying"],
+            items: ["testing", "mcp", "deploying"],
         },
     ],
     apiSidebar: [

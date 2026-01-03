@@ -81,15 +81,6 @@ describe("userEvent.tripleClick", () => {
     });
 });
 
-describe("userEvent.activate", () => {
-    it("calls activate on the widget", async () => {
-        await render(<GtkButton label="Test" />);
-
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-        await expect(userEvent.activate(button)).resolves.toBeUndefined();
-    });
-});
-
 describe("userEvent.type", () => {
     it("types text into entry", async () => {
         await render(<GtkEntry />);

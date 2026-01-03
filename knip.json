@@ -40,7 +40,12 @@
         "packages/cli": {
             "entry": ["src/cli.tsx", "src/index.ts"],
             "project": ["src/**/*"],
-            "ignore": ["src/global.d.ts", "bin/gtkx.js"]
+            "ignore": ["src/global.d.ts", "bin/gtkx.js"],
+            "ignoreDependencies": ["@gtkx/testing"]
+        },
+        "packages/mcp": {
+            "entry": ["src/cli.ts", "src/index.ts"],
+            "project": ["src/**/*"]
         },
         "packages/codegen": {
             "entry": ["src/cli.ts", "src/index.ts"],

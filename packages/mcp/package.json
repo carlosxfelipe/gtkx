@@ -1,0 +1,50 @@
+{
+    "name": "@gtkx/mcp",
+    "version": "0.11.1",
+    "description": "MCP server for AI-powered interaction with GTKX applications",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "mcp",
+        "model-context-protocol",
+        "ai",
+        "typescript",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/mcp"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "bin": {
+        "gtkx-mcp": "bin/gtkx-mcp.js"
+    },
+    "files": [
+        "bin",
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc -b && cp ../../README.md .",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.0",
+        "zod": "^3.24.0"
+    }
+}

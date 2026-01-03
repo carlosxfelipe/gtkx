@@ -1,5 +1,7 @@
 import { getNativeObject } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { type Arg, call } from "@gtkx/native";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
@@ -53,11 +55,6 @@ const tripleClick = async (element: Gtk.Widget): Promise<void> => {
     await fireEvent(element, "clicked");
     await fireEvent(element, "clicked");
     await fireEvent(element, "clicked");
-};
-
-const activate = async (element: Gtk.Widget): Promise<void> => {
-    element.activate();
-    await tick();
 };
 
 const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
@@ -200,6 +197,176 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
     await tick();
 };
 
+const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widget, controllerType: new () => T): T => {
+    const controllers = element.observeControllers();
+    const nItems = controllers.getNItems();
+
+    for (let i = 0; i < nItems; i++) {
+        const controller = controllers.getObject(i);
+        if (controller instanceof controllerType) {
+            return controller as T;
+        }
+    }
+
+    const controller = new controllerType();
+    element.addController(controller);
+    return controller;
+};
+
+type ArgSpec = { type: "float"; value: number } | { type: "int"; value: number };
+
+const emitSignal = (target: Gtk.EventController, signalName: string, ...args: ArgSpec[]): void => {
+    const signalArgs = args.map((arg): Arg => {
+        if (arg.type === "float") {
+            return { type: { type: "float", size: 64 }, value: arg.value };
+        }
+        return { type: { type: "int", size: 32, unsigned: true }, value: arg.value };
+    });
+
+    call(
+        "libgobject-2.0.so.0",
+        "g_signal_emit_by_name",
+        [
+            { type: { type: "gobject", ownership: "none" }, value: target.id },
+            { type: { type: "string", ownership: "none" }, value: signalName },
+            ...signalArgs,
+        ],
+        { type: "undefined" },
+    );
+};
+
+const hover = async (element: Gtk.Widget): Promise<void> => {
+    const controller = getOrCreateController(element, Gtk.EventControllerMotion);
+    emitSignal(controller, "enter", { type: "float", value: 0 }, { type: "float", value: 0 });
+    await tick();
+};
+
+const unhover = async (element: Gtk.Widget): Promise<void> => {
+    const controller = getOrCreateController(element, Gtk.EventControllerMotion);
+    emitSignal(controller, "leave");
+    await tick();
+};
+
+const KEY_MAP: Record<string, number> = {
+    Enter: Gdk.KEY_Return,
+    Tab: Gdk.KEY_Tab,
+    Escape: Gdk.KEY_Escape,
+    Backspace: Gdk.KEY_BackSpace,
+    Delete: Gdk.KEY_Delete,
+    ArrowUp: Gdk.KEY_Up,
+    ArrowDown: Gdk.KEY_Down,
+    ArrowLeft: Gdk.KEY_Left,
+    ArrowRight: Gdk.KEY_Right,
+    Home: Gdk.KEY_Home,
+    End: Gdk.KEY_End,
+    PageUp: Gdk.KEY_Page_Up,
+    PageDown: Gdk.KEY_Page_Down,
+    Space: Gdk.KEY_space,
+    Shift: Gdk.KEY_Shift_L,
+    Control: Gdk.KEY_Control_L,
+    Alt: Gdk.KEY_Alt_L,
+    Meta: Gdk.KEY_Meta_L,
+};
+
+const parseKeyboardInput = (input: string): Array<{ keyval: number; press: boolean }> => {
+    const actions: Array<{ keyval: number; press: boolean }> = [];
+    let i = 0;
+
+    while (i < input.length) {
+        if (input[i] === "{") {
+            const endBrace = input.indexOf("}", i);
+            if (endBrace === -1) break;
+
+            let keyName = input.slice(i + 1, endBrace);
+            let press = true;
+            let release = true;
+
+            if (keyName.startsWith("/")) {
+                keyName = keyName.slice(1);
+                press = false;
+            } else if (keyName.endsWith(">")) {
+                keyName = keyName.slice(0, -1);
+                release = false;
+            }
+
+            const keyval = KEY_MAP[keyName];
+            if (keyval === undefined) {
+                throw new Error(`Unknown key: {${keyName}}`);
+            }
+            if (press) actions.push({ keyval, press: true });
+            if (release) actions.push({ keyval, press: false });
+
+            i = endBrace + 1;
+        } else {
+            const keyval = input.charCodeAt(i);
+            actions.push({ keyval, press: true });
+            actions.push({ keyval, press: false });
+            i++;
+        }
+    }
+
+    return actions;
+};
+
+const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
+    const controller = getOrCreateController(element, Gtk.EventControllerKey);
+    const actions = parseKeyboardInput(input);
+
+    for (const action of actions) {
+        const signalName = action.press ? "key-pressed" : "key-released";
+        emitSignal(
+            controller,
+            signalName,
+            { type: "int", value: action.keyval },
+            { type: "int", value: 0 },
+            { type: "int", value: 0 },
+        );
+    }
+
+    await tick();
+};
+
+export type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft>]" | "[/MouseLeft]";
+
+const pointer = async (element: Gtk.Widget, input: PointerInput): Promise<void> => {
+    const controller = getOrCreateController(element, Gtk.GestureClick);
+
+    if (input === "[MouseLeft]" || input === "click") {
+        emitSignal(
+            controller,
+            "pressed",
+            { type: "int", value: 1 },
+            { type: "float", value: 0 },
+            { type: "float", value: 0 },
+        );
+        emitSignal(
+            controller,
+            "released",
+            { type: "int", value: 1 },
+            { type: "float", value: 0 },
+            { type: "float", value: 0 },
+        );
+    } else if (input === "[MouseLeft>]" || input === "down") {
+        emitSignal(
+            controller,
+            "pressed",
+            { type: "int", value: 1 },
+            { type: "float", value: 0 },
+            { type: "float", value: 0 },
+        );
+    } else if (input === "[/MouseLeft]" || input === "up") {
+        emitSignal(
+            controller,
+            "released",
+            { type: "int", value: 1 },
+            { type: "float", value: 0 },
+            { type: "float", value: 0 },
+        );
+    }
+
+    await tick();
+};
+
 /**
  * User interaction utilities for testing.
  *
@@ -242,12 +409,6 @@ export const userEvent = {
      */
     tripleClick,
     /**
-     * Activates a widget.
-     *
-     * Calls the widget's activate method.
-     */
-    activate,
-    /**
      * Simulates Tab key navigation.
      *
      * @param element - Starting element
@@ -288,4 +449,42 @@ export const userEvent = {
      * @param values - Index or array of indices to deselect
      */
     deselectOptions,
+    /**
+     * Simulates mouse entering a widget (hover).
+     *
+     * Triggers the "enter" signal on the widget's EventControllerMotion.
+     */
+    hover,
+    /**
+     * Simulates mouse leaving a widget (unhover).
+     *
+     * Triggers the "leave" signal on the widget's EventControllerMotion.
+     */
+    unhover,
+    /**
+     * Simulates keyboard input.
+     *
+     * Supports special keys in braces: `{Enter}`, `{Tab}`, `{Escape}`, etc.
+     * Use `{Key>}` to hold a key down, `{/Key}` to release.
+     *
+     * @example
+     * ```tsx
+     * await userEvent.keyboard(element, "hello");
+     * await userEvent.keyboard(element, "{Enter}");
+     * await userEvent.keyboard(element, "{Shift>}A{/Shift}");
+     * ```
+     */
+    keyboard,
+    /**
+     * Simulates pointer (mouse) input.
+     *
+     * Supports: `"click"`, `"[MouseLeft]"`, `"down"`, `"up"`.
+     *
+     * @example
+     * ```tsx
+     * await userEvent.pointer(element, "click");
+     * await userEvent.pointer(element, "[MouseLeft]");
+     * ```
+     */
+    pointer,
 };

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { cleanup, fireEvent, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
@@ -29,7 +29,7 @@ describe("Todo App", () => {
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Walk the dog");
-            await userEvent.activate(input);
+            await fireEvent(input, "activate");
 
             const todoText = await screen.findByText("Walk the dog");
             expect(todoText).toBeDefined();

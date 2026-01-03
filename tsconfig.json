@@ -12,6 +12,9 @@
             "path": "packages/gir/tsconfig.json"
         },
         {
+            "path": "packages/mcp/tsconfig.json"
+        },
+        {
             "path": "packages/native/tsconfig.json"
         },
         {
@@ -25,6 +28,9 @@
         },
         {
             "path": "packages/e2e/tsconfig.json"
+        },
+        {
+            "path": "packages/vitest/tsconfig.json"
         },
         {
             "path": "examples/todo/tsconfig.json"

@@ -81,6 +81,7 @@ Run `pnpm codegen` after modifying GIR files or codegen templates.
 | `@gtkx/css` | CSS-in-JS styling for GTK |
 | `@gtkx/testing` | Component testing utilities |
 | `@gtkx/vitest` | Vitest plugin for Xvfb display management |
+| `@gtkx/mcp` | MCP server for AI-powered app interaction |
 
 ## Code Style
 
