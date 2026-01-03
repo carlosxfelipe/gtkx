@@ -12,6 +12,63 @@ const isDeno = typeof Deno !== "undefined";
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
+let exitHandlersRegistered = false;
+
+const teardown = (): void => {
+    if (application) {
+        try {
+            stop();
+        } catch {}
+    }
+};
+
+const handleSigint = (): void => {
+    teardown();
+    process.exit(130);
+};
+
+const handleSigterm = (): void => {
+    teardown();
+    process.exit(143);
+};
+
+const handleException = (error: unknown): void => {
+    teardown();
+    console.error(error);
+    process.exit(1);
+};
+
+const handleRejection = (reason: unknown): void => {
+    teardown();
+    console.error("Unhandled rejection:", reason);
+    process.exit(1);
+};
+
+const registerExitHandlers = (): void => {
+    if (exitHandlersRegistered || isDeno) {
+        return;
+    }
+    exitHandlersRegistered = true;
+
+    process.on("exit", teardown);
+    process.on("SIGINT", handleSigint);
+    process.on("SIGTERM", handleSigterm);
+    process.on("uncaughtException", handleException);
+    process.on("unhandledRejection", handleRejection);
+};
+
+const unregisterExitHandlers = (): void => {
+    if (!exitHandlersRegistered) {
+        return;
+    }
+    exitHandlersRegistered = false;
+
+    process.off("exit", teardown);
+    process.off("SIGINT", handleSigint);
+    process.off("SIGTERM", handleSigterm);
+    process.off("uncaughtException", handleException);
+    process.off("unhandledRejection", handleRejection);
+};
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -68,6 +125,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     application = getNativeObject(app) as Application;
+    registerExitHandlers();
     return application;
 };
 
@@ -84,6 +142,8 @@ export const stop = (): void => {
     if (!application) {
         return;
     }
+
+    unregisterExitHandlers();
 
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
