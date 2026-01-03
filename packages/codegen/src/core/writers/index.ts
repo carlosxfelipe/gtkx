@@ -25,6 +25,10 @@ export const createWriters = (options: CreateWritersOptions): Writers => {
     };
 };
 
-export const createMethodBodyWriter = (ffiMapper: FfiMapper, ctx: GenerationContext, writers: Writers): MethodBodyWriter => {
+export const createMethodBodyWriter = (
+    ffiMapper: FfiMapper,
+    ctx: GenerationContext,
+    writers: Writers,
+): MethodBodyWriter => {
     return new MethodBodyWriter(ffiMapper, ctx, writers.ffiTypeWriter);
 };

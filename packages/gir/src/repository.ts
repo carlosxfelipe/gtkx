@@ -12,14 +12,14 @@ import { RawGirParser } from "./internal/parser.js";
 import type { RawNamespace } from "./internal/raw-types.js";
 import { isIntrinsicType } from "./intrinsics.js";
 import {
-    type NormalizedCallback,
-    type NormalizedClass,
-    type NormalizedConstant,
-    type NormalizedEnumeration,
-    type NormalizedFunction,
-    type NormalizedInterface,
-    type NormalizedNamespace,
-    type NormalizedRecord,
+    type GirCallback,
+    type GirClass,
+    type GirConstant,
+    type GirEnumeration,
+    type GirFunction,
+    type GirInterface,
+    type GirNamespace,
+    type GirRecord,
     parseQualifiedName,
     type QualifiedName,
     type TypeKind,
@@ -45,7 +45,7 @@ import {
  */
 export class GirRepository {
     private rawNamespaces = new Map<string, RawNamespace>();
-    private normalizedNamespaces = new Map<string, NormalizedNamespace>();
+    private normalizedNamespaces = new Map<string, GirNamespace>();
     private parser = new RawGirParser();
     private resolved = false;
 
@@ -115,7 +115,7 @@ export class GirRepository {
     /**
      * Gets a normalized namespace by name.
      */
-    getNamespace(name: string): NormalizedNamespace | null {
+    getNamespace(name: string): GirNamespace | null {
         this.ensureResolved();
         return this.normalizedNamespaces.get(name) ?? null;
     }
@@ -123,7 +123,7 @@ export class GirRepository {
     /**
      * Gets all normalized namespaces.
      */
-    getAllNamespaces(): Map<string, NormalizedNamespace> {
+    getAllNamespaces(): Map<string, GirNamespace> {
         this.ensureResolved();
         return this.normalizedNamespaces;
     }
@@ -132,7 +132,7 @@ export class GirRepository {
      * Resolves a class by qualified name.
      * @example repo.resolveClass("Gtk.Button" as QualifiedName)
      */
-    resolveClass(qualifiedName: QualifiedName): NormalizedClass | null {
+    resolveClass(qualifiedName: QualifiedName): GirClass | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.classes.get(name) ?? null;
@@ -142,7 +142,7 @@ export class GirRepository {
      * Resolves an interface by qualified name.
      * @example repo.resolveInterface("Gio.ListModel" as QualifiedName)
      */
-    resolveInterface(qualifiedName: QualifiedName): NormalizedInterface | null {
+    resolveInterface(qualifiedName: QualifiedName): GirInterface | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.interfaces.get(name) ?? null;
@@ -152,7 +152,7 @@ export class GirRepository {
      * Resolves a record (boxed type) by qualified name.
      * @example repo.resolveRecord("Gdk.Rectangle" as QualifiedName)
      */
-    resolveRecord(qualifiedName: QualifiedName): NormalizedRecord | null {
+    resolveRecord(qualifiedName: QualifiedName): GirRecord | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.records.get(name) ?? null;
@@ -162,7 +162,7 @@ export class GirRepository {
      * Resolves an enumeration by qualified name.
      * @example repo.resolveEnum("Gtk.Orientation" as QualifiedName)
      */
-    resolveEnum(qualifiedName: QualifiedName): NormalizedEnumeration | null {
+    resolveEnum(qualifiedName: QualifiedName): GirEnumeration | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.enumerations.get(name) ?? null;
@@ -172,7 +172,7 @@ export class GirRepository {
      * Resolves a bitfield (flags) by qualified name.
      * @example repo.resolveFlags("Gdk.ModifierType" as QualifiedName)
      */
-    resolveFlags(qualifiedName: QualifiedName): NormalizedEnumeration | null {
+    resolveFlags(qualifiedName: QualifiedName): GirEnumeration | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.bitfields.get(name) ?? null;
@@ -182,7 +182,7 @@ export class GirRepository {
      * Resolves a callback type by qualified name.
      * @example repo.resolveCallback("Gio.AsyncReadyCallback" as QualifiedName)
      */
-    resolveCallback(qualifiedName: QualifiedName): NormalizedCallback | null {
+    resolveCallback(qualifiedName: QualifiedName): GirCallback | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.callbacks.get(name) ?? null;
@@ -192,7 +192,7 @@ export class GirRepository {
      * Resolves a constant by qualified name.
      * @example repo.resolveConstant("Gtk.MAJOR_VERSION" as QualifiedName)
      */
-    resolveConstant(qualifiedName: QualifiedName): NormalizedConstant | null {
+    resolveConstant(qualifiedName: QualifiedName): GirConstant | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.constants.get(name) ?? null;
@@ -202,7 +202,7 @@ export class GirRepository {
      * Resolves a standalone function by qualified name.
      * @example repo.resolveFunction("Gtk.init" as QualifiedName)
      */
-    resolveFunction(qualifiedName: QualifiedName): NormalizedFunction | null {
+    resolveFunction(qualifiedName: QualifiedName): GirFunction | null {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.functions.get(name) ?? null;
@@ -316,9 +316,9 @@ export class GirRepository {
     /**
      * Finds all classes matching a predicate across all namespaces.
      */
-    findClasses(predicate: (cls: NormalizedClass) => boolean): NormalizedClass[] {
+    findClasses(predicate: (cls: GirClass) => boolean): GirClass[] {
         this.ensureResolved();
-        const results: NormalizedClass[] = [];
+        const results: GirClass[] = [];
 
         for (const ns of this.normalizedNamespaces.values()) {
             for (const cls of ns.classes.values()) {
@@ -334,9 +334,9 @@ export class GirRepository {
     /**
      * Finds all interfaces matching a predicate across all namespaces.
      */
-    findInterfaces(predicate: (iface: NormalizedInterface) => boolean): NormalizedInterface[] {
+    findInterfaces(predicate: (iface: GirInterface) => boolean): GirInterface[] {
         this.ensureResolved();
-        const results: NormalizedInterface[] = [];
+        const results: GirInterface[] = [];
 
         for (const ns of this.normalizedNamespaces.values()) {
             for (const iface of ns.interfaces.values()) {
@@ -352,9 +352,9 @@ export class GirRepository {
     /**
      * Finds all records matching a predicate across all namespaces.
      */
-    findRecords(predicate: (record: NormalizedRecord) => boolean): NormalizedRecord[] {
+    findRecords(predicate: (record: GirRecord) => boolean): GirRecord[] {
         this.ensureResolved();
-        const results: NormalizedRecord[] = [];
+        const results: GirRecord[] = [];
 
         for (const ns of this.normalizedNamespaces.values()) {
             for (const record of ns.records.values()) {

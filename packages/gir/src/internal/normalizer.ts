@@ -9,22 +9,22 @@
 
 import { isIntrinsicType } from "../intrinsics.js";
 import {
-    NormalizedCallback,
-    NormalizedClass,
-    NormalizedConstant,
-    NormalizedConstructor,
-    NormalizedEnumeration,
-    NormalizedEnumerationMember,
-    NormalizedField,
-    NormalizedFunction,
-    NormalizedInterface,
-    NormalizedMethod,
-    NormalizedNamespace,
-    NormalizedParameter,
-    NormalizedProperty,
-    NormalizedRecord,
-    NormalizedSignal,
-    NormalizedType,
+    GirCallback,
+    GirClass,
+    GirConstant,
+    GirConstructor,
+    GirEnumeration,
+    GirEnumerationMember,
+    GirField,
+    GirFunction,
+    GirInterface,
+    GirMethod,
+    GirNamespace,
+    GirParameter,
+    GirProperty,
+    GirRecord,
+    GirSignal,
+    GirType,
     type QualifiedName,
     qualifiedName,
 } from "../types.js";
@@ -58,17 +58,17 @@ export type NormalizerContext = {
 /**
  * Normalizes a raw namespace into a normalized namespace.
  */
-export const normalizeNamespace = (raw: RawNamespace, ctx: NormalizerContext): NormalizedNamespace => {
+export const normalizeNamespace = (raw: RawNamespace, ctx: NormalizerContext): GirNamespace => {
     const nsName = raw.name;
 
-    const classes = new Map<string, NormalizedClass>();
-    const interfaces = new Map<string, NormalizedInterface>();
-    const records = new Map<string, NormalizedRecord>();
-    const enumerations = new Map<string, NormalizedEnumeration>();
-    const bitfields = new Map<string, NormalizedEnumeration>();
-    const callbacks = new Map<string, NormalizedCallback>();
-    const functions = new Map<string, NormalizedFunction>();
-    const constants = new Map<string, NormalizedConstant>();
+    const classes = new Map<string, GirClass>();
+    const interfaces = new Map<string, GirInterface>();
+    const records = new Map<string, GirRecord>();
+    const enumerations = new Map<string, GirEnumeration>();
+    const bitfields = new Map<string, GirEnumeration>();
+    const callbacks = new Map<string, GirCallback>();
+    const functions = new Map<string, GirFunction>();
+    const constants = new Map<string, GirConstant>();
 
     for (const rawClass of raw.classes) {
         const normalized = normalizeClass(rawClass, nsName, ctx);
@@ -110,7 +110,7 @@ export const normalizeNamespace = (raw: RawNamespace, ctx: NormalizerContext): N
         constants.set(normalized.name, normalized);
     }
 
-    return new NormalizedNamespace({
+    return new GirNamespace({
         name: raw.name,
         version: raw.version,
         sharedLibrary: raw.sharedLibrary,
@@ -181,10 +181,10 @@ const buildContainerTypeBase = (raw: RawType) => ({
 /**
  * Normalizes a raw type to a normalized type.
  */
-const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerContext): NormalizedType => {
+const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerContext): GirType => {
     if (raw.containerType === "ghashtable") {
         const typeParams = (raw.typeParameters ?? []).map((tp) => normalizeType(tp, currentNamespace, ctx));
-        return new NormalizedType({
+        return new GirType({
             ...buildContainerTypeBase(raw),
             name: qualifiedName("GLib", "HashTable"),
             isArray: false,
@@ -196,7 +196,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
     if (raw.containerType === "gptrarray" || raw.containerType === "garray") {
         const typeParams = (raw.typeParameters ?? []).map((tp) => normalizeType(tp, currentNamespace, ctx));
         const typeName = raw.containerType === "gptrarray" ? "PtrArray" : "Array";
-        return new NormalizedType({
+        return new GirType({
             ...buildContainerTypeBase(raw),
             name: qualifiedName("GLib", typeName),
             isArray: true,
@@ -207,7 +207,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
 
     if (raw.containerType === "glist" || raw.containerType === "gslist") {
         const elementType = raw.elementType ? normalizeType(raw.elementType, currentNamespace, ctx) : null;
-        return new NormalizedType({
+        return new GirType({
             ...buildContainerTypeBase(raw),
             name: "array",
             isArray: true,
@@ -219,7 +219,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
     const isArray = raw.isArray === true || raw.name === "array";
 
     if (isArray && raw.elementType) {
-        return new NormalizedType({
+        return new GirType({
             name: "array",
             cType: raw.cType,
             isArray: true,
@@ -230,7 +230,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
     }
 
     if (isArray) {
-        return new NormalizedType({
+        return new GirType({
             name: "array",
             cType: raw.cType,
             isArray: true,
@@ -240,7 +240,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
         });
     }
 
-    return new NormalizedType({
+    return new GirType({
         name: normalizeTypeName(raw.name, currentNamespace, ctx),
         cType: raw.cType,
         isArray: false,
@@ -253,7 +253,7 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
 /**
  * Normalizes a raw class to a normalized class.
  */
-const normalizeClass = (raw: RawClass, currentNamespace: string, ctx: NormalizerContext): NormalizedClass => {
+const normalizeClass = (raw: RawClass, currentNamespace: string, ctx: NormalizerContext): GirClass => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
     let parent: QualifiedName | null = null;
@@ -269,7 +269,7 @@ const normalizeClass = (raw: RawClass, currentNamespace: string, ctx: Normalizer
         return normalized as QualifiedName;
     });
 
-    return new NormalizedClass({
+    return new GirClass({
         name: raw.name,
         qualifiedName: qn,
         cType: raw.cType,
@@ -295,7 +295,7 @@ const normalizeInterface = (
     raw: RawInterface,
     currentNamespace: string,
     ctx: NormalizerContext,
-): NormalizedInterface => {
+): GirInterface => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
     const prerequisites = raw.prerequisites.map((prereq) => {
@@ -303,7 +303,7 @@ const normalizeInterface = (
         return normalized as QualifiedName;
     });
 
-    return new NormalizedInterface({
+    return new GirInterface({
         name: raw.name,
         qualifiedName: qn,
         cType: raw.cType,
@@ -319,10 +319,10 @@ const normalizeInterface = (
 /**
  * Normalizes a raw record to a normalized record.
  */
-const normalizeRecord = (raw: RawRecord, currentNamespace: string, ctx: NormalizerContext): NormalizedRecord => {
+const normalizeRecord = (raw: RawRecord, currentNamespace: string, ctx: NormalizerContext): GirRecord => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
-    return new NormalizedRecord({
+    return new GirRecord({
         name: raw.name,
         qualifiedName: qn,
         cType: raw.cType,
@@ -342,16 +342,16 @@ const normalizeRecord = (raw: RawRecord, currentNamespace: string, ctx: Normaliz
 /**
  * Normalizes a raw enumeration to a normalized enumeration.
  */
-const normalizeEnumeration = (raw: RawEnumeration, currentNamespace: string): NormalizedEnumeration => {
+const normalizeEnumeration = (raw: RawEnumeration, currentNamespace: string): GirEnumeration => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
-    return new NormalizedEnumeration({
+    return new GirEnumeration({
         name: raw.name,
         qualifiedName: qn,
         cType: raw.cType,
         members: raw.members.map(
             (m) =>
-                new NormalizedEnumerationMember({
+                new GirEnumerationMember({
                     name: m.name,
                     value: m.value,
                     cIdentifier: m.cIdentifier,
@@ -365,10 +365,10 @@ const normalizeEnumeration = (raw: RawEnumeration, currentNamespace: string): No
 /**
  * Normalizes a raw callback to a normalized callback.
  */
-const normalizeCallback = (raw: RawCallback, currentNamespace: string, ctx: NormalizerContext): NormalizedCallback => {
+const normalizeCallback = (raw: RawCallback, currentNamespace: string, ctx: NormalizerContext): GirCallback => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
-    return new NormalizedCallback({
+    return new GirCallback({
         name: raw.name,
         qualifiedName: qn,
         cType: raw.cType,
@@ -381,10 +381,10 @@ const normalizeCallback = (raw: RawCallback, currentNamespace: string, ctx: Norm
 /**
  * Normalizes a raw constant to a normalized constant.
  */
-const normalizeConstant = (raw: RawConstant, currentNamespace: string, ctx: NormalizerContext): NormalizedConstant => {
+const normalizeConstant = (raw: RawConstant, currentNamespace: string, ctx: NormalizerContext): GirConstant => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
-    return new NormalizedConstant({
+    return new GirConstant({
         name: raw.name,
         qualifiedName: qn,
         cType: raw.cType,
@@ -397,8 +397,8 @@ const normalizeConstant = (raw: RawConstant, currentNamespace: string, ctx: Norm
 /**
  * Normalizes a raw method to a normalized method.
  */
-const normalizeMethod = (raw: RawMethod, currentNamespace: string, ctx: NormalizerContext): NormalizedMethod => {
-    return new NormalizedMethod({
+const normalizeMethod = (raw: RawMethod, currentNamespace: string, ctx: NormalizerContext): GirMethod => {
+    return new GirMethod({
         name: raw.name,
         cIdentifier: raw.cIdentifier,
         returnType: normalizeType(raw.returnType, currentNamespace, ctx),
@@ -417,8 +417,8 @@ const normalizeConstructor = (
     raw: RawConstructor,
     currentNamespace: string,
     ctx: NormalizerContext,
-): NormalizedConstructor => {
-    return new NormalizedConstructor({
+): GirConstructor => {
+    return new GirConstructor({
         name: raw.name,
         cIdentifier: raw.cIdentifier,
         returnType: normalizeType(raw.returnType, currentNamespace, ctx),
@@ -432,8 +432,8 @@ const normalizeConstructor = (
 /**
  * Normalizes a raw function to a normalized function.
  */
-const normalizeFunction = (raw: RawFunction, currentNamespace: string, ctx: NormalizerContext): NormalizedFunction => {
-    return new NormalizedFunction({
+const normalizeFunction = (raw: RawFunction, currentNamespace: string, ctx: NormalizerContext): GirFunction => {
+    return new GirFunction({
         name: raw.name,
         cIdentifier: raw.cIdentifier,
         returnType: normalizeType(raw.returnType, currentNamespace, ctx),
@@ -451,8 +451,8 @@ const normalizeParameter = (
     raw: RawParameter,
     currentNamespace: string,
     ctx: NormalizerContext,
-): NormalizedParameter => {
-    return new NormalizedParameter({
+): GirParameter => {
+    return new GirParameter({
         name: raw.name,
         type: normalizeType(raw.type, currentNamespace, ctx),
         direction: raw.direction ?? "in",
@@ -470,8 +470,8 @@ const normalizeParameter = (
 /**
  * Normalizes a raw property to a normalized property.
  */
-const normalizeProperty = (raw: RawProperty, currentNamespace: string, ctx: NormalizerContext): NormalizedProperty => {
-    return new NormalizedProperty({
+const normalizeProperty = (raw: RawProperty, currentNamespace: string, ctx: NormalizerContext): GirProperty => {
+    return new GirProperty({
         name: raw.name,
         type: normalizeType(raw.type, currentNamespace, ctx),
         readable: raw.readable ?? true,
@@ -487,8 +487,8 @@ const normalizeProperty = (raw: RawProperty, currentNamespace: string, ctx: Norm
 /**
  * Normalizes a raw signal to a normalized signal.
  */
-const normalizeSignal = (raw: RawSignal, currentNamespace: string, ctx: NormalizerContext): NormalizedSignal => {
-    return new NormalizedSignal({
+const normalizeSignal = (raw: RawSignal, currentNamespace: string, ctx: NormalizerContext): GirSignal => {
+    return new GirSignal({
         name: raw.name,
         when: raw.when ?? "last",
         returnType: raw.returnType ? normalizeType(raw.returnType, currentNamespace, ctx) : null,
@@ -500,8 +500,8 @@ const normalizeSignal = (raw: RawSignal, currentNamespace: string, ctx: Normaliz
 /**
  * Normalizes a raw field to a normalized field.
  */
-const normalizeField = (raw: RawField, currentNamespace: string, ctx: NormalizerContext): NormalizedField => {
-    return new NormalizedField({
+const normalizeField = (raw: RawField, currentNamespace: string, ctx: NormalizerContext): GirField => {
+    return new GirField({
         name: raw.name,
         type: normalizeType(raw.type, currentNamespace, ctx),
         writable: raw.writable ?? false,

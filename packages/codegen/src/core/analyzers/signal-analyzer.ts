@@ -53,11 +53,7 @@ export class SignalAnalyzer {
 
         let returnType = "void";
         if (signal.returnType) {
-            const returnMapping = this.ffiMapper.mapType(
-                signal.returnType,
-                true,
-                signal.returnType.transferOwnership,
-            );
+            const returnMapping = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
             returnType = qualifyType(returnMapping.ts, namespace);
             allImports.push(...returnMapping.imports);
         }

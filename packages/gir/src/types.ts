@@ -43,32 +43,32 @@ export type TypeKind = "class" | "interface" | "record" | "enum" | "flags" | "ca
 export type ContainerType = "ghashtable" | "gptrarray" | "garray" | "glist" | "gslist";
 
 type RepositoryLike = {
-    resolveClass(name: QualifiedName): NormalizedClass | null;
-    resolveInterface(name: QualifiedName): NormalizedInterface | null;
-    resolveRecord(name: QualifiedName): NormalizedRecord | null;
-    resolveEnum(name: QualifiedName): NormalizedEnumeration | null;
-    resolveFlags(name: QualifiedName): NormalizedEnumeration | null;
-    resolveCallback(name: QualifiedName): NormalizedCallback | null;
+    resolveClass(name: QualifiedName): GirClass | null;
+    resolveInterface(name: QualifiedName): GirInterface | null;
+    resolveRecord(name: QualifiedName): GirRecord | null;
+    resolveEnum(name: QualifiedName): GirEnumeration | null;
+    resolveFlags(name: QualifiedName): GirEnumeration | null;
+    resolveCallback(name: QualifiedName): GirCallback | null;
     getTypeKind(name: QualifiedName): TypeKind | null;
-    findClasses(predicate: (cls: NormalizedClass) => boolean): NormalizedClass[];
+    findClasses(predicate: (cls: GirClass) => boolean): GirClass[];
 };
 
 /**
  * Normalized namespace containing all resolved types.
  */
-export class NormalizedNamespace {
+export class GirNamespace {
     readonly name: string;
     readonly version: string;
     readonly sharedLibrary: string;
     readonly cPrefix: string;
-    readonly classes: Map<string, NormalizedClass>;
-    readonly interfaces: Map<string, NormalizedInterface>;
-    readonly records: Map<string, NormalizedRecord>;
-    readonly enumerations: Map<string, NormalizedEnumeration>;
-    readonly bitfields: Map<string, NormalizedEnumeration>;
-    readonly callbacks: Map<string, NormalizedCallback>;
-    readonly functions: Map<string, NormalizedFunction>;
-    readonly constants: Map<string, NormalizedConstant>;
+    readonly classes: Map<string, GirClass>;
+    readonly interfaces: Map<string, GirInterface>;
+    readonly records: Map<string, GirRecord>;
+    readonly enumerations: Map<string, GirEnumeration>;
+    readonly bitfields: Map<string, GirEnumeration>;
+    readonly callbacks: Map<string, GirCallback>;
+    readonly functions: Map<string, GirFunction>;
+    readonly constants: Map<string, GirConstant>;
     readonly doc?: string;
 
     constructor(data: {
@@ -76,14 +76,14 @@ export class NormalizedNamespace {
         version: string;
         sharedLibrary: string;
         cPrefix: string;
-        classes: Map<string, NormalizedClass>;
-        interfaces: Map<string, NormalizedInterface>;
-        records: Map<string, NormalizedRecord>;
-        enumerations: Map<string, NormalizedEnumeration>;
-        bitfields: Map<string, NormalizedEnumeration>;
-        callbacks: Map<string, NormalizedCallback>;
-        functions: Map<string, NormalizedFunction>;
-        constants: Map<string, NormalizedConstant>;
+        classes: Map<string, GirClass>;
+        interfaces: Map<string, GirInterface>;
+        records: Map<string, GirRecord>;
+        enumerations: Map<string, GirEnumeration>;
+        bitfields: Map<string, GirEnumeration>;
+        callbacks: Map<string, GirCallback>;
+        functions: Map<string, GirFunction>;
+        constants: Map<string, GirConstant>;
         doc?: string;
     }) {
         this.name = data.name;
@@ -105,7 +105,7 @@ export class NormalizedNamespace {
 /**
  * Normalized class with helper methods.
  */
-export class NormalizedClass {
+export class GirClass {
     readonly name: string;
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
@@ -115,11 +115,11 @@ export class NormalizedClass {
     readonly glibGetType?: string;
     readonly cSymbolPrefix?: string;
     readonly implements: QualifiedName[];
-    readonly methods: NormalizedMethod[];
-    readonly constructors: NormalizedConstructor[];
-    readonly staticFunctions: NormalizedFunction[];
-    readonly properties: NormalizedProperty[];
-    readonly signals: NormalizedSignal[];
+    readonly methods: GirMethod[];
+    readonly constructors: GirConstructor[];
+    readonly staticFunctions: GirFunction[];
+    readonly properties: GirProperty[];
+    readonly signals: GirSignal[];
     readonly doc?: string;
 
     /** @internal */
@@ -135,11 +135,11 @@ export class NormalizedClass {
         glibGetType?: string;
         cSymbolPrefix?: string;
         implements: QualifiedName[];
-        methods: NormalizedMethod[];
-        constructors: NormalizedConstructor[];
-        staticFunctions: NormalizedFunction[];
-        properties: NormalizedProperty[];
-        signals: NormalizedSignal[];
+        methods: GirMethod[];
+        constructors: GirConstructor[];
+        staticFunctions: GirFunction[];
+        properties: GirProperty[];
+        signals: GirSignal[];
         doc?: string;
     }) {
         this.name = data.name;
@@ -176,7 +176,7 @@ export class NormalizedClass {
     /** Gets the full inheritance chain from this class to the root. */
     getInheritanceChain(): QualifiedName[] {
         const chain: QualifiedName[] = [this.qualifiedName];
-        let current: NormalizedClass | null = this;
+        let current: GirClass | null = this;
         while (current?.parent && this._repo) {
             chain.push(current.parent);
             current = this._repo.resolveClass(current.parent);
@@ -185,7 +185,7 @@ export class NormalizedClass {
     }
 
     /** Gets the parent class object, or null if this is a root class. */
-    getParent(): NormalizedClass | null {
+    getParent(): GirClass | null {
         return this.parent && this._repo ? this._repo.resolveClass(this.parent) : null;
     }
 
@@ -210,27 +210,27 @@ export class NormalizedClass {
     }
 
     /** Finds a method defined on this class by name. */
-    getMethod(name: string): NormalizedMethod | null {
+    getMethod(name: string): GirMethod | null {
         return this.methods.find((m) => m.name === name) ?? null;
     }
 
     /** Finds a property defined on this class by name. */
-    getProperty(name: string): NormalizedProperty | null {
+    getProperty(name: string): GirProperty | null {
         return this.properties.find((p) => p.name === name) ?? null;
     }
 
     /** Finds a signal defined on this class by name. */
-    getSignal(name: string): NormalizedSignal | null {
+    getSignal(name: string): GirSignal | null {
         return this.signals.find((s) => s.name === name) ?? null;
     }
 
     /** Finds a constructor by name. */
-    getConstructor(name: string): NormalizedConstructor | null {
+    getConstructor(name: string): GirConstructor | null {
         return this.constructors.find((c) => c.name === name) ?? null;
     }
 
     /** Gets all methods including inherited ones. */
-    getAllMethods(): NormalizedMethod[] {
+    getAllMethods(): GirMethod[] {
         const methods = [...this.methods];
         let current = this.getParent();
         while (current) {
@@ -241,7 +241,7 @@ export class NormalizedClass {
     }
 
     /** Gets all properties including inherited ones. */
-    getAllProperties(): NormalizedProperty[] {
+    getAllProperties(): GirProperty[] {
         const properties = [...this.properties];
         let current = this.getParent();
         while (current) {
@@ -252,7 +252,7 @@ export class NormalizedClass {
     }
 
     /** Gets all signals including inherited ones. */
-    getAllSignals(): NormalizedSignal[] {
+    getAllSignals(): GirSignal[] {
         const signals = [...this.signals];
         let current = this.getParent();
         while (current) {
@@ -263,21 +263,21 @@ export class NormalizedClass {
     }
 
     /** Finds a method by name, searching up the inheritance chain. */
-    findMethod(name: string): NormalizedMethod | null {
+    findMethod(name: string): GirMethod | null {
         const own = this.getMethod(name);
         if (own) return own;
         return this.getParent()?.findMethod(name) ?? null;
     }
 
     /** Finds a property by name, searching up the inheritance chain. */
-    findProperty(name: string): NormalizedProperty | null {
+    findProperty(name: string): GirProperty | null {
         const own = this.getProperty(name);
         if (own) return own;
         return this.getParent()?.findProperty(name) ?? null;
     }
 
     /** Finds a signal by name, searching up the inheritance chain. */
-    findSignal(name: string): NormalizedSignal | null {
+    findSignal(name: string): GirSignal | null {
         const own = this.getSignal(name);
         if (own) return own;
         return this.getParent()?.findSignal(name) ?? null;
@@ -294,7 +294,7 @@ export class NormalizedClass {
     }
 
     /** Gets direct subclasses of this class. */
-    getDirectSubclasses(): NormalizedClass[] {
+    getDirectSubclasses(): GirClass[] {
         if (!this._repo) return [];
         return this._repo.findClasses((cls) => cls.parent === this.qualifiedName);
     }
@@ -303,15 +303,15 @@ export class NormalizedClass {
 /**
  * Normalized interface with helper methods.
  */
-export class NormalizedInterface {
+export class GirInterface {
     readonly name: string;
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
     readonly glibTypeName?: string;
     readonly prerequisites: QualifiedName[];
-    readonly methods: NormalizedMethod[];
-    readonly properties: NormalizedProperty[];
-    readonly signals: NormalizedSignal[];
+    readonly methods: GirMethod[];
+    readonly properties: GirProperty[];
+    readonly signals: GirSignal[];
     readonly doc?: string;
 
     /** @internal */
@@ -323,9 +323,9 @@ export class NormalizedInterface {
         cType: string;
         glibTypeName?: string;
         prerequisites: QualifiedName[];
-        methods: NormalizedMethod[];
-        properties: NormalizedProperty[];
-        signals: NormalizedSignal[];
+        methods: GirMethod[];
+        properties: GirProperty[];
+        signals: GirSignal[];
         doc?: string;
     }) {
         this.name = data.name;
@@ -372,17 +372,17 @@ export class NormalizedInterface {
     }
 
     /** Finds a method by name. */
-    getMethod(name: string): NormalizedMethod | null {
+    getMethod(name: string): GirMethod | null {
         return this.methods.find((m) => m.name === name) ?? null;
     }
 
     /** Finds a property by name. */
-    getProperty(name: string): NormalizedProperty | null {
+    getProperty(name: string): GirProperty | null {
         return this.properties.find((p) => p.name === name) ?? null;
     }
 
     /** Finds a signal by name. */
-    getSignal(name: string): NormalizedSignal | null {
+    getSignal(name: string): GirSignal | null {
         return this.signals.find((s) => s.name === name) ?? null;
     }
 }
@@ -390,7 +390,7 @@ export class NormalizedInterface {
 /**
  * Normalized record (boxed type or plain struct) with helper methods.
  */
-export class NormalizedRecord {
+export class GirRecord {
     readonly name: string;
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
@@ -399,10 +399,10 @@ export class NormalizedRecord {
     readonly glibTypeName?: string;
     readonly glibGetType?: string;
     readonly isGtypeStructFor?: string;
-    readonly fields: NormalizedField[];
-    readonly methods: NormalizedMethod[];
-    readonly constructors: NormalizedConstructor[];
-    readonly staticFunctions: NormalizedFunction[];
+    readonly fields: GirField[];
+    readonly methods: GirMethod[];
+    readonly constructors: GirConstructor[];
+    readonly staticFunctions: GirFunction[];
     readonly doc?: string;
 
     constructor(data: {
@@ -414,10 +414,10 @@ export class NormalizedRecord {
         glibTypeName?: string;
         glibGetType?: string;
         isGtypeStructFor?: string;
-        fields: NormalizedField[];
-        methods: NormalizedMethod[];
-        constructors: NormalizedConstructor[];
-        staticFunctions: NormalizedFunction[];
+        fields: GirField[];
+        methods: GirMethod[];
+        constructors: GirConstructor[];
+        staticFunctions: GirFunction[];
         doc?: string;
     }) {
         this.name = data.name;
@@ -451,22 +451,22 @@ export class NormalizedRecord {
     }
 
     /** Gets public (non-private) fields only. */
-    getPublicFields(): NormalizedField[] {
+    getPublicFields(): GirField[] {
         return this.fields.filter((f) => !f.private);
     }
 
     /** Finds a method by name. */
-    getMethod(name: string): NormalizedMethod | null {
+    getMethod(name: string): GirMethod | null {
         return this.methods.find((m) => m.name === name) ?? null;
     }
 
     /** Finds a field by name. */
-    getField(name: string): NormalizedField | null {
+    getField(name: string): GirField | null {
         return this.fields.find((f) => f.name === name) ?? null;
     }
 
     /** Finds a constructor by name. */
-    getConstructor(name: string): NormalizedConstructor | null {
+    getConstructor(name: string): GirConstructor | null {
         return this.constructors.find((c) => c.name === name) ?? null;
     }
 }
@@ -474,18 +474,18 @@ export class NormalizedRecord {
 /**
  * Normalized enumeration with helper methods.
  */
-export class NormalizedEnumeration {
+export class GirEnumeration {
     readonly name: string;
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
-    readonly members: NormalizedEnumerationMember[];
+    readonly members: GirEnumerationMember[];
     readonly doc?: string;
 
     constructor(data: {
         name: string;
         qualifiedName: QualifiedName;
         cType: string;
-        members: NormalizedEnumerationMember[];
+        members: GirEnumerationMember[];
         doc?: string;
     }) {
         this.name = data.name;
@@ -496,12 +496,12 @@ export class NormalizedEnumeration {
     }
 
     /** Finds a member by name. */
-    getMember(name: string): NormalizedEnumerationMember | null {
+    getMember(name: string): GirEnumerationMember | null {
         return this.members.find((m) => m.name === name) ?? null;
     }
 
     /** Finds a member by value. */
-    getMemberByValue(value: string): NormalizedEnumerationMember | null {
+    getMemberByValue(value: string): GirEnumerationMember | null {
         return this.members.find((m) => m.value === value) ?? null;
     }
 
@@ -514,7 +514,7 @@ export class NormalizedEnumeration {
 /**
  * Normalized enumeration member.
  */
-export class NormalizedEnumerationMember {
+export class GirEnumerationMember {
     readonly name: string;
     readonly value: string;
     readonly cIdentifier: string;
@@ -531,20 +531,20 @@ export class NormalizedEnumerationMember {
 /**
  * Normalized callback type.
  */
-export class NormalizedCallback {
+export class GirCallback {
     readonly name: string;
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
-    readonly returnType: NormalizedType;
-    readonly parameters: NormalizedParameter[];
+    readonly returnType: GirType;
+    readonly parameters: GirParameter[];
     readonly doc?: string;
 
     constructor(data: {
         name: string;
         qualifiedName: QualifiedName;
         cType: string;
-        returnType: NormalizedType;
-        parameters: NormalizedParameter[];
+        returnType: GirType;
+        parameters: GirParameter[];
         doc?: string;
     }) {
         this.name = data.name;
@@ -559,12 +559,12 @@ export class NormalizedCallback {
 /**
  * Normalized constant.
  */
-export class NormalizedConstant {
+export class GirConstant {
     readonly name: string;
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
     readonly value: string;
-    readonly type: NormalizedType;
+    readonly type: GirType;
     readonly doc?: string;
 
     constructor(data: {
@@ -572,7 +572,7 @@ export class NormalizedConstant {
         qualifiedName: QualifiedName;
         cType: string;
         value: string;
-        type: NormalizedType;
+        type: GirType;
         doc?: string;
     }) {
         this.name = data.name;
@@ -587,11 +587,11 @@ export class NormalizedConstant {
 /**
  * Normalized method with helper methods.
  */
-export class NormalizedMethod {
+export class GirMethod {
     readonly name: string;
     readonly cIdentifier: string;
-    readonly returnType: NormalizedType;
-    readonly parameters: NormalizedParameter[];
+    readonly returnType: GirType;
+    readonly parameters: GirParameter[];
     readonly throws: boolean;
     readonly doc?: string;
     readonly returnDoc?: string;
@@ -601,8 +601,8 @@ export class NormalizedMethod {
     constructor(data: {
         name: string;
         cIdentifier: string;
-        returnType: NormalizedType;
-        parameters: NormalizedParameter[];
+        returnType: GirType;
+        parameters: GirParameter[];
         throws: boolean;
         doc?: string;
         returnDoc?: string;
@@ -637,12 +637,12 @@ export class NormalizedMethod {
     }
 
     /** Gets required (non-optional, non-nullable) parameters. */
-    getRequiredParameters(): NormalizedParameter[] {
+    getRequiredParameters(): GirParameter[] {
         return this.parameters.filter((p) => !p.optional && !p.nullable && p.direction === "in");
     }
 
     /** Gets optional parameters. */
-    getOptionalParameters(): NormalizedParameter[] {
+    getOptionalParameters(): GirParameter[] {
         return this.parameters.filter((p) => p.optional || p.nullable);
     }
 
@@ -652,7 +652,7 @@ export class NormalizedMethod {
     }
 
     /** Gets out parameters only. */
-    getOutParameters(): NormalizedParameter[] {
+    getOutParameters(): GirParameter[] {
         return this.parameters.filter((p) => p.direction === "out" || p.direction === "inout");
     }
 }
@@ -660,11 +660,11 @@ export class NormalizedMethod {
 /**
  * Normalized constructor.
  */
-export class NormalizedConstructor {
+export class GirConstructor {
     readonly name: string;
     readonly cIdentifier: string;
-    readonly returnType: NormalizedType;
-    readonly parameters: NormalizedParameter[];
+    readonly returnType: GirType;
+    readonly parameters: GirParameter[];
     readonly throws: boolean;
     readonly doc?: string;
     readonly returnDoc?: string;
@@ -672,8 +672,8 @@ export class NormalizedConstructor {
     constructor(data: {
         name: string;
         cIdentifier: string;
-        returnType: NormalizedType;
-        parameters: NormalizedParameter[];
+        returnType: GirType;
+        parameters: GirParameter[];
         throws: boolean;
         doc?: string;
         returnDoc?: string;
@@ -688,7 +688,7 @@ export class NormalizedConstructor {
     }
 
     /** Gets required (non-optional, non-nullable) parameters. */
-    getRequiredParameters(): NormalizedParameter[] {
+    getRequiredParameters(): GirParameter[] {
         return this.parameters.filter((p) => !p.optional && !p.nullable && p.direction === "in");
     }
 }
@@ -696,11 +696,11 @@ export class NormalizedConstructor {
 /**
  * Normalized standalone function.
  */
-export class NormalizedFunction {
+export class GirFunction {
     readonly name: string;
     readonly cIdentifier: string;
-    readonly returnType: NormalizedType;
-    readonly parameters: NormalizedParameter[];
+    readonly returnType: GirType;
+    readonly parameters: GirParameter[];
     readonly throws: boolean;
     readonly doc?: string;
     readonly returnDoc?: string;
@@ -708,8 +708,8 @@ export class NormalizedFunction {
     constructor(data: {
         name: string;
         cIdentifier: string;
-        returnType: NormalizedType;
-        parameters: NormalizedParameter[];
+        returnType: GirType;
+        parameters: GirParameter[];
         throws: boolean;
         doc?: string;
         returnDoc?: string;
@@ -729,7 +729,7 @@ export class NormalizedFunction {
     }
 
     /** Gets required parameters. */
-    getRequiredParameters(): NormalizedParameter[] {
+    getRequiredParameters(): GirParameter[] {
         return this.parameters.filter((p) => !p.optional && !p.nullable && p.direction === "in");
     }
 }
@@ -737,9 +737,9 @@ export class NormalizedFunction {
 /**
  * Normalized parameter with helper methods.
  */
-export class NormalizedParameter {
+export class GirParameter {
     readonly name: string;
-    readonly type: NormalizedType;
+    readonly type: GirType;
     readonly direction: "in" | "out" | "inout";
     readonly callerAllocates: boolean;
     readonly nullable: boolean;
@@ -752,7 +752,7 @@ export class NormalizedParameter {
 
     constructor(data: {
         name: string;
-        type: NormalizedType;
+        type: GirType;
         direction: "in" | "out" | "inout";
         callerAllocates: boolean;
         nullable: boolean;
@@ -810,9 +810,9 @@ export class NormalizedParameter {
 /**
  * Normalized property with helper methods.
  */
-export class NormalizedProperty {
+export class GirProperty {
     readonly name: string;
-    readonly type: NormalizedType;
+    readonly type: GirType;
     readonly readable: boolean;
     readonly writable: boolean;
     readonly constructOnly: boolean;
@@ -823,7 +823,7 @@ export class NormalizedProperty {
 
     constructor(data: {
         name: string;
-        type: NormalizedType;
+        type: GirType;
         readable: boolean;
         writable: boolean;
         constructOnly: boolean;
@@ -867,18 +867,18 @@ export class NormalizedProperty {
 /**
  * Normalized signal with helper methods.
  */
-export class NormalizedSignal {
+export class GirSignal {
     readonly name: string;
     readonly when: "first" | "last" | "cleanup";
-    readonly returnType: NormalizedType | null;
-    readonly parameters: NormalizedParameter[];
+    readonly returnType: GirType | null;
+    readonly parameters: GirParameter[];
     readonly doc?: string;
 
     constructor(data: {
         name: string;
         when: "first" | "last" | "cleanup";
-        returnType: NormalizedType | null;
-        parameters: NormalizedParameter[];
+        returnType: GirType | null;
+        parameters: GirParameter[];
         doc?: string;
     }) {
         this.name = data.name;
@@ -897,9 +897,9 @@ export class NormalizedSignal {
 /**
  * Normalized field.
  */
-export class NormalizedField {
+export class GirField {
     readonly name: string;
-    readonly type: NormalizedType;
+    readonly type: GirType;
     readonly writable: boolean;
     readonly readable: boolean;
     readonly private: boolean;
@@ -907,7 +907,7 @@ export class NormalizedField {
 
     constructor(data: {
         name: string;
-        type: NormalizedType;
+        type: GirType;
         writable: boolean;
         readable: boolean;
         private: boolean;
@@ -925,13 +925,13 @@ export class NormalizedField {
 /**
  * Normalized type reference with helper methods.
  */
-export class NormalizedType {
+export class GirType {
     /** Type name - either a QualifiedName or an intrinsic type string */
     readonly name: QualifiedName | string;
     readonly cType?: string;
     readonly isArray: boolean;
-    readonly elementType: NormalizedType | null;
-    readonly typeParameters: readonly NormalizedType[];
+    readonly elementType: GirType | null;
+    readonly typeParameters: readonly GirType[];
     readonly containerType?: ContainerType;
     readonly transferOwnership?: "none" | "full" | "container";
     readonly nullable: boolean;
@@ -940,8 +940,8 @@ export class NormalizedType {
         name: QualifiedName | string;
         cType?: string;
         isArray: boolean;
-        elementType: NormalizedType | null;
-        typeParameters?: readonly NormalizedType[];
+        elementType: GirType | null;
+        typeParameters?: readonly GirType[];
         containerType?: ContainerType;
         transferOwnership?: "none" | "full" | "container";
         nullable: boolean;
@@ -1017,13 +1017,13 @@ export class NormalizedType {
     }
 
     /** Gets the key type for GHashTable, or null for other types. */
-    getKeyType(): NormalizedType | null {
+    getKeyType(): GirType | null {
         if (!this.isHashTable() || this.typeParameters.length < 1) return null;
         return this.typeParameters[0] ?? null;
     }
 
     /** Gets the value type for GHashTable, or null for other types. */
-    getValueType(): NormalizedType | null {
+    getValueType(): GirType | null {
         if (!this.isHashTable() || this.typeParameters.length < 2) return null;
         return this.typeParameters[1] ?? null;
     }

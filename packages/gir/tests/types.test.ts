@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-    NormalizedEnumeration,
-    NormalizedEnumerationMember,
-    NormalizedField,
-    NormalizedMethod,
-    NormalizedParameter,
-    NormalizedProperty,
-    NormalizedRecord,
-    NormalizedSignal,
-    NormalizedType,
+    GirEnumeration,
+    GirEnumerationMember,
+    GirField,
+    GirMethod,
+    GirParameter,
+    GirProperty,
+    GirRecord,
+    GirSignal,
+    GirType,
     parseQualifiedName,
     type QualifiedName,
     qualifiedName,
@@ -55,9 +55,9 @@ describe("parseQualifiedName", () => {
     });
 });
 
-describe("NormalizedType", () => {
+describe("GirType", () => {
     it("identifies intrinsic types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "gint",
             isArray: false,
             elementType: null,
@@ -68,7 +68,7 @@ describe("NormalizedType", () => {
     });
 
     it("identifies string types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "utf8",
             isArray: false,
             elementType: null,
@@ -78,7 +78,7 @@ describe("NormalizedType", () => {
     });
 
     it("identifies boolean types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "gboolean",
             isArray: false,
             elementType: null,
@@ -88,7 +88,7 @@ describe("NormalizedType", () => {
     });
 
     it("identifies void types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "none",
             isArray: false,
             elementType: null,
@@ -98,7 +98,7 @@ describe("NormalizedType", () => {
     });
 
     it("identifies GVariant types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "GVariant",
             isArray: false,
             elementType: null,
@@ -108,7 +108,7 @@ describe("NormalizedType", () => {
     });
 
     it("identifies GParamSpec types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "GParamSpec",
             isArray: false,
             elementType: null,
@@ -118,7 +118,7 @@ describe("NormalizedType", () => {
     });
 
     it("gets namespace from qualified names", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "Gtk.Widget" as QualifiedName,
             isArray: false,
             elementType: null,
@@ -128,7 +128,7 @@ describe("NormalizedType", () => {
     });
 
     it("returns null namespace for intrinsic types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "gint",
             isArray: false,
             elementType: null,
@@ -138,7 +138,7 @@ describe("NormalizedType", () => {
     });
 
     it("gets simple name from qualified names", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "Gtk.Widget" as QualifiedName,
             isArray: false,
             elementType: null,
@@ -148,7 +148,7 @@ describe("NormalizedType", () => {
     });
 
     it("gets simple name for intrinsic types", () => {
-        const type = new NormalizedType({
+        const type = new GirType({
             name: "gint",
             isArray: false,
             elementType: null,
@@ -158,16 +158,16 @@ describe("NormalizedType", () => {
     });
 });
 
-describe("NormalizedEnumeration", () => {
+describe("GirEnumeration", () => {
     const createEnum = () =>
-        new NormalizedEnumeration({
+        new GirEnumeration({
             name: "Align",
             qualifiedName: "Gtk.Align" as QualifiedName,
             cType: "GtkAlign",
             members: [
-                new NormalizedEnumerationMember({ name: "fill", value: "0", cIdentifier: "GTK_ALIGN_FILL" }),
-                new NormalizedEnumerationMember({ name: "start", value: "1", cIdentifier: "GTK_ALIGN_START" }),
-                new NormalizedEnumerationMember({ name: "end", value: "2", cIdentifier: "GTK_ALIGN_END" }),
+                new GirEnumerationMember({ name: "fill", value: "0", cIdentifier: "GTK_ALIGN_FILL" }),
+                new GirEnumerationMember({ name: "start", value: "1", cIdentifier: "GTK_ALIGN_START" }),
+                new GirEnumerationMember({ name: "end", value: "2", cIdentifier: "GTK_ALIGN_END" }),
             ],
         });
 
@@ -196,32 +196,32 @@ describe("NormalizedEnumeration", () => {
     });
 });
 
-describe("NormalizedRecord", () => {
-    const createRecord = (options: Partial<ConstructorParameters<typeof NormalizedRecord>[0]> = {}) =>
-        new NormalizedRecord({
+describe("GirRecord", () => {
+    const createRecord = (options: Partial<ConstructorParameters<typeof GirRecord>[0]> = {}) =>
+        new GirRecord({
             name: "Rectangle",
             qualifiedName: "Gdk.Rectangle" as QualifiedName,
             cType: "GdkRectangle",
             opaque: false,
             disguised: false,
             fields: [
-                new NormalizedField({
+                new GirField({
                     name: "x",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     writable: true,
                     readable: true,
                     private: false,
                 }),
-                new NormalizedField({
+                new GirField({
                     name: "y",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     writable: true,
                     readable: true,
                     private: false,
                 }),
-                new NormalizedField({
+                new GirField({
                     name: "_priv",
-                    type: new NormalizedType({ name: "gpointer", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gpointer", isArray: false, elementType: null, nullable: false }),
                     writable: false,
                     readable: false,
                     private: true,
@@ -268,12 +268,12 @@ describe("NormalizedRecord", () => {
     });
 });
 
-describe("NormalizedMethod", () => {
-    const createMethod = (options: Partial<ConstructorParameters<typeof NormalizedMethod>[0]> = {}) =>
-        new NormalizedMethod({
+describe("GirMethod", () => {
+    const createMethod = (options: Partial<ConstructorParameters<typeof GirMethod>[0]> = {}) =>
+        new GirMethod({
             name: "get_name",
             cIdentifier: "gtk_widget_get_name",
-            returnType: new NormalizedType({
+            returnType: new GirType({
                 name: "utf8",
                 isArray: false,
                 elementType: null,
@@ -307,9 +307,9 @@ describe("NormalizedMethod", () => {
     it("identifies methods with out parameters", () => {
         const method = createMethod({
             parameters: [
-                new NormalizedParameter({
+                new GirParameter({
                     name: "result",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     direction: "out",
                     callerAllocates: false,
                     nullable: false,
@@ -323,17 +323,17 @@ describe("NormalizedMethod", () => {
     it("gets out parameters only", () => {
         const method = createMethod({
             parameters: [
-                new NormalizedParameter({
+                new GirParameter({
                     name: "input",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     direction: "in",
                     callerAllocates: false,
                     nullable: false,
                     optional: false,
                 }),
-                new NormalizedParameter({
+                new GirParameter({
                     name: "output",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     direction: "out",
                     callerAllocates: false,
                     nullable: false,
@@ -349,17 +349,17 @@ describe("NormalizedMethod", () => {
     it("gets required parameters", () => {
         const method = createMethod({
             parameters: [
-                new NormalizedParameter({
+                new GirParameter({
                     name: "required",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     direction: "in",
                     callerAllocates: false,
                     nullable: false,
                     optional: false,
                 }),
-                new NormalizedParameter({
+                new GirParameter({
                     name: "optional",
-                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
                     direction: "in",
                     callerAllocates: false,
                     nullable: false,
@@ -373,11 +373,11 @@ describe("NormalizedMethod", () => {
     });
 });
 
-describe("NormalizedParameter", () => {
-    const createParam = (options: Partial<ConstructorParameters<typeof NormalizedParameter>[0]> = {}) =>
-        new NormalizedParameter({
+describe("GirParameter", () => {
+    const createParam = (options: Partial<ConstructorParameters<typeof GirParameter>[0]> = {}) =>
+        new GirParameter({
             name: "param",
-            type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+            type: new GirType({ name: "gint", isArray: false, elementType: null, nullable: false }),
             direction: "in",
             callerAllocates: false,
             nullable: false,
@@ -423,11 +423,11 @@ describe("NormalizedParameter", () => {
     });
 });
 
-describe("NormalizedProperty", () => {
-    const createProperty = (options: Partial<ConstructorParameters<typeof NormalizedProperty>[0]> = {}) =>
-        new NormalizedProperty({
+describe("GirProperty", () => {
+    const createProperty = (options: Partial<ConstructorParameters<typeof GirProperty>[0]> = {}) =>
+        new GirProperty({
             name: "visible",
-            type: new NormalizedType({ name: "gboolean", isArray: false, elementType: null, nullable: false }),
+            type: new GirType({ name: "gboolean", isArray: false, elementType: null, nullable: false }),
             readable: true,
             writable: true,
             constructOnly: false,
@@ -463,12 +463,12 @@ describe("NormalizedProperty", () => {
     });
 });
 
-describe("NormalizedSignal", () => {
+describe("GirSignal", () => {
     it("identifies signals with return values", () => {
-        const signal = new NormalizedSignal({
+        const signal = new GirSignal({
             name: "clicked",
             when: "first",
-            returnType: new NormalizedType({
+            returnType: new GirType({
                 name: "gboolean",
                 isArray: false,
                 elementType: null,
@@ -480,10 +480,10 @@ describe("NormalizedSignal", () => {
     });
 
     it("identifies signals without return values", () => {
-        const signal = new NormalizedSignal({
+        const signal = new GirSignal({
             name: "clicked",
             when: "first",
-            returnType: new NormalizedType({
+            returnType: new GirType({
                 name: "none",
                 isArray: false,
                 elementType: null,
@@ -495,7 +495,7 @@ describe("NormalizedSignal", () => {
     });
 
     it("handles null return type", () => {
-        const signal = new NormalizedSignal({
+        const signal = new GirSignal({
             name: "clicked",
             when: "first",
             returnType: null,
