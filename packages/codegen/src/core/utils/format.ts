@@ -25,8 +25,9 @@ export async function getBiome(): Promise<{ biome: Biome; projectKey: number }> 
         biomeInstance = await Biome.create({ distribution: Distribution.NODE });
         const projectResult = biomeInstance.openProject();
         projectKey = projectResult.projectKey;
-        const configContent = loadBiomeConfig();
-        biomeInstance.applyConfiguration(projectKey, JSON.parse(configContent));
+        const config = JSON.parse(loadBiomeConfig());
+        config.vcs = { ...config.vcs, useIgnoreFile: false };
+        biomeInstance.applyConfiguration(projectKey, config);
     }
     return { biome: biomeInstance, projectKey };
 }

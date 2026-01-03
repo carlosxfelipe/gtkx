@@ -6,7 +6,14 @@
  * where JSX derives from FFI output.
  */
 
-import { ModuleKind, Project, ScriptTarget, type SourceFile } from "ts-morph";
+import {
+    type ExportDeclarationStructure,
+    ModuleKind,
+    Project,
+    ScriptTarget,
+    type SourceFile,
+    StructureKind,
+} from "ts-morph";
 import { CodegenMetadata } from "./codegen-metadata.js";
 import { getBiome } from "./utils/format.js";
 
@@ -94,6 +101,28 @@ export class CodegenProject {
      */
     createReactSourceFile(filePath: string): SourceFile {
         return this.project.createSourceFile(`react/${filePath}`, "", { overwrite: true });
+    }
+
+    /**
+     * Creates an index file that re-exports all specified files.
+     *
+     * @param filePath - Path for the index file (e.g., "ffi/gtk/index.ts")
+     * @param fileNames - Names of files to export (e.g., ["button.ts", "window.ts"])
+     * @returns The created SourceFile
+     */
+    createIndexSourceFile(filePath: string, fileNames: Iterable<string>): SourceFile {
+        const sourceFile = this.project.createSourceFile(filePath, "", { overwrite: true });
+
+        const exportStructures: ExportDeclarationStructure[] = [...fileNames]
+            .filter((f) => f !== "index.ts")
+            .sort()
+            .map((f) => ({
+                kind: StructureKind.ExportDeclaration as const,
+                moduleSpecifier: `./${f.replace(/\.ts$/, "")}.js`,
+            }));
+
+        sourceFile.addExportDeclarations(exportStructures);
+        return sourceFile;
     }
 
     /**

@@ -5,7 +5,6 @@ import { GenerationContext } from "../core/generation-context.js";
 import { CodegenProject } from "../core/project.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
 import { isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
-import { generateIndex } from "../core/utils/index-generator.js";
 import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
 import { parseParentReference } from "../core/utils/parent-reference.js";
 import { buildFromPtrStatements } from "../core/utils/structure-helpers.js";
@@ -248,25 +247,19 @@ export class FfiGenerator {
             constantGenerator.addConstants([...namespace.constants.values()]);
         }
 
+        const namespaceFiles = this.project.getSourceFilesInNamespace(this.options.namespace);
+        const ffiNamespacePrefix = `ffi/${this.namespacePrefix}`;
+        const relativeNames = namespaceFiles.map((sf) => {
+            const fullPath = sf.getFilePath().replace(/^\//, "");
+            return fullPath.replace(ffiNamespacePrefix, "");
+        });
+        this.project.createIndexSourceFile(`ffi/${this.namespacePrefix}index.ts`, relativeNames);
+
         if (this.options.skipEmit) {
-            const namespaceFiles = this.project.getSourceFilesInNamespace(this.options.namespace);
-            const ffiNamespacePrefix = `ffi/${this.namespacePrefix}`;
-            const relativeNames = namespaceFiles.map((sf) => {
-                const fullPath = sf.getFilePath().replace(/^\//, "");
-                return fullPath.replace(ffiNamespacePrefix, "");
-            });
-            const indexContent = await generateIndex(relativeNames[Symbol.iterator]());
-            const indexFile = this.createSourceFile("index.ts");
-            indexFile.replaceWithText(indexContent);
             return new Map();
         }
 
-        const files = await this.project.emit();
-        const relativeNames = [...files.keys()].map((path) => path.replace(this.namespacePrefix, ""));
-        const indexPath = `${this.namespacePrefix}index.ts`;
-        files.set(indexPath, await generateIndex(relativeNames[Symbol.iterator]()));
-
-        return files;
+        return this.project.emit();
     }
 
     private registerRecords(namespace: NormalizedNamespace): void {

@@ -596,9 +596,7 @@ export class FfiMapper {
             return { ts: `${elementResult.ts}[]`, ffi, imports };
         }
 
-        const fallbackFfi = isGArray
-            ? gArrayType(FFI_POINTER, 8, !isReturn)
-            : ptrArrayType(FFI_POINTER, !isReturn);
+        const fallbackFfi = isGArray ? gArrayType(FFI_POINTER, 8, !isReturn) : ptrArrayType(FFI_POINTER, !isReturn);
 
         return { ts: "unknown[]", ffi: fallbackFfi, imports };
     }
