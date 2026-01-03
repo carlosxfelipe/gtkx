@@ -1,40 +1,5 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
-import {
-    GL_ARRAY_BUFFER,
-    GL_COLOR_BUFFER_BIT,
-    GL_COMPILE_STATUS,
-    GL_FLOAT,
-    GL_FRAGMENT_SHADER,
-    GL_LINK_STATUS,
-    GL_STATIC_DRAW,
-    GL_TRIANGLE_STRIP,
-    GL_VERTEX_SHADER,
-    glAttachShader,
-    glBindBuffer,
-    glBindVertexArray,
-    glBufferData,
-    glClear,
-    glClearColor,
-    glCompileShader,
-    glCreateProgram,
-    glCreateShader,
-    glDeleteProgram,
-    glDeleteShader,
-    glDrawArrays,
-    glEnableVertexAttribArray,
-    glGenBuffer,
-    glGenVertexArray,
-    glGetProgramiv,
-    glGetShaderiv,
-    glGetUniformLocation,
-    glLinkProgram,
-    glShaderSource,
-    glUniform1f,
-    glUniform2f,
-    glUseProgram,
-    glVertexAttribPointer,
-    glViewport,
-} from "@gtkx/ffi/gl";
+import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import {
@@ -52,7 +17,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
-// Minimal vertex shader - just passes through a fullscreen quad
 const VERTEX_SHADER = `#version 300 es
 precision mediump float;
 
@@ -64,7 +28,6 @@ void main() {
     fragCoord = (aPos * 0.5 + 0.5) * iResolution;
 }`;
 
-// Default fragment shader - a simple plasma effect
 const DEFAULT_SHADER = `// Shadertoy-compatible uniforms:
 // iTime - elapsed time in seconds
 // iResolution - viewport resolution in pixels
@@ -96,7 +59,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     fragColor = vec4(col, 1.0);
 }`;
 
-// Preset shaders
 const SHADER_PRESETS: { name: string; code: string }[] = [
     { name: "Plasma", code: DEFAULT_SHADER },
     {
@@ -177,7 +139,6 @@ const SHADER_PRESETS: { name: string; code: string }[] = [
     },
 ];
 
-// Wrap user shader with uniforms and main
 function wrapShaderCode(userCode: string): string {
     return `#version 300 es
 precision mediump float;
@@ -196,7 +157,6 @@ void main() {
 }`;
 }
 
-// Fullscreen quad vertices
 const QUAD_VERTICES = [-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0];
 
 interface GLState {
@@ -210,46 +170,43 @@ interface GLState {
     };
 }
 
-// Initialize GL resources - called once on first render
 const initGL = (shaderCode: string): GLState => {
-    // Create initial shaders
-    const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, VERTEX_SHADER);
-    glCompileShader(vertexShader);
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, VERTEX_SHADER);
+    gl.compileShader(vertexShader);
 
-    const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, wrapShaderCode(shaderCode));
-    glCompileShader(fragmentShader);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, wrapShaderCode(shaderCode));
+    gl.compileShader(fragmentShader);
 
-    const program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
 
-    // Create VAO and VBO for fullscreen quad
-    const vao = glGenVertexArray();
-    glBindVertexArray(vao);
+    const vao = gl.genVertexArray();
+    gl.bindVertexArray(vao);
 
-    const vbo = glGenBuffer();
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, QUAD_VERTICES, GL_STATIC_DRAW);
+    const vbo = gl.genBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, QUAD_VERTICES, gl.STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
-    glEnableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
 
-    glBindVertexArray(0);
+    gl.bindVertexArray(0);
 
     return {
         program,
         vao,
         vbo,
         uniforms: {
-            time: glGetUniformLocation(program, "iTime"),
-            resolution: glGetUniformLocation(program, "iResolution"),
-            mouse: glGetUniformLocation(program, "iMouse"),
+            time: gl.getUniformLocation(program, "iTime"),
+            resolution: gl.getUniformLocation(program, "iResolution"),
+            mouse: gl.getUniformLocation(program, "iMouse"),
         },
     };
 };
@@ -268,7 +225,6 @@ const ShadertoyDemo = () => {
 
     const startTimeRef = useRef(Date.now());
 
-    // Create GtkSourceBuffer for the shader editor
     const buffer = useMemo(() => {
         const buf = new GtkSource.Buffer();
         const langManager = GtkSource.LanguageManager.getDefault();
@@ -286,7 +242,6 @@ const ShadertoyDemo = () => {
         return buf;
     }, [shaderCode]);
 
-    // Animation loop
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -298,12 +253,10 @@ const ShadertoyDemo = () => {
         return () => clearInterval(intervalId);
     }, [isAnimating]);
 
-    // Queue render when time or resolution changes
     useEffect(() => {
         glAreaRef.current?.queueRender();
     }, []);
 
-    // Compile shader when compiledCode changes
     useEffect(() => {
         const area = glAreaRef.current;
         const state = glStateRef.current;
@@ -312,49 +265,47 @@ const ShadertoyDemo = () => {
         area.makeCurrent();
 
         try {
-            const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-            glShaderSource(fragmentShader, wrapShaderCode(compiledCode));
-            glCompileShader(fragmentShader);
+            const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragmentShader, wrapShaderCode(compiledCode));
+            gl.compileShader(fragmentShader);
 
-            const compileStatus = glGetShaderiv(fragmentShader, GL_COMPILE_STATUS);
+            const compileStatus = gl.getShaderiv(fragmentShader, gl.COMPILE_STATUS);
             if (compileStatus === 0) {
                 setCompileError("Shader compilation failed. Check your GLSL syntax.");
-                glDeleteShader(fragmentShader);
+                gl.deleteShader(fragmentShader);
                 return;
             }
 
-            const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-            glShaderSource(vertexShader, VERTEX_SHADER);
-            glCompileShader(vertexShader);
+            const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertexShader, VERTEX_SHADER);
+            gl.compileShader(vertexShader);
 
-            const program = glCreateProgram();
-            glAttachShader(program, vertexShader);
-            glAttachShader(program, fragmentShader);
-            glLinkProgram(program);
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
 
-            const linkStatus = glGetProgramiv(program, GL_LINK_STATUS);
+            const linkStatus = gl.getProgramiv(program, gl.LINK_STATUS);
             if (linkStatus === 0) {
                 setCompileError("Shader linking failed.");
-                glDeleteShader(vertexShader);
-                glDeleteShader(fragmentShader);
-                glDeleteProgram(program);
+                gl.deleteShader(vertexShader);
+                gl.deleteShader(fragmentShader);
+                gl.deleteProgram(program);
                 return;
             }
 
-            // Clean up old program
             if (state.program) {
-                glDeleteProgram(state.program);
+                gl.deleteProgram(state.program);
             }
 
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
+            gl.deleteShader(vertexShader);
+            gl.deleteShader(fragmentShader);
 
-            // Update state with new program
             state.program = program;
             state.uniforms = {
-                time: glGetUniformLocation(program, "iTime"),
-                resolution: glGetUniformLocation(program, "iResolution"),
-                mouse: glGetUniformLocation(program, "iMouse"),
+                time: gl.getUniformLocation(program, "iTime"),
+                resolution: gl.getUniformLocation(program, "iResolution"),
+                mouse: gl.getUniformLocation(program, "iMouse"),
             };
 
             setCompileError(null);
@@ -364,15 +315,11 @@ const ShadertoyDemo = () => {
     }, [compiledCode]);
 
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
-        // Just clear the state reference - GL resources will be cleaned up
-        // automatically when the context is destroyed. Calling makeCurrent()
-        // here can race with the widget being unrealized.
         glStateRef.current = null;
     }, []);
 
     const handleRender = useCallback(
         (self: Gtk.GLArea, _context: Gdk.GLContext) => {
-            // Lazy initialization on first render
             if (!glStateRef.current) {
                 const glError = self.getError();
                 if (glError) {
@@ -390,30 +337,28 @@ const ShadertoyDemo = () => {
 
             const state = glStateRef.current;
 
-            // Set viewport
-            glViewport(0, 0, resolution.x, resolution.y);
+            gl.viewport(0, 0, resolution.x, resolution.y);
 
-            glClearColor(0, 0, 0, 1);
-            glClear(GL_COLOR_BUFFER_BIT);
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
 
-            glUseProgram(state.program);
+            gl.useProgram(state.program);
 
-            // Set uniforms
             if (state.uniforms.time >= 0) {
-                glUniform1f(state.uniforms.time, time);
+                gl.uniform1f(state.uniforms.time, time);
             }
             if (state.uniforms.resolution >= 0) {
-                glUniform2f(state.uniforms.resolution, resolution.x, resolution.y);
+                gl.uniform2f(state.uniforms.resolution, resolution.x, resolution.y);
             }
             if (state.uniforms.mouse >= 0) {
-                glUniform2f(state.uniforms.mouse, mouse.x, mouse.y);
+                gl.uniform2f(state.uniforms.mouse, mouse.x, mouse.y);
             }
 
-            glBindVertexArray(state.vao);
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-            glBindVertexArray(0);
+            gl.bindVertexArray(state.vao);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            gl.bindVertexArray(0);
 
-            glUseProgram(0);
+            gl.useProgram(0);
 
             return true;
         },
@@ -422,7 +367,7 @@ const ShadertoyDemo = () => {
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
         setResolution({ x: width, y: height });
-        glViewport(0, 0, width, height);
+        gl.viewport(0, 0, width, height);
     }, []);
 
     const handleCompile = useCallback(() => {
@@ -471,7 +416,6 @@ const ShadertoyDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* Preset buttons */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                         <GtkLabel label="Presets:" cssClasses={["dim-label"]} />
                         {SHADER_PRESETS.map((preset) => (
@@ -485,7 +429,6 @@ const ShadertoyDemo = () => {
                     </GtkBox>
 
                     <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} shrinkStartChild={false} shrinkEndChild={false}>
-                        {/* Editor */}
                         <Slot for={GtkPaned} id="startChild">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
                                 <GtkScrolledWindow vexpand hexpand heightRequest={300}>
@@ -526,7 +469,6 @@ const ShadertoyDemo = () => {
                             </GtkBox>
                         </Slot>
 
-                        {/* Preview */}
                         <Slot for={GtkPaned} id="endChild">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
                                 <GtkGLArea

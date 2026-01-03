@@ -1,49 +1,11 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
-import {
-    GL_ARRAY_BUFFER,
-    GL_COLOR_BUFFER_BIT,
-    GL_CULL_FACE,
-    GL_DEPTH_BUFFER_BIT,
-    GL_DEPTH_TEST,
-    GL_FLOAT,
-    GL_FRAGMENT_SHADER,
-    GL_LEQUAL,
-    GL_STATIC_DRAW,
-    GL_TRIANGLES,
-    GL_VERTEX_SHADER,
-    glAttachShader,
-    glBindBuffer,
-    glBindVertexArray,
-    glBufferData,
-    glClear,
-    glClearColor,
-    glClearDepth,
-    glCompileShader,
-    glCreateProgram,
-    glCreateShader,
-    glDeleteShader,
-    glDepthFunc,
-    glDrawArrays,
-    glEnable,
-    glEnableVertexAttribArray,
-    glGenBuffer,
-    glGenVertexArray,
-    glGetUniformLocation,
-    glLinkProgram,
-    glShaderSource,
-    glUniform3f,
-    glUniformMatrix4fv,
-    glUseProgram,
-    glVertexAttribPointer,
-    glViewport,
-} from "@gtkx/ffi/gl";
+import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
 
-// Vertex shader with lighting
 const VERTEX_SHADER = `#version 300 es
 precision mediump float;
 
@@ -64,7 +26,6 @@ void main() {
     vLightDir = normalize(uLightDir);
 }`;
 
-// Fragment shader with diffuse lighting
 const FRAGMENT_SHADER = `#version 300 es
 precision mediump float;
 
@@ -82,7 +43,6 @@ void main() {
     FragColor = vec4(finalColor, 1.0);
 }`;
 
-// Generate gear geometry
 function generateGear(
     innerRadius: number,
     outerRadius: number,
@@ -98,7 +58,6 @@ function generateGear(
     const r2 = outerRadius + toothDepth / 2;
     const da = (2 * Math.PI) / teeth / 4;
 
-    // Helper to add a triangle with normal
     const addTriangle = (
         x1: number,
         y1: number,
@@ -117,11 +76,9 @@ function generateGear(
         normals.push(nx, ny, nz, nx, ny, nz, nx, ny, nz);
     };
 
-    // Front and back faces
     for (let i = 0; i < teeth; i++) {
         const angle = (i * 2 * Math.PI) / teeth;
 
-        // Calculate points for this tooth
         const cos0 = Math.cos(angle);
         const sin0 = Math.sin(angle);
         const cos1 = Math.cos(angle + da);
@@ -133,20 +90,16 @@ function generateGear(
         const cos4 = Math.cos(angle + 4 * da);
         const sin4 = Math.sin(angle + 4 * da);
 
-        // Front face (z = width/2)
         const fz = width / 2;
 
-        // Inner ring to r1
         addTriangle(r0 * cos0, r0 * sin0, fz, r1 * cos0, r1 * sin0, fz, r0 * cos4, r0 * sin4, fz, 0, 0, 1);
 
         addTriangle(r0 * cos4, r0 * sin4, fz, r1 * cos0, r1 * sin0, fz, r1 * cos3, r1 * sin3, fz, 0, 0, 1);
 
-        // Tooth front
         addTriangle(r1 * cos0, r1 * sin0, fz, r2 * cos1, r2 * sin1, fz, r2 * cos2, r2 * sin2, fz, 0, 0, 1);
 
         addTriangle(r1 * cos0, r1 * sin0, fz, r2 * cos2, r2 * sin2, fz, r1 * cos3, r1 * sin3, fz, 0, 0, 1);
 
-        // Back face (z = -width/2)
         const bz = -width / 2;
 
         addTriangle(r0 * cos0, r0 * sin0, bz, r0 * cos4, r0 * sin4, bz, r1 * cos0, r1 * sin0, bz, 0, 0, -1);
@@ -157,7 +110,6 @@ function generateGear(
 
         addTriangle(r1 * cos0, r1 * sin0, bz, r1 * cos3, r1 * sin3, bz, r2 * cos2, r2 * sin2, bz, 0, 0, -1);
 
-        // Outer edge of tooth
         addTriangle(r1 * cos0, r1 * sin0, fz, r1 * cos0, r1 * sin0, bz, r2 * cos1, r2 * sin1, fz, cos0, sin0, 0);
         addTriangle(r2 * cos1, r2 * sin1, fz, r1 * cos0, r1 * sin0, bz, r2 * cos1, r2 * sin1, bz, cos1, sin1, 0);
 
@@ -167,11 +119,9 @@ function generateGear(
         addTriangle(r2 * cos2, r2 * sin2, fz, r2 * cos2, r2 * sin2, bz, r1 * cos3, r1 * sin3, fz, cos2, sin2, 0);
         addTriangle(r1 * cos3, r1 * sin3, fz, r2 * cos2, r2 * sin2, bz, r1 * cos3, r1 * sin3, bz, cos3, sin3, 0);
 
-        // Valley between teeth
         addTriangle(r1 * cos3, r1 * sin3, fz, r1 * cos3, r1 * sin3, bz, r1 * cos4, r1 * sin4, fz, cos3, sin3, 0);
         addTriangle(r1 * cos4, r1 * sin4, fz, r1 * cos3, r1 * sin3, bz, r1 * cos4, r1 * sin4, bz, cos4, sin4, 0);
 
-        // Inner cylinder
         addTriangle(r0 * cos0, r0 * sin0, bz, r0 * cos0, r0 * sin0, fz, r0 * cos4, r0 * sin4, fz, -cos0, -sin0, 0);
         addTriangle(r0 * cos0, r0 * sin0, bz, r0 * cos4, r0 * sin4, fz, r0 * cos4, r0 * sin4, bz, -cos4, -sin4, 0);
     }
@@ -179,7 +129,6 @@ function generateGear(
     return { vertices, normals };
 }
 
-// Matrix utilities
 function mat4Identity(): number[] {
     return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 }
@@ -229,7 +178,6 @@ function mat4Perspective(fovy: number, aspect: number, near: number, far: number
 }
 
 function mat4Inverse3x3(m: number[]): number[] {
-    // Extract 3x3 from 4x4 and compute inverse for normal matrix
     const a00 = m[0] as number,
         a01 = m[1] as number,
         a02 = m[2] as number;
@@ -244,7 +192,6 @@ function mat4Inverse3x3(m: number[]): number[] {
 
     const invDet = 1.0 / det;
 
-    // Return as 4x4 matrix (with 0s in 4th row/column except [3][3] = 1)
     return [
         (a11 * a22 - a12 * a21) * invDet,
         (a02 * a21 - a01 * a22) * invDet,
@@ -285,34 +232,30 @@ interface GLState {
     };
 }
 
-// Initialize GL resources - called once on first render
 const initGL = (): GLState => {
-    // Create shaders
-    const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, VERTEX_SHADER);
-    glCompileShader(vertexShader);
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, VERTEX_SHADER);
+    gl.compileShader(vertexShader);
 
-    const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, FRAGMENT_SHADER);
-    glCompileShader(fragmentShader);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, FRAGMENT_SHADER);
+    gl.compileShader(fragmentShader);
 
-    const program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
 
-    // Get uniform locations
     const uniforms = {
-        modelView: glGetUniformLocation(program, "uModelView"),
-        projection: glGetUniformLocation(program, "uProjection"),
-        normalMatrix: glGetUniformLocation(program, "uNormalMatrix"),
-        color: glGetUniformLocation(program, "uColor"),
-        lightDir: glGetUniformLocation(program, "uLightDir"),
+        modelView: gl.getUniformLocation(program, "uModelView"),
+        projection: gl.getUniformLocation(program, "uProjection"),
+        normalMatrix: gl.getUniformLocation(program, "uNormalMatrix"),
+        color: gl.getUniformLocation(program, "uColor"),
+        lightDir: gl.getUniformLocation(program, "uLightDir"),
     };
 
-    // Generate gears
     const gearConfigs = [
         { inner: 1.0, outer: 4.0, width: 1.0, teeth: 20, depth: 0.7, color: { r: 0.8, g: 0.1, b: 0.0 } },
         { inner: 0.5, outer: 2.0, width: 2.0, teeth: 10, depth: 0.7, color: { r: 0.0, g: 0.8, b: 0.2 } },
@@ -328,22 +271,22 @@ const initGL = (): GLState => {
             config.depth,
         );
 
-        const vao = glGenVertexArray();
-        glBindVertexArray(vao);
+        const vao = gl.genVertexArray();
+        gl.bindVertexArray(vao);
 
-        const vbo = glGenBuffer();
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
-        glEnableVertexAttribArray(0);
+        const vbo = gl.genBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(0);
 
-        const nbo = glGenBuffer();
-        glBindBuffer(GL_ARRAY_BUFFER, nbo);
-        glBufferData(GL_ARRAY_BUFFER, normals, GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
-        glEnableVertexAttribArray(1);
+        const nbo = gl.genBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, nbo);
+        gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(1);
 
-        glBindVertexArray(0);
+        gl.bindVertexArray(0);
 
         return {
             vao,
@@ -354,9 +297,9 @@ const initGL = (): GLState => {
         };
     });
 
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glEnable(GL_CULL_FACE);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.CULL_FACE);
 
     return { program, gears, uniforms };
 };
@@ -375,7 +318,6 @@ const GearsDemo = () => {
     const rotXAdjustment = useMemo(() => new Gtk.Adjustment(20, -90, 90, 1, 10, 0), []);
     const rotYAdjustment = useMemo(() => new Gtk.Adjustment(30, -180, 180, 1, 10, 0), []);
 
-    // Animation loop
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -386,22 +328,17 @@ const GearsDemo = () => {
         return () => clearInterval(intervalId);
     }, [isAnimating]);
 
-    // Queue render when state changes
     // biome-ignore lint/correctness/useExhaustiveDependencies: demo
     useEffect(() => {
         glAreaRef.current?.queueRender();
     }, [angle, viewRotX, viewRotY]);
 
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
-        // Just clear the state reference - GL resources will be cleaned up
-        // automatically when the context is destroyed. Calling makeCurrent()
-        // here can race with the widget being unrealized.
         glStateRef.current = null;
     }, []);
 
     const handleRender = useCallback(
         (self: Gtk.GLArea, _context: Gdk.GLContext) => {
-            // Lazy initialization on first render
             if (!glStateRef.current) {
                 const glError = self.getError();
                 if (glError) {
@@ -419,29 +356,24 @@ const GearsDemo = () => {
 
             const state = glStateRef.current;
 
-            // Get actual size from the widget (in physical pixels for GL)
             const scale = self.getScaleFactor();
             const width = self.getAllocatedWidth() * scale;
             const height = self.getAllocatedHeight() * scale;
             const aspect = width / height;
 
-            // Set viewport
-            glViewport(0, 0, width, height);
+            gl.viewport(0, 0, width, height);
 
-            glClearColor(0.1, 0.1, 0.15, 1.0);
-            glClearDepth(1.0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            gl.clearColor(0.1, 0.1, 0.15, 1.0);
+            gl.clearDepth(1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            glUseProgram(state.program);
+            gl.useProgram(state.program);
 
-            // Set up projection
             const projection = mat4Perspective(Math.PI / 4, aspect, 1.0, 100.0);
-            glUniformMatrix4fv(state.uniforms.projection, 1, false, projection);
+            gl.uniformMatrix4fv(state.uniforms.projection, 1, false, projection);
 
-            // Light direction
-            glUniform3f(state.uniforms.lightDir, 0.5, 0.5, 1.0);
+            gl.uniform3f(state.uniforms.lightDir, 0.5, 0.5, 1.0);
 
-            // Base view transform
             let view = mat4Identity();
             view = mat4Translate(view, 0, 0, -25);
             view = mat4RotateX(view, (viewRotX * Math.PI) / 180);
@@ -449,44 +381,41 @@ const GearsDemo = () => {
 
             const angleRad = (angle * Math.PI) / 180;
 
-            // Draw gear 1 (red)
             const gear1 = state.gears[0];
             if (gear1) {
                 let modelView = mat4Translate(view, -3.0, -2.0, 0.0);
                 modelView = mat4RotateZ(modelView, angleRad);
-                glUniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
-                glUniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
-                glUniform3f(state.uniforms.color, gear1.color.r, gear1.color.g, gear1.color.b);
-                glBindVertexArray(gear1.vao);
-                glDrawArrays(GL_TRIANGLES, 0, gear1.vertexCount);
+                gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
+                gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
+                gl.uniform3f(state.uniforms.color, gear1.color.r, gear1.color.g, gear1.color.b);
+                gl.bindVertexArray(gear1.vao);
+                gl.drawArrays(gl.TRIANGLES, 0, gear1.vertexCount);
             }
 
-            // Draw gear 2 (green) - meshed with gear 1
             const gear2 = state.gears[1];
             if (gear2) {
                 let modelView = mat4Translate(view, 3.1, -2.0, 0.0);
                 modelView = mat4RotateZ(modelView, -2 * angleRad - (9 * Math.PI) / 180);
-                glUniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
-                glUniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
-                glUniform3f(state.uniforms.color, gear2.color.r, gear2.color.g, gear2.color.b);
-                glBindVertexArray(gear2.vao);
-                glDrawArrays(GL_TRIANGLES, 0, gear2.vertexCount);
+                gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
+                gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
+                gl.uniform3f(state.uniforms.color, gear2.color.r, gear2.color.g, gear2.color.b);
+                gl.bindVertexArray(gear2.vao);
+                gl.drawArrays(gl.TRIANGLES, 0, gear2.vertexCount);
             }
 
-            // Draw gear 3 (blue) - meshed with gear 2
             const gear3 = state.gears[2];
             if (gear3) {
                 let modelView = mat4Translate(view, -3.1, 4.2, 0.0);
                 modelView = mat4RotateZ(modelView, -2 * angleRad - (25 * Math.PI) / 180);
-                glUniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
-                glUniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
-                glUniform3f(state.uniforms.color, gear3.color.r, gear3.color.g, gear3.color.b);
-                glBindVertexArray(gear3.vao);
-                glDrawArrays(GL_TRIANGLES, 0, gear3.vertexCount);
+                gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
+                gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
+                gl.uniform3f(state.uniforms.color, gear3.color.r, gear3.color.g, gear3.color.b);
+                gl.bindVertexArray(gear3.vao);
+                gl.drawArrays(gl.TRIANGLES, 0, gear3.vertexCount);
             }
 
-            glBindVertexArray(0);
-            glUseProgram(0);
+            gl.bindVertexArray(0);
+            gl.useProgram(0);
 
             return true;
         },

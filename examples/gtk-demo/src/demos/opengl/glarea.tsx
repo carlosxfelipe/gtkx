@@ -1,49 +1,11 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
-import {
-    GL_ARRAY_BUFFER,
-    GL_COLOR_BUFFER_BIT,
-    GL_COMPILE_STATUS,
-    GL_DEPTH_BUFFER_BIT,
-    GL_FLOAT,
-    GL_FRAGMENT_SHADER,
-    GL_LINK_STATUS,
-    GL_STATIC_DRAW,
-    GL_TRIANGLES,
-    GL_VERTEX_SHADER,
-    glAttachShader,
-    glBindBuffer,
-    glBindVertexArray,
-    glBufferData,
-    glClear,
-    glClearColor,
-    glClearDepth,
-    glCompileShader,
-    glCreateProgram,
-    glCreateShader,
-    glDeleteShader,
-    glDrawArrays,
-    glEnableVertexAttribArray,
-    glGenBuffer,
-    glGenVertexArray,
-    glGetProgramInfoLog,
-    glGetProgramiv,
-    glGetShaderInfoLog,
-    glGetShaderiv,
-    glGetUniformLocation,
-    glLinkProgram,
-    glShaderSource,
-    glUniform4f,
-    glUseProgram,
-    glVertexAttribPointer,
-    glViewport,
-} from "@gtkx/ffi/gl";
+import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
 
-// Vertex shader - transforms vertices and passes color to fragment shader
 const VERTEX_SHADER = `#version 300 es
 precision mediump float;
 
@@ -55,7 +17,6 @@ void main() {
     vertexColor = uColor;
 }`;
 
-// Fragment shader - outputs the interpolated color
 const FRAGMENT_SHADER = `#version 300 es
 precision mediump float;
 
@@ -65,20 +26,18 @@ void main() {
     FragColor = vertexColor;
 }`;
 
-// Triangle vertices (x, y, z)
 const TRIANGLE_VERTICES = [
     0.0,
     0.5,
-    0.0, // top
+    0.0,
     -0.5,
     -0.5,
-    0.0, // bottom left
+    0.0,
     0.5,
     -0.5,
-    0.0, // bottom right
+    0.0,
 ];
 
-// GL state stored between renders
 interface GLState {
     program: number;
     vao: number;
@@ -87,67 +46,59 @@ interface GLState {
     initialized: boolean;
 }
 
-// Initialize GL resources - called once on first render
 const initGL = (): GLState => {
-    // Create and compile vertex shader
-    const vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, VERTEX_SHADER);
-    glCompileShader(vertexShader);
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, VERTEX_SHADER);
+    gl.compileShader(vertexShader);
 
-    const vertexStatus = glGetShaderiv(vertexShader, GL_COMPILE_STATUS);
+    const vertexStatus = gl.getShaderiv(vertexShader, gl.COMPILE_STATUS);
     if (!vertexStatus) {
-        const log = glGetShaderInfoLog(vertexShader);
-        glDeleteShader(vertexShader);
+        const log = gl.getShaderInfoLog(vertexShader);
+        gl.deleteShader(vertexShader);
         throw new Error(`Vertex shader compilation failed: ${log}`);
     }
 
-    // Create and compile fragment shader
-    const fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, FRAGMENT_SHADER);
-    glCompileShader(fragmentShader);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, FRAGMENT_SHADER);
+    gl.compileShader(fragmentShader);
 
-    const fragmentStatus = glGetShaderiv(fragmentShader, GL_COMPILE_STATUS);
+    const fragmentStatus = gl.getShaderiv(fragmentShader, gl.COMPILE_STATUS);
     if (!fragmentStatus) {
-        const log = glGetShaderInfoLog(fragmentShader);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+        const log = gl.getShaderInfoLog(fragmentShader);
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
         throw new Error(`Fragment shader compilation failed: ${log}`);
     }
 
-    // Create shader program
-    const program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
 
-    const linkStatus = glGetProgramiv(program, GL_LINK_STATUS);
+    const linkStatus = gl.getProgramiv(program, gl.LINK_STATUS);
     if (!linkStatus) {
-        const log = glGetProgramInfoLog(program);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+        const log = gl.getProgramInfoLog(program);
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
         throw new Error(`Shader program linking failed: ${log}`);
     }
 
-    // Clean up shaders (they're now linked into the program)
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
 
-    // Create VAO and VBO
-    const vao = glGenVertexArray();
-    glBindVertexArray(vao);
+    const vao = gl.genVertexArray();
+    gl.bindVertexArray(vao);
 
-    const vbo = glGenBuffer();
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, TRIANGLE_VERTICES, GL_STATIC_DRAW);
+    const vbo = gl.genBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_VERTICES, gl.STATIC_DRAW);
 
-    // Set up vertex attributes
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * 4, 0);
-    glEnableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 3 * 4, 0);
+    gl.enableVertexAttribArray(0);
 
-    // Get uniform location
-    const colorLocation = glGetUniformLocation(program, "uColor");
+    const colorLocation = gl.getUniformLocation(program, "uColor");
 
-    glBindVertexArray(0);
+    gl.bindVertexArray(0);
 
     return {
         program,
@@ -165,18 +116,12 @@ const GLAreaDemo = () => {
     const [triangleColor, setTriangleColor] = useState({ r: 0.9, g: 0.3, b: 0.3, a: 1.0 });
     const [error, setError] = useState<string | null>(null);
 
-    // Clean up GL resources when the area is unrealized
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
-        // Just clear the state reference - GL resources will be cleaned up
-        // automatically when the context is destroyed. Calling makeCurrent()
-        // here can race with the widget being unrealized.
         glStateRef.current = null;
     }, []);
 
-    // Render callback - initializes on first call, then renders
     const handleRender = useCallback(
         (self: Gtk.GLArea, _context: Gdk.GLContext) => {
-            // Lazy initialization on first render
             if (!glStateRef.current) {
                 const glError = self.getError();
                 if (glError) {
@@ -194,39 +139,36 @@ const GLAreaDemo = () => {
 
             const state = glStateRef.current;
 
-            // Clear the framebuffer
-            glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-            glClearDepth(1.0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+            gl.clearDepth(1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            // Draw the triangle
-            glUseProgram(state.program);
-            glUniform4f(state.colorLocation, triangleColor.r, triangleColor.g, triangleColor.b, triangleColor.a);
+            gl.useProgram(state.program);
+            gl.uniform4f(state.colorLocation, triangleColor.r, triangleColor.g, triangleColor.b, triangleColor.a);
 
-            glBindVertexArray(state.vao);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-            glBindVertexArray(0);
+            gl.bindVertexArray(state.vao);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            gl.bindVertexArray(0);
 
-            glUseProgram(0);
+            gl.useProgram(0);
 
             return true;
         },
         [clearColor, triangleColor],
     );
 
-    // Handle resize
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
-        glViewport(0, 0, width, height);
+        gl.viewport(0, 0, width, height);
     }, []);
 
     const cycleTriangleColor = () => {
         const colors = [
-            { r: 0.9, g: 0.3, b: 0.3, a: 1.0 }, // Red
-            { r: 0.3, g: 0.9, b: 0.3, a: 1.0 }, // Green
-            { r: 0.3, g: 0.3, b: 0.9, a: 1.0 }, // Blue
-            { r: 0.9, g: 0.9, b: 0.3, a: 1.0 }, // Yellow
-            { r: 0.9, g: 0.3, b: 0.9, a: 1.0 }, // Magenta
-            { r: 0.3, g: 0.9, b: 0.9, a: 1.0 }, // Cyan
+            { r: 0.9, g: 0.3, b: 0.3, a: 1.0 },
+            { r: 0.3, g: 0.9, b: 0.3, a: 1.0 },
+            { r: 0.3, g: 0.3, b: 0.9, a: 1.0 },
+            { r: 0.9, g: 0.9, b: 0.3, a: 1.0 },
+            { r: 0.9, g: 0.3, b: 0.9, a: 1.0 },
+            { r: 0.3, g: 0.9, b: 0.9, a: 1.0 },
         ];
         const currentIndex = colors.findIndex(
             (c) => c.r === triangleColor.r && c.g === triangleColor.g && c.b === triangleColor.b,
@@ -239,11 +181,11 @@ const GLAreaDemo = () => {
 
     const cycleClearColor = () => {
         const colors = [
-            { r: 0.2, g: 0.2, b: 0.3, a: 1.0 }, // Dark blue
-            { r: 0.1, g: 0.1, b: 0.1, a: 1.0 }, // Almost black
-            { r: 0.3, g: 0.2, b: 0.2, a: 1.0 }, // Dark red
-            { r: 0.2, g: 0.3, b: 0.2, a: 1.0 }, // Dark green
-            { r: 0.15, g: 0.15, b: 0.2, a: 1.0 }, // Slate
+            { r: 0.2, g: 0.2, b: 0.3, a: 1.0 },
+            { r: 0.1, g: 0.1, b: 0.1, a: 1.0 },
+            { r: 0.3, g: 0.2, b: 0.2, a: 1.0 },
+            { r: 0.2, g: 0.3, b: 0.2, a: 1.0 },
+            { r: 0.15, g: 0.15, b: 0.2, a: 1.0 },
         ];
         const currentIndex = colors.findIndex(
             (c) => c.r === clearColor.r && c.g === clearColor.g && c.b === clearColor.b,
