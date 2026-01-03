@@ -291,11 +291,7 @@ const normalizeClass = (raw: RawClass, currentNamespace: string, ctx: Normalizer
 /**
  * Normalizes a raw interface to a normalized interface.
  */
-const normalizeInterface = (
-    raw: RawInterface,
-    currentNamespace: string,
-    ctx: NormalizerContext,
-): GirInterface => {
+const normalizeInterface = (raw: RawInterface, currentNamespace: string, ctx: NormalizerContext): GirInterface => {
     const qn = qualifiedName(currentNamespace, raw.name);
 
     const prerequisites = raw.prerequisites.map((prereq) => {
@@ -447,11 +443,7 @@ const normalizeFunction = (raw: RawFunction, currentNamespace: string, ctx: Norm
 /**
  * Normalizes a raw parameter to a normalized parameter.
  */
-const normalizeParameter = (
-    raw: RawParameter,
-    currentNamespace: string,
-    ctx: NormalizerContext,
-): GirParameter => {
+const normalizeParameter = (raw: RawParameter, currentNamespace: string, ctx: NormalizerContext): GirParameter => {
     return new GirParameter({
         name: raw.name,
         type: normalizeType(raw.type, currentNamespace, ctx),

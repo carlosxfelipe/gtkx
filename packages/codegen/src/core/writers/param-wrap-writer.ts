@@ -69,10 +69,10 @@ export class ParamWrapWriter {
         }
 
         if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
-            return `getNativeObject(${argName}, ${wrapInfo.targetClass})!`;
+            return `getNativeObject(${argName} as ObjectId, ${wrapInfo.targetClass})!`;
         }
 
-        return `getNativeObject(${argName}) as ${wrapInfo.tsType}`;
+        return `getNativeObject(${argName} as ObjectId) as ${wrapInfo.tsType}`;
     }
 
     buildWrapParamsFunction(params: Array<{ mappedType: MappedType; paramName: string }>): WriterFunction | null {

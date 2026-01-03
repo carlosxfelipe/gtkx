@@ -5,18 +5,10 @@
  * Orchestrates sub-builders for different aspects of record generation.
  */
 
-import type {
-    GirConstructor,
-    GirField,
-    GirFunction,
-    GirMethod,
-    GirParameter,
-    GirRecord,
-} from "@gtkx/gir";
+import type { GirConstructor, GirField, GirFunction, GirMethod, GirRecord } from "@gtkx/gir";
 import {
     type ClassDeclaration,
     type MethodDeclarationStructure,
-    Scope,
     type SourceFile,
     StructureKind,
     type WriterFunction,
@@ -24,7 +16,7 @@ import {
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { boxedSelfType, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
+import { boxedSelfType, type FfiTypeDescriptor, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
@@ -180,44 +172,22 @@ export class RecordGenerator {
 
         if (mainConstructor) {
             const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
+            const args = this.methodBody.buildCallArgumentsArray(mainConstructor.parameters);
+            const glibTypeName = record.glibTypeName ?? record.cType;
+            const glibGetType = record.glibGetType;
 
             if (filteredParams.length === 0) {
                 classDecl.addConstructor({
                     docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
-                    statements: ["super();", "this.id = this.createPtr([]);"],
+                    statements: this.writeConstructorWithCall(mainConstructor, args, glibTypeName, glibGetType),
                 });
             } else {
                 const params = this.methodBody.buildParameterList(mainConstructor.parameters);
-                const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
-                const mapped = this.ffiMapper.mapParameter(filteredParams[0] as GirParameter);
-                this.ctx.addTypeImports(mapped.imports);
-                if (mapped.ffi.type === "ref") {
-                    this.ctx.usesRef = true;
-                }
-                const firstParamType = mapped.ts;
-                const isFirstParamArray = firstParamType.endsWith("[]") || firstParamType.startsWith("Array<");
-
-                if (isFirstParamArray) {
-                    classDecl.addConstructor({
-                        docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
-                        parameters: params,
-                        statements: [
-                            "super();",
-                            `const _args = [${paramNames.join(", ")}];`,
-                            "this.id = this.createPtr(_args);",
-                        ],
-                    });
-                } else {
-                    classDecl.addConstructor({
-                        overloads: [{ parameters: params }, { parameters: [{ name: "_args", type: "unknown[]" }] }],
-                        parameters: [{ name: "args", type: "unknown[]", isRestParameter: true }],
-                        statements: [
-                            "super();",
-                            "const _args = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;",
-                            "this.id = this.createPtr(_args);",
-                        ],
-                    });
-                }
+                classDecl.addConstructor({
+                    docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
+                    parameters: params,
+                    statements: this.writeConstructorWithCall(mainConstructor, args, glibTypeName, glibGetType),
+                });
             }
 
             for (const ctor of supportedConstructors) {
@@ -234,28 +204,8 @@ export class RecordGenerator {
             }
         } else {
             const initFields = this.fieldBuilder.getWritableFields(record.fields);
-            if (initFields.length > 0) {
-                classDecl.addConstructor({
-                    parameters: [{ name: "init", type: `${recordName}Init`, initializer: "{}" }],
-                    statements: ["super();", "this.id = this.createPtr(init);"],
-                });
-            } else {
-                classDecl.addConstructor({
-                    statements: ["super();", "this.id = this.createPtr({});"],
-                });
-            }
-        }
-
-        methodStructures.push(this.buildCreatePtrStructure(record, recordName));
-    }
-
-    private buildCreatePtrStructure(record: GirRecord, recordName: string): MethodDeclarationStructure {
-        const { main: mainConstructor } = this.methodBody.selectConstructors(record.constructors);
-
-        if (!mainConstructor) {
             if (record.fields.length > 0) {
                 const structSize = this.fieldBuilder.calculateStructSize(record.fields);
-                const initFields = this.fieldBuilder.getWritableFields(record.fields);
                 this.ctx.usesAlloc = true;
 
                 const allocFn = record.glibTypeName
@@ -264,80 +214,35 @@ export class RecordGenerator {
 
                 if (initFields.length > 0) {
                     this.ctx.usesWrite = true;
-                    return {
-                        kind: StructureKind.Method,
-                        name: "createPtr",
-                        scope: Scope.Protected,
-                        parameters: [{ name: "init", type: `${recordName}Init` }],
-                        returnType: "ObjectId",
-                        statements: this.writeCreatePtrWithFieldsBody(allocFn, record.fields),
-                    };
+                    classDecl.addConstructor({
+                        parameters: [{ name: "init", type: `${recordName}Init`, initializer: "{}" }],
+                        statements: this.writeConstructorWithAlloc(allocFn, record.fields),
+                    });
+                } else {
+                    classDecl.addConstructor({
+                        statements: (writer) => {
+                            writer.writeLine("super();");
+                            writer.writeLine(`this.id = ${allocFn} as ObjectId;`);
+                        },
+                    });
                 }
-                return {
-                    kind: StructureKind.Method,
-                    name: "createPtr",
-                    scope: Scope.Protected,
-                    parameters: [{ name: "_init", type: "Record<string, unknown>" }],
-                    returnType: "ObjectId",
-                    statements: (writer) => {
-                        writer.writeLine(`return ${allocFn} as ObjectId;`);
-                    },
-                };
+            } else {
+                classDecl.addConstructor({
+                    statements: ["super();", "this.id = null as unknown as ObjectId;"],
+                });
             }
-            return {
-                kind: StructureKind.Method,
-                name: "createPtr",
-                scope: Scope.Protected,
-                parameters: [{ name: "_init", type: "Record<string, unknown>" }],
-                returnType: "ObjectId",
-                statements: (writer) => {
-                    writer.writeLine("return null as unknown as ObjectId;");
-                },
-            };
         }
-
-        return {
-            kind: StructureKind.Method,
-            name: "createPtr",
-            scope: Scope.Protected,
-            parameters: [{ name: "_args", type: "unknown[]" }],
-            returnType: "ObjectId",
-            statements: this.writeCreatePtrWithConstructorBody(mainConstructor, record),
-        };
     }
 
-    private writeCreatePtrWithFieldsBody(allocFn: string, fields: readonly GirField[]): WriterFunction {
-        return (writer) => {
-            writer.writeLine(`const ptr = ${allocFn};`);
-            this.fieldBuilder.writeFieldWrites(fields)(writer);
-            writer.writeLine("return ptr as ObjectId;");
-        };
-    }
-
-    private writeCreatePtrWithConstructorBody(
+    private writeConstructorWithCall(
         mainConstructor: GirConstructor,
-        record: GirRecord,
+        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
+        glibTypeName: string | undefined,
+        glibGetType: string | undefined,
     ): WriterFunction {
-        const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
-        const paramTypes = filteredParams.map((p) => {
-            const mapped = this.ffiMapper.mapParameter(p);
-            this.ctx.addTypeImports(mapped.imports);
-            if (mapped.ffi.type === "ref") {
-                this.ctx.usesRef = true;
-            }
-            return mapped.ts;
-        });
-        const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
-        const args = this.methodBody.buildCallArgumentsArray(mainConstructor.parameters);
-        const glibTypeName = record.glibTypeName ?? record.cType;
-        const glibGetType = record.glibGetType;
-
         return (writer) => {
-            if (paramNames.length > 0) {
-                writer.writeLine(`const [${paramNames.join(", ")}] = _args as [${paramTypes.join(", ")}];`);
-            }
-
-            writer.write("return call(");
+            writer.writeLine("super();");
+            writer.write("this.id = call(");
             writer.newLine();
             writer.indent(() => {
                 writer.writeLine(`"${this.options.sharedLibrary}",`);
@@ -357,6 +262,14 @@ export class RecordGenerator {
                 );
             });
             writer.writeLine(") as ObjectId;");
+        };
+    }
+
+    private writeConstructorWithAlloc(allocFn: string, fields: readonly GirField[]): WriterFunction {
+        return (writer) => {
+            writer.writeLine("super();");
+            writer.writeLine(`this.id = ${allocFn} as ObjectId;`);
+            this.fieldBuilder.writeFieldWrites(fields)(writer);
         };
     }
 

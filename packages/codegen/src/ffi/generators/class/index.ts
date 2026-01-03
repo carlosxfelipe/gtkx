@@ -5,7 +5,7 @@
  * Delegates to specialized builders for each component.
  */
 
-import type { GirRepository, GirClass, GirMethod, QualifiedName } from "@gtkx/gir";
+import type { GirClass, GirMethod, GirRepository, QualifiedName } from "@gtkx/gir";
 import type { ClassDeclaration, SourceFile } from "ts-morph";
 import { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";

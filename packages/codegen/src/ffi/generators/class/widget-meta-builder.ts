@@ -5,7 +5,7 @@
  * This metadata is consumed by React generators - nothing is written to output files.
  */
 
-import type { GirRepository, GirClass, QualifiedName } from "@gtkx/gir";
+import type { GirClass, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";

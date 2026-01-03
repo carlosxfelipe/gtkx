@@ -1,4 +1,4 @@
-import { alloc, call, read } from "@gtkx/native";
+import { alloc, call, type ObjectId, read } from "@gtkx/native";
 import { Context } from "../generated/cairo/context.js";
 import type {
     Antialias,
@@ -11,6 +11,7 @@ import type {
 } from "../generated/cairo/enums.js";
 import { FontOptions } from "../generated/cairo/font-options.js";
 import { Pattern } from "../generated/cairo/pattern.js";
+import { getNativeObject } from "../native/object.js";
 
 export { Context, Pattern, FontOptions };
 
@@ -24,6 +25,7 @@ const FONT_OPTIONS_T = {
     getTypeFn: "cairo_gobject_font_options_get_type",
     ownership: "none",
 } as const;
+
 const CAIRO_T = {
     type: "boxed",
     innerType: "CairoContext",
@@ -31,6 +33,7 @@ const CAIRO_T = {
     getTypeFn: "cairo_gobject_context_get_type",
     ownership: "none",
 } as const;
+
 const PATTERN_T = {
     type: "boxed",
     innerType: "CairoPattern",
@@ -38,6 +41,7 @@ const PATTERN_T = {
     getTypeFn: "cairo_gobject_pattern_get_type",
     ownership: "full",
 } as const;
+
 const PATTERN_T_NONE = {
     type: "boxed",
     innerType: "CairoPattern",
@@ -45,6 +49,7 @@ const PATTERN_T_NONE = {
     getTypeFn: "cairo_gobject_pattern_get_type",
     ownership: "none",
 } as const;
+
 const DOUBLE_TYPE = { type: "float", size: 64 } as const;
 
 declare module "../generated/cairo/context.js" {
@@ -312,6 +317,14 @@ declare module "../generated/cairo/font-options.js" {
          * @param subpixelOrder - The subpixel order value
          */
         setSubpixelOrder(subpixelOrder: number): this;
+    }
+
+    namespace FontOptions {
+        /**
+         * Creates a new font options object with default values.
+         * @returns A new FontOptions instance
+         */
+        function create(): FontOptions;
     }
 }
 
@@ -829,7 +842,7 @@ Context.prototype.setFontOptions = function (options: FontOptions): Context {
 };
 
 Context.prototype.getFontOptions = function (): FontOptions {
-    const options = new FontOptions();
+    const options = FontOptions.create();
     call(
         LIB,
         "cairo_get_font_options",
@@ -882,8 +895,9 @@ PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: numbe
             { type: DOUBLE_TYPE, value: y1 },
         ],
         PATTERN_T,
-    );
-    return Pattern.fromPtr(ptr);
+    ) as ObjectId;
+
+    return getNativeObject(ptr, Pattern) as Pattern;
 };
 
 PatternWithStatics.createRadial = (
@@ -907,7 +921,7 @@ PatternWithStatics.createRadial = (
         ],
         PATTERN_T,
     );
-    return Pattern.fromPtr(ptr);
+    return getNativeObject(ptr as ObjectId, Pattern) as Pattern;
 };
 
 Pattern.prototype.addColorStopRgb = function (offset: number, red: number, green: number, blue: number): Pattern {
@@ -949,18 +963,16 @@ Pattern.prototype.addColorStopRgba = function (
     return this;
 };
 
-Object.defineProperty(FontOptions.prototype, "createPtr", {
-    value: (): unknown =>
-        call(LIB, "cairo_font_options_create", [], {
-            type: "boxed",
-            innerType: "CairoFontOptions",
-            lib: LIB_GOBJECT,
-            getTypeFn: "cairo_gobject_font_options_get_type",
-            ownership: "full",
-        }),
-    writable: true,
-    configurable: true,
-});
+(FontOptions as unknown as { create(): FontOptions }).create = (): FontOptions => {
+    const ptr = call(LIB, "cairo_font_options_create", [], {
+        type: "boxed",
+        innerType: "CairoFontOptions",
+        lib: LIB_GOBJECT,
+        getTypeFn: "cairo_gobject_font_options_get_type",
+        ownership: "full",
+    });
+    return FontOptions.fromPtr(ptr as ObjectId);
+};
 
 FontOptions.prototype.setHintStyle = function (hintStyle: number): FontOptions {
     call(

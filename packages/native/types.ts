@@ -1,4 +1,4 @@
-export type ObjectId = unknown & { readonly __brand: "ObjectId" };
+export type ObjectId = { readonly __brand: "ObjectId" };
 
 type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean };
 

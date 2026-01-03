@@ -7,9 +7,9 @@
  */
 
 import {
-    type GirRepository,
     type GirClass,
     type GirParameter,
+    type GirRepository,
     type GirSignal,
     parseQualifiedName,
     type QualifiedName,
@@ -231,7 +231,7 @@ export class SignalBuilder {
             writer.write("return handler(");
             writer.newLine();
             writer.indent(() => {
-                writer.writeLine(`getNativeObject(args[0]) as ${this.className},`);
+                writer.writeLine(`getNativeObject(args[0] as ObjectId) as ${this.className},`);
                 paramData.forEach((p, index) => {
                     const argAccess = `args[${index + 1}]`;
                     const expression = this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo);
@@ -291,7 +291,9 @@ export class SignalBuilder {
     private writeFallbackImplementation(writer: CodeBlockWriter): void {
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.indent(() => {
-            writer.writeLine(`return handler(getNativeObject(args[0]) as ${this.className}, ...args.slice(1));`);
+            writer.writeLine(
+                `return handler(getNativeObject(args[0] as ObjectId) as ${this.className}, ...args.slice(1));`,
+            );
         });
         writer.writeLine("};");
         this.writeSignalConnectCall(writer, (w) => {

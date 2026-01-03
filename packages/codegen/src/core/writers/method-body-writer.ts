@@ -449,8 +449,8 @@ export class MethodBodyWriter {
         return filtered.map((param) => {
             const mapped = this.ffiMapper.mapParameter(param);
             const jsParamName = this.toJsParamName(param);
-            const valueName = this.callExpression.buildValueExpression(jsParamName, mapped);
             const isOptional = this.ffiMapper.isNullable(param);
+            const valueName = this.callExpression.buildValueExpression(jsParamName, mapped, isOptional);
 
             const callbackWrapper = this.buildCallbackWrapper(param, jsParamName, isOptional);
 
@@ -651,7 +651,9 @@ export class MethodBodyWriter {
                 }
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
-                writer.writeLine(`return arr.map((item) => getNativeObject(item) as ${wrapInfo.arrayItemType});`);
+                writer.writeLine(
+                    `return arr.map((item) => getNativeObject(item as ObjectId) as ${wrapInfo.arrayItemType});`,
+                );
             } else if (wrapInfo.needsHashTableWrap) {
                 writer.write("const tuples = ");
                 this.callExpression.toWriter({
@@ -743,7 +745,7 @@ export class MethodBodyWriter {
 
         writer.writeLine("if (error.value !== null) {");
         writer.indent(() => {
-            writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef})!);`);
+            writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})!);`);
         });
         writer.writeLine("}");
     }
@@ -753,11 +755,11 @@ export class MethodBodyWriter {
             this.ctx.usesGetNativeObject = true;
             if (ref.isBoxed) {
                 writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value, ${ref.innerType})!;`,
+                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId, ${ref.innerType})!;`,
                 );
             } else {
                 writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value)! as ${ref.innerType};`,
+                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as ObjectId)! as ${ref.innerType};`,
                 );
             }
         }
@@ -874,7 +876,7 @@ export class MethodBodyWriter {
      * Builds a value expression that handles object ID extraction.
      * Delegates to CallExpressionBuilder.buildValueExpression.
      */
-    buildValueExpression(valueName: string, mappedType: MappedType): string {
-        return this.callExpression.buildValueExpression(valueName, mappedType);
+    buildValueExpression(valueName: string, mappedType: MappedType, nullable = false): string {
+        return this.callExpression.buildValueExpression(valueName, mappedType, nullable);
     }
 }

@@ -4,7 +4,7 @@
  * Shared utilities for traversing class hierarchies.
  */
 
-import type { GirRepository, GirClass, GirInterface, QualifiedName } from "@gtkx/gir";
+import type { GirClass, GirInterface, GirRepository, QualifiedName } from "@gtkx/gir";
 import { toCamelCase } from "./naming.js";
 
 /**

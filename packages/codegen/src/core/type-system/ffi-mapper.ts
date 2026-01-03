@@ -6,14 +6,7 @@
  * instead of using callbacks.
  */
 
-import type {
-    GirRepository,
-    GirCallback,
-    GirNamespace,
-    GirParameter,
-    GirType,
-    QualifiedName,
-} from "@gtkx/gir";
+import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType, QualifiedName } from "@gtkx/gir";
 import { isIntrinsicType, isStringType, parseQualifiedName } from "@gtkx/gir";
 import { getTrampolineName, isSupportedCallback, type TrampolineName } from "../constants/index.js";
 import { normalizeClassName, toPascalCase } from "../utils/naming.js";

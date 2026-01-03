@@ -5,7 +5,7 @@
  * Interfaces in GObject are like mixins/traits that classes can implement.
  */
 
-import type { GirRepository, GirInterface, GirMethod, QualifiedName } from "@gtkx/gir";
+import type { GirInterface, GirMethod, GirRepository, QualifiedName } from "@gtkx/gir";
 import type { MethodDeclarationStructure, SourceFile } from "ts-morph";
 import type { GenerationContext } from "../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
@@ -119,10 +119,7 @@ export class InterfaceGenerator {
         });
     }
 
-    private collectPrerequisiteMethods(
-        iface: GirInterface,
-        existingMethodNames: Set<string>,
-    ): GirMethod[] {
+    private collectPrerequisiteMethods(iface: GirInterface, existingMethodNames: Set<string>): GirMethod[] {
         const methods: GirMethod[] = [];
         const seenMethodNames = new Set(existingMethodNames);
         const visitedInterfaces = new Set<string>();

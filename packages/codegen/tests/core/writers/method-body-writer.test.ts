@@ -738,8 +738,7 @@ describe("MethodBodyWriter", () => {
 
             const output = sourceFile.getFullText();
             expect(output).toContain("const ptr = call(");
-            expect(output).toContain("getNativeObject(ptr)");
-            expect(output).toContain("as Button");
+            expect(output).toContain("getNativeObject(ptr as ObjectId) as Button");
             expect(ctx.usesGetNativeObject).toBe(true);
         });
 
@@ -764,7 +763,7 @@ describe("MethodBodyWriter", () => {
             });
 
             const output = sourceFile.getFullText();
-            expect(output).toContain("getNativeObject(ptr, TextIter)");
+            expect(output).toContain("getNativeObject(ptr as ObjectId, TextIter)");
         });
 
         it("generates factory method with error handling", () => {

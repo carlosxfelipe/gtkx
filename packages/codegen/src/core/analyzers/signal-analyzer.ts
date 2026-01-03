@@ -1,4 +1,4 @@
-import type { GirRepository, GirClass, GirSignal } from "@gtkx/gir";
+import type { GirClass, GirRepository, GirSignal } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import type { SignalAnalysis, SignalParam } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";

@@ -1,4 +1,4 @@
-import type { GirRepository, GirClass, GirProperty } from "@gtkx/gir";
+import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import { APPLICATION_PARAM_NAME } from "../constants/index.js";
 import type { PropertyAnalysis } from "../generator-types.js";
@@ -38,11 +38,7 @@ export class PropertyAnalyzer {
         return directProps.map((prop) => this.analyzeProperty(prop, cls, requiredParams));
     }
 
-    private analyzeProperty(
-        prop: GirProperty,
-        cls: GirClass,
-        requiredParams: Set<string>,
-    ): PropertyAnalysis {
+    private analyzeProperty(prop: GirProperty, cls: GirClass, requiredParams: Set<string>): PropertyAnalysis {
         const { namespace } = parseQualifiedName(cls.qualifiedName);
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 

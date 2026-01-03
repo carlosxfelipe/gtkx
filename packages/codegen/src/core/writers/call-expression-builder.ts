@@ -120,12 +120,18 @@ export class CallExpressionBuilder {
      * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples.
      * For primitives, just returns the value name.
      */
-    buildValueExpression(valueName: string, mappedType: MappedType): string {
+    buildValueExpression(valueName: string, mappedType: MappedType, nullable = false): string {
         const needsPtr =
             mappedType.ffi.type === "gobject" || mappedType.ffi.type === "boxed" || mappedType.ffi.type === "struct";
 
         if (needsPtr) {
-            return `${valueName}.id`;
+            const isUnknownType = mappedType.ts === "unknown";
+            if (isUnknownType) {
+                return nullable
+                    ? `(${valueName} as { id: ObjectId } | null)?.id`
+                    : `(${valueName} as { id: ObjectId }).id`;
+            }
+            return nullable ? `${valueName}?.id` : `${valueName}.id`;
         }
 
         if (mappedType.ffi.type === "hashtable") {
@@ -154,7 +160,7 @@ export class CallExpressionBuilder {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
             writer.indent(() => {
-                writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef})!);`);
+                writer.writeLine(`throw new NativeError(getNativeObject(error.value as ObjectId, ${gerrorRef})!);`);
             });
             writer.writeLine("}");
         };

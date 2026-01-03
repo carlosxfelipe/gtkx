@@ -15,33 +15,30 @@ export abstract class NativeObject {
     /** The type category: gobject, interface, boxed, gvariant, struct, or gparam */
     static readonly objectType: "gobject" | "interface" | "boxed" | "gvariant" | "struct" | "gparam";
 
-    /** Creates a wrapper instance from a native pointer/ID */
-    static fromPtr(ptr: ObjectId): NativeObject {
-        // biome-ignore lint/complexity/noThisInStatic: Intentional - allows subclasses to create instances of themselves
-        const instance = Object.create(this.prototype) as NativeObject;
-        instance.id = ptr;
-        return instance;
+    /** Native object ID */
+    id: ObjectId;
+
+    // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
+    constructor(..._args: any[]) {
+        this.id = undefined as unknown as ObjectId;
     }
 
-    /** Native object pointer/ID */
-    id!: ObjectId;
-
-    // biome-ignore lint/complexity/noUselessConstructor: Required for NativeClass type compatibility
-    // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: Required for NativeClass type compatibility
-    constructor(...args: any[]) {}
+    /** Retrieves the native ID memory address as a number */
+    getIdValue(): number {
+        return getObjectId(this.id);
+    }
 
     /**
      * Compares this object to another for equality.
      *
-     * Objects are equal if they wrap the same native pointer.
+     * Objects are equal if they wrap the same native ID.
      *
      * @param other - Object to compare against
      * @returns `true` if both wrap the same native object
      */
     equals(other: unknown): boolean {
         if (!(other instanceof NativeObject)) return false;
-        return getObjectId(this.id) === getObjectId(other.id);
+        return this.getIdValue() === other.getIdValue();
     }
 }
 

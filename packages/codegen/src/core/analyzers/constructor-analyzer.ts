@@ -4,7 +4,7 @@
  * Analyzes GIR constructors to determine which properties are constructor parameters.
  */
 
-import type { GirRepository, GirClass } from "@gtkx/gir";
+import type { GirClass, GirRepository } from "@gtkx/gir";
 import { APPLICATION_PARAM_NAME } from "../constants/index.js";
 import { snakeToKebab, toCamelCase } from "../utils/naming.js";
 

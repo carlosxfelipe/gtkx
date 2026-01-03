@@ -1,4 +1,4 @@
-import type { GirRepository, GirClass, GirNamespace, GirRecord } from "@gtkx/gir";
+import type { GirClass, GirNamespace, GirRecord, GirRepository } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import type { SourceFile } from "ts-morph";
 import { GenerationContext } from "../core/generation-context.js";
@@ -127,7 +127,7 @@ export class FfiGenerator {
 
                 sourceFile.addImportDeclaration({
                     moduleSpecifier: "../../native/base.js",
-                    namedImports: ["NativeObject"],
+                    namedImports: ["NativeObject", "ObjectId"],
                 });
 
                 const classDecl = sourceFile.addClass({
@@ -157,7 +157,7 @@ export class FfiGenerator {
                 classDecl.addMethod({
                     name: "fromPtr",
                     isStatic: true,
-                    parameters: [{ name: "ptr", type: "unknown" }],
+                    parameters: [{ name: "ptr", type: "ObjectId" }],
                     returnType: recordName,
                     statements: buildFromPtrStatements(recordName),
                 });
