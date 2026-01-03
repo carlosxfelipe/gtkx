@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GridChild, GtkGrid, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -20,7 +21,7 @@ describe("render - GridChild", () => {
             );
 
             const childAt = gridRef.current?.getChildAt(1, 2);
-            expect(childAt?.equals(labelRef.current)).toBe(true);
+            expect(childAt && labelRef.current && isObjectEqual(childAt, labelRef.current)).toBe(true);
         });
 
         it("positions child at default (0,0) when no position specified", async () => {
@@ -37,7 +38,7 @@ describe("render - GridChild", () => {
             );
 
             const childAt = gridRef.current?.getChildAt(0, 0);
-            expect(childAt?.equals(labelRef.current)).toBe(true);
+            expect(childAt && labelRef.current && isObjectEqual(childAt, labelRef.current)).toBe(true);
         });
 
         it("sets column span", async () => {
@@ -53,9 +54,12 @@ describe("render - GridChild", () => {
                 { wrapper: false },
             );
 
-            expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
-            expect(gridRef.current?.getChildAt(1, 0)?.equals(labelRef.current)).toBe(true);
-            expect(gridRef.current?.getChildAt(2, 0)?.equals(labelRef.current)).toBe(true);
+            const child00 = gridRef.current?.getChildAt(0, 0);
+            const child10 = gridRef.current?.getChildAt(1, 0);
+            const child20 = gridRef.current?.getChildAt(2, 0);
+            expect(child00 && labelRef.current && isObjectEqual(child00, labelRef.current)).toBe(true);
+            expect(child10 && labelRef.current && isObjectEqual(child10, labelRef.current)).toBe(true);
+            expect(child20 && labelRef.current && isObjectEqual(child20, labelRef.current)).toBe(true);
         });
 
         it("sets row span", async () => {
@@ -71,8 +75,10 @@ describe("render - GridChild", () => {
                 { wrapper: false },
             );
 
-            expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
-            expect(gridRef.current?.getChildAt(0, 1)?.equals(labelRef.current)).toBe(true);
+            const child00 = gridRef.current?.getChildAt(0, 0);
+            const child01 = gridRef.current?.getChildAt(0, 1);
+            expect(child00 && labelRef.current && isObjectEqual(child00, labelRef.current)).toBe(true);
+            expect(child01 && labelRef.current && isObjectEqual(child01, labelRef.current)).toBe(true);
         });
 
         it("updates position on prop change", async () => {
@@ -90,10 +96,12 @@ describe("render - GridChild", () => {
             }
 
             await render(<App col={0} row={0} />, { wrapper: false });
-            expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
+            const child00 = gridRef.current?.getChildAt(0, 0);
+            expect(child00 && labelRef.current && isObjectEqual(child00, labelRef.current)).toBe(true);
 
             await render(<App col={2} row={1} />, { wrapper: false });
-            expect(gridRef.current?.getChildAt(2, 1)?.equals(labelRef.current)).toBe(true);
+            const child21 = gridRef.current?.getChildAt(2, 1);
+            expect(child21 && labelRef.current && isObjectEqual(child21, labelRef.current)).toBe(true);
         });
 
         it("places multiple children in grid", async () => {
@@ -113,8 +121,10 @@ describe("render - GridChild", () => {
                 { wrapper: false },
             );
 
-            expect(gridRef.current?.getChildAt(0, 0)?.equals(label1Ref.current)).toBe(true);
-            expect(gridRef.current?.getChildAt(1, 1)?.equals(label2Ref.current)).toBe(true);
+            const child00 = gridRef.current?.getChildAt(0, 0);
+            const child11 = gridRef.current?.getChildAt(1, 1);
+            expect(child00 && label1Ref.current && isObjectEqual(child00, label1Ref.current)).toBe(true);
+            expect(child11 && label2Ref.current && isObjectEqual(child11, label2Ref.current)).toBe(true);
         });
 
         it("removes child from grid", async () => {

@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
@@ -124,7 +125,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
         let current: Gtk.Widget | null = widget;
 
         while (current) {
-            if (current.equals(ancestor)) {
+            if (isObjectEqual(current, ancestor)) {
                 return true;
             }
 

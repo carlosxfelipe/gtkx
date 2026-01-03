@@ -1,4 +1,4 @@
-import { batch, NativeObject } from "@gtkx/ffi";
+import { batch, isObjectEqual, NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
@@ -105,7 +105,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
         const previousSibling = this.findPreviousSibling(before);
         const currentParent = child.container.getParent();
-        const isChildOfThisContainer = currentParent?.equals(container);
+        const isChildOfThisContainer = currentParent && isObjectEqual(currentParent, container);
 
         if (isChildOfThisContainer) {
             container.reorderChildAfter(child.container, previousSibling);
@@ -255,7 +255,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 return;
             }
 
-            if (currentValue instanceof NativeObject && currentValue.equals(value)) {
+            if (currentValue instanceof NativeObject && value instanceof NativeObject && isObjectEqual(currentValue, value)) {
                 return;
             }
         }
@@ -308,7 +308,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         let beforeChild = this.container.getFirstChild();
 
         while (beforeChild) {
-            if (beforeChild.equals(before.container)) {
+            if (isObjectEqual(beforeChild, before.container)) {
                 return beforeChild.getPrevSibling() ?? undefined;
             }
             beforeChild = beforeChild.getNextSibling();
@@ -322,7 +322,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         let currentChild = this.container.getFirstChild();
 
         while (currentChild) {
-            if (currentChild.equals(before.container)) {
+            if (isObjectEqual(currentChild, before.container)) {
                 return position;
             }
             position++;

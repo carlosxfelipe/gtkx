@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
@@ -40,7 +41,7 @@ export class PackChild extends VirtualNode {
                 for (const widget of childrenToRemove) {
                     const currentParent = widget.getParent();
 
-                    if (currentParent?.equals(parent)) {
+                    if (currentParent && isObjectEqual(currentParent, parent)) {
                         parent.remove(widget);
                     }
                 }
@@ -92,7 +93,7 @@ export class PackChild extends VirtualNode {
             if (parent) {
                 const currentParent = widget.getParent();
 
-                if (currentParent?.equals(parent)) {
+                if (currentParent && isObjectEqual(currentParent, parent)) {
                     parent.remove(widget);
                 }
             }

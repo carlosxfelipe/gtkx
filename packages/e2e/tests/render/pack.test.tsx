@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -46,7 +47,9 @@ describe("render - Pack", () => {
             await render(<App count={1} />, { wrapper: false });
 
             expect(boxRef.current?.getFirstChild()).not.toBeNull();
-            expect(boxRef.current?.getFirstChild()?.equals(boxRef.current?.getLastChild())).toBe(true);
+            const first = boxRef.current?.getFirstChild();
+            const last = boxRef.current?.getLastChild();
+            expect(first && last && isObjectEqual(first, last)).toBe(true);
         });
     });
 });

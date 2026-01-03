@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
@@ -86,7 +87,7 @@ class StackPageNode extends SlotNode<Props> {
 
         const currentParent = oldChild.getParent();
 
-        if (currentParent?.equals(parent)) {
+        if (currentParent && isObjectEqual(currentParent, parent)) {
             parent.remove(oldChild);
         }
     }

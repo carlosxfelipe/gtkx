@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
@@ -30,7 +31,7 @@ class ToolbarChildNode extends SlotNode {
         if (oldChild) {
             const parent = oldChild.getParent();
 
-            if (parent?.equals(toolbar)) {
+            if (parent && isObjectEqual(parent, toolbar)) {
                 toolbar.remove(oldChild);
             }
         }

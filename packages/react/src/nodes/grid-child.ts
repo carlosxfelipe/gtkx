@@ -1,4 +1,4 @@
-import { batch } from "@gtkx/ffi";
+import { batch, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -47,14 +47,14 @@ class GridChildNode extends SlotNode<Props> {
         batch(() => {
             const existingChild = grid.getChildAt(column, row);
 
-            if (existingChild && !existingChild.equals(this.child)) {
+            if (existingChild && this.child && !isObjectEqual(existingChild, this.child)) {
                 grid.remove(existingChild);
             }
 
             if (this.child) {
                 const currentParent = this.child.getParent();
 
-                if (currentParent?.equals(grid)) {
+                if (currentParent && isObjectEqual(currentParent, grid)) {
                     grid.remove(this.child);
                 }
 
@@ -69,7 +69,7 @@ class GridChildNode extends SlotNode<Props> {
         if (oldChild) {
             const parent = oldChild.getParent();
 
-            if (parent?.equals(grid)) {
+            if (parent && isObjectEqual(parent, grid)) {
                 grid.remove(oldChild);
             }
         }

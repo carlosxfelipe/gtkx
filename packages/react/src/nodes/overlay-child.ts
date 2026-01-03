@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -26,7 +27,7 @@ class OverlayChildNode extends SlotNode<Props> {
         if (oldChild) {
             const parent = oldChild.getParent();
 
-            if (parent?.equals(overlay)) {
+            if (parent && isObjectEqual(parent, overlay)) {
                 overlay.removeOverlay(oldChild);
             }
         }

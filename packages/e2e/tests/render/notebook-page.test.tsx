@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkNotebook, Notebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -160,7 +161,7 @@ describe("render - NotebookPage", () => {
 
             expect(notebookRef.current?.getNPages()).toBe(1);
             const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget);
-            expect(tabLabel?.equals(tabRef.current)).toBe(true);
+            expect(tabLabel && tabRef.current && isObjectEqual(tabLabel, tabRef.current)).toBe(true);
         });
 
         it("uses custom tab when both label prop and PageTab are provided", async () => {
@@ -181,7 +182,7 @@ describe("render - NotebookPage", () => {
             );
 
             const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget);
-            expect(tabLabel?.equals(tabRef.current)).toBe(true);
+            expect(tabLabel && tabRef.current && isObjectEqual(tabLabel, tabRef.current)).toBe(true);
             expect((tabLabel as Gtk.Label)?.getLabel()).toBe("Custom Tab Wins");
         });
 
@@ -238,12 +239,10 @@ describe("render - NotebookPage", () => {
             );
 
             expect(notebookRef.current?.getNPages()).toBe(2);
-            expect(notebookRef.current?.getTabLabel(content1Ref.current as Gtk.Widget)?.equals(tab1Ref.current)).toBe(
-                true,
-            );
-            expect(notebookRef.current?.getTabLabel(content2Ref.current as Gtk.Widget)?.equals(tab2Ref.current)).toBe(
-                true,
-            );
+            const tab1Label = notebookRef.current?.getTabLabel(content1Ref.current as Gtk.Widget);
+            const tab2Label = notebookRef.current?.getTabLabel(content2Ref.current as Gtk.Widget);
+            expect(tab1Label && tab1Ref.current && isObjectEqual(tab1Label, tab1Ref.current)).toBe(true);
+            expect(tab2Label && tab2Ref.current && isObjectEqual(tab2Label, tab2Ref.current)).toBe(true);
         });
 
         it("mixes pages with text labels and custom tabs", async () => {
@@ -275,7 +274,7 @@ describe("render - NotebookPage", () => {
             expect(tab1?.getLabel()).toBe("Text Tab");
 
             const tab2 = notebookRef.current?.getTabLabel(content2Ref.current as Gtk.Widget);
-            expect(tab2?.equals(customTabRef.current)).toBe(true);
+            expect(tab2 && customTabRef.current && isObjectEqual(tab2, customTabRef.current)).toBe(true);
         });
     });
 });
