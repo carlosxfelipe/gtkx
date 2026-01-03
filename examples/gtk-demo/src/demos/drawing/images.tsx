@@ -15,7 +15,6 @@ const ImagesDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Themed Icons with GtkImage */}
             <GtkFrame label="Themed Icons (GtkImage)">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -51,7 +50,6 @@ const ImagesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Icon Sizes */}
             <GtkFrame label="Icon Sizes">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -81,7 +79,6 @@ const ImagesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Common Icons */}
             <GtkFrame label="Common Icons">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -146,7 +143,6 @@ const ImagesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GtkPicture */}
             <GtkFrame label="GtkPicture">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

@@ -11,7 +11,6 @@ const SpinButtonDemo = () => {
     const [minutes, setMinutes] = useState(0);
     const [seconds, setSeconds] = useState(0);
 
-    // Create adjustments for spin buttons
     const basicAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
     const floatAdjustment = useMemo(() => new Gtk.Adjustment(2.5, 0, 10, 0.1, 1, 0), []);
     const hoursAdjustment = useMemo(() => new Gtk.Adjustment(12, 0, 23, 1, 6, 0), []);
@@ -29,7 +28,6 @@ const SpinButtonDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Basic Integer Spin Button */}
             <GtkFrame label="Basic Integer">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -57,7 +55,6 @@ const SpinButtonDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Floating Point Spin Button */}
             <GtkFrame label="Floating Point">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -85,7 +82,6 @@ const SpinButtonDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Time Input */}
             <GtkFrame label="Time Input">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

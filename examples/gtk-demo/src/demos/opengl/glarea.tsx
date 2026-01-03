@@ -26,17 +26,7 @@ void main() {
     FragColor = vertexColor;
 }`;
 
-const TRIANGLE_VERTICES = [
-    0.0,
-    0.5,
-    0.0,
-    -0.5,
-    -0.5,
-    0.0,
-    0.5,
-    -0.5,
-    0.0,
-];
+const TRIANGLE_VERTICES = [0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
 
 interface GLState {
     program: number;
@@ -143,6 +133,7 @@ const GLAreaDemo = () => {
             gl.clearDepth(1.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(state.program);
             gl.uniform4f(state.colorLocation, triangleColor.r, triangleColor.g, triangleColor.b, triangleColor.a);
 
@@ -150,6 +141,7 @@ const GLAreaDemo = () => {
             gl.drawArrays(gl.TRIANGLES, 0, 3);
             gl.bindVertexArray(0);
 
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(0);
 
             return true;

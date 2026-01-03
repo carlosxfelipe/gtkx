@@ -137,7 +137,6 @@ const CssShadowsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Elevation Levels */}
             <GtkFrame label="Elevation Levels">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -155,7 +154,6 @@ const CssShadowsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Special Effects */}
             <GtkFrame label="Special Effects">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -173,7 +171,6 @@ const CssShadowsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Colored Shadows */}
             <GtkFrame label="Colored Shadows">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -226,7 +223,6 @@ const CssShadowsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Interactive Demo */}
             <GtkFrame label="Interactive Demo">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -271,7 +267,6 @@ const CssShadowsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* CSS Code */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="CSS Syntax" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

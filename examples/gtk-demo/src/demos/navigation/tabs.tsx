@@ -62,7 +62,6 @@ const TabsDemo = () => {
         >
             <GtkLabel label="Tabs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About Tabs */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About GtkNotebook" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -73,7 +72,6 @@ const TabsDemo = () => {
                 />
             </GtkBox>
 
-            {/* Basic Tabs */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -140,7 +138,6 @@ const TabsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Dynamic Tabs */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -207,7 +204,6 @@ const TabsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Tab Position */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Tab Position" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -228,7 +224,6 @@ const TabsDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Controlled Navigation */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Controlled Navigation" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -252,7 +247,6 @@ const TabsDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Key Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

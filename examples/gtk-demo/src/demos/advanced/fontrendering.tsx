@@ -69,10 +69,8 @@ const FontRenderPreview = ({
 
     const drawFunc = useCallback(
         (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Clear background
             cr.setSourceRgb(1, 1, 1).paint();
 
-            // Draw pixel grid if enabled and scale > 1
             if (showGrid && scale > 1) {
                 cr.setSourceRgba(0.8, 0.8, 0.8, 0.5).setLineWidth(0.5);
                 const gridStep = scale;
@@ -85,7 +83,6 @@ const FontRenderPreview = ({
                 cr.stroke();
             }
 
-            // Create font options
             const fontOptions = new FontOptions();
             fontOptions
                 .setHintStyle(options.hintStyle)
@@ -93,13 +90,10 @@ const FontRenderPreview = ({
                 .setHintMetrics(options.hintMetrics)
                 .setSubpixelOrder(options.subpixelOrder);
 
-            // Apply scale transformation
             cr.save().scale(scale, scale);
 
-            // Set font options on context
             cr.setFontOptions(fontOptions);
 
-            // Create Pango layout with the font options
             const context = PangoCairo.createContext(cr);
             PangoCairo.contextSetFontOptions(context, fontOptions);
 
@@ -108,7 +102,6 @@ const FontRenderPreview = ({
             layout.setFontDescription(fontDesc);
             layout.setText(text, -1);
 
-            // Position text
             const logicalRect = new Pango.Rectangle();
             layout.getPixelExtents(undefined, logicalRect);
             const scaledWidth = width / scale;
@@ -118,7 +111,6 @@ const FontRenderPreview = ({
 
             cr.translate(x, y);
 
-            // Draw text
             cr.setSourceRgb(0, 0, 0);
             PangoCairo.showLayout(cr, layout);
 
@@ -202,7 +194,6 @@ const FontRenderingDemo = () => {
         subpixelOrder,
     };
 
-    // Preset comparisons
     const noHintingOptions: FontRenderingOptions = {
         hintStyle: HintStyle.NONE,
         antialias: Antialias.GRAY,
@@ -254,7 +245,6 @@ const FontRenderingDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Main Preview */}
             <GtkFrame label="Preview">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -281,7 +271,6 @@ const FontRenderingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Controls */}
             <GtkFrame label="Font Options">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -345,7 +334,6 @@ const FontRenderingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Size Controls */}
             <GtkFrame label="Display Settings">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -381,7 +369,6 @@ const FontRenderingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Comparisons */}
             <GtkFrame label="Hinting Comparison">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -434,7 +421,6 @@ const FontRenderingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Reference */}
             <GtkFrame label="Font Options Reference">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

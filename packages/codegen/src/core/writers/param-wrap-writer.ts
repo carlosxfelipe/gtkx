@@ -12,11 +12,6 @@ export type ReturnUnwrapInfo = {
     needsUnwrap: boolean;
 };
 
-export type CallbackWrapperOptions = {
-    paramWrapInfos: Array<{ wrapInfo: ParamWrapInfo }>;
-    returnUnwrapInfo?: ReturnUnwrapInfo;
-};
-
 export class ParamWrapWriter {
     needsReturnUnwrap(mappedType: MappedType | null): ReturnUnwrapInfo {
         if (!mappedType) {

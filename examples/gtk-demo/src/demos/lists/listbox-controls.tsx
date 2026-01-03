@@ -109,7 +109,6 @@ const ListBoxControlsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Settings Panel */}
             <GtkFrame label="Settings Panel">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -183,7 +182,6 @@ const ListBoxControlsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Task List with Actions */}
             <GtkFrame label="Task List">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -238,7 +236,6 @@ const ListBoxControlsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Patterns */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Patterns" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

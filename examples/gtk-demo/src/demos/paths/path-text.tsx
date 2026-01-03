@@ -5,7 +5,6 @@ import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-text.tsx?raw";
 
-// Helper to calculate point and tangent on a quadratic bezier curve
 const getQuadraticBezierPoint = (
     t: number,
     p0: { x: number; y: number },
@@ -31,17 +30,14 @@ const getQuadraticBezierTangent = (
     return Math.atan2(dy, dx);
 };
 
-// Draw text along a curved path
 const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Hello Curved World!";
     const fontSize = 24;
 
-    // Define a quadratic bezier curve
     const p0 = { x: 30, y: height * 0.7 };
     const p1 = { x: width / 2, y: height * 0.1 };
     const p2 = { x: width - 30, y: height * 0.7 };
 
-    // Draw the path for reference
     cr.setSourceRgba(0.6, 0.6, 0.6, 0.5)
         .setLineWidth(2)
         .setLineCap(LineCap.ROUND)
@@ -56,10 +52,8 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: Context, width: number, hei
         )
         .stroke();
 
-    // Set up font
     cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.BOLD).setFontSize(fontSize);
 
-    // Calculate approximate path length for character spacing
     const numSamples = 100;
     let pathLength = 0;
     let prevPoint = p0;
@@ -70,14 +64,12 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: Context, width: number, hei
         prevPoint = point;
     }
 
-    // Draw each character along the path
     const charWidth = pathLength / (text.length + 2);
     let currentLength = charWidth;
 
     cr.setSourceRgb(0.2, 0.4, 0.8);
 
     for (let i = 0; i < text.length; i++) {
-        // Find the t parameter for the current length
         let t = 0;
         let accumulatedLength = 0;
         prevPoint = p0;
@@ -109,14 +101,12 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: Context, width: number, hei
     }
 };
 
-// Draw text along a wave path
 const drawTextOnWave = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Wavy Text Animation";
     const fontSize = 20;
     const amplitude = 30;
     const frequency = 2;
 
-    // Draw wave path for reference
     cr.setSourceRgba(0.6, 0.6, 0.6, 0.4)
         .setLineWidth(1)
         .moveTo(20, height / 2);
@@ -126,10 +116,8 @@ const drawTextOnWave = (_self: Gtk.DrawingArea, cr: Context, width: number, heig
     }
     cr.stroke();
 
-    // Set up font
     cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL).setFontSize(fontSize);
 
-    // Draw each character
     cr.setSourceRgb(0.8, 0.3, 0.5);
     const charSpacing = (width - 60) / text.length;
 
@@ -151,7 +139,6 @@ const drawTextOnWave = (_self: Gtk.DrawingArea, cr: Context, width: number, heig
     }
 };
 
-// Draw text along a circular path
 const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Circular Path Text - Goes Around - ";
     const fontSize = 16;
@@ -159,16 +146,13 @@ const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, he
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 30;
 
-    // Draw circle for reference
     cr.setSourceRgba(0.6, 0.6, 0.6, 0.4)
         .setLineWidth(1)
         .arc(centerX, centerY, radius, 0, 2 * Math.PI)
         .stroke();
 
-    // Set up font
     cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL).setFontSize(fontSize);
 
-    // Calculate angle step per character
     const angleStep = (2 * Math.PI) / text.length;
 
     cr.setSourceRgb(0.3, 0.7, 0.4);
@@ -187,7 +171,6 @@ const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, he
     }
 };
 
-// Draw spiral text
 const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const text = "Spiral text winds inward towards the center...";
     const fontSize = 12;
@@ -197,7 +180,6 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: Context, width: number, he
     const minRadius = 20;
     const totalRotations = 2.5;
 
-    // Draw spiral for reference
     cr.setSourceRgba(0.6, 0.6, 0.6, 0.3).setLineWidth(1);
     for (let i = 0; i <= 200; i++) {
         const t = i / 200;
@@ -213,7 +195,6 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: Context, width: number, he
     }
     cr.stroke();
 
-    // Set up font
     cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL).setFontSize(fontSize).setSourceRgb(0.6, 0.4, 0.8);
 
     for (let i = 0; i < text.length; i++) {
@@ -232,7 +213,6 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: Context, width: number, he
     }
 };
 
-// Component to display a drawing canvas with label
 const DrawingCanvas = ({
     width,
     height,
@@ -272,7 +252,6 @@ const PathTextDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Bezier Curve Text */}
             <GtkFrame label="Bezier Curve">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -292,7 +271,6 @@ const PathTextDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Wave and Circle */}
             <GtkFrame label="Trigonometric Paths">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -308,7 +286,6 @@ const PathTextDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Spiral */}
             <GtkFrame label="Spiral Path">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}

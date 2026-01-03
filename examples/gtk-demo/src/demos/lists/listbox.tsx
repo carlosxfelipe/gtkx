@@ -83,7 +83,6 @@ const ListBoxDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Contact List */}
             <GtkFrame label="Contact List">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -168,7 +167,6 @@ const ListBoxDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Selection Modes */}
             <GtkFrame label="Selection Modes">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -255,7 +253,6 @@ const ListBoxDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

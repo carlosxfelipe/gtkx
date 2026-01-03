@@ -5,18 +5,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-explorer.tsx?raw";
 
-// Point type
 interface Point {
     x: number;
     y: number;
 }
 
-// Path segment types
 type SegmentType = "line" | "quadratic" | "cubic";
 
 interface PathSegment {
     type: SegmentType;
-    points: Point[]; // For line: [end], quadratic: [control, end], cubic: [ctrl1, ctrl2, end]
+    points: Point[];
 }
 
 interface PathData {
@@ -24,7 +22,6 @@ interface PathData {
     segments: PathSegment[];
 }
 
-// Default path
 const createDefaultPath = (width: number, height: number): PathData => ({
     start: { x: 50, y: height / 2 },
     segments: [
@@ -50,14 +47,12 @@ const createDefaultPath = (width: number, height: number): PathData => ({
     ],
 });
 
-// Hit test for control points
 const hitTest = (point: Point, target: Point, radius: number = 15): boolean => {
     const dx = point.x - target.x;
     const dy = point.y - target.y;
     return dx * dx + dy * dy <= radius * radius;
 };
 
-// Interactive path editor component
 const PathExplorerDemo = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const canvasWidth = 500;
@@ -72,7 +67,6 @@ const PathExplorerDemo = () => {
     const dragStartRef = useRef<Point | null>(null);
     const originalPointRef = useRef<Point | null>(null);
 
-    // Get all control points for hit testing
     const getAllPoints = useCallback((): { point: Point; id: { segmentIdx: number; pointIdx: number } | "start" }[] => {
         const points: { point: Point; id: { segmentIdx: number; pointIdx: number } | "start" }[] = [
             { point: path.start, id: "start" },
@@ -87,10 +81,8 @@ const PathExplorerDemo = () => {
         return points;
     }, [path]);
 
-    // Draw the path
     const drawPath = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, _width: number, _height: number) => {
-            // Draw the main path
             if (showPath) {
                 cr.setSourceRgb(0.2, 0.5, 0.8)
                     .setLineWidth(strokeWidth)
@@ -113,7 +105,6 @@ const PathExplorerDemo = () => {
                             const ctrl = segment.points[0];
                             const end = segment.points[1];
                             if (ctrl && end) {
-                                // Cairo doesn't have quadratic bezier, convert to cubic
                                 const cp1x = currentPoint.x + (2 / 3) * (ctrl.x - currentPoint.x);
                                 const cp1y = currentPoint.y + (2 / 3) * (ctrl.y - currentPoint.y);
                                 const cp2x = end.x + (2 / 3) * (ctrl.x - end.x);
@@ -138,9 +129,7 @@ const PathExplorerDemo = () => {
                 cr.stroke();
             }
 
-            // Draw control handles
             if (showHandles) {
-                // Draw handle lines
                 cr.setSourceRgba(0.8, 0.4, 0.4, 0.6).setLineWidth(1);
 
                 let prevPoint = path.start;
@@ -167,7 +156,6 @@ const PathExplorerDemo = () => {
                     }
                 }
 
-                // Draw control points
                 const allPoints = getAllPoints();
                 for (const { point, id } of allPoints) {
                     const isSelected =
@@ -184,9 +172,7 @@ const PathExplorerDemo = () => {
                                 (path.segments[id.segmentIdx]?.type === "quadratic" && id.pointIdx === 1) ||
                                 (path.segments[id.segmentIdx]?.type === "cubic" && id.pointIdx === 2)));
 
-                    // Draw point
                     if (isEndpoint) {
-                        // Square for endpoints
                         cr.setSourceRgb(isSelected ? 0.9 : 0.3, isSelected ? 0.3 : 0.6, isSelected ? 0.3 : 0.9)
                             .rectangle(point.x - 6, point.y - 6, 12, 12)
                             .fill();
@@ -195,7 +181,6 @@ const PathExplorerDemo = () => {
                             .rectangle(point.x - 6, point.y - 6, 12, 12)
                             .stroke();
                     } else {
-                        // Circle for control points
                         cr.setSourceRgb(isSelected ? 0.9 : 0.9, isSelected ? 0.3 : 0.6, isSelected ? 0.3 : 0.3)
                             .arc(point.x, point.y, 6, 0, 2 * Math.PI)
                             .fill();
@@ -207,7 +192,6 @@ const PathExplorerDemo = () => {
                 }
             }
 
-            // Draw info
             cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
                 .setFontSize(11)
                 .setSourceRgb(0.5, 0.5, 0.5)
@@ -225,20 +209,17 @@ const PathExplorerDemo = () => {
         [path, selectedPoint, showHandles, showPath, strokeWidth, getAllPoints],
     );
 
-    // Set up drawing and gestures
     useEffect(() => {
         const area = ref.current;
         if (!area) return;
 
         area.setDrawFunc(drawPath);
 
-        // Drag gesture for moving points
         const drag = new Gtk.GestureDrag();
 
         drag.connect("drag-begin", (_gesture: Gtk.GestureDrag, startX: number, startY: number) => {
             dragStartRef.current = { x: startX, y: startY };
 
-            // Find which point was clicked
             const allPoints = getAllPoints();
             for (const { point, id } of allPoints) {
                 if (hitTest({ x: startX, y: startY }, point)) {
@@ -293,7 +274,6 @@ const PathExplorerDemo = () => {
         area.addController(drag);
     }, [drawPath, selectedPoint, getAllPoints, path]);
 
-    // Re-draw when path changes
     useEffect(() => {
         if (ref.current) {
             ref.current.setDrawFunc(drawPath);

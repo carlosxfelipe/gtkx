@@ -5,13 +5,11 @@ import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-fill.tsx?raw";
 
-// Draw a complex path with solid fill
 const drawSolidFill = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const size = Math.min(width, height) * 0.4;
 
-    // Create a heart shape using bezier curves
     cr.save()
         .translate(centerX, centerY)
         .moveTo(0, -size * 0.3)
@@ -19,26 +17,21 @@ const drawSolidFill = (_self: Gtk.DrawingArea, cr: Context, width: number, heigh
         .curveTo(size * 0.8, size * 0.2, size * 0.8, -size, 0, -size * 0.3)
         .closePath();
 
-    // Fill with solid color
     cr.setSourceRgb(0.9, 0.2, 0.3).fillPreserve();
 
-    // Stroke outline
     cr.setSourceRgb(0.7, 0.1, 0.2).setLineWidth(3).stroke().restore();
 };
 
-// Draw with linear gradient fill
 const drawLinearGradient = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const padding = 20;
     const rectWidth = width - padding * 2;
     const rectHeight = height - padding * 2;
 
-    // Create linear gradient
     const gradient = Pattern.createLinear(padding, padding, padding + rectWidth, padding + rectHeight)
         .addColorStopRgb(0, 0.2, 0.4, 0.8)
         .addColorStopRgb(0.5, 0.5, 0.2, 0.7)
         .addColorStopRgb(1, 0.9, 0.3, 0.5);
 
-    // Draw rounded rectangle path
     const radius = 20;
     cr.moveTo(padding + radius, padding)
         .lineTo(padding + rectWidth - radius, padding)
@@ -54,13 +47,11 @@ const drawLinearGradient = (_self: Gtk.DrawingArea, cr: Context, width: number, 
         .fill();
 };
 
-// Draw with radial gradient fill
 const drawRadialGradient = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 10;
 
-    // Create radial gradient
     const gradient = Pattern.createRadial(
         centerX - radius * 0.3,
         centerY - radius * 0.3,
@@ -73,26 +64,21 @@ const drawRadialGradient = (_self: Gtk.DrawingArea, cr: Context, width: number, 
         .addColorStopRgb(0.5, 0.9, 0.6, 0.1)
         .addColorStopRgb(1, 0.8, 0.3, 0);
 
-    // Draw circle
     cr.arc(centerX, centerY, radius, 0, 2 * Math.PI)
         .setSource(gradient)
         .fill();
 };
 
-// Draw demonstrating even-odd fill rule (creates holes)
 const drawEvenOddFill = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const outerRadius = Math.min(width, height) / 2 - 10;
     const innerRadius = outerRadius * 0.5;
 
-    // Outer circle (clockwise)
     cr.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
 
-    // Inner circle (also clockwise - with even-odd, this creates a hole)
     cr.newSubPath().arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
 
-    // Use even-odd fill rule
     cr.setFillRule(FillRule.EVEN_ODD)
         .setSourceRgb(0.3, 0.6, 0.9)
         .fillPreserve()
@@ -100,24 +86,19 @@ const drawEvenOddFill = (_self: Gtk.DrawingArea, cr: Context, width: number, hei
         .setLineWidth(2)
         .stroke();
 
-    // Reset to default
     cr.setFillRule(FillRule.WINDING);
 };
 
-// Draw demonstrating winding fill rule (no holes with same direction)
 const drawWindingFill = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const outerRadius = Math.min(width, height) / 2 - 10;
     const innerRadius = outerRadius * 0.5;
 
-    // Outer circle (clockwise)
     cr.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
 
-    // Inner circle (counter-clockwise - with winding, this creates a hole)
     cr.newSubPath().arcNegative(centerX, centerY, innerRadius, 2 * Math.PI, 0);
 
-    // Use winding fill rule (default)
     cr.setFillRule(FillRule.WINDING)
         .setSourceRgb(0.9, 0.5, 0.2)
         .fillPreserve()
@@ -126,14 +107,12 @@ const drawWindingFill = (_self: Gtk.DrawingArea, cr: Context, width: number, hei
         .stroke();
 };
 
-// Draw complex polygon with gradient
 const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 15;
     const points = 6;
 
-    // Create hexagon path
     for (let i = 0; i < points; i++) {
         const angle = (i * 2 * Math.PI) / points - Math.PI / 2;
         const x = centerX + Math.cos(angle) * radius;
@@ -146,7 +125,6 @@ const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: Context, width: number, 
     }
     cr.closePath();
 
-    // Create gradient
     const gradient = Pattern.createLinear(0, 0, width, height)
         .addColorStopRgb(0, 0.4, 0.8, 0.4)
         .addColorStopRgb(1, 0.2, 0.5, 0.3);
@@ -154,7 +132,6 @@ const drawComplexPolygon = (_self: Gtk.DrawingArea, cr: Context, width: number, 
     cr.setSource(gradient).fillPreserve().setSourceRgb(0.1, 0.4, 0.2).setLineWidth(3).stroke();
 };
 
-// Component to display a drawing canvas with label
 const DrawingCanvas = ({
     width,
     height,
@@ -194,7 +171,6 @@ const PathFillDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Solid and Gradient Fills */}
             <GtkFrame label="Solid & Gradient Fills">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -211,7 +187,6 @@ const PathFillDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Fill Rules */}
             <GtkFrame label="Fill Rules">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -239,7 +214,6 @@ const PathFillDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Complex Shapes */}
             <GtkFrame label="Complex Shapes">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}

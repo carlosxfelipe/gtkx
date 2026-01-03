@@ -30,9 +30,7 @@ const tryClaimDisplay = (): number | null => {
         try {
             renameSync(availablePath, claimedPath);
             return display;
-        } catch {
-            // File may have been claimed by another worker, try next
-        }
+        } catch {}
     }
 
     return null;
@@ -58,9 +56,7 @@ const releaseDisplay = (display: number): void => {
 
     try {
         renameSync(claimedPath, availablePath);
-    } catch {
-        // File may already be released or cleaned up by teardown
-    }
+    } catch {}
 };
 
 const display = claimDisplay();

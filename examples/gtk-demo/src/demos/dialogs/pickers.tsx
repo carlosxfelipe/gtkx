@@ -48,9 +48,7 @@ const PickersDemo = () => {
 
             const rgba = await colorDialog.chooseRgbaAsync(app.getActiveWindow() ?? undefined);
             setSelectedColor(formatRgba(rgba));
-        } catch {
-            // User cancelled
-        }
+        } catch {}
     };
 
     const handleFontPick = async () => {
@@ -61,9 +59,7 @@ const PickersDemo = () => {
 
             const fontDesc = await fontDialog.chooseFontAsync(app.getActiveWindow() ?? undefined);
             setSelectedFont(fontDesc.toString());
-        } catch {
-            // User cancelled
-        }
+        } catch {}
     };
 
     const handleFileOpen = async () => {
@@ -74,9 +70,7 @@ const PickersDemo = () => {
 
             const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
             setSelectedFile(file.getPath() ?? file.getUri());
-        } catch {
-            // User cancelled
-        }
+        } catch {}
     };
 
     const handleFolderSelect = async () => {
@@ -87,9 +81,7 @@ const PickersDemo = () => {
 
             const folder = await fileDialog.selectFolderAsync(app.getActiveWindow() ?? undefined);
             setSelectedFolder(folder.getPath() ?? folder.getUri());
-        } catch {
-            // User cancelled
-        }
+        } catch {}
     };
 
     const handleFileSave = async () => {
@@ -101,9 +93,7 @@ const PickersDemo = () => {
 
             const file = await fileDialog.saveAsync(app.getActiveWindow() ?? undefined);
             setSaveLocation(file.getPath() ?? file.getUri());
-        } catch {
-            // User cancelled
-        }
+        } catch {}
     };
 
     const handleMultipleFiles = async () => {
@@ -115,9 +105,7 @@ const PickersDemo = () => {
             const files = await fileDialog.openMultipleAsync(app.getActiveWindow() ?? undefined);
             const count = files.getNItems();
             setSelectedFile(`${count} file(s) selected`);
-        } catch {
-            // User cancelled
-        }
+        } catch {}
     };
 
     return (
@@ -131,7 +119,6 @@ const PickersDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Color Picker */}
             <GtkFrame label="Color Picker">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -161,7 +148,6 @@ const PickersDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Font Picker */}
             <GtkFrame label="Font Picker">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -191,7 +177,6 @@ const PickersDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* File Picker */}
             <GtkFrame label="File Picker">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

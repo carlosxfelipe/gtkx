@@ -9,7 +9,6 @@ const TOTAL_TILES = GRID_SIZE * GRID_SIZE;
 
 type Board = (number | null)[];
 
-// Check if the puzzle is solved
 const isSolved = (board: Board): boolean => {
     for (let i = 0; i < TOTAL_TILES - 1; i++) {
         if (board[i] !== i + 1) return false;
@@ -17,32 +16,26 @@ const isSolved = (board: Board): boolean => {
     return board[TOTAL_TILES - 1] === null;
 };
 
-// Get the position of the empty tile
 const getEmptyPosition = (board: Board): number => {
     return board.indexOf(null);
 };
 
-// Check if a move is valid
 const canMove = (index: number, emptyIndex: number): boolean => {
     const row = Math.floor(index / GRID_SIZE);
     const col = index % GRID_SIZE;
     const emptyRow = Math.floor(emptyIndex / GRID_SIZE);
     const emptyCol = emptyIndex % GRID_SIZE;
 
-    // Can move if adjacent (not diagonal)
     return (Math.abs(row - emptyRow) === 1 && col === emptyCol) || (Math.abs(col - emptyCol) === 1 && row === emptyRow);
 };
 
-// Shuffle the board using valid moves to ensure solvability
 const shuffleBoard = (): Board => {
-    // Start with solved state
     const board: Board = [];
     for (let i = 1; i < TOTAL_TILES; i++) {
         board.push(i);
     }
     board.push(null);
 
-    // Make many random valid moves
     let emptyIndex = TOTAL_TILES - 1;
     const numMoves = 200;
 
@@ -51,13 +44,11 @@ const shuffleBoard = (): Board => {
         const emptyRow = Math.floor(emptyIndex / GRID_SIZE);
         const emptyCol = emptyIndex % GRID_SIZE;
 
-        // Find all valid moves
-        if (emptyRow > 0) validMoves.push(emptyIndex - GRID_SIZE); // up
-        if (emptyRow < GRID_SIZE - 1) validMoves.push(emptyIndex + GRID_SIZE); // down
-        if (emptyCol > 0) validMoves.push(emptyIndex - 1); // left
-        if (emptyCol < GRID_SIZE - 1) validMoves.push(emptyIndex + 1); // right
+        if (emptyRow > 0) validMoves.push(emptyIndex - GRID_SIZE);
+        if (emptyRow < GRID_SIZE - 1) validMoves.push(emptyIndex + GRID_SIZE);
+        if (emptyCol > 0) validMoves.push(emptyIndex - 1);
+        if (emptyCol < GRID_SIZE - 1) validMoves.push(emptyIndex + 1);
 
-        // Pick a random valid move
         const randomIndex = Math.floor(Math.random() * validMoves.length);
         const moveIndex = validMoves[randomIndex];
         if (moveIndex === undefined) continue;
@@ -115,7 +106,6 @@ const SlidingPuzzleDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Game Status */}
             <GtkFrame label="Game Status">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -140,7 +130,6 @@ const SlidingPuzzleDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Game Board */}
             <GtkFrame label="Puzzle Board">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -177,12 +166,10 @@ const SlidingPuzzleDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Controls */}
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
                 <GtkButton label="New Game" onClicked={handleNewGame} cssClasses={["suggested-action"]} />
             </GtkBox>
 
-            {/* Win Message */}
             {isWon && (
                 <GtkFrame>
                     <GtkBox
@@ -200,7 +187,6 @@ const SlidingPuzzleDemo = () => {
                 </GtkFrame>
             )}
 
-            {/* Instructions */}
             <GtkFrame label="How to Play">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

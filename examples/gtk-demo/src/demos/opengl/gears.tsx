@@ -367,6 +367,7 @@ const GearsDemo = () => {
             gl.clearDepth(1.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(state.program);
 
             const projection = mat4Perspective(Math.PI / 4, aspect, 1.0, 100.0);
@@ -415,6 +416,7 @@ const GearsDemo = () => {
             }
 
             gl.bindVertexArray(0);
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(0);
 
             return true;

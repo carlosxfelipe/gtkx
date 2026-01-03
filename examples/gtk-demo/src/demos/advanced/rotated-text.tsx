@@ -24,14 +24,11 @@ const RotatedTextDemo = () => {
         if (!drawingArea) return;
 
         const drawFunc = (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Clear background
             cr.setSourceRgba(0.1, 0.1, 0.1, 1).paint();
 
-            // Center of the drawing area
             const centerX = width / 2;
             const centerY = height / 2;
 
-            // Draw rotated text around center
             const numTexts = SAMPLE_TEXTS.length;
             const angleStep = (360 / numTexts) * (Math.PI / 180);
             const baseAngle = rotation * (Math.PI / 180);
@@ -44,28 +41,23 @@ const RotatedTextDemo = () => {
 
                 cr.save();
 
-                // Move to center, rotate, then offset
                 cr.translate(centerX, centerY)
                     .rotate(angle)
                     .translate(0, -80 - spacing);
 
-                // Create Pango layout
                 const layout = PangoCairo.createLayout(cr);
                 const fontDesc = Pango.FontDescription.fromString(`Sans Bold ${fontSize}px`);
                 layout.setFontDescription(fontDesc);
                 layout.setText(text, -1);
 
-                // Center the text
                 const logicalRect = new Pango.Rectangle();
                 layout.getPixelExtents(undefined, logicalRect);
                 cr.translate(-logicalRect.width / 2, -logicalRect.height / 2);
 
-                // Draw text shadow
                 cr.setSourceRgba(0, 0, 0, 0.5).translate(2, 2);
                 PangoCairo.showLayout(cr, layout);
                 cr.translate(-2, -2);
 
-                // Draw text with gradient color based on angle
                 const hue = (i / numTexts + rotation / 360) % 1;
                 const [r, g, b] = hslToRgb(hue, 0.7, 0.6);
                 cr.setSourceRgba(r, g, b, 1);
@@ -74,7 +66,6 @@ const RotatedTextDemo = () => {
                 cr.restore();
             }
 
-            // Draw center decoration
             cr.arc(centerX, centerY, 10, 0, 2 * Math.PI)
                 .setSourceRgba(1, 1, 1, 0.3)
                 .fill();
@@ -83,7 +74,6 @@ const RotatedTextDemo = () => {
         drawingArea.setDrawFunc(drawFunc);
     }, [rotation, fontSize, spacing]);
 
-    // Trigger redraw when parameters change
     useEffect(() => {
         drawingAreaRef.current?.queueDraw();
     }, []);
@@ -167,7 +157,6 @@ const RotatedTextDemo = () => {
     );
 };
 
-// Helper function to convert HSL to RGB
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {
     let r: number, g: number, b: number;
 

@@ -28,7 +28,6 @@ export const SourceViewer = () => {
         return buf;
     }, []);
 
-    // Use useEffect for side effects, not useMemo
     useEffect(() => {
         if (currentDemo?.sourceCode) {
             buffer.setText(currentDemo.sourceCode, -1);

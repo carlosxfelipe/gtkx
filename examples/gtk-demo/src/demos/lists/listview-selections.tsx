@@ -51,7 +51,6 @@ const ListViewSelectionsDemo = () => {
         const item = fruits[position];
         if (item) {
             setLastActivated(item.name);
-            // Handle selection based on mode
             if (selectionMode === "SINGLE") {
                 if (selectedIds.has(item.id)) {
                     setSelectedIds(new Set());
@@ -102,7 +101,6 @@ const ListViewSelectionsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Selection Mode Selector */}
             <GtkFrame label="Selection Mode">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -140,7 +138,6 @@ const ListViewSelectionsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* List with Selection */}
             <GtkFrame label="Fruit Selection">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -150,7 +147,6 @@ const ListViewSelectionsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* Selection Controls */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                         <GtkButton
                             label="Select All"
@@ -172,7 +168,6 @@ const ListViewSelectionsDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* List */}
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <ListView<FruitItem>
                             showSeparators
@@ -210,7 +205,6 @@ const ListViewSelectionsDemo = () => {
                         </ListView>
                     </GtkScrolledWindow>
 
-                    {/* Last Activated */}
                     {lastActivated && (
                         <GtkLabel
                             label={`Last activated: ${lastActivated}`}
@@ -221,7 +215,6 @@ const ListViewSelectionsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Selected Items */}
             <GtkFrame label="Selected Items">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -263,7 +256,6 @@ const ListViewSelectionsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Mode Descriptions */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Selection Mode Reference" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

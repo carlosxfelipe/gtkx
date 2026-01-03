@@ -33,7 +33,6 @@ const FishbowlDemo = () => {
     const frameCountRef = useRef(0);
     const lastTimeRef = useRef(Date.now());
 
-    // Initialize fishes
     useEffect(() => {
         const newFishes: Fish[] = [];
         for (let i = 0; i < fishCount; i++) {
@@ -47,7 +46,6 @@ const FishbowlDemo = () => {
         setFishes(newFishes);
     }, [fishCount]);
 
-    // Animation loop
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -89,7 +87,6 @@ const FishbowlDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Controls */}
             <GtkFrame label="Controls">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -128,7 +125,6 @@ const FishbowlDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Fishbowl */}
             <GtkFrame label="Fishbowl">
                 <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <GtkFlowBox
@@ -150,7 +146,6 @@ const FishbowlDemo = () => {
                 </GtkScrolledWindow>
             </GtkFrame>
 
-            {/* Performance Notes */}
             <GtkFrame label="Performance Notes">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

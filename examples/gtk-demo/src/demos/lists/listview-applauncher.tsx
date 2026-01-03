@@ -23,7 +23,6 @@ interface AppItem {
 }
 
 const applications: AppItem[] = [
-    // Productivity
     {
         id: "writer",
         name: "Writer",
@@ -52,7 +51,6 @@ const applications: AppItem[] = [
         description: "Take notes",
         category: "Office",
     },
-    // Graphics
     {
         id: "gimp",
         name: "Image Editor",
@@ -81,7 +79,6 @@ const applications: AppItem[] = [
         description: "Capture screen",
         category: "Graphics",
     },
-    // Internet
     {
         id: "browser",
         name: "Web Browser",
@@ -98,7 +95,6 @@ const applications: AppItem[] = [
         category: "Internet",
     },
     { id: "maps", name: "Maps", icon: "find-location-symbolic", description: "View maps", category: "Internet" },
-    // Multimedia
     {
         id: "music",
         name: "Music",
@@ -127,7 +123,6 @@ const applications: AppItem[] = [
         description: "Record audio",
         category: "Multimedia",
     },
-    // System
     {
         id: "settings",
         name: "Settings",
@@ -156,7 +151,6 @@ const applications: AppItem[] = [
         description: "Monitor resources",
         category: "System",
     },
-    // Development
     {
         id: "code",
         name: "Code Editor",
@@ -231,14 +225,12 @@ const ListViewApplauncherDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* Search */}
                     <GtkSearchEntry
                         text={searchText}
                         placeholderText="Search applications..."
                         onSearchChanged={(entry) => setSearchText(entry.getText())}
                     />
 
-                    {/* Category Filter Buttons */}
                     <GtkScrolledWindow
                         hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         vscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -261,7 +253,6 @@ const ListViewApplauncherDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    {/* App Grid */}
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GridView<AppItem>
                             minColumns={3}
@@ -307,7 +298,6 @@ const ListViewApplauncherDemo = () => {
                         </GridView>
                     </GtkScrolledWindow>
 
-                    {/* Selected App Info */}
                     {selectedApp && (
                         <GtkBox
                             orientation={Gtk.Orientation.HORIZONTAL}
@@ -342,7 +332,6 @@ const ListViewApplauncherDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Features */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

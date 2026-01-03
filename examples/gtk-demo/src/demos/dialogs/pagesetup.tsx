@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
 
-// Paper size presets with dimensions in mm
 const PAPER_SIZES = [
     { name: "A4", width: 210, height: 297 },
     { name: "A5", width: 148, height: 210 },
@@ -26,16 +25,14 @@ const PageSetupDemo = () => {
     const app = useApplication();
     const previewRef = useRef<Gtk.DrawingArea | null>(null);
 
-    // Current page setup state
     const [paperSize, setPaperSize] = useState(PAPER_SIZES[0] ?? { name: "A4", width: 210, height: 297 });
     const [orientation, setOrientation] = useState<Gtk.PageOrientation>(Gtk.PageOrientation.PORTRAIT);
-    const [topMargin, setTopMargin] = useState(25.4); // 1 inch in mm
+    const [topMargin, setTopMargin] = useState(25.4);
     const [bottomMargin, setBottomMargin] = useState(25.4);
     const [leftMargin, setLeftMargin] = useState(25.4);
     const [rightMargin, setRightMargin] = useState(25.4);
     const [lastDialogResult, setLastDialogResult] = useState<string | null>(null);
 
-    // Create adjustments for spin buttons
     const topMarginAdj = useMemo(() => new Gtk.Adjustment(topMargin, 0, 100, 1, 10, 0), [topMargin]);
     const bottomMarginAdj = useMemo(() => new Gtk.Adjustment(bottomMargin, 0, 100, 1, 10, 0), [bottomMargin]);
     const leftMarginAdj = useMemo(() => new Gtk.Adjustment(leftMargin, 0, 100, 1, 10, 0), [leftMargin]);
@@ -59,7 +56,6 @@ const PageSetupDemo = () => {
         };
     }, [topMarginAdj, bottomMarginAdj, leftMarginAdj, rightMarginAdj]);
 
-    // Calculate effective dimensions based on orientation
     const effectiveWidth =
         orientation === Gtk.PageOrientation.LANDSCAPE || orientation === Gtk.PageOrientation.REVERSE_LANDSCAPE
             ? paperSize.height
@@ -69,48 +65,36 @@ const PageSetupDemo = () => {
             ? paperSize.width
             : paperSize.height;
 
-    // Draw page preview
     const drawPreview = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Background
             cr.setSourceRgb(0.9, 0.9, 0.9).rectangle(0, 0, width, height).fill();
 
-            // Calculate scale to fit page in preview
             const scale = Math.min((width - 20) / effectiveWidth, (height - 20) / effectiveHeight);
             const pageWidth = effectiveWidth * scale;
             const pageHeight = effectiveHeight * scale;
             const offsetX = (width - pageWidth) / 2;
             const offsetY = (height - pageHeight) / 2;
 
-            // Draw paper shadow
             cr.setSourceRgba(0, 0, 0, 0.2)
                 .rectangle(offsetX + 3, offsetY + 3, pageWidth, pageHeight)
                 .fill();
 
-            // Draw paper
             cr.setSourceRgb(1, 1, 1).rectangle(offsetX, offsetY, pageWidth, pageHeight).fill();
 
-            // Draw paper border
             cr.setSourceRgb(0.7, 0.7, 0.7)
                 .setLineWidth(1)
                 .rectangle(offsetX + 0.5, offsetY + 0.5, pageWidth - 1, pageHeight - 1)
                 .stroke();
 
-            // Draw margins
             const marginTop = topMargin * scale;
             const marginBottom = bottomMargin * scale;
             const marginLeft = leftMargin * scale;
             const marginRight = rightMargin * scale;
 
-            // Margin area (light blue tint)
             cr.setSourceRgba(0.7, 0.85, 1, 0.3);
-            // Top margin
             cr.rectangle(offsetX, offsetY, pageWidth, marginTop).fill();
-            // Bottom margin
             cr.rectangle(offsetX, offsetY + pageHeight - marginBottom, pageWidth, marginBottom).fill();
-            // Left margin
             cr.rectangle(offsetX, offsetY + marginTop, marginLeft, pageHeight - marginTop - marginBottom).fill();
-            // Right margin
             cr.rectangle(
                 offsetX + pageWidth - marginRight,
                 offsetY + marginTop,
@@ -118,40 +102,33 @@ const PageSetupDemo = () => {
                 pageHeight - marginTop - marginBottom,
             ).fill();
 
-            // Draw margin lines
             const [dashOn, dashOff] = [4, 4];
             cr.setSourceRgba(0.4, 0.6, 0.9, 0.5).setLineWidth(1).setDash([dashOn, dashOff], 0);
 
-            // Top margin line
             cr.moveTo(offsetX, offsetY + marginTop)
                 .lineTo(offsetX + pageWidth, offsetY + marginTop)
                 .stroke();
 
-            // Bottom margin line
             cr.moveTo(offsetX, offsetY + pageHeight - marginBottom)
                 .lineTo(offsetX + pageWidth, offsetY + pageHeight - marginBottom)
                 .stroke();
 
-            // Left margin line
             cr.moveTo(offsetX + marginLeft, offsetY)
                 .lineTo(offsetX + marginLeft, offsetY + pageHeight)
                 .stroke();
 
-            // Right margin line
             cr.moveTo(offsetX + pageWidth - marginRight, offsetY)
                 .lineTo(offsetX + pageWidth - marginRight, offsetY + pageHeight)
                 .stroke();
 
             cr.setDash([], 0);
 
-            // Draw content area indicator
             const contentX = offsetX + marginLeft;
             const contentY = offsetY + marginTop;
             const contentWidth = pageWidth - marginLeft - marginRight;
             const contentHeight = pageHeight - marginTop - marginBottom;
 
             if (contentWidth > 0 && contentHeight > 0) {
-                // Sample lines to indicate text area
                 cr.setSourceRgba(0.6, 0.6, 0.6, 0.4);
                 const lineSpacing = 8;
                 const lineCount = Math.floor(contentHeight / lineSpacing);
@@ -163,7 +140,6 @@ const PageSetupDemo = () => {
                 cr.fill();
             }
 
-            // Draw orientation indicator
             cr.setSourceRgb(0.3, 0.5, 0.8).setLineWidth(2);
             const arrowX = offsetX + 15;
             const arrowY = offsetY + 15;
@@ -189,7 +165,6 @@ const PageSetupDemo = () => {
             printDialog.setTitle("Page Setup");
             printDialog.setModal(true);
 
-            // Set initial page setup
             const pageSetup = new Gtk.PageSetup();
             pageSetup.setOrientation(orientation);
             pageSetup.setTopMargin(topMargin, Gtk.Unit.MM);
@@ -202,7 +177,6 @@ const PageSetupDemo = () => {
             const newPageSetup = setup.getPageSetup();
 
             if (newPageSetup) {
-                // Update state from dialog result
                 setOrientation(newPageSetup.getOrientation());
                 setTopMargin(newPageSetup.getTopMargin(Gtk.Unit.MM));
                 setBottomMargin(newPageSetup.getBottomMargin(Gtk.Unit.MM));
@@ -260,7 +234,6 @@ const PageSetupDemo = () => {
             />
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
-                {/* Page Preview */}
                 <GtkFrame label="Preview">
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -283,9 +256,7 @@ const PageSetupDemo = () => {
                     </GtkBox>
                 </GtkFrame>
 
-                {/* Settings */}
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} hexpand>
-                    {/* Paper Size */}
                     <GtkFrame label="Paper Size">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -314,7 +285,6 @@ const PageSetupDemo = () => {
                         </GtkBox>
                     </GtkFrame>
 
-                    {/* Margins */}
                     <GtkFrame label="Margins (mm)">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -346,7 +316,6 @@ const PageSetupDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Dialog Actions */}
             <GtkFrame label="Page Setup Dialog">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -372,7 +341,6 @@ const PageSetupDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* PageSetup API */}
             <GtkFrame label="PageSetup API">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

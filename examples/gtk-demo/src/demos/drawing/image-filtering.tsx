@@ -6,10 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./image-filtering.tsx?raw";
 
-// Filter types
 type FilterType = "none" | "blur" | "sharpen" | "brightness" | "contrast" | "grayscale" | "sepia";
 
-// Convolution kernel definitions
 const KERNELS = {
     blur: [
         [1 / 9, 1 / 9, 1 / 9],
@@ -33,13 +31,11 @@ const KERNELS = {
     ],
 };
 
-// Generate a sample "image" as pixel data
 const generateSampleImage = (width: number, height: number): number[][] => {
     const data: number[][] = [];
     for (let y = 0; y < height; y++) {
         const row: number[] = [];
         for (let x = 0; x < width; x++) {
-            // Create a colorful pattern
             const cx = width / 2;
             const cy = height / 2;
             const dx = x - cx;
@@ -47,7 +43,6 @@ const generateSampleImage = (width: number, height: number): number[][] => {
             const dist = Math.sqrt(dx * dx + dy * dy);
             const maxDist = Math.sqrt(cx * cx + cy * cy);
 
-            // RGB values
             const r = Math.sin((x / width) * Math.PI * 2) * 0.5 + 0.5;
             const g = Math.sin((y / height) * Math.PI * 2) * 0.5 + 0.5;
             const b = 1 - dist / maxDist;
@@ -59,7 +54,6 @@ const generateSampleImage = (width: number, height: number): number[][] => {
     return data;
 };
 
-// Apply convolution kernel to image data
 const applyConvolution = (data: number[][], kernel: number[][]): number[][] => {
     const height = data.length;
     const firstRow = data[0];
@@ -95,17 +89,14 @@ const applyConvolution = (data: number[][], kernel: number[][]): number[][] => {
     return result;
 };
 
-// Apply brightness adjustment
 const applyBrightness = (data: number[][], factor: number): number[][] => {
     return data.map((row) => row.map((v) => Math.max(0, Math.min(1, v + factor))));
 };
 
-// Apply contrast adjustment
 const applyContrast = (data: number[][], factor: number): number[][] => {
     return data.map((row) => row.map((v) => Math.max(0, Math.min(1, (v - 0.5) * factor + 0.5))));
 };
 
-// Apply grayscale
 const applyGrayscale = (data: number[][]): number[][] => {
     return data.map((row) => {
         const result: number[] = [];
@@ -117,7 +108,6 @@ const applyGrayscale = (data: number[][]): number[][] => {
     });
 };
 
-// Apply sepia
 const applySepia = (data: number[][]): number[][] => {
     return data.map((row) => {
         const result: number[] = [];
@@ -135,7 +125,6 @@ const applySepia = (data: number[][]): number[][] => {
     });
 };
 
-// Draw pixel data to cairo context
 const drawPixelData = (cr: Context, data: number[][], x: number, y: number, scale: number) => {
     const height = data.length;
     const firstRow = data[0];
@@ -155,7 +144,6 @@ const drawPixelData = (cr: Context, data: number[][], x: number, y: number, scal
     }
 };
 
-// Filter preview component
 const FilterPreview = ({
     filter,
     label,
@@ -172,7 +160,6 @@ const FilterPreview = ({
 
     const drawFunc = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Background
             cr.setSourceRgb(0.1, 0.1, 0.1).rectangle(0, 0, width, height).fill();
 
             let data = imageData.current;
@@ -203,7 +190,6 @@ const FilterPreview = ({
             const offsetY = (height - 20 * scale) / 2;
             drawPixelData(cr, data, offsetX, offsetY, scale);
 
-            // Active indicator
             if (isActive) {
                 cr.setSourceRgb(0.3, 0.6, 1)
                     .setLineWidth(3)
@@ -230,19 +216,16 @@ const FilterPreview = ({
     );
 };
 
-// Main preview with adjustable parameters
 const MainPreview = ({ filter, intensity }: { filter: FilterType; intensity: number }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const imageData = useRef(generateSampleImage(40, 40));
 
     const drawFunc = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Background
             cr.setSourceRgb(0.05, 0.05, 0.05).rectangle(0, 0, width, height).fill();
 
             let data = imageData.current;
 
-            // Apply multiple passes for intensity
             const passes = Math.ceil(intensity);
             switch (filter) {
                 case "blur":
@@ -321,7 +304,6 @@ const ImageFilteringDemo = () => {
             />
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
-                {/* Main Preview */}
                 <GtkFrame label="Preview">
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -340,9 +322,7 @@ const ImageFilteringDemo = () => {
                     </GtkBox>
                 </GtkFrame>
 
-                {/* Controls */}
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} hexpand>
-                    {/* Intensity Slider */}
                     <GtkFrame label="Intensity">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -367,7 +347,6 @@ const ImageFilteringDemo = () => {
                         </GtkBox>
                     </GtkFrame>
 
-                    {/* Filter Info */}
                     <GtkFrame label="Current Filter">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -438,7 +417,6 @@ const ImageFilteringDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Filter Selection */}
             <GtkFrame label="Available Filters">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -461,7 +439,6 @@ const ImageFilteringDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Convolution Kernels */}
             <GtkFrame label="Convolution Kernels">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -512,7 +489,6 @@ const ImageFilteringDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Notes */}
             <GtkFrame label="Implementation Notes">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

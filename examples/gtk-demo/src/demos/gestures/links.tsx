@@ -24,7 +24,6 @@ const LinksDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Basic Link Buttons */}
             <GtkFrame label="Basic Link Buttons">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -49,7 +48,6 @@ const LinksDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Link Buttons with Custom Labels */}
             <GtkFrame label="Link Buttons with Custom Labels">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -74,7 +72,6 @@ const LinksDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Intercepting Link Clicks */}
             <GtkFrame label="Intercepting Link Clicks">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -135,7 +132,6 @@ const LinksDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Visited State */}
             <GtkFrame label="Visited State">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -159,7 +155,6 @@ const LinksDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Common Use Cases */}
             <GtkFrame label="Common Use Cases">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

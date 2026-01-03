@@ -18,7 +18,6 @@ const ClipboardDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Built-in Widget Support */}
             <GtkFrame label="Built-in Clipboard Support">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -68,7 +67,6 @@ const ClipboardDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Clipboard API Overview */}
             <GtkFrame label="Clipboard API Overview">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -115,7 +113,6 @@ const ClipboardDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Content Provider */}
             <GtkFrame label="GdkContentProvider">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -164,7 +161,6 @@ const ClipboardDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Example */}
             <GtkFrame label="Implementation Example">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -213,7 +209,6 @@ clipboard.connect("changed", () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Primary Selection */}
             <GtkFrame label="Primary Selection (Linux)">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -248,7 +243,6 @@ clipboard.connect("changed", () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Tips */}
             <GtkFrame label="Tips">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

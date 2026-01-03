@@ -54,7 +54,6 @@ const SidebarDemo = () => {
         >
             <GtkLabel label="Sidebar Navigation" cssClasses={["title-2"]} halign={GtkEnum.Align.START} />
 
-            {/* About Sidebar */}
             <GtkBox orientation={GtkEnum.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About Navigation Sidebars" cssClasses={["heading"]} halign={GtkEnum.Align.START} />
                 <GtkLabel
@@ -65,7 +64,6 @@ const SidebarDemo = () => {
                 />
             </GtkBox>
 
-            {/* GtkStackSidebar */}
             <GtkFrame>
                 <GtkBox
                     orientation={GtkEnum.Orientation.VERTICAL}
@@ -162,7 +160,6 @@ const SidebarDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Custom ListBox Sidebar */}
             <GtkFrame>
                 <GtkBox
                     orientation={GtkEnum.Orientation.VERTICAL}
@@ -237,7 +234,6 @@ const SidebarDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Collapsible Sidebar */}
             <GtkFrame>
                 <GtkBox
                     orientation={GtkEnum.Orientation.VERTICAL}
@@ -302,7 +298,6 @@ const SidebarDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Paned Sidebar */}
             <GtkFrame>
                 <GtkBox
                     orientation={GtkEnum.Orientation.VERTICAL}
@@ -357,7 +352,6 @@ const SidebarDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Patterns */}
             <GtkBox orientation={GtkEnum.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Patterns" cssClasses={["heading"]} halign={GtkEnum.Align.START} />
                 <GtkLabel

@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-symbolic.tsx?raw";
 
-// Common symbolic icon names organized by category
 const ICON_CATEGORIES = {
     Actions: [
         "document-new-symbolic",

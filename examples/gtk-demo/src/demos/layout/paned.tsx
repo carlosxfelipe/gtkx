@@ -18,7 +18,6 @@ const PanedDemo = () => {
         >
             <GtkLabel label="Paned Container" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* Horizontal Paned */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Horizontal Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -75,7 +74,6 @@ const PanedDemo = () => {
                 </GtkPaned>
             </GtkBox>
 
-            {/* Vertical Paned */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Vertical Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -116,7 +114,6 @@ const PanedDemo = () => {
                 </GtkPaned>
             </GtkBox>
 
-            {/* Nested Panes */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Nested Panes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -177,7 +174,6 @@ const PanedDemo = () => {
                 </GtkPaned>
             </GtkBox>
 
-            {/* Controlled Position */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Controlled Position" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

@@ -172,7 +172,6 @@ const CssAccordionDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Accordion Demo */}
             <GtkFrame label="Animated Accordion">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -194,7 +193,6 @@ const CssAccordionDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Color Transitions */}
             <GtkFrame label="Color Transitions">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -227,7 +225,6 @@ const CssAccordionDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Button Transitions */}
             <GtkFrame label="Interactive Button States">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -275,7 +272,6 @@ const CssAccordionDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Native GTK Expander (built-in animation) */}
             <GtkFrame label="Native GtkExpander">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -311,7 +307,6 @@ const CssAccordionDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Timing Functions Reference */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Timing Functions" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

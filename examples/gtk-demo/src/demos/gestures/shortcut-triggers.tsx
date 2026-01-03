@@ -18,30 +18,23 @@ const ShortcutTriggersDemo = () => {
         }, 2000);
     }, []);
 
-    // Set up shortcut controller on mount
     useEffect(() => {
         const box = boxRef.current;
         if (!box) return;
 
-        // Create shortcut controller
         const controller = new Gtk.ShortcutController();
         controller.setScope(Gtk.ShortcutScope.LOCAL);
 
-        // Create a simple keyval trigger (Ctrl+1)
         const keyvalTrigger = new Gtk.ShortcutTrigger("<Control>1");
 
-        // Create an alternative trigger that fires on either Ctrl+2 OR Ctrl+Shift+2
         const trigger2a = new Gtk.ShortcutTrigger("<Control>2");
         const trigger2b = new Gtk.ShortcutTrigger("<Control><Shift>2");
         const alternativeTrigger = new Gtk.AlternativeTrigger(trigger2a, trigger2b);
 
-        // Create a mnemonic trigger for Alt+M
-        const mnemonicTrigger = new Gtk.MnemonicTrigger(0x006d); // 'm' keyval
+        const mnemonicTrigger = new Gtk.MnemonicTrigger(0x006d);
 
-        // Create a never trigger (demonstrates disabled shortcuts)
         const neverTrigger = Gtk.NeverTrigger.get();
 
-        // Create callback actions for each shortcut
         const createAction = (name: string, details: string) => {
             return new Gtk.CallbackAction((_widget: Gtk.Widget, _args: unknown) => {
                 showTrigger(name, details);
@@ -49,7 +42,6 @@ const ShortcutTriggersDemo = () => {
             });
         };
 
-        // Create shortcuts and add to controller
         const shortcut1 = new Gtk.Shortcut(keyvalTrigger, createAction("KeyvalTrigger", "Triggered by Ctrl+1"));
         controller.addShortcut(shortcut1);
 
@@ -62,11 +54,9 @@ const ShortcutTriggersDemo = () => {
         const shortcut3 = new Gtk.Shortcut(mnemonicTrigger, createAction("MnemonicTrigger", "Triggered by Alt+M"));
         controller.addShortcut(shortcut3);
 
-        // Never trigger - this shortcut will never fire
         const shortcut4 = new Gtk.Shortcut(neverTrigger, createAction("NeverTrigger", "This should never trigger"));
         controller.addShortcut(shortcut4);
 
-        // Add controller to widget
         box.addController(controller);
     }, [showTrigger]);
 
@@ -89,7 +79,6 @@ const ShortcutTriggersDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Status Display */}
             <GtkFrame label="Trigger Status">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -110,7 +99,6 @@ const ShortcutTriggersDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Trigger Types */}
             <GtkFrame label="ShortcutTrigger Types">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -120,7 +108,6 @@ const ShortcutTriggersDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* KeyvalTrigger */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                             <GtkLabel label="ShortcutTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
@@ -134,7 +121,6 @@ const ShortcutTriggersDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* AlternativeTrigger */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                             <GtkLabel label="AlternativeTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
@@ -148,7 +134,6 @@ const ShortcutTriggersDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* MnemonicTrigger */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                             <GtkLabel label="MnemonicTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
@@ -162,7 +147,6 @@ const ShortcutTriggersDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* NeverTrigger */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                             <GtkLabel label="NeverTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
@@ -178,7 +162,6 @@ const ShortcutTriggersDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GtkShortcutController */}
             <GtkFrame label="GtkShortcutController">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -213,7 +196,6 @@ const ShortcutTriggersDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Menu with Accelerators */}
             <GtkFrame label="Menu Accelerators">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -257,7 +239,6 @@ const ShortcutTriggersDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Parsing Trigger Strings */}
             <GtkFrame label="Trigger String Parsing">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -288,7 +269,6 @@ Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}
                 </GtkBox>
             </GtkFrame>
 
-            {/* Best Practices */}
             <GtkFrame label="Best Practices">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -325,7 +305,6 @@ Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}
                 </GtkBox>
             </GtkFrame>
 
-            {/* Focus indicator */}
             <GtkButton label="Click here to focus this demo" onClicked={() => void boxRef.current?.grabFocus()} />
         </GtkBox>
     );

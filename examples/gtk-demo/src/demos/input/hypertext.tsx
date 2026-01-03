@@ -39,8 +39,6 @@ const HypertextDemo = () => {
 
     const linkTag = useMemo(() => {
         const tag = new Gtk.TextTag("link");
-        // Note: setProperty with GValue would be: tag.setProperty("foreground", value)
-        // For now, we use direct property access if available
         return tag;
     }, []);
 
@@ -50,14 +48,12 @@ const HypertextDemo = () => {
     }, []);
 
     useEffect(() => {
-        // Set up buffer with text and tags
         const tagTable = buffer.getTagTable();
         tagTable.add(linkTag);
         tagTable.add(hoverTag);
 
         buffer.setText(SAMPLE_TEXT, -1);
 
-        // Apply link tags
         beginBatch();
         for (const link of SAMPLE_LINKS) {
             const startIter = new Gtk.TextIter();
@@ -73,17 +69,14 @@ const HypertextDemo = () => {
         const textView = textViewRef.current;
         if (!textView) return;
 
-        // Convert window coordinates to buffer coordinates
         const bufferXRef = createRef(0);
         const bufferYRef = createRef(0);
         textView.windowToBufferCoords(Gtk.TextWindowType.WIDGET, x, y, bufferXRef, bufferYRef);
 
-        // Get iterator at position
         const iter = new Gtk.TextIter();
         textView.getIterAtLocation(iter, bufferXRef.value, bufferYRef.value);
         const offset = iter.getOffset();
 
-        // Check if over a link
         let foundLink: Link | null = null;
         for (const link of SAMPLE_LINKS) {
             if (offset >= link.start && offset < link.end) {

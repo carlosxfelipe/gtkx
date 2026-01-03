@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-maze.tsx?raw";
 
-// Maze cell types
 const WALL = 1;
 const PATH = 0;
 const START = 2;
@@ -15,9 +14,7 @@ const VISITED = 5;
 
 type Cell = typeof WALL | typeof PATH | typeof START | typeof END | typeof SOLUTION | typeof VISITED;
 
-// Generate maze using recursive backtracking
 const generateMaze = (width: number, height: number): Cell[][] => {
-    // Initialize maze with all walls
     const maze: Cell[][] = Array(height)
         .fill(null)
         .map(() => Array(width).fill(WALL));
@@ -59,10 +56,8 @@ const generateMaze = (width: number, height: number): Cell[][] => {
         }
     };
 
-    // Start carving from (1, 1)
     carve(1, 1);
 
-    // Set start and end
     const startRow = maze[1];
     if (startRow) startRow[1] = START;
     const endRow = maze[height - 2];
@@ -71,7 +66,6 @@ const generateMaze = (width: number, height: number): Cell[][] => {
     return maze;
 };
 
-// BFS pathfinding
 const solveMazeBFS = (maze: Cell[][]): { path: [number, number][]; visited: [number, number][] } => {
     const height = maze.length;
     const firstRow = maze[0];
@@ -79,7 +73,6 @@ const solveMazeBFS = (maze: Cell[][]): { path: [number, number][]; visited: [num
     const width = firstRow.length;
     const visited: [number, number][] = [];
 
-    // Find start position
     let startX = 1,
         startY = 1;
     let endX = width - 2,
@@ -141,7 +134,6 @@ const solveMazeBFS = (maze: Cell[][]): { path: [number, number][]; visited: [num
     return { path: [], visited };
 };
 
-// A* pathfinding
 const solveMazeAStar = (maze: Cell[][]): { path: [number, number][]; visited: [number, number][] } => {
     const height = maze.length;
     const firstRow = maze[0];
@@ -182,7 +174,6 @@ const solveMazeAStar = (maze: Cell[][]): { path: [number, number][]; visited: [n
     ];
 
     while (openSet.length > 0) {
-        // Sort by f score and get the best
         openSet.sort((a, b) => a.f - b.f);
         const current = openSet.shift();
         if (!current) break;
@@ -244,7 +235,6 @@ const MazeDemo = () => {
             const cellWidth = width / mazeWidth;
             const cellHeight = height / maze.length;
 
-            // Draw cells
             for (let y = 0; y < maze.length; y++) {
                 for (let x = 0; x < mazeWidth; x++) {
                     const cell = maze[y]?.[x];
@@ -271,7 +261,6 @@ const MazeDemo = () => {
                 }
             }
 
-            // Draw visited cells during animation
             if (animationStep > 0 && solution.visited.length > 0) {
                 const visitedCount = Math.min(animationStep, solution.visited.length);
                 cr.setSourceRgba(0.6, 0.8, 1, 0.5);
@@ -287,7 +276,6 @@ const MazeDemo = () => {
                 }
             }
 
-            // Draw solution path
             if (solution.path.length > 1 && animationStep >= solution.visited.length) {
                 const pathProgress = animationStep - solution.visited.length;
                 const pathCount = Math.min(pathProgress, solution.path.length);
@@ -315,7 +303,6 @@ const MazeDemo = () => {
                 }
             }
 
-            // Draw grid lines
             cr.setSourceRgba(0, 0, 0, 0.1).setLineWidth(0.5);
             for (let x = 0; x <= mazeWidth; x++) {
                 cr.moveTo(x * cellWidth, 0).lineTo(x * cellWidth, height);

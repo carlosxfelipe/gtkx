@@ -24,7 +24,6 @@ const OverlayDemo = () => {
         >
             <GtkLabel label="Overlay" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About Overlay */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About Overlay" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -35,7 +34,6 @@ const OverlayDemo = () => {
                 />
             </GtkBox>
 
-            {/* Badge Overlay */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Notification Badge" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -71,7 +69,6 @@ const OverlayDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Loading Overlay */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Loading Overlay" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -143,7 +140,6 @@ const OverlayDemo = () => {
                 </GtkOverlay>
             </GtkBox>
 
-            {/* Corner Badges */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Corner Positioning" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -205,7 +201,6 @@ const OverlayDemo = () => {
                 </GtkOverlay>
             </GtkBox>
 
-            {/* Progress Overlay */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Progress Overlay" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

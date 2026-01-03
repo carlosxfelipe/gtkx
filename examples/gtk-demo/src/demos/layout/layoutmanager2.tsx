@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager2.tsx?raw";
 
-// Styles for animated layout
 const animatedItemStyle = css`
     background-color: @accent_bg_color;
     color: @accent_fg_color;
@@ -19,7 +18,6 @@ const animatedItemExpandedStyle = css`
     color: @success_fg_color;
 `;
 
-// Styles for priority allocation
 const priorityHighStyle = css`
     background-color: @error_bg_color;
     color: @error_fg_color;
@@ -34,7 +32,6 @@ const priorityLowStyle = css`
     background-color: alpha(@accent_bg_color, 0.5);
 `;
 
-// Styles for breakpoint indicator
 const breakpointIndicatorStyle = css`
     padding: 8px 16px;
     border-radius: 4px;
@@ -56,13 +53,11 @@ const breakpointExpandedStyle = css`
     color: @success_fg_color;
 `;
 
-// Animated layout with smooth transitions
 const AnimatedLayoutDemo = () => {
     const [expanded, setExpanded] = useState(false);
     const [animationProgress, setAnimationProgress] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
 
-    // Animate the layout transition
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -88,7 +83,6 @@ const AnimatedLayoutDemo = () => {
         setIsAnimating(true);
     };
 
-    // Calculate interpolated layout properties
     const itemSpacing = Math.round(8 + animationProgress * 16);
     const itemPadding = Math.round(8 + animationProgress * 8);
 
@@ -149,12 +143,10 @@ const AnimatedLayoutDemo = () => {
     );
 };
 
-// Responsive breakpoints demo
 const ResponsiveBreakpointsDemo = () => {
     const [containerWidth, setContainerWidth] = useState(400);
     const widthAdjustment = useMemo(() => new Gtk.Adjustment(400, 200, 800, 10, 50, 0), []);
 
-    // Determine breakpoint based on width
     const getBreakpoint = (width: number): "compact" | "medium" | "expanded" => {
         if (width < 300) return "compact";
         if (width < 500) return "medium";
@@ -163,7 +155,6 @@ const ResponsiveBreakpointsDemo = () => {
 
     const breakpoint = getBreakpoint(containerWidth);
 
-    // Layout configuration based on breakpoint
     const layoutConfig = {
         compact: {
             columns: 1,
@@ -237,7 +228,6 @@ const ResponsiveBreakpointsDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* Simulated responsive container */}
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={0}
@@ -289,7 +279,6 @@ const ResponsiveBreakpointsDemo = () => {
     );
 };
 
-// Priority-based allocation demo
 const PriorityAllocationDemo = () => {
     const [availableSpace, setAvailableSpace] = useState(300);
     const spaceAdjustment = useMemo(() => new Gtk.Adjustment(300, 100, 500, 10, 50, 0), []);
@@ -301,18 +290,15 @@ const PriorityAllocationDemo = () => {
         { id: "4", label: "Extra", priority: "low", minWidth: 40, preferredWidth: 80 },
     ];
 
-    // Priority-based allocation algorithm
     const allocateSpace = (totalSpace: number) => {
         const allocations: { [key: string]: number } = {};
         let remainingSpace = totalSpace;
 
-        // First pass: allocate minimum widths
         for (const item of items) {
             allocations[item.id] = item.minWidth;
             remainingSpace -= item.minWidth;
         }
 
-        // Second pass: distribute remaining space by priority
         const priorityOrder = ["high", "medium", "low"];
         for (const priority of priorityOrder) {
             const priorityItems = items.filter((i) => i.priority === priority);

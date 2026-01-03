@@ -102,8 +102,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
         }
 
         const [_, setterName] = propMeta;
-
-        const setter = parent[setterName as keyof Gtk.Widget];
+        const setter = parent[setterName as keyof Gtk.Widget] as (child: Gtk.Widget | undefined) => void;
 
         if (typeof setter !== "function") {
             throw new Error(`Expected setter function for Slot '${this.getId()}' on type '${parentType}'`);

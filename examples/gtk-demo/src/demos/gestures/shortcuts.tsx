@@ -23,7 +23,6 @@ const ShortcutsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Menu with Accelerators */}
             <GtkFrame label="Menu with Keyboard Accelerators">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -134,7 +133,6 @@ const ShortcutsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Common Accelerator Syntax */}
             <GtkFrame label="Accelerator Syntax">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -176,7 +174,6 @@ const ShortcutsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Available Modifiers */}
             <GtkFrame label="Available Modifiers">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -222,7 +219,6 @@ const ShortcutsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Button Mnemonics */}
             <GtkFrame label="Button Mnemonics">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -254,7 +250,6 @@ const ShortcutsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Reset button */}
             <GtkButton
                 label="Clear Status"
                 onClicked={() => {

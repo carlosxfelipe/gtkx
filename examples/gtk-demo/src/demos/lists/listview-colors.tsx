@@ -23,35 +23,27 @@ interface ColorItem {
 }
 
 const colorPalette: ColorItem[] = [
-    // Reds
     { id: "red-1", name: "Light Coral", hex: "#f66151", rgb: "246, 97, 81", category: "Red" },
     { id: "red-2", name: "Red", hex: "#e01b24", rgb: "224, 27, 36", category: "Red" },
     { id: "red-3", name: "Dark Red", hex: "#a51d2d", rgb: "165, 29, 45", category: "Red" },
-    // Oranges
     { id: "orange-1", name: "Light Orange", hex: "#ffbe6f", rgb: "255, 190, 111", category: "Orange" },
     { id: "orange-2", name: "Orange", hex: "#ff7800", rgb: "255, 120, 0", category: "Orange" },
     { id: "orange-3", name: "Dark Orange", hex: "#c64600", rgb: "198, 70, 0", category: "Orange" },
-    // Yellows
     { id: "yellow-1", name: "Light Yellow", hex: "#f9f06b", rgb: "249, 240, 107", category: "Yellow" },
     { id: "yellow-2", name: "Yellow", hex: "#f5c211", rgb: "245, 194, 17", category: "Yellow" },
     { id: "yellow-3", name: "Dark Yellow", hex: "#e5a50a", rgb: "229, 165, 10", category: "Yellow" },
-    // Greens
     { id: "green-1", name: "Light Green", hex: "#8ff0a4", rgb: "143, 240, 164", category: "Green" },
     { id: "green-2", name: "Green", hex: "#33d17a", rgb: "51, 209, 122", category: "Green" },
     { id: "green-3", name: "Dark Green", hex: "#26a269", rgb: "38, 162, 105", category: "Green" },
-    // Blues
     { id: "blue-1", name: "Light Blue", hex: "#99c1f1", rgb: "153, 193, 241", category: "Blue" },
     { id: "blue-2", name: "Blue", hex: "#3584e4", rgb: "53, 132, 228", category: "Blue" },
     { id: "blue-3", name: "Dark Blue", hex: "#1c71d8", rgb: "28, 113, 216", category: "Blue" },
-    // Purples
     { id: "purple-1", name: "Light Purple", hex: "#dc8add", rgb: "220, 138, 221", category: "Purple" },
     { id: "purple-2", name: "Purple", hex: "#9141ac", rgb: "145, 65, 172", category: "Purple" },
     { id: "purple-3", name: "Dark Purple", hex: "#813d9c", rgb: "129, 61, 156", category: "Purple" },
-    // Browns
     { id: "brown-1", name: "Light Brown", hex: "#cdab8f", rgb: "205, 171, 143", category: "Brown" },
     { id: "brown-2", name: "Brown", hex: "#986a44", rgb: "152, 106, 68", category: "Brown" },
     { id: "brown-3", name: "Dark Brown", hex: "#63452c", rgb: "99, 69, 44", category: "Brown" },
-    // Grays
     { id: "gray-1", name: "Light Gray", hex: "#c0bfbc", rgb: "192, 191, 188", category: "Gray" },
     { id: "gray-2", name: "Gray", hex: "#9a9996", rgb: "154, 153, 150", category: "Gray" },
     { id: "gray-3", name: "Dark Gray", hex: "#5e5c64", rgb: "94, 92, 100", category: "Gray" },
@@ -59,7 +51,6 @@ const colorPalette: ColorItem[] = [
 
 const categories = ["All", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Brown", "Gray"];
 
-// Color swatch component using dynamic CSS background
 const ColorSwatch = ({ color, size = 48 }: { color: string; size?: number }) => {
     const swatchStyle = css`
         background-color: ${color};
@@ -124,7 +115,6 @@ const ListViewColorsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Color Browser */}
             <GtkFrame label="Color Palette">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -134,14 +124,12 @@ const ListViewColorsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* Search */}
                     <GtkSearchEntry
                         text={searchText}
                         placeholderText="Search colors by name or hex..."
                         onSearchChanged={(entry) => setSearchText(entry.getText())}
                     />
 
-                    {/* Category Filters */}
                     <GtkScrolledWindow
                         hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         vscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -164,7 +152,6 @@ const ListViewColorsDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    {/* Color List */}
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <ListView<ColorItem>
                             showSeparators
@@ -213,7 +200,6 @@ const ListViewColorsDemo = () => {
                         </ListView>
                     </GtkScrolledWindow>
 
-                    {/* Selected Color Details */}
                     {selectedColor && (
                         <GtkBox
                             orientation={Gtk.Orientation.HORIZONTAL}
@@ -257,7 +243,6 @@ const ListViewColorsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

@@ -12,10 +12,8 @@ const transparencyInfoStyle = css`
     padding: 12px;
 `;
 
-// Drawing function that demonstrates transparency with checkerboard background
 const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | "radial") => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-        // Draw checkerboard to show transparency
         const checkSize = 10;
         for (let y = 0; y < height; y += checkSize) {
             for (let x = 0; x < width; x += checkSize) {
@@ -26,7 +24,6 @@ const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | 
             }
         }
 
-        // Draw semi-transparent overlay based on gradient type
         if (gradientType === "solid") {
             cr.setSourceRgba(0.2, 0.4, 0.8, alpha)
                 .rectangle(20, 20, width - 40, height - 40)
@@ -52,7 +49,6 @@ const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | 
                 .fill();
         }
 
-        // Add text to show alpha value
         cr.setSourceRgba(0, 0, 0, 0.8)
             .moveTo(30, height - 30)
             .setFontSize(14)
@@ -60,9 +56,7 @@ const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | 
     };
 };
 
-// Draw overlapping transparent shapes
 const drawOverlappingShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    // White background
     cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
     const centerX = width / 2;
@@ -70,25 +64,20 @@ const drawOverlappingShapes = (_self: Gtk.DrawingArea, cr: Context, width: numbe
     const radius = 50;
     const offset = 35;
 
-    // Red circle (top)
     cr.setSourceRgba(0.9, 0.1, 0.1, 0.6)
         .arc(centerX, centerY - offset, radius, 0, 2 * Math.PI)
         .fill();
 
-    // Green circle (bottom-left)
     cr.setSourceRgba(0.1, 0.9, 0.1, 0.6)
         .arc(centerX - offset, centerY + offset * 0.5, radius, 0, 2 * Math.PI)
         .fill();
 
-    // Blue circle (bottom-right)
     cr.setSourceRgba(0.1, 0.1, 0.9, 0.6)
         .arc(centerX + offset, centerY + offset * 0.5, radius, 0, 2 * Math.PI)
         .fill();
 };
 
-// Draw layered transparency with different operators
 const drawLayeredTransparency = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    // Draw checkerboard background
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
@@ -99,17 +88,14 @@ const drawLayeredTransparency = (_self: Gtk.DrawingArea, cr: Context, width: num
         }
     }
 
-    // Layer 1: Base rectangle
     cr.setSourceRgba(0.2, 0.6, 0.9, 0.7)
         .rectangle(20, 20, width - 40, height - 40)
         .fill();
 
-    // Layer 2: Inner rectangle with different alpha
     cr.setSourceRgba(0.9, 0.3, 0.3, 0.5)
         .rectangle(40, 40, width - 80, height - 80)
         .fill();
 
-    // Layer 3: Innermost rectangle
     cr.setSourceRgba(0.3, 0.9, 0.3, 0.6)
         .rectangle(60, 60, width - 120, height - 120)
         .fill();
@@ -124,7 +110,6 @@ const TransparentDemo = () => {
 
     const alphaAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
 
-    // Update main drawing area
     useEffect(() => {
         const area = mainDrawingRef.current;
         if (area) {
@@ -133,7 +118,6 @@ const TransparentDemo = () => {
         }
     }, [alpha, gradientType]);
 
-    // Set up overlapping shapes drawing
     useEffect(() => {
         const area = overlappingRef.current;
         if (area) {
@@ -141,7 +125,6 @@ const TransparentDemo = () => {
         }
     }, []);
 
-    // Set up layered transparency drawing
     useEffect(() => {
         const area = layeredRef.current;
         if (area) {
@@ -167,7 +150,6 @@ const TransparentDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Interactive transparency demo */}
             <GtkFrame label="Adjustable Transparency">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -212,7 +194,6 @@ const TransparentDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Overlapping shapes demo */}
             <GtkFrame label="Overlapping Transparent Shapes">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -237,7 +218,6 @@ const TransparentDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Layered transparency */}
             <GtkFrame label="Layered Transparency">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -262,7 +242,6 @@ const TransparentDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Window transparency info */}
             <GtkFrame label="Transparent Windows">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -308,7 +287,6 @@ setOperator(cr, operator) - Control blending mode`}
                 </GtkBox>
             </GtkFrame>
 
-            {/* Alpha blending explanation */}
             <GtkFrame label="Alpha Blending">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

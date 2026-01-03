@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-svg.tsx?raw";
 
-// Helper function to create a GdkMemoryTexture from pixel data
 function createMemoryTexture(
     width: number,
     height: number,
@@ -18,7 +17,6 @@ function createMemoryTexture(
     return new Gdk.MemoryTexture(width, height, format, bytes, stride);
 }
 
-// SVG templates for rendering
 const SVG_TEMPLATES = {
     circle: (color: string, strokeWidth: number) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -88,7 +86,6 @@ const PaintableSvgDemo = () => {
     const color = COLORS[colorIndex] ?? COLORS[0] ?? "#3584e4";
     const nextColor = COLORS[(colorIndex + 1) % COLORS.length] ?? COLORS[1] ?? "#e01b24";
 
-    // Generate SVG content based on current settings
     const svgContent = useMemo(() => {
         switch (selectedShape) {
             case "circle":
@@ -106,17 +103,14 @@ const PaintableSvgDemo = () => {
         }
     }, [selectedShape, color, nextColor, strokeWidth, starPoints]);
 
-    // Create a texture from SVG content
     const texture = useMemo(() => {
         try {
-            // Convert SVG string to bytes and create a texture
             const encoder = new TextEncoder();
             const svgBytes = encoder.encode(svgContent);
             const byteArray = Array.from(svgBytes);
             const gBytes = new GLib.Bytes(byteArray.length, byteArray);
             return Gdk.Texture.newFromBytes(gBytes);
         } catch (_e) {
-            // If texture creation fails, create a fallback placeholder
             const size = 64;
             const data: number[] = [];
             for (let i = 0; i < size * size; i++) {
@@ -214,7 +208,6 @@ const PaintableSvgDemo = () => {
                             widthRequest={24}
                             heightRequest={24}
                             cssClasses={["card"]}
-                            // Note: background color would require CSS styling
                         />
                     </GtkBox>
 

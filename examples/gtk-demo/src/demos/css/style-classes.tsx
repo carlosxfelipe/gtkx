@@ -11,7 +11,6 @@ interface StyleClassInfo {
 }
 
 const STYLE_CLASSES: StyleClassInfo[] = [
-    // Typography
     { name: "title-1", description: "Largest title (36px)", category: "Typography" },
     { name: "title-2", description: "Section title (24px)", category: "Typography" },
     { name: "title-3", description: "Subsection title (20px)", category: "Typography" },
@@ -24,7 +23,6 @@ const STYLE_CLASSES: StyleClassInfo[] = [
     { name: "dim-label", description: "Dimmed/secondary text", category: "Typography" },
     { name: "numeric", description: "Tabular numbers", category: "Typography" },
 
-    // Buttons
     { name: "suggested-action", description: "Primary action button", category: "Buttons" },
     { name: "destructive-action", description: "Dangerous action button", category: "Buttons" },
     { name: "flat", description: "Borderless button", category: "Buttons" },
@@ -33,7 +31,6 @@ const STYLE_CLASSES: StyleClassInfo[] = [
     { name: "pill", description: "Pill-shaped button", category: "Buttons" },
     { name: "opaque", description: "Opaque background", category: "Buttons" },
 
-    // Containers
     { name: "card", description: "Rounded card container", category: "Containers" },
     { name: "boxed-list", description: "Rounded list container", category: "Containers" },
     { name: "frame", description: "Simple frame border", category: "Containers" },
@@ -42,13 +39,11 @@ const STYLE_CLASSES: StyleClassInfo[] = [
     { name: "sidebar", description: "Sidebar styling", category: "Containers" },
     { name: "navigation-sidebar", description: "Navigation sidebar", category: "Containers" },
 
-    // Colors
     { name: "accent", description: "Accent color styling", category: "Colors" },
     { name: "success", description: "Success/positive color", category: "Colors" },
     { name: "warning", description: "Warning color", category: "Colors" },
     { name: "error", description: "Error/negative color", category: "Colors" },
 
-    // Special
     { name: "osd", description: "On-screen display style", category: "Special" },
     { name: "linked", description: "Connected button group", category: "Special" },
     { name: "selection-mode", description: "Selection mode styling", category: "Special" },
@@ -159,7 +154,6 @@ const StyleClassesDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Category Selector */}
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
                 {categories.map((category) => (
                     <GtkButton
@@ -171,7 +165,6 @@ const StyleClassesDemo = () => {
                 ))}
             </GtkBox>
 
-            {/* Class List */}
             <GtkFrame>
                 <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
@@ -218,7 +211,6 @@ const StyleClassesDemo = () => {
                 </GtkScrolledWindow>
             </GtkFrame>
 
-            {/* Typography Examples */}
             <GtkFrame label="Typography Scale">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -252,7 +244,6 @@ const StyleClassesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Button Styles */}
             <GtkFrame label="Button Styles">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -273,7 +264,6 @@ const StyleClassesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Linked Buttons */}
             <GtkFrame label="Linked Buttons">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -298,7 +288,6 @@ const StyleClassesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Usage */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Usage" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

@@ -143,7 +143,6 @@ const ErrorstatesDemo = () => {
                     marginTop={20}
                     marginBottom={20}
                 >
-                    {/* Email Field */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkLabel label="Email" halign={Gtk.Align.START} />
                         <GtkEntry
@@ -162,7 +161,6 @@ const ErrorstatesDemo = () => {
                         )}
                     </GtkBox>
 
-                    {/* Password Field */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkLabel label="Password" halign={Gtk.Align.START} />
                         <GtkEntry
@@ -180,7 +178,6 @@ const ErrorstatesDemo = () => {
                         )}
                     </GtkBox>
 
-                    {/* Age Field */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkLabel label="Age" halign={Gtk.Align.START} />
                         <GtkSpinButton
@@ -199,7 +196,6 @@ const ErrorstatesDemo = () => {
                         )}
                     </GtkBox>
 
-                    {/* Terms Checkbox */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkCheckButton
                             label="I accept the terms and conditions"
@@ -215,13 +211,11 @@ const ErrorstatesDemo = () => {
                         )}
                     </GtkBox>
 
-                    {/* Buttons */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.END}>
                         <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
                         <GtkButton label="Validate" onClicked={handleValidate} cssClasses={["suggested-action"]} />
                     </GtkBox>
 
-                    {/* Status */}
                     {isValid && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}

@@ -25,7 +25,6 @@ const DndDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Conceptual Overview */}
             <GtkFrame label="How Drag and Drop Works">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -59,7 +58,6 @@ const DndDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* DragSource Signals */}
             <GtkFrame label="DragSource Signals">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -105,7 +103,6 @@ const DndDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* DropTarget Signals */}
             <GtkFrame label="DropTarget Signals">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -147,7 +144,6 @@ const DndDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Drag Actions */}
             <GtkFrame label="Drag Actions">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -185,7 +181,6 @@ const DndDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Note */}
             <GtkFrame label="Implementation Note">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -226,7 +221,6 @@ useEffect(() => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Tips */}
             <GtkFrame label="Tips">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

@@ -20,7 +20,6 @@ const ExpanderDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Basic Expander */}
             <GtkFrame label="Basic Expander">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -48,7 +47,6 @@ const ExpanderDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Details/Info Expander */}
             <GtkFrame label="Details Section">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -87,7 +85,6 @@ const ExpanderDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Settings Expander */}
             <GtkFrame label="Advanced Settings">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -112,7 +109,6 @@ const ExpanderDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Multiple Expanders */}
             <GtkFrame label="FAQ Style">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -146,7 +142,6 @@ const ExpanderDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Programmatic Control */}
             <GtkFrame label="Programmatic Control">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

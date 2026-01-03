@@ -19,7 +19,6 @@ const SizeGroupDemo = () => {
         >
             <GtkLabel label="Size Synchronization" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About SizeGroup */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About SizeGroup" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -30,7 +29,6 @@ const SizeGroupDemo = () => {
                 />
             </GtkBox>
 
-            {/* Grid-based alignment */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Grid-Based Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -82,7 +80,6 @@ const SizeGroupDemo = () => {
                 />
             </GtkBox>
 
-            {/* Homogeneous Box */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Homogeneous Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -129,7 +126,6 @@ const SizeGroupDemo = () => {
                 />
             </GtkBox>
 
-            {/* Explicit Width */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Explicit Width Request" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -166,7 +162,6 @@ const SizeGroupDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Side-by-Side Comparison */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Comparison" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -176,7 +171,6 @@ const SizeGroupDemo = () => {
                     halign={Gtk.Align.START}
                 />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
-                    {/* Without alignment */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} hexpand>
                         <GtkLabel label="Without Alignment" cssClasses={["heading"]} marginTop={8} />
                         <GtkBox
@@ -202,7 +196,6 @@ const SizeGroupDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    {/* With alignment */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} hexpand>
                         <GtkLabel label="With Grid Alignment" cssClasses={["heading"]} marginTop={8} />
                         <GtkGrid

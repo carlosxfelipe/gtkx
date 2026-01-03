@@ -41,7 +41,6 @@ const SpinnerDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Basic Spinner */}
             <GtkFrame label="Basic Spinner">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -63,7 +62,6 @@ const SpinnerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Spinner Sizes */}
             <GtkFrame label="Spinner Sizes">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -93,7 +91,6 @@ const SpinnerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Loading Simulation */}
             <GtkFrame label="Loading Simulation">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -126,7 +123,6 @@ const SpinnerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Inline Usage */}
             <GtkFrame label="Inline Usage">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

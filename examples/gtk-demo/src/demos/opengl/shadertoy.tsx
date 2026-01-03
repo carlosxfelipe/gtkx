@@ -342,6 +342,7 @@ const ShadertoyDemo = () => {
             gl.clearColor(0, 0, 0, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(state.program);
 
             if (state.uniforms.time >= 0) {
@@ -358,6 +359,7 @@ const ShadertoyDemo = () => {
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             gl.bindVertexArray(0);
 
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(0);
 
             return true;

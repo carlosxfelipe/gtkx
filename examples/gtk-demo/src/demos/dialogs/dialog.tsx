@@ -80,7 +80,6 @@ const DialogDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Simple Alert */}
             <GtkFrame label="Simple Alert">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -103,7 +102,6 @@ const DialogDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Confirmation Dialog */}
             <GtkFrame label="Confirmation Dialog">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -125,7 +123,6 @@ const DialogDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Destructive Dialog */}
             <GtkFrame label="Destructive Action">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -148,7 +145,6 @@ const DialogDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Multiple Choice Dialog */}
             <GtkFrame label="Multiple Choices">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -171,7 +167,6 @@ const DialogDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Last Response */}
             {lastResponse && (
                 <GtkLabel
                     label={`Last response: ${lastResponse}`}

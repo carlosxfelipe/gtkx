@@ -76,7 +76,6 @@ const FontFeaturesDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Sample Text Preview */}
             <GtkFrame label="Preview">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -118,7 +117,6 @@ const FontFeaturesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Font Features List */}
             <GtkFrame label="Available Features">
                 <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <GtkBox
@@ -160,7 +158,6 @@ const FontFeaturesDemo = () => {
                 </GtkScrolledWindow>
             </GtkFrame>
 
-            {/* CSS Usage */}
             <GtkFrame label="CSS Usage">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

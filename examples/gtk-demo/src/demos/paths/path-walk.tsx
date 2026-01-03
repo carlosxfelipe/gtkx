@@ -5,10 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-walk.tsx?raw";
 
-// Path types
 type PathPoint = { x: number; y: number; angle: number };
 
-// Calculate points along a cubic bezier curve
 const getCubicBezierPoint = (
     t: number,
     p0: { x: number; y: number },
@@ -25,7 +23,6 @@ const getCubicBezierPoint = (
     const x = uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x;
     const y = uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y;
 
-    // Calculate tangent
     const dx = 3 * uu * (p1.x - p0.x) + 6 * u * t * (p2.x - p1.x) + 3 * tt * (p3.x - p2.x);
     const dy = 3 * uu * (p1.y - p0.y) + 6 * u * t * (p2.y - p1.y) + 3 * tt * (p3.y - p2.y);
     const angle = Math.atan2(dy, dx);
@@ -33,7 +30,6 @@ const getCubicBezierPoint = (
     return { x, y, angle };
 };
 
-// Pre-calculate path points for arc-length parameterization
 const buildPathTable = (
     p0: { x: number; y: number },
     p1: { x: number; y: number },
@@ -61,14 +57,12 @@ const buildPathTable = (
     return { points, totalLength, lengths };
 };
 
-// Get point at a specific distance along the path
 const getPointAtLength = (
     targetLength: number,
     pathTable: { points: PathPoint[]; totalLength: number; lengths: number[] },
 ): PathPoint => {
     const { points, lengths } = pathTable;
 
-    // Binary search for the segment
     let low = 0;
     let high = lengths.length - 1;
 
@@ -88,7 +82,6 @@ const getPointAtLength = (
         return points[idx] as PathPoint;
     }
 
-    // Interpolate between points
     const segmentStart = lengths[idx] as number;
     const segmentEnd = lengths[nextIdx] as number;
     const segmentLength = segmentEnd - segmentStart;
@@ -104,11 +97,9 @@ const getPointAtLength = (
     };
 };
 
-// Draw an arrow shape at a position
 const drawArrow = (cr: Context, x: number, y: number, angle: number, size: number) => {
     cr.save().translate(x, y).rotate(angle);
 
-    // Arrow body
     cr.moveTo(size * 0.6, 0)
         .lineTo(-size * 0.4, -size * 0.4)
         .lineTo(-size * 0.2, 0)
@@ -118,21 +109,17 @@ const drawArrow = (cr: Context, x: number, y: number, angle: number, size: numbe
     cr.restore();
 };
 
-// Draw a car shape
 const drawCar = (cr: Context, x: number, y: number, angle: number, size: number) => {
     cr.save().translate(x, y).rotate(angle);
 
-    // Car body
     cr.setSourceRgb(0.2, 0.5, 0.8)
         .rectangle(-size * 0.5, -size * 0.25, size, size * 0.5)
         .fill();
 
-    // Roof
     cr.setSourceRgb(0.3, 0.6, 0.9)
         .rectangle(-size * 0.2, -size * 0.2, size * 0.5, size * 0.4)
         .fill();
 
-    // Wheels
     cr.setSourceRgb(0.2, 0.2, 0.2)
         .arc(-size * 0.3, -size * 0.3, size * 0.12, 0, 2 * Math.PI)
         .fill();
@@ -143,11 +130,9 @@ const drawCar = (cr: Context, x: number, y: number, angle: number, size: number)
     cr.restore();
 };
 
-// Draw a simple plane
 const drawPlane = (cr: Context, x: number, y: number, angle: number, size: number) => {
     cr.save().translate(x, y).rotate(angle);
 
-    // Fuselage
     cr.setSourceRgb(0.9, 0.9, 0.95)
         .moveTo(size * 0.6, 0)
         .lineTo(-size * 0.4, -size * 0.1)
@@ -156,7 +141,6 @@ const drawPlane = (cr: Context, x: number, y: number, angle: number, size: numbe
         .closePath()
         .fill();
 
-    // Wings
     cr.setSourceRgb(0.7, 0.7, 0.8)
         .moveTo(0, 0)
         .lineTo(-size * 0.15, -size * 0.5)
@@ -171,7 +155,6 @@ const drawPlane = (cr: Context, x: number, y: number, angle: number, size: numbe
         .closePath()
         .fill();
 
-    // Tail
     cr.moveTo(-size * 0.4, 0)
         .lineTo(-size * 0.5, -size * 0.2)
         .lineTo(-size * 0.55, -size * 0.2)
@@ -182,7 +165,6 @@ const drawPlane = (cr: Context, x: number, y: number, angle: number, size: numbe
     cr.restore();
 };
 
-// Interactive path walk component
 const PathWalkDemo = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const [speed, setSpeed] = useState(1);
@@ -196,7 +178,6 @@ const PathWalkDemo = () => {
     const canvasWidth = 500;
     const canvasHeight = 350;
 
-    // Build path on mount
     useEffect(() => {
         const padding = 40;
         const p0 = { x: padding, y: canvasHeight - padding };
@@ -215,13 +196,11 @@ const PathWalkDemo = () => {
                 const { totalLength } = pathTableRef.current;
                 const padding = 40;
 
-                // Define bezier control points
                 const p0 = { x: padding, y: height - padding };
                 const p1 = { x: width * 0.25, y: padding };
                 const p2 = { x: width * 0.75, y: height - padding };
                 const p3 = { x: width - padding, y: padding };
 
-                // Draw path
                 if (showPath) {
                     cr.setSourceRgba(0.5, 0.5, 0.5, 0.4)
                         .setLineWidth(3)
@@ -230,24 +209,19 @@ const PathWalkDemo = () => {
                         .curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
                         .stroke();
 
-                    // Draw control points
                     cr.setSourceRgba(0.8, 0.4, 0.4, 0.5).setLineWidth(1);
 
-                    // Control lines
                     cr.moveTo(p0.x, p0.y).lineTo(p1.x, p1.y).stroke();
                     cr.moveTo(p2.x, p2.y).lineTo(p3.x, p3.y).stroke();
 
-                    // Control points
                     for (const p of [p0, p1, p2, p3]) {
                         cr.arc(p.x, p.y, 5, 0, 2 * Math.PI).fill();
                     }
                 }
 
-                // Get position on path
                 const distance = progress * totalLength;
                 const point = getPointAtLength(distance, pathTableRef.current);
 
-                // Draw trail
                 cr.setSourceRgba(0.2, 0.6, 0.9, 0.3).setLineWidth(2);
                 const numTrailPoints = 30;
                 for (let i = numTrailPoints; i >= 0; i--) {
@@ -262,7 +236,6 @@ const PathWalkDemo = () => {
                 }
                 cr.stroke();
 
-                // Draw object
                 const objectSize = 25;
                 switch (objectType) {
                     case "arrow":
@@ -278,7 +251,6 @@ const PathWalkDemo = () => {
                         break;
                 }
 
-                // Draw progress info
                 cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
                     .setFontSize(12)
                     .setSourceRgb(0.5, 0.5, 0.5)

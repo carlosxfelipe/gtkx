@@ -15,7 +15,6 @@ const GesturesDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Available Gesture Types */}
             <GtkFrame label="Available Gesture Types">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -73,7 +72,6 @@ const GesturesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GestureClick Signals */}
             <GtkFrame label="GtkGestureClick Signals">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -115,7 +113,6 @@ const GesturesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GestureDrag Signals */}
             <GtkFrame label="GtkGestureDrag Signals">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -149,7 +146,6 @@ const GesturesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GestureSwipe Signals */}
             <GtkFrame label="GtkGestureSwipe Signals">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -183,7 +179,6 @@ const GesturesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Multi-touch Gestures */}
             <GtkFrame label="Multi-touch Gestures (Zoom & Rotate)">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -226,7 +221,6 @@ const GesturesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Example */}
             <GtkFrame label="Implementation Example">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -277,7 +271,6 @@ useEffect(() => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Tips */}
             <GtkFrame label="Tips">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

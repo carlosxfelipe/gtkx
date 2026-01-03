@@ -5,7 +5,6 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
 
-// Static styles defined with css``
 const demoBoxStyle = css`
     background-color: @accent_bg_color;
     color: @accent_fg_color;
@@ -33,7 +32,6 @@ const demoButtonStyle = css`
     }
 `;
 
-// Alternate style for demonstrating cx()
 const alternateBoxStyle = css`
     background-color: @warning_bg_color;
     color: @warning_fg_color;
@@ -79,7 +77,6 @@ const CssBasicsDemo = () => {
             />
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20} vexpand>
-                {/* Code Example */}
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} hexpand>
                     <GtkLabel label="Usage Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
@@ -97,7 +94,6 @@ const CssBasicsDemo = () => {
                     </GtkFrame>
                 </GtkBox>
 
-                {/* Preview */}
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} hexpand>
                     <GtkLabel label="Live Preview" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
@@ -148,7 +144,6 @@ const CssBasicsDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* CSS Reference */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="GTK CSS Reference" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

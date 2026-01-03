@@ -1,4 +1,4 @@
-import { events } from "@gtkx/ffi";
+import { events, isStarted } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 
@@ -12,26 +12,22 @@ type StyleSheetOptions = {
 
 const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
 
-let isGtkReady = false;
 const pendingSheets: StyleSheet[] = [];
 
 const flushPendingStyles = (): void => {
-    isGtkReady = true;
     for (const sheet of pendingSheets) {
         sheet.applyQueuedRules();
     }
     pendingSheets.length = 0;
 };
 
-const resetGtkState = (): void => {
-    isGtkReady = false;
-
+const registerStartListener = (): void => {
     events.once("start", flushPendingStyles);
 };
 
-events.once("start", flushPendingStyles);
-
-events.on("stop", resetGtkState);
+if (!isStarted()) {
+    registerStartListener();
+}
 
 export class StyleSheet {
     key: string;
@@ -71,7 +67,7 @@ export class StyleSheet {
     insert(rule: string): void {
         this.rules.push(rule);
 
-        if (isGtkReady) {
+        if (isStarted()) {
             this.ensureProvider();
             this.updateProvider();
         } else if (!this.hasPendingRules) {

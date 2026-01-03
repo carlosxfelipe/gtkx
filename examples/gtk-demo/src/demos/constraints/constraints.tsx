@@ -20,19 +20,17 @@ const CenteringDemo = () => {
         layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
-        // Center the button horizontally: button.centerX = parent.centerX
         const centerX = new Gtk.Constraint(
-            Gtk.ConstraintAttribute.CENTER_X, // target attribute
-            Gtk.ConstraintRelation.EQ, // relation
-            Gtk.ConstraintAttribute.CENTER_X, // source attribute
-            1.0, // multiplier
-            0, // constant
-            Gtk.ConstraintStrength.REQUIRED, // strength
-            buttonRef.current, // target
-            undefined, // source (null = parent)
+            Gtk.ConstraintAttribute.CENTER_X,
+            Gtk.ConstraintRelation.EQ,
+            Gtk.ConstraintAttribute.CENTER_X,
+            1.0,
+            0,
+            Gtk.ConstraintStrength.REQUIRED,
+            buttonRef.current,
+            undefined,
         );
 
-        // Center the button vertically: button.centerY = parent.centerY
         const centerY = new Gtk.Constraint(
             Gtk.ConstraintAttribute.CENTER_Y,
             Gtk.ConstraintRelation.EQ,
@@ -106,7 +104,6 @@ const AlignmentDemo = () => {
         containerRef.current.setLayoutManager(layout);
         const MARGIN = 8;
 
-        // Top-left button
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -132,7 +129,6 @@ const AlignmentDemo = () => {
             ),
         );
 
-        // Top-right button
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.END,
@@ -158,7 +154,6 @@ const AlignmentDemo = () => {
             ),
         );
 
-        // Bottom-left button
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -184,7 +179,6 @@ const AlignmentDemo = () => {
             ),
         );
 
-        // Bottom-right button
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.END,
@@ -263,7 +257,6 @@ const SpacingDemo = () => {
         containerRef.current.setLayoutManager(layout);
         const SPACING = 12;
 
-        // All buttons centered vertically
         for (const buttonRef of [button1Ref, button2Ref, button3Ref]) {
             const button = buttonRef.current;
             if (!button) continue;
@@ -281,7 +274,6 @@ const SpacingDemo = () => {
             );
         }
 
-        // First button: start at parent start + margin
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -295,7 +287,6 @@ const SpacingDemo = () => {
             ),
         );
 
-        // Second button: start at first button's end + spacing
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -309,7 +300,6 @@ const SpacingDemo = () => {
             ),
         );
 
-        // Third button: start at second button's end + spacing
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -369,7 +359,6 @@ const SizeConstraintsDemo = () => {
     useEffect(() => {
         if (!containerRef.current || !buttonRef.current) return;
 
-        // Create layout only once
         if (!layoutRef.current) {
             layoutRef.current = new Gtk.ConstraintLayout();
             containerRef.current.setLayoutManager(layoutRef.current);
@@ -377,10 +366,8 @@ const SizeConstraintsDemo = () => {
 
         const layout = layoutRef.current;
 
-        // Clear existing constraints before adding new ones
         layout.removeAllConstraints();
 
-        // Center the button
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.CENTER_X,
@@ -406,7 +393,6 @@ const SizeConstraintsDemo = () => {
             ),
         );
 
-        // Minimum width constraint using Constraint.newConstant
         const widthConstraint = Gtk.Constraint.newConstant(
             Gtk.ConstraintAttribute.WIDTH,
             Gtk.ConstraintRelation.GE,
@@ -416,7 +402,6 @@ const SizeConstraintsDemo = () => {
         );
         layout.addConstraint(widthConstraint);
 
-        // Fixed height constraint
         const heightConstraint = Gtk.Constraint.newConstant(
             Gtk.ConstraintAttribute.HEIGHT,
             Gtk.ConstraintRelation.EQ,

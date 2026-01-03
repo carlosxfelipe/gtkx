@@ -39,10 +39,8 @@ const ConstraintVisualizer = ({
 
     const draw = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Background
             cr.setSourceRgb(0.15, 0.15, 0.18).rectangle(0, 0, width, height).fill();
 
-            // Draw grid
             cr.setSourceRgba(1, 1, 1, 0.1).setLineWidth(1);
             const gridSize = 20;
             for (let x = 0; x <= width; x += gridSize) {
@@ -53,13 +51,11 @@ const ConstraintVisualizer = ({
             }
             cr.stroke();
 
-            // Draw constraint lines
             cr.setLineWidth(2);
             for (const constraint of constraints) {
                 const targetWidget = widgets.get("button");
                 if (!targetWidget) continue;
 
-                // Determine line endpoints based on constraint attributes
                 let startX = 0;
                 let startY = 0;
                 let endX = 0;
@@ -125,7 +121,6 @@ const ConstraintVisualizer = ({
                         break;
                 }
 
-                // Draw dashed constraint line
                 cr.setSourceRgba(0.3, 0.7, 1, 0.8)
                     .setDash([6, 4], 0)
                     .moveTo(startX, startY)
@@ -133,7 +128,6 @@ const ConstraintVisualizer = ({
                     .stroke()
                     .setDash([], 0);
 
-                // Draw endpoints
                 cr.setSourceRgb(0.3, 0.7, 1)
                     .arc(startX, startY, 4, 0, 2 * Math.PI)
                     .fill()
@@ -141,15 +135,11 @@ const ConstraintVisualizer = ({
                     .fill();
             }
 
-            // Draw widgets
             for (const [name, pos] of widgets) {
-                // Widget rectangle
                 cr.setSourceRgb(0.2, 0.5, 0.8).rectangle(pos.x, pos.y, pos.width, pos.height).fill();
 
-                // Widget border
                 cr.setSourceRgb(0.3, 0.6, 0.9).setLineWidth(2).rectangle(pos.x, pos.y, pos.width, pos.height).stroke();
 
-                // Widget label - draw text at center
                 cr.setSourceRgb(1, 1, 1)
                     .selectFontFace("Sans", FontSlant.NORMAL, FontWeight.BOLD)
                     .setFontSize(12)
@@ -157,7 +147,6 @@ const ConstraintVisualizer = ({
                     .showText(name);
             }
 
-            // Draw container bounds indicator
             cr.setSourceRgba(0.5, 0.5, 0.5, 0.5)
                 .setLineWidth(1)
                 .rectangle(0.5, 0.5, width - 1, height - 1)
@@ -194,7 +183,6 @@ const InteractiveConstraintEditor = () => {
     const containerWidth = 400;
     const containerHeight = 250;
 
-    // Calculate widget position based on constraints
     const widgetX = containerWidth / 2 - widgetWidth / 2 + offsetX;
     const widgetY = containerHeight / 2 - widgetHeight / 2 + offsetY;
 
@@ -219,7 +207,6 @@ const InteractiveConstraintEditor = () => {
         },
     ];
 
-    // Create adjustments for sliders - use useMemo to avoid creating new GObjects on each render
     const xAdjustment = useMemo(() => new Gtk.Adjustment(0, -150, 150, 1, 10, 0), []);
     const yAdjustment = useMemo(() => new Gtk.Adjustment(0, -100, 100, 1, 10, 0), []);
     const widthAdjustment = useMemo(() => new Gtk.Adjustment(100, 50, 200, 1, 10, 0), []);
@@ -332,7 +319,6 @@ const LiveConstraintDemo = () => {
     useEffect(() => {
         if (!containerRef.current || !buttonRef.current) return;
 
-        // Create layout on first render
         if (!layoutRef.current) {
             layoutRef.current = new Gtk.ConstraintLayout();
             containerRef.current.setLayoutManager(layoutRef.current);
@@ -340,10 +326,8 @@ const LiveConstraintDemo = () => {
 
         const layout = layoutRef.current;
 
-        // Clear existing constraints
         layout.removeAllConstraints();
 
-        // Add centering constraints with current offset
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.CENTER_X,

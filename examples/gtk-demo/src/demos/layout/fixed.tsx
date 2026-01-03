@@ -56,7 +56,6 @@ const FixedDemo = () => {
         >
             <GtkLabel label="Fixed Positioning" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About Fixed */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About GtkFixed" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -67,7 +66,6 @@ const FixedDemo = () => {
                 />
             </GtkBox>
 
-            {/* Fixed Container Example */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Absolute Positioning" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -94,7 +92,6 @@ const FixedDemo = () => {
                 </GtkFixed>
             </GtkBox>
 
-            {/* Position Display */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Current Positions" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox
@@ -119,7 +116,6 @@ const FixedDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Warnings */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Caution" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

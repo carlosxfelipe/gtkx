@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable.tsx?raw";
 
-// Helper function to create a GdkMemoryTexture from pixel data
 function createMemoryTexture(
     width: number,
     height: number,
@@ -21,7 +20,6 @@ function createMemoryTexture(
 const PaintableDemo = () => {
     const [selectedTexture, setSelectedTexture] = useState<"checkerboard" | "gradient" | "noise">("checkerboard");
 
-    // Create a checkerboard texture programmatically
     const checkerboardTexture = useMemo(() => {
         const size = 64;
         const checkSize = 8;
@@ -38,7 +36,6 @@ const PaintableDemo = () => {
         return createMemoryTexture(size, size, Gdk.MemoryFormat.R8G8B8A8, data, size * 4);
     }, []);
 
-    // Create a gradient texture
     const gradientTexture = useMemo(() => {
         const width = 256;
         const height = 64;
@@ -48,7 +45,6 @@ const PaintableDemo = () => {
             for (let x = 0; x < width; x++) {
                 const t = x / width;
 
-                // Rainbow gradient
                 const hue = t * 360;
                 const { r, g, b } = hslToRgb(hue, 0.8, 0.5);
 
@@ -59,12 +55,10 @@ const PaintableDemo = () => {
         return createMemoryTexture(width, height, Gdk.MemoryFormat.R8G8B8A8, data, width * 4);
     }, []);
 
-    // Create a noise texture
     const noiseTexture = useMemo(() => {
         const size = 128;
         const data: number[] = [];
 
-        // Simple pseudo-random number generator
         let seed = 12345;
         const random = () => {
             seed = (seed * 1103515245 + 12345) & 0x7fffffff;
@@ -214,7 +208,6 @@ GskRenderNode    - Custom rendering via GSK`}
     );
 };
 
-// Helper function to convert HSL to RGB
 function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
     h = h / 360;
     let r: number, g: number, b: number;

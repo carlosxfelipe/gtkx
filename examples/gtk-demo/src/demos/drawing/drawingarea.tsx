@@ -5,37 +5,30 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
-// Draw a simple circle
 const drawCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 10;
 
-    // Draw filled circle
     cr.setSourceRgb(0.2, 0.6, 0.9)
         .arc(centerX, centerY, radius, 0, 2 * Math.PI)
         .fill();
 
-    // Draw border
     cr.setSourceRgb(0.1, 0.4, 0.7)
         .setLineWidth(3)
         .arc(centerX, centerY, radius, 0, 2 * Math.PI)
         .stroke();
 };
 
-// Draw basic shapes showcase
 const drawShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const padding = 20;
 
-    // Rectangle
     cr.setSourceRgb(0.9, 0.3, 0.3).rectangle(padding, padding, 80, 60).fill();
 
-    // Circle
     cr.setSourceRgb(0.3, 0.8, 0.3)
         .arc(width / 2, height / 2, 40, 0, 2 * Math.PI)
         .fill();
 
-    // Triangle using lines
     cr.setSourceRgb(0.3, 0.3, 0.9)
         .moveTo(width - padding - 40, height - padding)
         .lineTo(width - padding, height - padding)
@@ -43,7 +36,6 @@ const drawShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: 
         .closePath()
         .fill();
 
-    // Curved line
     cr.setSourceRgb(0.8, 0.5, 0.2)
         .setLineWidth(4)
         .moveTo(padding, height - padding)
@@ -51,7 +43,6 @@ const drawShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: 
         .stroke();
 };
 
-// Helper to draw an oval path
 const ovalPath = (cr: Context, xc: number, yc: number, xr: number, yr: number) => {
     cr.save()
         .translate(xc, yc)
@@ -60,7 +51,6 @@ const ovalPath = (cr: Context, xc: number, yc: number, xr: number, yr: number) =
         .restore();
 };
 
-// Helper to draw checkerboard background
 const fillChecks = (cr: Context, width: number, height: number) => {
     const checkSize = 8;
     cr.setSourceRgb(0.4, 0.4, 0.4).rectangle(0, 0, width, height).fill();
@@ -74,62 +64,49 @@ const fillChecks = (cr: Context, width: number, height: number) => {
     cr.fill();
 };
 
-// Draw three colored circles for compositing demo
 const draw3Circles = (cr: Context, xc: number, yc: number, radius: number) => {
     const subradius = radius * 0.7;
 
-    // Red circle
     cr.setSourceRgba(1, 0, 0, 0.5);
     ovalPath(cr, xc + radius / 2, yc - subradius / 2, subradius, subradius);
     cr.fill();
 
-    // Green circle
     cr.setSourceRgba(0, 1, 0, 0.5);
     ovalPath(cr, xc, yc + subradius / 2, subradius, subradius);
     cr.fill();
 
-    // Blue circle
     cr.setSourceRgba(0, 0, 1, 0.5);
     ovalPath(cr, xc - radius / 2, yc - subradius / 2, subradius, subradius);
     cr.fill();
 };
 
-// Draw compositing/knockout effect - similar to GTK demo
 const drawCompositing = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const radius = Math.min(width, height) / 2 - 10;
     const xc = width / 2;
     const yc = height / 2;
 
-    // Draw checkerboard background
     fillChecks(cr, width, height);
 
-    // Draw overlapping semi-transparent circles
     draw3Circles(cr, xc, yc, radius);
 };
 
-// Draw knockout effect using DEST_OUT operator
 const drawKnockout = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const radius = Math.min(width, height) / 2 - 10;
     const xc = width / 2;
     const yc = height / 2;
 
-    // Draw checkerboard background
     fillChecks(cr, width, height);
 
-    // First draw a white circle
     cr.setSourceRgb(1, 1, 1)
         .arc(xc, yc, radius, 0, 2 * Math.PI)
         .fill();
 
-    // Then knock out the three circles using DEST_OUT
     cr.setOperator(Operator.DEST_OUT);
     draw3Circles(cr, xc, yc, radius);
 
-    // Reset operator
     cr.setOperator(Operator.OVER);
 };
 
-// Draw a star shape
 const drawStar = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
@@ -153,7 +130,6 @@ const drawStar = (_self: Gtk.DrawingArea, cr: Context, width: number, height: nu
     }
     cr.closePath().fill();
 
-    // Add outline
     cr.setSourceRgb(0.8, 0.6, 0.1).setLineWidth(2);
     for (let i = 0; i < points * 2; i++) {
         const radius = i % 2 === 0 ? outerRadius : innerRadius;
@@ -170,7 +146,6 @@ const drawStar = (_self: Gtk.DrawingArea, cr: Context, width: number, height: nu
     cr.closePath().stroke();
 };
 
-// Component to wrap drawing area with draw function
 const DrawingCanvas = ({
     width,
     height,
@@ -198,7 +173,6 @@ const DrawingCanvas = ({
     );
 };
 
-// Type for storing stroke points
 interface Point {
     x: number;
     y: number;
@@ -206,7 +180,6 @@ interface Point {
 
 type Stroke = Point[];
 
-// Interactive scribble area component
 const ScribbleArea = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -215,10 +188,8 @@ const ScribbleArea = () => {
 
     const drawScribble = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // White background
             cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
-            // Draw all completed strokes
             cr.setSourceRgb(0, 0, 0).setLineWidth(3).setLineCap(LineCap.ROUND).setLineJoin(LineJoin.ROUND);
 
             for (const stroke of strokes) {
@@ -231,7 +202,6 @@ const ScribbleArea = () => {
                 cr.stroke();
             }
 
-            // Draw current stroke in progress
             const currentStroke = currentStrokeRef.current;
             const [currentFirst, ...currentRest] = currentStroke;
             if (currentFirst && currentRest.length > 0) {
@@ -251,7 +221,6 @@ const ScribbleArea = () => {
 
         area.setDrawFunc(drawScribble);
 
-        // Set up drag gesture for drawing
         const drag = new Gtk.GestureDrag();
 
         drag.connect("drag-begin", (_gesture: Gtk.GestureDrag, startX: number, startY: number) => {
@@ -309,7 +278,6 @@ const DrawingAreaDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Interactive Scribble */}
             <GtkFrame label="Interactive Scribble">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -324,7 +292,6 @@ const DrawingAreaDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Basic Shapes */}
             <GtkFrame label="Basic Shapes">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -341,7 +308,6 @@ const DrawingAreaDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Compositing / Alpha Blending */}
             <GtkFrame label="Compositing & Alpha Blending">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -357,7 +323,6 @@ const DrawingAreaDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Cairo API Info */}
             <GtkFrame label="Cairo Drawing API">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

@@ -27,7 +27,6 @@ const TextmaskDemo = () => {
 
     const currentGradient = GRADIENT_PRESETS[gradientIndex] ?? GRADIENT_PRESETS[0];
 
-    // Animation loop
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -43,30 +42,25 @@ const TextmaskDemo = () => {
         if (!drawingArea) return;
 
         const drawFunc = (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Clear background
             cr.setSourceRgba(0.12, 0.12, 0.12, 1).paint();
 
             if (!text.trim()) return;
 
-            // Create Pango layout for text
             const layout = PangoCairo.createLayout(cr);
             const fontDesc = Pango.FontDescription.fromString(`Sans Bold ${fontSize}px`);
             layout.setFontDescription(fontDesc);
             layout.setText(text, -1);
 
-            // Get text dimensions
             const logicalRect = new Pango.Rectangle();
             layout.getPixelExtents(undefined, logicalRect);
             const textWidth = logicalRect.width;
             const textHeight = logicalRect.height;
 
-            // Center the text
             const x = (width - textWidth) / 2;
             const y = (height - textHeight) / 2;
 
             cr.save().translate(x, y);
 
-            // Create gradient pattern
             const gradient = Pattern.createLinear(
                 animationOffset * textWidth - textWidth * 0.5,
                 0,
@@ -84,16 +78,13 @@ const TextmaskDemo = () => {
                 gradient.addColorStopRgba(stop, r, g, b, 1);
             }
 
-            // Use text as a clip mask
             PangoCairo.layoutPath(cr, layout);
             cr.clip();
 
-            // Fill with gradient
             cr.setSource(gradient).paint();
 
             cr.restore();
 
-            // Draw outline around text
             cr.save().translate(x, y);
             PangoCairo.layoutPath(cr, layout);
             cr.setSourceRgba(1, 1, 1, 0.3).setLineWidth(1).stroke().restore();
@@ -102,7 +93,6 @@ const TextmaskDemo = () => {
         drawingArea.setDrawFunc(drawFunc);
     }, [text, fontSize, animationOffset, currentGradient?.colors]);
 
-    // Trigger redraw when parameters change
     useEffect(() => {
         drawingAreaRef.current?.queueDraw();
     }, []);
@@ -205,7 +195,6 @@ const TextmaskDemo = () => {
     );
 };
 
-// Helper function to convert hex color to RGB
 function hexToRgb(hex: string): [number, number, number] {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result || !result[1] || !result[2] || !result[3]) {

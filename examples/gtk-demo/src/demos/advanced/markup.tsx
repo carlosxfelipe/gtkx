@@ -88,7 +88,6 @@ const MarkupDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Custom Markup Editor */}
             <GtkFrame label="Try Your Own Markup">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -140,7 +139,6 @@ const MarkupDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Markup Examples */}
             <GtkFrame label="Markup Examples">
                 <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <GtkBox
@@ -208,7 +206,6 @@ const MarkupDemo = () => {
                 </GtkScrolledWindow>
             </GtkFrame>
 
-            {/* Reference */}
             <GtkFrame label="Quick Reference">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

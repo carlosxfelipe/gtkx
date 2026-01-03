@@ -9,7 +9,6 @@ const ScaleDemo = () => {
     const [verticalValue, setVerticalValue] = useState(25);
     const [markedValue, setMarkedValue] = useState(0);
 
-    // Create adjustments for scales
     const horizontalAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
     const verticalAdjustment = useMemo(() => new Gtk.Adjustment(25, 0, 100, 1, 10, 0), []);
     const markedAdjustment = useMemo(() => new Gtk.Adjustment(0, -10, 10, 1, 5, 0), []);
@@ -26,7 +25,6 @@ const ScaleDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Horizontal Scale */}
             <GtkFrame label="Horizontal Scale">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -52,7 +50,6 @@ const ScaleDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Vertical Scale */}
             <GtkFrame label="Vertical Scale">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -78,7 +75,6 @@ const ScaleDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Scale with Origin */}
             <GtkFrame label="Scale with Origin">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -104,7 +100,6 @@ const ScaleDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Scale without value display */}
             <GtkFrame label="Minimal Scale">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

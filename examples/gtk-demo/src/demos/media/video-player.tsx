@@ -15,7 +15,6 @@ const VideoPlayerDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Video Widget Overview */}
             <GtkFrame label="GtkVideo Widget">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -52,7 +51,6 @@ const VideoPlayerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Video Properties */}
             <GtkFrame label="Video Properties">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -116,7 +114,6 @@ const VideoPlayerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Usage Example */}
             <GtkFrame label="Usage Example">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -161,7 +158,6 @@ const VideoPlayerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Media Controls Info */}
             <GtkFrame label="GtkMediaControls">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

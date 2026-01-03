@@ -56,7 +56,6 @@ const ListViewClocksDemo = () => {
     const [is24Hour, setIs24Hour] = useState(false);
     const [selectedClock, setSelectedClock] = useState<ClockItem | null>(null);
 
-    // Update time every second
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentTime(new Date());
@@ -82,7 +81,6 @@ const ListViewClocksDemo = () => {
         }
     };
 
-    // Determine if it's daytime (6 AM - 6 PM) for the given offset
     const isDaytime = (offset: number): boolean => {
         const utc = currentTime.getTime() + currentTime.getTimezoneOffset() * 60000;
         const localTime = new Date(utc + offset * 3600000);
@@ -108,7 +106,6 @@ const ListViewClocksDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Current UTC Time */}
             <GtkFrame label="Current Time">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -133,7 +130,6 @@ const ListViewClocksDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* World Clocks List */}
             <GtkFrame label="World Clocks">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -156,14 +152,12 @@ const ListViewClocksDemo = () => {
                                     marginStart={12}
                                     marginEnd={12}
                                 >
-                                    {/* Day/Night Indicator */}
                                     <GtkLabel
                                         label={isDaytime(item?.offset ?? 0) ? "sun" : "moon"}
                                         cssClasses={["dim-label"]}
                                         widthRequest={32}
                                     />
 
-                                    {/* City Info */}
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={2}
@@ -187,7 +181,6 @@ const ListViewClocksDemo = () => {
                                         </GtkBox>
                                     </GtkBox>
 
-                                    {/* Time Display */}
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={2}
@@ -213,7 +206,6 @@ const ListViewClocksDemo = () => {
                         </ListView>
                     </GtkScrolledWindow>
 
-                    {/* Selected Clock Details */}
                     {selectedClock && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -274,7 +266,6 @@ const ListViewClocksDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Notes */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

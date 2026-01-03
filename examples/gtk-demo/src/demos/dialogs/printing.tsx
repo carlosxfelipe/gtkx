@@ -7,7 +7,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./printing.tsx?raw";
 
-// Sample content to print
 const SAMPLE_LINES = [
     "GTKX Printing Demo",
     "",
@@ -44,26 +43,21 @@ const PrintingDemo = () => {
 
     const totalPages = Math.ceil(SAMPLE_LINES.length / LINES_PER_PAGE);
 
-    // Draw preview of what will be printed
     const drawPreview = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // White paper background
             cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
-            // Draw border
             cr.setSourceRgb(0.8, 0.8, 0.8)
                 .setLineWidth(1)
                 .rectangle(0.5, 0.5, width - 1, height - 1)
                 .stroke();
 
-            // Calculate scale to fit content
-            const scale = Math.min(width / 612, height / 792); // US Letter in points
+            const scale = Math.min(width / 612, height / 792);
             const offsetX = (width - 612 * scale) / 2;
             const offsetY = (height - 792 * scale) / 2;
 
             cr.save().translate(offsetX, offsetY).scale(scale, scale);
 
-            // Draw margin indicators
             cr.setSourceRgba(0.9, 0.9, 0.9, 0.5)
                 .rectangle(0, 0, MARGIN, 792)
                 .fill()
@@ -74,7 +68,6 @@ const PrintingDemo = () => {
                 .rectangle(0, 792 - MARGIN, 612, MARGIN)
                 .fill();
 
-            // Draw text content using Pango
             const startLine = previewPage * LINES_PER_PAGE;
             const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
@@ -86,7 +79,6 @@ const PrintingDemo = () => {
                 layout.setText(line ?? "", -1);
 
                 if (i === startLine && previewPage === 0) {
-                    // Title - larger and blue
                     cr.setSourceRgb(0.2, 0.4, 0.8);
                     layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
                 } else {
@@ -98,7 +90,6 @@ const PrintingDemo = () => {
                 PangoCairo.showLayout(cr, layout);
             }
 
-            // Page number
             const pageLayout = PangoCairo.createLayout(cr);
             pageLayout.setText(`Page ${previewPage + 1} of ${totalPages}`, -1);
             pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
@@ -124,35 +115,29 @@ const PrintingDemo = () => {
             printOp.setJobName("GTKX Demo Print");
             printOp.setShowProgress(true);
 
-            // Set up page setup
             const pageSetup = new Gtk.PageSetup();
             pageSetup.setOrientation(Gtk.PageOrientation.PORTRAIT);
             printOp.setDefaultPageSetup(pageSetup);
 
-            // Handle begin-print signal
             printOp.connect("begin-print", (_self: Gtk.PrintOperation, context: Gtk.PrintContext) => {
                 setPrintStatus("Preparing print job...");
-                // Calculate pages based on content
                 const pageHeight = context.getHeight();
                 const linesPerPage = Math.floor((pageHeight - 2 * MARGIN) / LINE_HEIGHT);
                 const pages = Math.ceil(SAMPLE_LINES.length / linesPerPage);
                 printOp.setNPages(pages);
             });
 
-            // Handle draw-page signal
             printOp.connect("draw-page", (_self: Gtk.PrintOperation, context: Gtk.PrintContext, pageNr: number) => {
                 setPrintStatus(`Rendering page ${pageNr + 1}...`);
                 const cr = context.getCairoContext();
                 const width = context.getWidth();
 
-                // Draw a decorative header line
                 cr.setSourceRgb(0.2, 0.4, 0.8)
                     .setLineWidth(2)
                     .moveTo(MARGIN, MARGIN - 10)
                     .lineTo(width - MARGIN, MARGIN - 10)
                     .stroke();
 
-                // Draw page content using Pango
                 const startLine = pageNr * LINES_PER_PAGE;
                 const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
@@ -164,7 +149,6 @@ const PrintingDemo = () => {
                     layout.setText(line ?? "", -1);
 
                     if (i === 0 && pageNr === 0) {
-                        // Title - larger and blue
                         cr.setSourceRgb(0.2, 0.4, 0.8);
                         layout.setFontDescription(Pango.FontDescription.fromString("Sans Bold 14"));
                     } else {
@@ -176,7 +160,6 @@ const PrintingDemo = () => {
                     PangoCairo.showLayout(cr, layout);
                 }
 
-                // Draw page number
                 const pageLayout = PangoCairo.createLayout(cr);
                 pageLayout.setText(`Page ${pageNr + 1} of ${totalPages}`, -1);
                 pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
@@ -185,17 +168,14 @@ const PrintingDemo = () => {
                 PangoCairo.showLayout(cr, pageLayout);
             });
 
-            // Handle end-print signal
             printOp.connect("end-print", () => {
                 setPrintStatus("Print job completed");
             });
 
-            // Handle status changes
             printOp.connect("status-changed", (self: Gtk.PrintOperation) => {
                 setPrintStatus(self.getStatusString());
             });
 
-            // Run the print operation
             const result = printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, app.getActiveWindow() ?? undefined);
 
             const resultMap: Record<number, string> = {
@@ -250,14 +230,12 @@ const PrintingDemo = () => {
                     const cr = context.getCairoContext();
                     const width = context.getWidth();
 
-                    // Draw header
                     cr.setSourceRgb(0.2, 0.4, 0.8)
                         .setLineWidth(2)
                         .moveTo(MARGIN, MARGIN - 10)
                         .lineTo(width - MARGIN, MARGIN - 10)
                         .stroke();
 
-                    // Draw content using Pango
                     const startLine = pageNr * LINES_PER_PAGE;
                     const endLine = Math.min(startLine + LINES_PER_PAGE, SAMPLE_LINES.length);
 
@@ -280,7 +258,6 @@ const PrintingDemo = () => {
                         PangoCairo.showLayout(cr, layout);
                     }
 
-                    // Draw page number
                     const pageLayout = PangoCairo.createLayout(cr);
                     pageLayout.setText(`Page ${pageNr + 1} of ${totalPages}`, -1);
                     pageLayout.setFontDescription(Pango.FontDescription.fromString("Sans 8"));
@@ -297,9 +274,7 @@ const PrintingDemo = () => {
                     setLastResult("Export cancelled");
                 }
             }
-        } catch {
-            // User cancelled file dialog
-        }
+        } catch {}
     };
 
     return (
@@ -313,7 +288,6 @@ const PrintingDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Print Actions */}
             <GtkFrame label="Print Actions">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -347,7 +321,6 @@ const PrintingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Page Preview */}
             <GtkFrame label="Page Preview">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -375,7 +348,6 @@ const PrintingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Print Operation Signals */}
             <GtkFrame label="PrintOperation Signals">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -420,7 +392,6 @@ const PrintingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Print Settings */}
             <GtkFrame label="Print Settings">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

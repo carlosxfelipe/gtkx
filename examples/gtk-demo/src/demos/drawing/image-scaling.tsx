@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./image-scaling.tsx?raw";
 
-// Content fit mode descriptions
 const CONTENT_FIT_MODES = [
     {
         mode: Gtk.ContentFit.FILL,
@@ -29,7 +28,6 @@ const CONTENT_FIT_MODES = [
     },
 ];
 
-// Draw a sample image pattern for demonstration
 const drawSampleImage = (
     cr: Context,
     width: number,
@@ -38,7 +36,6 @@ const drawSampleImage = (
     sourceHeight: number,
     fitMode: Gtk.ContentFit,
 ) => {
-    // Calculate scaling based on fit mode
     let scale = 1;
     let offsetX = 0;
     let offsetY = 0;
@@ -50,12 +47,10 @@ const drawSampleImage = (
 
     switch (fitMode) {
         case Gtk.ContentFit.FILL:
-            // Stretch to fill
             drawWidth = width;
             drawHeight = height;
             break;
         case Gtk.ContentFit.CONTAIN:
-            // Fit inside, preserving aspect ratio
             scale = Math.min(scaleX, scaleY);
             drawWidth = sourceWidth * scale;
             drawHeight = sourceHeight * scale;
@@ -63,7 +58,6 @@ const drawSampleImage = (
             offsetY = (height - drawHeight) / 2;
             break;
         case Gtk.ContentFit.COVER:
-            // Cover the area, may crop
             scale = Math.max(scaleX, scaleY);
             drawWidth = sourceWidth * scale;
             drawHeight = sourceHeight * scale;
@@ -71,7 +65,6 @@ const drawSampleImage = (
             offsetY = (height - drawHeight) / 2;
             break;
         case Gtk.ContentFit.SCALE_DOWN:
-            // Like contain, but never scale up
             scale = Math.min(1, Math.min(scaleX, scaleY));
             drawWidth = sourceWidth * scale;
             drawHeight = sourceHeight * scale;
@@ -80,22 +73,17 @@ const drawSampleImage = (
             break;
     }
 
-    // Draw background to show letterboxing/cropping
     cr.setSourceRgb(0.15, 0.15, 0.15).rectangle(0, 0, width, height).fill();
 
-    // Clip to container (for COVER mode)
     cr.save().rectangle(0, 0, width, height).clip();
 
-    // Draw the "image" content
     cr.save().translate(offsetX, offsetY);
 
-    // Gradient background
     const pattern = Pattern.createLinear(0, 0, drawWidth, drawHeight);
     pattern.addColorStopRgb(0, 0.2, 0.5, 0.8);
     pattern.addColorStopRgb(1, 0.8, 0.3, 0.5);
     cr.setSource(pattern).rectangle(0, 0, drawWidth, drawHeight).fill();
 
-    // Draw a grid to show scaling
     cr.setSourceRgba(1, 1, 1, 0.3).setLineWidth(1);
     const gridSize = drawWidth / 5;
     for (let i = 0; i <= 5; i++) {
@@ -105,12 +93,10 @@ const drawSampleImage = (
         cr.moveTo(0, y).lineTo(drawWidth, y).stroke();
     }
 
-    // Draw center circle
     cr.setSourceRgba(1, 1, 1, 0.7)
         .arc(drawWidth / 2, drawHeight / 2, Math.min(drawWidth, drawHeight) / 4, 0, 2 * Math.PI)
         .fill();
 
-    // Draw border
     cr.setSourceRgb(1, 1, 1)
         .setLineWidth(2)
         .rectangle(1, 1, drawWidth - 2, drawHeight - 2)
@@ -119,13 +105,11 @@ const drawSampleImage = (
     cr.restore().restore();
 };
 
-// Component for each content fit demo
 const ContentFitDemo = ({ mode, name, description }: { mode: Gtk.ContentFit; name: string; description: string }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
 
     const drawFunc = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            // Source image is 100x60 (wide)
             drawSampleImage(cr, width, height, 100, 60, mode);
         },
         [mode],
@@ -146,7 +130,6 @@ const ContentFitDemo = ({ mode, name, description }: { mode: Gtk.ContentFit; nam
     );
 };
 
-// Component for showing different source aspect ratios
 const AspectRatioDemo = ({
     sourceWidth,
     sourceHeight,
@@ -191,7 +174,6 @@ const ImageScalingDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Content Fit Modes */}
             <GtkFrame label="ContentFit Modes">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -213,7 +195,6 @@ const ImageScalingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Different Aspect Ratios */}
             <GtkFrame label="Aspect Ratio Handling">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -238,7 +219,6 @@ const ImageScalingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GtkPicture Widget */}
             <GtkFrame label="GtkPicture Widget">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -294,7 +274,6 @@ const ImageScalingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Scaling Quality */}
             <GtkFrame label="Scaling Considerations">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -338,7 +317,6 @@ const ImageScalingDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* GtkPicture API */}
             <GtkFrame label="GtkPicture API">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

@@ -207,14 +207,12 @@ const ListViewWordsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* Search */}
                     <GtkSearchEntry
                         text={searchText}
                         placeholderText="Search words or definitions..."
                         onSearchChanged={(entry) => setSearchText(entry.getText())}
                     />
 
-                    {/* Filter Buttons */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                         <GtkButton
                             label={`All (${dictionary.length})`}
@@ -249,7 +247,6 @@ const ListViewWordsDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    {/* Word List */}
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <ListView<WordItem>
                             showSeparators
@@ -297,7 +294,6 @@ const ListViewWordsDemo = () => {
                         </ListView>
                     </GtkScrolledWindow>
 
-                    {/* No Results */}
                     {filteredWords.length === 0 && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -311,7 +307,6 @@ const ListViewWordsDemo = () => {
                         </GtkBox>
                     )}
 
-                    {/* Selected Word Details */}
                     {selectedWord && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -336,7 +331,6 @@ const ListViewWordsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Search Tips */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Search Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

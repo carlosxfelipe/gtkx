@@ -4,10 +4,13 @@ import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { findNativeClass } from "../registry.js";
 import type { NativeClass, NativeObject } from "./base.js";
 
-type GetNativeObjectResult<
-    T extends ObjectId | null | undefined,
-    TClass extends NativeClass | undefined,
-> = T extends null | undefined ? null : TClass extends NativeClass<infer U> ? U : NativeObject;
+type GetNativeObjectResult<T extends ObjectId | null | undefined, TClass extends NativeClass | undefined> = T extends
+    | null
+    | undefined
+    ? null
+    : TClass extends NativeClass<infer U>
+      ? U
+      : NativeObject;
 
 export function getNativeObject<
     T extends ObjectId | null | undefined,

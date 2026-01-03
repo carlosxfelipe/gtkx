@@ -14,7 +14,6 @@ interface FileItem {
     children?: FileItem[];
 }
 
-// Simulated file system structure
 const fileSystem: FileItem[] = [
     {
         id: "home",
@@ -222,7 +221,6 @@ const ListViewFilebrowserDemo = () => {
     const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
     const [showHidden, setShowHidden] = useState(false);
 
-    // Navigate to get current directory contents
     const getCurrentContents = (): FileItem[] => {
         let current = fileSystem;
         for (const segment of currentPath) {
@@ -231,11 +229,9 @@ const ListViewFilebrowserDemo = () => {
                 current = folder.children;
             }
         }
-        // Filter hidden files if needed
         if (!showHidden) {
             current = current.filter((f) => !f.name.startsWith("."));
         }
-        // Sort: folders first, then files, alphabetically
         return [...current].sort((a, b) => {
             if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
             return a.name.localeCompare(b.name);
@@ -298,7 +294,6 @@ const ListViewFilebrowserDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {/* Toolbar */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                         <GtkButton
                             iconName="go-up-symbolic"
@@ -329,7 +324,6 @@ const ListViewFilebrowserDemo = () => {
 
                     <GtkLabel label={`${contents.length} items`} cssClasses={["dim-label"]} halign={Gtk.Align.START} />
 
-                    {/* File List */}
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <ListView<FileItem>
                             showSeparators
@@ -371,7 +365,6 @@ const ListViewFilebrowserDemo = () => {
                         </ListView>
                     </GtkScrolledWindow>
 
-                    {/* Selected File Details */}
                     {selectedFile && (
                         <GtkBox
                             orientation={Gtk.Orientation.HORIZONTAL}
@@ -407,7 +400,6 @@ const ListViewFilebrowserDemo = () => {
                         </GtkBox>
                     )}
 
-                    {/* Empty State */}
                     {contents.length === 0 && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -423,7 +415,6 @@ const ListViewFilebrowserDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Concepts */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Concepts" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

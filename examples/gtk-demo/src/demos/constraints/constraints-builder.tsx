@@ -57,7 +57,6 @@ const MultiplierDemo = () => {
             const button = ref.current;
             if (!button) continue;
 
-            // Left align
             layout.addConstraint(
                 createConstraint({
                     target: button,
@@ -67,7 +66,6 @@ const MultiplierDemo = () => {
                 }),
             );
 
-            // Vertical position
             layout.addConstraint(
                 createConstraint({
                     target: button,
@@ -77,8 +75,6 @@ const MultiplierDemo = () => {
                 }),
             );
 
-            // Width as fraction of parent width
-            // button.width = parent.width * multiplier - margin
             layout.addConstraint(
                 createConstraint({
                     target: button,
@@ -145,13 +141,11 @@ const GuideDemo = () => {
     useEffect(() => {
         if (!containerRef.current || !leftRef.current || !rightRef.current) return;
 
-        // Create layout and guide only once
         if (!layoutRef.current) {
             const layout = new Gtk.ConstraintLayout();
             layoutRef.current = layout;
             containerRef.current.setLayoutManager(layout);
 
-            // Create a guide that acts as a flexible divider
             const guide = new Gtk.ConstraintGuide();
             guideRef.current = guide;
             guide.setName("divider");
@@ -165,11 +159,8 @@ const GuideDemo = () => {
         const guide = guideRef.current;
         if (!guide) return;
 
-        // Remove old constraints before adding new ones
-        // (no-op on first render since layout was just created)
         layout.removeAllConstraints();
 
-        // Position guide as percentage of container width
         layout.addConstraint(
             createConstraint({
                 target: guide,
@@ -179,8 +170,6 @@ const GuideDemo = () => {
             }),
         );
 
-        // Re-add all button constraints
-        // Left button: from start to guide
         layout.addConstraint(
             createConstraint({
                 target: leftRef.current,
@@ -206,7 +195,6 @@ const GuideDemo = () => {
             }),
         );
 
-        // Right button: from guide to end
         layout.addConstraint(
             createConstraint({
                 target: rightRef.current,
@@ -302,7 +290,6 @@ const RelationDemo = () => {
 
         let yOffset = 8;
 
-        // EQ button: width exactly 150
         layout.addConstraint(
             createConstraint({
                 target: eqRef.current,
@@ -331,7 +318,6 @@ const RelationDemo = () => {
 
         yOffset += 45;
 
-        // GE button: width >= 100 (will try to be larger)
         layout.addConstraint(
             createConstraint({
                 target: geRef.current,
@@ -360,7 +346,6 @@ const RelationDemo = () => {
 
         yOffset += 45;
 
-        // LE button: width <= 200 (capped at maximum)
         layout.addConstraint(
             createConstraint({
                 target: leRef.current,
@@ -386,7 +371,6 @@ const RelationDemo = () => {
                 leRef.current,
             ),
         );
-        // Also set minimum to show it respects bounds
         layout.addConstraint(
             Gtk.Constraint.newConstant(
                 Gtk.ConstraintAttribute.WIDTH,

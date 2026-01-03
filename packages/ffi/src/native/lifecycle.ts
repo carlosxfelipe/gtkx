@@ -12,6 +12,8 @@ const isDeno = typeof Deno !== "undefined";
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
+
+export const isStarted = (): boolean => application !== null;
 let exitHandlersRegistered = false;
 
 const teardown = (): void => {

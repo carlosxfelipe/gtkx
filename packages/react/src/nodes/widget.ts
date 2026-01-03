@@ -255,7 +255,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 return;
             }
 
-            if (currentValue instanceof NativeObject && value instanceof NativeObject && isObjectEqual(currentValue, value)) {
+            if (
+                currentValue instanceof NativeObject &&
+                value instanceof NativeObject &&
+                isObjectEqual(currentValue, value)
+            ) {
                 return;
             }
         }

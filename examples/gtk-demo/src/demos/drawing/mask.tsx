@@ -5,13 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./mask.tsx?raw";
 
-// Draw a circular alpha mask
 const drawCircularMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) / 2 - 20;
 
-    // Draw checkerboard background to show transparency
     const checkSize = 10;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
@@ -22,13 +20,11 @@ const drawCircularMask = (_self: Gtk.DrawingArea, cr: Context, width: number, he
         }
     }
 
-    // Create a colorful background pattern
     const bgGradient = Pattern.createLinear(0, 0, width, height)
         .addColorStopRgb(0, 0.9, 0.2, 0.2)
         .addColorStopRgb(0.5, 0.2, 0.9, 0.2)
         .addColorStopRgb(1, 0.2, 0.2, 0.9);
 
-    // Draw the gradient as a rectangle
     cr.save()
         .setSource(bgGradient)
         .rectangle(0, 0, width, height)
@@ -37,14 +33,12 @@ const drawCircularMask = (_self: Gtk.DrawingArea, cr: Context, width: number, he
         .paint()
         .restore();
 
-    // Draw mask outline
     cr.setSourceRgba(0, 0, 0, 0.3)
         .setLineWidth(2)
         .arc(centerX, centerY, radius, 0, 2 * Math.PI)
         .stroke();
 };
 
-// Draw a radial gradient mask (soft edges)
 const drawGradientMask = (feather: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
@@ -52,7 +46,6 @@ const drawGradientMask = (feather: number) => {
         const innerRadius = 20;
         const outerRadius = Math.min(width, height) / 2 - 10;
 
-        // Draw checkerboard background
         const checkSize = 8;
         for (let y = 0; y < height; y += checkSize) {
             for (let x = 0; x < width; x += checkSize) {
@@ -63,22 +56,18 @@ const drawGradientMask = (feather: number) => {
             }
         }
 
-        // Draw colored pattern that will be masked
         cr.setSourceRgb(0.2, 0.6, 0.9).rectangle(0, 0, width, height).fill();
 
-        // Create radial gradient for mask (using alpha)
         const maskRadius = innerRadius + (outerRadius - innerRadius) * (1 - feather);
         const mask = Pattern.createRadial(centerX, centerY, 0, centerX, centerY, outerRadius)
-            .addColorStopRgba(0, 0, 0, 0, 1) // Opaque center
-            .addColorStopRgba(maskRadius / outerRadius, 0, 0, 0, 1) // Inner edge
-            .addColorStopRgba(1, 0, 0, 0, 0); // Transparent edge
+            .addColorStopRgba(0, 0, 0, 0, 1)
+            .addColorStopRgba(maskRadius / outerRadius, 0, 0, 0, 1)
+            .addColorStopRgba(1, 0, 0, 0, 0);
 
-        // Apply mask using DEST_IN operator
         cr.setOperator(Operator.DEST_IN).setSource(mask).paint().setOperator(Operator.OVER);
     };
 };
 
-// Draw a star-shaped mask
 const drawStarMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
     const centerX = width / 2;
     const centerY = height / 2;
@@ -86,7 +75,6 @@ const drawStarMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
     const innerRadius = outerRadius * 0.4;
     const points = 5;
 
-    // Draw checkerboard background
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
@@ -97,14 +85,12 @@ const drawStarMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
         }
     }
 
-    // Create gradient background
     const bgGradient = Pattern.createLinear(0, 0, width, height)
         .addColorStopRgb(0, 0.95, 0.8, 0.2)
         .addColorStopRgb(1, 0.9, 0.4, 0.1);
 
     cr.save().setSource(bgGradient).rectangle(0, 0, width, height);
 
-    // Create star path for clipping
     for (let i = 0; i < points * 2; i++) {
         const radius = i % 2 === 0 ? outerRadius : innerRadius;
         const angle = (i * Math.PI) / points - Math.PI / 2;
@@ -120,9 +106,7 @@ const drawStarMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
     cr.closePath().clip().paint().restore();
 };
 
-// Draw horizontal gradient mask
 const drawHorizontalGradientMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    // Draw checkerboard
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
@@ -133,10 +117,8 @@ const drawHorizontalGradientMask = (_self: Gtk.DrawingArea, cr: Context, width: 
         }
     }
 
-    // Draw image (solid color for demo)
     cr.setSourceRgb(0.6, 0.2, 0.8).rectangle(0, 0, width, height).fill();
 
-    // Create horizontal gradient mask
     const mask = Pattern.createLinear(0, 0, width, 0)
         .addColorStopRgba(0, 0, 0, 0, 0)
         .addColorStopRgba(0.3, 0, 0, 0, 1)
@@ -146,9 +128,7 @@ const drawHorizontalGradientMask = (_self: Gtk.DrawingArea, cr: Context, width: 
     cr.setOperator(Operator.DEST_IN).setSource(mask).paint().setOperator(Operator.OVER);
 };
 
-// Draw text as mask
 const drawTextMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    // Draw checkerboard
     const checkSize = 8;
     for (let y = 0; y < height; y += checkSize) {
         for (let x = 0; x < width; x += checkSize) {
@@ -159,7 +139,6 @@ const drawTextMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
         }
     }
 
-    // Create colorful background
     const gradient = Pattern.createLinear(0, 0, width, height)
         .addColorStopRgb(0, 0.9, 0.2, 0.5)
         .addColorStopRgb(0.5, 0.5, 0.2, 0.9)
@@ -167,7 +146,6 @@ const drawTextMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
 
     cr.save();
 
-    // Draw text path as clip mask
     cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.BOLD).setFontSize(48);
 
     const text = "MASK";
@@ -188,7 +166,6 @@ const MaskDemo = () => {
 
     const featherAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
 
-    // Set up circular mask
     useEffect(() => {
         const area = circularMaskRef.current;
         if (area) {
@@ -196,7 +173,6 @@ const MaskDemo = () => {
         }
     }, []);
 
-    // Update gradient mask when feather changes
     useEffect(() => {
         const area = gradientMaskRef.current;
         if (area) {
@@ -205,7 +181,6 @@ const MaskDemo = () => {
         }
     }, [feather]);
 
-    // Set up star mask
     useEffect(() => {
         const area = starMaskRef.current;
         if (area) {
@@ -213,7 +188,6 @@ const MaskDemo = () => {
         }
     }, []);
 
-    // Set up horizontal gradient mask
     useEffect(() => {
         const area = horizontalMaskRef.current;
         if (area) {
@@ -221,7 +195,6 @@ const MaskDemo = () => {
         }
     }, []);
 
-    // Set up text mask
     useEffect(() => {
         const area = textMaskRef.current;
         if (area) {
@@ -247,7 +220,6 @@ const MaskDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Alpha mask types */}
             <GtkFrame label="Mask Types">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -290,7 +262,6 @@ const MaskDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Gradient mask with feather control */}
             <GtkFrame label="Gradient Mask (Soft Edges)">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -332,7 +303,6 @@ const MaskDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Horizontal gradient mask */}
             <GtkFrame label="Linear Gradient Mask">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -359,7 +329,6 @@ const MaskDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Masking techniques */}
             <GtkFrame label="Masking Techniques">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -409,7 +378,6 @@ const MaskDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Cairo operators info */}
             <GtkFrame label="Cairo Compositing Operators">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

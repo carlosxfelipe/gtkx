@@ -22,7 +22,6 @@ type GameState = "playing" | "won" | "lost";
 const createBoard = (): Cell[] => {
     const cells: Cell[] = [];
 
-    // Create empty cells
     for (let row = 0; row < GRID_SIZE; row++) {
         for (let col = 0; col < GRID_SIZE; col++) {
             cells.push({
@@ -37,7 +36,6 @@ const createBoard = (): Cell[] => {
         }
     }
 
-    // Place mines randomly
     let minesPlaced = 0;
     while (minesPlaced < MINE_COUNT) {
         const index = Math.floor(Math.random() * cells.length);
@@ -48,7 +46,6 @@ const createBoard = (): Cell[] => {
         }
     }
 
-    // Calculate adjacent mine counts
     for (const cell of cells) {
         if (cell.isMine) continue;
         let count = 0;
@@ -83,12 +80,10 @@ const ListViewMinesweeperDemo = () => {
         const newCell = { ...cell, isRevealed: true };
         newBoard[index] = newCell;
 
-        // If it's a mine, game over
         if (newCell.isMine) {
             return newBoard;
         }
 
-        // If no adjacent mines, reveal neighbors
         if (newCell.adjacentMines === 0) {
             for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
@@ -119,7 +114,6 @@ const ListViewMinesweeperDemo = () => {
             const cell = board[index];
             if (!cell || cell.isRevealed || cell.isFlagged) return;
 
-            // Start timer on first click
             if (startTime === null) {
                 setStartTime(Date.now());
             }
@@ -127,16 +121,13 @@ const ListViewMinesweeperDemo = () => {
             const newBoard = revealCell(index, board);
             setBoard(newBoard);
 
-            // Check for game over
             const clickedCell = newBoard[index];
             if (clickedCell?.isMine) {
                 setGameState("lost");
-                // Reveal all mines
                 setBoard(newBoard.map((c) => (c.isMine ? { ...c, isRevealed: true } : c)));
                 return;
             }
 
-            // Check for win
             const unrevealedSafeCells = newBoard.filter((c) => !c.isRevealed && !c.isMine).length;
             if (unrevealedSafeCells === 0) {
                 setGameState("won");
@@ -196,7 +187,6 @@ const ListViewMinesweeperDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Game Status */}
             <GtkFrame label="Game Status">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -234,7 +224,6 @@ const ListViewMinesweeperDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Game Board */}
             <GtkFrame label="Minefield">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -292,12 +281,10 @@ const ListViewMinesweeperDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Controls */}
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
                 <GtkButton label="New Game" onClicked={resetGame} cssClasses={["suggested-action"]} />
             </GtkBox>
 
-            {/* Win/Lose Message */}
             {gameState !== "playing" && (
                 <GtkFrame>
                     <GtkBox
@@ -321,7 +308,6 @@ const ListViewMinesweeperDemo = () => {
                 </GtkFrame>
             )}
 
-            {/* How to Play */}
             <GtkFrame label="How to Play">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -338,7 +324,6 @@ const ListViewMinesweeperDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Notes */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

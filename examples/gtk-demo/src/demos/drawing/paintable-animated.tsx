@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-animated.tsx?raw";
 
-// Helper function to create a GdkMemoryTexture from pixel data
 function createMemoryTexture(
     width: number,
     height: number,
@@ -18,7 +17,6 @@ function createMemoryTexture(
     return new Gdk.MemoryTexture(width, height, format, bytes, stride);
 }
 
-// Create an animated texture that changes over time
 function createAnimatedFrame(
     width: number,
     height: number,
@@ -80,7 +78,6 @@ function createAnimatedFrame(
     return createMemoryTexture(width, height, Gdk.MemoryFormat.R8G8B8A8, data, width * 4);
 }
 
-// HSL to RGB helper
 function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
     h = h / 360;
     let r: number, g: number, b: number;
@@ -120,7 +117,6 @@ const PaintableAnimatedDemo = () => {
     const speedAdjustment = useMemo(() => new Gtk.Adjustment(1.0, 0.1, 3.0, 0.1, 0.5, 0), []);
     const resolutionAdjustment = useMemo(() => new Gtk.Adjustment(128, 32, 256, 16, 32, 0), []);
 
-    // Animation loop
     useEffect(() => {
         if (!isPlaying) return;
 
@@ -133,7 +129,6 @@ const PaintableAnimatedDemo = () => {
         return () => clearInterval(intervalId);
     }, [isPlaying, speed, time]);
 
-    // Create the current frame texture
     const texture = useMemo(() => {
         return createAnimatedFrame(resolution, resolution, time, animationType);
     }, [time, animationType, resolution]);

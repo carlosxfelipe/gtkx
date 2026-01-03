@@ -18,9 +18,6 @@ interface ChildPosition {
     angle: number;
 }
 
-// Custom Circular Layout Component
-// Demonstrates manual widget positioning by calculating positions
-// based on a circular/radial layout pattern
 const CircularLayoutDemo = () => {
     const [radius, setRadius] = useState(80);
     const [rotation, setRotation] = useState(0);
@@ -36,7 +33,6 @@ const CircularLayoutDemo = () => {
     const radiusAdjustment = useMemo(() => new Gtk.Adjustment(80, 40, 120, 5, 10, 0), []);
     const rotationAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 5, 30, 0), []);
 
-    // Calculate positions for items in a circle
     const getItemPosition = (angle: number) => {
         const totalAngle = angle + rotation;
         const radians = (totalAngle * Math.PI) / 180;
@@ -65,7 +61,6 @@ const CircularLayoutDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    {/* Circular layout using GtkFixed */}
                     <GtkFixed cssClasses={[circularContainerStyle]} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
                         {items.map((item) => {
                             const pos = getItemPosition(item.angle);
@@ -89,7 +84,6 @@ const CircularLayoutDemo = () => {
                         </FixedChild>
                     </GtkFixed>
 
-                    {/* Controls */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkLabel label="Radius:" widthRequest={70} halign={Gtk.Align.START} />
                         <GtkScale
@@ -114,7 +108,6 @@ const CircularLayoutDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* Position display */}
                     <GtkFrame label="Calculated Positions">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -143,7 +136,6 @@ const CircularLayoutDemo = () => {
     );
 };
 
-// Grid-based custom layout
 const GridLayoutDemo = () => {
     const [columns, setColumns] = useState(3);
     const [spacing, setSpacing] = useState(8);
@@ -175,7 +167,6 @@ const GridLayoutDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    {/* Grid display */}
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={spacing}>
                         {Array.from({ length: Math.ceil(items.length / columns) }, (_, rowIndex) => {
                             const rowItems = items.slice(rowIndex * columns, (rowIndex + 1) * columns);
@@ -195,7 +186,6 @@ const GridLayoutDemo = () => {
                         })}
                     </GtkBox>
 
-                    {/* Controls */}
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkLabel label="Columns:" widthRequest={70} halign={Gtk.Align.START} />
                         <GtkScale
@@ -222,7 +212,6 @@ const GridLayoutDemo = () => {
                         />
                     </GtkBox>
 
-                    {/* Layout info */}
                     <GtkLabel
                         label={`Layout: ${columns} columns, ${Math.ceil(items.length / columns)} rows, ${spacing}px spacing`}
                         cssClasses={["dim-label", "caption"]}

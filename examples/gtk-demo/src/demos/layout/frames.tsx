@@ -18,7 +18,6 @@ const FramesDemo = () => {
         >
             <GtkLabel label="Frames" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* Basic Frame */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -47,7 +46,6 @@ const FramesDemo = () => {
                 </GtkFrame>
             </GtkBox>
 
-            {/* Frame without Label */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Frame without Label" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -76,7 +74,6 @@ const FramesDemo = () => {
                 </GtkFrame>
             </GtkBox>
 
-            {/* Custom Label Widget */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Custom Label Widget" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -111,7 +108,6 @@ const FramesDemo = () => {
                 </GtkFrame>
             </GtkBox>
 
-            {/* Interactive Frame */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Interactive Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -149,7 +145,6 @@ const FramesDemo = () => {
                 </GtkFrame>
             </GtkBox>
 
-            {/* Multiple Frames */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Multiple Frames" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

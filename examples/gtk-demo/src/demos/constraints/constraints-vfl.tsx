@@ -27,10 +27,6 @@ const HorizontalLayoutDemo = () => {
         const MARGIN = 8;
         const SPACING = 8;
 
-        // VFL: H:|-[button1]-[button2]-|
-        // This means: margin-left, button1, spacing, button2, margin-right
-
-        // button1.start = parent.start + margin
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -44,7 +40,6 @@ const HorizontalLayoutDemo = () => {
             ),
         );
 
-        // button2.start = button1.end + spacing
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -58,7 +53,6 @@ const HorizontalLayoutDemo = () => {
             ),
         );
 
-        // button2.end = parent.end - margin
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.END,
@@ -72,7 +66,6 @@ const HorizontalLayoutDemo = () => {
             ),
         );
 
-        // Vertical centering for both buttons
         for (const buttonRef of [button1Ref, button2Ref]) {
             const button = buttonRef.current;
             if (!button) continue;
@@ -145,9 +138,6 @@ const ExplicitSpacingDemo = () => {
         const layout = new Gtk.ConstraintLayout();
         layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
-
-        // VFL: H:|-20-[widget]-50-|
-        // Explicit left margin of 20, explicit right margin of 50
 
         layout.addConstraint(
             new Gtk.Constraint(
@@ -245,10 +235,6 @@ const SizePredicatesDemo = () => {
         const MARGIN = 8;
         const SPACING = 12;
 
-        // VFL: H:|-[minWidth(>=120)]-[fixedWidth(==80)]-|
-        // minWidth has minimum width of 120, fixedWidth has exact width of 80
-
-        // Position constraints
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.START,
@@ -275,8 +261,6 @@ const SizePredicatesDemo = () => {
             ),
         );
 
-        // Size constraints
-        // minWidth(>=120)
         layout.addConstraint(
             Gtk.Constraint.newConstant(
                 Gtk.ConstraintAttribute.WIDTH,
@@ -287,7 +271,6 @@ const SizePredicatesDemo = () => {
             ),
         );
 
-        // fixedWidth(==80)
         layout.addConstraint(
             Gtk.Constraint.newConstant(
                 Gtk.ConstraintAttribute.WIDTH,
@@ -298,7 +281,6 @@ const SizePredicatesDemo = () => {
             ),
         );
 
-        // Vertical centering
         for (const buttonRef of [minWidthRef, fixedWidthRef]) {
             const button = buttonRef.current;
             if (!button) continue;
@@ -374,9 +356,6 @@ const VerticalLayoutDemo = () => {
         const MARGIN = 8;
         const SPACING = 8;
 
-        // VFL: V:|-[top]-[bottom]-|
-        // Vertical layout from top to bottom
-
         layout.addConstraint(
             new Gtk.Constraint(
                 Gtk.ConstraintAttribute.TOP,
@@ -416,7 +395,6 @@ const VerticalLayoutDemo = () => {
             ),
         );
 
-        // Horizontal centering for both buttons
         for (const buttonRef of [topRef, bottomRef]) {
             const button = buttonRef.current;
             if (!button) continue;

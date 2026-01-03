@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-sweep.tsx?raw";
 
-// Easing functions
 const easings = {
     linear: (t: number) => t,
     easeInQuad: (t: number) => t * t,
@@ -36,14 +35,12 @@ const easings = {
 
 type EasingName = keyof typeof easings;
 
-// Path sweep with dash animation
 const createDashSweepDrawFunc = (progress: number, dashLength: number = 20) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const padding = 30;
         const w = width - padding * 2;
         const h = height - padding * 2;
 
-        // Draw full path in gray
         cr.setSourceRgba(0.5, 0.5, 0.5, 0.3)
             .setLineWidth(4)
             .setLineCap(LineCap.ROUND)
@@ -52,13 +49,10 @@ const createDashSweepDrawFunc = (progress: number, dashLength: number = 20) => {
             .curveTo(padding + w * 0.75, padding, padding + w * 0.75, padding + h, padding + w, padding + h / 2)
             .stroke();
 
-        // Calculate approximate path length
         const pathLength = w * 2;
 
-        // Draw animated dash
         cr.setSourceRgb(0.2, 0.6, 0.9).setLineWidth(6);
 
-        // Use dash offset to create sweep effect
         const dashOffset = -progress * pathLength;
         cr.setDash([dashLength, pathLength - dashLength], dashOffset)
             .moveTo(padding, padding + h / 2)
@@ -66,12 +60,10 @@ const createDashSweepDrawFunc = (progress: number, dashLength: number = 20) => {
             .curveTo(padding + w * 0.75, padding, padding + w * 0.75, padding + h, padding + w, padding + h / 2)
             .stroke();
 
-        // Reset dash
         cr.setDash([], 0);
     };
 };
 
-// Path reveal animation (drawing the path progressively)
 const createPathRevealDrawFunc = (progress: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const padding = 30;
@@ -79,10 +71,8 @@ const createPathRevealDrawFunc = (progress: number) => {
         const h = height - padding * 2;
         const pathLength = w * 2.5;
 
-        // Draw background path
         cr.setSourceRgba(0.5, 0.5, 0.5, 0.2).setLineWidth(3).setLineCap(LineCap.ROUND);
 
-        // Star shape
         const centerX = width / 2;
         const centerY = height / 2;
         const outerRadius = Math.min(w, h) / 2 - 10;
@@ -102,7 +92,6 @@ const createPathRevealDrawFunc = (progress: number) => {
         }
         cr.closePath().stroke();
 
-        // Draw revealed portion
         cr.setSourceRgb(0.9, 0.4, 0.3).setLineWidth(5);
 
         const visibleLength = progress * pathLength * 1.2;
@@ -125,21 +114,18 @@ const createPathRevealDrawFunc = (progress: number) => {
     };
 };
 
-// Multiple dash sweep
 const createMultiDashSweepDrawFunc = (progress: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const padding = 30;
         const w = width - padding * 2;
         const h = height - padding * 2;
 
-        // Draw spiral
         const centerX = width / 2;
         const centerY = height / 2;
         const maxRadius = Math.min(w, h) / 2;
         const spiralTurns = 3;
         const numPoints = 100;
 
-        // Background
         cr.setSourceRgba(0.5, 0.5, 0.5, 0.2).setLineWidth(2);
 
         for (let i = 0; i <= numPoints; i++) {
@@ -156,7 +142,6 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
         }
         cr.stroke();
 
-        // Animated dashes
         const pathLength = spiralTurns * Math.PI * maxRadius;
         const dashLength = pathLength / 8;
         const gapLength = dashLength;
@@ -185,7 +170,6 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
     };
 };
 
-// Animated sweep component
 const AnimatedSweep = ({
     width,
     height,
@@ -236,7 +220,6 @@ const AnimatedSweep = ({
     );
 };
 
-// Easing function visualizer
 const EasingVisualizer = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const [selectedEasing, setSelectedEasing] = useState<EasingName>("easeOutQuad");
@@ -249,7 +232,6 @@ const EasingVisualizer = () => {
                 const w = width - padding * 2;
                 const h = height - padding * 2;
 
-                // Draw axes
                 cr.setSourceRgba(0.5, 0.5, 0.5, 0.5)
                     .setLineWidth(1)
                     .moveTo(padding, padding)
@@ -257,7 +239,6 @@ const EasingVisualizer = () => {
                     .lineTo(padding + w, padding + h)
                     .stroke();
 
-                // Draw easing curve
                 cr.setSourceRgba(0.5, 0.5, 0.5, 0.3).setLineWidth(2);
                 const easingFn = easings[selectedEasing];
 
@@ -273,26 +254,21 @@ const EasingVisualizer = () => {
                 }
                 cr.stroke();
 
-                // Draw current position
                 const x = padding + progress * w;
                 const y = padding + h - easingFn(progress) * h;
 
-                // Vertical line
                 cr.setSourceRgba(0.2, 0.6, 0.9, 0.5)
                     .setLineWidth(1)
                     .moveTo(x, padding + h)
                     .lineTo(x, y)
                     .stroke();
 
-                // Horizontal line
                 cr.moveTo(padding, y).lineTo(x, y).stroke();
 
-                // Point
                 cr.setSourceRgb(0.9, 0.3, 0.3)
                     .arc(x, y, 6, 0, 2 * Math.PI)
                     .fill();
 
-                // Labels
                 cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
                     .setFontSize(10)
                     .setSourceRgb(0.5, 0.5, 0.5)
@@ -365,7 +341,6 @@ const PathSweepDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Sweep Animations */}
             <GtkFrame label="Sweep Effects">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -400,7 +375,6 @@ const PathSweepDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Easing Functions */}
             <GtkFrame label="Easing Functions">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

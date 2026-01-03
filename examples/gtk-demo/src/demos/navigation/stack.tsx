@@ -38,7 +38,6 @@ const StackDemo = () => {
         >
             <GtkLabel label="Stack" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About Stack */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About GtkStack" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -49,7 +48,6 @@ const StackDemo = () => {
                 />
             </GtkBox>
 
-            {/* Stack with StackSwitcher */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -122,7 +120,6 @@ const StackDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Navigation Controls */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Programmatic Navigation" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -144,7 +141,6 @@ const StackDemo = () => {
                 <GtkLabel label={`Current page: ${currentPage}`} cssClasses={["dim-label"]} halign={Gtk.Align.CENTER} />
             </GtkBox>
 
-            {/* Transition Types */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Transition Types" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -175,7 +171,6 @@ const StackDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Key Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

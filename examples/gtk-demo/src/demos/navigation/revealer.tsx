@@ -33,7 +33,6 @@ const RevealerDemo = () => {
         >
             <GtkLabel label="Revealer" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About Revealer */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About GtkRevealer" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -44,7 +43,6 @@ const RevealerDemo = () => {
                 />
             </GtkBox>
 
-            {/* Basic Revealer */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -83,7 +81,6 @@ const RevealerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Transition Types */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Transition Types" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -104,7 +101,6 @@ const RevealerDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Expandable Details */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -190,7 +186,6 @@ const RevealerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Notification Banner */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -245,7 +240,6 @@ const RevealerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Sidebar Pattern */}
             <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -304,7 +298,6 @@ const RevealerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

@@ -5,21 +5,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-spinner.tsx?raw";
 
-// Basic arc spinner
 const createArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = Math.min(width, height) / 2 - strokeWidth - 5;
 
-        // Draw background circle
         cr.setSourceRgba(0.5, 0.5, 0.5, 0.3)
             .setLineWidth(strokeWidth)
             .setLineCap(LineCap.ROUND)
             .arc(centerX, centerY, radius, 0, 2 * Math.PI)
             .stroke();
 
-        // Draw spinning arc
         cr.setSourceRgb(0.2, 0.6, 0.9);
         const startAngle = rotation;
         const endAngle = rotation + Math.PI * 0.75;
@@ -27,7 +24,6 @@ const createArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
     };
 };
 
-// Gradient spinner with tail fade
 const createGradientSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
@@ -40,7 +36,7 @@ const createGradientSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
 
         for (let i = 0; i < segments; i++) {
             const t = i / segments;
-            const alpha = t ** 2; // Fade in effect
+            const alpha = t ** 2;
             const startAngle = rotation + t * arcLength;
             const endAngle = rotation + (t + 1 / segments) * arcLength;
 
@@ -49,7 +45,6 @@ const createGradientSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
     };
 };
 
-// Dotted spinner
 const createDottedSpinnerDrawFunc = (rotation: number, dotSize: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
@@ -62,7 +57,6 @@ const createDottedSpinnerDrawFunc = (rotation: number, dotSize: number) => {
             const x = centerX + Math.cos(angle) * radius;
             const y = centerY + Math.sin(angle) * radius;
 
-            // Fade dots based on position
             const alpha = 0.2 + 0.8 * (i / dotCount);
             const size = dotSize * (0.5 + 0.5 * (i / dotCount));
 
@@ -73,7 +67,6 @@ const createDottedSpinnerDrawFunc = (rotation: number, dotSize: number) => {
     };
 };
 
-// Pulsing ring spinner
 const createPulsingSpinnerDrawFunc = (rotation: number, strokeWidth: number, pulse: number = 0) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
@@ -81,18 +74,15 @@ const createPulsingSpinnerDrawFunc = (rotation: number, strokeWidth: number, pul
         const baseRadius = Math.min(width, height) / 2 - strokeWidth - 15;
         const pulseAmount = 8 * Math.sin(pulse);
 
-        // Outer ring
         cr.setSourceRgba(0.6, 0.3, 0.8, 0.3 + 0.2 * Math.sin(pulse))
             .setLineWidth(strokeWidth * 0.6)
             .arc(centerX, centerY, baseRadius + pulseAmount, 0, 2 * Math.PI)
             .stroke();
 
-        // Main spinning arc
         cr.setSourceRgb(0.6, 0.3, 0.8).setLineWidth(strokeWidth).setLineCap(LineCap.ROUND);
         const arcSpan = Math.PI * 0.5 + 0.3 * Math.sin(pulse * 2);
         cr.arc(centerX, centerY, baseRadius, rotation, rotation + arcSpan).stroke();
 
-        // Inner ring
         cr.setSourceRgba(0.6, 0.3, 0.8, 0.2 + 0.15 * Math.sin(pulse + Math.PI))
             .setLineWidth(strokeWidth * 0.4)
             .arc(centerX, centerY, baseRadius - pulseAmount - 10, 0, 2 * Math.PI)
@@ -100,7 +90,6 @@ const createPulsingSpinnerDrawFunc = (rotation: number, strokeWidth: number, pul
     };
 };
 
-// Multi-arc spinner
 const createMultiArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         const centerX = width / 2;
@@ -131,7 +120,6 @@ const createMultiArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
     };
 };
 
-// Animated spinner component
 const AnimatedSpinner = ({
     width,
     height,
@@ -180,7 +168,6 @@ const AnimatedSpinner = ({
     );
 };
 
-// Configurable spinner component
 const ConfigurableSpinner = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const [strokeWidth, setStrokeWidth] = useState(8);
@@ -255,7 +242,6 @@ const PathSpinnerDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Basic Spinners */}
             <GtkFrame label="Spinner Styles">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -290,7 +276,6 @@ const PathSpinnerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Advanced Spinners */}
             <GtkFrame label="Advanced Effects">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -319,7 +304,6 @@ const PathSpinnerDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Configurable Spinner */}
             <GtkFrame label="Configurable Spinner">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

@@ -99,7 +99,6 @@ const ListViewWeatherDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Current Weather */}
             <GtkFrame label="Current Weather">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -138,7 +137,6 @@ const ListViewWeatherDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* 14-Day Forecast */}
             <GtkFrame label="14-Day Forecast">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -161,7 +159,6 @@ const ListViewWeatherDemo = () => {
                                     marginStart={12}
                                     marginEnd={12}
                                 >
-                                    {/* Day and Date */}
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={4}
@@ -180,7 +177,6 @@ const ListViewWeatherDemo = () => {
                                         />
                                     </GtkBox>
 
-                                    {/* Weather Icon and Condition */}
                                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} hexpand>
                                         <GtkImage iconName={item?.icon ?? ""} pixelSize={32} />
                                         <GtkLabel
@@ -191,7 +187,6 @@ const ListViewWeatherDemo = () => {
                                         />
                                     </GtkBox>
 
-                                    {/* Precipitation */}
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={4}
@@ -202,7 +197,6 @@ const ListViewWeatherDemo = () => {
                                         <GtkLabel label="Precip" cssClasses={["dim-label", "caption"]} />
                                     </GtkBox>
 
-                                    {/* Temperature */}
                                     <GtkBox
                                         orientation={Gtk.Orientation.HORIZONTAL}
                                         spacing={8}
@@ -228,7 +222,6 @@ const ListViewWeatherDemo = () => {
                         </ListView>
                     </GtkScrolledWindow>
 
-                    {/* Selected Day Details */}
                     {selectedDay && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -286,7 +279,6 @@ const ListViewWeatherDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Key Patterns */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Patterns" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

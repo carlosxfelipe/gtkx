@@ -23,14 +23,12 @@ const ThemesDemo = () => {
     const [systemSupportsColorSchemes, setSystemSupportsColorSchemes] = useState(false);
     const [isHighContrast, setIsHighContrast] = useState(false);
 
-    // Query initial state and listen for changes
     useEffect(() => {
         setIsDark(styleManager.getDark());
         setColorScheme(styleManager.getColorScheme());
         setSystemSupportsColorSchemes(styleManager.getSystemSupportsColorSchemes());
         setIsHighContrast(styleManager.getHighContrast());
 
-        // Listen for changes
         const handlerId = styleManager.connect("notify", () => {
             setIsDark(styleManager.getDark());
             setColorScheme(styleManager.getColorScheme());
@@ -98,7 +96,6 @@ const ThemesDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Current State */}
             <GtkFrame label="Current Theme State">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -134,7 +131,6 @@ const ThemesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Quick Toggle */}
             <GtkFrame label="Quick Toggle">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -159,7 +155,6 @@ const ThemesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Color Scheme Options */}
             <GtkFrame label="Color Scheme">
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginTop={8} marginBottom={8}>
                     <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
@@ -197,7 +192,6 @@ const ThemesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Theme-Aware Preview */}
             <GtkFrame label="Theme-Aware Preview">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -252,7 +246,6 @@ const ThemesDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* API Reference */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="AdwStyleManager API" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

@@ -88,7 +88,6 @@ const Fixed2Demo = () => {
 
     const selectedWidget = widgets.find((w) => w.id === selectedId);
 
-    // Animation loop
     useEffect(() => {
         if (!isAnimating) return;
 
@@ -143,7 +142,6 @@ const Fixed2Demo = () => {
         );
     };
 
-    // Build a CSS transform string for display
     const getTransformString = (widget: TransformedWidget) => {
         return `translate(${widget.x}px, ${widget.y}px) rotate(${widget.rotation}deg) scale(${widget.scale.toFixed(2)})`;
     };
@@ -166,7 +164,6 @@ const Fixed2Demo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Main fixed container */}
             <GtkFrame label="Transformed Widgets">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -206,7 +203,6 @@ const Fixed2Demo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Transform controls */}
             {selectedWidget && (
                 <GtkFrame label={`Transform Widget ${selectedWidget.label}`}>
                     <GtkBox
@@ -287,7 +283,6 @@ const Fixed2Demo = () => {
                 </GtkFrame>
             )}
 
-            {/* Z-Ordering explanation */}
             <GtkFrame label="Z-Ordering">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -322,7 +317,6 @@ const Fixed2Demo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Transform API info */}
             <GtkFrame label="GskTransform API">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

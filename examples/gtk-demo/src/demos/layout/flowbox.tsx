@@ -27,7 +27,6 @@ const colors = [
     "#9a9996",
 ];
 
-// Color palette for demo
 const colorClasses = [
     "red",
     "orange",
@@ -67,7 +66,6 @@ const FlowBoxDemo = () => {
         >
             <GtkLabel label="FlowBox" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About FlowBox */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About FlowBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -78,7 +76,6 @@ const FlowBoxDemo = () => {
                 />
             </GtkBox>
 
-            {/* Color Palette */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Color Palette" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -114,7 +111,6 @@ const FlowBoxDemo = () => {
                 </GtkScrolledWindow>
             </GtkBox>
 
-            {/* Dynamic Items */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Dynamic Items" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -152,7 +148,6 @@ const FlowBoxDemo = () => {
                 </GtkScrolledWindow>
             </GtkBox>
 
-            {/* Selection Modes */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Selection Mode" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -221,7 +216,6 @@ const FlowBoxDemo = () => {
                 />
             </GtkBox>
 
-            {/* Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

@@ -14,7 +14,6 @@ interface SettingItem {
 }
 
 const settingsData: SettingItem[] = [
-    // Appearance
     {
         id: "dark-mode",
         title: "Dark Mode",
@@ -47,7 +46,6 @@ const settingsData: SettingItem[] = [
         category: "Appearance",
         defaultValue: true,
     },
-    // Notifications
     {
         id: "notifications",
         title: "Notifications",
@@ -80,7 +78,6 @@ const settingsData: SettingItem[] = [
         category: "Notifications",
         defaultValue: true,
     },
-    // Privacy
     {
         id: "location",
         title: "Location Services",
@@ -113,7 +110,6 @@ const settingsData: SettingItem[] = [
         category: "Privacy",
         defaultValue: false,
     },
-    // Power
     {
         id: "auto-brightness",
         title: "Auto Brightness",
@@ -146,7 +142,6 @@ const settingsData: SettingItem[] = [
         category: "Power",
         defaultValue: true,
     },
-    // Network
     {
         id: "wifi",
         title: "Wi-Fi",
@@ -225,7 +220,6 @@ const ListViewSettingsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Settings Summary */}
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                 <GtkLabel
                     label={`${getEnabledCount()} of ${settingsData.length} settings enabled`}
@@ -233,7 +227,6 @@ const ListViewSettingsDemo = () => {
                 />
             </GtkBox>
 
-            {/* Settings by Category */}
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
                     {categories.map((category) => (
@@ -295,7 +288,6 @@ const ListViewSettingsDemo = () => {
                 </GtkBox>
             </GtkScrolledWindow>
 
-            {/* Current State Summary */}
             <GtkFrame label="Active Settings">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -338,7 +330,6 @@ const ListViewSettingsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Implementation Notes */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

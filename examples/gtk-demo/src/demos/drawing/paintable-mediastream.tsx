@@ -9,8 +9,6 @@ const PaintableMediastreamDemo = () => {
     const [isMuted, setIsMuted] = useState(false);
     const videoRef = useRef<Gtk.Video | null>(null);
 
-    // Create a MediaFile for demonstration
-    // Note: GtkMediaFile is a GtkMediaStream implementation that plays files
     const mediaFile = useMemo(() => {
         return new Gtk.MediaFile();
     }, []);

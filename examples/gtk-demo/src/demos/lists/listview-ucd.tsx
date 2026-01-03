@@ -23,7 +23,6 @@ interface UnicodeChar {
     block: string;
 }
 
-// Unicode character blocks with sample characters
 const unicodeBlocks: { name: string; start: number; end: number }[] = [
     { name: "Basic Latin", start: 0x0020, end: 0x007f },
     { name: "Latin-1 Supplement", start: 0x00a0, end: 0x00ff },
@@ -44,15 +43,12 @@ const unicodeBlocks: { name: string; start: number; end: number }[] = [
     { name: "Dingbats", start: 0x2700, end: 0x27bf },
 ];
 
-// Generate character data for a block
 const generateBlockChars = (block: { name: string; start: number; end: number }): UnicodeChar[] => {
     const chars: UnicodeChar[] = [];
-    // Limit to first 64 chars per block for performance
     const limit = Math.min(block.end, block.start + 63);
     for (let cp = block.start; cp <= limit; cp++) {
         try {
             const char = String.fromCodePoint(cp);
-            // Skip control characters and non-printable
             if (cp < 0x0020 || (cp >= 0x007f && cp < 0x00a0)) continue;
             chars.push({
                 id: `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`,
@@ -62,9 +58,7 @@ const generateBlockChars = (block: { name: string; start: number; end: number })
                 category: "Letter",
                 block: block.name,
             });
-        } catch {
-            // Skip invalid codepoints
-        }
+        } catch {}
     }
     return chars;
 };
@@ -122,7 +116,6 @@ const ListViewUcdDemo = () => {
             />
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
-                {/* Block Selector */}
                 <GtkFrame label="Unicode Blocks">
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -162,7 +155,6 @@ const ListViewUcdDemo = () => {
                     </GtkBox>
                 </GtkFrame>
 
-                {/* Character Display */}
                 <GtkFrame label={selectedBlock} hexpand>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -172,7 +164,6 @@ const ListViewUcdDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        {/* Toolbar */}
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                             <GtkSearchEntry
                                 text={searchText}
@@ -200,7 +191,6 @@ const ListViewUcdDemo = () => {
                             halign={Gtk.Align.START}
                         />
 
-                        {/* Character Grid/List */}
                         <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             {viewMode === "grid" ? (
                                 <GridView<UnicodeChar>
@@ -273,7 +263,6 @@ const ListViewUcdDemo = () => {
                             )}
                         </GtkScrolledWindow>
 
-                        {/* Selected Character Details */}
                         {selectedChar && (
                             <GtkBox
                                 orientation={Gtk.Orientation.HORIZONTAL}
@@ -320,7 +309,6 @@ const ListViewUcdDemo = () => {
                 </GtkFrame>
             </GtkBox>
 
-            {/* Implementation Notes */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Implementation Notes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

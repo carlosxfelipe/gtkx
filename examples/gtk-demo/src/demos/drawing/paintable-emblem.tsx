@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-emblem.tsx?raw";
 
-// Common emblem icons
 const EMBLEMS = [
     { name: "emblem-ok-symbolic", label: "OK/Success" },
     { name: "emblem-important-symbolic", label: "Important" },
@@ -14,7 +13,6 @@ const EMBLEMS = [
     { name: "emblem-system-symbolic", label: "System" },
 ];
 
-// Base icons to apply emblems to
 const BASE_ICONS = [
     "folder-symbolic",
     "folder-documents-symbolic",
@@ -24,7 +22,6 @@ const BASE_ICONS = [
     "folder-videos-symbolic",
 ];
 
-// Emblem positions
 type EmblemPosition = "top-start" | "top-end" | "bottom-start" | "bottom-end";
 
 const POSITIONS: { value: EmblemPosition; label: string }[] = [
@@ -34,7 +31,6 @@ const POSITIONS: { value: EmblemPosition; label: string }[] = [
     { value: "top-start", label: "Top Left" },
 ];
 
-// Component for a single emblemed icon
 const EmblemedIcon = ({
     baseIcon,
     emblemIcon,
@@ -50,7 +46,6 @@ const EmblemedIcon = ({
 }) => {
     const emblemSize = Math.max(12, Math.floor(size * 0.4));
 
-    // Calculate position styles
     const positionProps: Record<string, Gtk.Align | number> = {
         halign: position.includes("end") ? Gtk.Align.END : Gtk.Align.START,
         valign: position.includes("bottom") ? Gtk.Align.END : Gtk.Align.START,

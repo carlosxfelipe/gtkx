@@ -29,7 +29,6 @@ const HeaderBarDemo = () => {
         >
             <GtkLabel label="HeaderBar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            {/* About HeaderBar */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="About HeaderBar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -40,7 +39,6 @@ const HeaderBarDemo = () => {
                 />
             </GtkBox>
 
-            {/* Basic HeaderBar */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Basic HeaderBar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -61,7 +59,6 @@ const HeaderBarDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* HeaderBar with Start Controls */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Navigation Controls" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -86,7 +83,6 @@ const HeaderBarDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* HeaderBar with Title and Subtitle */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Title and Subtitle" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -119,7 +115,6 @@ const HeaderBarDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* HeaderBar with Search Toggle */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Search Integration" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -150,7 +145,6 @@ const HeaderBarDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Action HeaderBar */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Action Header" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
@@ -174,7 +168,6 @@ const HeaderBarDemo = () => {
                 </GtkBox>
             </GtkBox>
 
-            {/* Properties */}
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel

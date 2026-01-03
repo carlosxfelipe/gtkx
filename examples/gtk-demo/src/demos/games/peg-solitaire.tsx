@@ -4,13 +4,11 @@ import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./peg-solitaire.tsx?raw";
 
-// Board layout: -1 = invalid, 0 = empty, 1 = peg
-// English board (cross shape)
 const INITIAL_BOARD: number[][] = [
     [-1, -1, 1, 1, 1, -1, -1],
     [-1, -1, 1, 1, 1, -1, -1],
     [1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 0, 1, 1, 1], // Center is empty
+    [1, 1, 1, 0, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1],
     [-1, -1, 1, 1, 1, -1, -1],
     [-1, -1, 1, 1, 1, -1, -1],
@@ -35,9 +33,7 @@ const countPegs = (board: Board): number => {
     return count;
 };
 
-// Check if a jump is valid
 const isValidJump = (board: Board, from: Position, to: Position): Position | null => {
-    // Must be jumping exactly 2 squares in one direction
     const rowDiff = to.row - from.row;
     const colDiff = to.col - from.col;
 
@@ -45,17 +41,14 @@ const isValidJump = (board: Board, from: Position, to: Position): Position | nul
         return null;
     }
 
-    // Check bounds
     if (to.row < 0 || to.row >= BOARD_SIZE || to.col < 0 || to.col >= BOARD_SIZE) {
         return null;
     }
 
-    // Target must be empty
     if (board[to.row]?.[to.col] !== 0) {
         return null;
     }
 
-    // There must be a peg in between
     const midRow = from.row + rowDiff / 2;
     const midCol = from.col + colDiff / 2;
 
@@ -66,7 +59,6 @@ const isValidJump = (board: Board, from: Position, to: Position): Position | nul
     return { row: midRow, col: midCol };
 };
 
-// Get all valid moves for a peg
 const getValidMoves = (board: Board, from: Position): Position[] => {
     const moves: Position[] = [];
     const directions = [
@@ -86,7 +78,6 @@ const getValidMoves = (board: Board, from: Position): Position[] => {
     return moves;
 };
 
-// Check if any moves are possible
 const hasValidMoves = (board: Board): boolean => {
     for (let row = 0; row < BOARD_SIZE; row++) {
         for (let col = 0; col < BOARD_SIZE; col++) {
@@ -107,7 +98,7 @@ const PegSolitaireDemo = () => {
     const [gameOver, setGameOver] = useState(false);
 
     const pegCount = countPegs(board);
-    const isWin = pegCount === 1 && board[3]?.[3] === 1; // Win if only center peg remains
+    const isWin = pegCount === 1 && board[3]?.[3] === 1;
 
     const handleCellClick = useCallback(
         (row: number, col: number) => {
@@ -115,20 +106,16 @@ const PegSolitaireDemo = () => {
 
             const cell = board[row]?.[col];
 
-            // If clicking on a peg
             if (cell === 1) {
-                // Select it if it has valid moves
                 const validMoves = getValidMoves(board, { row, col });
                 if (validMoves.length > 0) {
                     setSelected({ row, col });
                 } else if (selected && selected.row === row && selected.col === col) {
-                    // Deselect if clicking selected peg
                     setSelected(null);
                 }
                 return;
             }
 
-            // If clicking on empty space and have a selected peg
             if (cell === 0 && selected) {
                 const jumped = isValidJump(board, selected, { row, col });
                 if (jumped) {
@@ -136,15 +123,14 @@ const PegSolitaireDemo = () => {
                     const selectedRow = newBoard[selected.row];
                     const jumpedRow = newBoard[jumped.row];
                     const targetRow = newBoard[row];
-                    if (selectedRow) selectedRow[selected.col] = 0; // Remove peg from start
-                    if (jumpedRow) jumpedRow[jumped.col] = 0; // Remove jumped peg
-                    if (targetRow) targetRow[col] = 1; // Place peg at destination
+                    if (selectedRow) selectedRow[selected.col] = 0;
+                    if (jumpedRow) jumpedRow[jumped.col] = 0;
+                    if (targetRow) targetRow[col] = 1;
 
                     setBoard(newBoard);
                     setSelected(null);
                     setMoves((m) => m + 1);
 
-                    // Check for game over
                     if (!hasValidMoves(newBoard)) {
                         setGameOver(true);
                     }
@@ -175,7 +161,6 @@ const PegSolitaireDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {/* Game Status */}
             <GtkFrame label="Game Status">
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -204,7 +189,6 @@ const PegSolitaireDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Game Board */}
             <GtkFrame label="Game Board">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
@@ -258,13 +242,11 @@ const PegSolitaireDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            {/* Controls */}
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
                 <GtkButton label="New Game" onClicked={handleNewGame} cssClasses={["suggested-action"]} />
                 {selected && <GtkButton label="Deselect" onClicked={() => setSelected(null)} />}
             </GtkBox>
 
-            {/* Win/Lose Message */}
             {gameOver && (
                 <GtkFrame>
                     <GtkBox
@@ -298,7 +280,6 @@ const PegSolitaireDemo = () => {
                 </GtkFrame>
             )}
 
-            {/* Instructions */}
             <GtkFrame label="How to Play">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
