@@ -12,9 +12,7 @@ use gtk4::glib::translate::FromGlibPtrFull as _;
 use gtk4::glib::value::ToValue as _;
 
 use native::callback::{
-    CallbackData, CallbackKind, get_async_ready_trampoline_ptr, get_callback_data_destroy_ptr,
-    get_destroy_trampoline_ptr, get_draw_func_trampoline_ptr, get_shortcut_func_trampoline_ptr,
-    get_tree_list_model_create_func_trampoline_ptr,
+    CallbackData, CallbackKind, TrampolineSpec, async_ready_trampoline, destroy_trampoline,
 };
 
 type DrawFuncTrampoline = unsafe extern "C" fn(
@@ -22,14 +20,6 @@ type DrawFuncTrampoline = unsafe extern "C" fn(
     *mut c_void,
     i32,
     i32,
-    *mut c_void,
-);
-
-type DestroyTrampoline = unsafe extern "C" fn(*mut c_void);
-
-type AsyncReadyTrampoline = unsafe extern "C" fn(
-    *mut glib::gobject_ffi::GObject,
-    *mut gtk4::gio::ffi::GAsyncResult,
     *mut c_void,
 );
 
@@ -66,8 +56,8 @@ fn create_test_closure_with_flag(
 fn draw_func_trampoline_null_closure_safe() {
     common::ensure_gtk_init();
 
-    let trampoline: DrawFuncTrampoline =
-        unsafe { std::mem::transmute(get_draw_func_trampoline_ptr()) };
+    let spec = TrampolineSpec::draw_func();
+    let trampoline: DrawFuncTrampoline = unsafe { std::mem::transmute(spec.trampoline_ptr) };
 
     unsafe {
         trampoline(
@@ -88,8 +78,9 @@ fn draw_func_trampoline_invokes_closure() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::DrawFunc));
     let data_ptr = Box::into_raw(data);
 
-    let trampoline: DrawFuncTrampoline =
-        unsafe { std::mem::transmute(get_draw_func_trampoline_ptr()) };
+    let spec = TrampolineSpec::draw_func();
+    let trampoline: DrawFuncTrampoline = unsafe { std::mem::transmute(spec.trampoline_ptr) };
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         trampoline(
@@ -103,9 +94,6 @@ fn draw_func_trampoline_invokes_closure() {
 
     assert!(invoked.load(Ordering::SeqCst));
 
-    let destroy: CallbackDataDestroy =
-        unsafe { std::mem::transmute(get_callback_data_destroy_ptr()) };
-
     unsafe {
         destroy(data_ptr as *mut c_void);
     }
@@ -115,11 +103,8 @@ fn draw_func_trampoline_invokes_closure() {
 fn destroy_trampoline_null_closure_safe() {
     common::ensure_gtk_init();
 
-    let trampoline: DestroyTrampoline =
-        unsafe { std::mem::transmute(get_destroy_trampoline_ptr()) };
-
     unsafe {
-        trampoline(std::ptr::null_mut());
+        destroy_trampoline(std::ptr::null_mut());
     }
 }
 
@@ -128,11 +113,8 @@ fn destroy_trampoline_invokes_and_unrefs() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let trampoline: DestroyTrampoline =
-        unsafe { std::mem::transmute(get_destroy_trampoline_ptr()) };
-
     unsafe {
-        trampoline(closure_ptr.as_ptr() as *mut c_void);
+        destroy_trampoline(closure_ptr.as_ptr() as *mut c_void);
     }
 
     assert!(invoked.load(Ordering::SeqCst));
@@ -142,11 +124,8 @@ fn destroy_trampoline_invokes_and_unrefs() {
 fn async_ready_trampoline_null_safe() {
     common::ensure_gtk_init();
 
-    let trampoline: AsyncReadyTrampoline =
-        unsafe { std::mem::transmute(get_async_ready_trampoline_ptr()) };
-
     unsafe {
-        trampoline(
+        async_ready_trampoline(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
@@ -156,20 +135,20 @@ fn async_ready_trampoline_null_safe() {
 
 #[test]
 fn get_trampoline_ptrs_not_null() {
-    assert!(!get_draw_func_trampoline_ptr().is_null());
-    assert!(!get_destroy_trampoline_ptr().is_null());
-    assert!(!get_async_ready_trampoline_ptr().is_null());
-    assert!(!get_shortcut_func_trampoline_ptr().is_null());
-    assert!(!get_callback_data_destroy_ptr().is_null());
-    assert!(!get_tree_list_model_create_func_trampoline_ptr().is_null());
+    assert!(!TrampolineSpec::draw_func().trampoline_ptr.is_null());
+    assert!(!TrampolineSpec::draw_func().destroy_ptr.is_null());
+    assert!(!(destroy_trampoline as *mut c_void).is_null());
+    assert!(!(async_ready_trampoline as *mut c_void).is_null());
+    assert!(!TrampolineSpec::shortcut_func().trampoline_ptr.is_null());
+    assert!(!TrampolineSpec::tree_list_model_create_func().trampoline_ptr.is_null());
 }
 
 #[test]
 fn shortcut_func_trampoline_null_safe() {
     common::ensure_gtk_init();
 
-    let trampoline: ShortcutFuncTrampoline =
-        unsafe { std::mem::transmute(get_shortcut_func_trampoline_ptr()) };
+    let spec = TrampolineSpec::shortcut_func();
+    let trampoline: ShortcutFuncTrampoline = unsafe { std::mem::transmute(spec.trampoline_ptr) };
 
     unsafe {
         let result = trampoline(
@@ -199,8 +178,9 @@ fn shortcut_func_trampoline_invokes_closure_returns_true() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::ShortcutFunc));
     let data_ptr = Box::into_raw(data);
 
-    let trampoline: ShortcutFuncTrampoline =
-        unsafe { std::mem::transmute(get_shortcut_func_trampoline_ptr()) };
+    let spec = TrampolineSpec::shortcut_func();
+    let trampoline: ShortcutFuncTrampoline = unsafe { std::mem::transmute(spec.trampoline_ptr) };
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         let result = trampoline(
@@ -210,8 +190,6 @@ fn shortcut_func_trampoline_invokes_closure_returns_true() {
         );
         assert_eq!(result, glib::ffi::GTRUE);
 
-        let destroy: CallbackDataDestroy =
-            std::mem::transmute(get_callback_data_destroy_ptr());
         destroy(data_ptr as *mut c_void);
     }
 }
@@ -223,8 +201,9 @@ fn shortcut_func_trampoline_invokes_closure_returns_false() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::ShortcutFunc));
     let data_ptr = Box::into_raw(data);
 
-    let trampoline: ShortcutFuncTrampoline =
-        unsafe { std::mem::transmute(get_shortcut_func_trampoline_ptr()) };
+    let spec = TrampolineSpec::shortcut_func();
+    let trampoline: ShortcutFuncTrampoline = unsafe { std::mem::transmute(spec.trampoline_ptr) };
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         let result = trampoline(
@@ -234,8 +213,6 @@ fn shortcut_func_trampoline_invokes_closure_returns_false() {
         );
         assert_eq!(result, glib::ffi::GFALSE);
 
-        let destroy: CallbackDataDestroy =
-            std::mem::transmute(get_callback_data_destroy_ptr());
         destroy(data_ptr as *mut c_void);
     }
 }
@@ -244,8 +221,8 @@ fn shortcut_func_trampoline_invokes_closure_returns_false() {
 fn callback_data_destroy_null_safe() {
     common::ensure_gtk_init();
 
-    let destroy: CallbackDataDestroy =
-        unsafe { std::mem::transmute(get_callback_data_destroy_ptr()) };
+    let spec = TrampolineSpec::draw_func();
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         destroy(std::ptr::null_mut());
@@ -260,8 +237,8 @@ fn callback_data_destroy_unrefs_closure() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::ShortcutFunc));
     let data_ptr = Box::into_raw(data);
 
-    let destroy: CallbackDataDestroy =
-        unsafe { std::mem::transmute(get_callback_data_destroy_ptr()) };
+    let spec = TrampolineSpec::shortcut_func();
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         destroy(data_ptr as *mut c_void);
@@ -272,8 +249,9 @@ fn callback_data_destroy_unrefs_closure() {
 fn tree_list_model_create_func_trampoline_null_safe() {
     common::ensure_gtk_init();
 
+    let spec = TrampolineSpec::tree_list_model_create_func();
     let trampoline: TreeListModelCreateFuncTrampoline =
-        unsafe { std::mem::transmute(get_tree_list_model_create_func_trampoline_ptr()) };
+        unsafe { std::mem::transmute(spec.trampoline_ptr) };
 
     unsafe {
         let result = trampoline(std::ptr::null_mut(), std::ptr::null_mut());
@@ -312,8 +290,10 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
     let data_ptr = Box::into_raw(data);
 
+    let spec = TrampolineSpec::tree_list_model_create_func();
     let trampoline: TreeListModelCreateFuncTrampoline =
-        unsafe { std::mem::transmute(get_tree_list_model_create_func_trampoline_ptr()) };
+        unsafe { std::mem::transmute(spec.trampoline_ptr) };
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         let result = trampoline(
@@ -322,8 +302,6 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
         );
         assert!(result.is_null());
 
-        let destroy: CallbackDataDestroy =
-            std::mem::transmute(get_callback_data_destroy_ptr());
         destroy(data_ptr as *mut c_void);
     }
 }
@@ -335,8 +313,10 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
     let data_ptr = Box::into_raw(data);
 
+    let spec = TrampolineSpec::tree_list_model_create_func();
     let trampoline: TreeListModelCreateFuncTrampoline =
-        unsafe { std::mem::transmute(get_tree_list_model_create_func_trampoline_ptr()) };
+        unsafe { std::mem::transmute(spec.trampoline_ptr) };
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         let result = trampoline(
@@ -347,8 +327,6 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
 
         glib::gobject_ffi::g_object_unref(result as *mut _);
 
-        let destroy: CallbackDataDestroy =
-            std::mem::transmute(get_callback_data_destroy_ptr());
         destroy(data_ptr as *mut c_void);
     }
 }
@@ -361,8 +339,8 @@ fn tree_list_model_create_func_data_destroy_unrefs_closure() {
     let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
     let data_ptr = Box::into_raw(data);
 
-    let destroy: CallbackDataDestroy =
-        unsafe { std::mem::transmute(get_callback_data_destroy_ptr()) };
+    let spec = TrampolineSpec::tree_list_model_create_func();
+    let destroy: CallbackDataDestroy = unsafe { std::mem::transmute(spec.destroy_ptr) };
 
     unsafe {
         destroy(data_ptr as *mut c_void);

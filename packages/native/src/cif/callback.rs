@@ -145,7 +145,7 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
             });
 
             let closure_ptr = closure_to_glib_full(closure);
-            let trampoline_ptr = callback::get_async_ready_trampoline_ptr();
+            let trampoline_ptr = callback::async_ready_trampoline as *mut c_void;
 
             Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                 trampoline_ptr,
@@ -163,7 +163,7 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
             });
 
             let closure_ptr = closure_to_glib_full(closure);
-            let trampoline_ptr = callback::get_destroy_trampoline_ptr();
+            let trampoline_ptr = callback::destroy_trampoline as *mut c_void;
 
             Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                 trampoline_ptr,

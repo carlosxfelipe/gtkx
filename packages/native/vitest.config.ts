@@ -1,14 +1,14 @@
 import gtkx from "@gtkx/vitest";
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import baseConfig from "../../vitest.config.js";
 
-export default defineConfig({
-    plugins: [gtkx({ setupFiles: ["tests/module/setup.ts"] })],
-    test: {
-        include: ["tests/**/*.test.ts"],
-        typecheck: {
-            tsconfig: "tsconfig.test.json",
+export default mergeConfig(
+    baseConfig,
+    defineConfig({
+        plugins: [gtkx()],
+        test: {
+            setupFiles: ["tests/module/setup.ts"],
+            execArgv: ["--expose-gc"],
         },
-        bail: 1,
-        execArgv: ["--expose-gc"],
-    },
-});
+    }),
+);

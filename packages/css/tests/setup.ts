@@ -1,14 +1,7 @@
-import { start, stop } from "@gtkx/ffi";
-import { afterAll, beforeAll } from "vitest";
+import { start } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
+import { beforeAll } from "vitest";
 
-const toAppId = (name: string) => {
-    return `com.gtkx.${name.replace(/[^a-zA-Z0-9]/g, "_")}`;
-};
-
-beforeAll((context) => {
-    start(toAppId(context.name));
-});
-
-afterAll(() => {
-    stop();
+beforeAll(() => {
+    start("org.gtkx.css", Gio.ApplicationFlags.NON_UNIQUE);
 });

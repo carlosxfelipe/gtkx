@@ -1,16 +1,9 @@
-import { afterAll, beforeAll } from "vitest";
+import { beforeAll } from "vitest";
+import * as Gio from "../src/generated/gio/index.js";
 import * as Gtk from "../src/generated/gtk/index.js";
-import { registerNativeClass, start, stop } from "../src/index.js";
+import { registerNativeClass, start } from "../src/index.js";
 
-const toAppId = (name: string) => {
-    return `com.gtkx.${name.replace(/[^a-zA-Z0-9]/g, "_")}`;
-};
-
-beforeAll((context) => {
+beforeAll(() => {
     registerNativeClass(Gtk.Application);
-    start(toAppId(context.name));
-});
-
-afterAll(() => {
-    stop();
+    start("com.gtkx.ffi", Gio.ApplicationFlags.NON_UNIQUE);
 });

@@ -100,12 +100,6 @@ impl ObjectId {
     }
 }
 
-impl AsRef<usize> for ObjectId {
-    fn as_ref(&self) -> &usize {
-        &self.0
-    }
-}
-
 impl Finalize for ObjectId {
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
         gtk_dispatch::schedule(move || {

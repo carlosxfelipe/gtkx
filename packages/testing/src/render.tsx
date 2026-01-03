@@ -1,4 +1,5 @@
 import { discardAllBatches, getNativeObject, start } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
@@ -12,8 +13,6 @@ import { hasLabel } from "./widget.js";
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
-
-const APP_ID = `com.gtkx.test${process.pid}`;
 
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
     if (!hasLabel(widget)) return null;
@@ -69,7 +68,7 @@ const handleError = (error: Error): void => {
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
-    application = start(APP_ID);
+    application = start("org.gtkx.testing", Gio.ApplicationFlags.NON_UNIQUE);
 
     if (!container) {
         const instance = reconciler.getInstance();

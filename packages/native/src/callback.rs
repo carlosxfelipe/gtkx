@@ -40,10 +40,6 @@ unsafe extern "C" fn callback_data_destroy(user_data: *mut c_void) {
     unsafe { gobject_ffi::g_closure_unref(data.closure.as_ptr()) };
 }
 
-pub fn get_callback_data_destroy_ptr() -> *mut c_void {
-    callback_data_destroy as *mut c_void
-}
-
 pub struct TrampolineSpec {
     pub trampoline_ptr: *mut c_void,
     pub destroy_ptr: *mut c_void,
@@ -117,11 +113,7 @@ unsafe extern "C" fn draw_func_trampoline(
     }
 }
 
-pub fn get_draw_func_trampoline_ptr() -> *mut c_void {
-    draw_func_trampoline as *mut c_void
-}
-
-unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
+pub unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     let Some(closure_ptr) = NonNull::new(user_data as *mut gobject_ffi::GClosure) else {
         eprintln!("[gtkx] WARNING: destroy_trampoline: user_data is null, callback skipped");
         return;
@@ -140,11 +132,7 @@ unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     }
 }
 
-pub fn get_destroy_trampoline_ptr() -> *mut c_void {
-    destroy_trampoline as *mut c_void
-}
-
-unsafe extern "C" fn async_ready_trampoline(
+pub unsafe extern "C" fn async_ready_trampoline(
     source_object: *mut gobject_ffi::GObject,
     res: *mut GAsyncResult,
     user_data: *mut c_void,
@@ -175,10 +163,6 @@ unsafe extern "C" fn async_ready_trampoline(
 
         gobject_ffi::g_closure_unref(closure_ptr.as_ptr());
     }
-}
-
-pub fn get_async_ready_trampoline_ptr() -> *mut c_void {
-    async_ready_trampoline as *mut c_void
 }
 
 unsafe extern "C" fn shortcut_func_trampoline(
@@ -216,10 +200,6 @@ unsafe extern "C" fn shortcut_func_trampoline(
     }
 }
 
-pub fn get_shortcut_func_trampoline_ptr() -> *mut c_void {
-    shortcut_func_trampoline as *mut c_void
-}
-
 unsafe extern "C" fn tree_list_model_create_func_trampoline(
     item: *mut gobject_ffi::GObject,
     user_data: *mut c_void,
@@ -253,8 +233,4 @@ unsafe extern "C" fn tree_list_model_create_func_trampoline(
         }
         result_ptr
     }
-}
-
-pub fn get_tree_list_model_create_func_trampoline_ptr() -> *mut c_void {
-    tree_list_model_create_func_trampoline as *mut c_void
 }

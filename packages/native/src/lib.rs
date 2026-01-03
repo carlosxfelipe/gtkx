@@ -39,7 +39,6 @@ pub mod arg;
 pub mod boxed;
 pub mod callback;
 pub mod cif;
-pub mod error;
 pub mod gtk_dispatch;
 pub mod integer;
 mod js_dispatch;

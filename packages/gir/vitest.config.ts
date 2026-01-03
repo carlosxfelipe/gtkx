@@ -1,10 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import baseConfig from "../../vitest.config.js";
 
-export default defineConfig({
-    test: {
-        include: ["tests/**/*.test.{ts,tsx}"],
-        typecheck: {
-            tsconfig: "tsconfig.test.json",
-        },
-    },
-});
+export default mergeConfig(baseConfig, defineConfig({}));

@@ -1,73 +1,159 @@
-import { tmpdir } from "node:os";
+import type { ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { availableParallelism, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vitest/config";
+import type { Reporter, TestSpecification, Vitest } from "vitest/node";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const getStateDir = (): string => {
-    return join(tmpdir(), `gtkx-vitest-${process.pid}`);
+const getStateDir = (): string => join(tmpdir(), `gtkx-vitest-${process.pid}`);
+
+const getBaseDisplay = (): number => {
+    const slot = process.pid % 500;
+    return 50 + slot * 10;
 };
 
-export interface GtkxOptions {
-    /**
-     * Additional setup files to run after the GTKX worker setup.
-     * These files will be loaded after the display is configured.
-     */
-    setupFiles?: string[];
-}
+const waitForDisplay = (display: number, timeout = 5000): Promise<boolean> =>
+    new Promise((resolve) => {
+        const start = Date.now();
 
-/**
- * Vitest plugin for GTKX applications.
- *
- * This plugin configures Vitest to run GTK tests with proper display isolation:
- * - Starts Xvfb instances for headless display (one per worker)
- * - Sets GTK environment variables automatically
- * - Configures test pool for process isolation
- *
- * When using `@gtkx/testing`, no additional setup is needed - the `render()`
- * function handles GTK application lifecycle automatically.
- *
- * @example
- * ```typescript
- * // vitest.config.ts
- * import gtkx from "@gtkx/vitest";
- *
- * export default defineConfig({
- *     plugins: [gtkx()],
- *     test: {
- *         include: ["tests/**\/*.test.{ts,tsx}"],
- *     },
- * });
- * ```
- */
-const gtkx = (options?: GtkxOptions): Plugin => {
-    const workerSetupPath = join(__dirname, "worker-setup.js");
-    const globalSetupPath = join(__dirname, "global-setup.js");
-    const userSetupFiles = options?.setupFiles ?? [];
+        const check = (): void => {
+            const lockFile = `/tmp/.X${display}-lock`;
+
+            if (existsSync(lockFile)) {
+                resolve(true);
+                return;
+            }
+
+            if (Date.now() - start > timeout) {
+                resolve(false);
+                return;
+            }
+
+            setTimeout(check, 50);
+        };
+
+        check();
+    });
+
+const startXvfb = async (display: number): Promise<ChildProcess | null> => {
+    const xvfb = spawn("Xvfb", [`:${display}`, "-screen", "0", "1024x768x24"], {
+        stdio: "ignore",
+        detached: true,
+    });
+
+    xvfb.unref();
+
+    const ready = await waitForDisplay(display);
+
+    if (!ready) {
+        xvfb.kill();
+        return null;
+    }
+
+    return xvfb;
+};
+
+const gtkx = (): Plugin => {
+    const workerSetupPath = join(__dirname, "setup.js");
+    const stateDir = getStateDir();
+
+    const xvfbProcesses: ChildProcess[] = [];
+    let handlersRegistered = false;
+    let tornDown = false;
+
+    const setup = async (vitest: Vitest): Promise<void> => {
+        const configuredWorkers = vitest.config.maxWorkers;
+        const maxWorkers = typeof configuredWorkers === "number" ? configuredWorkers : availableParallelism();
+
+        if (existsSync(stateDir)) {
+            rmSync(stateDir, { recursive: true, force: true });
+        }
+
+        mkdirSync(stateDir, { recursive: true });
+
+        const baseDisplay = getBaseDisplay();
+        const displays: number[] = [];
+        const results = await Promise.all(Array.from({ length: maxWorkers }, (_, i) => startXvfb(baseDisplay + i)));
+
+        for (let i = 0; i < results.length; i++) {
+            const xvfb = results[i];
+
+            if (xvfb) {
+                xvfbProcesses.push(xvfb);
+                displays.push(baseDisplay + i);
+            }
+        }
+
+        if (displays.length === 0) {
+            throw new Error("Failed to start any Xvfb instances");
+        }
+
+        for (const display of displays) {
+            writeFileSync(join(stateDir, `display-${display}.available`), "");
+        }
+    };
+
+    const teardown = (): void => {
+        if (tornDown) {
+            return;
+        }
+
+        tornDown = true;
+
+        for (const xvfb of xvfbProcesses) {
+            try {
+                xvfb.kill("SIGTERM");
+            } catch {}
+        }
+
+        if (existsSync(stateDir)) {
+            rmSync(stateDir, { recursive: true, force: true });
+        }
+    };
+
+    const reporter: Reporter = {
+        onInit(): void {
+            if (handlersRegistered) {
+                return;
+            }
+
+            handlersRegistered = true;
+            process.on("exit", teardown);
+            process.on("SIGTERM", teardown);
+            process.on("SIGINT", teardown);
+        },
+        async onTestRunStart(specifications: readonly TestSpecification[]): Promise<void> {
+            const firstSpec = specifications[0];
+
+            if (firstSpec && xvfbProcesses.length === 0) {
+                await setup(firstSpec.project.vitest);
+            }
+        },
+        onTestRunEnd(): void {
+            teardown();
+        },
+    };
 
     return {
         name: "gtkx",
         config(config) {
-            const existingGlobalSetup = config.test?.globalSetup ?? [];
+            const setupFiles = config.test?.setupFiles ?? [];
 
-            const stateDir = getStateDir();
             process.env.GTKX_STATE_DIR = stateDir;
 
             return {
                 test: {
-                    globalSetup: [
-                        ...(Array.isArray(existingGlobalSetup) ? existingGlobalSetup : [existingGlobalSetup]),
-                        globalSetupPath,
-                    ],
-                    setupFiles: [workerSetupPath, ...userSetupFiles],
+                    setupFiles: [workerSetupPath, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
                     pool: "forks",
-                    maxWorkers: 1,
-                },
-                esbuild: {
-                    jsx: "automatic",
                 },
             };
+        },
+        configureVitest({ vitest }) {
+            vitest.config.reporters.push(reporter);
         },
     };
 };

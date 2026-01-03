@@ -1,5 +1,5 @@
-import { afterAll, afterEach, beforeAll } from "vitest";
-import { start, stop } from "../../index.js";
+import { afterEach, beforeAll } from "vitest";
+import { start } from "./lifecycle.js";
 
 afterEach(() => {
     if (global.gc) {
@@ -7,14 +7,6 @@ afterEach(() => {
     }
 });
 
-const toAppId = (name: string) => {
-    return `com.gtkx.${name.replace(/[^a-zA-Z0-9]/g, "_")}`;
-};
-
-beforeAll((context) => {
-    start(toAppId(context.name));
-});
-
-afterAll(() => {
-    stop();
+beforeAll(() => {
+    start();
 });

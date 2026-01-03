@@ -28,11 +28,11 @@ export class ConstructorAnalyzer {
      * 1. Are not the "application" parameter (handled specially)
      * 2. Have a corresponding property on the class or its interfaces
      */
-    private getConstructorParams(cls: NormalizedClass): Array<{ name: string; camelName: string }> {
+    private getConstructorParams(cls: NormalizedClass): Array<{ name: string; camelName: string; optional: boolean }> {
         const mainCtor = cls.getConstructor("new");
         if (!mainCtor) return [];
 
-        const params: Array<{ name: string; camelName: string }> = [];
+        const params: Array<{ name: string; camelName: string; optional: boolean }> = [];
 
         const propertyNames = new Set(cls.getAllProperties().map((p) => p.name));
 
@@ -57,10 +57,13 @@ export class ConstructorAnalyzer {
             params.push({
                 name: propName,
                 camelName: toCamelCase(propName),
+                optional: param.nullable || param.optional,
             });
         }
 
-        return params;
+        const required = params.filter((p) => !p.optional);
+        const optional = params.filter((p) => p.optional);
+        return [...required, ...optional];
     }
 
     /**

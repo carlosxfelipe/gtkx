@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { existsSync, readdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
 
@@ -10,8 +9,10 @@ if (!GTKX_STATE_DIR) {
     throw new Error("GTKX_STATE_DIR not set - gtkx plugin must be used");
 }
 
+const sleepBuffer = new Int32Array(new SharedArrayBuffer(4));
+
 const sleepSync = (ms: number): void => {
-    execSync(`sleep ${ms / 1000}`, { stdio: "ignore" });
+    Atomics.wait(sleepBuffer, 0, 0, ms);
 };
 
 const tryClaimDisplay = (): number | null => {
@@ -29,7 +30,9 @@ const tryClaimDisplay = (): number | null => {
         try {
             renameSync(availablePath, claimedPath);
             return display;
-        } catch {}
+        } catch {
+            // File may have been claimed by another worker, try next
+        }
     }
 
     return null;
@@ -45,6 +48,7 @@ const claimDisplay = (): number | null => {
 
         sleepSync(CLAIM_RETRY_DELAY_MS);
     }
+
     return null;
 };
 
@@ -54,30 +58,32 @@ const releaseDisplay = (display: number): void => {
 
     try {
         renameSync(claimedPath, availablePath);
-    } catch {}
+    } catch {
+        // File may already be released or cleaned up by teardown
+    }
 };
-
-process.env.GDK_BACKEND = "x11";
-process.env.GSK_RENDERER = "cairo";
-process.env.LIBGL_ALWAYS_SOFTWARE = "1";
-process.env.NO_AT_BRIDGE = "1";
 
 const display = claimDisplay();
 
 if (display === null) {
-    throw new Error("Failed to claim display - globalSetup may not have run");
+    throw new Error("Failed to claim display - ensure gtkx plugin is configured");
 }
 
+process.env.GDK_BACKEND = "x11";
+process.env.GSK_RENDERER = "cairo";
+process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 process.env.DISPLAY = `:${display}`;
 
-process.on("exit", () => releaseDisplay(display));
+const cleanup = (): void => {
+    releaseDisplay(display);
+};
 
+process.on("exit", cleanup);
 process.on("SIGTERM", () => {
-    releaseDisplay(display);
-    process.exit(0);
+    cleanup();
+    process.exit(143);
 });
-
 process.on("SIGINT", () => {
-    releaseDisplay(display);
-    process.exit(0);
+    cleanup();
+    process.exit(130);
 });

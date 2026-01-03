@@ -87,7 +87,7 @@ const runCommand = (command: string, cwd: string): Promise<void> => {
 
 const suggestAppId = (name: string): string => {
     const sanitized = name.replace(/-/g, "");
-    return `org.gtkx.${sanitized}`;
+    return `com.${sanitized}.app`;
 };
 
 type ResolvedOptions = {
@@ -126,6 +126,7 @@ const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions
         );
 
     const defaultAppId = suggestAppId(name);
+
     const appId =
         options.appId ??
         checkCancelled(
