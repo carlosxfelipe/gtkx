@@ -4,93 +4,181 @@
 //! thread. When GTK signals fire, they trigger closures that queue callbacks
 //! here for execution in the JavaScript context.
 //!
+//! Access the singleton dispatcher via [`dispatcher()`] and call methods on it:
+//!
+//! ```ignore
+//! use crate::js_dispatch;
+//!
+//! JsDispatcher::global().queue(callback, args, capture_result);
+//! JsDispatcher::global().process_pending(cx);
+//! JsDispatcher::global().invoke_and_wait(&channel, &callback, args, true, |result| { ... });
+//! ```
+//!
 //! ## Flow
 //!
-//! 1. GTK signal handler calls [`queue`] or [`queue_with_wakeup`] with callback and args
+//! 1. GTK signal handler calls [`JsDispatcher::queue`] or [`JsDispatcher::queue_with_wakeup`] with callback and args
 //! 2. Callback is added to the pending queue
-//! 3. [`process_pending`] is called in the JS context (via poll or channel wakeup)
+//! 3. [`JsDispatcher::process_pending`] is called in the JS context (via poll or channel wakeup)
 //! 4. Each callback is invoked, and results are sent back via mpsc channel
 //!
 //! ## Wakeup Mechanism
 //!
-//! - [`queue`]: Queues callback without waking JavaScript (for use during blocking calls)
-//! - [`queue_with_wakeup`]: Queues and sends a Neon channel message to wake JavaScript
+//! - [`JsDispatcher::queue`]: Queues callback without waking JavaScript (for use during blocking calls)
+//! - [`JsDispatcher::queue_with_wakeup`]: Queues and sends a Neon channel message to wake JavaScript
+//!
+//! ## Synchronous Invocation
+//!
+//! - [`JsDispatcher::invoke_and_wait`]: Queues a callback and blocks until the result is available,
+//!   dispatching pending GTK tasks while waiting to prevent deadlocks.
 
-use std::sync::{Arc, mpsc};
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
+use std::time::Duration;
 
 use neon::prelude::*;
 
-use crate::{queue::Queue, value::Value};
+use crate::{gtk_dispatch, value::Value};
 
-pub struct PendingCallback {
-    pub callback: Arc<Root<JsFunction>>,
-    pub args: Vec<Value>,
-    pub capture_result: bool,
-    pub result_tx: mpsc::Sender<Result<Value, ()>>,
-}
-
-static QUEUE: Queue<PendingCallback> = Queue::new();
-
-pub fn queue(
+struct PendingCallback {
     callback: Arc<Root<JsFunction>>,
     args: Vec<Value>,
     capture_result: bool,
-) -> mpsc::Receiver<Result<Value, ()>> {
-    let (tx, rx) = mpsc::channel();
-
-    QUEUE.push(PendingCallback {
-        callback,
-        args,
-        capture_result,
-        result_tx: tx,
-    });
-
-    rx
+    result_tx: mpsc::Sender<Result<Value, ()>>,
 }
 
-pub fn queue_with_wakeup(
-    channel: &Channel,
-    callback: Arc<Root<JsFunction>>,
-    args: Vec<Value>,
-    capture_result: bool,
-) -> mpsc::Receiver<Result<Value, ()>> {
-    let rx = queue(callback, args, capture_result);
-
-    channel.send(|mut cx| {
-        process_pending(&mut cx);
-        Ok(())
-    });
-
-    rx
+pub struct JsDispatcher {
+    queue: Mutex<VecDeque<PendingCallback>>,
 }
 
-pub fn process_pending<'a, C: Context<'a>>(cx: &mut C) {
-    while let Some(pending) = QUEUE.pop() {
-        let result = execute_callback(cx, &pending.callback, &pending.args, pending.capture_result);
-        let _ = pending.result_tx.send(result);
+static DISPATCHER: OnceLock<JsDispatcher> = OnceLock::new();
+
+impl JsDispatcher {
+    pub fn global() -> &'static JsDispatcher {
+        DISPATCHER.get_or_init(JsDispatcher::new)
     }
-}
 
-fn execute_callback<'a, C: Context<'a>>(
-    cx: &mut C,
-    callback: &Arc<Root<JsFunction>>,
-    args: &[Value],
-    capture_result: bool,
-) -> Result<Value, ()> {
-    let js_args: Vec<Handle<JsValue>> = args
-        .iter()
-        .map(|v| v.to_js_value(cx))
-        .collect::<NeonResult<Vec<_>>>()
-        .map_err(|_| ())?;
+    fn new() -> Self {
+        Self {
+            queue: Mutex::new(VecDeque::new()),
+        }
+    }
 
-    let js_this = cx.undefined();
-    let js_callback = callback.to_inner(cx);
+    fn push_callback(&self, callback: PendingCallback) {
+        self.queue
+            .lock()
+            .expect("queue mutex poisoned")
+            .push_back(callback);
+    }
 
-    if capture_result {
-        let js_result = js_callback.call(cx, js_this, js_args).map_err(|_| ())?;
-        Value::from_js_value(cx, js_result).map_err(|_| ())
-    } else {
-        js_callback.call(cx, js_this, js_args).map_err(|_| ())?;
-        Ok(Value::Undefined)
+    fn pop_callback(&self) -> Option<PendingCallback> {
+        self.queue.lock().expect("queue mutex poisoned").pop_front()
+    }
+
+    pub fn queue(
+        &self,
+        callback: Arc<Root<JsFunction>>,
+        args: Vec<Value>,
+        capture_result: bool,
+    ) -> mpsc::Receiver<Result<Value, ()>> {
+        let (tx, rx) = mpsc::channel();
+
+        self.push_callback(PendingCallback {
+            callback,
+            args,
+            capture_result,
+            result_tx: tx,
+        });
+
+        rx
+    }
+
+    pub fn queue_with_wakeup(
+        &self,
+        channel: &Channel,
+        callback: Arc<Root<JsFunction>>,
+        args: Vec<Value>,
+        capture_result: bool,
+    ) -> mpsc::Receiver<Result<Value, ()>> {
+        let rx = self.queue(callback, args, capture_result);
+
+        channel.send(|mut cx| {
+            Self::global().process_pending(&mut cx);
+            Ok(())
+        });
+
+        rx
+    }
+
+    pub fn process_pending<'a, C: Context<'a>>(&self, cx: &mut C) {
+        while let Some(pending) = self.pop_callback() {
+            let result = Self::execute_callback(
+                cx,
+                &pending.callback,
+                &pending.args,
+                pending.capture_result,
+            );
+            let _ = pending.result_tx.send(result);
+        }
+    }
+
+    pub fn invoke_and_wait<T, F>(
+        &self,
+        channel: &Channel,
+        callback: &Arc<Root<JsFunction>>,
+        args: Vec<Value>,
+        capture_result: bool,
+        on_result: F,
+    ) -> T
+    where
+        F: FnOnce(Result<Value, ()>) -> T,
+    {
+        let rx = if gtk_dispatch::GtkDispatcher::global().is_js_waiting() {
+            self.queue(callback.clone(), args, capture_result)
+        } else {
+            self.queue_with_wakeup(channel, callback.clone(), args, capture_result)
+        };
+
+        self.wait_for_result(rx, on_result)
+    }
+
+    fn wait_for_result<T, F>(&self, rx: mpsc::Receiver<Result<Value, ()>>, on_result: F) -> T
+    where
+        F: FnOnce(Result<Value, ()>) -> T,
+    {
+        const POLL_INTERVAL: Duration = Duration::from_micros(100);
+
+        loop {
+            gtk_dispatch::GtkDispatcher::global().dispatch_pending();
+
+            match rx.recv_timeout(POLL_INTERVAL) {
+                Ok(result) => return on_result(result),
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => return on_result(Err(())),
+            }
+        }
+    }
+
+    fn execute_callback<'a, C: Context<'a>>(
+        cx: &mut C,
+        callback: &Arc<Root<JsFunction>>,
+        args: &[Value],
+        capture_result: bool,
+    ) -> Result<Value, ()> {
+        let js_args: Vec<Handle<JsValue>> = args
+            .iter()
+            .map(|v| v.to_js_value(cx))
+            .collect::<NeonResult<Vec<_>>>()
+            .map_err(|_| ())?;
+
+        let js_this = cx.undefined();
+        let js_callback = callback.to_inner(cx);
+
+        if capture_result {
+            let js_result = js_callback.call(cx, js_this, js_args).map_err(|_| ())?;
+            Value::from_js_value(cx, js_result).map_err(|_| ())
+        } else {
+            js_callback.call(cx, js_this, js_args).map_err(|_| ())?;
+            Ok(Value::Undefined)
+        }
     }
 }

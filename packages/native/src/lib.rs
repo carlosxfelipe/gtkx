@@ -33,23 +33,20 @@
 //! - `Value`: Central data interchange type (JS ↔ CIF ↔ GLib)
 //! - `Object`: Managed wrapper for GObject, Boxed, and GVariant
 //! - `Type`: Type system describing all FFI-compatible types
-//! - `cif::Value`: Low-level libffi argument representation
+//! - `ffi::FfiValue`: Low-level libffi argument representation
 
 pub mod arg;
-pub mod boxed;
-pub mod callback;
-pub mod cif;
-pub mod fundamental;
+pub mod ffi;
 pub mod gtk_dispatch;
-pub mod integer;
 mod js_dispatch;
-mod module;
-pub mod object;
-pub mod ownership;
-pub mod queue;
+pub mod managed;
+pub mod module;
 pub mod state;
+pub mod trampoline;
 pub mod types;
 pub mod value;
+
+pub use managed::{Boxed, Fundamental, ManagedValue, ObjectId};
 
 use neon::prelude::*;
 

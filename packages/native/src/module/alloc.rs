@@ -15,10 +15,9 @@ use gtk4::glib::ffi::g_malloc0;
 use neon::prelude::*;
 
 use crate::{
-    boxed::Boxed,
     gtk_dispatch,
-    object::{Object, ObjectId},
-    types::BoxedType,
+    managed::{Boxed, ManagedValue, ObjectId},
+    types::{BoxedType, Ownership},
 };
 
 pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -34,9 +33,8 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
         .and_then(|v| v.downcast::<JsString, _>(&mut cx).ok())
         .map(|s| s.value(&mut cx));
 
-    let rx = gtk_dispatch::run_on_gtk_thread(move || {
-        handle_alloc(size, type_name.as_deref(), lib_name.as_deref())
-    });
+    let rx = gtk_dispatch::GtkDispatcher::global()
+        .run_on_gtk_thread(move || handle_alloc(size, type_name.as_deref(), lib_name.as_deref()));
 
     let object_id = rx
         .recv()
@@ -52,8 +50,13 @@ fn handle_alloc(
     lib_name: Option<&str>,
 ) -> anyhow::Result<ObjectId> {
     let gtype = type_name.map(|name| {
-        let boxed_type = BoxedType::new(false, name.to_string(), lib_name.map(String::from), None);
-        boxed_type.get_gtype()
+        let boxed_type = BoxedType::new(
+            Ownership::Full,
+            name.to_string(),
+            lib_name.map(String::from),
+            None,
+        );
+        boxed_type.gtype()
     });
 
     let ptr = unsafe { g_malloc0(size) };
@@ -64,5 +67,5 @@ fn handle_alloc(
     }
 
     let boxed = Boxed::from_glib_full(gtype.flatten(), ptr);
-    Ok(Object::Boxed(boxed).into())
+    Ok(ManagedValue::Boxed(boxed).into())
 }

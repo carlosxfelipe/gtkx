@@ -7,7 +7,7 @@ use std::sync::mpsc;
 
 use neon::prelude::*;
 
-use crate::{gtk_dispatch, js_dispatch, object::ObjectId};
+use crate::{gtk_dispatch, managed::ObjectId};
 
 pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
@@ -15,27 +15,14 @@ pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
 
     let (tx, rx) = mpsc::channel();
 
-    gtk_dispatch::enter_js_wait();
-    gtk_dispatch::schedule(move || {
-        let _ = tx.send(id.try_as_ptr());
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        let _ = tx.send(id.get_ptr_as_usize());
     });
 
-    let ptr = loop {
-        js_dispatch::process_pending(&mut cx);
-
-        match rx.try_recv() {
-            Ok(result) => break result,
-            Err(mpsc::TryRecvError::Empty) => {
-                std::thread::yield_now();
-            }
-            Err(mpsc::TryRecvError::Disconnected) => {
-                gtk_dispatch::exit_js_wait();
-                return cx.throw_error("GTK thread disconnected");
-            }
-        }
-    };
-
-    gtk_dispatch::exit_js_wait();
+    let ptr = gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?;
 
     match ptr {
         Some(p) => Ok(cx.number(p as f64)),

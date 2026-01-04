@@ -1,0 +1,225 @@
+use std::ffi::{CStr, c_void};
+
+use anyhow::bail;
+use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _};
+use libffi::middle as libffi;
+use neon::object::Object as _;
+use neon::prelude::*;
+
+use crate::arg::Arg;
+use crate::ffi::{Stash, StashStorage};
+use crate::managed::{Boxed, Fundamental, ManagedValue};
+use crate::{ffi, types::Type, value};
+
+#[derive(Debug, Clone)]
+pub struct RefType {
+    pub inner_type: Box<Type>,
+}
+
+impl RefType {
+    pub fn new(inner_type: Type) -> Self {
+        RefType {
+            inner_type: Box::new(inner_type),
+        }
+    }
+
+    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let inner_type_value: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
+        let inner_type = Type::from_js_value(cx, inner_type_value)?;
+
+        Ok(Self::new(inner_type))
+    }
+}
+
+impl From<&RefType> for libffi::Type {
+    fn from(_: &RefType) -> Self {
+        libffi::Type::pointer()
+    }
+}
+
+impl ffi::FfiEncode for RefType {
+    fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let ref_val = match val {
+            value::Value::Ref(r) => r,
+            value::Value::Null | value::Value::Undefined => {
+                return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
+            }
+            _ => bail!("Expected a Ref for ref type, got {:?}", val),
+        };
+
+        match &*self.inner_type {
+            Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::Fundamental(_) => {
+                match &*ref_val.value {
+                    value::Value::Null | value::Value::Undefined => {
+                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+                        Ok(ffi::FfiValue::Stash(Stash::new(
+                            ptr,
+                            StashStorage::PtrStorage(ptr_storage),
+                        )))
+                    }
+                    _ => bail!(
+                        "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}. Use callerAllocates pattern instead.",
+                        ref_val.value
+                    ),
+                }
+            }
+            Type::String(string_type) => {
+                let (buffer_size, initial_content) = match (&string_type.length, &*ref_val.value) {
+                    (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
+                    (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
+                    (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
+                    (None, value::Value::Null | value::Value::Undefined) => {
+                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+                        return Ok(ffi::FfiValue::Stash(Stash::new(
+                            ptr,
+                            StashStorage::PtrStorage(ptr_storage),
+                        )));
+                    }
+                    _ => bail!(
+                        "Expected a String, Null, or length for Ref<String>, got {:?}",
+                        ref_val.value
+                    ),
+                };
+
+                let mut buffer: Vec<u8> = vec![0u8; buffer_size];
+
+                if let Some(content) = initial_content {
+                    let copy_len = content.len().min(buffer_size.saturating_sub(1));
+                    buffer[..copy_len].copy_from_slice(&content[..copy_len]);
+                }
+
+                let ptr = buffer.as_mut_ptr() as *mut c_void;
+                Ok(ffi::FfiValue::Stash(Stash::new(
+                    ptr,
+                    StashStorage::Buffer(buffer),
+                )))
+            }
+            _ => {
+                let ref_arg = Arg::new(*self.inner_type.clone(), *ref_val.value.clone());
+                let ref_value = Box::new(ffi::FfiValue::try_from(ref_arg)?);
+                let ref_ptr = ref_value.as_raw_ptr();
+
+                Ok(ffi::FfiValue::Stash(Stash::new(
+                    ref_ptr,
+                    StashStorage::Boxed(ref_value),
+                )))
+            }
+        }
+    }
+}
+
+impl ffi::FfiDecode for RefType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let stash = match ffi_value {
+            ffi::FfiValue::Stash(s) => s,
+            _ => bail!(
+                "Expected a Stash ffi::FfiValue for Ref, got {:?}",
+                ffi_value
+            ),
+        };
+
+        match &*self.inner_type {
+            Type::GObject(gobject_type) => {
+                // SAFETY: stash.ptr() points to a pointer-to-GObject allocated by encode
+                let actual_ptr = unsafe { *(stash.ptr() as *const *mut c_void) };
+                if actual_ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let object = if gobject_type.ownership.is_full() {
+                    unsafe {
+                        glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject)
+                    }
+                } else {
+                    unsafe {
+                        glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject)
+                    }
+                };
+                Ok(value::Value::Object(ManagedValue::GObject(object).into()))
+            }
+            Type::Boxed(boxed_type) => {
+                // SAFETY: stash.ptr() points to a pointer-to-boxed allocated by encode
+                let actual_ptr = unsafe { *(stash.ptr() as *const *mut c_void) };
+                if actual_ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let gtype = boxed_type.gtype();
+                let boxed = if boxed_type.ownership.is_full() {
+                    Boxed::from_glib_full(gtype, actual_ptr)
+                } else {
+                    Boxed::from_glib_none(gtype, actual_ptr)?
+                };
+                Ok(value::Value::Object(ManagedValue::Boxed(boxed).into()))
+            }
+            Type::Fundamental(fundamental_type) => {
+                // SAFETY: stash.ptr() points to a pointer-to-fundamental allocated by encode
+                let actual_ptr = unsafe { *(stash.ptr() as *const *mut c_void) };
+                if actual_ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+
+                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
+                let fundamental = if fundamental_type.ownership.is_full() {
+                    Fundamental::from_glib_full(actual_ptr, ref_fn, unref_fn)
+                } else {
+                    Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn)
+                };
+                Ok(value::Value::Object(
+                    ManagedValue::Fundamental(fundamental).into(),
+                ))
+            }
+            Type::Integer(int_kind) => {
+                let number = int_kind.read_ptr(stash.ptr() as *const u8);
+                Ok(value::Value::Number(number))
+            }
+            Type::Float(float_kind) => {
+                let number = float_kind.read_ptr(stash.ptr() as *const u8);
+                Ok(value::Value::Number(number))
+            }
+            Type::String(string_type) => self.decode_ref_string(stash, string_type),
+            _ => bail!(
+                "Unsupported ref inner type for reading: {:?}",
+                self.inner_type
+            ),
+        }
+    }
+}
+
+impl RefType {
+    fn decode_ref_string(
+        &self,
+        stash: &Stash,
+        string_type: &super::StringType,
+    ) -> anyhow::Result<value::Value> {
+        if stash.ptr().is_null() {
+            return Ok(value::Value::Null);
+        }
+
+        match stash.storage() {
+            StashStorage::Buffer(_) => {
+                // SAFETY: stash.ptr() points to a null-terminated C string in our buffer
+                let c_str = unsafe { CStr::from_ptr(stash.ptr() as *const i8) };
+                let string = c_str.to_str()?.to_string();
+                Ok(value::Value::String(string))
+            }
+            _ => {
+                // SAFETY: stash.ptr() points to a pointer-to-string
+                let str_ptr = unsafe { *(stash.ptr() as *const *const i8) };
+                if str_ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let c_str = unsafe { CStr::from_ptr(str_ptr) };
+                let string = c_str.to_str()?.to_string();
+
+                if string_type.ownership.is_full() {
+                    // SAFETY: str_ptr was allocated by GLib and we have owned ownership
+                    unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
+                }
+
+                Ok(value::Value::String(string))
+            }
+        }
+    }
+}

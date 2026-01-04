@@ -37,7 +37,7 @@ type ObjectProperty = {
  * const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
  *
  * // ts-morph WriterFunction
- * const writerFn = writer.toWriter({ type: "gobject", ownership: "none" });
+ * const writerFn = writer.toWriter({ type: "gobject", ownership: "borrowed" });
  * classDecl.addProperty({ name: "TYPE", initializer: writerFn });
  * ```
  */
@@ -70,6 +70,7 @@ export class FfiTypeWriter {
                 ownership: "full",
                 innerType: "GError",
                 lib: this.options.glibLibrary,
+                getTypeFn: "g_error_get_type",
             },
         };
     }
@@ -100,6 +101,7 @@ export class FfiTypeWriter {
                 ownership: '"full"',
                 innerType: '"GError"',
                 lib: `"${this.options.glibLibrary}"`,
+                getTypeFn: '"g_error_get_type"',
             }),
         });
     }
@@ -111,6 +113,7 @@ export class FfiTypeWriter {
         isRecord?: boolean;
         recordName?: string;
         sharedLibrary?: string;
+        getTypeFn?: string;
         isFundamental?: boolean;
         fundamentalLib?: string;
         fundamentalRefFunc?: string;
@@ -118,12 +121,16 @@ export class FfiTypeWriter {
     }): WriterFunction {
         if (options.isRecord && options.recordName) {
             const lib = options.sharedLibrary ?? this.options.currentSharedLibrary ?? "";
-            return Writers.object({
+            const obj: Record<string, string> = {
                 type: '"boxed"',
-                ownership: '"none"',
+                ownership: '"borrowed"',
                 innerType: `"${options.recordName}"`,
                 lib: `"${lib}"`,
-            });
+            };
+            if (options.getTypeFn) {
+                obj.getTypeFn = `"${options.getTypeFn}"`;
+            }
+            return Writers.object(obj);
         }
         if (
             options.isFundamental &&
@@ -133,13 +140,13 @@ export class FfiTypeWriter {
         ) {
             return Writers.object({
                 type: '"fundamental"',
-                ownership: '"none"',
+                ownership: '"borrowed"',
                 library: `"${options.fundamentalLib}"`,
                 refFunc: `"${options.fundamentalRefFunc}"`,
                 unrefFunc: `"${options.fundamentalUnrefFunc}"`,
             });
         }
-        return Writers.object({ type: '"gobject"', ownership: '"none"' });
+        return Writers.object({ type: '"gobject"', ownership: '"borrowed"' });
     }
 
     private buildProperties(type: FfiTypeDescriptor): ObjectProperty[] {
@@ -192,7 +199,7 @@ export class FfiTypeWriter {
         ];
     }
 
-    private buildOwnershipProperties(typeName: string, ownership?: "full" | "none"): ObjectProperty[] {
+    private buildOwnershipProperties(typeName: string, ownership?: "full" | "borrowed"): ObjectProperty[] {
         const props: ObjectProperty[] = [{ name: "type", value: `"${typeName}"` }];
         props.push({ name: "ownership", value: `"${ownership ?? "full"}"` });
         return props;

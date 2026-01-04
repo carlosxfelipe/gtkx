@@ -264,7 +264,7 @@ export class SignalBuilder {
 
     private writeArgTypes(writer: CodeBlockWriter, paramData: SignalParamData[]): void {
         writer.write("argTypes: [");
-        writer.write('{ type: "gobject", ownership: "none" }');
+        writer.write('{ type: "gobject", ownership: "borrowed" }');
         for (const p of paramData) {
             writer.write(", ");
             this.writers.ffiTypeWriter.toWriter(p.mapped.ffi)(writer);
@@ -302,7 +302,7 @@ export class SignalBuilder {
         });
         writer.writeLine("};");
         this.writeSignalConnectCall(writer, (w) => {
-            w.write('type: "callback", argTypes: [{ type: "gobject", ownership: "none" }], trampoline: "closure"');
+            w.write('type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], trampoline: "closure"');
         });
     }
 
@@ -313,8 +313,8 @@ export class SignalBuilder {
             writer.writeLine('"g_signal_connect_closure",');
             writer.writeLine("[");
             writer.indent(() => {
-                writer.writeLine('{ type: { type: "gobject", ownership: "none" }, value: this.id },');
-                writer.writeLine('{ type: { type: "string", ownership: "none" }, value: signal },');
+                writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.id },');
+                writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
                 writer.writeLine("{");
                 writer.indent(() => {
                     writer.write("type: { ");

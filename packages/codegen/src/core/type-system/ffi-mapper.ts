@@ -47,7 +47,7 @@ import {
  * const mapper = new FfiMapper(repo, "Gtk");
  * const result = mapper.mapType(someNormalizedType);
  * // result.ts = "Button"
- * // result.ffi = { type: "gobject", ownership: "none" }
+ * // result.ffi = { type: "gobject", ownership: "borrowed" }
  * // result.imports = [{ kind: "class", name: "Button", ... }]
  * ```
  */
@@ -197,7 +197,7 @@ export class FfiMapper {
             if (param.callerAllocates && isBoxedOrGObjectOrStruct) {
                 return {
                     ts: innerType.ts,
-                    ffi: { ...innerType.ffi, ownership: "none" as const },
+                    ffi: { ...innerType.ffi, ownership: "borrowed" as const },
                     imports,
                     kind: innerType.kind,
                 };
@@ -243,7 +243,7 @@ export class FfiMapper {
         if (isObjectType && isTransferNone) {
             return {
                 ts: mapped.ts,
-                ffi: { ...mapped.ffi, ownership: "none" as const },
+                ffi: { ...mapped.ffi, ownership: "borrowed" as const },
                 imports: mapped.imports,
                 kind: mapped.kind,
             };

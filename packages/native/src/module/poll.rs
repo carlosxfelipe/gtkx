@@ -1,14 +1,14 @@
-//! JavaScript callback processing.
+//! Process pending JavaScript callbacks.
 //!
-//! The [`poll`] function processes all pending JavaScript callbacks that were
-//! queued by GTK signal handlers. This is called periodically from the JS
-//! event loop to execute callbacks in the JavaScript context.
+//! The [`poll`] function drains the JS dispatch queue and invokes any
+//! callbacks that were scheduled from the GTK thread. This is called
+//! periodically by the JavaScript runtime to handle async responses.
 
 use neon::prelude::*;
 
 use crate::js_dispatch;
 
 pub fn poll(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    js_dispatch::process_pending(&mut cx);
+    js_dispatch::JsDispatcher::global().process_pending(&mut cx);
     Ok(cx.undefined())
 }

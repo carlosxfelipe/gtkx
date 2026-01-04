@@ -260,7 +260,7 @@ describe("MethodBodyWriter", () => {
                 ts: "Widget[]",
                 ffi: {
                     type: "array",
-                    itemType: { type: "gobject", ownership: "none" },
+                    itemType: { type: "gobject", ownership: "borrowed" },
                     ownership: "full",
                 },
             };
@@ -496,7 +496,7 @@ describe("MethodBodyWriter", () => {
 
             const structure = writer.buildMethodStructure(method, {
                 methodName: "getLabel",
-                selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 sharedLibrary: "libgtk-4.so.1",
                 namespace: "Gtk",
             });
@@ -520,7 +520,7 @@ describe("MethodBodyWriter", () => {
 
             const structure = writer.buildMethodStructure(method, {
                 methodName: "setLabel",
-                selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 sharedLibrary: "libgtk-4.so.1",
                 namespace: "Gtk",
             });
@@ -540,7 +540,7 @@ describe("MethodBodyWriter", () => {
 
             const structure = writer.buildMethodStructure(method, {
                 methodName: "show",
-                selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 sharedLibrary: "libgtk-4.so.1",
                 namespace: "Gtk",
             });
@@ -559,7 +559,7 @@ describe("MethodBodyWriter", () => {
 
             const structure = writer.buildMethodStructure(method, {
                 methodName: "getLabel",
-                selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 sharedLibrary: "libgtk-4.so.1",
                 namespace: "Gtk",
             });
@@ -588,7 +588,7 @@ describe("MethodBodyWriter", () => {
                 name: "getLabel",
                 statements: writer.writeMethodBody(method, returnTypeMapping, {
                     sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 }),
             });
 
@@ -618,7 +618,7 @@ describe("MethodBodyWriter", () => {
                 name: "show",
                 statements: writer.writeMethodBody(method, returnTypeMapping, {
                     sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 }),
             });
 
@@ -646,7 +646,7 @@ describe("MethodBodyWriter", () => {
                 name: "save",
                 statements: writer.writeMethodBody(method, returnTypeMapping, {
                     sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 }),
             });
 
@@ -667,7 +667,7 @@ describe("MethodBodyWriter", () => {
             });
             const returnTypeMapping: MappedType = {
                 ts: "Widget",
-                ffi: { type: "gobject", ownership: "none" },
+                ffi: { type: "gobject", ownership: "borrowed" },
             };
 
             const project = createTestProject();
@@ -676,7 +676,7 @@ describe("MethodBodyWriter", () => {
                 name: "getParent",
                 statements: writer.writeMethodBody(method, returnTypeMapping, {
                     sharedLibrary: "libgtk-4.so.1",
-                    selfTypeDescriptor: { type: "gobject", ownership: "none" },
+                    selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
                 }),
             });
 
@@ -731,7 +731,7 @@ describe("MethodBodyWriter", () => {
                 statements: writer.writeFactoryMethodBody({
                     sharedLibrary: "libgtk-4.so.1",
                     cIdentifier: "gtk_button_new_with_label",
-                    args: [{ type: { type: "string", ownership: "none" }, value: "label" }],
+                    args: [{ type: { type: "string", ownership: "borrowed" }, value: "label" }],
                     returnTypeDescriptor: { type: "gobject", ownership: "full" },
                     wrapClassName: "Button",
                     throws: false,
@@ -781,7 +781,7 @@ describe("MethodBodyWriter", () => {
                 statements: writer.writeFactoryMethodBody({
                     sharedLibrary: "libgio-2.0.so.0",
                     cIdentifier: "g_file_new_for_path",
-                    args: [{ type: { type: "string", ownership: "none" }, value: "path" }],
+                    args: [{ type: { type: "string", ownership: "borrowed" }, value: "path" }],
                     returnTypeDescriptor: { type: "gobject", ownership: "full" },
                     wrapClassName: "File",
                     throws: true,
@@ -826,7 +826,7 @@ describe("MethodBodyWriter", () => {
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
                 ts: "Widget",
-                ffi: { type: "gobject", ownership: "none" },
+                ffi: { type: "gobject", ownership: "borrowed" },
             };
 
             const result = writer.buildValueExpression("widget", mappedType);

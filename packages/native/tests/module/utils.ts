@@ -21,10 +21,10 @@ export const FLOAT32 = { type: "float" as const, size: 32 as const };
 export const FLOAT64 = { type: "float" as const, size: 64 as const };
 export const BOOLEAN = { type: "boolean" as const };
 export const STRING = { type: "string" as const, ownership: "full" as const };
-export const STRING_NONE = { type: "string" as const, ownership: "none" as const };
+export const STRING_NONE = { type: "string" as const, ownership: "borrowed" as const };
 export const STRING_BORROWED = STRING_NONE;
 export const GOBJECT = { type: "gobject" as const, ownership: "full" as const };
-export const GOBJECT_NONE = { type: "gobject" as const, ownership: "none" as const };
+export const GOBJECT_NONE = { type: "gobject" as const, ownership: "borrowed" as const };
 export const GOBJECT_BORROWED = GOBJECT_NONE;
 export const NULL = { type: "null" as const };
 export const UNDEFINED = { type: "undefined" as const };
@@ -38,7 +38,7 @@ export const STRING_ARRAY_BORROWED = {
     type: "array" as const,
     itemType: STRING_BORROWED,
     listType: "array" as const,
-    ownership: "none" as const,
+    ownership: "borrowed" as const,
 };
 export const CALLBACK_CLOSURE = { type: "callback" as const, trampoline: "closure" as const };
 

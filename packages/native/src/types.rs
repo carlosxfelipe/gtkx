@@ -8,8 +8,8 @@
 //!
 //! ```text
 //! Type
-//! ├── Integer(IntegerType)    - Sized integers (i8..i64, u8..u64)
-//! ├── Float(FloatType)        - Floating point (f32, f64)
+//! ├── Integer(IntegerKind)    - Sized integers (i8..i64, u8..u64)
+//! ├── Float(FloatKind)        - Floating point (f32, f64)
 //! ├── String(StringType)      - UTF-8 strings (owned or borrowed)
 //! ├── Boolean                 - Boolean values
 //! ├── Null / Undefined        - Null pointer / void return
@@ -23,62 +23,114 @@
 //!
 //! ## Ownership
 //!
-//! Many types have an `is_transfer_full` flag that distinguishes:
-//! - **Transfer full**: Caller takes ownership, responsible for freeing
-//! - **Transfer none**: Caller receives a reference, must not free
+//! Many types have an `ownership` field using the [`Ownership`] enum:
+//! - **`Ownership::Owned`**: Caller takes ownership, responsible for freeing
+//! - **`Ownership::Borrowed`**: Caller receives a reference, must not free
 //!
 //! This is critical for correct memory management across the FFI boundary.
+//!
+//! [`Ownership`]: Ownership
 
-use libffi::middle as ffi;
+use std::ffi::c_void;
+
+use anyhow::bail;
+use gtk4::glib::{self, translate::FromGlibPtrNone as _};
+use libffi::middle as libffi;
 use neon::prelude::*;
+
+use crate::{ffi, value};
 
 mod array;
 mod boxed;
 mod callback;
-mod float;
 mod fundamental;
 mod gobject;
 mod hashtable;
-mod integer;
-mod r#ref;
+mod numeric;
+mod ref_type;
 mod string;
-mod r#struct;
 
-pub use array::*;
-pub use boxed::*;
-pub use callback::*;
-pub use float::*;
-pub use fundamental::*;
-pub use gobject::*;
-pub use hashtable::*;
-pub use integer::*;
-pub use r#ref::*;
-pub use string::*;
-pub use r#struct::*;
+pub use array::{ArrayType, ListType};
+pub use boxed::{BoxedType, StructType};
+pub use callback::{CallbackTrampoline, CallbackType};
+pub use fundamental::FundamentalType;
+pub use gobject::GObjectType;
+pub use hashtable::HashTableType;
+pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, NumericPrimitive};
+pub use ref_type::RefType;
+pub use string::StringType;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum CallbackTrampoline {
-    Closure,
-    AsyncReady,
-    Destroy,
-    DrawFunc,
-    ShortcutFunc,
-    TreeListModelCreateFunc,
+#[derive(Debug, Clone, Copy, Default)]
+pub enum Ownership {
+    #[default]
+    Borrowed,
+    Full,
 }
 
-#[derive(Debug, Clone)]
-pub struct CallbackType {
-    pub trampoline: CallbackTrampoline,
-    pub arg_types: Option<Vec<Type>>,
-    pub return_type: Option<Box<Type>>,
-    pub source_type: Option<Box<Type>>,
-    pub result_type: Option<Box<Type>>,
+impl Ownership {
+    #[inline]
+    pub fn is_full(self) -> bool {
+        matches!(self, Ownership::Full)
+    }
+
+    #[inline]
+    pub fn is_borrowed(self) -> bool {
+        matches!(self, Ownership::Borrowed)
+    }
+}
+
+impl Ownership {
+    pub fn from_js_value(
+        cx: &mut FunctionContext,
+        obj: Handle<JsObject>,
+        type_name: &str,
+    ) -> NeonResult<Self> {
+        let ownership_prop: Handle<'_, JsValue> = obj.prop(cx, "ownership").get()?;
+
+        let ownership = ownership_prop
+            .downcast::<JsString, _>(cx)
+            .or_else(|_| {
+                cx.throw_type_error(format!(
+                    "'ownership' property is required for {} types",
+                    type_name
+                ))
+            })?
+            .value(cx);
+
+        ownership
+            .parse()
+            .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())
+    }
+}
+
+impl std::fmt::Display for Ownership {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Ownership::Borrowed => write!(f, "borrowed"),
+            Ownership::Full => write!(f, "full"),
+        }
+    }
+}
+
+impl std::str::FromStr for Ownership {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "full" => Ok(Ownership::Full),
+            "borrowed" => Ok(Ownership::Borrowed),
+            other => Err(format!(
+                "'ownership' must be 'full' or 'borrowed', got '{}'",
+                other
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Type {
-    Integer(IntegerType),
-    Float(FloatType),
+    Integer(IntegerKind),
+    Float(FloatKind),
     String(StringType),
     Null,
     Undefined,
@@ -96,15 +148,15 @@ pub enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Integer(t) => write!(f, "Integer({}, {})", t.size, t.sign),
-            Type::Float(t) => write!(f, "Float({})", t.size),
+            Type::Integer(kind) => write!(f, "Integer({:?})", kind),
+            Type::Float(kind) => write!(f, "Float({:?})", kind),
             Type::String(_) => write!(f, "String"),
             Type::Null => write!(f, "Null"),
             Type::Undefined => write!(f, "Undefined"),
             Type::Boolean => write!(f, "Boolean"),
             Type::GObject(_) => write!(f, "GObject"),
-            Type::Boxed(t) => write!(f, "Boxed({})", t.type_),
-            Type::Struct(t) => write!(f, "Struct({})", t.type_),
+            Type::Boxed(t) => write!(f, "Boxed({})", t.type_name),
+            Type::Struct(t) => write!(f, "Struct({})", t.type_name),
             Type::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Type::Array(_) => write!(f, "Array"),
             Type::HashTable(_) => write!(f, "HashTable"),
@@ -119,14 +171,14 @@ impl Type {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let type_value: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
 
-        let type_ = type_value
+        let ty = type_value
             .downcast::<JsString, _>(cx)
             .or_throw(cx)?
             .value(cx);
 
-        match type_.as_str() {
-            "int" => Ok(Type::Integer(IntegerType::from_js_value(cx, value)?)),
-            "float" => Ok(Type::Float(FloatType::from_js_value(cx, value)?)),
+        match ty.as_str() {
+            "int" => Ok(Type::Integer(IntegerKind::from_js_value(cx, value)?)),
+            "float" => Ok(Type::Float(FloatKind::from_js_value(cx, value)?)),
             "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
             "boolean" => Ok(Type::Boolean),
             "null" => Ok(Type::Null),
@@ -136,90 +188,164 @@ impl Type {
             "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "hashtable" => Ok(Type::HashTable(HashTableType::from_js_value(cx, value)?)),
-            "callback" => {
-                let trampoline_prop: Handle<'_, JsValue> = obj.prop(cx, "trampoline").get()?;
-                let trampoline_str = trampoline_prop
-                    .downcast::<JsString, _>(cx)
-                    .or_else(|_| {
-                        cx.throw_type_error("'trampoline' property is required for callback types")
-                    })?
-                    .value(cx);
-
-                let trampoline = match trampoline_str.as_str() {
-                    "closure" => CallbackTrampoline::Closure,
-                    "asyncReady" => CallbackTrampoline::AsyncReady,
-                    "destroy" => CallbackTrampoline::Destroy,
-                    "drawFunc" => CallbackTrampoline::DrawFunc,
-                    "shortcutFunc" => CallbackTrampoline::ShortcutFunc,
-                    "treeListModelCreateFunc" => CallbackTrampoline::TreeListModelCreateFunc,
-                    _ => return cx.throw_type_error("'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc'"),
-                };
-
-                let arg_types: Option<Handle<JsArray>> = obj.get_opt(cx, "argTypes")?;
-                let arg_types = match arg_types {
-                    Some(arr) => {
-                        let vec = arr.to_vec(cx)?;
-                        let mut types = Vec::with_capacity(vec.len());
-                        for item in vec {
-                            types.push(Type::from_js_value(cx, item)?);
-                        }
-                        Some(types)
-                    }
-                    None => None,
-                };
-
-                let return_type: Option<Handle<JsValue>> = obj.get_opt(cx, "returnType")?;
-                let return_type = match return_type {
-                    Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
-                    None => None,
-                };
-
-                let source_type: Option<Handle<JsValue>> = obj.get_opt(cx, "sourceType")?;
-                let source_type = match source_type {
-                    Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
-                    None => None,
-                };
-
-                let result_type: Option<Handle<JsValue>> = obj.get_opt(cx, "resultType")?;
-                let result_type = match result_type {
-                    Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
-                    None => None,
-                };
-
-                Ok(Type::Callback(CallbackType {
-                    trampoline,
-                    arg_types,
-                    return_type,
-                    source_type,
-                    result_type,
-                }))
-            }
+            "callback" => Ok(Type::Callback(CallbackType::from_js_value(cx, value)?)),
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
             "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
                 cx, value,
             )?)),
-            _ => cx.throw_type_error(format!("Unknown type: {}", type_)),
+            _ => cx.throw_type_error(format!("Unknown type: {}", ty)),
+        }
+    }
+
+    pub fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
+        use std::ffi::CStr;
+        match self {
+            Type::String(_) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let c_str = unsafe { CStr::from_ptr(ptr as *const i8) };
+                Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
+            }
+            Type::Integer(int_kind) => {
+                let number = match int_kind {
+                    IntegerKind::I32 => ptr as i32 as f64,
+                    IntegerKind::U32 => ptr as u32 as f64,
+                    IntegerKind::I64 => ptr as i64 as f64,
+                    IntegerKind::U64 => ptr as u64 as f64,
+                    _ => ptr as isize as f64,
+                };
+                Ok(value::Value::Number(number))
+            }
+            Type::GObject(_) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let object =
+                    unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+                Ok(value::Value::Object(
+                    crate::managed::ManagedValue::GObject(object).into(),
+                ))
+            }
+            Type::Boxed(boxed_type) => {
+                if ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let gtype = boxed_type.gtype();
+                let boxed = crate::managed::Boxed::from_glib_none(gtype, ptr)?;
+                Ok(value::Value::Object(
+                    crate::managed::ManagedValue::Boxed(boxed).into(),
+                ))
+            }
+            _ => bail!("Unsupported {} type: {:?}", context, self),
         }
     }
 }
 
-impl From<&Type> for ffi::Type {
+impl Type {
+    pub fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
+        match self {
+            Type::Callback(callback_type)
+                if callback_type.trampoline != CallbackTrampoline::Closure =>
+            {
+                types.push(libffi::Type::pointer());
+                types.push(libffi::Type::pointer());
+
+                if callback_type.trampoline == CallbackTrampoline::DrawFunc
+                    || callback_type.trampoline == CallbackTrampoline::ShortcutFunc
+                    || callback_type.trampoline == CallbackTrampoline::TreeListModelCreateFunc
+                {
+                    types.push(libffi::Type::pointer());
+                }
+            }
+            other => types.push(other.into()),
+        }
+    }
+}
+
+impl From<&Type> for libffi::Type {
     fn from(value: &Type) -> Self {
         match value {
-            Type::Integer(type_) => type_.into(),
-            Type::Float(type_) => type_.into(),
-            Type::String(type_) => type_.into(),
-            Type::Boolean => ffi::Type::u8(),
-            Type::Null => ffi::Type::pointer(),
-            Type::GObject(type_) => type_.into(),
-            Type::Boxed(type_) => type_.into(),
-            Type::Struct(type_) => type_.into(),
-            Type::Fundamental(type_) => type_.into(),
-            Type::Array(type_) => type_.into(),
-            Type::HashTable(type_) => type_.into(),
-            Type::Callback(_) => ffi::Type::pointer(),
-            Type::Ref(type_) => type_.into(),
-            Type::Undefined => ffi::Type::void(),
+            Type::Integer(ty) => (*ty).into(),
+            Type::Float(ty) => (*ty).into(),
+            Type::String(ty) => ty.into(),
+            Type::Boolean => libffi::Type::u8(),
+            Type::Null => libffi::Type::pointer(),
+            Type::GObject(ty) => ty.into(),
+            Type::Boxed(ty) => ty.into(),
+            Type::Struct(ty) => ty.into(),
+            Type::Fundamental(ty) => ty.into(),
+            Type::Array(ty) => ty.into(),
+            Type::HashTable(ty) => ty.into(),
+            Type::Callback(_) => libffi::Type::pointer(),
+            Type::Ref(ty) => ty.into(),
+            Type::Undefined => libffi::Type::void(),
         }
+    }
+}
+
+impl ffi::FfiEncode for Type {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        match self {
+            Type::Integer(t) => t.encode(value, optional),
+            Type::Float(t) => t.encode(value, optional),
+            Type::String(t) => t.encode(value, optional),
+            Type::Boolean => {
+                let boolean = match value {
+                    value::Value::Boolean(b) => *b,
+                    _ => bail!("Expected a Boolean for boolean type, got {:?}", value),
+                };
+                Ok(ffi::FfiValue::U8(u8::from(boolean)))
+            }
+            Type::Null => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
+            Type::Undefined => Ok(ffi::FfiValue::Ptr(std::ptr::null_mut())),
+            Type::GObject(t) => t.encode(value, optional),
+            Type::Boxed(t) => t.encode(value, optional),
+            Type::Struct(t) => t.encode(value, optional),
+            Type::Fundamental(t) => t.encode(value, optional),
+            Type::Array(t) => t.encode(value, optional),
+            Type::HashTable(t) => t.encode(value, optional),
+            Type::Callback(t) => t.encode(value, optional),
+            Type::Ref(t) => t.encode(value, optional),
+        }
+    }
+}
+
+impl ffi::FfiDecode for Type {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        match self {
+            Type::Null => Ok(value::Value::Null),
+            Type::Undefined => Ok(value::Value::Undefined),
+            Type::Integer(t) => t.decode(ffi_value),
+            Type::Float(t) => t.decode(ffi_value),
+            Type::String(t) => t.decode(ffi_value),
+            Type::Boolean => {
+                let b = match ffi_value {
+                    ffi::FfiValue::U8(v) => *v != 0,
+                    _ => bail!("Expected a boolean ffi::FfiValue, got {:?}", ffi_value),
+                };
+                Ok(value::Value::Boolean(b))
+            }
+            Type::GObject(t) => t.decode(ffi_value),
+            Type::Boxed(t) => t.decode(ffi_value),
+            Type::Struct(t) => t.decode(ffi_value),
+            Type::Fundamental(t) => t.decode(ffi_value),
+            Type::Array(t) => t.decode(ffi_value),
+            Type::HashTable(t) => t.decode(ffi_value),
+            Type::Callback(_) => bail!("Callbacks cannot be converted from ffi::FfiValue"),
+            Type::Ref(t) => t.decode(ffi_value),
+        }
+    }
+
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        ffi_args: &[ffi::FfiValue],
+        args: &[crate::arg::Arg],
+    ) -> anyhow::Result<value::Value> {
+        if let Type::Array(array_type) = self {
+            return array_type.decode_with_context(ffi_value, ffi_args, args);
+        }
+        self.decode(ffi_value)
     }
 }

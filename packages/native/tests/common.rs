@@ -4,8 +4,10 @@ use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
 use gtk4::prelude::StaticType as _;
 
+#[allow(dead_code)]
 static GTK_INIT: Once = Once::new();
 
+#[allow(dead_code)]
 pub fn ensure_gtk_init() {
     GTK_INIT.call_once(|| {
         gtk4::init().expect("Failed to initialize GTK4 for tests");

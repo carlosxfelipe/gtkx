@@ -18,52 +18,53 @@
 
 use std::ffi::c_void;
 
+use anyhow::bail;
 use gtk4::glib::{self, translate::IntoGlib as _};
 
 #[derive(Debug)]
 pub struct Boxed {
     ptr: *mut c_void,
-    type_: Option<glib::Type>,
+    gtype: Option<glib::Type>,
     is_owned: bool,
 }
 
 impl Boxed {
-    pub fn from_glib_full(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
+    #[must_use]
+    pub fn from_glib_full(gtype: Option<glib::Type>, ptr: *mut c_void) -> Self {
         Self {
             ptr,
-            type_,
+            gtype,
             is_owned: true,
         }
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    pub fn from_glib_none(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
-        Self::from_glib_none_with_size(type_, ptr, None, None)
+    pub fn from_glib_none(gtype: Option<glib::Type>, ptr: *mut c_void) -> anyhow::Result<Self> {
+        Self::from_glib_none_with_size(gtype, ptr, None, None)
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn from_glib_none_with_size(
-        type_: Option<glib::Type>,
+        gtype: Option<glib::Type>,
         ptr: *mut c_void,
         size: Option<usize>,
         type_name: Option<&str>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         if ptr.is_null() {
-            return Self {
+            return Ok(Self {
                 ptr,
-                type_,
+                gtype,
                 is_owned: false,
-            };
+            });
         }
 
-        match type_ {
-            Some(gtype) => {
-                let cloned_ptr = unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr) };
-                Self {
+        match gtype {
+            Some(gt) => {
+                let cloned_ptr =
+                    unsafe { glib::gobject_ffi::g_boxed_copy(gt.into_glib(), ptr as *const _) };
+                Ok(Self {
                     ptr: cloned_ptr,
-                    type_,
+                    gtype,
                     is_owned: true,
-                }
+                })
             }
             None => {
                 if let Some(s) = size {
@@ -72,34 +73,33 @@ impl Boxed {
                         std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, s);
                         dest
                     };
-                    Self {
+                    Ok(Self {
                         ptr: cloned_ptr,
-                        type_: None,
+                        gtype: None,
                         is_owned: true,
-                    }
+                    })
                 } else {
-                    let name = match type_name {
-                        Some(n) if !n.is_empty() => n,
-                        _ => "unknown",
-                    };
-                    eprintln!(
-                        "[gtkx] WARNING: from_glib_none: struct type '{}' has no size info - \
-                         pointer {:p} may become dangling if the source is freed",
-                        name, ptr
-                    );
-                    Self {
-                        ptr,
-                        type_: None,
-                        is_owned: false,
-                    }
+                    let name = type_name.unwrap_or("unknown");
+                    bail!(
+                        "Cannot safely copy boxed type '{}': no size info or gtype. \
+                         Pointer {:p} may become dangling if the source is freed",
+                        name,
+                        ptr
+                    )
                 }
             }
         }
     }
 
     #[inline]
+    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
+    }
+
+    #[must_use]
+    pub fn gtype(&self) -> Option<glib::Type> {
+        self.gtype
     }
 
     #[must_use]
@@ -110,14 +110,30 @@ impl Boxed {
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
-        if self.type_.is_some() {
-            Self::from_glib_none(self.type_, self.ptr)
-        } else {
-            Self {
+        if self.ptr.is_null() || !self.is_owned {
+            return Self {
                 ptr: self.ptr,
-                type_: None,
+                gtype: self.gtype,
                 is_owned: false,
+            };
+        }
+
+        match self.gtype {
+            Some(gt) => {
+                let cloned_ptr = unsafe {
+                    glib::gobject_ffi::g_boxed_copy(gt.into_glib(), self.ptr as *const _)
+                };
+                Self {
+                    ptr: cloned_ptr,
+                    gtype: self.gtype,
+                    is_owned: true,
+                }
             }
+            None => Self {
+                ptr: self.ptr,
+                gtype: None,
+                is_owned: false,
+            },
         }
     }
 }
@@ -126,7 +142,7 @@ impl Drop for Boxed {
     fn drop(&mut self) {
         if self.is_owned && !self.ptr.is_null() {
             unsafe {
-                match self.type_ {
+                match self.gtype {
                     Some(gtype) => {
                         glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                     }

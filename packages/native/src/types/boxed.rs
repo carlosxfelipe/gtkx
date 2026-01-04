@@ -1,102 +1,76 @@
-//! Boxed type representation for FFI.
-//!
-//! Defines [`BoxedType`] for GObject boxed types (value types like `GdkRGBA`,
-//! `PangoFontDescription`, etc.). Boxed types are copied and freed using
-//! GLib's boxed type system.
-//!
-//! ## Ownership
-//!
-//! - `ownership: "full"` - Ownership transferred, caller should free when done
-//! - `ownership: "none"` - Reference is borrowed, caller must not free
-//!
-//! ## Type Resolution
-//!
-//! The [`BoxedType::get_gtype`] method resolves the GLib type:
-//! 1. First checks if the type is already registered by name
-//! 2. Falls back to dynamically loading the `get_type` function from the library
-
-use gtk4::glib::{self, translate::FromGlib as _};
-use libffi::middle as ffi;
+use gtk4::glib::{self, translate::FromGlib as _, translate::IntoGlib as _};
+use libffi::middle as libffi;
+use neon::object::Object as _;
 use neon::prelude::*;
 
-use crate::ownership::parse_is_transfer_full;
+use super::Ownership;
+use crate::managed::{Boxed, ManagedValue};
 use crate::state::GtkThreadState;
+use crate::{ffi, value};
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {
-    pub is_transfer_full: bool,
-    pub type_: String,
-    pub lib: Option<String>,
+    pub ownership: Ownership,
+    pub type_name: String,
+    pub library: Option<String>,
     pub get_type_fn: Option<String>,
-}
-
-impl PartialEq for BoxedType {
-    fn eq(&self, other: &Self) -> bool {
-        self.type_ == other.type_
-    }
-}
-
-impl Eq for BoxedType {}
-
-impl std::hash::Hash for BoxedType {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.type_.hash(state);
-    }
 }
 
 impl BoxedType {
     pub fn new(
-        is_transfer_full: bool,
-        type_: String,
-        lib: Option<String>,
+        ownership: Ownership,
+        type_name: String,
+        library: Option<String>,
         get_type_fn: Option<String>,
     ) -> Self {
         BoxedType {
-            is_transfer_full,
-            type_,
-            lib,
+            ownership,
+            type_name,
+            library,
             get_type_fn,
         }
     }
 
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let is_transfer_full = parse_is_transfer_full(cx, obj, "boxed")?;
+        let ownership = Ownership::from_js_value(cx, obj, "boxed")?;
 
         let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let type_ = type_prop
+        let type_name = type_prop
             .downcast::<JsString, _>(cx)
             .or_throw(cx)?
             .value(cx);
 
         let lib_prop: Handle<'_, JsValue> = obj.prop(cx, "lib").get()?;
-        let lib = lib_prop
+        let library = lib_prop
             .downcast::<JsString, _>(cx)
-            .map(|s| s.value(cx))
+            .map(|s: Handle<'_, JsString>| s.value(cx))
             .ok();
 
         let get_type_fn_prop: Handle<'_, JsValue> = obj.prop(cx, "getTypeFn").get()?;
         let get_type_fn = get_type_fn_prop
             .downcast::<JsString, _>(cx)
-            .map(|s| s.value(cx))
+            .map(|s: Handle<'_, JsString>| s.value(cx))
             .ok();
 
-        Ok(Self::new(is_transfer_full, type_, lib, get_type_fn))
+        Ok(Self::new(ownership, type_name, library, get_type_fn))
     }
 
-    pub fn get_gtype(&self) -> Option<glib::Type> {
-        if let Some(gtype) = glib::Type::from_name(&self.type_) {
-            return Some(gtype);
-        }
+    pub fn gtype_from_name(&self) -> Option<glib::Type> {
+        glib::Type::from_name(&self.type_name)
+    }
 
-        let lib_name = self.lib.as_ref()?;
-        let get_type_fn = self
-            .get_type_fn
-            .clone()
-            .unwrap_or_else(|| type_name_to_get_type_fn(&self.type_));
+    pub fn gtype(&self) -> Option<glib::Type> {
+        self.gtype_from_name()
+            .or_else(|| self.resolve_gtype_from_library())
+    }
+
+    fn resolve_gtype_from_library(&self) -> Option<glib::Type> {
+        let lib_name = self.library.as_ref()?;
+        let get_type_fn = self.get_type_fn.as_ref()?;
 
         GtkThreadState::with(|state| {
-            let library = state.get_library(lib_name).ok()?;
+            let library = state.library(lib_name).ok()?;
             let symbol = unsafe {
                 library
                     .get::<unsafe extern "C" fn() -> glib::ffi::GType>(get_type_fn.as_bytes())
@@ -109,26 +83,112 @@ impl BoxedType {
     }
 }
 
-fn type_name_to_get_type_fn(type_name: &str) -> String {
-    let mut result = String::new();
+impl From<&BoxedType> for libffi::Type {
+    fn from(_: &BoxedType) -> Self {
+        libffi::Type::pointer()
+    }
+}
 
-    for c in type_name.chars() {
-        if c.is_uppercase() {
-            if !result.is_empty() {
-                result.push('_');
-            }
-            result.push(c.to_ascii_lowercase());
+impl ffi::FfiEncode for BoxedType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let ptr = value.object_ptr("Boxed object")?;
+
+        if let Some(gtype) = self.gtype()
+            && self.ownership.is_full()
+            && !ptr.is_null()
+        {
+            let copied =
+                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) };
+            return Ok(ffi::FfiValue::Ptr(copied));
+        }
+
+        Ok(ffi::FfiValue::Ptr(ptr))
+    }
+}
+
+impl ffi::FfiDecode for BoxedType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(boxed_ptr) = ffi_value.as_non_null_ptr("Boxed")? else {
+            return Ok(value::Value::Null);
+        };
+
+        let gtype = self.gtype();
+        let boxed = if self.ownership.is_full() {
+            ManagedValue::Boxed(Boxed::from_glib_full(gtype, boxed_ptr))
         } else {
-            result.push(c);
+            ManagedValue::Boxed(Boxed::from_glib_none_with_size(
+                gtype,
+                boxed_ptr,
+                None,
+                Some(&self.type_name),
+            )?)
+        };
+
+        Ok(value::Value::Object(boxed.into()))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructType {
+    pub ownership: Ownership,
+    pub type_name: String,
+    pub size: Option<usize>,
+}
+
+impl StructType {
+    pub fn new(ownership: Ownership, type_name: String, size: Option<usize>) -> Self {
+        StructType {
+            ownership,
+            type_name,
+            size,
         }
     }
 
-    result.push_str("_get_type");
-    result
+    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let ownership = Ownership::from_js_value(cx, obj, "struct")?;
+
+        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
+        let type_name = type_prop
+            .downcast::<JsString, _>(cx)
+            .or_throw(cx)?
+            .value(cx);
+
+        let size_prop: Handle<'_, JsValue> = obj.prop(cx, "size").get()?;
+        let size = size_prop
+            .downcast::<JsNumber, _>(cx)
+            .map(|n: Handle<'_, JsNumber>| n.value(cx) as usize)
+            .ok();
+
+        Ok(Self::new(ownership, type_name, size))
+    }
 }
 
-impl From<&BoxedType> for ffi::Type {
-    fn from(_: &BoxedType) -> Self {
-        ffi::Type::pointer()
+impl From<&StructType> for libffi::Type {
+    fn from(_: &StructType) -> Self {
+        libffi::Type::pointer()
+    }
+}
+
+impl ffi::FfiEncode for StructType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let ptr = value.object_ptr("Struct object")?;
+        Ok(ffi::FfiValue::Ptr(ptr))
+    }
+}
+
+impl ffi::FfiDecode for StructType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(struct_ptr) = ffi_value.as_non_null_ptr("Struct")? else {
+            return Ok(value::Value::Null);
+        };
+
+        let boxed = if self.ownership.is_full() {
+            Boxed::from_glib_full(None, struct_ptr)
+        } else {
+            Boxed::from_glib_none_with_size(None, struct_ptr, self.size, Some(&self.type_name))?
+        };
+
+        Ok(value::Value::Object(ManagedValue::Boxed(boxed).into()))
     }
 }

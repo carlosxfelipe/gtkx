@@ -101,7 +101,7 @@ export class ConstructorBuilder {
     private addConstructorWithFlag(classDecl: ClassDeclaration, ctor: GirConstructor): void {
         this.ctx.usesInstantiating = true;
         const params = this.methodBody.buildParameterList(ctor.parameters);
-        const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "none";
+        const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
         classDecl.addConstructor({
             parameters: params,
@@ -225,7 +225,7 @@ export class ConstructorBuilder {
 
     private writeStaticFactoryMethodBody(ctor: GirConstructor): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
-        const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "none";
+        const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
         return this.methodBody.writeFactoryMethodBody({
             sharedLibrary: this.options.sharedLibrary,

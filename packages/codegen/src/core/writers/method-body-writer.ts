@@ -381,7 +381,7 @@ export class MethodBodyWriter {
      * ```typescript
      * const structure = builder.buildMethodStructure(method, {
      *   methodName: "onClick",
-     *   selfTypeDescriptor: '{ type: "gobject", ownership: "none" }',
+     *   selfTypeDescriptor: '{ type: "gobject", ownership: "borrowed" }',
      *   sharedLibrary: "libgtk-4.so.1",
      *   namespace: "Gtk",
      * });
@@ -822,7 +822,7 @@ export class MethodBodyWriter {
      *   sharedLibrary: "libgtk-4.so.1",
      *   cIdentifier: "gtk_text_iter_new",
      *   args: callArgs,
-     *   returnTypeDescriptor: { type: "boxed", ownership: "none", innerType: "GtkTextIter", lib: "libgtk-4.so.1" },
+     *   returnTypeDescriptor: { type: "boxed", ownership: "borrowed", innerType: "GtkTextIter", lib: "libgtk-4.so.1" },
      *   wrapClassName: "TextIter",
      *   throws: false,
      *   useClassInWrap: true,

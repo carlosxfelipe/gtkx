@@ -234,7 +234,7 @@ export class MethodBuilder {
                         writer.writeLine("{");
                         writer.indent(() => {
                             writer.writeLine(
-                                'type: { type: "callback", trampoline: "asyncReady", sourceType: { type: "gobject", ownership: "none" }, resultType: { type: "gobject", ownership: "none" } },',
+                                'type: { type: "callback", trampoline: "asyncReady", sourceType: { type: "gobject", ownership: "borrowed" }, resultType: { type: "gobject", ownership: "borrowed" } },',
                             );
                             writer.writeLine("value: (_source: unknown, result: unknown) => {");
                             writer.indent(() => {
@@ -257,7 +257,7 @@ export class MethodBuilder {
                                         this.methodBody.getFfiTypeWriter().toWriter(selfTypeDescriptor)(writer);
                                         writer.writeLine(", value: this.id },");
                                         writer.writeLine(
-                                            '{ type: { type: "gobject", ownership: "none" }, value: result },',
+                                            '{ type: { type: "gobject", ownership: "borrowed" }, value: result },',
                                         );
                                         if (finishMethod.throws) {
                                             writer.write("{ type: ");

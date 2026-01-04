@@ -1,9 +1,7 @@
 use neon::prelude::*;
 
-use super::Value;
-use super::r#ref::Ref;
-use crate::object::ObjectId;
-use crate::types::Callback;
+use super::{Callback, Ref, Value};
+use crate::managed::ObjectId;
 
 impl Value {
     pub fn from_js_value<'a, C: Context<'a>>(

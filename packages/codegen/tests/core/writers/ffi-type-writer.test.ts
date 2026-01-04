@@ -71,6 +71,7 @@ describe("FfiTypeWriter", () => {
                     ownership: "full",
                     innerType: "GError",
                     lib: "libglib-2.0.so.0",
+                    getTypeFn: "g_error_get_type",
                 },
             });
         });
@@ -160,7 +161,7 @@ describe("FfiTypeWriter", () => {
 
             it("writes string with no ownership", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "string", ownership: "none" });
+                const output = getWriterOutput(writer, { type: "string", ownership: "borrowed" });
 
                 expect(output).toContain('"none"');
             });
@@ -184,7 +185,7 @@ describe("FfiTypeWriter", () => {
 
             it("writes gobject with no ownership", () => {
                 const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "gobject", ownership: "none" });
+                const output = getWriterOutput(writer, { type: "gobject", ownership: "borrowed" });
 
                 expect(output).toContain('"gobject"');
                 expect(output).toContain('"none"');
@@ -261,7 +262,7 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "struct",
-                    ownership: "none",
+                    ownership: "borrowed",
                     innerType: "SomeStruct",
                 });
 
@@ -337,8 +338,8 @@ describe("FfiTypeWriter", () => {
                 const writer = new FfiTypeWriter();
                 const output = getWriterOutput(writer, {
                     type: "array",
-                    itemType: { type: "gobject", ownership: "none" },
-                    ownership: "none",
+                    itemType: { type: "gobject", ownership: "borrowed" },
+                    ownership: "borrowed",
                 });
 
                 expect(output).toContain('"gobject"');
@@ -363,8 +364,8 @@ describe("FfiTypeWriter", () => {
                     type: "callback",
                     trampoline: "closure",
                     argTypes: [
-                        { type: "gobject", ownership: "none" },
-                        { type: "string", ownership: "none" },
+                        { type: "gobject", ownership: "borrowed" },
+                        { type: "string", ownership: "borrowed" },
                     ],
                 });
 
@@ -378,7 +379,7 @@ describe("FfiTypeWriter", () => {
                 const output = getWriterOutput(writer, {
                     type: "callback",
                     trampoline: "closure",
-                    sourceType: { type: "gobject", ownership: "none" },
+                    sourceType: { type: "gobject", ownership: "borrowed" },
                 });
 
                 expect(output).toContain("sourceType:");
@@ -604,11 +605,11 @@ describe("FfiTypeWriter", () => {
                 type: "callback",
                 trampoline: "closure",
                 argTypes: [
-                    { type: "gobject", ownership: "none" },
+                    { type: "gobject", ownership: "borrowed" },
                     {
                         type: "array",
-                        itemType: { type: "string", ownership: "none" },
-                        ownership: "none",
+                        itemType: { type: "string", ownership: "borrowed" },
+                        ownership: "borrowed",
                     },
                 ],
                 returnType: { type: "boolean" },

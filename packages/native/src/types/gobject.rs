@@ -1,36 +1,64 @@
-//! GObject type representation for FFI.
-//!
-//! Defines [`GObjectType`] with an ownership flag. GObjects are passed as
-//! pointers at the FFI level.
-//!
-//! - `ownership: "full"` - Ownership transferred, caller should unref when done
-//! - `ownership: "none"` - Reference is borrowed, caller must not unref
-
-use libffi::middle as ffi;
+use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _};
+use libffi::middle as libffi;
 use neon::prelude::*;
 
-use crate::ownership::parse_is_transfer_full;
+use super::Ownership;
+use crate::managed::ManagedValue;
+use crate::{ffi, value};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct GObjectType {
-    /// Whether ownership is transferred (transfer full).
-    pub is_transfer_full: bool,
+    pub ownership: Ownership,
 }
 
 impl GObjectType {
-    pub fn new(is_transfer_full: bool) -> Self {
-        GObjectType { is_transfer_full }
+    pub fn new(ownership: Ownership) -> Self {
+        GObjectType { ownership }
     }
 
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let is_transfer_full = parse_is_transfer_full(cx, obj, "gobject")?;
-        Ok(Self::new(is_transfer_full))
+        let ownership = Ownership::from_js_value(cx, obj, "gobject")?;
+        Ok(Self::new(ownership))
     }
 }
 
-impl From<&GObjectType> for ffi::Type {
+impl From<&GObjectType> for libffi::Type {
     fn from(_: &GObjectType) -> Self {
-        ffi::Type::pointer()
+        libffi::Type::pointer()
+    }
+}
+
+impl ffi::FfiEncode for GObjectType {
+    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let ptr = value.object_ptr("GObject")?;
+
+        if self.ownership.is_full() && !ptr.is_null() {
+            unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
+        }
+
+        Ok(ffi::FfiValue::Ptr(ptr))
+    }
+}
+
+impl ffi::FfiDecode for GObjectType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
+            return Ok(value::Value::Null);
+        };
+
+        let gobject_ptr = object_ptr as *mut glib::gobject_ffi::GObject;
+
+        let object = if self.ownership.is_full() {
+            let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+            if is_floating {
+                unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
+            }
+            ManagedValue::GObject(unsafe { glib::Object::from_glib_full(gobject_ptr) })
+        } else {
+            ManagedValue::GObject(unsafe { glib::Object::from_glib_none(gobject_ptr) })
+        };
+
+        Ok(value::Value::Object(object.into()))
     }
 }

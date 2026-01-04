@@ -4,122 +4,210 @@
 //! on the GTK main thread. GTK requires all widget operations to happen on
 //! its main thread, so this dispatcher bridges the gap from the Neon JS thread.
 //!
+//! Access the singleton dispatcher via [`dispatcher()`] and call methods on it:
+//!
+//! ```ignore
+//! use crate::gtk_dispatch;
+//!
+//! GtkDispatcher::global().schedule(|| { /* GTK work */ });
+//! GtkDispatcher::global().enter_js_wait();
+//! ```
+//!
 //! ## Scheduling Modes
 //!
-//! - [`schedule`]: Queue a task for execution during the next GTK idle cycle.
+//! - [`GtkDispatcher::schedule`]: Queue a task for execution during the next GTK idle cycle.
 //!   Uses `glib::idle_add_once` for integration with GTK's event loop.
-//! - [`dispatch_pending`]: Manually execute all queued tasks immediately.
+//! - [`GtkDispatcher::dispatch_pending`]: Manually execute all queued tasks immediately.
 //!   Used during blocking FFI calls to prevent deadlocks.
 //!
 //! ## JS Wait Tracking
 //!
 //! When JavaScript is blocking waiting for a GTK operation to complete,
-//! callbacks must be routed differently. The wait depth tracking functions
-//! ([`enter_js_wait`], [`exit_js_wait`], [`is_js_waiting`]) coordinate this.
+//! callbacks must be routed differently. The wait depth tracking methods
+//! ([`GtkDispatcher::enter_js_wait`], [`GtkDispatcher::exit_js_wait`], [`GtkDispatcher::is_js_waiting`]) coordinate this.
 //!
 //! ## Shutdown
 //!
-//! [`mark_stopped`] signals that the application is shutting down. After this,
+//! [`GtkDispatcher::mark_stopped`] signals that the application is shutting down. After this,
 //! new tasks are silently dropped to allow clean termination.
 
+use std::collections::VecDeque;
 use std::sync::{
+    Mutex, OnceLock,
     atomic::{AtomicBool, AtomicUsize, Ordering},
     mpsc,
 };
 
 use gtk4::glib;
+use neon::prelude::*;
 
-use crate::queue::Queue;
-
-pub fn run_on_gtk_thread<F, T>(task: F) -> mpsc::Receiver<T>
-where
-    F: FnOnce() -> T + Send + 'static,
-    T: Send + 'static,
-{
-    let (tx, rx) = mpsc::channel();
-
-    schedule(move || {
-        let _ = tx.send(task());
-    });
-
-    rx
-}
+use crate::js_dispatch;
 
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
-static QUEUE: Queue<Task> = Queue::new();
-static DISPATCH_SCHEDULED: AtomicBool = AtomicBool::new(false);
-static STOPPED: AtomicBool = AtomicBool::new(false);
-static JS_WAIT_DEPTH: AtomicUsize = AtomicUsize::new(0);
-
-pub fn is_js_waiting() -> bool {
-    JS_WAIT_DEPTH.load(Ordering::Acquire) > 0
+pub struct GtkDispatcher {
+    queue: Mutex<VecDeque<Task>>,
+    dispatch_scheduled: AtomicBool,
+    stopped: AtomicBool,
+    js_wait_depth: AtomicUsize,
 }
 
-pub fn enter_js_wait() {
-    JS_WAIT_DEPTH.fetch_add(1, Ordering::AcqRel);
-}
+static DISPATCHER: OnceLock<GtkDispatcher> = OnceLock::new();
 
-pub fn exit_js_wait() {
-    JS_WAIT_DEPTH.fetch_sub(1, Ordering::AcqRel);
-}
-
-pub fn mark_stopped() {
-    STOPPED.store(true, Ordering::Release);
-}
-
-pub fn schedule<F>(task: F)
-where
-    F: FnOnce() + Send + 'static,
-{
-    if STOPPED.load(Ordering::Acquire) {
-        return;
+impl GtkDispatcher {
+    pub fn global() -> &'static GtkDispatcher {
+        DISPATCHER.get_or_init(GtkDispatcher::new)
     }
 
-    QUEUE.push(Box::new(task));
-
-    if DISPATCH_SCHEDULED
-        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-        .is_ok()
-    {
-        glib::idle_add_once(dispatch_batch);
-    }
-}
-
-fn dispatch_batch() {
-    DISPATCH_SCHEDULED.store(false, Ordering::Release);
-
-    while let Some(task) = QUEUE.pop() {
-        task();
-    }
-
-    if !QUEUE.is_empty()
-        && DISPATCH_SCHEDULED
-            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-            .is_ok()
-    {
-        glib::idle_add_once(dispatch_batch);
-    }
-}
-
-pub fn dispatch_pending() -> bool {
-    let mut dispatched = false;
-
-    while let Some(task) = QUEUE.pop() {
-        task();
-        dispatched = true;
-    }
-
-    if dispatched {
-        DISPATCH_SCHEDULED.store(false, Ordering::Release);
-        if !QUEUE.is_empty()
-            && DISPATCH_SCHEDULED
-                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-                .is_ok()
-        {
-            glib::idle_add_once(dispatch_batch);
+    fn new() -> Self {
+        Self {
+            queue: Mutex::new(VecDeque::new()),
+            dispatch_scheduled: AtomicBool::new(false),
+            stopped: AtomicBool::new(false),
+            js_wait_depth: AtomicUsize::new(0),
         }
     }
 
-    dispatched
+    fn push_task(&self, task: Task) {
+        self.queue
+            .lock()
+            .expect("queue mutex poisoned")
+            .push_back(task);
+    }
+
+    fn pop_task(&self) -> Option<Task> {
+        self.queue.lock().expect("queue mutex poisoned").pop_front()
+    }
+
+    fn is_queue_empty(&self) -> bool {
+        self.queue.lock().expect("queue mutex poisoned").is_empty()
+    }
+
+    pub fn run_on_gtk_thread<F, T>(&self, task: F) -> mpsc::Receiver<T>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
+
+        self.schedule(move || {
+            let _ = tx.send(task());
+        });
+
+        rx
+    }
+
+    pub fn is_js_waiting(&self) -> bool {
+        self.js_wait_depth.load(Ordering::Acquire) > 0
+    }
+
+    pub fn enter_js_wait(&self) {
+        self.js_wait_depth.fetch_add(1, Ordering::AcqRel);
+    }
+
+    pub fn exit_js_wait(&self) {
+        self.js_wait_depth.fetch_sub(1, Ordering::AcqRel);
+    }
+
+    pub fn mark_stopped(&self) {
+        self.stopped.store(true, Ordering::Release);
+    }
+
+    pub fn schedule<F>(&self, task: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        if self.stopped.load(Ordering::Acquire) {
+            return;
+        }
+
+        self.push_task(Box::new(task));
+
+        if self
+            .dispatch_scheduled
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+        {
+            glib::idle_add_once(Self::idle_dispatch_callback);
+        }
+    }
+
+    pub fn dispatch_pending(&self) -> bool {
+        let mut dispatched = false;
+
+        while let Some(task) = self.pop_task() {
+            task();
+            dispatched = true;
+        }
+
+        if dispatched {
+            self.dispatch_scheduled.store(false, Ordering::Release);
+            if !self.is_queue_empty()
+                && self
+                    .dispatch_scheduled
+                    .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                    .is_ok()
+            {
+                glib::idle_add_once(Self::idle_dispatch_callback);
+            }
+        }
+
+        dispatched
+    }
+
+    fn drain_queue(&self) {
+        self.dispatch_scheduled.store(false, Ordering::Release);
+
+        while let Some(task) = self.pop_task() {
+            task();
+        }
+
+        if !self.is_queue_empty()
+            && self
+                .dispatch_scheduled
+                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+        {
+            glib::idle_add_once(Self::idle_dispatch_callback);
+        }
+    }
+
+    fn idle_dispatch_callback() {
+        Self::global().drain_queue();
+    }
+
+    pub fn wait_for_gtk_result<'a, R, C: Context<'a>>(
+        &self,
+        cx: &mut C,
+        rx: &mpsc::Receiver<R>,
+    ) -> Result<R, GtkDisconnectedError> {
+        let result = loop {
+            js_dispatch::JsDispatcher::global().process_pending(cx);
+
+            match rx.try_recv() {
+                Ok(result) => break result,
+                Err(mpsc::TryRecvError::Empty) => {
+                    std::thread::yield_now();
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.exit_js_wait();
+                    return Err(GtkDisconnectedError);
+                }
+            }
+        };
+
+        self.exit_js_wait();
+        Ok(result)
+    }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct GtkDisconnectedError;
+
+impl std::fmt::Display for GtkDisconnectedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GTK thread disconnected")
+    }
+}
+
+impl std::error::Error for GtkDisconnectedError {}

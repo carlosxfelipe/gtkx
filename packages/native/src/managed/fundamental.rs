@@ -1,6 +1,22 @@
-use std::ffi::c_void;
+//! GLib fundamental type wrapper with custom ref/unref functions.
+//!
+//! [`Fundamental`] wraps pointers to GLib fundamental types (e.g., `GVariant`, `GParamSpec`)
+//! with proper ownership semantics. Unlike boxed types, fundamental types have custom
+//! reference counting functions that must be looked up dynamically.
+//!
+//! ## Ownership Modes
+//!
+//! - [`Fundamental::from_glib_full`]: Takes ownership without incrementing ref count.
+//!   The wrapper will unref on drop.
+//! - [`Fundamental::from_glib_none`]: Refs the value to take a shared reference.
+//!   The wrapper will unref on drop.
+//!
+//! ## Clone Behavior
+//!
+//! Cloning increments the reference count via the `ref_fn`, ensuring proper
+//! reference counting semantics.
 
-use crate::{state::GtkThreadState, types::FundamentalType};
+use std::ffi::c_void;
 
 pub type UnrefFn = unsafe extern "C" fn(*mut c_void);
 pub type RefFn = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
@@ -14,6 +30,7 @@ pub struct Fundamental {
 }
 
 impl Fundamental {
+    #[must_use]
     pub fn from_glib_full(
         ptr: *mut c_void,
         ref_fn: Option<RefFn>,
@@ -27,6 +44,16 @@ impl Fundamental {
         }
     }
 
+    /// Creates a new Fundamental from a borrowed pointer by incrementing the reference count.
+    ///
+    /// # Safety Contract
+    ///
+    /// This function is safe because:
+    /// - The `ptr` comes from GLib/GTK FFI and is known to be valid when non-null
+    /// - The `ref_fn` is obtained from `FundamentalType::lookup_fns` which looks up
+    ///   the correct ref function for the type from GLib's type system
+    /// - This follows the gtk-rs convention where `from_glib_none` is safe
+    #[must_use]
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn from_glib_none(
         ptr: *mut c_void,
@@ -42,8 +69,9 @@ impl Fundamental {
             };
         }
 
-        if let Some(ref_fn) = ref_fn {
-            unsafe { ref_fn(ptr) };
+        if let Some(do_ref) = ref_fn {
+            // SAFETY: ref_fn is a valid GLib ref function obtained from FundamentalType::lookup_fns
+            unsafe { do_ref(ptr) };
         }
 
         Self {
@@ -55,6 +83,7 @@ impl Fundamental {
     }
 
     #[inline]
+    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
     }
@@ -62,30 +91,6 @@ impl Fundamental {
     #[must_use]
     pub fn is_owned(&self) -> bool {
         self.is_owned
-    }
-
-    pub fn lookup_fns(
-        fundamental_type: &FundamentalType,
-    ) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
-        GtkThreadState::with(|state| {
-            let library = state.get_library(&fundamental_type.library)?;
-
-            let ref_fn = unsafe {
-                library
-                    .get::<RefFn>(fundamental_type.ref_func.as_bytes())
-                    .ok()
-                    .map(|sym| *sym)
-            };
-
-            let unref_fn = unsafe {
-                library
-                    .get::<UnrefFn>(fundamental_type.unref_func.as_bytes())
-                    .ok()
-                    .map(|sym| *sym)
-            };
-
-            Ok((ref_fn, unref_fn))
-        })
     }
 }
 

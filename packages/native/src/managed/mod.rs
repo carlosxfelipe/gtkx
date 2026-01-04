@@ -1,0 +1,122 @@
+//! Managed object wrappers and reference tracking.
+//!
+//! This module provides wrappers for GObject, Boxed, and Fundamental instances
+//! that need to cross the FFI boundary. Objects are stored in a thread-local map
+//! and automatically cleaned up when their JavaScript handles are garbage collected.
+//!
+//! ## Key Types
+//!
+//! - [`ManagedValue`]: Enum wrapping GObject, Boxed, or Fundamental instances
+//! - [`ObjectId`]: Newtype handle returned to JavaScript, implements [`Finalize`]
+//! - [`Boxed`]: GObject boxed type wrapper with copy/free semantics
+//! - [`Fundamental`]: GLib fundamental type wrapper with ref/unref semantics
+//!
+//! ## Lifecycle
+//!
+//! 1. Native code creates a value and wraps it in [`ManagedValue`]
+//! 2. [`ManagedValue`] is converted to [`ObjectId`] via `From`
+//! 3. [`ObjectId`] is returned to JavaScript as a boxed value
+//! 4. When JS garbage collects the handle, [`Finalize::finalize`] schedules removal
+//! 5. The GTK thread removes the object from the map, dropping the Rust wrapper
+//!
+//! This ensures proper reference counting for GObjects and proper freeing for Boxed types.
+
+mod boxed;
+mod fundamental;
+
+pub use boxed::Boxed;
+pub use fundamental::{Fundamental, RefFn, UnrefFn};
+
+use std::ffi::c_void;
+
+use gtk4::glib::{self, object::ObjectType as _};
+use neon::prelude::*;
+
+use crate::{gtk_dispatch, state::GtkThreadState};
+
+#[derive(Debug, Clone, Copy)]
+pub struct ObjectId(pub(crate) usize);
+
+impl From<ManagedValue> for ObjectId {
+    fn from(object: ManagedValue) -> Self {
+        GtkThreadState::with(|state| {
+            let id = state.next_object_id;
+            state.next_object_id = state.next_object_id.wrapping_add(1);
+            state.object_map.insert(id, object);
+            ObjectId(id)
+        })
+    }
+}
+
+impl ObjectId {
+    #[must_use]
+    pub fn get_ptr(&self) -> Option<*mut c_void> {
+        GtkThreadState::with(|state| {
+            state.object_map.get(&self.0).map(|object| match object {
+                ManagedValue::GObject(obj) => obj.as_ptr() as *mut c_void,
+                ManagedValue::Boxed(boxed) => boxed.as_ptr(),
+                ManagedValue::Fundamental(fundamental) => fundamental.as_ptr(),
+            })
+        })
+    }
+
+    #[must_use]
+    pub fn get_ptr_as_usize(&self) -> Option<usize> {
+        self.get_ptr().map(|ptr| ptr as usize)
+    }
+
+    pub(crate) fn require_ptr(&self) -> anyhow::Result<*mut c_void> {
+        self.get_ptr()
+            .ok_or_else(|| anyhow::anyhow!("Object with ID {} has been garbage collected", self.0))
+    }
+
+    pub(crate) fn require_non_null_ptr(&self) -> anyhow::Result<*mut c_void> {
+        let ptr = self.require_ptr()?;
+        if ptr.is_null() {
+            anyhow::bail!("Object with ID {} has a null pointer", self.0);
+        }
+        Ok(ptr)
+    }
+
+    pub(crate) fn field_ptr(&self, offset: usize) -> anyhow::Result<*mut u8> {
+        let ptr = self.require_non_null_ptr()?;
+        // SAFETY: Caller guarantees offset is within bounds of the object
+        Ok(unsafe { (ptr as *mut u8).add(offset) })
+    }
+
+    pub(crate) fn field_ptr_const(&self, offset: usize) -> anyhow::Result<*const u8> {
+        let ptr = self.require_non_null_ptr()?;
+        // SAFETY: Caller guarantees offset is within bounds of the object
+        Ok(unsafe { (ptr as *const u8).add(offset) })
+    }
+
+    pub fn id(&self) -> usize {
+        self.0
+    }
+}
+
+impl Finalize for ObjectId {
+    fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
+        gtk_dispatch::GtkDispatcher::global().schedule(move || {
+            GtkThreadState::with(|state| {
+                state.object_map.remove(&self.0);
+            });
+        });
+    }
+}
+
+/// Managed value wrapper for FFI objects.
+///
+/// `GObject` uses `glib::Object` directly since it already has built-in reference counting
+/// via `g_object_ref`/`g_object_unref` that the Rust bindings handle automatically.
+///
+/// `Boxed` and `Fundamental` use custom wrappers because they require type-specific
+/// lifecycle management:
+/// - `Boxed`: Uses `g_boxed_copy`/`g_boxed_free` which require a GType parameter
+/// - `Fundamental`: Uses custom ref/unref functions that must be looked up dynamically
+#[derive(Debug, Clone)]
+pub enum ManagedValue {
+    GObject(glib::Object),
+    Boxed(Boxed),
+    Fundamental(Fundamental),
+}

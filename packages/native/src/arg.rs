@@ -19,15 +19,15 @@ use crate::{types::Type, value::Value};
 
 #[derive(Debug, Clone)]
 pub struct Arg {
-    pub type_: Type,
+    pub ty: Type,
     pub value: Value,
     pub optional: bool,
 }
 
 impl Arg {
-    pub fn new(type_: Type, value: Value) -> Self {
+    pub fn new(ty: Type, value: Value) -> Self {
         Arg {
-            type_,
+            ty,
             value,
             optional: false,
         }
@@ -51,14 +51,13 @@ impl Arg {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let type_prop: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
         let value_prop: Handle<'_, JsValue> = obj.prop(cx, "value").get()?;
-        let type_ = Type::from_js_value(cx, type_prop)?;
+        let ty = Type::from_js_value(cx, type_prop)?;
         let value = Value::from_js_value(cx, value_prop)?;
 
         let optional = {
             let optional_prop: Result<Handle<JsValue>, _> = obj.prop(cx, "optional").get();
             match optional_prop {
                 Ok(prop) => {
-                    // Check if it's undefined/null (which means false) or a boolean
                     if prop.is_a::<JsUndefined, _>(cx) || prop.is_a::<JsNull, _>(cx) {
                         false
                     } else {
@@ -74,7 +73,7 @@ impl Arg {
         };
 
         Ok(Arg {
-            type_,
+            ty,
             value,
             optional,
         })

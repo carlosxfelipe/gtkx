@@ -149,7 +149,7 @@ describe("FfiMapper", () => {
                 const type = createNormalizedType({ name: "utf8", transferOwnership: "none" });
                 const result = mapper.mapType(type);
 
-                expect(result.ffi).toEqual({ type: "string", ownership: "none" });
+                expect(result.ffi).toEqual({ type: "string", ownership: "borrowed" });
             });
         });
 
@@ -680,7 +680,7 @@ describe("FfiMapper", () => {
 
                 expect(result.ffi.type).toBe("gobject");
                 if (result.ffi.type === "gobject") {
-                    expect(result.ffi.ownership).toBe("none");
+                    expect(result.ffi.ownership).toBe("borrowed");
                 }
             });
         });

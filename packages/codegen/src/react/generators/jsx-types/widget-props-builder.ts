@@ -275,23 +275,6 @@ export class WidgetPropsBuilder {
         });
     }
 
-    private buildPropsObjectWriter(props: PropInfo[]): WriterFunction {
-        return (writer: CodeBlockWriter) => {
-            writer.write("{");
-            writer.newLine();
-            writer.indent(() => {
-                for (const prop of props) {
-                    if (prop.doc) {
-                        this.writeJsDoc(writer, prop.doc);
-                    }
-                    const questionMark = prop.optional ? "?" : "";
-                    writer.writeLine(`${prop.name}${questionMark}: ${prop.type};`);
-                }
-            });
-            writer.write("}");
-        };
-    }
-
     private buildIntersectionTypeWriter(parentType: string, props: PropInfo[]): WriterFunction {
         return (writer: CodeBlockWriter) => {
             writer.write(`${parentType} & {`);

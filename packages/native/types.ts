@@ -11,7 +11,7 @@ type FloatType = { type: "float"; size: 32 | 64 };
 
 type BooleanType = { type: "boolean" };
 
-type Ownership = "full" | "none";
+type Ownership = "full" | "borrowed";
 
 type StringType = { type: "string"; ownership: Ownership; length?: number };
 

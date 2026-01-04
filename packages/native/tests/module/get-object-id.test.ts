@@ -4,10 +4,15 @@ import { GDK_LIB, GTK_LIB } from "./utils.js";
 
 describe("getObjectId", () => {
     it("returns a number identifier for a GObject", () => {
-        const label = call(GTK_LIB, "gtk_label_new", [{ type: { type: "string", ownership: "none" }, value: "Test" }], {
-            type: "gobject",
-            ownership: "none",
-        });
+        const label = call(
+            GTK_LIB,
+            "gtk_label_new",
+            [{ type: { type: "string", ownership: "borrowed" }, value: "Test" }],
+            {
+                type: "gobject",
+                ownership: "borrowed",
+            },
+        );
 
         const id = getObjectId(label);
 
@@ -23,10 +28,15 @@ describe("getObjectId", () => {
     });
 
     it("returns consistent id for the same object", () => {
-        const label = call(GTK_LIB, "gtk_label_new", [{ type: { type: "string", ownership: "none" }, value: "Test" }], {
-            type: "gobject",
-            ownership: "none",
-        });
+        const label = call(
+            GTK_LIB,
+            "gtk_label_new",
+            [{ type: { type: "string", ownership: "borrowed" }, value: "Test" }],
+            {
+                type: "gobject",
+                ownership: "borrowed",
+            },
+        );
 
         const id1 = getObjectId(label);
         const id2 = getObjectId(label);
@@ -38,14 +48,14 @@ describe("getObjectId", () => {
         const label1 = call(
             GTK_LIB,
             "gtk_label_new",
-            [{ type: { type: "string", ownership: "none" }, value: "Test 1" }],
-            { type: "gobject", ownership: "none" },
+            [{ type: { type: "string", ownership: "borrowed" }, value: "Test 1" }],
+            { type: "gobject", ownership: "borrowed" },
         );
         const label2 = call(
             GTK_LIB,
             "gtk_label_new",
-            [{ type: { type: "string", ownership: "none" }, value: "Test 2" }],
-            { type: "gobject", ownership: "none" },
+            [{ type: { type: "string", ownership: "borrowed" }, value: "Test 2" }],
+            { type: "gobject", ownership: "borrowed" },
         );
 
         const id1 = getObjectId(label1);
@@ -55,10 +65,15 @@ describe("getObjectId", () => {
     });
 
     it("can be used as a Map key", () => {
-        const label = call(GTK_LIB, "gtk_label_new", [{ type: { type: "string", ownership: "none" }, value: "Test" }], {
-            type: "gobject",
-            ownership: "none",
-        });
+        const label = call(
+            GTK_LIB,
+            "gtk_label_new",
+            [{ type: { type: "string", ownership: "borrowed" }, value: "Test" }],
+            {
+                type: "gobject",
+                ownership: "borrowed",
+            },
+        );
 
         const map = new Map<number, string>();
         const id = getObjectId(label);

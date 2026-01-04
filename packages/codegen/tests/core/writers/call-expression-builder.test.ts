@@ -51,7 +51,7 @@ describe("CallExpressionBuilder", () => {
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_label_new",
-                args: [{ type: { type: "string", ownership: "none" }, value: "label" }],
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "label" }],
                 returnType: { type: "gobject", ownership: "full" },
             });
 
@@ -80,10 +80,10 @@ describe("CallExpressionBuilder", () => {
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_button_set_label",
-                args: [{ type: { type: "string", ownership: "none" }, value: "label" }],
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "label" }],
                 returnType: { type: "undefined" },
                 selfArg: {
-                    type: { type: "gobject", ownership: "none" },
+                    type: { type: "gobject", ownership: "borrowed" },
                     value: "this.id",
                 },
             });
@@ -100,7 +100,7 @@ describe("CallExpressionBuilder", () => {
                 args: [{ type: { type: "int", size: 32, unsigned: false }, value: "arg1" }],
                 returnType: { type: "undefined" },
                 selfArg: {
-                    type: { type: "gobject", ownership: "none" },
+                    type: { type: "gobject", ownership: "borrowed" },
                     value: "self",
                 },
             });
@@ -115,10 +115,10 @@ describe("CallExpressionBuilder", () => {
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gtk_widget_set_name",
-                args: [{ type: { type: "string", ownership: "none" }, value: "name", optional: true }],
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "name", optional: true }],
                 returnType: { type: "undefined" },
                 selfArg: {
-                    type: { type: "gobject", ownership: "none" },
+                    type: { type: "gobject", ownership: "borrowed" },
                     value: "this.id",
                 },
             });
@@ -134,7 +134,7 @@ describe("CallExpressionBuilder", () => {
                 args: [],
                 returnType: { type: "undefined" },
                 selfArg: {
-                    type: { type: "gobject", ownership: "none" },
+                    type: { type: "gobject", ownership: "borrowed" },
                     value: "this.id",
                 },
             });
@@ -148,7 +148,7 @@ describe("CallExpressionBuilder", () => {
             const output = getCallExpressionOutput(builder, {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "gdk_rgba_parse",
-                args: [{ type: { type: "string", ownership: "none" }, value: "spec" }],
+                args: [{ type: { type: "string", ownership: "borrowed" }, value: "spec" }],
                 returnType: {
                     type: "boxed",
                     ownership: "full",
@@ -196,7 +196,7 @@ describe("CallExpressionBuilder", () => {
                 cIdentifier: "some_function",
                 args: [
                     {
-                        type: { type: "boxed", ownership: "none", innerType: "GdkRGBA" },
+                        type: { type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
                         value: "color",
                     },
                 ],
@@ -225,7 +225,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "string",
-                ffi: { type: "string", ownership: "none" },
+                ffi: { type: "string", ownership: "borrowed" },
             };
 
             const result = builder.buildValueExpression("label", mappedType);
@@ -249,7 +249,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "Widget",
-                ffi: { type: "gobject", ownership: "none" },
+                ffi: { type: "gobject", ownership: "borrowed" },
             };
 
             const result = builder.buildValueExpression("widget", mappedType);
@@ -261,7 +261,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "GdkRGBA",
-                ffi: { type: "boxed", ownership: "none", innerType: "GdkRGBA" },
+                ffi: { type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
             };
 
             const result = builder.buildValueExpression("color", mappedType);
@@ -273,7 +273,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "Allocation",
-                ffi: { type: "struct", ownership: "none", innerType: "GtkAllocation" },
+                ffi: { type: "struct", ownership: "borrowed", innerType: "GtkAllocation" },
             };
 
             const result = builder.buildValueExpression("allocation", mappedType);
@@ -285,7 +285,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "Widget",
-                ffi: { type: "gobject", ownership: "none" },
+                ffi: { type: "gobject", ownership: "borrowed" },
             };
 
             const result = builder.buildValueExpression("this.child", mappedType);
@@ -297,7 +297,7 @@ describe("CallExpressionBuilder", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
                 ts: "Widget",
-                ffi: { type: "gobject", ownership: "none" },
+                ffi: { type: "gobject", ownership: "borrowed" },
             };
 
             const result = builder.buildValueExpression("widgets[0]", mappedType);
@@ -377,7 +377,7 @@ describe("CallExpressionBuilder", () => {
                 cIdentifier: "test_fn",
                 args: [
                     {
-                        type: { type: "boxed", ownership: "none", innerType: "GdkRGBA" },
+                        type: { type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
                         value: "color",
                     },
                 ],
@@ -397,18 +397,18 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "complex_function",
                 args: [
-                    { type: { type: "string", ownership: "none" }, value: "name" },
+                    { type: { type: "string", ownership: "borrowed" }, value: "name" },
                     { type: { type: "int", size: 32, unsigned: false }, value: "count" },
-                    { type: { type: "gobject", ownership: "none" }, value: "widget" },
+                    { type: { type: "gobject", ownership: "borrowed" }, value: "widget" },
                     { type: { type: "boolean" }, value: "enabled" },
                     {
-                        type: { type: "boxed", ownership: "none", innerType: "GdkRGBA" },
+                        type: { type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
                         value: "color",
                     },
                 ],
                 returnType: { type: "gobject", ownership: "full" },
                 selfArg: {
-                    type: { type: "gobject", ownership: "none" },
+                    type: { type: "gobject", ownership: "borrowed" },
                     value: "this.id",
                 },
             });
@@ -432,8 +432,8 @@ describe("CallExpressionBuilder", () => {
                 sharedLibrary: "libgtk-4.so.1",
                 cIdentifier: "test_function",
                 args: [
-                    { type: { type: "string", ownership: "none" }, value: "required1" },
-                    { type: { type: "string", ownership: "none" }, value: "optional1", optional: true },
+                    { type: { type: "string", ownership: "borrowed" }, value: "required1" },
+                    { type: { type: "string", ownership: "borrowed" }, value: "optional1", optional: true },
                     { type: { type: "int", size: 32, unsigned: false }, value: "required2" },
                     { type: { type: "int", size: 32, unsigned: false }, value: "optional2", optional: true },
                 ],
@@ -455,8 +455,8 @@ describe("CallExpressionBuilder", () => {
                     {
                         type: {
                             type: "array",
-                            itemType: { type: "string", ownership: "none" },
-                            ownership: "none",
+                            itemType: { type: "string", ownership: "borrowed" },
+                            ownership: "borrowed",
                         },
                         value: "strings",
                     },

@@ -113,7 +113,7 @@ describe("stringType", () => {
     });
 
     it("creates string type with none ownership", () => {
-        expect(stringType(false)).toEqual({ type: "string", ownership: "none" });
+        expect(stringType(false)).toEqual({ type: "string", ownership: "borrowed" });
     });
 });
 
@@ -123,7 +123,7 @@ describe("gobjectType", () => {
     });
 
     it("creates gobject type with none ownership", () => {
-        expect(gobjectType(false)).toEqual({ type: "gobject", ownership: "none" });
+        expect(gobjectType(false)).toEqual({ type: "gobject", ownership: "borrowed" });
     });
 });
 
@@ -142,7 +142,7 @@ describe("boxedType", () => {
         expect(boxedType("Rectangle", false)).toEqual({
             type: "boxed",
             innerType: "Rectangle",
-            ownership: "none",
+            ownership: "borrowed",
             lib: undefined,
             getTypeFn: undefined,
         });
@@ -181,7 +181,7 @@ describe("structType", () => {
 
 describe("arrayType", () => {
     it("creates array type with default values", () => {
-        const itemType: FfiTypeDescriptor = { type: "string", ownership: "none" };
+        const itemType: FfiTypeDescriptor = { type: "string", ownership: "borrowed" };
         expect(arrayType(itemType)).toEqual({
             type: "array",
             itemType,
@@ -191,17 +191,17 @@ describe("arrayType", () => {
     });
 
     it("creates glist array type", () => {
-        const itemType: FfiTypeDescriptor = { type: "gobject", ownership: "none" };
+        const itemType: FfiTypeDescriptor = { type: "gobject", ownership: "borrowed" };
         expect(arrayType(itemType, "glist", false)).toEqual({
             type: "array",
             itemType,
             listType: "glist",
-            ownership: "none",
+            ownership: "borrowed",
         });
     });
 
     it("creates gslist array type", () => {
-        const itemType: FfiTypeDescriptor = { type: "gobject", ownership: "none" };
+        const itemType: FfiTypeDescriptor = { type: "gobject", ownership: "borrowed" };
         expect(arrayType(itemType, "gslist", true)).toEqual({
             type: "array",
             itemType,
@@ -220,7 +220,7 @@ describe("refType", () => {
     });
 
     it("creates nested ref type", () => {
-        const stringDescriptor: FfiTypeDescriptor = { type: "string", ownership: "none" };
+        const stringDescriptor: FfiTypeDescriptor = { type: "string", ownership: "borrowed" };
         expect(refType(stringDescriptor)).toEqual({
             type: "ref",
             innerType: stringDescriptor,
@@ -230,13 +230,13 @@ describe("refType", () => {
 
 describe("Self type descriptors", () => {
     it("SELF_TYPE_GOBJECT is gobject with none ownership", () => {
-        expect(SELF_TYPE_GOBJECT).toEqual({ type: "gobject", ownership: "none" });
+        expect(SELF_TYPE_GOBJECT).toEqual({ type: "gobject", ownership: "borrowed" });
     });
 
     it("fundamentalSelfType creates fundamental self type", () => {
         expect(fundamentalSelfType("libgobject-2.0.so.0", "g_param_spec_ref_sink", "g_param_spec_unref")).toEqual({
             type: "fundamental",
-            ownership: "none",
+            ownership: "borrowed",
             lib: "libgobject-2.0.so.0",
             refFunc: "g_param_spec_ref_sink",
             unrefFunc: "g_param_spec_unref",
@@ -246,9 +246,19 @@ describe("Self type descriptors", () => {
     it("boxedSelfType creates boxed self type", () => {
         expect(boxedSelfType("Rectangle", "libgdk-4.so.1")).toEqual({
             type: "boxed",
-            ownership: "none",
+            ownership: "borrowed",
             innerType: "Rectangle",
             lib: "libgdk-4.so.1",
+        });
+    });
+
+    it("boxedSelfType creates boxed self type with getTypeFn", () => {
+        expect(boxedSelfType("Rectangle", "libgdk-4.so.1", "gdk_rectangle_get_type")).toEqual({
+            type: "boxed",
+            ownership: "borrowed",
+            innerType: "Rectangle",
+            lib: "libgdk-4.so.1",
+            getTypeFn: "gdk_rectangle_get_type",
         });
     });
 });

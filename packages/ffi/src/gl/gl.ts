@@ -113,9 +113,9 @@ export function shaderSource(shader: number, source: string): void {
             {
                 type: {
                     type: "array",
-                    itemType: { type: "string", ownership: "none" },
+                    itemType: { type: "string", ownership: "borrowed" },
                     listType: "array",
-                    ownership: "none",
+                    ownership: "borrowed",
                 },
                 value: [source],
             },
@@ -178,7 +178,7 @@ export function getShaderInfoLog(shader: number): string {
             { type: { type: "int", size: 32, unsigned: false }, value: logLength },
             { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: lengthRef },
             {
-                type: { type: "ref", innerType: { type: "string", ownership: "none", length: logLength } },
+                type: { type: "ref", innerType: { type: "string", ownership: "borrowed", length: logLength } },
                 value: infoLogRef,
             },
         ],
@@ -286,7 +286,7 @@ export function getProgramInfoLog(program: number): string {
             { type: { type: "int", size: 32, unsigned: false }, value: logLength },
             { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: lengthRef },
             {
-                type: { type: "ref", innerType: { type: "string", ownership: "none", length: logLength } },
+                type: { type: "ref", innerType: { type: "string", ownership: "borrowed", length: logLength } },
                 value: infoLogRef,
             },
         ],
@@ -318,7 +318,7 @@ export function getUniformLocation(program: number, name: string): number {
         "glGetUniformLocation",
         [
             { type: { type: "int", size: 32, unsigned: true }, value: program },
-            { type: { type: "string", ownership: "none" }, value: name },
+            { type: { type: "string", ownership: "borrowed" }, value: name },
         ],
         { type: "int", size: 32, unsigned: false },
     ) as number;
@@ -437,7 +437,12 @@ export function uniformMatrix4fv(location: number, count: number, transpose: boo
             { type: { type: "int", size: 32, unsigned: false }, value: count },
             { type: { type: "boolean" }, value: transpose },
             {
-                type: { type: "array", itemType: { type: "float", size: 32 }, listType: "array", ownership: "none" },
+                type: {
+                    type: "array",
+                    itemType: { type: "float", size: 32 },
+                    listType: "array",
+                    ownership: "borrowed",
+                },
                 value,
             },
         ],
@@ -488,7 +493,7 @@ export function deleteVertexArray(array: number): void {
                     type: "array",
                     itemType: { type: "int", size: 32, unsigned: true },
                     listType: "array",
-                    ownership: "none",
+                    ownership: "borrowed",
                 },
                 value: [array],
             },
@@ -547,7 +552,7 @@ export function deleteBuffer(buffer: number): void {
                     type: "array",
                     itemType: { type: "int", size: 32, unsigned: true },
                     listType: "array",
-                    ownership: "none",
+                    ownership: "borrowed",
                 },
                 value: [buffer],
             },
@@ -572,7 +577,12 @@ export function bufferData(target: number, data: number[], usage: number): void 
             { type: { type: "int", size: 32, unsigned: true }, value: target },
             { type: { type: "int", size: 64, unsigned: false }, value: size },
             {
-                type: { type: "array", itemType: { type: "float", size: 32 }, listType: "array", ownership: "none" },
+                type: {
+                    type: "array",
+                    itemType: { type: "float", size: 32 },
+                    listType: "array",
+                    ownership: "borrowed",
+                },
                 value: data,
             },
             { type: { type: "int", size: 32, unsigned: true }, value: usage },
@@ -672,7 +682,7 @@ export function bufferDataUshort(target: number, data: number[], usage: number):
                     type: "array",
                     itemType: { type: "int", size: 16, unsigned: true },
                     listType: "array",
-                    ownership: "none",
+                    ownership: "borrowed",
                 },
                 value: data,
             },
@@ -715,7 +725,7 @@ export function getAttribLocation(program: number, name: string): number {
         "glGetAttribLocation",
         [
             { type: { type: "int", size: 32, unsigned: true }, value: program },
-            { type: { type: "string", ownership: "none" }, value: name },
+            { type: { type: "string", ownership: "borrowed" }, value: name },
         ],
         { type: "int", size: 32, unsigned: false },
     ) as number;
@@ -734,7 +744,7 @@ export function bindAttribLocation(program: number, index: number, name: string)
         [
             { type: { type: "int", size: 32, unsigned: true }, value: program },
             { type: { type: "int", size: 32, unsigned: true }, value: index },
-            { type: { type: "string", ownership: "none" }, value: name },
+            { type: { type: "string", ownership: "borrowed" }, value: name },
         ],
         { type: "undefined" },
     );

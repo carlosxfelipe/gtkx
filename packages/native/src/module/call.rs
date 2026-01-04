@@ -7,7 +7,7 @@
 //! ## Call Flow
 //!
 //! 1. Parse library name, symbol name, arguments, and return type from JS
-//! 2. Convert arguments to [`cif::Value`] representations
+//! 2. Convert arguments to [`ffi::FfiValue`] representations
 //! 3. Build a libffi CIF (Call Interface) with proper type signatures
 //! 4. Load the library and resolve the symbol on the GTK thread
 //! 5. Execute the FFI call with proper type dispatching
@@ -30,43 +30,14 @@ use anyhow::bail;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
-use crate::{
-    arg::Arg,
-    cif, gtk_dispatch, js_dispatch,
-    state::GtkThreadState,
-    types::{CallbackTrampoline, FloatSize, IntegerSign, IntegerSize, Type},
-    value::Value,
-};
+use crate::{arg::Arg, ffi, gtk_dispatch, state::GtkThreadState, types::Type, value::Value};
 
 type RefUpdate = (Arc<Root<JsObject>>, Value);
 
-struct BatchCallDescriptor {
+struct BatchCallRequest {
     library_name: String,
     symbol_name: String,
     args: Vec<Arg>,
-}
-
-fn wait_for_result<'a, R, C: Context<'a>>(
-    cx: &mut C,
-    rx: &mpsc::Receiver<anyhow::Result<R>>,
-) -> anyhow::Result<R> {
-    let result = loop {
-        js_dispatch::process_pending(cx);
-
-        match rx.try_recv() {
-            Ok(result) => break result,
-            Err(mpsc::TryRecvError::Empty) => {
-                std::thread::yield_now();
-            }
-            Err(mpsc::TryRecvError::Disconnected) => {
-                gtk_dispatch::exit_js_wait();
-                return Err(anyhow::anyhow!("GTK thread disconnected"));
-            }
-        }
-    };
-
-    gtk_dispatch::exit_js_wait();
-    result
 }
 
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -79,13 +50,17 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
 
-    gtk_dispatch::enter_js_wait();
-    gtk_dispatch::schedule(move || {
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
         let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
     });
 
-    let (value, ref_updates) = wait_for_result(&mut cx, &rx)
-        .or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
+    let result = gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?;
+
+    let (value, ref_updates) =
+        result.or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
 
     for (js_obj, new_value) in ref_updates {
         let js_obj = js_obj.to_inner(&mut cx);
@@ -113,22 +88,7 @@ fn handle_call(
 
     let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
     for arg in &args {
-        match &arg.type_ {
-            Type::Callback(cb) if cb.trampoline != CallbackTrampoline::Closure => {
-                arg_types.push(libffi::Type::pointer());
-                arg_types.push(libffi::Type::pointer());
-
-                if cb.trampoline == CallbackTrampoline::DrawFunc
-                    || cb.trampoline == CallbackTrampoline::ShortcutFunc
-                    || cb.trampoline == CallbackTrampoline::TreeListModelCreateFunc
-                {
-                    arg_types.push(libffi::Type::pointer());
-                }
-            }
-            _ => {
-                arg_types.push((&arg.type_).into());
-            }
-        }
+        arg.ty.append_ffi_arg_types(&mut arg_types);
     }
 
     let cif = libffi::Builder::new()
@@ -136,36 +96,20 @@ fn handle_call(
         .args(arg_types)
         .into_cif();
 
-    let cif_args = args
+    let ffi_values = args
         .clone()
         .into_iter()
-        .map(TryInto::<cif::Value>::try_into)
-        .collect::<anyhow::Result<Vec<cif::Value>>>()?;
+        .map(TryInto::<ffi::FfiValue>::try_into)
+        .collect::<anyhow::Result<Vec<ffi::FfiValue>>>()?;
 
-    let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(cif_args.len() + 1);
-    for cif_arg in &cif_args {
-        match cif_arg {
-            cif::Value::TrampolineCallback(trampoline_cb) => {
-                if trampoline_cb.data_first {
-                    ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
-                    ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
-                } else {
-                    ffi_args.push(libffi::arg(&trampoline_cb.trampoline_ptr));
-                    ffi_args.push(libffi::arg(&trampoline_cb.closure.ptr));
-                }
-                if let Some(destroy_ptr) = &trampoline_cb.destroy_ptr {
-                    ffi_args.push(libffi::arg(destroy_ptr));
-                }
-            }
-            other => {
-                ffi_args.push(other.into());
-            }
-        }
+    let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(ffi_values.len() + 1);
+    for ffi_value in &ffi_values {
+        ffi_value.append_libffi_args(&mut ffi_args);
     }
 
     let symbol_ptr = unsafe {
         GtkThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
-            let library = state.get_library(&library_name)?;
+            let library = state.library(&library_name)?;
             let symbol = library.get::<unsafe extern "C" fn() -> ()>(symbol_name.as_bytes())?;
 
             let ptr = *symbol.deref() as *mut c_void;
@@ -177,53 +121,26 @@ fn handle_call(
         match result_type {
             Type::Undefined => {
                 cif.call::<()>(symbol_ptr, &ffi_args);
-                cif::Value::Void
+                ffi::FfiValue::Void
             }
-            Type::Integer(type_) => match (type_.size, type_.sign) {
-                (IntegerSize::_8, IntegerSign::Unsigned) => {
-                    cif::Value::U8(cif.call::<u8>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_8, IntegerSign::Signed) => {
-                    cif::Value::I8(cif.call::<i8>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_16, IntegerSign::Unsigned) => {
-                    cif::Value::U16(cif.call::<u16>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_16, IntegerSign::Signed) => {
-                    cif::Value::I16(cif.call::<i16>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_32, IntegerSign::Unsigned) => {
-                    cif::Value::U32(cif.call::<u32>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_32, IntegerSign::Signed) => {
-                    cif::Value::I32(cif.call::<i32>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_64, IntegerSign::Unsigned) => {
-                    cif::Value::U64(cif.call::<u64>(symbol_ptr, &ffi_args))
-                }
-                (IntegerSize::_64, IntegerSign::Signed) => {
-                    cif::Value::I64(cif.call::<i64>(symbol_ptr, &ffi_args))
-                }
-            },
-            Type::Float(type_) => match type_.size {
-                FloatSize::_32 => cif::Value::F32(cif.call::<f32>(symbol_ptr, &ffi_args)),
-                FloatSize::_64 => cif::Value::F64(cif.call::<f64>(symbol_ptr, &ffi_args)),
-            },
+            Type::Integer(int_kind) => int_kind.call_cif(&cif, symbol_ptr, &ffi_args),
+            Type::Float(float_kind) => float_kind.call_cif(&cif, symbol_ptr, &ffi_args),
             Type::String(_) => {
                 let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
-                cif::Value::Ptr(ptr as *mut c_void)
+                ffi::FfiValue::Ptr(ptr as *mut c_void)
             }
-            Type::Boolean => cif::Value::U8(cif.call::<u8>(symbol_ptr, &ffi_args)),
+            Type::Boolean => ffi::FfiValue::U8(cif.call::<u8>(symbol_ptr, &ffi_args)),
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
-                cif::Value::Ptr(ptr)
+                ffi::FfiValue::Ptr(ptr)
             }
             Type::Array(_) | Type::HashTable(_) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
-                cif::Value::Ptr(ptr)
+                ffi::FfiValue::Ptr(ptr)
             }
-            Type::Null => cif::Value::Void,
-            _ => bail!("Unsupported return type: {:?}", result_type),
+            Type::Null => ffi::FfiValue::Void,
+            Type::Callback(_) => bail!("Callbacks cannot be return types"),
+            Type::Ref(_) => bail!("Ref types cannot be return types"),
         }
     };
 
@@ -231,12 +148,12 @@ fn handle_call(
 
     for (i, arg) in args.iter().enumerate() {
         if let Value::Ref(r#ref) = &arg.value {
-            let new_value = Value::from_cif_value(&cif_args[i], &arg.type_)?;
+            let new_value = Value::from_ffi_value(&ffi_values[i], &arg.ty)?;
             ref_updates.push((r#ref.js_obj.clone(), new_value));
         }
     }
 
-    let return_value = Value::from_cif_value_with_args(&result, &result_type, &cif_args, &args)?;
+    let return_value = Value::from_ffi_value_with_args(&result, &result_type, &ffi_values, &args)?;
     Ok((return_value, ref_updates))
 }
 
@@ -262,7 +179,7 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         let js_args = js_call.get::<JsArray, _, _>(&mut cx, "args")?;
         let args = Arg::from_js_array(&mut cx, js_args)?;
 
-        descriptors.push(BatchCallDescriptor {
+        descriptors.push(BatchCallRequest {
             library_name,
             symbol_name,
             args,
@@ -271,19 +188,22 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
-    gtk_dispatch::enter_js_wait();
-    gtk_dispatch::schedule(move || {
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
         let result = handle_batch_calls(descriptors);
         let _ = tx.send(result);
     });
 
-    wait_for_result(&mut cx, &rx)
-        .or_else(|err| cx.throw_error(format!("Error during batch FFI call: {err}")))?;
+    let result = gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?;
+
+    result.or_else(|err| cx.throw_error(format!("Error during batch FFI call: {err}")))?;
 
     Ok(cx.undefined())
 }
 
-fn handle_batch_calls(descriptors: Vec<BatchCallDescriptor>) -> anyhow::Result<()> {
+fn handle_batch_calls(descriptors: Vec<BatchCallRequest>) -> anyhow::Result<()> {
     for descriptor in descriptors {
         handle_call(
             descriptor.library_name,

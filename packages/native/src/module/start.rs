@@ -19,8 +19,8 @@ use gtk4::{gio::ApplicationFlags, prelude::*};
 use neon::prelude::*;
 
 use crate::{
-    object::{Object, ObjectId},
-    state::{GtkThreadState, set_gtk_thread_handle},
+    managed::{ManagedValue, ObjectId},
+    state::{GtkThread, GtkThreadState},
 };
 
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -44,7 +44,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
             .flags(flags)
             .build();
 
-        let app_object_id: ObjectId = Object::GObject(app.clone().into()).into();
+        let app_object_id: ObjectId = ManagedValue::GObject(app.clone().into()).into();
 
         GtkThreadState::with(|state| {
             state.app_hold_guard = Some(app.hold());
@@ -57,7 +57,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
         app.run_with_args::<&str>(&[]);
     });
 
-    set_gtk_thread_handle(handle);
+    GtkThread::global().set_handle(handle);
 
     let app_object_id = rx
         .recv()

@@ -164,14 +164,14 @@ describe("IntrinsicElementsBuilder", () => {
             expect(typeAlias?.getTypeNode()?.getText()).toBe("Record<string, never>");
         });
 
-        it("creates WidgetSlotNames interface when widgets have slots", () => {
+        it("creates WidgetSlotNames type alias when widgets have slots", () => {
             const { sourceFile, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkBox", slots: ["start", "end"] })];
 
             builder.buildWidgetSlotNamesType(sourceFile, widgets);
 
-            const iface = sourceFile.getInterface("WidgetSlotNames");
-            expect(iface).toBeDefined();
+            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
+            expect(typeAlias).toBeDefined();
         });
 
         it("maps widget to slot names union", () => {
@@ -225,20 +225,20 @@ describe("IntrinsicElementsBuilder", () => {
 
             builder.buildWidgetSlotNamesType(sourceFile, widgets);
 
-            const iface = sourceFile.getInterface("WidgetSlotNames");
-            const jsDocs = iface?.getJsDocs() ?? [];
+            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
+            const jsDocs = typeAlias?.getJsDocs() ?? [];
             expect(jsDocs.length).toBeGreaterThan(0);
             expect(jsDocs[0].getDescription()).toContain("slot names");
         });
 
-        it("exports WidgetSlotNames interface when widgets have slots", () => {
+        it("exports WidgetSlotNames type alias when widgets have slots", () => {
             const { sourceFile, builder } = createTestSetup();
             const widgets = [createJsxWidget({ jsxName: "GtkBox", slots: ["start"] })];
 
             builder.buildWidgetSlotNamesType(sourceFile, widgets);
 
-            const iface = sourceFile.getInterface("WidgetSlotNames");
-            expect(iface?.isExported()).toBe(true);
+            const typeAlias = sourceFile.getTypeAlias("WidgetSlotNames");
+            expect(typeAlias?.isExported()).toBe(true);
         });
     });
 

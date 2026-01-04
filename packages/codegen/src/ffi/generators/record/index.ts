@@ -64,7 +64,7 @@ export class RecordGenerator {
 
         methodStructures.push(...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name));
 
-        methodStructures.push(...this.buildMethodStructures(record.methods, record.glibTypeName));
+        methodStructures.push(...this.buildMethodStructures(record.methods, record.glibTypeName, record.glibGetType));
 
         if (methodStructures.length > 0) {
             classDecl.addMethods(methodStructures);
@@ -260,7 +260,7 @@ export class RecordGenerator {
                 writer.writeLine("],");
                 const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
                 writer.writeLine(
-                    `{ type: "boxed", ownership: "none", innerType: "${glibTypeName}", lib: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
+                    `{ type: "boxed", ownership: "borrowed", innerType: "${glibTypeName}", lib: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
                 );
             });
             writer.writeLine(") as ObjectId;");
@@ -311,7 +311,7 @@ export class RecordGenerator {
             args,
             returnTypeDescriptor: {
                 type: "boxed",
-                ownership: "none",
+                ownership: "borrowed",
                 innerType,
                 lib: this.options.sharedLibrary,
                 ...(glibGetType && { getTypeFn: glibGetType }),
@@ -349,16 +349,23 @@ export class RecordGenerator {
     private buildMethodStructures(
         methods: readonly GirMethod[],
         glibTypeName: string | undefined,
+        glibGetType: string | undefined,
     ): MethodDeclarationStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
-        return supportedMethods.map((method) => this.buildMethodStructure(method, glibTypeName));
+        return supportedMethods.map((method) => this.buildMethodStructure(method, glibTypeName, glibGetType));
     }
 
-    private buildMethodStructure(method: GirMethod, className: string | undefined): MethodDeclarationStructure {
+    private buildMethodStructure(
+        method: GirMethod,
+        className: string | undefined,
+        glibGetType: string | undefined,
+    ): MethodDeclarationStructure {
         const methodName = toCamelCase(method.name);
-        const selfTypeDescriptor = className ? boxedSelfType(className, this.options.sharedLibrary) : SELF_TYPE_GOBJECT;
+        const selfTypeDescriptor = className
+            ? boxedSelfType(className, this.options.sharedLibrary, glibGetType)
+            : SELF_TYPE_GOBJECT;
 
         return this.methodBody.buildMethodStructure(method, {
             methodName,

@@ -162,15 +162,15 @@ describe("JsxTypesGenerator", () => {
     });
 
     describe("widget-specific props interfaces", () => {
-        it("generates props interface for each widget", () => {
+        it("generates props type alias for each widget", () => {
             const buttonMeta = createButtonMeta();
             const { project, generator } = createTestSetup([createWidgetMeta(), buttonMeta]);
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("GtkButtonProps");
-            expect(iface).toBeDefined();
+            const typeAlias = sourceFile?.getTypeAlias("GtkButtonProps");
+            expect(typeAlias).toBeDefined();
         });
 
         it("includes widget-specific properties", () => {
@@ -366,8 +366,8 @@ describe("JsxTypesGenerator", () => {
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("AdwHeaderBarProps");
-            expect(iface).toBeDefined();
+            const typeAlias = sourceFile?.getTypeAlias("AdwHeaderBarProps");
+            expect(typeAlias).toBeDefined();
         });
 
         it("filters out widgets from namespaces not in list", () => {
@@ -381,8 +381,8 @@ describe("JsxTypesGenerator", () => {
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("AdwHeaderBarProps");
-            expect(iface).toBeUndefined();
+            const typeAlias = sourceFile?.getTypeAlias("AdwHeaderBarProps");
+            expect(typeAlias).toBeUndefined();
         });
     });
 

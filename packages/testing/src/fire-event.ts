@@ -28,8 +28,8 @@ export const fireEvent = async (element: Gtk.Widget, signalName: string, ...args
         "libgobject-2.0.so.0",
         "g_signal_emit_by_name",
         [
-            { type: { type: "gobject", ownership: "none" }, value: element.id },
-            { type: { type: "string", ownership: "none" }, value: signalName },
+            { type: { type: "gobject", ownership: "borrowed" }, value: element.id },
+            { type: { type: "string", ownership: "borrowed" }, value: signalName },
             ...args,
         ],
         { type: "undefined" },

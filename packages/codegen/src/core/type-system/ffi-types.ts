@@ -27,9 +27,9 @@ export type FfiTypeDescriptor = {
     /**
      * Ownership transfer semantics:
      * - "full": Caller takes ownership, responsible for freeing
-     * - "none": Caller borrows reference, must not free
+     * - "borrowed": Caller borrows reference, must not free
      */
-    ownership?: "full" | "none";
+    ownership?: "full" | "borrowed";
 
     innerType?: FfiTypeDescriptor | string;
 
@@ -250,9 +250,9 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
 
 /**
  * Converts a transfer full flag to ownership string.
- * @param transferFull - true means "full" (caller takes ownership), false means "none" (caller must not free)
+ * @param transferFull - true means "full" (caller takes ownership), false means "borrowed" (caller must not free)
  */
-const toOwnership = (transferFull: boolean): "full" | "none" => (transferFull ? "full" : "none");
+const toOwnership = (transferFull: boolean): "full" | "borrowed" => (transferFull ? "full" : "borrowed");
 
 /**
  * Creates a string FFI type descriptor.
@@ -471,19 +471,19 @@ export const isMemoryWritableType = (typeName: string): boolean => MEMORY_WRITAB
  * Discriminated union providing compile-time safety for method call FFI.
  */
 export type SelfTypeDescriptor =
-    | { type: "gobject"; ownership: "none" }
-    | { type: "fundamental"; ownership: "none"; lib: string; refFunc: string; unrefFunc: string }
-    | { type: "boxed"; ownership: "none"; innerType: string; lib: string };
+    | { type: "gobject"; ownership: "borrowed" }
+    | { type: "fundamental"; ownership: "borrowed"; lib: string; refFunc: string; unrefFunc: string }
+    | { type: "boxed"; ownership: "borrowed"; innerType: string; lib: string; getTypeFn?: string };
 
 /** Self type descriptor for GObject instance methods. */
-export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownership: "none" };
+export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownership: "borrowed" };
 
 /**
  * Creates a fundamental self type descriptor for types with custom ref/unref.
  */
 export const fundamentalSelfType = (lib: string, refFunc: string, unrefFunc: string): SelfTypeDescriptor => ({
     type: "fundamental",
-    ownership: "none",
+    ownership: "borrowed",
     lib,
     refFunc,
     unrefFunc,
@@ -492,12 +492,18 @@ export const fundamentalSelfType = (lib: string, refFunc: string, unrefFunc: str
 /**
  * Creates a boxed self type descriptor.
  */
-export const boxedSelfType = (innerType: string, lib: string): SelfTypeDescriptor => ({
-    type: "boxed",
-    ownership: "none",
-    innerType,
-    lib,
-});
+export const boxedSelfType = (innerType: string, lib: string, getTypeFn?: string): SelfTypeDescriptor => {
+    const result: SelfTypeDescriptor = {
+        type: "boxed",
+        ownership: "borrowed",
+        innerType,
+        lib,
+    };
+    if (getTypeFn) {
+        result.getTypeFn = getTypeFn;
+    }
+    return result;
+};
 
 /**
  * Gets the size in bytes for a primitive type.

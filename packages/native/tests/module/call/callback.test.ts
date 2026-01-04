@@ -82,7 +82,7 @@ describe("call - callback types", () => {
                         type: {
                             type: "callback",
                             trampoline: "closure",
-                            argTypes: [{ type: "gobject", ownership: "none" }],
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: (arg: unknown) => {
                             receivedArg = arg;
@@ -227,7 +227,7 @@ describe("call - callback types", () => {
                         type: {
                             type: "callback",
                             trampoline: "closure",
-                            argTypes: [{ type: "gobject", ownership: "none" }],
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }],
                         },
                         value: (obj: unknown) => {
                             receivedObject = obj;

@@ -12,12 +12,12 @@ import {
     UNDEFINED,
 } from "../utils.js";
 
-const RGBA_BOXED_NONE = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "none" as const };
+const RGBA_BOXED_NONE = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, ownership: "borrowed" as const };
 const RECTANGLE_BOXED_NONE = {
     type: "boxed" as const,
     innerType: "GdkRectangle",
     lib: GDK_LIB,
-    ownership: "none" as const,
+    ownership: "borrowed" as const,
 };
 const PANGO_FONT_DESC = {
     type: "boxed" as const,
@@ -29,7 +29,7 @@ const PANGO_FONT_DESC_NONE = {
     type: "boxed" as const,
     innerType: "PangoFontDescription",
     lib: PANGO_LIB,
-    ownership: "none" as const,
+    ownership: "borrowed" as const,
 };
 
 describe("call - boxed types", () => {

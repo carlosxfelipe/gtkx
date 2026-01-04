@@ -5,7 +5,7 @@ use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
 
-use native::boxed::Boxed;
+use native::Boxed;
 
 #[test]
 fn from_glib_full_sets_owned_flag() {
@@ -38,7 +38,8 @@ fn from_glib_none_creates_copy() {
     let gtype = gdk::RGBA::static_type();
     let original_ptr = common::allocate_test_boxed(gtype);
 
-    let boxed = Boxed::from_glib_none(Some(gtype), original_ptr);
+    let boxed = Boxed::from_glib_none(Some(gtype), original_ptr)
+        .expect("from_glib_none with gtype should succeed");
 
     assert!(boxed.is_owned());
     assert!(!boxed.as_ptr().is_null());
@@ -54,23 +55,23 @@ fn from_glib_none_null_ptr_not_owned() {
     common::ensure_gtk_init();
 
     let gtype = gdk::RGBA::static_type();
-    let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut());
+    let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut())
+        .expect("from_glib_none with null ptr should succeed");
 
     assert!(!boxed.is_owned());
     assert!(boxed.as_ptr().is_null());
 }
 
 #[test]
-fn from_glib_none_unknown_type_logs_warning() {
+fn from_glib_none_unknown_type_returns_error() {
     common::ensure_gtk_init();
 
     let gtype = gdk::RGBA::static_type();
     let ptr = common::allocate_test_boxed(gtype);
 
-    let boxed = Boxed::from_glib_none(None, ptr);
+    let result = Boxed::from_glib_none(None, ptr);
 
-    assert!(!boxed.is_owned());
-    assert_eq!(boxed.as_ptr(), ptr);
+    assert!(result.is_err());
 
     unsafe {
         glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
@@ -130,7 +131,7 @@ fn drop_does_not_free_transfer_none_memory() {
 
     struct TestBoxed {
         ptr: *mut c_void,
-        type_: Option<glib::Type>,
+        ty: Option<glib::Type>,
         is_owned: bool,
     }
 
@@ -138,7 +139,7 @@ fn drop_does_not_free_transfer_none_memory() {
         fn drop(&mut self) {
             if self.is_owned && !self.ptr.is_null() {
                 unsafe {
-                    match self.type_ {
+                    match self.ty {
                         Some(gtype) => {
                             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                         }
@@ -153,7 +154,7 @@ fn drop_does_not_free_transfer_none_memory() {
 
     let boxed = TestBoxed {
         ptr,
-        type_: Some(gtype),
+        ty: Some(gtype),
         is_owned: false,
     };
     drop(boxed);
@@ -215,7 +216,7 @@ fn plain_struct_not_owned_does_not_free() {
 
     struct TestBoxed {
         ptr: *mut c_void,
-        type_: Option<glib::Type>,
+        ty: Option<glib::Type>,
         is_owned: bool,
     }
 
@@ -223,7 +224,7 @@ fn plain_struct_not_owned_does_not_free() {
         fn drop(&mut self) {
             if self.is_owned && !self.ptr.is_null() {
                 unsafe {
-                    match self.type_ {
+                    match self.ty {
                         Some(gtype) => {
                             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                         }
@@ -238,7 +239,7 @@ fn plain_struct_not_owned_does_not_free() {
 
     let boxed = TestBoxed {
         ptr,
-        type_: None,
+        ty: None,
         is_owned: false,
     };
     drop(boxed);
@@ -252,7 +253,8 @@ fn plain_struct_not_owned_does_not_free() {
 fn from_glib_none_null_ptr_with_none_type() {
     common::ensure_gtk_init();
 
-    let boxed = Boxed::from_glib_none(None, std::ptr::null_mut());
+    let boxed = Boxed::from_glib_none(None, std::ptr::null_mut())
+        .expect("from_glib_none with null ptr should succeed");
 
     assert!(!boxed.is_owned());
     assert!(boxed.as_ptr().is_null());

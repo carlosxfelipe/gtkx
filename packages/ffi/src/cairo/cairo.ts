@@ -23,7 +23,7 @@ const FONT_OPTIONS_T = {
     innerType: "CairoFontOptions",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_font_options_get_type",
-    ownership: "none",
+    ownership: "borrowed",
 } as const;
 
 const CAIRO_T = {
@@ -31,7 +31,7 @@ const CAIRO_T = {
     innerType: "CairoContext",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_context_get_type",
-    ownership: "none",
+    ownership: "borrowed",
 } as const;
 
 const PATTERN_T = {
@@ -47,7 +47,7 @@ const PATTERN_T_NONE = {
     innerType: "CairoPattern",
     lib: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_pattern_get_type",
-    ownership: "none",
+    ownership: "borrowed",
 } as const;
 
 const DOUBLE_TYPE = { type: "float", size: 64 } as const;
@@ -814,7 +814,10 @@ Context.prototype.textExtents = function (text: string): TextExtents {
         [
             { type: CAIRO_T, value: this.id },
             { type: { type: "string", ownership: "full" }, value: text },
-            { type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, ownership: "none" }, value: extents },
+            {
+                type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, ownership: "borrowed" },
+                value: extents,
+            },
         ],
         { type: "undefined" },
     );

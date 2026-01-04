@@ -51,7 +51,7 @@ describe("call - error handling", () => {
                     "gtk_label_new",
                     [
                         {
-                            type: { type: "invalid_type" } as unknown as { type: "string"; ownership: "none" },
+                            type: { type: "invalid_type" } as unknown as { type: "string"; ownership: "borrowed" },
                             value: "Test",
                         },
                     ],

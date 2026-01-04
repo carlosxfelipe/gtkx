@@ -227,8 +227,8 @@ const emitSignal = (target: Gtk.EventController, signalName: string, ...args: Ar
         "libgobject-2.0.so.0",
         "g_signal_emit_by_name",
         [
-            { type: { type: "gobject", ownership: "none" }, value: target.id },
-            { type: { type: "string", ownership: "none" }, value: signalName },
+            { type: { type: "gobject", ownership: "borrowed" }, value: target.id },
+            { type: { type: "string", ownership: "borrowed" }, value: signalName },
             ...signalArgs,
         ],
         { type: "undefined" },

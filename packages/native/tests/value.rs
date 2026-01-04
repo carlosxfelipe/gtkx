@@ -8,8 +8,8 @@ use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
-use native::cif;
-use native::types::{ArrayType, BoxedType, GObjectType, ListType, StringType, Type};
+use native::ffi;
+use native::types::{ArrayType, BoxedType, GObjectType, ListType, Ownership, StringType, Type};
 use native::value::Value;
 
 use common::get_gobject_refcount;
@@ -24,12 +24,12 @@ fn gobject_transfer_none_does_not_take_ownership() {
     let initial_ref = get_gobject_refcount(obj_ptr);
 
     let gobject_type = GObjectType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
     };
     let type_ = Type::GObject(gobject_type);
 
-    let cif_value = cif::Value::Ptr(obj_ptr as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(obj_ptr as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
 
@@ -52,12 +52,12 @@ fn gobject_full_transfer_takes_ownership() {
     let ref_before_transfer = get_gobject_refcount(obj_ptr);
 
     let gobject_type = GObjectType {
-        is_transfer_full: true,
+        ownership: Ownership::Full,
     };
     let type_ = Type::GObject(gobject_type);
 
-    let cif_value = cif::Value::Ptr(obj_ptr as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(obj_ptr as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
 
@@ -71,12 +71,12 @@ fn gobject_null_returns_null_value() {
     common::ensure_gtk_init();
 
     let gobject_type = GObjectType {
-        is_transfer_full: true,
+        ownership: Ownership::Full,
     };
     let type_ = Type::GObject(gobject_type);
 
-    let cif_value = cif::Value::Ptr(std::ptr::null_mut());
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -98,12 +98,12 @@ fn gobject_floating_ref_gets_sunk() {
     assert!(is_floating_before);
 
     let gobject_type = GObjectType {
-        is_transfer_full: true,
+        ownership: Ownership::Full,
     };
     let type_ = Type::GObject(gobject_type);
 
-    let cif_value = cif::Value::Ptr(obj_ptr as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(obj_ptr as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
 
@@ -120,13 +120,13 @@ fn string_transfer_none_does_not_free() {
     let ptr = c_string.as_ptr() as *mut c_void;
 
     let string_type = StringType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         length: None,
     };
     let type_ = Type::String(string_type);
 
-    let cif_value = cif::Value::Ptr(ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::String(s) = result.unwrap() {
@@ -148,13 +148,13 @@ fn string_full_transfer_frees_memory() {
     let allocated_ptr = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
 
     let string_type = StringType {
-        is_transfer_full: true,
+        ownership: Ownership::Full,
         length: None,
     };
     let type_ = Type::String(string_type);
 
-    let cif_value = cif::Value::Ptr(allocated_ptr as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(allocated_ptr as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::String(s) = result.unwrap() {
@@ -169,13 +169,13 @@ fn string_null_returns_null_value() {
     common::ensure_gtk_init();
 
     let string_type = StringType {
-        is_transfer_full: true,
+        ownership: Ownership::Full,
         length: None,
     };
     let type_ = Type::String(string_type);
 
-    let cif_value = cif::Value::Ptr(std::ptr::null_mut());
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -189,15 +189,15 @@ fn boxed_transfer_none_creates_copy() {
     let original_ptr = common::allocate_test_boxed(gtype);
 
     let boxed_type = BoxedType {
-        is_transfer_full: false,
-        type_: "GdkRGBA".to_string(),
-        lib: None,
+        ownership: Ownership::Borrowed,
+        type_name: "GdkRGBA".to_string(),
+        library: None,
         get_type_fn: None,
     };
     let type_ = Type::Boxed(boxed_type);
 
-    let cif_value = cif::Value::Ptr(original_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(original_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
 
@@ -216,15 +216,15 @@ fn boxed_full_transfer_takes_ownership() {
     let ptr = common::allocate_test_boxed(gtype);
 
     let boxed_type = BoxedType {
-        is_transfer_full: true,
-        type_: "GdkRGBA".to_string(),
-        lib: None,
+        ownership: Ownership::Full,
+        type_name: "GdkRGBA".to_string(),
+        library: None,
         get_type_fn: None,
     };
     let type_ = Type::Boxed(boxed_type);
 
-    let cif_value = cif::Value::Ptr(ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
 }
@@ -234,15 +234,15 @@ fn boxed_null_returns_null_value() {
     common::ensure_gtk_init();
 
     let boxed_type = BoxedType {
-        is_transfer_full: true,
-        type_: "GdkRGBA".to_string(),
-        lib: None,
+        ownership: Ownership::Full,
+        type_name: "GdkRGBA".to_string(),
+        library: None,
         get_type_fn: None,
     };
     let type_ = Type::Boxed(boxed_type);
 
-    let cif_value = cif::Value::Ptr(std::ptr::null_mut());
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -263,18 +263,18 @@ fn glist_transfer_none_does_not_free_list() {
     }
 
     let gobject_type = GObjectType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::GObject(gobject_type)),
         list_type: ListType::GList,
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         element_size: None,
     };
     let type_ = Type::Array(array_type);
 
-    let cif_value = cif::Value::Ptr(list as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(list as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -315,18 +315,18 @@ fn glist_full_transfer_frees_list() {
     }
 
     let gobject_type = GObjectType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::GObject(gobject_type)),
         list_type: ListType::GList,
-        is_transfer_full: true,
+        ownership: Ownership::Full,
         element_size: None,
     };
     let type_ = Type::Array(array_type);
 
-    let cif_value = cif::Value::Ptr(list as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(list as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -341,18 +341,18 @@ fn glist_null_returns_empty_array() {
     common::ensure_gtk_init();
 
     let gobject_type = GObjectType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::GObject(gobject_type)),
         list_type: ListType::GList,
-        is_transfer_full: true,
+        ownership: Ownership::Full,
         element_size: None,
     };
     let type_ = Type::Array(array_type);
 
-    let cif_value = cif::Value::Ptr(std::ptr::null_mut());
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -376,19 +376,19 @@ fn strv_transfer_none_does_not_free() {
     let strv_ptr = ptrs.as_ptr() as *mut c_void;
 
     let string_type = StringType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         length: None,
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::String(string_type)),
         list_type: ListType::Array,
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         element_size: None,
     };
     let type_ = Type::Array(array_type);
 
-    let cif_value = cif::Value::Ptr(strv_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(strv_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -427,19 +427,19 @@ fn strv_full_transfer_frees_strings() {
     };
 
     let string_type = StringType {
-        is_transfer_full: true,
+        ownership: Ownership::Full,
         length: None,
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::String(string_type)),
         list_type: ListType::Array,
-        is_transfer_full: true,
+        ownership: Ownership::Full,
         element_size: None,
     };
     let type_ = Type::Array(array_type);
 
-    let cif_value = cif::Value::Ptr(strv as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(strv as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -460,7 +460,7 @@ fn from_glib_value_gobject_transfer_none() {
     let gvalue: glib::Value = obj.clone().into();
 
     let gobject_type = GObjectType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
     };
     let type_ = Type::GObject(gobject_type);
 
@@ -480,7 +480,7 @@ fn from_glib_value_string() {
     let gvalue: glib::Value = test_string.into();
 
     let string_type = StringType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         length: None,
     };
     let type_ = Type::String(string_type);
@@ -520,10 +520,7 @@ fn from_glib_value_integers() {
 
     let gvalue_i32: glib::Value = 42i32.into();
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_32,
-        sign: native::types::IntegerSign::Signed,
-    };
+    let int_type = native::types::IntegerKind::I32;
     let type_ = Type::Integer(int_type);
 
     let result = Value::from_glib_value(&gvalue_i32, &type_);
@@ -542,9 +539,7 @@ fn from_glib_value_floats() {
 
     let gvalue_f64: glib::Value = 3.15625f64.into();
 
-    let float_type = native::types::FloatType {
-        size: native::types::FloatSize::_64,
-    };
+    let float_type = native::types::FloatKind::F64;
     let type_ = Type::Float(float_type);
 
     let result = Value::from_glib_value(&gvalue_f64, &type_);
@@ -563,10 +558,7 @@ fn from_glib_value_i8() {
 
     let gvalue: glib::Value = (-42i8).into();
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_8,
-        sign: native::types::IntegerSign::Signed,
-    };
+    let int_type = native::types::IntegerKind::I8;
     let type_ = Type::Integer(int_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -585,10 +577,7 @@ fn from_glib_value_u8() {
 
     let gvalue: glib::Value = 200u8.into();
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_8,
-        sign: native::types::IntegerSign::Unsigned,
-    };
+    let int_type = native::types::IntegerKind::U8;
     let type_ = Type::Integer(int_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -607,10 +596,7 @@ fn from_glib_value_i64() {
 
     let gvalue: glib::Value = (-999999i64).into();
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_64,
-        sign: native::types::IntegerSign::Signed,
-    };
+    let int_type = native::types::IntegerKind::I64;
     let type_ = Type::Integer(int_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -629,10 +615,7 @@ fn from_glib_value_u64() {
 
     let gvalue: glib::Value = 9999999999u64.into();
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_64,
-        sign: native::types::IntegerSign::Unsigned,
-    };
+    let int_type = native::types::IntegerKind::U64;
     let type_ = Type::Integer(int_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -651,9 +634,7 @@ fn from_glib_value_f32() {
 
     let gvalue: glib::Value = 2.5f32.into();
 
-    let float_type = native::types::FloatType {
-        size: native::types::FloatSize::_32,
-    };
+    let float_type = native::types::FloatKind::F32;
     let type_ = Type::Float(float_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -692,15 +673,15 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
     };
 
     let fundamental_type = native::types::FundamentalType::new(
-        false,
+        Ownership::Borrowed,
         "libglib-2.0.so.0".to_string(),
         "g_variant_ref_sink".to_string(),
         "g_variant_unref".to_string(),
     );
     let type_ = Type::Fundamental(fundamental_type);
 
-    let cif_value = cif::Value::Ptr(variant as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(variant as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Object(_id) = result.unwrap() {
@@ -718,15 +699,15 @@ fn from_cif_value_fundamental_null() {
     common::ensure_gtk_init();
 
     let fundamental_type = native::types::FundamentalType::new(
-        true,
+        Ownership::Full,
         "libglib-2.0.so.0".to_string(),
         "g_variant_ref_sink".to_string(),
         "g_variant_unref".to_string(),
     );
     let type_ = Type::Fundamental(fundamental_type);
 
-    let cif_value = cif::Value::Ptr(std::ptr::null_mut());
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -736,19 +717,17 @@ fn from_cif_value_fundamental_null() {
 fn from_cif_value_ref_integer() {
     common::ensure_gtk_init();
 
-    let int_value: i32 = 12345;
-    let ptr = &int_value as *const i32 as *mut c_void;
+    let int_value = ffi::FfiValue::I32(12345);
+    let ptr = int_value.as_raw_ptr();
+    let boxed_value = Box::new(int_value);
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_32,
-        sign: native::types::IntegerSign::Signed,
-    };
+    let int_type = native::types::IntegerKind::I32;
     let ref_type = native::types::RefType::new(Type::Integer(int_type));
     let type_ = Type::Ref(ref_type);
 
-    let owned_ptr = cif::OwnedPtr::new(Box::new(int_value), ptr);
-    let cif_value = cif::Value::OwnedPtr(owned_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let owned_ptr = ffi::Stash::new(ptr, ffi::StashStorage::Boxed(boxed_value));
+    let cif_value = ffi::FfiValue::Stash(owned_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
@@ -762,18 +741,17 @@ fn from_cif_value_ref_integer() {
 fn from_cif_value_ref_float() {
     common::ensure_gtk_init();
 
-    let float_value: f64 = 3.15625;
-    let ptr = &float_value as *const f64 as *mut c_void;
+    let float_value = ffi::FfiValue::F64(3.15625);
+    let ptr = float_value.as_raw_ptr();
+    let boxed_value = Box::new(float_value);
 
-    let float_type = native::types::FloatType {
-        size: native::types::FloatSize::_64,
-    };
+    let float_type = native::types::FloatKind::F64;
     let ref_type = native::types::RefType::new(Type::Float(float_type));
     let type_ = Type::Ref(ref_type);
 
-    let owned_ptr = cif::OwnedPtr::new(Box::new(float_value), ptr);
-    let cif_value = cif::Value::OwnedPtr(owned_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let owned_ptr = ffi::Stash::new(ptr, ffi::StashStorage::Boxed(boxed_value));
+    let cif_value = ffi::FfiValue::Stash(owned_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
@@ -784,109 +762,49 @@ fn from_cif_value_ref_float() {
 }
 
 #[test]
-fn try_from_glib_value_i32() {
-    common::ensure_gtk_init();
-
-    let gvalue: glib::Value = 42i32.into();
-    let result: anyhow::Result<Value> = (&gvalue).try_into();
-
-    assert!(result.is_ok());
-    if let Value::Number(n) = result.unwrap() {
-        assert_eq!(n, 42.0);
-    } else {
-        panic!("Expected Value::Number");
-    }
-}
-
-#[test]
-fn try_from_glib_value_u32() {
-    common::ensure_gtk_init();
-
-    let gvalue: glib::Value = 100u32.into();
-    let result: anyhow::Result<Value> = (&gvalue).try_into();
-
-    assert!(result.is_ok());
-    if let Value::Number(n) = result.unwrap() {
-        assert_eq!(n, 100.0);
-    } else {
-        panic!("Expected Value::Number");
-    }
-}
-
-#[test]
-fn try_from_glib_value_string() {
-    common::ensure_gtk_init();
-
-    let gvalue: glib::Value = "hello".to_string().into();
-    let result: anyhow::Result<Value> = (&gvalue).try_into();
-
-    assert!(result.is_ok());
-    if let Value::String(s) = result.unwrap() {
-        assert_eq!(s, "hello");
-    } else {
-        panic!("Expected Value::String");
-    }
-}
-
-#[test]
-fn try_from_glib_value_bool() {
-    common::ensure_gtk_init();
-
-    let gvalue: glib::Value = true.into();
-    let result: anyhow::Result<Value> = (&gvalue).try_into();
-
-    assert!(result.is_ok());
-    if let Value::Boolean(b) = result.unwrap() {
-        assert!(b);
-    } else {
-        panic!("Expected Value::Boolean");
-    }
-}
-
-#[test]
-fn value_into_option_glib_value_number() {
+fn value_to_glib_value_number() {
     common::ensure_gtk_init();
 
     let value = Value::Number(42.5);
-    let gvalue: Option<glib::Value> = value.into();
+    let gvalue = value.to_glib_value();
 
-    assert!(gvalue.is_some());
+    assert!(gvalue.is_ok());
 }
 
 #[test]
-fn value_into_option_glib_value_string() {
+fn value_to_glib_value_string() {
     common::ensure_gtk_init();
 
     let value = Value::String("test".to_string());
-    let gvalue: Option<glib::Value> = value.into();
+    let gvalue = value.to_glib_value();
 
-    assert!(gvalue.is_some());
+    assert!(gvalue.is_ok());
 }
 
 #[test]
-fn value_into_option_glib_value_boolean() {
+fn value_to_glib_value_boolean() {
     common::ensure_gtk_init();
 
     let value = Value::Boolean(true);
-    let gvalue: Option<glib::Value> = value.into();
+    let gvalue = value.to_glib_value();
 
-    assert!(gvalue.is_some());
+    assert!(gvalue.is_ok());
 }
 
 #[test]
-fn value_into_option_glib_value_null() {
+fn value_to_glib_value_null() {
     let value = Value::Null;
-    let gvalue: Option<glib::Value> = value.into();
+    let gvalue = value.to_glib_value();
 
-    assert!(gvalue.is_none());
+    assert!(gvalue.is_err());
 }
 
 #[test]
-fn value_into_option_glib_value_undefined() {
+fn value_to_glib_value_undefined() {
     let value = Value::Undefined;
-    let gvalue: Option<glib::Value> = value.into();
+    let gvalue = value.to_glib_value();
 
-    assert!(gvalue.is_none());
+    assert!(gvalue.is_err());
 }
 
 #[test]
@@ -903,10 +821,7 @@ fn into_glib_value_with_default_undefined_boolean() {
 fn into_glib_value_with_default_undefined_integer() {
     common::ensure_gtk_init();
 
-    let int_type = native::types::IntegerType {
-        size: native::types::IntegerSize::_32,
-        sign: native::types::IntegerSign::Signed,
-    };
+    let int_type = native::types::IntegerKind::I32;
     let value = Value::Undefined;
     let result = value.into_glib_value_with_default(Some(&Type::Integer(int_type)));
 
@@ -935,19 +850,19 @@ fn glist_with_string_items() {
     list = unsafe { glib::ffi::g_list_append(list, s2.as_ptr() as *mut c_void) };
 
     let string_type = StringType {
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         length: None,
     };
     let array_type = ArrayType {
         item_type: Box::new(Type::String(string_type)),
         list_type: ListType::GList,
-        is_transfer_full: false,
+        ownership: Ownership::Borrowed,
         element_size: None,
     };
     let type_ = Type::Array(array_type);
 
-    let cif_value = cif::Value::Ptr(list as *mut c_void);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(list as *mut c_void);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Array(arr) = result.unwrap() {
@@ -973,11 +888,12 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-    let struct_type = native::types::StructType::new(false, "TestRect".to_string(), Some(16));
+    let struct_type =
+        native::types::StructType::new(Ownership::Borrowed, "TestRect".to_string(), Some(16));
     let type_ = Type::Struct(struct_type);
 
-    let cif_value = cif::Value::Ptr(struct_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(struct_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Object(_id) = result.unwrap() {
@@ -996,11 +912,12 @@ fn from_cif_value_struct_full_transfer() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(32) };
 
-    let struct_type = native::types::StructType::new(true, "CustomStruct".to_string(), Some(32));
+    let struct_type =
+        native::types::StructType::new(Ownership::Full, "CustomStruct".to_string(), Some(32));
     let type_ = Type::Struct(struct_type);
 
-    let cif_value = cif::Value::Ptr(struct_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(struct_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Object(_id) = result.unwrap() {
@@ -1013,11 +930,12 @@ fn from_cif_value_struct_full_transfer() {
 fn from_cif_value_struct_null_returns_null_value() {
     common::ensure_gtk_init();
 
-    let struct_type = native::types::StructType::new(false, "TestStruct".to_string(), Some(16));
+    let struct_type =
+        native::types::StructType::new(Ownership::Borrowed, "TestStruct".to_string(), Some(16));
     let type_ = Type::Struct(struct_type);
 
-    let cif_value = cif::Value::Ptr(std::ptr::null_mut());
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(std::ptr::null_mut());
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Value::Null));
@@ -1029,7 +947,8 @@ fn from_glib_value_struct_fails() {
 
     let gvalue: glib::Value = glib::Value::from_type(glib::types::Type::POINTER);
 
-    let struct_type = native::types::StructType::new(false, "PlainStruct".to_string(), Some(16));
+    let struct_type =
+        native::types::StructType::new(Ownership::Borrowed, "PlainStruct".to_string(), Some(16));
     let type_ = Type::Struct(struct_type);
 
     let result = Value::from_glib_value(&gvalue, &type_);
@@ -1038,22 +957,19 @@ fn from_glib_value_struct_fails() {
 }
 
 #[test]
-fn from_cif_value_struct_transfer_none_without_size_logs_warning() {
+fn from_cif_value_struct_transfer_none_without_size_returns_error() {
     common::ensure_gtk_init();
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
-    let struct_type = native::types::StructType::new(false, "UnknownSizeStruct".to_string(), None);
+    let struct_type =
+        native::types::StructType::new(Ownership::Borrowed, "UnknownSizeStruct".to_string(), None);
     let type_ = Type::Struct(struct_type);
 
-    let cif_value = cif::Value::Ptr(struct_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(struct_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
-    assert!(result.is_ok());
-    if let Value::Object(_id) = result.unwrap() {
-    } else {
-        panic!("Expected Value::Object for struct");
-    }
+    assert!(result.is_err());
 
     unsafe {
         glib::ffi::g_free(struct_ptr);
@@ -1066,11 +982,12 @@ fn from_cif_value_struct_owned_without_size() {
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
 
-    let struct_type = native::types::StructType::new(true, "UnknownSizeStruct".to_string(), None);
+    let struct_type =
+        native::types::StructType::new(Ownership::Full, "UnknownSizeStruct".to_string(), None);
     let type_ = Type::Struct(struct_type);
 
-    let cif_value = cif::Value::Ptr(struct_ptr);
-    let result = Value::from_cif_value(&cif_value, &type_);
+    let cif_value = ffi::FfiValue::Ptr(struct_ptr);
+    let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
     if let Value::Object(_id) = result.unwrap() {

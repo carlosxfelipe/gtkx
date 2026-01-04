@@ -15,12 +15,12 @@ use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
-    state::{GtkThreadState, join_gtk_thread},
+    state::{GtkThread, GtkThreadState},
 };
 
 pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let rx = gtk_dispatch::run_on_gtk_thread(|| {
-        gtk_dispatch::mark_stopped();
+    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(|| {
+        gtk_dispatch::GtkDispatcher::global().mark_stopped();
 
         GtkThreadState::with(|state| {
             state.app_hold_guard.take();
@@ -30,7 +30,7 @@ pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     rx.recv()
         .or_else(|err| cx.throw_error(format!("Error stopping GTK thread: {err}")))?;
 
-    join_gtk_thread();
+    GtkThread::global().join();
 
     Ok(cx.undefined())
 }

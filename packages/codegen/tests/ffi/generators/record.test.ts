@@ -419,7 +419,7 @@ describe("RecordGenerator", () => {
             generator.generateToSourceFile(record, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("export interface RectangleInit");
+            expect(code).toContain("export type RectangleInit");
         });
 
         it("includes writable fields in init interface", () => {
