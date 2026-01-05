@@ -110,14 +110,14 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
     });
 
     server.watcher.on("change", async (changedPath) => {
-        console.log(`[gtkx] File changed: ${changedPath}`);
-
         try {
             const module = server.moduleGraph.getModuleById(changedPath);
 
             if (!module) {
                 return;
             }
+
+            console.log(`[gtkx] File changed: ${changedPath}`);
 
             invalidateModuleAndImporters(changedPath);
 

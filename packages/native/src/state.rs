@@ -17,6 +17,7 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, hash_map::Entry};
+use std::mem::ManuallyDrop;
 use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
 
@@ -62,7 +63,10 @@ pub struct GtkThreadState {
     pub app_hold_guard: Option<ApplicationHoldGuard>,
     pub handle_map: HashMap<usize, NativeValue>,
     pub next_handle_id: usize,
-    pub libraries: HashMap<String, Library>,
+    /// Dynamically loaded libraries. Wrapped in ManuallyDrop because libraries
+    /// like WebKit spawn threads with TLS destructors - calling dlclose() while
+    /// those threads exist causes segfaults. Libraries are reclaimed at process exit.
+    pub libraries: HashMap<String, ManuallyDrop<Library>>,
 }
 
 impl Default for GtkThreadState {
@@ -96,7 +100,7 @@ impl GtkThreadState {
                     // is safe as long as the library path is valid
                     match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
                         Ok(lib) => {
-                            return Ok(entry.insert(lib));
+                            return Ok(entry.insert(ManuallyDrop::new(lib)));
                         }
                         Err(err) => {
                             last_error = Some(err);
