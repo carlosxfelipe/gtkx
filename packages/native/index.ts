@@ -1,8 +1,32 @@
 import { createRequire } from "node:module";
+import { arch, platform } from "node:os";
 import type { Arg, NativeHandle, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
-const native = require("./index.node");
+
+function loadNativeBinding() {
+    const currentPlatform = platform();
+    const currentArch = arch();
+
+    if (currentPlatform !== "linux") {
+        throw new Error(`Unsupported platform: ${currentPlatform}. Only Linux is supported.`);
+    }
+
+    if (currentArch !== "x64" && currentArch !== "arm64") {
+        throw new Error(`Unsupported architecture: ${currentArch}. Only x64 and arm64 are supported.`);
+    }
+
+    const packageName = `@gtkx/native-linux-${currentArch}`;
+
+    try {
+        return require(packageName);
+    } catch (error) {
+        const originalError = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to load native binding for ${currentPlatform}-${currentArch}: ${originalError}`);
+    }
+}
+
+const native = loadNativeBinding();
 
 /**
  * Creates a mutable reference wrapper.

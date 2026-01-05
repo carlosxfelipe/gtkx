@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString, c_void};
+use std::ffi::{CStr, CString, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
@@ -74,7 +74,7 @@ impl ffi::FfiDecode for StringType {
             return Ok(value::Value::Null);
         };
 
-        let c_str = unsafe { CStr::from_ptr(str_ptr as *const i8) };
+        let c_str = unsafe { CStr::from_ptr(str_ptr as *const c_char) };
         let string = c_str.to_str()?.to_string();
 
         if self.ownership.is_full() {

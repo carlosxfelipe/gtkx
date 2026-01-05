@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString, c_void};
+use std::ffi::{CStr, CString, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
@@ -364,7 +364,7 @@ impl ArrayType {
         ptr: *mut c_void,
     ) -> anyhow::Result<value::Value> {
         let mut values = Vec::new();
-        let str_array = ptr as *const *const i8;
+        let str_array = ptr as *const *const c_char;
         let mut i = 0;
         loop {
             let str_ptr = unsafe { *str_array.offset(i) };
@@ -377,7 +377,7 @@ impl ArrayType {
         }
 
         if self.ownership.is_full() {
-            unsafe { glib::ffi::g_strfreev(ptr as *mut *mut i8) };
+            unsafe { glib::ffi::g_strfreev(ptr as *mut *mut c_char) };
         }
 
         Ok(value::Value::Array(values))

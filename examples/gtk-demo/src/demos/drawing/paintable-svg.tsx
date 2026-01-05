@@ -110,7 +110,7 @@ const PaintableSvgDemo = () => {
             const byteArray = Array.from(svgBytes);
             const gBytes = new GLib.Bytes(byteArray.length, byteArray);
             return Gdk.Texture.newFromBytes(gBytes);
-        } catch (_e) {
+        } catch {
             const size = 64;
             const data: number[] = [];
             for (let i = 0; i < size * size; i++) {

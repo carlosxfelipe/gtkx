@@ -256,6 +256,17 @@ importers:
       '@neon-rs/cli':
         specifier: ^0.1.82
         version: 0.1.82
+    optionalDependencies:
+      '@gtkx/native-linux-arm64':
+        specifier: workspace:*
+        version: link:../native-linux-arm64
+      '@gtkx/native-linux-x64':
+        specifier: workspace:*
+        version: link:../native-linux-x64
+
+  packages/native-linux-arm64: {}
+
+  packages/native-linux-x64: {}
 
   packages/react:
     dependencies:

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native",
-    "version": "0.12.0",
+    "version": "0.12.1",
     "description": "Rust-based native module providing FFI bindings for GTKX",
     "keywords": [
         "gtkx",
@@ -37,11 +37,15 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b && cp index.node dist/ && cp ../../README.md .",
+        "build": "tsc -b && cp ../../README.md .",
         "lint": "cargo fmt --check && cargo clippy -- -D warnings",
-        "native-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
+        "native-build": "node scripts/build.js",
         "native-test": "xvfb-run -a cargo test -- --test-threads=1",
         "test": "vitest run"
+    },
+    "optionalDependencies": {
+        "@gtkx/native-linux-arm64": "workspace:*",
+        "@gtkx/native-linux-x64": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",

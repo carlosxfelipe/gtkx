@@ -1,0 +1,33 @@
+{
+    "name": "@gtkx/native-linux-arm64",
+    "version": "0.12.1",
+    "description": "Linux arm64 native binary for @gtkx/native",
+    "keywords": [
+        "gtkx",
+        "native",
+        "linux",
+        "arm64"
+    ],
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/native-linux-arm64"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "os": [
+        "linux"
+    ],
+    "cpu": [
+        "arm64"
+    ],
+    "main": "index.node",
+    "files": [
+        "index.node"
+    ],
+    "scripts": {}
+}

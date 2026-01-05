@@ -60,7 +60,7 @@
         },
         "native-build": {
             "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
-            "outputs": ["index.node"],
+            "outputs": ["index.node", "../native-linux-arm64/index.node", "../native-linux-x64/index.node"],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
         },

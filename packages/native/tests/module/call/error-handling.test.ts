@@ -150,8 +150,8 @@ describe("call - error handling", () => {
             try {
                 call(GTK_LIB, "gtk_nonexistent_widget_new", [], GOBJECT);
                 expect.fail("Should have thrown");
-            } catch (e) {
-                expect(e).toBeInstanceOf(Error);
+            } catch (error) {
+                expect(error).toBeInstanceOf(Error);
             }
         });
 
@@ -159,8 +159,8 @@ describe("call - error handling", () => {
             try {
                 call("libnonexistent.so", "foo", [], UNDEFINED);
                 expect.fail("Should have thrown");
-            } catch (e) {
-                expect(e).toBeInstanceOf(Error);
+            } catch (error) {
+                expect(error).toBeInstanceOf(Error);
             }
         });
     });

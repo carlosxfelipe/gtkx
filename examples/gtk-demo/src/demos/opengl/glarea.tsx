@@ -121,8 +121,8 @@ const GLAreaDemo = () => {
 
                 try {
                     glStateRef.current = initGL();
-                } catch (e) {
-                    setError(`GL initialization error: ${e}`);
+                } catch (error) {
+                    setError(`GL initialization error: ${error}`);
                     return true;
                 }
             }

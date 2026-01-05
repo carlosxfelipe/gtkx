@@ -12,7 +12,8 @@
     "workspaces": {
         "packages/native": {
             "entry": [],
-            "project": ["src/**/*"]
+            "project": ["src/**/*", "scripts/**/*"],
+            "ignoreDependencies": ["@neon-rs/cli"]
         },
         "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],

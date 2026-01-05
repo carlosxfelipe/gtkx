@@ -31,7 +31,7 @@
 //!
 //! [`Ownership`]: Ownership
 
-use std::ffi::c_void;
+use std::ffi::{c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _};
@@ -204,7 +204,7 @@ impl Type {
                 if ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
-                let c_str = unsafe { CStr::from_ptr(ptr as *const i8) };
+                let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
                 Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
             }
             Type::Integer(int_kind) => {

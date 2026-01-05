@@ -20,7 +20,7 @@
 //! - `Float` (f32, f64)
 //! - `Boolean`
 
-use std::ffi::{CStr, c_void};
+use std::ffi::{CStr, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _};
@@ -73,7 +73,7 @@ impl ReadRequest {
             }
             Type::String(_) => {
                 // SAFETY: field_ptr is valid and contains a C string pointer
-                let str_ptr = unsafe { field_ptr.cast::<*const i8>().read_unaligned() };
+                let str_ptr = unsafe { field_ptr.cast::<*const c_char>().read_unaligned() };
 
                 if str_ptr.is_null() {
                     return Ok(Value::Null);

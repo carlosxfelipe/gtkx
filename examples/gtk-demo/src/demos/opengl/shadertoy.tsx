@@ -309,8 +309,8 @@ const ShadertoyDemo = () => {
             };
 
             setCompileError(null);
-        } catch (e) {
-            setCompileError(`Error: ${e}`);
+        } catch (error) {
+            setCompileError(`Error: ${error}`);
         }
     }, [compiledCode]);
 
@@ -329,8 +329,8 @@ const ShadertoyDemo = () => {
 
                 try {
                     glStateRef.current = initGL(compiledCode);
-                } catch (e) {
-                    setCompileError(`Initialization error: ${e}`);
+                } catch (error) {
+                    setCompileError(`Initialization error: ${error}`);
                     return true;
                 }
             }

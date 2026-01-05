@@ -31,18 +31,18 @@ runs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-        key: cargo-${{ runner.os }}-${{ hashFiles('packages/native/Cargo.lock') }}
+        key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/native/Cargo.lock') }}
         restore-keys: |
-          cargo-${{ runner.os }}-
+          cargo-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Cache pnpm store
       if: inputs.cache-pnpm == 'true'
       uses: actions/cache@v4
       with:
         path: ~/.local/share/pnpm/store
-        key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
         restore-keys: |
-          pnpm-${{ runner.os }}-
+          pnpm-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Run command
       shell: bash
