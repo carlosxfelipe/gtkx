@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCheckButton, GtkFrame, GtkLabel, Slot } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkCheckButton, GtkFrame, GtkLabel, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
@@ -83,12 +83,12 @@ const FramesDemo = () => {
                     halign={Gtk.Align.START}
                 />
                 <GtkFrame>
-                    <Slot for={GtkFrame} id="labelWidget">
+                    <x.Slot for={GtkFrame} id="labelWidget">
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                             <GtkLabel label="Settings" cssClasses={["heading"]} />
                             <GtkButton label="Reset" cssClasses={["flat", "small"]} />
                         </GtkBox>
-                    </Slot>
+                    </x.Slot>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={8}
@@ -117,13 +117,13 @@ const FramesDemo = () => {
                     halign={Gtk.Align.START}
                 />
                 <GtkFrame>
-                    <Slot for={GtkFrame} id="labelWidget">
+                    <x.Slot for={GtkFrame} id="labelWidget">
                         <GtkCheckButton
                             label="Show Content"
                             active={expanded}
                             onToggled={() => setExpanded(!expanded)}
                         />
-                    </Slot>
+                    </x.Slot>
                     {expanded && (
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}

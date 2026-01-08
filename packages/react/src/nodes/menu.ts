@@ -7,15 +7,15 @@ export class MenuNode extends Menu {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
-        return type === "Menu.Item" || type === "Menu.Section" || type === "Menu.Submenu";
+        return type === "MenuItem" || type === "MenuSection" || type === "MenuSubmenu";
     }
 
     private static getType(typeName: string): MenuType {
-        if (typeName === "Menu.Item") {
+        if (typeName === "MenuItem") {
             return "item";
-        } else if (typeName === "Menu.Section") {
+        } else if (typeName === "MenuSection") {
             return "section";
-        } else if (typeName === "Menu.Submenu") {
+        } else if (typeName === "MenuSubmenu") {
             return "submenu";
         }
 

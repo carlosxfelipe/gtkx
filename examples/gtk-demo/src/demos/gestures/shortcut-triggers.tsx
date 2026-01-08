@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, Menu } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
@@ -213,28 +213,28 @@ const ShortcutTriggersDemo = () => {
                     />
 
                     <GtkMenuButton label="Actions Menu" iconName="open-menu-symbolic">
-                        <Menu.Section>
-                            <Menu.Item
+                        <x.MenuSection>
+                            <x.MenuItem
                                 id="action1"
                                 label="Primary Action"
                                 onActivate={() => showTrigger("Menu Action", "Primary Action triggered")}
                                 accels="<Control>p"
                             />
-                            <Menu.Item
+                            <x.MenuItem
                                 id="action2"
                                 label="Secondary Action"
                                 onActivate={() => showTrigger("Menu Action", "Secondary Action triggered")}
                                 accels="<Control><Alt>s"
                             />
-                        </Menu.Section>
-                        <Menu.Section>
-                            <Menu.Item
+                        </x.MenuSection>
+                        <x.MenuSection>
+                            <x.MenuItem
                                 id="action3"
                                 label="Alternative Trigger Demo"
                                 onActivate={() => showTrigger("Menu Action", "Works with F5 or Ctrl+R")}
                                 accels={["F5", "<Control>r"]}
                             />
-                        </Menu.Section>
+                        </x.MenuSection>
                     </GtkMenuButton>
                 </GtkBox>
             </GtkFrame>

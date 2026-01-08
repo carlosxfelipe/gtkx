@@ -1,6 +1,6 @@
 import { css, cx } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { FixedChild, GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useEffect, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
@@ -175,7 +175,7 @@ const Fixed2Demo = () => {
                 >
                     <GtkFixed widthRequest={400} heightRequest={250} cssClasses={[fixedContainerStyle]}>
                         {widgets.map((widget) => (
-                            <FixedChild key={widget.id} x={widget.x} y={widget.y}>
+                            <x.FixedChild key={widget.id} x={widget.x} y={widget.y}>
                                 <GtkButton
                                     label={widget.label}
                                     cssClasses={[
@@ -187,7 +187,7 @@ const Fixed2Demo = () => {
                                     ]}
                                     onClicked={() => handleSelect(widget.id)}
                                 />
-                            </FixedChild>
+                            </x.FixedChild>
                         ))}
                     </GtkFixed>
 

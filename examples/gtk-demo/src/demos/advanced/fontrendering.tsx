@@ -2,7 +2,7 @@ import { Antialias, type Context, FontOptions, HintMetrics, HintStyle, SubpixelO
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkDrawingArea, GtkDropDown, GtkFrame, GtkLabel, GtkScale, SimpleListItem } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkDropDown, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
@@ -288,7 +288,7 @@ const FontRenderingDemo = () => {
                             hexpand
                         >
                             {hintStyleOptions.map(([value, label]) => (
-                                <SimpleListItem key={value} id={value} value={label} />
+                                <x.SimpleListItem key={value} id={value} value={label} />
                             ))}
                         </GtkDropDown>
                     </GtkBox>
@@ -301,7 +301,7 @@ const FontRenderingDemo = () => {
                             hexpand
                         >
                             {antialiasOptions.map(([value, label]) => (
-                                <SimpleListItem key={value} id={value} value={label} />
+                                <x.SimpleListItem key={value} id={value} value={label} />
                             ))}
                         </GtkDropDown>
                     </GtkBox>
@@ -314,7 +314,7 @@ const FontRenderingDemo = () => {
                             hexpand
                         >
                             {hintMetricsOptions.map(([value, label]) => (
-                                <SimpleListItem key={value} id={value} value={label} />
+                                <x.SimpleListItem key={value} id={value} value={label} />
                             ))}
                         </GtkDropDown>
                     </GtkBox>
@@ -327,7 +327,7 @@ const FontRenderingDemo = () => {
                             hexpand
                         >
                             {subpixelOrderOptions.map(([value, label]) => (
-                                <SimpleListItem key={value} id={value} value={label} />
+                                <x.SimpleListItem key={value} id={value} value={label} />
                             ))}
                         </GtkDropDown>
                     </GtkBox>

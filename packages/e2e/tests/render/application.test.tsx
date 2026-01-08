@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Menu } from "@gtkx/react";
+import { x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
@@ -8,13 +8,13 @@ describe("render - Application", () => {
         it("sets menubar from Menu children", async () => {
             const { container } = await render(
                 <>
-                    <Menu.Submenu label="File">
-                        <Menu.Item id="new" label="New" onActivate={() => {}} />
-                        <Menu.Item id="open" label="Open" onActivate={() => {}} />
-                    </Menu.Submenu>
-                    <Menu.Submenu label="Edit">
-                        <Menu.Item id="cut" label="Cut" onActivate={() => {}} />
-                    </Menu.Submenu>
+                    <x.MenuSubmenu label="File">
+                        <x.MenuItem id="new" label="New" onActivate={() => {}} />
+                        <x.MenuItem id="open" label="Open" onActivate={() => {}} />
+                    </x.MenuSubmenu>
+                    <x.MenuSubmenu label="Edit">
+                        <x.MenuItem id="cut" label="Cut" onActivate={() => {}} />
+                    </x.MenuSubmenu>
                 </>,
                 { wrapper: false },
             );
@@ -26,9 +26,9 @@ describe("render - Application", () => {
         it("clears menubar when Menu is removed", async () => {
             function App({ showMenu }: { showMenu: boolean }) {
                 return showMenu ? (
-                    <Menu.Submenu label="File">
-                        <Menu.Item id="new" label="New" onActivate={() => {}} />
-                    </Menu.Submenu>
+                    <x.MenuSubmenu label="File">
+                        <x.MenuItem id="new" label="New" onActivate={() => {}} />
+                    </x.MenuSubmenu>
                 ) : null;
             }
 
@@ -44,11 +44,11 @@ describe("render - Application", () => {
         it("updates menubar when items change", async () => {
             function App({ items }: { items: string[] }) {
                 return (
-                    <Menu.Submenu label="File">
+                    <x.MenuSubmenu label="File">
                         {items.map((label) => (
-                            <Menu.Item key={label} id={label} label={label} onActivate={() => {}} />
+                            <x.MenuItem key={label} id={label} label={label} onActivate={() => {}} />
                         ))}
-                    </Menu.Submenu>
+                    </x.MenuSubmenu>
                 );
             }
 

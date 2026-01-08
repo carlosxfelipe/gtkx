@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, Slot } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paned.tsx?raw";
@@ -33,7 +33,7 @@ const PanedDemo = () => {
                     position={position}
                     cssClasses={["card"]}
                 >
-                    <Slot for={GtkPaned} id="startChild">
+                    <x.Slot for={GtkPaned} id="startChild">
                         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
@@ -51,8 +51,8 @@ const PanedDemo = () => {
                                 />
                             </GtkBox>
                         </GtkScrolledWindow>
-                    </Slot>
-                    <Slot for={GtkPaned} id="endChild">
+                    </x.Slot>
+                    <x.Slot for={GtkPaned} id="endChild">
                         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
@@ -70,7 +70,7 @@ const PanedDemo = () => {
                                 />
                             </GtkBox>
                         </GtkScrolledWindow>
-                    </Slot>
+                    </x.Slot>
                 </GtkPaned>
             </GtkBox>
 
@@ -89,7 +89,7 @@ const PanedDemo = () => {
                     position={80}
                     cssClasses={["card"]}
                 >
-                    <Slot for={GtkPaned} id="startChild">
+                    <x.Slot for={GtkPaned} id="startChild">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -99,8 +99,8 @@ const PanedDemo = () => {
                         >
                             <GtkLabel label="Top Pane" cssClasses={["heading"]} halign={Gtk.Align.START} />
                         </GtkBox>
-                    </Slot>
-                    <Slot for={GtkPaned} id="endChild">
+                    </x.Slot>
+                    <x.Slot for={GtkPaned} id="endChild">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -110,7 +110,7 @@ const PanedDemo = () => {
                         >
                             <GtkLabel label="Bottom Pane" cssClasses={["heading"]} halign={Gtk.Align.START} />
                         </GtkBox>
-                    </Slot>
+                    </x.Slot>
                 </GtkPaned>
             </GtkBox>
 
@@ -129,7 +129,7 @@ const PanedDemo = () => {
                     position={150}
                     cssClasses={["card"]}
                 >
-                    <Slot for={GtkPaned} id="startChild">
+                    <x.Slot for={GtkPaned} id="startChild">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -142,10 +142,10 @@ const PanedDemo = () => {
                             <GtkButton label="Item 2" cssClasses={["flat"]} />
                             <GtkButton label="Item 3" cssClasses={["flat"]} />
                         </GtkBox>
-                    </Slot>
-                    <Slot for={GtkPaned} id="endChild">
+                    </x.Slot>
+                    <x.Slot for={GtkPaned} id="endChild">
                         <GtkPaned orientation={Gtk.Orientation.VERTICAL} wideHandle position={100}>
-                            <Slot for={GtkPaned} id="startChild">
+                            <x.Slot for={GtkPaned} id="startChild">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={8}
@@ -156,8 +156,8 @@ const PanedDemo = () => {
                                     <GtkLabel label="Main Content" cssClasses={["heading"]} halign={Gtk.Align.START} />
                                     <GtkLabel label="Editor or content area" cssClasses={["dim-label"]} />
                                 </GtkBox>
-                            </Slot>
-                            <Slot for={GtkPaned} id="endChild">
+                            </x.Slot>
+                            <x.Slot for={GtkPaned} id="endChild">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={8}
@@ -168,9 +168,9 @@ const PanedDemo = () => {
                                     <GtkLabel label="Details Panel" cssClasses={["heading"]} halign={Gtk.Align.START} />
                                     <GtkLabel label="Properties or terminal" cssClasses={["dim-label"]} />
                                 </GtkBox>
-                            </Slot>
+                            </x.Slot>
                         </GtkPaned>
-                    </Slot>
+                    </x.Slot>
                 </GtkPaned>
             </GtkBox>
 

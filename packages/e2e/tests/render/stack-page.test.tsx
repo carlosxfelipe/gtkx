@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkStack, StackPage } from "@gtkx/react";
+import { GtkStack, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="test-page">Content</StackPage>
+                    <x.StackPage name="test-page">Content</x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -24,9 +24,9 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="titled" title="Page Title">
+                    <x.StackPage name="titled" title="Page Title">
                         Content
-                    </StackPage>
+                    </x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -41,9 +41,9 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="iconic" iconName="dialog-information">
+                    <x.StackPage name="iconic" iconName="dialog-information">
                         Content
-                    </StackPage>
+                    </x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -60,9 +60,9 @@ describe("render - StackPage", () => {
                 return (
                     <GtkStack ref={stackRef}>
                         {pages.map((name) => (
-                            <StackPage key={name} name={name}>
+                            <x.StackPage key={name} name={name}>
                                 {name}
-                            </StackPage>
+                            </x.StackPage>
                         ))}
                     </GtkStack>
                 );

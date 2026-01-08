@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, ListItem, ListView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
@@ -325,7 +325,7 @@ const ListViewFilebrowserDemo = () => {
                     <GtkLabel label={`${contents.length} items`} cssClasses={["dim-label"]} halign={Gtk.Align.START} />
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <ListView<FileItem>
+                        <x.ListView<FileItem>
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
@@ -360,9 +360,9 @@ const ListViewFilebrowserDemo = () => {
                             )}
                         >
                             {contents.map((file) => (
-                                <ListItem key={file.id} id={file.id} value={file} />
+                                <x.ListItem key={file.id} id={file.id} value={file} />
                             ))}
-                        </ListView>
+                        </x.ListView>
                     </GtkScrolledWindow>
 
                     {selectedFile && (

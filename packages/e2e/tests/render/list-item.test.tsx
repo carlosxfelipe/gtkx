@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkListView, ListItem } from "@gtkx/react";
+import { GtkListView, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ describe("render - ListItem", () => {
 
             await render(
                 <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                    <ListItem id="1" value={{ text: "First" }} />
+                    <x.ListItem id="1" value={{ text: "First" }} />
                 </GtkListView>,
                 { wrapper: false },
             );
@@ -24,9 +24,9 @@ describe("render - ListItem", () => {
 
             await render(
                 <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                    <ListItem id="1" value={{ text: "First" }} />
-                    <ListItem id="2" value={{ text: "Second" }} />
-                    <ListItem id="3" value={{ text: "Third" }} />
+                    <x.ListItem id="1" value={{ text: "First" }} />
+                    <x.ListItem id="2" value={{ text: "Second" }} />
+                    <x.ListItem id="3" value={{ text: "Third" }} />
                 </GtkListView>,
                 { wrapper: false },
             );
@@ -40,7 +40,7 @@ describe("render - ListItem", () => {
             function App({ value }: { value: Record<string, unknown> }) {
                 return (
                     <GtkListView ref={listViewRef} renderItem={() => "Item"}>
-                        <ListItem id="dynamic" value={value} />
+                        <x.ListItem id="dynamic" value={value} />
                     </GtkListView>
                 );
             }
@@ -59,7 +59,7 @@ describe("render - ListItem", () => {
                 return (
                     <GtkListView ref={listViewRef} renderItem={() => "Item"}>
                         {items.map((item) => (
-                            <ListItem key={item.id} id={item.id} value={item} />
+                            <x.ListItem key={item.id} id={item.id} value={item} />
                         ))}
                     </GtkListView>
                 );
@@ -88,7 +88,7 @@ describe("render - ListItem", () => {
                 return (
                     <GtkListView ref={listViewRef} renderItem={() => "Item"}>
                         {items.map((item) => (
-                            <ListItem key={item.id} id={item.id} value={item} />
+                            <x.ListItem key={item.id} id={item.id} value={item} />
                         ))}
                     </GtkListView>
                 );

@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { ActionRow, AdwActionRow, GtkLabel, GtkListBox } from "@gtkx/react";
+import { AdwActionRow, GtkLabel, GtkListBox, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -28,12 +28,12 @@ describe("render - ActionRow", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Prefix>
+                        <x.ActionRowPrefix>
                             <GtkLabel ref={prefixRef} label="First" />
-                        </ActionRow.Prefix>
-                        <ActionRow.Suffix>
+                        </x.ActionRowPrefix>
+                        <x.ActionRowSuffix>
                             <GtkLabel ref={suffixRef} label="Second" />
-                        </ActionRow.Suffix>
+                        </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
                 { wrapper: false },
@@ -54,9 +54,9 @@ describe("render - ActionRow", () => {
                         <AdwActionRow ref={rowRef} title="Test Row">
                             {Array.from({ length: count }, (_, i) => (
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
-                                <ActionRow.Suffix key={`suffix-label-${i}`}>
+                                <x.ActionRowSuffix key={`suffix-label-${i}`}>
                                     <GtkLabel ref={labelRefs[i]} label={`Label ${i}`} />
-                                </ActionRow.Suffix>
+                                </x.ActionRowSuffix>
                             ))}
                         </AdwActionRow>
                     </GtkListBox>

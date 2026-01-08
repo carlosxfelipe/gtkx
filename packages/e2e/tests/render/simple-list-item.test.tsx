@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDropDown, SimpleListItem } from "@gtkx/react";
+import { GtkDropDown, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ describe("render - SimpleListItem", () => {
 
             await render(
                 <GtkDropDown ref={dropDownRef}>
-                    <SimpleListItem id="item1" value="Item Value" />
+                    <x.SimpleListItem id="item1" value="Item Value" />
                 </GtkDropDown>,
                 { wrapper: false },
             );
@@ -24,7 +24,7 @@ describe("render - SimpleListItem", () => {
 
             await render(
                 <GtkDropDown ref={dropDownRef}>
-                    <SimpleListItem id="test" value="Test String" />
+                    <x.SimpleListItem id="test" value="Test String" />
                 </GtkDropDown>,
                 { wrapper: false },
             );
@@ -38,7 +38,7 @@ describe("render - SimpleListItem", () => {
             function App({ value }: { value: string }) {
                 return (
                     <GtkDropDown ref={dropDownRef}>
-                        <SimpleListItem id="dynamic" value={value} />
+                        <x.SimpleListItem id="dynamic" value={value} />
                     </GtkDropDown>
                 );
             }
@@ -55,9 +55,9 @@ describe("render - SimpleListItem", () => {
 
             await render(
                 <GtkDropDown ref={dropDownRef}>
-                    <SimpleListItem id="a" value="First" />
-                    <SimpleListItem id="b" value="Second" />
-                    <SimpleListItem id="c" value="Third" />
+                    <x.SimpleListItem id="a" value="First" />
+                    <x.SimpleListItem id="b" value="Second" />
+                    <x.SimpleListItem id="c" value="Third" />
                 </GtkDropDown>,
                 { wrapper: false },
             );
@@ -72,7 +72,7 @@ describe("render - SimpleListItem", () => {
                 return (
                     <GtkDropDown ref={dropDownRef}>
                         {items.map((item) => (
-                            <SimpleListItem key={item} id={item} value={item} />
+                            <x.SimpleListItem key={item} id={item} value={item} />
                         ))}
                     </GtkDropDown>
                 );

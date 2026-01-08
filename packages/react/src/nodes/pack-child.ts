@@ -18,14 +18,14 @@ export class PackChild extends VirtualNode {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
-        return type === "Pack.Start" || type === "Pack.End";
+        return type === "PackStart" || type === "PackEnd";
     }
 
     private parent?: PackableWidget;
     private children: Gtk.Widget[] = [];
 
     private getPosition(): PackChildPosition {
-        return this.typeName === "Pack.Start" ? "start" : "end";
+        return this.typeName === "PackStart" ? "start" : "end";
     }
 
     public setParent(newParent?: PackableWidget): void {

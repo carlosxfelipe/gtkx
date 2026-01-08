@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, Menu } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcuts.tsx?raw";
@@ -41,85 +41,85 @@ const ShortcutsDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkMenuButton label="File Menu" iconName="open-menu-symbolic">
-                            <Menu.Section>
-                                <Menu.Item
+                            <x.MenuSection>
+                                <x.MenuItem
                                     id="new"
                                     label="New"
                                     onActivate={() => handleMenuAction("New file")}
                                     accels="<Control>n"
                                 />
-                                <Menu.Item
+                                <x.MenuItem
                                     id="open"
                                     label="Open"
                                     onActivate={() => handleMenuAction("Open file")}
                                     accels="<Control>o"
                                 />
-                                <Menu.Item
+                                <x.MenuItem
                                     id="save"
                                     label="Save"
                                     onActivate={() => handleMenuAction("Save file")}
                                     accels="<Control>s"
                                 />
-                                <Menu.Item
+                                <x.MenuItem
                                     id="save-as"
                                     label="Save As..."
                                     onActivate={() => handleMenuAction("Save As...")}
                                     accels="<Control><Shift>s"
                                 />
-                            </Menu.Section>
-                            <Menu.Section>
-                                <Menu.Item
+                            </x.MenuSection>
+                            <x.MenuSection>
+                                <x.MenuItem
                                     id="close"
                                     label="Close"
                                     onActivate={() => handleMenuAction("Close")}
                                     accels="<Control>w"
                                 />
-                            </Menu.Section>
+                            </x.MenuSection>
                         </GtkMenuButton>
 
                         <GtkMenuButton label="Edit Menu" iconName="edit-symbolic">
-                            <Menu.Section>
-                                <Menu.Item
+                            <x.MenuSection>
+                                <x.MenuItem
                                     id="undo"
                                     label="Undo"
                                     onActivate={() => handleMenuAction("Undo")}
                                     accels="<Control>z"
                                 />
-                                <Menu.Item
+                                <x.MenuItem
                                     id="redo"
                                     label="Redo"
                                     onActivate={() => handleMenuAction("Redo")}
                                     accels="<Control><Shift>z"
                                 />
-                            </Menu.Section>
-                            <Menu.Section>
-                                <Menu.Item
+                            </x.MenuSection>
+                            <x.MenuSection>
+                                <x.MenuItem
                                     id="cut"
                                     label="Cut"
                                     onActivate={() => handleMenuAction("Cut")}
                                     accels="<Control>x"
                                 />
-                                <Menu.Item
+                                <x.MenuItem
                                     id="copy"
                                     label="Copy"
                                     onActivate={() => handleMenuAction("Copy")}
                                     accels="<Control>c"
                                 />
-                                <Menu.Item
+                                <x.MenuItem
                                     id="paste"
                                     label="Paste"
                                     onActivate={() => handleMenuAction("Paste")}
                                     accels="<Control>v"
                                 />
-                            </Menu.Section>
-                            <Menu.Section>
-                                <Menu.Item
+                            </x.MenuSection>
+                            <x.MenuSection>
+                                <x.MenuItem
                                     id="select-all"
                                     label="Select All"
                                     onActivate={() => handleMenuAction("Select All")}
                                     accels="<Control>a"
                                 />
-                            </Menu.Section>
+                            </x.MenuSection>
                         </GtkMenuButton>
                     </GtkBox>
 

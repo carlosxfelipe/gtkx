@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GridView, GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, ListItem } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
@@ -235,7 +235,7 @@ const ListViewMinesweeperDemo = () => {
                     halign={Gtk.Align.CENTER}
                 >
                     <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <GridView<Cell>
+                        <x.GridView<Cell>
                             minColumns={GRID_SIZE}
                             maxColumns={GRID_SIZE}
                             onActivate={(_grid, position) => handleCellClick(position)}
@@ -274,9 +274,9 @@ const ListViewMinesweeperDemo = () => {
                             )}
                         >
                             {board.map((cell) => (
-                                <ListItem key={cell.id} id={cell.id} value={cell} />
+                                <x.ListItem key={cell.id} id={cell.id} value={cell} />
                             ))}
-                        </GridView>
+                        </x.GridView>
                     </GtkScrolledWindow>
                 </GtkBox>
             </GtkFrame>

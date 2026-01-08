@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { FixedChild, GtkBox, GtkButton, GtkFixed, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFixed, GtkLabel, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed.tsx?raw";
@@ -85,9 +85,9 @@ const FixedDemo = () => {
                 </GtkBox>
                 <GtkFixed widthRequest={350} heightRequest={180} cssClasses={["card"]} marginTop={8}>
                     {positions.map((pos) => (
-                        <FixedChild key={pos.label} x={pos.x} y={pos.y}>
+                        <x.FixedChild key={pos.label} x={pos.x} y={pos.y}>
                             <GtkLabel label={pos.label} cssClasses={["accent", "pill"]} />
-                        </FixedChild>
+                        </x.FixedChild>
                     ))}
                 </GtkFixed>
             </GtkBox>

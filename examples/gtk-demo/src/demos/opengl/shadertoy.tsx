@@ -11,7 +11,7 @@ import {
     GtkPaned,
     GtkScrolledWindow,
     GtkSourceView,
-    Slot,
+    x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -431,7 +431,7 @@ const ShadertoyDemo = () => {
                     </GtkBox>
 
                     <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} shrinkStartChild={false} shrinkEndChild={false}>
-                        <Slot for={GtkPaned} id="startChild">
+                        <x.Slot for={GtkPaned} id="startChild">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
                                 <GtkScrolledWindow vexpand hexpand heightRequest={300}>
                                     <GtkSourceView
@@ -469,9 +469,9 @@ const ShadertoyDemo = () => {
                                     <GtkButton label="Reset Time" onClicked={handleReset} />
                                 </GtkBox>
                             </GtkBox>
-                        </Slot>
+                        </x.Slot>
 
-                        <Slot for={GtkPaned} id="endChild">
+                        <x.Slot for={GtkPaned} id="endChild">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
                                 <GtkGLArea
                                     ref={glAreaRef}
@@ -491,7 +491,7 @@ const ShadertoyDemo = () => {
                                     halign={Gtk.Align.CENTER}
                                 />
                             </GtkBox>
-                        </Slot>
+                        </x.Slot>
                     </GtkPaned>
                 </GtkBox>
             </GtkFrame>

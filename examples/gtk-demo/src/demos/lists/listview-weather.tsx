@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, ListItem, ListView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-weather.tsx?raw";
@@ -147,7 +147,7 @@ const ListViewWeatherDemo = () => {
                     marginEnd={12}
                 >
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <ListView<WeatherDay>
+                        <x.ListView<WeatherDay>
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
@@ -217,9 +217,9 @@ const ListViewWeatherDemo = () => {
                             )}
                         >
                             {weatherData.map((day) => (
-                                <ListItem key={day.id} id={day.id} value={day} />
+                                <x.ListItem key={day.id} id={day.id} value={day} />
                             ))}
-                        </ListView>
+                        </x.ListView>
                     </GtkScrolledWindow>
 
                     {selectedDay && (

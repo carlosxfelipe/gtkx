@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { ActionRow, AdwActionRow, GtkLabel, GtkListBox } from "@gtkx/react";
+import { AdwActionRow, GtkLabel, GtkListBox, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -14,9 +14,9 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Prefix>
+                        <x.ActionRowPrefix>
                             <GtkLabel ref={prefixRef} label="Prefix" />
-                        </ActionRow.Prefix>
+                        </x.ActionRowPrefix>
                     </AdwActionRow>
                 </GtkListBox>,
                 { wrapper: false },
@@ -32,9 +32,9 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Suffix>
+                        <x.ActionRowSuffix>
                             <GtkLabel ref={suffixRef} label="Suffix" />
-                        </ActionRow.Suffix>
+                        </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
                 { wrapper: false },
@@ -51,12 +51,12 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Prefix>
+                        <x.ActionRowPrefix>
                             <GtkLabel ref={prefixRef} label="Prefix" />
-                        </ActionRow.Prefix>
-                        <ActionRow.Suffix>
+                        </x.ActionRowPrefix>
+                        <x.ActionRowSuffix>
                             <GtkLabel ref={suffixRef} label="Suffix" />
-                        </ActionRow.Suffix>
+                        </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
                 { wrapper: false },
@@ -76,13 +76,13 @@ describe("render - ActionRowChild", () => {
                     <GtkListBox>
                         <AdwActionRow ref={rowRef} title="Test Row">
                             {showPrefix && (
-                                <ActionRow.Prefix>
+                                <x.ActionRowPrefix>
                                     <GtkLabel ref={prefixRef} label="Prefix" />
-                                </ActionRow.Prefix>
+                                </x.ActionRowPrefix>
                             )}
-                            <ActionRow.Suffix>
+                            <x.ActionRowSuffix>
                                 <GtkLabel ref={alwaysRef} label="Always" />
-                            </ActionRow.Suffix>
+                            </x.ActionRowSuffix>
                         </AdwActionRow>
                     </GtkListBox>
                 );
@@ -107,10 +107,10 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Prefix>
+                        <x.ActionRowPrefix>
                             <GtkLabel ref={firstRef} label="First" />
                             <GtkLabel ref={secondRef} label="Second" />
-                        </ActionRow.Prefix>
+                        </x.ActionRowPrefix>
                     </AdwActionRow>
                 </GtkListBox>,
                 { wrapper: false },
@@ -128,10 +128,10 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <ActionRow.Suffix>
+                        <x.ActionRowSuffix>
                             <GtkLabel ref={firstRef} label="First" />
                             <GtkLabel ref={secondRef} label="Second" />
-                        </ActionRow.Suffix>
+                        </x.ActionRowSuffix>
                     </AdwActionRow>
                 </GtkListBox>,
                 { wrapper: false },
@@ -150,10 +150,10 @@ describe("render - ActionRowChild", () => {
                 return (
                     <GtkListBox>
                         <AdwActionRow ref={rowRef} title="Test Row">
-                            <ActionRow.Prefix>
+                            <x.ActionRowPrefix>
                                 <GtkLabel ref={firstRef} label="First" />
                                 {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                            </ActionRow.Prefix>
+                            </x.ActionRowPrefix>
                         </AdwActionRow>
                     </GtkListBox>
                 );

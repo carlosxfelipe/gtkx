@@ -12,7 +12,7 @@ export class NotebookPageTabNode extends SlotNode<Props> {
     private page?: Gtk.Widget;
 
     public static override matches(type: string): boolean {
-        return type === "Notebook.PageTab";
+        return type === "NotebookPageTab";
     }
 
     public setPage(notebook?: Gtk.Notebook, page?: Gtk.Widget): void {

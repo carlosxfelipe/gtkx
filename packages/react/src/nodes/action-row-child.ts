@@ -18,14 +18,14 @@ export class ActionRowChild extends VirtualNode {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
-        return type === "ActionRow.Prefix" || type === "ActionRow.Suffix";
+        return type === "ActionRowPrefix" || type === "ActionRowSuffix";
     }
 
     private parent?: PrefixSuffixWidget;
     private children: Gtk.Widget[] = [];
 
     private getPosition(): ActionRowChildPosition {
-        return this.typeName === "ActionRow.Prefix" ? "prefix" : "suffix";
+        return this.typeName === "ActionRowPrefix" ? "prefix" : "suffix";
     }
 
     public setParent(newParent?: PrefixSuffixWidget): void {

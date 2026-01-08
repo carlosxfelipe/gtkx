@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkStack, StackPage } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkStack, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
@@ -65,7 +65,7 @@ const StackDemo = () => {
                         halign={Gtk.Align.START}
                     />
                     <GtkStack visibleChildName={currentPage} transitionType={transitionType} transitionDuration={300}>
-                        <StackPage name="home" title="Home" iconName="go-home-symbolic">
+                        <x.StackPage name="home" title="Home" iconName="go-home-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -81,8 +81,8 @@ const StackDemo = () => {
                                     cssClasses={["dim-label"]}
                                 />
                             </GtkBox>
-                        </StackPage>
-                        <StackPage name="search" title="Search" iconName="system-search-symbolic">
+                        </x.StackPage>
+                        <x.StackPage name="search" title="Search" iconName="system-search-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -98,8 +98,8 @@ const StackDemo = () => {
                                     cssClasses={["dim-label"]}
                                 />
                             </GtkBox>
-                        </StackPage>
-                        <StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
+                        </x.StackPage>
+                        <x.StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -115,7 +115,7 @@ const StackDemo = () => {
                                     cssClasses={["dim-label"]}
                                 />
                             </GtkBox>
-                        </StackPage>
+                        </x.StackPage>
                     </GtkStack>
                 </GtkBox>
             </GtkFrame>

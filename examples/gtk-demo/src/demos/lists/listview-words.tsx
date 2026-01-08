@@ -6,8 +6,7 @@ import {
     GtkLabel,
     GtkScrolledWindow,
     GtkSearchEntry,
-    ListItem,
-    ListView,
+    x,
 } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
@@ -248,7 +247,7 @@ const ListViewWordsDemo = () => {
                     />
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <ListView<WordItem>
+                        <x.ListView<WordItem>
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
@@ -289,9 +288,9 @@ const ListViewWordsDemo = () => {
                             )}
                         >
                             {filteredWords.map((word) => (
-                                <ListItem key={word.id} id={word.id} value={word} />
+                                <x.ListItem key={word.id} id={word.id} value={word} />
                             ))}
-                        </ListView>
+                        </x.ListView>
                     </GtkScrolledWindow>
 
                     {filteredWords.length === 0 && (

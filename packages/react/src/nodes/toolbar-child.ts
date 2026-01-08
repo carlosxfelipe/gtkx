@@ -10,7 +10,7 @@ class ToolbarChildNode extends SlotNode {
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
-        return type === "Toolbar.Top" || type === "Toolbar.Bottom";
+        return type === "ToolbarTop" || type === "ToolbarBottom";
     }
 
     private getToolbar(): Adw.ToolbarView {
@@ -22,7 +22,7 @@ class ToolbarChildNode extends SlotNode {
     }
 
     private getPosition(): ToolbarChildNodePosition {
-        return this.typeName === "Toolbar.Top" ? "top" : "bottom";
+        return this.typeName === "ToolbarTop" ? "top" : "bottom";
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {

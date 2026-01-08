@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkHeaderBar, GtkLabel, Pack, Slot } from "@gtkx/react";
+import { GtkHeaderBar, GtkLabel, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,9 +12,9 @@ describe("render - PackChild", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>
+                    <x.PackStart>
                         <GtkLabel ref={startRef} label="Start" />
-                    </Pack.Start>
+                    </x.PackStart>
                 </GtkHeaderBar>,
                 { wrapper: false },
             );
@@ -29,9 +29,9 @@ describe("render - PackChild", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.End>
+                    <x.PackEnd>
                         <GtkLabel ref={endRef} label="End" />
-                    </Pack.End>
+                    </x.PackEnd>
                 </GtkHeaderBar>,
                 { wrapper: false },
             );
@@ -47,12 +47,12 @@ describe("render - PackChild", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>
+                    <x.PackStart>
                         <GtkLabel ref={startRef} label="Start" />
-                    </Pack.Start>
-                    <Pack.End>
+                    </x.PackStart>
+                    <x.PackEnd>
                         <GtkLabel ref={endRef} label="End" />
-                    </Pack.End>
+                    </x.PackEnd>
                 </GtkHeaderBar>,
                 { wrapper: false },
             );
@@ -70,13 +70,13 @@ describe("render - PackChild", () => {
                 return (
                     <GtkHeaderBar ref={headerBarRef}>
                         {showStart && (
-                            <Pack.Start>
+                            <x.PackStart>
                                 <GtkLabel ref={startRef} label="Start" />
-                            </Pack.Start>
+                            </x.PackStart>
                         )}
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel ref={alwaysRef} label="Always" />
-                        </Slot>
+                        </x.Slot>
                     </GtkHeaderBar>
                 );
             }
@@ -99,10 +99,10 @@ describe("render - PackChild", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>
+                    <x.PackStart>
                         <GtkLabel ref={firstRef} label="First" />
                         <GtkLabel ref={secondRef} label="Second" />
-                    </Pack.Start>
+                    </x.PackStart>
                 </GtkHeaderBar>,
                 { wrapper: false },
             );
@@ -118,10 +118,10 @@ describe("render - PackChild", () => {
 
             await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.End>
+                    <x.PackEnd>
                         <GtkLabel ref={firstRef} label="First" />
                         <GtkLabel ref={secondRef} label="Second" />
-                    </Pack.End>
+                    </x.PackEnd>
                 </GtkHeaderBar>,
                 { wrapper: false },
             );
@@ -138,10 +138,10 @@ describe("render - PackChild", () => {
             function App({ showSecond }: { showSecond: boolean }) {
                 return (
                     <GtkHeaderBar ref={headerBarRef}>
-                        <Pack.Start>
+                        <x.PackStart>
                             <GtkLabel ref={firstRef} label="First" />
                             {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                        </Pack.Start>
+                        </x.PackStart>
                     </GtkHeaderBar>
                 );
             }

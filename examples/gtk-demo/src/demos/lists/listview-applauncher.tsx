@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
-    GridView,
     GtkBox,
     GtkButton,
     GtkFrame,
@@ -8,7 +7,7 @@ import {
     GtkLabel,
     GtkScrolledWindow,
     GtkSearchEntry,
-    ListItem,
+    x,
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
@@ -254,7 +253,7 @@ const ListViewApplauncherDemo = () => {
                     />
 
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <GridView<AppItem>
+                        <x.GridView<AppItem>
                             minColumns={3}
                             maxColumns={6}
                             onActivate={handleActivate}
@@ -293,9 +292,9 @@ const ListViewApplauncherDemo = () => {
                             )}
                         >
                             {filteredApps.map((app) => (
-                                <ListItem key={app.id} id={app.id} value={app} />
+                                <x.ListItem key={app.id} id={app.id} value={app} />
                             ))}
-                        </GridView>
+                        </x.GridView>
                     </GtkScrolledWindow>
 
                     {selectedApp && (

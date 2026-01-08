@@ -30,9 +30,9 @@ Linear layout (horizontal or vertical).
 
 ```tsx
 <GtkGrid rowSpacing={8} columnSpacing={12}>
-    <GridChild column={0} row={0}><GtkLabel label="Name:" /></GridChild>
-    <GridChild column={1} row={0}><GtkEntry hexpand /></GridChild>
-    <GridChild column={0} row={1} columnSpan={2}><GtkButton label="Submit" /></GridChild>
+    <x.GridChild column={0} row={0}><GtkLabel label="Name:" /></x.GridChild>
+    <x.GridChild column={1} row={0}><GtkEntry hexpand /></x.GridChild>
+    <x.GridChild column={0} row={1} columnSpan={2}><GtkButton label="Submit" /></x.GridChild>
 </GtkGrid>
 ```
 
@@ -43,12 +43,12 @@ Page container, shows one child at a time.
 
 ```tsx
 <GtkStack visibleChildName="page1" transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT}>
-    <StackPage name="page1" title="First" iconName="document-new">
+    <x.StackPage name="page1" title="First" iconName="document-new">
         <Content1 />
-    </StackPage>
-    <StackPage name="page2" title="Second">
+    </x.StackPage>
+    <x.StackPage name="page2" title="Second">
         <Content2 />
-    </StackPage>
+    </x.StackPage>
 </GtkStack>
 ```
 
@@ -59,22 +59,22 @@ Tabbed container with visible tabs.
 
 ```tsx
 <GtkNotebook>
-    <Notebook.Page label="Tab 1"><Content1 /></Notebook.Page>
-    <Notebook.Page label="Tab 2"><Content2 /></Notebook.Page>
+    <x.NotebookPage label="Tab 1"><Content1 /></x.NotebookPage>
+    <x.NotebookPage label="Tab 2"><Content2 /></x.NotebookPage>
 </GtkNotebook>
 ```
 
 Custom tab widget:
 ```tsx
-<Notebook.Page>
-    <Notebook.PageTab>
+<x.NotebookPage>
+    <x.NotebookPageTab>
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
             <GtkImage iconName="folder-symbolic" />
             <GtkLabel label="Files" />
         </GtkBox>
-    </Notebook.PageTab>
+    </x.NotebookPageTab>
     <Content />
-</Notebook.Page>
+</x.NotebookPage>
 ```
 
 ### GtkPaned
@@ -82,8 +82,8 @@ Resizable split with draggable divider. **Requires Slot components.**
 
 ```tsx
 <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={280} shrinkStartChild={false}>
-    <Slot for={GtkPaned} id="startChild"><Sidebar /></Slot>
-    <Slot for={GtkPaned} id="endChild"><MainContent /></Slot>
+    <x.Slot for={GtkPaned} id="startChild"><Sidebar /></x.Slot>
+    <x.Slot for={GtkPaned} id="endChild"><MainContent /></x.Slot>
 </GtkPaned>
 ```
 
@@ -93,9 +93,9 @@ Stack widgets on top of each other. First child is base layer, additional childr
 ```tsx
 <GtkOverlay>
     <GtkButton label="Notifications" />
-    <OverlayChild>
+    <x.OverlayChild>
         <GtkLabel label="3" cssClasses={["badge"]} halign={Gtk.Align.END} valign={Gtk.Align.START} />
-    </OverlayChild>
+    </x.OverlayChild>
 </GtkOverlay>
 ```
 
@@ -118,22 +118,22 @@ All virtual list widgets use `ListItem` children and a `renderItem` function.
 High-performance scrollable list with selection.
 
 ```tsx
-<ListView<Item>
+<x.ListView<Item>
     vexpand
     selected={selectedId ? [selectedId] : []}
     selectionMode={Gtk.SelectionMode.SINGLE}
     onSelectionChanged={(ids) => setSelectedId(ids[0])}
     renderItem={(item) => <GtkLabel label={item?.name ?? ""} />}
 >
-    {items.map(item => <ListItem key={item.id} id={item.id} value={item} />)}
-</ListView>
+    {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
+</x.ListView>
 ```
 
 ### GridView
 Grid-based virtual scrolling.
 
 ```tsx
-<GridView<Item>
+<x.GridView<Item>
     minColumns={2}
     maxColumns={4}
     renderItem={(item) => (
@@ -143,8 +143,8 @@ Grid-based virtual scrolling.
         </GtkBox>
     )}
 >
-    {items.map(item => <ListItem key={item.id} id={item.id} value={item} />)}
-</GridView>
+    {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
+</x.GridView>
 ```
 
 ### GtkColumnView
@@ -152,7 +152,7 @@ Table with sortable columns.
 
 ```tsx
 <GtkColumnView sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} onSortChange={handleSort}>
-    <ColumnViewColumn<Item>
+    <x.ColumnViewColumn<Item>
         title="Name"
         id="name"
         expand
@@ -160,13 +160,13 @@ Table with sortable columns.
         sortable
         renderCell={(item) => <GtkLabel label={item?.name ?? ""} />}
     />
-    <ColumnViewColumn<Item>
+    <x.ColumnViewColumn<Item>
         title="Size"
         id="size"
         fixedWidth={100}
         renderCell={(item) => <GtkLabel label={item?.size ?? ""} />}
     />
-    {items.map(item => <ListItem key={item.id} id={item.id} value={item} />)}
+    {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
 </GtkColumnView>
 ```
 
@@ -175,7 +175,7 @@ Selection dropdown.
 
 ```tsx
 <GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
-    {options.map(opt => <SimpleListItem key={opt.id} id={opt.id} value={opt.label} />)}
+    {options.map(opt => <x.SimpleListItem key={opt.id} id={opt.id} value={opt.label} />)}
 </GtkDropDown>
 ```
 
@@ -247,11 +247,11 @@ Title bar with packed widgets. Use `Pack.Start`, `Pack.End`, and `Slot` for titl
 
 ```tsx
 <GtkHeaderBar>
-    <Pack.Start><GtkButton iconName="go-previous-symbolic" /></Pack.Start>
-    <Slot for={GtkHeaderBar} id="titleWidget">
+    <x.PackStart><GtkButton iconName="go-previous-symbolic" /></x.PackStart>
+    <x.Slot for={GtkHeaderBar} id="titleWidget">
         <GtkLabel label="Title" cssClasses={["title"]} />
-    </Slot>
-    <Pack.End><GtkMenuButton iconName="open-menu-symbolic" /></Pack.End>
+    </x.Slot>
+    <x.PackEnd><GtkMenuButton iconName="open-menu-symbolic" /></x.PackEnd>
 </GtkHeaderBar>
 ```
 
@@ -260,8 +260,8 @@ Bottom action bar.
 
 ```tsx
 <GtkActionBar>
-    <Pack.Start><GtkButton label="Cancel" /></Pack.Start>
-    <Pack.End><GtkButton label="Save" cssClasses={["suggested-action"]} /></Pack.End>
+    <x.PackStart><GtkButton label="Cancel" /></x.PackStart>
+    <x.PackEnd><GtkButton label="Save" cssClasses={["suggested-action"]} /></x.PackEnd>
 </GtkActionBar>
 ```
 
@@ -273,23 +273,23 @@ Bottom action bar.
 
 ```tsx
 <GtkMenuButton iconName="open-menu-symbolic">
-    <Slot for={GtkMenuButton} id="popover">
+    <x.Slot for={GtkMenuButton} id="popover">
         <GtkPopoverMenu>
-            <Menu.Section>
-                <Menu.Item id="new" label="New" onActivate={handleNew} accels="<Control>n" />
-                <Menu.Item id="open" label="Open" onActivate={handleOpen} />
-            </Menu.Section>
-            <Menu.Section>
-                <Menu.Submenu label="Export">
-                    <Menu.Item id="pdf" label="PDF" onActivate={exportPdf} />
-                    <Menu.Item id="csv" label="CSV" onActivate={exportCsv} />
-                </Menu.Submenu>
-            </Menu.Section>
-            <Menu.Section>
-                <Menu.Item id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-            </Menu.Section>
+            <x.MenuSection>
+                <x.MenuItem id="new" label="New" onActivate={handleNew} accels="<Control>n" />
+                <x.MenuItem id="open" label="Open" onActivate={handleOpen} />
+            </x.MenuSection>
+            <x.MenuSection>
+                <x.MenuSubmenu label="Export">
+                    <x.MenuItem id="pdf" label="PDF" onActivate={exportPdf} />
+                    <x.MenuItem id="csv" label="CSV" onActivate={exportCsv} />
+                </x.MenuSubmenu>
+            </x.MenuSection>
+            <x.MenuSection>
+                <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+            </x.MenuSection>
         </GtkPopoverMenu>
-    </Slot>
+    </x.Slot>
 </GtkMenuButton>
 ```
 
@@ -315,9 +315,9 @@ Bottom action bar.
 Custom titlebar:
 ```tsx
 <GtkApplicationWindow ...>
-    <Slot for={GtkWindow} id="titlebar">
+    <x.Slot for={GtkWindow} id="titlebar">
         <GtkHeaderBar />
-    </Slot>
+    </x.Slot>
     <Content />
 </GtkApplicationWindow>
 ```
@@ -334,17 +334,17 @@ Modern app structure.
 ```tsx
 <AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
     <AdwToolbarView>
-        <Toolbar.Top>
+        <x.ToolbarTop>
             <AdwHeaderBar>
-                <Slot for={AdwHeaderBar} id="titleWidget">
+                <x.Slot for={AdwHeaderBar} id="titleWidget">
                     <AdwWindowTitle title="App" subtitle="Description" />
-                </Slot>
+                </x.Slot>
             </AdwHeaderBar>
-        </Toolbar.Top>
+        </x.ToolbarTop>
         <MainContent />
-        <Toolbar.Bottom>
+        <x.ToolbarBottom>
             <GtkActionBar />
-        </Toolbar.Bottom>
+        </x.ToolbarBottom>
     </AdwToolbarView>
 </AdwApplicationWindow>
 ```
@@ -373,9 +373,9 @@ Settings UI.
     <AdwPreferencesGroup title="Appearance" description="Customize look">
         <AdwSwitchRow title="Dark Mode" active={dark} onActivated={() => setDark(!dark)} />
         <AdwActionRow title="Theme" subtitle="Select color">
-            <Slot for={AdwActionRow} id="activatableWidget">
+            <x.Slot for={AdwActionRow} id="activatableWidget">
                 <GtkImage iconName="go-next-symbolic" valign={Gtk.Align.CENTER} />
-            </Slot>
+            </x.Slot>
         </AdwActionRow>
     </AdwPreferencesGroup>
 </AdwPreferencesPage>

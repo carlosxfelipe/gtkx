@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, GtkStack, StackPage } from "@gtkx/react";
+import { GtkLabel, GtkStack, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="page1">Page 1</StackPage>
+                    <x.StackPage name="page1">Page 1</x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -34,9 +34,9 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage title="Page Title" name="titled">
+                    <x.StackPage title="Page Title" name="titled">
                         Titled Content
-                    </StackPage>
+                    </x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -50,7 +50,7 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage>Unnamed Page</StackPage>
+                    <x.StackPage>Unnamed Page</x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -63,9 +63,9 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="props-test" iconName="dialog-information" needsAttention={true}>
+                    <x.StackPage name="props-test" iconName="dialog-information" needsAttention={true}>
                         With Props
-                    </StackPage>
+                    </x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -85,9 +85,9 @@ describe("render - Stack", () => {
                 return (
                     <GtkStack ref={stackRef}>
                         {pages.map((name) => (
-                            <StackPage key={name} name={name}>
+                            <x.StackPage key={name} name={name}>
                                 {name}
-                            </StackPage>
+                            </x.StackPage>
                         ))}
                     </GtkStack>
                 );
@@ -109,9 +109,9 @@ describe("render - Stack", () => {
                 return (
                     <GtkStack ref={stackRef}>
                         {pages.map((name) => (
-                            <StackPage key={name} name={name}>
+                            <x.StackPage key={name} name={name}>
                                 {name}
-                            </StackPage>
+                            </x.StackPage>
                         ))}
                     </GtkStack>
                 );
@@ -132,9 +132,9 @@ describe("render - Stack", () => {
             function App({ iconName }: { iconName: string }) {
                 return (
                     <GtkStack ref={stackRef}>
-                        <StackPage name="dynamic" iconName={iconName}>
+                        <x.StackPage name="dynamic" iconName={iconName}>
                             Dynamic
-                        </StackPage>
+                        </x.StackPage>
                     </GtkStack>
                 );
             }
@@ -158,8 +158,8 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef} visibleChildName="page2">
-                    <StackPage name="page1">Page 1</StackPage>
-                    <StackPage name="page2">Page 2</StackPage>
+                    <x.StackPage name="page1">Page 1</x.StackPage>
+                    <x.StackPage name="page2">Page 2</x.StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -174,9 +174,9 @@ describe("render - Stack", () => {
                 return (
                     <GtkStack ref={stackRef} visibleChildName="target">
                         {pages.map((name) => (
-                            <StackPage key={name} name={name}>
+                            <x.StackPage key={name} name={name}>
                                 <GtkLabel label={name} />
-                            </StackPage>
+                            </x.StackPage>
                         ))}
                     </GtkStack>
                 );

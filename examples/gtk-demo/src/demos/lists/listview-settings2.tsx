@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, GtkSwitch, TreeListItem, TreeListView } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, GtkSwitch, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
@@ -281,7 +281,7 @@ const ListViewSettings2Demo = () => {
             </GtkBox>
 
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <TreeListView<TreeItem>
+                <x.TreeListView<TreeItem>
                     renderItem={(item, _row) => {
                         if (!item) {
                             return <GtkLabel label="Loading..." />;
@@ -357,18 +357,18 @@ const ListViewSettings2Demo = () => {
                     }}
                 >
                     {categoriesData.map((category) => (
-                        <TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
                             {category.children.map((setting) => (
-                                <TreeListItem
+                                <x.TreeListItem
                                     key={setting.id}
                                     id={setting.id}
                                     value={setting as TreeItem}
                                     hideExpander
                                 />
                             ))}
-                        </TreeListItem>
+                        </x.TreeListItem>
                     ))}
-                </TreeListView>
+                </x.TreeListView>
             </GtkScrolledWindow>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, ListItem, ListView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
@@ -169,7 +169,7 @@ const ListViewSelectionsDemo = () => {
                     </GtkBox>
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <ListView<FruitItem>
+                        <x.ListView<FruitItem>
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
@@ -200,9 +200,9 @@ const ListViewSelectionsDemo = () => {
                             )}
                         >
                             {fruits.map((fruit) => (
-                                <ListItem key={fruit.id} id={fruit.id} value={fruit} />
+                                <x.ListItem key={fruit.id} id={fruit.id} value={fruit} />
                             ))}
-                        </ListView>
+                        </x.ListView>
                     </GtkScrolledWindow>
 
                     {lastActivated && (

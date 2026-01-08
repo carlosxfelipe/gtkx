@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkOverlay, GtkProgressBar, GtkSpinner, OverlayChild } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkOverlay, GtkProgressBar, GtkSpinner, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
@@ -46,14 +46,14 @@ const OverlayDemo = () => {
                     <GtkOverlay>
                         <GtkButton iconName="mail-unread-symbolic" widthRequest={48} heightRequest={48} />
                         {notificationCount > 0 && (
-                            <OverlayChild>
+                            <x.OverlayChild>
                                 <GtkLabel
                                     label={String(notificationCount)}
                                     cssClasses={["error", "pill", "numeric"]}
                                     halign={Gtk.Align.END}
                                     valign={Gtk.Align.START}
                                 />
-                            </OverlayChild>
+                            </x.OverlayChild>
                         )}
                     </GtkOverlay>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} valign={Gtk.Align.CENTER}>
@@ -110,7 +110,7 @@ const OverlayDemo = () => {
                         />
                     </GtkBox>
                     {loading && (
-                        <OverlayChild>
+                        <x.OverlayChild>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={8}
@@ -135,7 +135,7 @@ const OverlayDemo = () => {
                                     marginBottom={12}
                                 />
                             </GtkBox>
-                        </OverlayChild>
+                        </x.OverlayChild>
                     )}
                 </GtkOverlay>
             </GtkBox>
@@ -164,7 +164,7 @@ const OverlayDemo = () => {
                             vexpand
                         />
                     </GtkBox>
-                    <OverlayChild>
+                    <x.OverlayChild>
                         <GtkLabel
                             label="Top Left"
                             cssClasses={["accent", "caption"]}
@@ -173,8 +173,8 @@ const OverlayDemo = () => {
                             marginStart={8}
                             marginTop={8}
                         />
-                    </OverlayChild>
-                    <OverlayChild>
+                    </x.OverlayChild>
+                    <x.OverlayChild>
                         <GtkLabel
                             label="Top Right"
                             cssClasses={["accent", "caption"]}
@@ -183,8 +183,8 @@ const OverlayDemo = () => {
                             marginEnd={8}
                             marginTop={8}
                         />
-                    </OverlayChild>
-                    <OverlayChild>
+                    </x.OverlayChild>
+                    <x.OverlayChild>
                         <GtkLabel
                             label="Bottom Left"
                             cssClasses={["accent", "caption"]}
@@ -193,8 +193,8 @@ const OverlayDemo = () => {
                             marginStart={8}
                             marginBottom={8}
                         />
-                    </OverlayChild>
-                    <OverlayChild>
+                    </x.OverlayChild>
+                    <x.OverlayChild>
                         <GtkLabel
                             label="Bottom Right"
                             cssClasses={["accent", "caption"]}
@@ -203,7 +203,7 @@ const OverlayDemo = () => {
                             marginEnd={8}
                             marginBottom={8}
                         />
-                    </OverlayChild>
+                    </x.OverlayChild>
                 </GtkOverlay>
             </GtkBox>
 
@@ -238,9 +238,9 @@ const OverlayDemo = () => {
                             vexpand
                         />
                     </GtkBox>
-                    <OverlayChild>
+                    <x.OverlayChild>
                         <GtkProgressBar fraction={progress} halign={Gtk.Align.FILL} valign={Gtk.Align.END} hexpand />
-                    </OverlayChild>
+                    </x.OverlayChild>
                 </GtkOverlay>
             </GtkBox>
         </GtkBox>

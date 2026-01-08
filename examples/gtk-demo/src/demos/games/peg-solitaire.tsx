@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./peg-solitaire.tsx?raw";
@@ -203,7 +203,7 @@ const PegSolitaireDemo = () => {
                         {board.map((row, rowIndex) =>
                             row.map((cell, colIndex) => (
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Grid cells have stable positions
-                                <GridChild key={`cell-${rowIndex}-${colIndex}`} column={colIndex} row={rowIndex}>
+                                <x.GridChild key={`cell-${rowIndex}-${colIndex}`} column={colIndex} row={rowIndex}>
                                     {cell === -1 ? (
                                         <GtkBox
                                             orientation={Gtk.Orientation.VERTICAL}
@@ -235,7 +235,7 @@ const PegSolitaireDemo = () => {
                                             sensitive={isValidTarget(rowIndex, colIndex)}
                                         />
                                     )}
-                                </GridChild>
+                                </x.GridChild>
                             )),
                         )}
                     </GtkGrid>

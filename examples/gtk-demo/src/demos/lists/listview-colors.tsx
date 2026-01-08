@@ -7,8 +7,7 @@ import {
     GtkLabel,
     GtkScrolledWindow,
     GtkSearchEntry,
-    ListItem,
-    ListView,
+    x,
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
@@ -153,7 +152,7 @@ const ListViewColorsDemo = () => {
                     />
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <ListView<ColorItem>
+                        <x.ListView<ColorItem>
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
@@ -195,9 +194,9 @@ const ListViewColorsDemo = () => {
                             )}
                         >
                             {filteredColors.map((color) => (
-                                <ListItem key={color.id} id={color.id} value={color} />
+                                <x.ListItem key={color.id} id={color.id} value={color} />
                             ))}
-                        </ListView>
+                        </x.ListView>
                     </GtkScrolledWindow>
 
                     {selectedColor && (

@@ -11,8 +11,7 @@ import {
     GtkListBox,
     GtkScrolledWindow,
     quit,
-    Slot,
-    Toolbar,
+    x,
 } from "@gtkx/react";
 import { useRef } from "react";
 import { FilterBar } from "./components/filter-bar.js";
@@ -103,13 +102,13 @@ export const App = ({ onCloseRequest = quit }: AppProps) => {
     return (
         <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onCloseRequest={onCloseRequest}>
             <AdwToolbarView>
-                <Toolbar.Top>
+                <x.ToolbarTop>
                     <AdwHeaderBar>
-                        <Slot for={AdwHeaderBar} id="titleWidget">
+                        <x.Slot for={AdwHeaderBar} id="titleWidget">
                             <GtkLabel label="Tasks" cssClasses={["title"]} />
-                        </Slot>
+                        </x.Slot>
                     </AdwHeaderBar>
-                </Toolbar.Top>
+                </x.ToolbarTop>
 
                 <AdwToastOverlay ref={toastOverlayRef}>
                     <GtkBox

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
@@ -52,24 +52,24 @@ const SizeGroupDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <GridChild column={0} row={0}>
+                        <x.GridChild column={0} row={0}>
                             <GtkLabel label="Name:" halign={Gtk.Align.END} />
-                        </GridChild>
-                        <GridChild column={1} row={0}>
+                        </x.GridChild>
+                        <x.GridChild column={1} row={0}>
                             <GtkEntry hexpand placeholderText="John Doe" />
-                        </GridChild>
-                        <GridChild column={0} row={1}>
+                        </x.GridChild>
+                        <x.GridChild column={0} row={1}>
                             <GtkLabel label="Email Address:" halign={Gtk.Align.END} />
-                        </GridChild>
-                        <GridChild column={1} row={1}>
+                        </x.GridChild>
+                        <x.GridChild column={1} row={1}>
                             <GtkEntry hexpand placeholderText="john@example.com" />
-                        </GridChild>
-                        <GridChild column={0} row={2}>
+                        </x.GridChild>
+                        <x.GridChild column={0} row={2}>
                             <GtkLabel label="Phone:" halign={Gtk.Align.END} />
-                        </GridChild>
-                        <GridChild column={1} row={2}>
+                        </x.GridChild>
+                        <x.GridChild column={1} row={2}>
                             <GtkEntry hexpand placeholderText="+1 234 567 8900" />
-                        </GridChild>
+                        </x.GridChild>
                     </GtkGrid>
                 </GtkBox>
                 <GtkLabel
@@ -206,24 +206,24 @@ const SizeGroupDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GridChild column={0} row={0}>
+                            <x.GridChild column={0} row={0}>
                                 <GtkLabel label="Name:" halign={Gtk.Align.END} />
-                            </GridChild>
-                            <GridChild column={1} row={0}>
+                            </x.GridChild>
+                            <x.GridChild column={1} row={0}>
                                 <GtkEntry hexpand />
-                            </GridChild>
-                            <GridChild column={0} row={1}>
+                            </x.GridChild>
+                            <x.GridChild column={0} row={1}>
                                 <GtkLabel label="Email:" halign={Gtk.Align.END} />
-                            </GridChild>
-                            <GridChild column={1} row={1}>
+                            </x.GridChild>
+                            <x.GridChild column={1} row={1}>
                                 <GtkEntry hexpand />
-                            </GridChild>
-                            <GridChild column={0} row={2}>
+                            </x.GridChild>
+                            <x.GridChild column={0} row={2}>
                                 <GtkLabel label="Address:" halign={Gtk.Align.END} />
-                            </GridChild>
-                            <GridChild column={1} row={2}>
+                            </x.GridChild>
+                            <x.GridChild column={1} row={2}>
                                 <GtkEntry hexpand />
-                            </GridChild>
+                            </x.GridChild>
                         </GtkGrid>
                     </GtkBox>
                 </GtkBox>

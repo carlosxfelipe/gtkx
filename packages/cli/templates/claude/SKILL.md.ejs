@@ -53,8 +53,8 @@ Some widgets require children in specific slots:
 
 ```tsx
 <GtkPaned orientation={Gtk.Orientation.HORIZONTAL}>
-    <Slot for={GtkPaned} id="startChild"><Sidebar /></Slot>
-    <Slot for={GtkPaned} id="endChild"><Content /></Slot>
+    <x.Slot for={GtkPaned} id="startChild"><Sidebar /></x.Slot>
+    <x.Slot for={GtkPaned} id="endChild"><Content /></x.Slot>
 </GtkPaned>
 ```
 
@@ -62,8 +62,8 @@ Some widgets require children in specific slots:
 
 ```tsx
 <GtkHeaderBar>
-    <Pack.Start><GtkButton iconName="go-previous-symbolic" /></Pack.Start>
-    <Pack.End><GtkMenuButton iconName="open-menu-symbolic" /></Pack.End>
+    <x.PackStart><GtkButton iconName="go-previous-symbolic" /></x.PackStart>
+    <x.PackEnd><GtkMenuButton iconName="open-menu-symbolic" /></x.PackEnd>
 </GtkHeaderBar>
 ```
 

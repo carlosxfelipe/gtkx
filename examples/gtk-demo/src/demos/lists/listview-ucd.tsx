@@ -1,14 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
-    GridView,
     GtkBox,
     GtkButton,
     GtkFrame,
     GtkLabel,
     GtkScrolledWindow,
     GtkSearchEntry,
-    ListItem,
-    ListView,
+    x,
 } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
@@ -127,7 +125,7 @@ const ListViewUcdDemo = () => {
                         widthRequest={200}
                     >
                         <GtkScrolledWindow heightRequest={400} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                            <ListView<{ name: string }>
+                            <x.ListView<{ name: string }>
                                 showSeparators
                                 onActivate={(_list, position) => {
                                     const block = unicodeBlocks[position];
@@ -148,9 +146,9 @@ const ListViewUcdDemo = () => {
                                 )}
                             >
                                 {unicodeBlocks.map((block) => (
-                                    <ListItem key={block.name} id={block.name} value={{ name: block.name }} />
+                                    <x.ListItem key={block.name} id={block.name} value={{ name: block.name }} />
                                 ))}
-                            </ListView>
+                            </x.ListView>
                         </GtkScrolledWindow>
                     </GtkBox>
                 </GtkFrame>
@@ -193,7 +191,7 @@ const ListViewUcdDemo = () => {
 
                         <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             {viewMode === "grid" ? (
-                                <GridView<UnicodeChar>
+                                <x.GridView<UnicodeChar>
                                     minColumns={6}
                                     maxColumns={12}
                                     onActivate={handleActivate}
@@ -221,11 +219,11 @@ const ListViewUcdDemo = () => {
                                     )}
                                 >
                                     {filteredCharacters.map((char) => (
-                                        <ListItem key={char.id} id={char.id} value={char} />
+                                        <x.ListItem key={char.id} id={char.id} value={char} />
                                     ))}
-                                </GridView>
+                                </x.GridView>
                             ) : (
-                                <ListView<UnicodeChar>
+                                <x.ListView<UnicodeChar>
                                     showSeparators
                                     onActivate={handleActivate}
                                     renderItem={(item) => (
@@ -257,9 +255,9 @@ const ListViewUcdDemo = () => {
                                     )}
                                 >
                                     {filteredCharacters.map((char) => (
-                                        <ListItem key={char.id} id={char.id} value={char} />
+                                        <x.ListItem key={char.id} id={char.id} value={char} />
                                     ))}
-                                </ListView>
+                                </x.ListView>
                             )}
                         </GtkScrolledWindow>
 

@@ -1,6 +1,6 @@
 import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkLabel, GtkOverlay, OverlayChild } from "@gtkx/react";
+import { GtkButton, GtkLabel, GtkOverlay, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -15,9 +15,9 @@ describe("render - OverlayChild", () => {
             await render(
                 <GtkOverlay ref={overlayRef}>
                     <GtkLabel ref={mainRef} label="Main Content" />
-                    <OverlayChild>
+                    <x.OverlayChild>
                         <GtkButton ref={overlayChildRef} label="Overlay Button" />
-                    </OverlayChild>
+                    </x.OverlayChild>
                 </GtkOverlay>,
                 { wrapper: false },
             );
@@ -35,9 +35,9 @@ describe("render - OverlayChild", () => {
             await render(
                 <GtkOverlay ref={overlayRef}>
                     Main
-                    <OverlayChild measure={true}>
+                    <x.OverlayChild measure={true}>
                         <GtkButton ref={buttonRef} label="Measured Overlay" />
-                    </OverlayChild>
+                    </x.OverlayChild>
                 </GtkOverlay>,
                 { wrapper: false },
             );
@@ -53,9 +53,9 @@ describe("render - OverlayChild", () => {
             await render(
                 <GtkOverlay ref={overlayRef}>
                     Main
-                    <OverlayChild clipOverlay={true}>
+                    <x.OverlayChild clipOverlay={true}>
                         <GtkButton ref={buttonRef} label="Clipped Overlay" />
-                    </OverlayChild>
+                    </x.OverlayChild>
                 </GtkOverlay>,
                 { wrapper: false },
             );
@@ -72,9 +72,9 @@ describe("render - OverlayChild", () => {
                     <GtkOverlay ref={overlayRef}>
                         Main
                         {showOverlay && (
-                            <OverlayChild>
+                            <x.OverlayChild>
                                 <GtkButton label="Removable Overlay" />
-                            </OverlayChild>
+                            </x.OverlayChild>
                         )}
                     </GtkOverlay>
                 );
@@ -107,12 +107,12 @@ describe("render - OverlayChild", () => {
             await render(
                 <GtkOverlay ref={overlayRef}>
                     Main
-                    <OverlayChild>
+                    <x.OverlayChild>
                         <GtkButton label="First Overlay" />
-                    </OverlayChild>
-                    <OverlayChild>
+                    </x.OverlayChild>
+                    <x.OverlayChild>
                         <GtkButton label="Second Overlay" />
-                    </OverlayChild>
+                    </x.OverlayChild>
                 </GtkOverlay>,
                 { wrapper: false },
             );

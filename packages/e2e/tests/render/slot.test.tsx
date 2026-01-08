@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover, Slot } from "@gtkx/react";
+import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,9 +11,9 @@ describe("render - Slot", () => {
 
         await render(
             <GtkHeaderBar ref={headerBarRef}>
-                <Slot for={GtkHeaderBar} id="titleWidget">
+                <x.Slot for={GtkHeaderBar} id="titleWidget">
                     <GtkLabel ref={titleRef} label="Custom Title" />
-                </Slot>
+                </x.Slot>
             </GtkHeaderBar>,
             { wrapper: false },
         );
@@ -27,9 +27,9 @@ describe("render - Slot", () => {
 
         await render(
             <GtkPaned ref={panedRef} orientation={Gtk.Orientation.HORIZONTAL}>
-                <Slot for={GtkPaned} id="startChild">
+                <x.Slot for={GtkPaned} id="startChild">
                     <GtkLabel ref={labelRef} label="Start Content" />
-                </Slot>
+                </x.Slot>
             </GtkPaned>,
             { wrapper: false },
         );
@@ -44,9 +44,9 @@ describe("render - Slot", () => {
             return (
                 <GtkHeaderBar ref={headerBarRef}>
                     {showTitle && (
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             Title
-                        </Slot>
+                        </x.Slot>
                     )}
                 </GtkHeaderBar>
             );
@@ -69,13 +69,13 @@ describe("render - Slot", () => {
         function App({ first }: { first: boolean }) {
             return (
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Slot for={GtkHeaderBar} id="titleWidget">
+                    <x.Slot for={GtkHeaderBar} id="titleWidget">
                         {first ? (
                             <GtkLabel ref={label1Ref} key="first" label="First Title" />
                         ) : (
                             <GtkLabel ref={label2Ref} key="second" label="Second Title" />
                         )}
-                    </Slot>
+                    </x.Slot>
                 </GtkHeaderBar>
             );
         }
@@ -95,9 +95,9 @@ describe("render - Slot", () => {
 
         await render(
             <GtkPaned ref={panedRef} orientation={Gtk.Orientation.HORIZONTAL}>
-                <Slot for={GtkPaned} id="startChild">
+                <x.Slot for={GtkPaned} id="startChild">
                     <GtkLabel ref={labelRef} label="Start Child" />
-                </Slot>
+                </x.Slot>
             </GtkPaned>,
             { wrapper: false },
         );
@@ -111,9 +111,9 @@ describe("render - Slot", () => {
 
         await render(
             <GtkMenuButton ref={menuButtonRef}>
-                <Slot for={GtkMenuButton} id="popover">
+                <x.Slot for={GtkMenuButton} id="popover">
                     <GtkPopover ref={popoverRef}>Popover Content</GtkPopover>
-                </Slot>
+                </x.Slot>
             </GtkMenuButton>,
             { wrapper: false },
         );
@@ -128,12 +128,12 @@ describe("render - Slot", () => {
 
         await render(
             <GtkPaned ref={panedRef} orientation={Gtk.Orientation.HORIZONTAL}>
-                <Slot for={GtkPaned} id="startChild">
+                <x.Slot for={GtkPaned} id="startChild">
                     <GtkLabel ref={startRef} label="Start" />
-                </Slot>
-                <Slot for={GtkPaned} id="endChild">
+                </x.Slot>
+                <x.Slot for={GtkPaned} id="endChild">
                     <GtkLabel ref={endRef} label="End" />
-                </Slot>
+                </x.Slot>
             </GtkPaned>,
             { wrapper: false },
         );

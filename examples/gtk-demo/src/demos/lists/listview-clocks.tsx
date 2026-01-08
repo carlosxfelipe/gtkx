@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, ListItem, ListView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-clocks.tsx?raw";
@@ -140,7 +140,7 @@ const ListViewClocksDemo = () => {
                     marginEnd={12}
                 >
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <ListView<ClockItem>
+                        <x.ListView<ClockItem>
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
@@ -201,9 +201,9 @@ const ListViewClocksDemo = () => {
                             )}
                         >
                             {worldClocks.map((clock) => (
-                                <ListItem key={clock.id} id={clock.id} value={clock} />
+                                <x.ListItem key={clock.id} id={clock.id} value={clock} />
                             ))}
-                        </ListView>
+                        </x.ListView>
                     </GtkScrolledWindow>
 
                     {selectedClock && (

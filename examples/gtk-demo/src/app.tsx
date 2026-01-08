@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkPaned, quit, Slot } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkPaned, quit, x } from "@gtkx/react";
 import { DemoPanel } from "./components/demo-panel.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
@@ -19,10 +19,10 @@ const AppContent = () => {
             shrinkEndChild={false}
             position={280}
         >
-            <Slot for={GtkPaned} id="startChild">
+            <x.Slot for={GtkPaned} id="startChild">
                 <Sidebar />
-            </Slot>
-            <Slot for={GtkPaned} id="endChild">
+            </x.Slot>
+            <x.Slot for={GtkPaned} id="endChild">
                 <GtkPaned
                     orientation={Gtk.Orientation.HORIZONTAL}
                     wideHandle
@@ -32,14 +32,14 @@ const AppContent = () => {
                     shrinkEndChild={false}
                     position={550}
                 >
-                    <Slot for={GtkPaned} id="startChild">
+                    <x.Slot for={GtkPaned} id="startChild">
                         <DemoPanel demo={currentDemo} />
-                    </Slot>
-                    <Slot for={GtkPaned} id="endChild">
+                    </x.Slot>
+                    <x.Slot for={GtkPaned} id="endChild">
                         <SourceViewer />
-                    </Slot>
+                    </x.Slot>
                 </GtkPaned>
-            </Slot>
+            </x.Slot>
         </GtkPaned>
     );
 };

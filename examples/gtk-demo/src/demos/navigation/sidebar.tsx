@@ -13,8 +13,7 @@ import {
     GtkScrolledWindow,
     GtkStack,
     GtkStackSidebar,
-    Slot,
-    StackPage,
+    x,
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
@@ -90,7 +89,7 @@ const SidebarDemo = () => {
                                 transitionType={GtkEnum.StackTransitionType.CROSSFADE}
                                 transitionDuration={200}
                             >
-                                <StackPage name="home" title="Home" iconName="go-home-symbolic">
+                                <x.StackPage name="home" title="Home" iconName="go-home-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -105,8 +104,8 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Home" cssClasses={["title-2"]} />
                                         <GtkLabel label="Welcome to the application" cssClasses={["dim-label"]} />
                                     </GtkBox>
-                                </StackPage>
-                                <StackPage name="library" title="Library" iconName="folder-music-symbolic">
+                                </x.StackPage>
+                                <x.StackPage name="library" title="Library" iconName="folder-music-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -121,8 +120,8 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Library" cssClasses={["title-2"]} />
                                         <GtkLabel label="Browse your media library" cssClasses={["dim-label"]} />
                                     </GtkBox>
-                                </StackPage>
-                                <StackPage name="search" title="Search" iconName="system-search-symbolic">
+                                </x.StackPage>
+                                <x.StackPage name="search" title="Search" iconName="system-search-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -137,8 +136,8 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Search" cssClasses={["title-2"]} />
                                         <GtkLabel label="Find content" cssClasses={["dim-label"]} />
                                     </GtkBox>
-                                </StackPage>
-                                <StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
+                                </x.StackPage>
+                                <x.StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -153,7 +152,7 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Settings" cssClasses={["title-2"]} />
                                         <GtkLabel label="Configure the application" cssClasses={["dim-label"]} />
                                     </GtkBox>
-                                </StackPage>
+                                </x.StackPage>
                             </GtkStack>
                         </GtkFrame>
                     </GtkBox>
@@ -321,7 +320,7 @@ const SidebarDemo = () => {
                         heightRequest={150}
                         cssClasses={["card"]}
                     >
-                        <Slot for={GtkPaned} id="startChild">
+                        <x.Slot for={GtkPaned} id="startChild">
                             <GtkScrolledWindow hscrollbarPolicy={GtkEnum.PolicyType.NEVER}>
                                 <GtkBox
                                     orientation={GtkEnum.Orientation.VERTICAL}
@@ -337,8 +336,8 @@ const SidebarDemo = () => {
                                     <GtkButton label="Logs" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
                                 </GtkBox>
                             </GtkScrolledWindow>
-                        </Slot>
-                        <Slot for={GtkPaned} id="endChild">
+                        </x.Slot>
+                        <x.Slot for={GtkPaned} id="endChild">
                             <GtkBox
                                 orientation={GtkEnum.Orientation.VERTICAL}
                                 spacing={0}
@@ -347,7 +346,7 @@ const SidebarDemo = () => {
                             >
                                 <GtkLabel label="Drag the handle to resize" cssClasses={["dim-label"]} />
                             </GtkBox>
-                        </Slot>
+                        </x.Slot>
                     </GtkPaned>
                 </GtkBox>
             </GtkFrame>

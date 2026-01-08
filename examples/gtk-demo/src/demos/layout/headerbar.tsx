@@ -7,8 +7,7 @@ import {
     GtkMenuButton,
     GtkSearchBar,
     GtkSearchEntry,
-    Pack,
-    Slot,
+    x,
 } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
@@ -49,12 +48,12 @@ const HeaderBarDemo = () => {
                 />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel label="My Application" cssClasses={["title"]} />
-                        </Slot>
-                        <Pack.End>
+                        </x.Slot>
+                        <x.PackEnd>
                             <GtkMenuButton iconName="open-menu-symbolic" />
-                        </Pack.End>
+                        </x.PackEnd>
                     </GtkHeaderBar>
                 </GtkBox>
             </GtkBox>
@@ -69,16 +68,16 @@ const HeaderBarDemo = () => {
                 />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
-                        <Pack.Start>
+                        <x.PackStart>
                             <GtkButton iconName="go-previous-symbolic" cssClasses={["flat"]} />
                             <GtkButton iconName="go-next-symbolic" cssClasses={["flat"]} />
-                        </Pack.Start>
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        </x.PackStart>
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel label="History" cssClasses={["title"]} />
-                        </Slot>
-                        <Pack.End>
+                        </x.Slot>
+                        <x.PackEnd>
                             <GtkButton label="Clear" cssClasses={["destructive-action"]} />
-                        </Pack.End>
+                        </x.PackEnd>
                     </GtkHeaderBar>
                 </GtkBox>
             </GtkBox>
@@ -93,19 +92,19 @@ const HeaderBarDemo = () => {
                 />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
-                        <Pack.Start>
+                        <x.PackStart>
                             <GtkButton iconName="list-add-symbolic" cssClasses={["flat"]} />
-                        </Pack.Start>
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        </x.PackStart>
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} valign={Gtk.Align.CENTER}>
                                 <GtkLabel label="Document.txt" cssClasses={["title"]} />
                                 <GtkLabel label={subtitle} cssClasses={["subtitle"]} />
                             </GtkBox>
-                        </Slot>
-                        <Pack.End>
+                        </x.Slot>
+                        <x.PackEnd>
                             <GtkButton iconName="document-save-symbolic" cssClasses={["flat"]} />
                             <GtkMenuButton iconName="view-more-symbolic" cssClasses={["flat"]} />
-                        </Pack.End>
+                        </x.PackEnd>
                     </GtkHeaderBar>
                 </GtkBox>
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
@@ -125,19 +124,19 @@ const HeaderBarDemo = () => {
                 />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
-                        <Pack.Start>
+                        <x.PackStart>
                             <GtkButton
                                 iconName="edit-find-symbolic"
                                 cssClasses={searchMode ? ["suggested-action"] : ["flat"]}
                                 onClicked={() => setSearchMode(!searchMode)}
                             />
-                        </Pack.Start>
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        </x.PackStart>
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel label="Files" cssClasses={["title"]} />
-                        </Slot>
-                        <Pack.End>
+                        </x.Slot>
+                        <x.PackEnd>
                             <GtkMenuButton iconName="open-menu-symbolic" cssClasses={["flat"]} />
-                        </Pack.End>
+                        </x.PackEnd>
                     </GtkHeaderBar>
                     <GtkSearchBar searchModeEnabled={searchMode}>
                         <GtkSearchEntry hexpand placeholderText="Search files..." />
@@ -155,15 +154,15 @@ const HeaderBarDemo = () => {
                 />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
-                        <Pack.Start>
+                        <x.PackStart>
                             <GtkButton label="Cancel" cssClasses={["flat"]} />
-                        </Pack.Start>
-                        <Slot for={GtkHeaderBar} id="titleWidget">
+                        </x.PackStart>
+                        <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel label="Select Items" cssClasses={["title"]} />
-                        </Slot>
-                        <Pack.End>
+                        </x.Slot>
+                        <x.PackEnd>
                             <GtkButton label="Done" cssClasses={["suggested-action"]} />
-                        </Pack.End>
+                        </x.PackEnd>
                     </GtkHeaderBar>
                 </GtkBox>
             </GtkBox>

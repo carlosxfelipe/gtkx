@@ -1,6 +1,6 @@
 import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { FixedChild, GtkFixed, GtkLabel } from "@gtkx/react";
+import { GtkFixed, GtkLabel, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -29,9 +29,9 @@ describe("render - FixedChild", () => {
 
             await render(
                 <GtkFixed ref={fixedRef}>
-                    <FixedChild x={100} y={50}>
+                    <x.FixedChild x={100} y={50}>
                         <GtkLabel ref={labelRef} label="Positioned" />
-                    </FixedChild>
+                    </x.FixedChild>
                 </GtkFixed>,
                 { wrapper: false },
             );
@@ -51,9 +51,9 @@ describe("render - FixedChild", () => {
 
             await render(
                 <GtkFixed ref={fixedRef}>
-                    <FixedChild>
+                    <x.FixedChild>
                         <GtkLabel ref={labelRef} label="Default" />
-                    </FixedChild>
+                    </x.FixedChild>
                 </GtkFixed>,
                 { wrapper: false },
             );
@@ -71,17 +71,17 @@ describe("render - FixedChild", () => {
             const fixedRef = createRef<Gtk.Fixed>();
             const labelRef = createRef<Gtk.Label>();
 
-            function App({ x, y }: { x: number; y: number }) {
+            function App({ posX, posY }: { posX: number; posY: number }) {
                 return (
                     <GtkFixed ref={fixedRef}>
-                        <FixedChild x={x} y={y}>
+                        <x.FixedChild x={posX} y={posY}>
                             <GtkLabel ref={labelRef} label="Moving" />
-                        </FixedChild>
+                        </x.FixedChild>
                     </GtkFixed>
                 );
             }
 
-            await render(<App x={0} y={0} />, { wrapper: false });
+            await render(<App posX={0} posY={0} />, { wrapper: false });
 
             if (!fixedRef.current || !labelRef.current) {
                 throw new Error("Refs should be set after render");
@@ -91,7 +91,7 @@ describe("render - FixedChild", () => {
             expect(pos1.x).toBe(0);
             expect(pos1.y).toBe(0);
 
-            await render(<App x={200} y={150} />, { wrapper: false });
+            await render(<App posX={200} posY={150} />, { wrapper: false });
 
             const pos2 = getChildPosition(fixedRef.current, labelRef.current);
             expect(pos2.x).toBe(200);
@@ -105,12 +105,12 @@ describe("render - FixedChild", () => {
 
             await render(
                 <GtkFixed ref={fixedRef}>
-                    <FixedChild x={10} y={20}>
+                    <x.FixedChild x={10} y={20}>
                         <GtkLabel ref={label1Ref} label="First" />
-                    </FixedChild>
-                    <FixedChild x={100} y={80}>
+                    </x.FixedChild>
+                    <x.FixedChild x={100} y={80}>
                         <GtkLabel ref={label2Ref} label="Second" />
-                    </FixedChild>
+                    </x.FixedChild>
                 </GtkFixed>,
                 { wrapper: false },
             );
@@ -136,9 +136,9 @@ describe("render - FixedChild", () => {
                 return (
                     <GtkFixed ref={fixedRef}>
                         {showChild && (
-                            <FixedChild x={0} y={0}>
+                            <x.FixedChild x={0} y={0}>
                                 <GtkLabel ref={labelRef} label="Removable" />
-                            </FixedChild>
+                            </x.FixedChild>
                         )}
                     </GtkFixed>
                 );

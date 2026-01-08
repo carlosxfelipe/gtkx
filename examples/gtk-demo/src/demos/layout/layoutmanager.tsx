@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { FixedChild, GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFixed, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager.tsx?raw";
@@ -65,23 +65,23 @@ const CircularLayoutDemo = () => {
                         {items.map((item) => {
                             const pos = getItemPosition(item.angle);
                             return (
-                                <FixedChild key={item.id} x={pos.x} y={pos.y}>
+                                <x.FixedChild key={item.id} x={pos.x} y={pos.y}>
                                     <GtkButton
                                         label={item.label}
                                         cssClasses={["circular"]}
                                         widthRequest={40}
                                         heightRequest={40}
                                     />
-                                </FixedChild>
+                                </x.FixedChild>
                             );
                         })}
-                        <FixedChild x={115} y={135}>
+                        <x.FixedChild x={115} y={135}>
                             <GtkLabel
                                 label={`${radius}px\n${rotation}°`}
                                 halign={Gtk.Align.CENTER}
                                 cssClasses={["caption", "dim-label"]}
                             />
-                        </FixedChild>
+                        </x.FixedChild>
                     </GtkFixed>
 
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>

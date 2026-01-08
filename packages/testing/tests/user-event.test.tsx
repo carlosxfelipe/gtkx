@@ -10,7 +10,7 @@ import {
     GtkListBoxRow,
     GtkSwitch,
     GtkToggleButton,
-    SimpleListItem,
+    x,
 } from "@gtkx/react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent } from "../src/index.js";
@@ -169,9 +169,9 @@ describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
         await render(
             <GtkDropDown>
-                <SimpleListItem id="a" value="Option A" />
-                <SimpleListItem id="b" value="Option B" />
-                <SimpleListItem id="c" value="Option C" />
+                <x.SimpleListItem id="a" value="Option A" />
+                <x.SimpleListItem id="b" value="Option B" />
+                <x.SimpleListItem id="c" value="Option C" />
             </GtkDropDown>,
         );
 
@@ -204,8 +204,8 @@ describe("userEvent.selectOptions", () => {
         it("throws when selecting multiple options on dropdown", async () => {
             await render(
                 <GtkDropDown>
-                    <SimpleListItem id="a" value="A" />
-                    <SimpleListItem id="b" value="B" />
+                    <x.SimpleListItem id="a" value="A" />
+                    <x.SimpleListItem id="b" value="B" />
                 </GtkDropDown>,
             );
 
@@ -235,7 +235,7 @@ describe("userEvent.deselectOptions", () => {
         it("throws when element is not a list box", async () => {
             await render(
                 <GtkDropDown>
-                    <SimpleListItem id="a" value="A" />
+                    <x.SimpleListItem id="a" value="A" />
                 </GtkDropDown>,
             );
 

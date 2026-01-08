@@ -16,7 +16,7 @@ export class NotebookPageNode extends SlotNode<Props> {
     private tabNode?: NotebookPageTabNode;
 
     public static override matches(type: string): boolean {
-        return type === "Notebook.Page";
+        return type === "NotebookPage";
     }
 
     public setNotebook(notebook?: Gtk.Notebook): void {
@@ -53,7 +53,7 @@ export class NotebookPageNode extends SlotNode<Props> {
 
         if (!(child instanceof WidgetNode)) {
             throw new Error(
-                `Cannot append '${child.typeName}' to 'Notebook.Page': expected Widget or Notebook.PageTab`,
+                `Cannot append '${child.typeName}' to 'NotebookPage': expected Widget or NotebookPageTab`,
             );
         }
 

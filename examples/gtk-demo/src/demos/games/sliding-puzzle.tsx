@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GridChild, GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkGrid, GtkLabel, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sliding-puzzle.tsx?raw";
@@ -142,7 +142,7 @@ const SlidingPuzzleDemo = () => {
                 >
                     <GtkGrid rowSpacing={4} columnSpacing={4}>
                         {board.map((tile, index) => (
-                            <GridChild key={`tile-${tile ?? "empty"}`} column={getCol(index)} row={getRow(index)}>
+                            <x.GridChild key={`tile-${tile ?? "empty"}`} column={getCol(index)} row={getRow(index)}>
                                 {tile !== null ? (
                                     <GtkButton
                                         label={String(tile)}
@@ -160,7 +160,7 @@ const SlidingPuzzleDemo = () => {
                                         heightRequest={60}
                                     />
                                 )}
-                            </GridChild>
+                            </x.GridChild>
                         ))}
                     </GtkGrid>
                 </GtkBox>

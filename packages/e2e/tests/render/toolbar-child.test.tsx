@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { AdwHeaderBar, AdwToolbarView, GtkLabel, Toolbar } from "@gtkx/react";
+import { AdwHeaderBar, AdwToolbarView, GtkLabel, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -13,9 +13,9 @@ describe("render - ToolbarChild", () => {
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <Toolbar.Top>
+                    <x.ToolbarTop>
                         <AdwHeaderBar />
-                    </Toolbar.Top>
+                    </x.ToolbarTop>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
                 { wrapper: false },
@@ -32,9 +32,9 @@ describe("render - ToolbarChild", () => {
             await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel ref={contentRef} label="Content" />
-                    <Toolbar.Bottom>
+                    <x.ToolbarBottom>
                         <AdwHeaderBar />
-                    </Toolbar.Bottom>
+                    </x.ToolbarBottom>
                 </AdwToolbarView>,
                 { wrapper: false },
             );
@@ -50,12 +50,12 @@ describe("render - ToolbarChild", () => {
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <Toolbar.Top>
+                    <x.ToolbarTop>
                         <AdwHeaderBar />
-                    </Toolbar.Top>
-                    <Toolbar.Top>
+                    </x.ToolbarTop>
+                    <x.ToolbarTop>
                         <GtkLabel ref={secondTopRef} label="Second Top Bar" />
-                    </Toolbar.Top>
+                    </x.ToolbarTop>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
                 { wrapper: false },
@@ -73,9 +73,9 @@ describe("render - ToolbarChild", () => {
                 return (
                     <AdwToolbarView ref={toolbarRef}>
                         {showTop && (
-                            <Toolbar.Top>
+                            <x.ToolbarTop>
                                 <AdwHeaderBar />
-                            </Toolbar.Top>
+                            </x.ToolbarTop>
                         )}
                         <GtkLabel ref={contentRef} label="Content" />
                     </AdwToolbarView>
