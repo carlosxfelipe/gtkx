@@ -1,13 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkFrame,
-    GtkLabel,
-    GtkScrolledWindow,
-    GtkSearchEntry,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";

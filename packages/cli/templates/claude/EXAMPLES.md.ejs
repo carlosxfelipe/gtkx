@@ -194,10 +194,10 @@ const SidebarNav = () => {
                 </GtkScrolledWindow>
             </x.Slot>
             <x.Slot for={GtkPaned} id="endChild">
-                <GtkStack visibleChildName={currentPage}>
-                    <x.StackPage name="home"><GtkLabel label="Home Content" vexpand /></x.StackPage>
-                    <x.StackPage name="settings"><GtkLabel label="Settings Content" vexpand /></x.StackPage>
-                    <x.StackPage name="about"><GtkLabel label="About Content" vexpand /></x.StackPage>
+                <GtkStack page={currentPage}>
+                    <x.StackPage id="home"><GtkLabel label="Home Content" vexpand /></x.StackPage>
+                    <x.StackPage id="settings"><GtkLabel label="Settings Content" vexpand /></x.StackPage>
+                    <x.StackPage id="about"><GtkLabel label="About Content" vexpand /></x.StackPage>
                 </GtkStack>
             </x.Slot>
         </GtkPaned>
@@ -227,14 +227,14 @@ const AppWithNavigation = () => {
                     </x.Slot>
                 </GtkHeaderBar>
             </x.Slot>
-            <GtkStack visibleChildName={page}>
-                <x.StackPage name="home">
+            <GtkStack page={page}>
+                <x.StackPage id="home">
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
                         <GtkLabel label="Welcome" />
                         <GtkButton label="Go to Details" onClicked={() => setPage("details")} />
                     </GtkBox>
                 </x.StackPage>
-                <x.StackPage name="details">
+                <x.StackPage id="details">
                     <GtkLabel label="Details Page Content" vexpand />
                 </x.StackPage>
             </GtkStack>

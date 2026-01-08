@@ -89,7 +89,7 @@ const SidebarDemo = () => {
                                 transitionType={GtkEnum.StackTransitionType.CROSSFADE}
                                 transitionDuration={200}
                             >
-                                <x.StackPage name="home" title="Home" iconName="go-home-symbolic">
+                                <x.StackPage id="home" title="Home" iconName="go-home-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -105,7 +105,7 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Welcome to the application" cssClasses={["dim-label"]} />
                                     </GtkBox>
                                 </x.StackPage>
-                                <x.StackPage name="library" title="Library" iconName="folder-music-symbolic">
+                                <x.StackPage id="library" title="Library" iconName="folder-music-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -121,7 +121,7 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Browse your media library" cssClasses={["dim-label"]} />
                                     </GtkBox>
                                 </x.StackPage>
-                                <x.StackPage name="search" title="Search" iconName="system-search-symbolic">
+                                <x.StackPage id="search" title="Search" iconName="system-search-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}
@@ -137,7 +137,7 @@ const SidebarDemo = () => {
                                         <GtkLabel label="Find content" cssClasses={["dim-label"]} />
                                     </GtkBox>
                                 </x.StackPage>
-                                <x.StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
+                                <x.StackPage id="settings" title="Settings" iconName="emblem-system-symbolic">
                                     <GtkBox
                                         orientation={GtkEnum.Orientation.VERTICAL}
                                         spacing={8}

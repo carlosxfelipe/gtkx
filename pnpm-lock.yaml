@@ -121,6 +121,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/vitest
 
+  examples/x-showcase:
+    dependencies:
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../../packages/ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+    devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+
   packages/cli:
     dependencies:
       '@clack/prompts':

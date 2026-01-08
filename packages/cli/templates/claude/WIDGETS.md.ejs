@@ -42,17 +42,17 @@ Linear layout (horizontal or vertical).
 Page container, shows one child at a time.
 
 ```tsx
-<GtkStack visibleChildName="page1" transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT}>
-    <x.StackPage name="page1" title="First" iconName="document-new">
+<GtkStack page="page1" transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT}>
+    <x.StackPage id="page1" title="First" iconName="document-new">
         <Content1 />
     </x.StackPage>
-    <x.StackPage name="page2" title="Second">
+    <x.StackPage id="page2" title="Second">
         <Content2 />
     </x.StackPage>
 </GtkStack>
 ```
 
-**StackPage props:** `name` (required), `title`, `iconName`, `needsAttention`, `badgeNumber` (AdwViewStack only)
+**StackPage props:** `id` (optional), `title`, `iconName`, `needsAttention`, `badgeNumber` (AdwViewStack only)
 
 ### GtkNotebook
 Tabbed container with visible tabs.

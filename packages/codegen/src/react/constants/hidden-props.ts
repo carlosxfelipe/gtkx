@@ -19,6 +19,8 @@ const HIDDEN_PROPS: Readonly<Record<string, readonly string[]>> = {
     ApplicationWindow: ["application"],
     NavigationPage: ["child"],
     GraphicsOffload: ["child"],
+    Stack: ["visibleChild", "visibleChildName"],
+    ViewStack: ["visibleChild", "visibleChildName"],
 };
 
 /**

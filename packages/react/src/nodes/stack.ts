@@ -7,10 +7,10 @@ import type { Container, ContainerClass } from "../types.js";
 import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
-const PROPS = ["visibleChildName"];
+const PROPS = ["page"];
 
 type StackProps = {
-    visibleChildName?: string;
+    page?: string;
 };
 
 class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
@@ -21,12 +21,12 @@ class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
     }
 
     public override updateProps(oldProps: StackProps | null, newProps: StackProps): void {
-        if (newProps.visibleChildName && this.container.getVisibleChildName() !== newProps.visibleChildName) {
-            const visibleChildName = newProps.visibleChildName;
+        if (newProps.page && this.container.getVisibleChildName() !== newProps.page) {
+            const page = newProps.page;
 
             scheduleAfterCommit(() => {
-                if (this.container.getChildByName(visibleChildName)) {
-                    this.container.setVisibleChildName(visibleChildName);
+                if (this.container.getChildByName(page)) {
+                    this.container.setVisibleChildName(page);
                 }
             });
         }

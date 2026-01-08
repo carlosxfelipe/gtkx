@@ -1,14 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkFrame,
-    GtkImage,
-    GtkLabel,
-    GtkScrolledWindow,
-    GtkSearchEntry,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";

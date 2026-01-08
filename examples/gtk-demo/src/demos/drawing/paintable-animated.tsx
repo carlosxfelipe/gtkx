@@ -120,14 +120,17 @@ const PaintableAnimatedDemo = () => {
     useEffect(() => {
         if (!isPlaying) return;
 
-        const startTime = Date.now() - time * 1000;
+        let lastFrameTime = Date.now();
+
         const intervalId = setInterval(() => {
-            const elapsed = (Date.now() - startTime) / 1000;
-            setTime(elapsed * speed);
-        }, 33); // ~30fps
+            const now = Date.now();
+            const delta = (now - lastFrameTime) / 1000;
+            lastFrameTime = now;
+            setTime((prevTime) => prevTime + delta * speed);
+        }, 33);
 
         return () => clearInterval(intervalId);
-    }, [isPlaying, speed, time]);
+    }, [isPlaying, speed]);
 
     const texture = useMemo(() => {
         return createAnimatedFrame(resolution, resolution, time, animationType);

@@ -101,15 +101,15 @@ describe("JsxTypesGenerator", () => {
         });
     });
 
-    describe("WidgetProps interface", () => {
-        it("generates WidgetProps interface", () => {
+    describe("WidgetProps type alias", () => {
+        it("generates WidgetProps type alias", () => {
             const { project, generator } = createTestSetup([createWidgetMeta()]);
 
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("WidgetProps");
-            expect(iface).toBeDefined();
+            const typeAlias = sourceFile?.getTypeAlias("WidgetProps");
+            expect(typeAlias).toBeDefined();
         });
 
         it("includes properties from Widget metadata", () => {
@@ -156,8 +156,8 @@ describe("JsxTypesGenerator", () => {
             generator.generate();
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
-            const iface = sourceFile?.getInterface("WidgetProps");
-            expect(iface?.isExported()).toBe(true);
+            const typeAlias = sourceFile?.getTypeAlias("WidgetProps");
+            expect(typeAlias?.isExported()).toBe(true);
         });
     });
 

@@ -1,34 +1,10 @@
-import type * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 
-/**
- * Props for EventController-based event handlers.
- *
- * These props attach EventControllers to widgets for handling
- * pointer motion, clicks, and keyboard events.
- */
-export interface EventControllerProps {
-    /** Called when the pointer enters the widget */
-    onEnter?: (x: number, y: number) => void;
-    /** Called when the pointer leaves the widget */
-    onLeave?: () => void;
-    /** Called when the pointer moves over the widget */
-    onMotion?: (x: number, y: number) => void;
-    /** Called when a mouse button is pressed */
-    onPressed?: (nPress: number, x: number, y: number) => void;
-    /** Called when a mouse button is released */
-    onReleased?: (nPress: number, x: number, y: number) => void;
-    /** Called when a key is pressed (for focusable widgets) */
-    onKeyPressed?: (keyval: number, keycode: number, state: Gdk.ModifierType) => boolean;
-    /** Called when a key is released */
-    onKeyReleased?: (keyval: number, keycode: number, state: Gdk.ModifierType) => void;
-    /** Called when the widget is scrolled */
-    onScroll?: (dx: number, dy: number) => boolean;
-}
+export type { EventControllerProps } from "./types.js";
 
 /**
  * Props for slot-based child positioning.
@@ -179,8 +155,8 @@ export type NotebookPageTabProps = SlotProps;
  * Props for the root Stack component.
  */
 export type StackRootProps = Omit<SlotProps, "id"> & {
-    /** Name of the currently visible child page */
-    visibleChildName?: string;
+    /** ID of the currently visible page */
+    page?: string;
 };
 
 /**
@@ -189,8 +165,8 @@ export type StackRootProps = Omit<SlotProps, "id"> & {
  * @see {@link StackPage} for usage
  */
 export type StackPageProps = Omit<SlotProps, "id"> & {
-    /** Unique name for this page (used with visibleChildName) */
-    name?: string;
+    /** Unique identifier for this page (used with page prop) */
+    id?: string;
     /** Display title shown in stack switchers */
     title?: string;
     /** Icon name from the icon theme */
@@ -251,6 +227,135 @@ export type OverlayChildProps = Omit<SlotProps, "id"> & {
     measure?: boolean;
     /** Whether to clip this overlay child to the main child bounds */
     clipOverlay?: boolean;
+};
+
+/**
+ * Props for the ScaleMark virtual element.
+ *
+ * Used to declaratively add marks to a GtkScale slider.
+ *
+ * @example
+ * ```tsx
+ * <GtkScale>
+ *     <x.ScaleMark value={0} label="Min" />
+ *     <x.ScaleMark value={50} label="Mid" />
+ *     <x.ScaleMark value={100} label="Max" />
+ * </GtkScale>
+ * ```
+ */
+export type ScaleMarkProps = {
+    /** The value at which to place the mark */
+    value: number;
+    /** Position of the mark (TOP or BOTTOM for horizontal, LEFT or RIGHT for vertical) */
+    position?: Gtk.PositionType;
+    /** Optional label text (supports Pango markup) */
+    label?: string | null;
+};
+
+/**
+ * Props for the CalendarMark virtual element.
+ *
+ * Used to declaratively mark days on a GtkCalendar.
+ *
+ * @example
+ * ```tsx
+ * <GtkCalendar>
+ *     <x.CalendarMark day={15} />
+ *     <x.CalendarMark day={20} />
+ *     <x.CalendarMark day={25} />
+ * </GtkCalendar>
+ * ```
+ */
+export type CalendarMarkProps = {
+    /** The day of the month to mark (1-31) */
+    day: number;
+};
+
+/**
+ * Props for the LevelBarOffset virtual element.
+ *
+ * Used to declaratively add offset thresholds to a GtkLevelBar.
+ * Each offset defines a named threshold that triggers visual style changes.
+ *
+ * @example
+ * ```tsx
+ * <GtkLevelBar>
+ *     <x.LevelBarOffset id="low" value={0.25} />
+ *     <x.LevelBarOffset id="high" value={0.75} />
+ *     <x.LevelBarOffset id="full" value={1.0} />
+ * </GtkLevelBar>
+ * ```
+ */
+export type LevelBarOffsetProps = {
+    /** Unique identifier for this offset (used for CSS styling) */
+    id: string;
+    /** The threshold value (0.0 to 1.0 for continuous mode, or integer for discrete) */
+    value: number;
+};
+
+/**
+ * Props for the Toggle virtual element.
+ *
+ * Used to declaratively add toggles to an AdwToggleGroup.
+ *
+ * @example
+ * ```tsx
+ * <AdwToggleGroup>
+ *     <x.Toggle id="view-list" iconName="view-list-symbolic" />
+ *     <x.Toggle id="view-grid" iconName="view-grid-symbolic" />
+ *     <x.Toggle id="view-flow" label="Flow" />
+ * </AdwToggleGroup>
+ * ```
+ */
+export type ToggleProps = {
+    /** Optional identifier for accessing toggle by id instead of index */
+    id?: string | null;
+    /** Label text to display */
+    label?: string | null;
+    /** Icon name to display */
+    iconName?: string | null;
+    /** Tooltip text (supports Pango markup) */
+    tooltip?: string;
+    /** Whether the toggle is enabled */
+    enabled?: boolean;
+    /** Whether underline in label indicates mnemonic */
+    useUnderline?: boolean;
+};
+
+/**
+ * Props for ExpanderRow child slots (Row and Action).
+ */
+export type ExpanderRowChildProps = {
+    /** Children to add to this slot */
+    children?: ReactNode;
+};
+
+/**
+ * Props for the NavigationPage virtual element.
+ *
+ * Used to declaratively define pages in an AdwNavigationView.
+ *
+ * @example
+ * ```tsx
+ * <AdwNavigationView history={["home", "details"]}>
+ *   <x.NavigationPage id="home" title="Home">
+ *     <HomeContent />
+ *   </x.NavigationPage>
+ *   <x.NavigationPage id="details" title="Details">
+ *     <DetailsContent />
+ *   </x.NavigationPage>
+ * </AdwNavigationView>
+ * ```
+ */
+export type NavigationPageProps = {
+    /** Unique identifier for this page (used in history array) */
+    id: string;
+    /** Title displayed in the header bar */
+    title?: string;
+    /** Whether the page can be popped via back button/gestures */
+    canPop?: boolean;
+    /** Page content */
+    children?: ReactNode;
 };
 
 /**
@@ -347,8 +452,8 @@ export const x = {
      *
      * @example
      * ```tsx
-     * <GtkStack>
-     *   <x.StackPage name="page1" title="First Page">
+     * <GtkStack page="page1">
+     *   <x.StackPage id="page1" title="First Page">
      *     <GtkLabel label="Content 1" />
      *   </x.StackPage>
      * </GtkStack>
@@ -589,19 +694,12 @@ export const x = {
     ToolbarBottom: "ToolbarBottom" as const,
 
     /**
-     * Element type for GtkOverlay main child container.
-     */
-    Overlay: "Overlay" as const,
-
-    /**
      * Element type for overlay children positioned above the main content.
      *
      * @example
      * ```tsx
      * <GtkOverlay>
-     *   <x.Overlay>
-     *     <GtkImage file="background.png" />
-     *   </x.Overlay>
+     *   <GtkImage file="background.png" />
      *   <x.OverlayChild>
      *     <GtkLabel label="Overlaid text" />
      *   </x.OverlayChild>
@@ -649,50 +747,144 @@ export const x = {
      * ```
      */
     MenuSubmenu: "MenuSubmenu" as const,
+
+    /**
+     * A mark to display on a GtkScale slider.
+     *
+     * @example
+     * ```tsx
+     * <GtkScale>
+     *   <x.ScaleMark value={0} label="Min" />
+     *   <x.ScaleMark value={50} />
+     *   <x.ScaleMark value={100} label="Max" />
+     * </GtkScale>
+     * ```
+     */
+    ScaleMark: "ScaleMark" as const,
+
+    /**
+     * A day mark on a GtkCalendar.
+     *
+     * @example
+     * ```tsx
+     * <GtkCalendar>
+     *   <x.CalendarMark day={15} />
+     *   <x.CalendarMark day={20} />
+     *   <x.CalendarMark day={25} />
+     * </GtkCalendar>
+     * ```
+     */
+    CalendarMark: "CalendarMark" as const,
+
+    /**
+     * An offset threshold for a GtkLevelBar.
+     *
+     * @example
+     * ```tsx
+     * <GtkLevelBar>
+     *   <x.LevelBarOffset id="low" value={0.25} />
+     *   <x.LevelBarOffset id="high" value={0.75} />
+     *   <x.LevelBarOffset id="full" value={1.0} />
+     * </GtkLevelBar>
+     * ```
+     */
+    LevelBarOffset: "LevelBarOffset" as const,
+
+    /**
+     * A toggle button for an AdwToggleGroup.
+     *
+     * @example
+     * ```tsx
+     * <AdwToggleGroup>
+     *   <x.Toggle id="list" iconName="view-list-symbolic" />
+     *   <x.Toggle id="grid" iconName="view-grid-symbolic" />
+     * </AdwToggleGroup>
+     * ```
+     */
+    Toggle: "Toggle" as const,
+
+    /**
+     * Nested rows container for AdwExpanderRow.
+     *
+     * @example
+     * ```tsx
+     * <AdwExpanderRow title="Settings">
+     *   <ExpanderRow.Row>
+     *     <AdwActionRow title="Option 1" />
+     *     <AdwActionRow title="Option 2" />
+     *   </ExpanderRow.Row>
+     * </AdwExpanderRow>
+     * ```
+     */
+    ExpanderRowRow: "ExpanderRowRow" as const,
+
+    /**
+     * Action widget container for AdwExpanderRow header.
+     *
+     * @example
+     * ```tsx
+     * <AdwExpanderRow title="Group">
+     *   <ExpanderRow.Action>
+     *     <GtkButton iconName="emblem-system-symbolic" />
+     *   </ExpanderRow.Action>
+     * </AdwExpanderRow>
+     * ```
+     */
+    ExpanderRowAction: "ExpanderRowAction" as const,
+
+    /**
+     * A page within an AdwNavigationView.
+     *
+     * @example
+     * ```tsx
+     * <AdwNavigationView history={["home"]}>
+     *   <x.NavigationPage id="home" title="Home">
+     *     <GtkLabel label="Welcome!" />
+     *   </x.NavigationPage>
+     *   <x.NavigationPage id="settings" title="Settings">
+     *     <GtkLabel label="Settings page" />
+     *   </x.NavigationPage>
+     * </AdwNavigationView>
+     * ```
+     */
+    NavigationPage: "NavigationPage" as const,
 };
 
 declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-                StackPage: StackPageProps;
-
-                GridChild: GridChildProps;
-
-                FixedChild: FixedChildProps;
-
-                NotebookPage: NotebookPageProps;
-                NotebookPageTab: NotebookPageTabProps;
-
-                ListItem: ListItemProps;
-                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
-                TreeListItem: TreeListItemProps<any>;
-
-                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
-                ColumnViewColumn: ColumnViewColumnProps<any>;
-                SimpleListItem: StringListItemProps;
-
                 ActionRowPrefix: SlotProps;
                 ActionRowSuffix: SlotProps;
-
-                PackStart: SlotProps;
-                PackEnd: SlotProps;
-
-                ToolbarTop: SlotProps;
-                ToolbarBottom: SlotProps;
-
-                OverlayChild: OverlayChildProps;
-
+                CalendarMark: CalendarMarkProps;
+                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
+                ColumnViewColumn: ColumnViewColumnProps<any>;
+                ExpanderRowAction: ExpanderRowChildProps;
+                ExpanderRowRow: ExpanderRowChildProps;
+                FixedChild: FixedChildProps;
+                GridChild: GridChildProps;
+                LevelBarOffset: LevelBarOffsetProps;
+                ListItem: ListItemProps;
                 MenuItem: MenuItemProps;
                 MenuSection: MenuSectionProps;
                 MenuSubmenu: MenuSubmenuProps;
+                NotebookPage: NotebookPageProps;
+                NotebookPageTab: NotebookPageTabProps;
+                OverlayChild: OverlayChildProps;
+                PackEnd: SlotProps;
+                PackStart: SlotProps;
+                ScaleMark: ScaleMarkProps;
+                SimpleListItem: StringListItemProps;
+                StackPage: StackPageProps;
+                Toggle: ToggleProps;
+                ToolbarBottom: SlotProps;
+                ToolbarTop: SlotProps;
+                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
+                TreeListItem: TreeListItemProps<any>;
+                NavigationPage: NavigationPageProps;
             }
         }
     }
 }
 
 export * from "./generated/jsx.js";
-
-declare module "./generated/jsx.js" {
-    interface WidgetProps extends EventControllerProps {}
-}

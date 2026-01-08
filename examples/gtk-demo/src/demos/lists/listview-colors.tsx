@@ -1,14 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkFrame,
-    GtkLabel,
-    GtkScrolledWindow,
-    GtkSearchEntry,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-colors.tsx?raw";

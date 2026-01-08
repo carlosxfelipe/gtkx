@@ -12,9 +12,11 @@
 export const LIST_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListView", "GridView"]);
 export const DROP_DOWN_WIDGET_NAMES: ReadonlySet<string> = new Set(["DropDown", "ComboRow"]);
 export const COLUMN_VIEW_WIDGET_NAMES: ReadonlySet<string> = new Set(["ColumnView"]);
+export const VIRTUAL_CHILDREN_WIDGET_NAMES: ReadonlySet<string> = new Set(["Scale", "Calendar", "LevelBar"]);
+export const NAVIGATION_VIEW_WIDGET_NAMES: ReadonlySet<string> = new Set(["NavigationView"]);
+export const STACK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Stack", "ViewStack"]);
 
 const AUTOWRAP_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListBox", "FlowBox"]);
-const STACK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Stack", "ViewStack"]);
 const NOTEBOOK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Notebook"]);
 const POPOVER_MENU_WIDGET_NAMES: ReadonlySet<string> = new Set(["PopoverMenu", "PopoverMenuBar", "MenuButton"]);
 

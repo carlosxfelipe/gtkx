@@ -122,11 +122,11 @@ export function createHostConfig(): HostConfig {
             parent.insertBefore(child, beforeChild);
         },
         prepareForCommit: () => {
-            signalStore.blockAll();
             beginBatch();
             return null;
         },
         resetAfterCommit: () => {
+            signalStore.blockAll();
             endBatch();
             signalStore.unblockAll();
             flushAfterCommit();

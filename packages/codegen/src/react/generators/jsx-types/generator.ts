@@ -16,6 +16,9 @@ import {
     DROP_DOWN_WIDGET_NAMES,
     getHiddenProps,
     LIST_WIDGET_NAMES,
+    NAVIGATION_VIEW_WIDGET_NAMES,
+    STACK_WIDGET_NAMES,
+    VIRTUAL_CHILDREN_WIDGET_NAMES,
 } from "../../constants/index.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
@@ -28,7 +31,10 @@ export type JsxWidget = {
     isListWidget: boolean;
     isDropDownWidget: boolean;
     isColumnViewWidget: boolean;
+    isNavigationView: boolean;
+    isStack: boolean;
     isContainer: boolean;
+    hasVirtualChildren: boolean;
     slots: readonly string[];
     hiddenProps: Set<string>;
     meta: CodegenWidgetMeta;
@@ -82,7 +88,10 @@ export class JsxTypesGenerator {
             isListWidget: LIST_WIDGET_NAMES.has(meta.className),
             isDropDownWidget: DROP_DOWN_WIDGET_NAMES.has(meta.className),
             isColumnViewWidget: COLUMN_VIEW_WIDGET_NAMES.has(meta.className),
+            isNavigationView: NAVIGATION_VIEW_WIDGET_NAMES.has(meta.className),
+            isStack: STACK_WIDGET_NAMES.has(meta.className),
             isContainer: meta.isContainer,
+            hasVirtualChildren: VIRTUAL_CHILDREN_WIDGET_NAMES.has(meta.className),
             slots: filteredSlots,
             hiddenProps,
             meta,
@@ -93,6 +102,12 @@ export class JsxTypesGenerator {
         sourceFile.addImportDeclaration({
             moduleSpecifier: "react",
             namedImports: ["ReactNode", "Ref"],
+            isTypeOnly: true,
+        });
+
+        sourceFile.addImportDeclaration({
+            moduleSpecifier: "../types.js",
+            namedImports: ["EventControllerProps"],
             isTypeOnly: true,
         });
 
@@ -127,7 +142,7 @@ export class JsxTypesGenerator {
         const widgetMeta = widgets.find((w) => w.className === "Widget");
         if (!widgetMeta) return;
 
-        this.propsBuilder.buildWidgetPropsInterface(
+        this.propsBuilder.buildWidgetPropsType(
             sourceFile,
             "Gtk",
             widgetMeta.meta.properties,

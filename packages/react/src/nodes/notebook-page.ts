@@ -52,9 +52,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         }
 
         if (!(child instanceof WidgetNode)) {
-            throw new Error(
-                `Cannot append '${child.typeName}' to 'NotebookPage': expected Widget or NotebookPageTab`,
-            );
+            throw new Error(`Cannot append '${child.typeName}' to 'NotebookPage': expected Widget or NotebookPageTab`);
         }
 
         const oldChild = this.child;

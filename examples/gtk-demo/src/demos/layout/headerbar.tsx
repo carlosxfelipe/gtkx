@@ -1,14 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkHeaderBar,
-    GtkLabel,
-    GtkMenuButton,
-    GtkSearchBar,
-    GtkSearchEntry,
-    x,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkMenuButton, GtkSearchBar, GtkSearchEntry, x } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./headerbar.tsx?raw";

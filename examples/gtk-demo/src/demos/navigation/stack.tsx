@@ -64,8 +64,8 @@ const StackDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={Gtk.Align.START}
                     />
-                    <GtkStack visibleChildName={currentPage} transitionType={transitionType} transitionDuration={300}>
-                        <x.StackPage name="home" title="Home" iconName="go-home-symbolic">
+                    <GtkStack page={currentPage} transitionType={transitionType} transitionDuration={300}>
+                        <x.StackPage id="home" title="Home" iconName="go-home-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -82,7 +82,7 @@ const StackDemo = () => {
                                 />
                             </GtkBox>
                         </x.StackPage>
-                        <x.StackPage name="search" title="Search" iconName="system-search-symbolic">
+                        <x.StackPage id="search" title="Search" iconName="system-search-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -99,7 +99,7 @@ const StackDemo = () => {
                                 />
                             </GtkBox>
                         </x.StackPage>
-                        <x.StackPage name="settings" title="Settings" iconName="emblem-system-symbolic">
+                        <x.StackPage id="settings" title="Settings" iconName="emblem-system-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
@@ -123,7 +123,7 @@ const StackDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Programmatic Navigation" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="Navigate between pages programmatically by setting visibleChildName."
+                    label="Navigate between pages programmatically by setting the page prop."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
@@ -174,7 +174,7 @@ const StackDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="visibleChildName: Name of the currently visible page. transitionType: Animation style (CROSSFADE, SLIDE_*, OVER_*, etc.). transitionDuration: Animation duration in milliseconds. hhomogeneous/vhomogeneous: Whether all children get the same size."
+                    label="page: ID of the currently visible page. transitionType: Animation style (CROSSFADE, SLIDE_*, OVER_*, etc.). transitionDuration: Animation duration in milliseconds. hhomogeneous/vhomogeneous: Whether all children get the same size."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

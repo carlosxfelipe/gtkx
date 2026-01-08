@@ -54,14 +54,14 @@ const TabbedView = () => {
 
       <AdwViewStack
         ref={stackRef}
-        visibleChildName={currentPage}
+        page={currentPage}
         onNotify={(_, prop) => {
           if (prop === "visible-child-name" && stackRef.current) {
             setCurrentPage(stackRef.current.getVisibleChildName() ?? "home");
           }
         }}
       >
-        <StackPage name="home" title="Home" iconName="go-home-symbolic">
+        <StackPage id="home" title="Home" iconName="go-home-symbolic">
           Home content
         </StackPage>
         <StackPage

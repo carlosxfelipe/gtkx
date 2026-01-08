@@ -1,15 +1,32 @@
 type Callback = () => void;
 
-const pendingCallbacks: Callback[] = [];
+export enum CommitPriority {
+    /** Runs first. Used for widget removals to unparent before reparenting. */
+    HIGH = 0,
+    /** Runs after HIGH priority. Used for widget additions. */
+    NORMAL = 1,
+}
 
-export const scheduleAfterCommit = (callback: Callback): void => {
-    pendingCallbacks.push(callback);
+const queues: Record<CommitPriority, Callback[]> = {
+    [CommitPriority.HIGH]: [],
+    [CommitPriority.NORMAL]: [],
+};
+
+const priorities = [CommitPriority.HIGH, CommitPriority.NORMAL] as const;
+
+/**
+ * Schedule a callback to run after commit with the specified priority.
+ * HIGH priority callbacks run before NORMAL priority callbacks.
+ */
+export const scheduleAfterCommit = (callback: Callback, priority = CommitPriority.NORMAL): void => {
+    queues[priority].push(callback);
 };
 
 export const flushAfterCommit = (): void => {
-    const callbacks = pendingCallbacks.splice(0);
-
-    for (const callback of callbacks) {
-        callback();
+    for (const priority of priorities) {
+        const callbacks = queues[priority].splice(0);
+        for (const callback of callbacks) {
+            callback();
+        }
     }
 };

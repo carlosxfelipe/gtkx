@@ -7,7 +7,7 @@
  * Optimized to use ts-morph structures API for batched operations.
  */
 
-import type { CodeBlockWriter, OptionalKind, PropertySignatureStructure, SourceFile, WriterFunction } from "ts-morph";
+import type { CodeBlockWriter, SourceFile, WriterFunction } from "ts-morph";
 import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
 import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
@@ -20,8 +20,6 @@ type PropInfo = {
     optional: boolean;
     doc?: string;
 };
-
-type PropStructure = OptionalKind<PropertySignatureStructure>;
 
 /**
  * Builds widget props type aliases using pre-computed metadata.
@@ -60,41 +58,42 @@ export class WidgetPropsBuilder {
     }
 
     /**
-     * Builds the base WidgetProps interface.
-     * Uses interface (not type alias) because it needs declaration merging in jsx.ts.
+     * Builds the base WidgetProps type alias extending EventControllerProps.
      */
-    buildWidgetPropsInterface(
+    buildWidgetPropsType(
         sourceFile: SourceFile,
         namespace: string,
         properties: readonly PropertyAnalysis[],
         signals: readonly SignalAnalysis[],
         widgetDoc?: string,
     ): void {
-        const propStructures: PropStructure[] = properties.map((prop) => {
+        const allProps: PropInfo[] = [];
+
+        for (const prop of properties) {
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
-            return {
+            allProps.push({
                 name: prop.camelName,
                 type: `${qualifyType(prop.type, namespace)} | null`,
-                hasQuestionToken: true,
-                docs: prop.doc ? [{ description: this.formatDocDescription(prop.doc, namespace) }] : undefined,
-            };
-        });
+                optional: true,
+                doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
+            });
+        }
 
-        const signalStructures: PropStructure[] = signals.map((signal) => {
+        for (const signal of signals) {
             this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
-            return {
+            allProps.push({
                 name: signal.handlerName,
                 type: `${this.buildHandlerType(signal, "Widget", namespace)} | null`,
-                hasQuestionToken: true,
-                docs: signal.doc ? [{ description: this.formatDocDescription(signal.doc, namespace) }] : undefined,
-            };
-        });
+                optional: true,
+                doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
+            });
+        }
 
-        sourceFile.addInterface({
+        sourceFile.addTypeAlias({
             name: "WidgetProps",
             isExported: true,
             docs: widgetDoc ? [{ description: this.formatDocDescription(widgetDoc, namespace) }] : undefined,
-            properties: [...propStructures, ...signalStructures],
+            type: this.buildIntersectionTypeWriter("EventControllerProps", allProps),
         });
     }
 
@@ -139,7 +138,13 @@ export class WidgetPropsBuilder {
 
         allProps.push(...this.getSpecialWidgetProperties(widget));
 
-        if (widget.isContainer || widget.isListWidget || widget.isColumnViewWidget || widget.isDropDownWidget) {
+        if (
+            widget.isContainer ||
+            widget.isListWidget ||
+            widget.isColumnViewWidget ||
+            widget.isDropDownWidget ||
+            widget.hasVirtualChildren
+        ) {
             allProps.push({
                 name: "children",
                 type: "ReactNode",
@@ -242,6 +247,24 @@ export class WidgetPropsBuilder {
                     doc: "Called when selection changes with the selected item's ID",
                 },
             );
+        }
+
+        if (widget.isNavigationView) {
+            props.push({
+                name: "history",
+                type: "string[] | null",
+                optional: true,
+                doc: "Array of page IDs representing the navigation stack. The last ID is the visible page.",
+            });
+        }
+
+        if (widget.isStack) {
+            props.push({
+                name: "page",
+                type: "string | null",
+                optional: true,
+                doc: "ID of the visible page in the stack.",
+            });
         }
 
         return props;
