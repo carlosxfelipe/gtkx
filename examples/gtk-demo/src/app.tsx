@@ -46,7 +46,7 @@ const AppContent = () => {
 
 export const App = () => (
     <DemoProvider categories={categories}>
-        <GtkApplicationWindow title="GTK4 Demo" defaultWidth={1400} defaultHeight={900} onCloseRequest={quit}>
+        <GtkApplicationWindow title="GTK4 Demo" defaultWidth={1400} defaultHeight={900} onClose={quit}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
                 <AppContent />
             </GtkBox>

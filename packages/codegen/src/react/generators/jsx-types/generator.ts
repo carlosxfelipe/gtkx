@@ -19,6 +19,7 @@ import {
     NAVIGATION_VIEW_WIDGET_NAMES,
     STACK_WIDGET_NAMES,
     VIRTUAL_CHILDREN_WIDGET_NAMES,
+    WINDOW_WIDGET_NAMES,
 } from "../../constants/index.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
@@ -33,6 +34,7 @@ export type JsxWidget = {
     isColumnViewWidget: boolean;
     isNavigationView: boolean;
     isStack: boolean;
+    isWindow: boolean;
     isContainer: boolean;
     hasVirtualChildren: boolean;
     slots: readonly string[];
@@ -90,6 +92,7 @@ export class JsxTypesGenerator {
             isColumnViewWidget: COLUMN_VIEW_WIDGET_NAMES.has(meta.className),
             isNavigationView: NAVIGATION_VIEW_WIDGET_NAMES.has(meta.className),
             isStack: STACK_WIDGET_NAMES.has(meta.className),
+            isWindow: WINDOW_WIDGET_NAMES.has(meta.className),
             isContainer: meta.isContainer,
             hasVirtualChildren: VIRTUAL_CHILDREN_WIDGET_NAMES.has(meta.className),
             slots: filteredSlots,
@@ -156,6 +159,7 @@ export class JsxTypesGenerator {
             if (widget.className === "Widget") continue;
 
             const filteredProperties = widget.meta.properties.filter((p) => !widget.hiddenProps.has(p.camelName));
+            const filteredSignals = widget.meta.signals.filter((s) => !widget.hiddenProps.has(s.handlerName));
 
             const allPropNamesKebab = widget.meta.propNames;
 
@@ -163,7 +167,7 @@ export class JsxTypesGenerator {
                 sourceFile,
                 widget,
                 filteredProperties,
-                widget.meta.signals,
+                filteredSignals,
                 allPropNamesKebab,
             );
         }

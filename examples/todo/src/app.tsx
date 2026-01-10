@@ -64,10 +64,10 @@ const Footer = ({
 );
 
 interface AppProps {
-    onCloseRequest?: () => boolean;
+    onClose?: () => void;
 }
 
-export const App = ({ onCloseRequest = quit }: AppProps) => {
+export const App = ({ onClose = quit }: AppProps) => {
     const {
         todos,
         filter,
@@ -100,7 +100,7 @@ export const App = ({ onCloseRequest = quit }: AppProps) => {
     };
 
     return (
-        <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onCloseRequest={onCloseRequest}>
+        <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onClose={onClose}>
             <AdwToolbarView>
                 <x.ToolbarTop>
                     <AdwHeaderBar>

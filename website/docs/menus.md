@@ -114,7 +114,7 @@ const App = () => (
             <Menu.Item id="about" label="About" onActivate={showAbout} />
         </Menu.Submenu>
 
-        <GtkApplicationWindow title="My App" showMenubar onCloseRequest={quit}>
+        <GtkApplicationWindow title="My App" showMenubar onClose={quit}>
             {/* App content */}
         </GtkApplicationWindow>
     </>
@@ -185,7 +185,7 @@ const App = () => {
     const [document, setDocument] = useState("Untitled");
 
     return (
-        <GtkApplicationWindow title={document} defaultWidth={600} defaultHeight={400} onCloseRequest={quit}>
+        <GtkApplicationWindow title={document} defaultWidth={600} defaultHeight={400} onClose={quit}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["toolbar"]}>
                     <GtkMenuButton label="File">

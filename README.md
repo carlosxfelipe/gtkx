@@ -49,7 +49,7 @@ const App = () => {
       title="Counter"
       defaultWidth={300}
       defaultHeight={200}
-      onCloseRequest={quit}
+      onClose={quit}
     >
       <GtkBox
         orientation={Gtk.Orientation.VERTICAL}

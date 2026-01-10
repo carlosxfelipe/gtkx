@@ -14,7 +14,7 @@ import { GtkApplicationWindow, GtkBox, GtkButton, render, quit } from "@gtkx/rea
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const App = () => (
-    <GtkApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+    <GtkApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onClose={quit}>
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
             Hello, GTKX!
             <GtkButton label="Quit" onClicked={quit} />

@@ -15,4 +15,5 @@ export {
     STACK_WIDGET_NAMES,
     VIRTUAL_CHILDREN_WIDGET_NAMES,
     WIDGET_CLASSIFICATIONS,
+    WINDOW_WIDGET_NAMES,
 } from "./widget-classification.js";

@@ -3,15 +3,17 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
 import { Menu } from "./models/menu.js";
 import { WidgetNode } from "./widget.js";
 
-const PROPS = ["defaultWidth", "defaultHeight"];
+const PROPS = ["defaultWidth", "defaultHeight", "onClose"];
 
 type WindowProps = Props & {
     defaultWidth?: number;
     defaultHeight?: number;
+    onClose?: () => void;
 };
 
 class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
@@ -99,6 +101,15 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             const width = newProps.defaultWidth ?? -1;
             const height = newProps.defaultHeight ?? -1;
             this.container.setDefaultSize(width, height);
+        }
+
+        if (oldProps?.onClose !== newProps.onClose) {
+            const userHandler = newProps.onClose;
+            const wrappedHandler = () => {
+                userHandler?.();
+                return true;
+            };
+            signalStore.set(this, this.container, "close-request", wrappedHandler);
         }
 
         super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS));

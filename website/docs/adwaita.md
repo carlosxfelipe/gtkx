@@ -314,7 +314,7 @@ const SettingsPage = () => {
       title="Settings"
       defaultWidth={500}
       defaultHeight={600}
-      onCloseRequest={quit}
+      onClose={quit}
     >
       <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
         <AdwHeaderBar />

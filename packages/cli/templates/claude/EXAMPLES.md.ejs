@@ -8,7 +8,7 @@
 import { GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
 
 const App = () => (
-    <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+    <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onClose={quit}>
         <GtkLabel label="Hello, World!" />
     </GtkApplicationWindow>
 );
@@ -32,7 +32,7 @@ import {
 } from "@gtkx/react";
 
 export const App = () => (
-    <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+    <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onClose={quit}>
         <AdwToolbarView>
             <x.ToolbarTop>
                 <AdwHeaderBar>
@@ -216,7 +216,7 @@ const AppWithNavigation = () => {
     const [page, setPage] = useState("home");
 
     return (
-        <GtkApplicationWindow title="App" defaultWidth={600} defaultHeight={400} onCloseRequest={quit}>
+        <GtkApplicationWindow title="App" defaultWidth={600} defaultHeight={400} onClose={quit}>
             <x.Slot for={GtkWindow} id="titlebar">
                 <GtkHeaderBar>
                     <x.PackStart>

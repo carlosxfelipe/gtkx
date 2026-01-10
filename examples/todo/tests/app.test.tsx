@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, userEvent, waitFor } from "@gtkx/te
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
-const TestApp = () => <App onCloseRequest={() => false} />;
+const TestApp = () => <App onClose={() => {}} />;
 
 describe("Todo App", () => {
     afterEach(async () => {

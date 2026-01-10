@@ -21,7 +21,7 @@ export const App = () => {
     const [stack, setStack] = useState<Adw.ViewStack | null>(null);
 
     return (
-        <AdwApplicationWindow title="x.* Showcase" defaultWidth={900} defaultHeight={700} onCloseRequest={quit}>
+        <AdwApplicationWindow title="x.* Showcase" defaultWidth={900} defaultHeight={700} onClose={quit}>
             <AdwToolbarView>
                 <x.ToolbarTop>
                     <AdwHeaderBar>

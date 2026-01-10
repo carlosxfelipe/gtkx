@@ -6,7 +6,7 @@ export const App = () => {
     const [count, setCount] = useState(0);
 
     return (
-        <GtkApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+        <GtkApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300} onClose={quit}>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}

@@ -54,7 +54,7 @@ const App = () => {
     const [count, setCount] = useState(0);
 
     return (
-        <GtkApplicationWindow title="Counter" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+        <GtkApplicationWindow title="Counter" defaultWidth={400} defaultHeight={300} onClose={quit}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} spacing={20}>
                 <GtkLabel label={\`Count: \${count}\`} cssClasses={["title-1"]} />
                 <GtkButton label="Increment" onClicked={() => setCount(c => c + 1)} cssClasses={["pill", "suggested-action"]} />

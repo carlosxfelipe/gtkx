@@ -15,7 +15,7 @@ const HIDDEN_PROPS: Readonly<Record<string, readonly string[]>> = {
     ColumnView: ["model"],
     DropDown: ["model"],
     ComboRow: ["model"],
-    Window: ["application"],
+    Window: ["onCloseRequest"],
     ApplicationWindow: ["application"],
     NavigationPage: ["child"],
     GraphicsOffload: ["child"],

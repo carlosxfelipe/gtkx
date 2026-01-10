@@ -3,7 +3,7 @@ import { GtkApplicationWindow, GtkBox, GtkLabel, quit } from "@gtkx/react";
 
 export const App = () => {
     return (
-        <GtkApplicationWindow title="GTKX Example" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+        <GtkApplicationWindow title="GTKX Example" defaultWidth={400} defaultHeight={300} onClose={quit}>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}

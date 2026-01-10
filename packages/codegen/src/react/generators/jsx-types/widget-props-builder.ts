@@ -267,6 +267,15 @@ export class WidgetPropsBuilder {
             });
         }
 
+        if (widget.isWindow) {
+            props.push({
+                name: "onClose",
+                type: "(() => void) | null",
+                optional: true,
+                doc: "Called when the window close button is clicked. Control window visibility using React state.",
+            });
+        }
+
         return props;
     }
 

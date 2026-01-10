@@ -53,10 +53,7 @@ const AboutButton = () => {
                     programName="My Application"
                     version="1.0.0"
                     licenseType={Gtk.License.MIT_X11}
-                    onCloseRequest={() => {
-                        setShowDialog(false);
-                        return false;
-                    }}
+                    onClose={() => setShowDialog(false)}
                 />,
                 activeWindow
             )}
@@ -162,7 +159,7 @@ return (
         <GtkButton label="About" onClicked={() => setModalState("about")} />
 
         {modalState === "about" && activeWindow && createPortal(
-            <GtkAboutDialog onCloseRequest={() => { setModalState("closed"); return false; }} />,
+            <GtkAboutDialog onClose={() => setModalState("closed")} />,
             activeWindow
         )}
     </>

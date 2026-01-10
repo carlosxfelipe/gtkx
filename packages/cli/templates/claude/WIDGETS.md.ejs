@@ -306,7 +306,7 @@ Bottom action bar.
     title="App"
     defaultWidth={800}
     defaultHeight={600}
-    onCloseRequest={quit}
+    onClose={quit}
 >
     <Content />
 </GtkApplicationWindow>
@@ -332,7 +332,7 @@ Import: `import * as Adw from "@gtkx/ffi/adw";`
 Modern app structure.
 
 ```tsx
-<AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+<AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onClose={quit}>
     <AdwToolbarView>
         <x.ToolbarTop>
             <AdwHeaderBar>

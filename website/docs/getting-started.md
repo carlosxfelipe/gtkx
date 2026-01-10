@@ -65,7 +65,7 @@ export default function App() {
       title="My App"
       defaultWidth={400}
       defaultHeight={300}
-      onCloseRequest={quit}
+      onClose={quit}
     >
       <GtkBox
         orientation={Gtk.Orientation.VERTICAL}

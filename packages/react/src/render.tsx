@@ -93,7 +93,7 @@ export const setHotReloading = (value: boolean): void => {
  * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
- *   <GtkApplicationWindow title="My App" onCloseRequest={quit}>
+ *   <GtkApplicationWindow title="My App" onClose={quit}>
  *     <GtkLabel label="Hello, GTKX!" />
  *   </GtkApplicationWindow>
  * );
@@ -175,16 +175,14 @@ export const update = (element: ReactNode): Promise<void> => {
  * Gracefully shuts down the GTK application.
  *
  * Unmounts the React component tree and stops the GTK main loop.
- * Typically used as the `onCloseRequest` handler for the application window.
- *
- * @returns `false` to allow GTK to close the window
+ * Typically used as the `onClose` handler for the application window.
  *
  * @example
  * ```tsx
  * import { quit } from "@gtkx/react";
  *
  * const App = () => (
- *   <GtkApplicationWindow title="My App" onCloseRequest={quit}>
+ *   <GtkApplicationWindow title="My App" onClose={quit}>
  *     <GtkButton label="Quit" onClicked={quit} />
  *   </GtkApplicationWindow>
  * );

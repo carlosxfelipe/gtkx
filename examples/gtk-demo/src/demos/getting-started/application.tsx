@@ -44,7 +44,7 @@ const ApplicationDemo = () => {
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <GtkLabel label="GtkApplicationWindow" cssClasses={["heading"]} halign={Gtk.Align.START} />
                         <GtkLabel
-                            label="The main window container. Use the onCloseRequest prop to handle window close events and properly quit the application."
+                            label="The main window container. Use the onClose prop to handle window close events and properly quit the application."
                             wrap
                             cssClasses={["dim-label"]}
                             halign={Gtk.Align.START}
