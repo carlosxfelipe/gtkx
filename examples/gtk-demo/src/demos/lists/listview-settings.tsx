@@ -233,6 +233,7 @@ const ListViewSettingsDemo = () => {
                         <GtkFrame key={category} label={category}>
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginTop={8} marginBottom={8}>
                                 <x.ListView<SettingItem>
+                                    estimatedItemHeight={60}
                                     showSeparators
                                     renderItem={(item) => (
                                         <GtkBox

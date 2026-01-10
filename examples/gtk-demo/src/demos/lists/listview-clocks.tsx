@@ -141,6 +141,7 @@ const ListViewClocksDemo = () => {
                 >
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<ClockItem>
+                            estimatedItemHeight={64}
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (

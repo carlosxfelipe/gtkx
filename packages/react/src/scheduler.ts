@@ -5,14 +5,17 @@ export enum CommitPriority {
     HIGH = 0,
     /** Runs after HIGH priority. Used for widget additions. */
     NORMAL = 1,
+    /** Runs last. Used for model sync operations that need all data to be added first. */
+    LOW = 2,
 }
 
 const queues: Record<CommitPriority, Callback[]> = {
     [CommitPriority.HIGH]: [],
     [CommitPriority.NORMAL]: [],
+    [CommitPriority.LOW]: [],
 };
 
-const priorities = [CommitPriority.HIGH, CommitPriority.NORMAL] as const;
+const priorities = [CommitPriority.HIGH, CommitPriority.NORMAL, CommitPriority.LOW] as const;
 
 /**
  * Schedule a callback to run after commit with the specified priority.

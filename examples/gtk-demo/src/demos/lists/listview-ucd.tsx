@@ -118,6 +118,7 @@ const ListViewUcdDemo = () => {
                     >
                         <GtkScrolledWindow heightRequest={400} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <x.ListView<{ name: string }>
+                                estimatedItemHeight={40}
                                 showSeparators
                                 onActivate={(_list, position) => {
                                     const block = unicodeBlocks[position];
@@ -184,6 +185,7 @@ const ListViewUcdDemo = () => {
                         <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             {viewMode === "grid" ? (
                                 <x.GridView<UnicodeChar>
+                                    estimatedItemHeight={78}
                                     minColumns={6}
                                     maxColumns={12}
                                     onActivate={handleActivate}
@@ -216,6 +218,7 @@ const ListViewUcdDemo = () => {
                                 </x.GridView>
                             ) : (
                                 <x.ListView<UnicodeChar>
+                                    estimatedItemHeight={48}
                                     showSeparators
                                     onActivate={handleActivate}
                                     renderItem={(item) => (

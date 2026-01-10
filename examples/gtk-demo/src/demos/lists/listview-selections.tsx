@@ -170,6 +170,7 @@ const ListViewSelectionsDemo = () => {
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<FruitItem>
+                            estimatedItemHeight={48}
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (

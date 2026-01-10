@@ -1,6 +1,6 @@
 import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { scheduleAfterCommit } from "../../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 
 export interface TreeItemData<T = unknown> {
     value: T;
@@ -148,7 +148,7 @@ export class TreeStore {
         }
 
         this.shouldSync = true;
-        scheduleAfterCommit(() => this.sync());
+        scheduleAfterCommit(() => this.sync(), CommitPriority.LOW);
     }
 
     private sync(): void {
@@ -160,10 +160,9 @@ export class TreeStore {
             this.rootIds = [...this.newRootIds];
 
             for (const [parentId, newChildIds] of this.newChildren) {
-                const oldChildIds = this.children.get(parentId) ?? [];
                 const model = this.childModels.get(parentId);
                 if (model) {
-                    const oldLength = oldChildIds.length;
+                    const oldLength = model.getNItems();
                     model.splice(0, oldLength, newChildIds.length > 0 ? newChildIds : undefined);
                 }
             }

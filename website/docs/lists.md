@@ -37,6 +37,7 @@ const contacts: Contact[] = [
 const ContactList = () => (
     <GtkScrolledWindow vexpand>
         <ListView
+            estimatedItemHeight={48}
             renderItem={(contact: Contact | null) => (
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <GtkLabel label={contact?.name ?? ""} hexpand halign={Gtk.Align.START} />
@@ -58,6 +59,7 @@ const ContactList = () => (
 const [selected, setSelected] = useState<string[]>([]);
 
 <ListView
+    estimatedItemHeight={48}
     selectionMode={Gtk.SelectionMode.MULTIPLE}
     selected={selected}
     onSelectionChanged={setSelected}
@@ -91,6 +93,7 @@ const photoTile = (color: string) => css`
 const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
     <GtkScrolledWindow vexpand hexpand>
         <GridView
+            estimatedItemHeight={130}
             minColumns={2}
             maxColumns={6}
             renderItem={(photo: Photo | null) => (
@@ -143,7 +146,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
 
     return (
         <GtkScrolledWindow vexpand hexpand>
-            <GtkColumnView sortColumn={sortColumn} sortOrder={sortOrder} onSortChange={handleSortChange}>
+            <GtkColumnView estimatedRowHeight={48} sortColumn={sortColumn} sortOrder={sortOrder} onSortChange={handleSortChange}>
                 <ColumnViewColumn
                     id="name"
                     title="Name"
@@ -319,6 +322,7 @@ const categories: CategoryWithChildren[] = [
 const SettingsTree = () => (
     <GtkScrolledWindow vexpand>
         <TreeListView
+            estimatedItemHeight={48}
             renderItem={(item: TreeItem | null) => {
                 if (!item) return <GtkLabel label="Loading..." />;
 
@@ -357,6 +361,7 @@ const SettingsTree = () => (
 const [selected, setSelected] = useState<string[]>([]);
 
 <TreeListView
+    estimatedItemHeight={48}
     selectionMode={Gtk.SelectionMode.SINGLE}
     selected={selected}
     onSelectionChanged={setSelected}

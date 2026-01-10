@@ -9,10 +9,11 @@ import { ListItemNode } from "./list-item.js";
 import { List } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["renderItem"];
+const PROP_NAMES = ["renderItem", "estimatedItemHeight"];
 
 type ListViewProps = {
     renderItem?: RenderItemFn<unknown>;
+    estimatedItemHeight?: number;
 };
 
 class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps> {
@@ -70,6 +71,10 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
     public override updateProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
         if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
             this.itemRenderer.setRenderFn(newProps.renderItem);
+        }
+
+        if (!oldProps || oldProps.estimatedItemHeight !== newProps.estimatedItemHeight) {
+            this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
         }
 
         this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));

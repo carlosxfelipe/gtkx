@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { scheduleAfterCommit } from "../../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 
 export class ListStore {
     private items: Map<string, unknown> = new Map();
@@ -73,7 +73,7 @@ export class ListStore {
         }
 
         this.shouldSync = true;
-        scheduleAfterCommit(() => this.sync());
+        scheduleAfterCommit(() => this.sync(), CommitPriority.LOW);
     }
 
     private sync(): void {

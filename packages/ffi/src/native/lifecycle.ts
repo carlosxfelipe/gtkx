@@ -8,6 +8,7 @@ import { getNativeObject } from "./object.js";
 
 declare const Deno: unknown;
 const isDeno = typeof Deno !== "undefined";
+const isVitest = !!process.env.VITEST;
 
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -31,24 +32,32 @@ const teardown = (): void => {
 
 const handleSigint = (): void => {
     teardown();
-    process.exit(130);
+    if (!isVitest) {
+        process.exit(130);
+    }
 };
 
 const handleSigterm = (): void => {
     teardown();
-    process.exit(143);
+    if (!isVitest) {
+        process.exit(143);
+    }
 };
 
 const handleException = (error: unknown): void => {
     teardown();
     console.error(error);
-    process.exit(1);
+    if (!isVitest) {
+        process.exit(1);
+    }
 };
 
 const handleRejection = (reason: unknown): void => {
     teardown();
     console.error("Unhandled rejection:", reason);
-    process.exit(1);
+    if (!isVitest) {
+        process.exit(1);
+    }
 };
 
 const registerExitHandlers = (): void => {

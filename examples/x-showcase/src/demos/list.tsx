@@ -78,6 +78,7 @@ export const ListDemo = () => {
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<FileItem>
+                            estimatedItemHeight={48}
                             renderItem={(item) => (
                                 <GtkBox
                                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -107,6 +108,7 @@ export const ListDemo = () => {
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.GridView<FileItem>
+                            estimatedItemHeight={80}
                             renderItem={(item) => (
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
@@ -137,6 +139,7 @@ export const ListDemo = () => {
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={250} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.TreeListView<{ name: string }>
+                            estimatedItemHeight={32}
                             renderItem={(item) => (
                                 <GtkLabel
                                     label={item?.name ?? ""}
@@ -173,7 +176,7 @@ export const ListDemo = () => {
             <AdwPreferencesGroup title="x.ColumnViewColumn" description="Table columns with custom cell rendering">
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <GtkColumnView>
+                        <GtkColumnView estimatedRowHeight={48}>
                             <x.ColumnViewColumn<Person>
                                 id="name"
                                 title="Name"

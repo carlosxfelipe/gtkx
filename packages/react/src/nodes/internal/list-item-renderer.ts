@@ -14,6 +14,7 @@ export class ListItemRenderer {
     private store?: ListStore | null;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
     private renderFn?: RenderItemFn<unknown> = () => null as never;
+    private estimatedItemHeight?: number;
 
     constructor() {
         this.factory = new Gtk.SignalListItemFactory();
@@ -32,6 +33,10 @@ export class ListItemRenderer {
         this.store = store;
     }
 
+    public setEstimatedItemHeight(height?: number): void {
+        this.estimatedItemHeight = height;
+    }
+
     private getStore(): ListStore {
         if (!this.store) {
             throw new Error("Expected list store to be set on ListItemRenderer");
@@ -45,6 +50,11 @@ export class ListItemRenderer {
             const ptr = getNativeId(listItem.handle);
 
             const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+
+            if (this.estimatedItemHeight !== undefined) {
+                box.setSizeRequest(-1, this.estimatedItemHeight);
+            }
+
             listItem.setChild(box);
 
             const fiberRoot = createFiberRoot(box);
@@ -65,17 +75,15 @@ export class ListItemRenderer {
             const item = this.getStore().getItem(stringObject.getString());
             const element = this.renderFn?.(item);
 
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
+            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
+                const box = listItem.getChild();
+                if (box instanceof Gtk.Box) {
+                    box.setSizeRequest(-1, -1);
+                }
+            });
         });
 
-        signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const fiberRoot = this.fiberRoots.get(ptr);
-
-            if (!fiberRoot) return;
-
-            reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
-        });
+        signalStore.set(this, this.factory, "unbind", () => {});
 
         signalStore.set(this, this.factory, "teardown", (_self, listItem) => {
             const ptr = getNativeId(listItem.handle);

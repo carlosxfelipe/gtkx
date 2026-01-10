@@ -519,6 +519,186 @@ describe("render - TreeListView", () => {
         });
     });
 
+    describe("nested children rendering", () => {
+        it("renders all nested children with correct data after expansion", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const renderedItems: Array<{ id: string; name: string } | null> = [];
+
+            interface Category {
+                type: "category";
+                id: string;
+                name: string;
+            }
+
+            interface Setting {
+                type: "setting";
+                id: string;
+                name: string;
+            }
+
+            type TreeItem = Category | Setting;
+
+            const categories: Array<Category & { children: Setting[] }> = [
+                {
+                    type: "category",
+                    id: "appearance",
+                    name: "Appearance",
+                    children: [
+                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
+                        { type: "setting", id: "large-text", name: "Large Text" },
+                        { type: "setting", id: "animations", name: "Animations" },
+                        { type: "setting", id: "transparency", name: "Transparency" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "notifications",
+                    name: "Notifications",
+                    children: [
+                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "sounds", name: "Notification Sounds" },
+                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
+                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
+                    ],
+                },
+                {
+                    type: "category",
+                    id: "privacy",
+                    name: "Privacy",
+                    children: [
+                        { type: "setting", id: "location", name: "Location Services" },
+                        { type: "setting", id: "camera", name: "Camera Access" },
+                        { type: "setting", id: "microphone", name: "Microphone Access" },
+                        { type: "setting", id: "analytics", name: "Usage Analytics" },
+                    ],
+                },
+            ];
+
+            await render(
+                <x.TreeListView<TreeItem>
+                    ref={ref}
+                    renderItem={(item) => {
+                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                        if (!item) {
+                            return <GtkLabel label="Loading..." />;
+                        }
+                        return <GtkLabel label={item.name} />;
+                    }}
+                >
+                    {categories.map((category) => (
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                            {category.children.map((setting) => (
+                                <x.TreeListItem
+                                    key={setting.id}
+                                    id={setting.id}
+                                    value={setting as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
+                    ))}
+                </x.TreeListView>,
+                { wrapper: false },
+            );
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const notificationsRow = selectionModel.getObject(1) as Gtk.TreeListRow;
+            expect(notificationsRow.isExpandable()).toBe(true);
+
+            renderedItems.length = 0;
+            notificationsRow.setExpanded(true);
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(7);
+            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
+                "appearance",
+                "notifications",
+                "notifications-enabled",
+                "sounds",
+                "do-not-disturb",
+                "badge-count",
+                "privacy",
+            ]);
+
+            const nullItems = renderedItems.filter((item) => item === null);
+            expect(nullItems.length).toBe(0);
+        });
+
+        it("renders all children with correct data when using autoexpand", async () => {
+            const ref = createRef<Gtk.ListView>();
+            const renderedItems: Array<{ id: string; name: string } | null> = [];
+
+            interface Category {
+                type: "category";
+                id: string;
+                name: string;
+            }
+
+            interface Setting {
+                type: "setting";
+                id: string;
+                name: string;
+            }
+
+            type TreeItem = Category | Setting;
+
+            const categories: Array<Category & { children: Setting[] }> = [
+                {
+                    type: "category",
+                    id: "notifications",
+                    name: "Notifications",
+                    children: [
+                        { type: "setting", id: "notifications-enabled", name: "Notifications" },
+                        { type: "setting", id: "sounds", name: "Notification Sounds" },
+                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
+                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
+                    ],
+                },
+            ];
+
+            await render(
+                <x.TreeListView<TreeItem>
+                    ref={ref}
+                    autoexpand
+                    renderItem={(item) => {
+                        renderedItems.push(item ? { id: item.id, name: item.name } : null);
+                        if (!item) {
+                            return <GtkLabel label="Loading..." />;
+                        }
+                        return <GtkLabel label={item.name} />;
+                    }}
+                >
+                    {categories.map((category) => (
+                        <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                            {category.children.map((setting) => (
+                                <x.TreeListItem
+                                    key={setting.id}
+                                    id={setting.id}
+                                    value={setting as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
+                    ))}
+                </x.TreeListView>,
+                { wrapper: false },
+            );
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(5);
+            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual([
+                "notifications",
+                "notifications-enabled",
+                "sounds",
+                "do-not-disturb",
+                "badge-count",
+            ]);
+
+            const nullItems = renderedItems.filter((item) => item === null);
+            expect(nullItems.length).toBe(0);
+        });
+    });
+
     describe("tree item properties", () => {
         it("supports indentForDepth property", async () => {
             const ref = createRef<Gtk.ListView>();

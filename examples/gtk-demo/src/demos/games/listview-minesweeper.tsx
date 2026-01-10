@@ -236,6 +236,7 @@ const ListViewMinesweeperDemo = () => {
                 >
                     <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.GridView<Cell>
+                            estimatedItemHeight={44}
                             minColumns={GRID_SIZE}
                             maxColumns={GRID_SIZE}
                             onActivate={(_grid, position) => handleCellClick(position)}

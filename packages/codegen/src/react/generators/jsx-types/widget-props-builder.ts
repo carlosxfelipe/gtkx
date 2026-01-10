@@ -220,6 +220,12 @@ export class WidgetPropsBuilder {
                     optional: true,
                     doc: "Called when a column header is clicked to change sort",
                 },
+                {
+                    name: "estimatedRowHeight",
+                    type: "number | null",
+                    optional: true,
+                    doc: "Estimated row height in pixels for proper virtualization before content loads",
+                },
             );
         }
 

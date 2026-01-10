@@ -14,6 +14,7 @@ export class TreeListItemRenderer {
     private store?: TreeStore | null;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
     private renderFn?: TreeRenderItemFn<unknown> = () => null as never;
+    private estimatedItemHeight?: number;
 
     constructor() {
         this.factory = new Gtk.SignalListItemFactory();
@@ -32,6 +33,10 @@ export class TreeListItemRenderer {
         this.store = store;
     }
 
+    public setEstimatedItemHeight(height?: number): void {
+        this.estimatedItemHeight = height;
+    }
+
     private getStore(): TreeStore {
         if (!this.store) {
             throw new Error("Expected tree store to be set on TreeListItemRenderer");
@@ -46,6 +51,11 @@ export class TreeListItemRenderer {
 
             const expander = new Gtk.TreeExpander();
             const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+
+            if (this.estimatedItemHeight !== undefined) {
+                box.setSizeRequest(-1, this.estimatedItemHeight);
+            }
+
             expander.setChild(box);
             listItem.setChild(expander);
 
@@ -89,21 +99,19 @@ export class TreeListItemRenderer {
 
             const element = this.renderFn?.(itemData?.value ?? null, treeListRow);
 
-            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
+            reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
+                const box = expander.getChild();
+                if (box instanceof Gtk.Box) {
+                    box.setSizeRequest(-1, -1);
+                }
+            });
         });
 
         signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
-            const ptr = getNativeId(listItem.handle);
-            const fiberRoot = this.fiberRoots.get(ptr);
-
-            if (!fiberRoot) return;
-
             const expander = listItem.getChild();
             if (expander instanceof Gtk.TreeExpander) {
                 expander.setListRow(null);
             }
-
-            reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
         });
 
         signalStore.set(this, this.factory, "teardown", (_self, listItem) => {

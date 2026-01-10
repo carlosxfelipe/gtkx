@@ -29,6 +29,10 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         this.itemRenderer.setStore(model);
     }
 
+    public setEstimatedRowHeight(height?: number): void {
+        this.itemRenderer.setEstimatedItemHeight(height);
+    }
+
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         if (!oldProps || oldProps.renderCell !== newProps.renderCell) {
             if (newProps.renderCell) {

@@ -8,10 +8,18 @@ import { TreeList, type TreeListProps } from "./models/tree-list.js";
 import { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["renderItem", "autoexpand", "selectionMode", "selected", "onSelectionChanged"];
+const PROP_NAMES = [
+    "renderItem",
+    "estimatedItemHeight",
+    "autoexpand",
+    "selectionMode",
+    "selected",
+    "onSelectionChanged",
+];
 
 type TreeListViewProps = TreeListProps & {
     renderItem?: TreeRenderItemFn<unknown>;
+    estimatedItemHeight?: number;
 };
 
 class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
@@ -71,7 +79,14 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
             this.itemRenderer.setRenderFn(newProps.renderItem);
         }
 
-        this.treeList.updateProps(filterProps(oldProps ?? {}, ["renderItem"]), filterProps(newProps, ["renderItem"]));
+        if (!oldProps || oldProps.estimatedItemHeight !== newProps.estimatedItemHeight) {
+            this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
+        }
+
+        this.treeList.updateProps(
+            filterProps(oldProps ?? {}, ["renderItem", "estimatedItemHeight"]),
+            filterProps(newProps, ["renderItem", "estimatedItemHeight"]),
+        );
         super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
     }
 }

@@ -245,6 +245,7 @@ const ListViewApplauncherDemo = () => {
 
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.GridView<AppItem>
+                            estimatedItemHeight={120}
                             minColumns={3}
                             maxColumns={6}
                             onActivate={handleActivate}

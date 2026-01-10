@@ -136,6 +136,8 @@ export type ColumnViewRootProps<C extends string = string> = {
     sortOrder?: Gtk.SortType;
     /** Callback when sort changes */
     onSortChange?: (column: C | null, order: Gtk.SortType) => void;
+    /** Estimated row height in pixels for proper virtualization before content loads */
+    estimatedRowHeight?: number;
 };
 
 /**
@@ -371,6 +373,8 @@ export type { WidgetSlotNames } from "./generated/jsx.js";
 export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
     /** Function to render each list item */
     renderItem: (item: T | null) => ReactNode;
+    /** Estimated item height in pixels for proper virtualization before content loads */
+    estimatedItemHeight?: number;
 };
 
 /**
@@ -381,6 +385,8 @@ export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkLi
 export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGridViewProps, "renderItem"> & {
     /** Function to render each grid item */
     renderItem: (item: T | null) => ReactNode;
+    /** Estimated item height in pixels for proper virtualization before content loads */
+    estimatedItemHeight?: number;
 };
 
 /**
@@ -391,6 +397,8 @@ export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGr
 export type TreeListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
     /** Function to render each tree item */
     renderItem: TreeRenderItemFn<T>;
+    /** Estimated item height in pixels for proper virtualization before content loads */
+    estimatedItemHeight?: number;
     /** Whether to automatically expand new rows (default: false) */
     autoexpand?: boolean;
     /** Selection mode for the tree */

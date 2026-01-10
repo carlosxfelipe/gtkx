@@ -282,6 +282,7 @@ const ListViewSettings2Demo = () => {
 
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <x.TreeListView<TreeItem>
+                    estimatedItemHeight={48}
                     renderItem={(item, _row) => {
                         if (!item) {
                             return <GtkLabel label="Loading..." />;

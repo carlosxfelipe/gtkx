@@ -148,6 +148,7 @@ const ListViewWeatherDemo = () => {
                 >
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<WeatherDay>
+                            estimatedItemHeight={64}
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (

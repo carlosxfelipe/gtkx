@@ -10,12 +10,13 @@ import { ListItemNode } from "./list-item.js";
 import { List, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChange"];
+const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChange", "estimatedRowHeight"];
 
 type ColumnViewProps = ListProps & {
     sortColumn?: string;
     sortOrder?: Gtk.SortType;
     onSortChange?: (column: string | null, order: Gtk.SortType) => void;
+    estimatedRowHeight?: number;
 };
 
 class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
@@ -23,6 +24,8 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
     private handleSortChange?: () => void;
     private list: List;
+    private columnNodes = new Set<ColumnViewColumnNode>();
+    private estimatedRowHeight?: number;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass(COLUMN_VIEW_CLASSES, containerOrClass);
@@ -56,6 +59,8 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
 
         this.container.appendColumn(child.column);
         child.setStore(this.list.getStore());
+        child.setEstimatedRowHeight(this.estimatedRowHeight);
+        this.columnNodes.add(child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -82,6 +87,8 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         child.setStore(this.list.getStore());
+        child.setEstimatedRowHeight(this.estimatedRowHeight);
+        this.columnNodes.add(child);
     }
 
     public override removeChild(child: Node): void {
@@ -101,6 +108,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         }
 
         child.setStore(undefined);
+        this.columnNodes.delete(child);
     }
 
     public override updateProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
@@ -125,6 +133,13 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
                 this.container.sortByColumn(sortOrder, undefined);
             } else {
                 this.container.sortByColumn(sortOrder, this.getColumn(sortColumn));
+            }
+        }
+
+        if (!oldProps || oldProps.estimatedRowHeight !== newProps.estimatedRowHeight) {
+            this.estimatedRowHeight = newProps.estimatedRowHeight;
+            for (const column of this.columnNodes) {
+                column.setEstimatedRowHeight(this.estimatedRowHeight);
             }
         }
 

@@ -240,6 +240,7 @@ const ListViewWordsDemo = () => {
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<WordItem>
+                            estimatedItemHeight={52}
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (

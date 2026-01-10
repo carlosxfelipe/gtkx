@@ -326,6 +326,7 @@ const ListViewFilebrowserDemo = () => {
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<FileItem>
+                            estimatedItemHeight={48}
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (

@@ -145,6 +145,7 @@ const ListViewColorsDemo = () => {
 
                     <GtkScrolledWindow heightRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<ColorItem>
+                            estimatedItemHeight={64}
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
