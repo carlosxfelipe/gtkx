@@ -118,13 +118,13 @@ describe("waitForElementToBeRemoved", () => {
         const element = createMockWidget(false);
 
         await expect(waitForElementToBeRemoved(element as never)).rejects.toThrow(
-            "Elements already removed: waitForElementToBeRemoved requires elements to be present initially",
+            "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
         );
     });
 
     it("throws if callback returns null initially", async () => {
         await expect(waitForElementToBeRemoved(() => null as never)).rejects.toThrow(
-            "Elements already removed: waitForElementToBeRemoved requires elements to be present initially",
+            "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
         );
     });
 

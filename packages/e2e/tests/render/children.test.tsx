@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkWindow } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkWindow } from "@gtkx/react";
+import { render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -23,67 +23,59 @@ const getChildLabels = (parent: Gtk.Widget): string[] => {
 describe("render - children", () => {
     describe("adding children", () => {
         it("appends child to appendable widget (Box)", async () => {
-            const boxRef = createRef<Gtk.Box>();
-            const labelRef = createRef<Gtk.Label>();
-
             await render(
-                <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel ref={labelRef} label="Child" />
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel label="Child" />
                 </GtkBox>,
             );
 
-            expect(labelRef.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
+            const label = await screen.findByText("Child");
+            expect(label).toBeDefined();
         });
 
         it("sets child on single-child widget", async () => {
-            const frameRef = createRef<Gtk.Frame>();
-            const labelRef = createRef<Gtk.Label>();
-
             await render(
-                <GtkFrame ref={frameRef}>
-                    <GtkLabel ref={labelRef} label="Single Child" />
+                <GtkFrame>
+                    <GtkLabel label="Single Child" />
                 </GtkFrame>,
             );
 
-            expect(frameRef.current?.getChild()?.handle).toEqual(labelRef.current?.handle);
+            const label = await screen.findByText("Single Child");
+            expect(label).toBeDefined();
         });
     });
 
     describe("removing children", () => {
         it("removes child from parent", async () => {
-            const boxRef = createRef<Gtk.Box>();
-
             function App({ showChild }: { showChild: boolean }) {
                 return (
-                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                         {showChild && "Removable"}
                     </GtkBox>
                 );
             }
 
-            await render(<App showChild={true} />);
+            const { rerender } = await render(<App showChild={true} />);
 
-            expect(getChildWidgets(boxRef.current as Gtk.Box).length).toBe(1);
+            await screen.findByText("Removable");
 
-            await render(<App showChild={false} />);
+            await rerender(<App showChild={false} />);
 
-            expect(getChildWidgets(boxRef.current as Gtk.Box).length).toBe(0);
+            expect(screen.queryByText("Removable")).toBeNull();
         });
 
         it("clears child on single-child widget", async () => {
-            const frameRef = createRef<Gtk.Frame>();
-
             function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame ref={frameRef}>{showChild && "Child"}</GtkFrame>;
+                return <GtkFrame>{showChild && "Child"}</GtkFrame>;
             }
 
-            await render(<App showChild={true} />);
+            const { rerender } = await render(<App showChild={true} />);
 
-            expect(frameRef.current?.getChild()).not.toBeNull();
+            await screen.findByText("Child");
 
-            await render(<App showChild={false} />);
+            await rerender(<App showChild={false} />);
 
-            expect(frameRef.current?.getChild()).toBeNull();
+            expect(screen.queryByText("Child")).toBeNull();
         });
     });
 
@@ -101,12 +93,15 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "C"]} />);
+            const { rerender } = await render(<App items={["A", "C"]} />);
 
+            await screen.findByText("A");
+            await screen.findByText("C");
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
-            await render(<App items={["A", "B", "C"]} />);
+            await rerender(<App items={["A", "B", "C"]} />);
 
+            await screen.findByText("B");
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
 
@@ -123,10 +118,12 @@ describe("render - children", () => {
                 );
             }
 
-            await render(<App items={["A", "B"]} />);
+            const { rerender } = await render(<App items={["A", "B"]} />);
 
-            await render(<App items={["A", "B", "C"]} />);
+            await rerender(<App items={["A", "B", "C"]} />);
 
+            const labels = await screen.findAllByText(/A|B|C/);
+            expect(labels).toHaveLength(3);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
     });
@@ -216,6 +213,64 @@ describe("render - children", () => {
 
             await render(<App items={["C", "B", "A"]} />);
             expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
+        });
+    });
+
+    describe("scoped queries with within", () => {
+        it("queries within a specific container", async () => {
+            const containerRef = createRef<Gtk.Box>();
+
+            await render(
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={containerRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
+                        <GtkButton label="Inner Button" />
+                        <GtkLabel label="Inner Label" />
+                    </GtkBox>
+                    <GtkButton label="Outer Button" />
+                </GtkBox>,
+            );
+
+            const container = containerRef.current as Gtk.Box;
+            const withinContainer = within(container);
+
+            const innerButton = await withinContainer.findByRole(Gtk.AccessibleRole.BUTTON);
+            expect(innerButton).toBeDefined();
+
+            const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+            expect(buttons).toHaveLength(2);
+
+            const innerButtons = await withinContainer.findAllByRole(Gtk.AccessibleRole.BUTTON);
+            expect(innerButtons).toHaveLength(1);
+        });
+
+        it("finds text within specific parent", async () => {
+            const section1Ref = createRef<Gtk.Box>();
+            const section2Ref = createRef<Gtk.Box>();
+
+            await render(
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={section1Ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                        <GtkLabel label="Title" />
+                        <GtkLabel label="Section 1 Content" />
+                    </GtkBox>
+                    <GtkBox ref={section2Ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                        <GtkLabel label="Title" />
+                        <GtkLabel label="Section 2 Content" />
+                    </GtkBox>
+                </GtkBox>,
+            );
+
+            const section1 = within(section1Ref.current as Gtk.Box);
+            const section2 = within(section2Ref.current as Gtk.Box);
+
+            const s1Content = await section1.findByText("Section 1 Content");
+            expect(s1Content).toBeDefined();
+
+            const s2Content = await section2.findByText("Section 2 Content");
+            expect(s2Content).toBeDefined();
+
+            const allTitles = await screen.findAllByText("Title");
+            expect(allTitles).toHaveLength(2);
         });
     });
 });

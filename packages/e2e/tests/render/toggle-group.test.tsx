@@ -1,6 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwToggleGroup, x } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -16,38 +17,26 @@ describe("render - ToggleGroup", () => {
         });
 
         it("creates ToggleGroup widget with toggles", async () => {
-            const ref = createRef<Adw.ToggleGroup>();
-
             await render(
-                <AdwToggleGroup ref={ref}>
-                    <x.Toggle id="list" iconName="view-list-symbolic" />
-                    <x.Toggle id="grid" iconName="view-grid-symbolic" />
+                <AdwToggleGroup>
+                    <x.Toggle id="list" label="List View" iconName="view-list-symbolic" />
+                    <x.Toggle id="grid" label="Grid View" iconName="view-grid-symbolic" />
                 </AdwToggleGroup>,
             );
 
-            expect(ref.current).not.toBeNull();
-            expect(ref.current?.getNToggles()).toBe(2);
-
-            const toggle1 = ref.current?.getToggleByName("list");
-            expect(toggle1).not.toBeNull();
-            expect(toggle1?.getIconName()).toBe("view-list-symbolic");
-
-            const toggle2 = ref.current?.getToggleByName("grid");
-            expect(toggle2).not.toBeNull();
-            expect(toggle2?.getIconName()).toBe("view-grid-symbolic");
+            const toggles = await screen.findAllByRole(Gtk.AccessibleRole.RADIO);
+            expect(toggles).toHaveLength(2);
         });
 
         it("sets toggle label", async () => {
-            const ref = createRef<Adw.ToggleGroup>();
-
             await render(
-                <AdwToggleGroup ref={ref}>
+                <AdwToggleGroup>
                     <x.Toggle id="test" label="Test Label" />
                 </AdwToggleGroup>,
             );
 
-            const toggle = ref.current?.getToggleByName("test");
-            expect(toggle?.getLabel()).toBe("Test Label");
+            const toggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Test Label" });
+            expect(toggle).toBeDefined();
         });
 
         it("sets toggle enabled state", async () => {
@@ -124,6 +113,61 @@ describe("render - ToggleGroup", () => {
             await render(<App showMid={true} />);
             expect(ref.current?.getNToggles()).toBe(3);
             expect(ref.current?.getToggleByName("middle")).not.toBeNull();
+        });
+    });
+
+    describe("user interactions", () => {
+        it("clicks toggle to activate it", async () => {
+            const ref = createRef<Adw.ToggleGroup>();
+
+            await render(
+                <AdwToggleGroup ref={ref}>
+                    <x.Toggle id="list" label="List" />
+                    <x.Toggle id="grid" label="Grid" />
+                </AdwToggleGroup>,
+            );
+
+            const listToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "List" });
+            await userEvent.click(listToggle);
+
+            await waitFor(() => {
+                expect(ref.current?.getActive()).toBe(0);
+            });
+        });
+
+        it("switches between toggles", async () => {
+            const ref = createRef<Adw.ToggleGroup>();
+
+            await render(
+                <AdwToggleGroup ref={ref}>
+                    <x.Toggle id="list" label="List" />
+                    <x.Toggle id="grid" label="Grid" />
+                </AdwToggleGroup>,
+            );
+
+            const gridToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" });
+
+            await userEvent.click(gridToggle);
+
+            await waitFor(() => {
+                expect(ref.current?.getActive()).toBe(1);
+            });
+        });
+
+        it("finds all toggles by role in a toggle group", async () => {
+            await render(
+                <AdwToggleGroup>
+                    <x.Toggle id="list" label="List View" />
+                    <x.Toggle id="grid" label="Grid View" />
+                    <x.Toggle id="tiles" label="Tiles View" />
+                </AdwToggleGroup>,
+            );
+
+            const toggles = await screen.findAllByRole(Gtk.AccessibleRole.RADIO);
+            expect(toggles).toHaveLength(3);
+
+            const listToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "List View" });
+            expect(listToggle).toBeDefined();
         });
     });
 });

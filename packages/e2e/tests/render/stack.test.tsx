@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, GtkStack, x } from "@gtkx/react";
-import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { render, screen, waitFor } from "@gtkx/testing";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - Stack", () => {
@@ -17,15 +17,13 @@ describe("render - Stack", () => {
 
     describe("StackPage", () => {
         it("adds named page", async () => {
-            const stackRef = createRef<Gtk.Stack>();
-
             await render(
-                <GtkStack ref={stackRef}>
+                <GtkStack>
                     <x.StackPage id="page1">Page 1</x.StackPage>
                 </GtkStack>,
             );
 
-            expect(stackRef.current?.getChildByName("page1")).not.toBeNull();
+            await screen.findByText("Page 1");
         });
 
         it("adds titled page", async () => {
@@ -39,20 +37,20 @@ describe("render - Stack", () => {
                 </GtkStack>,
             );
 
+            await screen.findByText("Titled Content");
+
             const page = stackRef.current?.getPage(stackRef.current.getChildByName("titled") as Gtk.Widget);
             expect(page?.getTitle()).toBe("Page Title");
         });
 
         it("adds child page (no name/title)", async () => {
-            const stackRef = createRef<Gtk.Stack>();
-
             await render(
-                <GtkStack ref={stackRef}>
+                <GtkStack>
                     <x.StackPage>Unnamed Page</x.StackPage>
                 </GtkStack>,
             );
 
-            expect(stackRef.current?.getFirstChild()).not.toBeNull();
+            await screen.findByText("Unnamed Page");
         });
 
         it("sets page properties (iconName, needsAttention, etc.)", async () => {
@@ -65,6 +63,8 @@ describe("render - Stack", () => {
                     </x.StackPage>
                 </GtkStack>,
             );
+
+            await screen.findByText("With Props");
 
             const child = stackRef.current?.getChildByName("props-test");
             const page = stackRef.current?.getPage(child as Gtk.Widget);
@@ -150,16 +150,14 @@ describe("render - Stack", () => {
 
     describe("visibleChild", () => {
         it("sets visible child by name", async () => {
-            const stackRef = createRef<Gtk.Stack>();
-
             await render(
-                <GtkStack ref={stackRef} page="page2">
-                    <x.StackPage id="page1">Page 1</x.StackPage>
-                    <x.StackPage id="page2">Page 2</x.StackPage>
+                <GtkStack page="page2">
+                    <x.StackPage id="page1">Page 1 Content</x.StackPage>
+                    <x.StackPage id="page2">Page 2 Content</x.StackPage>
                 </GtkStack>,
             );
 
-            expect(stackRef.current?.getVisibleChildName()).toBe("page2");
+            await screen.findByText("Page 2 Content");
         });
 
         it("handles pending visible child before pages added", async () => {
@@ -177,11 +175,43 @@ describe("render - Stack", () => {
                 );
             }
 
-            await render(<App pages={["other"]} />);
+            const { rerender } = await render(<App pages={["other"]} />);
 
-            await render(<App pages={["other", "target"]} />);
+            await rerender(<App pages={["other", "target"]} />);
 
-            expect(stackRef.current?.getVisibleChildName()).toBe("target");
+            await waitFor(() => {
+                expect(stackRef.current?.getVisibleChildName()).toBe("target");
+            });
+        });
+    });
+
+    describe("page navigation with waitFor", () => {
+        it("changes visible page with controlled state", async () => {
+            function NavigableStack() {
+                const [page] = useState("page1");
+                return (
+                    <GtkStack page={page}>
+                        <x.StackPage id="page1">First Page</x.StackPage>
+                        <x.StackPage id="page2">Second Page</x.StackPage>
+                    </GtkStack>
+                );
+            }
+
+            await render(<NavigableStack />);
+
+            await screen.findByText("First Page");
+        });
+
+        it("finds content in currently visible page", async () => {
+            await render(
+                <GtkStack page="settings">
+                    <x.StackPage id="home">Welcome Home</x.StackPage>
+                    <x.StackPage id="settings">Settings Panel</x.StackPage>
+                    <x.StackPage id="about">About This App</x.StackPage>
+                </GtkStack>,
+            );
+
+            await screen.findByText("Settings Panel");
         });
     });
 });

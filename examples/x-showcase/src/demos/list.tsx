@@ -157,7 +157,10 @@ export const ListDemo = () => {
                                     marginEnd={12}
                                     halign={Gtk.Align.CENTER}
                                 >
-                                    <GtkLabel label={item?.isFolder ? "folder" : "file"} cssClasses={["title-3"]} />
+                                    <GtkLabel
+                                        label={item ? (item.isFolder ? "folder" : "file") : ""}
+                                        cssClasses={["title-3"]}
+                                    />
                                     <GtkLabel label={item?.name ?? ""} ellipsize={3} maxWidthChars={12} />
                                 </GtkBox>
                             )}

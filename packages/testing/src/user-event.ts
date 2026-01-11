@@ -321,6 +321,10 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
             { type: "int", value: 0 },
             { type: "int", value: 0 },
         );
+
+        if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element)) {
+            await fireEvent(element, "activate");
+        }
     }
 
     await tick();

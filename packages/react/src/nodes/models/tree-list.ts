@@ -35,7 +35,6 @@ export class TreeList extends VirtualNode<TreeListProps> {
         this.selectionModel = this.createSelectionModel(props.selectionMode);
         this.selectionModel.setModel(this.treeListModel);
         this.initSelectionHandler(props.onSelectionChanged);
-        this.setSelection(props.selected);
     }
 
     private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
@@ -139,7 +138,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
     public updateProps(oldProps: TreeListProps | null, newProps: TreeListProps): void {
         super.updateProps(oldProps, newProps);
 
-        if (oldProps && oldProps.autoexpand !== newProps.autoexpand) {
+        if (!oldProps || oldProps.autoexpand !== newProps.autoexpand) {
             this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);
         }
 
@@ -152,11 +151,11 @@ export class TreeList extends VirtualNode<TreeListProps> {
             return;
         }
 
-        if (oldProps && oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
+        if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
             this.initSelectionHandler(newProps.onSelectionChanged);
         }
 
-        if (oldProps && oldProps.selected !== newProps.selected) {
+        if (!oldProps || oldProps.selected !== newProps.selected) {
             this.setSelection(newProps.selected);
         }
     }

@@ -22,7 +22,6 @@ export class List extends VirtualNode<ListProps> {
         this.selectionModel = this.createSelectionModel(props.selectionMode);
         this.selectionModel.setModel(this.store.getModel());
         this.initSelectionHandler(props.onSelectionChanged);
-        this.setSelection(props.selected);
     }
 
     private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
@@ -85,11 +84,11 @@ export class List extends VirtualNode<ListProps> {
             return;
         }
 
-        if (oldProps && oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
+        if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
             this.initSelectionHandler(newProps.onSelectionChanged);
         }
 
-        if (oldProps && oldProps.selected !== newProps.selected) {
+        if (!oldProps || oldProps.selected !== newProps.selected) {
             this.setSelection(newProps.selected);
         }
     }

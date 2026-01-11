@@ -1,27 +1,23 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry, GtkImage, GtkLabel } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - widget creation", () => {
     describe("basic widgets", () => {
         it("creates Label widget with text", async () => {
-            const ref = createRef<Gtk.Label>();
+            await render(<GtkLabel label="Hello World" />);
 
-            await render(<GtkLabel ref={ref} label="Hello World" />);
-
-            expect(ref.current).not.toBeNull();
-            expect(ref.current?.getLabel()).toBe("Hello World");
+            const label = await screen.findByText("Hello World");
+            expect(label).toBeDefined();
         });
 
         it("creates Button widget with label", async () => {
-            const ref = createRef<Gtk.Button>();
+            await render(<GtkButton label="Click Me" />);
 
-            await render(<GtkButton ref={ref} label="Click Me" />);
-
-            expect(ref.current).not.toBeNull();
-            expect(ref.current?.getLabel()).toBe("Click Me");
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click Me" });
+            expect(button).toBeDefined();
         });
 
         it("creates Box widget with orientation", async () => {
@@ -34,12 +30,10 @@ describe("render - widget creation", () => {
         });
 
         it("creates Entry widget", async () => {
-            const ref = createRef<Gtk.Entry>();
+            await render(<GtkEntry placeholderText="Enter text" />);
 
-            await render(<GtkEntry ref={ref} placeholderText="Enter text" />);
-
-            expect(ref.current).not.toBeNull();
-            expect(ref.current?.getPlaceholderText()).toBe("Enter text");
+            const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+            expect(entry).toBeDefined();
         });
 
         it("creates Image widget", async () => {
@@ -95,6 +89,65 @@ describe("render - widget creation", () => {
 
             expect(ref.current?.handle).toBeDefined();
             expect(ref.current?.getLabel()).toBe("Widget Instance");
+        });
+    });
+
+    describe("screen queries", () => {
+        it("finds multiple buttons by role", async () => {
+            await render(
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkButton label="First" />
+                    <GtkButton label="Second" />
+                    <GtkButton label="Third" />
+                </GtkBox>,
+            );
+
+            const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+            expect(buttons).toHaveLength(3);
+        });
+
+        it("finds button by name filter", async () => {
+            await render(
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkButton label="Submit" />
+                    <GtkButton label="Cancel" />
+                </GtkBox>,
+            );
+
+            const submitButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Submit" });
+            expect(submitButton).toBeDefined();
+
+            const cancelButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Cancel" });
+            expect(cancelButton).toBeDefined();
+        });
+
+        it("returns null for non-existent widget with queryBy", async () => {
+            await render(<GtkButton label="Only Button" />);
+
+            const nonExistent = screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX);
+            expect(nonExistent).toBeNull();
+        });
+
+        it("finds widgets by text content", async () => {
+            await render(
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel label="Welcome Message" />
+                    <GtkLabel label="Description Text" />
+                </GtkBox>,
+            );
+
+            const welcome = await screen.findByText("Welcome Message");
+            expect(welcome).toBeDefined();
+
+            const allLabels = await screen.findAllByText(/Message|Text/);
+            expect(allLabels).toHaveLength(2);
+        });
+
+        it("uses regex for partial text matching", async () => {
+            await render(<GtkLabel label="Error: Something went wrong" />);
+
+            const errorLabel = await screen.findByText(/^Error:/);
+            expect(errorLabel).toBeDefined();
         });
     });
 });

@@ -18,6 +18,7 @@ import { useCallback, useState } from "react";
 
 export const NavigationDemo = () => {
     const [stackPage, setStackPage] = useState("page1");
+    const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [history, setHistory] = useState(["home"]);
 
     const handleHistoryChanged = useCallback((newHistory: string[]) => {
@@ -38,12 +39,8 @@ export const NavigationDemo = () => {
             <AdwPreferencesGroup title="x.StackPage" description="Named pages within a GtkStack or AdwViewStack">
                 <GtkFrame marginTop={12}>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                        <GtkStackSwitcher
-                            stack={null as unknown as Gtk.Stack}
-                            halign={Gtk.Align.CENTER}
-                            marginTop={12}
-                        />
-                        <GtkStack page={stackPage} heightRequest={150}>
+                        <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} marginTop={12} />
+                        <GtkStack ref={setStack} page={stackPage} heightRequest={150}>
                             <x.StackPage id="page1" title="Home" iconName="go-home-symbolic">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
@@ -145,7 +142,11 @@ export const NavigationDemo = () => {
                                     <GtkImage iconName="emblem-documents-symbolic" iconSize={Gtk.IconSize.LARGE} />
                                     <GtkLabel label="Details Page" cssClasses={["title-3"]} />
                                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-                                        <GtkButton label="← Back" onClicked={() => setHistory(history.slice(0, -1))} />
+                                        <GtkButton
+                                            label="← Back"
+                                            onClicked={() => setHistory(history.slice(0, -1))}
+                                            sensitive={history.length > 1}
+                                        />
                                         <GtkButton
                                             label="Go to Settings →"
                                             onClicked={() => setHistory([...history, "settings"])}
@@ -168,7 +169,11 @@ export const NavigationDemo = () => {
                                 >
                                     <GtkImage iconName="emblem-system-symbolic" iconSize={Gtk.IconSize.LARGE} />
                                     <GtkLabel label="Settings Page" cssClasses={["title-3"]} />
-                                    <GtkButton label="← Back" onClicked={() => setHistory(history.slice(0, -1))} />
+                                    <GtkButton
+                                        label="← Back"
+                                        onClicked={() => setHistory(history.slice(0, -1))}
+                                        sensitive={history.length > 1}
+                                    />
                                 </GtkBox>
                             </AdwToolbarView>
                         </x.NavigationPage>

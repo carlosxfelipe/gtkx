@@ -90,7 +90,7 @@ export const waitForElementToBeRemoved = async (
     const initialElement = getElement(elementOrCallback);
     if (initialElement === null || isElementRemoved(initialElement)) {
         throw new Error(
-            "Elements already removed: waitForElementToBeRemoved requires elements to be present initially",
+            "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
         );
     }
 

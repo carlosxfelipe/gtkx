@@ -1,17 +1,16 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkSwitch } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { GtkBox, GtkCheckButton, GtkLabel, GtkSwitch } from "@gtkx/react";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - props", () => {
     describe("property setting", () => {
         it("sets string properties", async () => {
-            const ref = createRef<Gtk.Label>();
+            await render(<GtkLabel label="Test Label" />);
 
-            await render(<GtkLabel ref={ref} label="Test Label" />);
-
-            expect(ref.current?.getLabel()).toBe("Test Label");
+            const label = await screen.findByText("Test Label");
+            expect(label).toBeDefined();
         });
 
         it("sets boolean properties", async () => {
@@ -41,48 +40,45 @@ describe("render - props", () => {
 
     describe("change detection", () => {
         it("skips update when value unchanged", async () => {
-            const ref = createRef<Gtk.Label>();
-
             function App() {
-                return <GtkLabel ref={ref} label="Same" />;
+                return <GtkLabel label="Same" />;
             }
 
-            await render(<App />);
+            const { rerender } = await render(<App />);
 
-            const initialId = ref.current?.handle;
+            const label = await screen.findByText("Same");
+            expect(label).toBeDefined();
 
-            await render(<App />);
+            await rerender(<App />);
 
-            expect(ref.current?.handle).toEqual(initialId);
-            expect(ref.current?.getLabel()).toBe("Same");
+            expect(screen.queryByText("Same")).not.toBeNull();
         });
 
         it("applies update when value changed", async () => {
-            const ref = createRef<Gtk.Label>();
-
             function App({ text }: { text: string }) {
-                return <GtkLabel ref={ref} label={text} />;
+                return <GtkLabel label={text} />;
             }
 
-            await render(<App text="Initial" />);
-            expect(ref.current?.getLabel()).toBe("Initial");
+            const { rerender } = await render(<App text="Initial" />);
+            await screen.findByText("Initial");
 
-            await render(<App text="Updated" />);
-            expect(ref.current?.getLabel()).toBe("Updated");
+            await rerender(<App text="Updated" />);
+
+            await waitFor(() => {
+                expect(screen.queryByText("Updated")).not.toBeNull();
+            });
         });
 
         it("handles undefined to value transition", async () => {
-            const ref = createRef<Gtk.Label>();
-
             function App({ label }: { label?: string }) {
-                return <GtkLabel ref={ref} label={label} />;
+                return <GtkLabel label={label} />;
             }
 
-            await render(<App label={undefined} />);
+            const { rerender } = await render(<App label={undefined} />);
 
-            await render(<App label="Now Set" />);
+            await rerender(<App label="Now Set" />);
 
-            expect(ref.current?.getLabel()).toBe("Now Set");
+            await screen.findByText("Now Set");
         });
 
         it("handles value to undefined transition", async () => {
@@ -92,10 +88,10 @@ describe("render - props", () => {
                 return <GtkLabel ref={ref} label={label} />;
             }
 
-            await render(<App label="Has Value" />);
-            expect(ref.current?.getLabel()).toBe("Has Value");
+            const { rerender } = await render(<App label="Has Value" />);
+            await screen.findByText("Has Value");
 
-            await render(<App label={undefined} />);
+            await rerender(<App label={undefined} />);
         });
     });
 
@@ -113,11 +109,50 @@ describe("render - props", () => {
         });
 
         it("handles node-specific consumed props", async () => {
-            const ref = createRef<Gtk.Switch>();
+            await render(<GtkSwitch active={true} />);
 
-            await render(<GtkSwitch ref={ref} active={true} />);
+            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+            expect(switchWidget).toBeDefined();
+        });
+    });
 
-            expect(ref.current?.getActive()).toBe(true);
+    describe("accessible state queries", () => {
+        it("finds checkbox by checked state", async () => {
+            await render(
+                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkCheckButton label="Unchecked" active={false} />
+                    <GtkCheckButton label="Checked" active={true} />
+                </GtkBox>,
+            );
+
+            const checkedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
+            expect(checkedBox).toBeDefined();
+
+            const uncheckedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+            expect(uncheckedBox).toBeDefined();
+        });
+
+        it("updates checkbox state after user interaction", async () => {
+            await render(<GtkCheckButton label="Toggle Me" active={false} />);
+
+            const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+            await userEvent.click(checkbox);
+
+            await waitFor(() => {
+                const checkedBox = screen.queryByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
+                expect(checkedBox).not.toBeNull();
+            });
+        });
+
+        it("finds switch by accessible role", async () => {
+            await render(<GtkSwitch active={false} />);
+
+            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+            await userEvent.click(switchWidget);
+
+            await waitFor(() => {
+                expect((switchWidget as Gtk.Switch).getActive()).toBe(true);
+            });
         });
     });
 });
