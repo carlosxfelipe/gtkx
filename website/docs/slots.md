@@ -10,21 +10,21 @@ In GTK, some widgets have properties that accept a single widget rather than a l
 - `GtkHeaderBar` has a `titleWidget` property for a custom title
 - `GtkPaned` has `startChild` and `endChild` properties
 
-GTKX provides the `Slot` component to set these properties declaratively.
+GTKX provides `x.Slot` to set these properties declaratively.
 
 ## Basic Usage
 
 ```tsx
-import { GtkHeaderBar, GtkLabel, Slot } from "@gtkx/react";
+import { x, GtkHeaderBar, GtkLabel } from "@gtkx/react";
 
 <GtkHeaderBar>
-    <Slot for={GtkHeaderBar} id="titleWidget">
+    <x.Slot for={GtkHeaderBar} id="titleWidget">
         <GtkLabel label="Custom Title" cssClasses={["title"]} />
-    </Slot>
+    </x.Slot>
 </GtkHeaderBar>
 ```
 
-The `Slot` component:
+The `x.Slot` component:
 1. Takes a `for` prop specifying the widget type
 2. Takes an `id` prop specifying the slot name (camelCase)
 3. Accepts a single child widget
@@ -36,9 +36,9 @@ The `Slot` component:
 ```tsx
 <GtkHeaderBar>
     {/* Custom title widget */}
-    <Slot for={GtkHeaderBar} id="titleWidget">
+    <x.Slot for={GtkHeaderBar} id="titleWidget">
         <GtkLabel label="My App" cssClasses={["title"]} />
-    </Slot>
+    </x.Slot>
 
     {/* Regular children go to start/end */}
     <GtkButton iconName="open-menu-symbolic" />
@@ -49,14 +49,14 @@ The `Slot` component:
 
 ```tsx
 <GtkMenuButton label="Open">
-    <Slot for={GtkMenuButton} id="popover">
+    <x.Slot for={GtkMenuButton} id="popover">
         <GtkPopover>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 Popover content
                 <GtkButton label="Action" />
             </GtkBox>
         </GtkPopover>
-    </Slot>
+    </x.Slot>
 </GtkMenuButton>
 ```
 
@@ -65,16 +65,16 @@ The `Slot` component:
 Split view with two panes:
 
 ```tsx
-import { GtkPaned, Slot } from "@gtkx/react";
+import { x, GtkPaned } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={200}>
-    <Slot for={GtkPaned} id="startChild">
+    <x.Slot for={GtkPaned} id="startChild">
         <Sidebar />
-    </Slot>
-    <Slot for={GtkPaned} id="endChild">
+    </x.Slot>
+    <x.Slot for={GtkPaned} id="endChild">
         <ContentArea />
-    </Slot>
+    </x.Slot>
 </GtkPaned>
 ```
 
@@ -83,15 +83,15 @@ import * as Gtk from "@gtkx/ffi/gtk";
 Layer widgets on top of each other:
 
 ```tsx
-import { GtkOverlay, GtkImage, GtkLabel, OverlayChild } from "@gtkx/react";
+import { x, GtkOverlay, GtkImage, GtkLabel } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 <GtkOverlay>
     {/* Base content as direct child */}
     <GtkImage file="background.png" />
 
-    {/* Overlay content using OverlayChild element */}
-    <OverlayChild>
+    {/* Overlay content using x.OverlayChild element */}
+    <x.OverlayChild>
         <GtkLabel
             label="Overlaid text"
             cssClasses={["title-1"]}
@@ -100,11 +100,11 @@ import * as Gtk from "@gtkx/ffi/gtk";
             marginEnd={12}
             marginBottom={12}
         />
-    </OverlayChild>
+    </x.OverlayChild>
 </GtkOverlay>
 ```
 
-The `OverlayChild` element supports `measure` and `clipOverlay` props to control overlay behavior.
+The `x.OverlayChild` element supports `measure` and `clipOverlay` props to control overlay behavior.
 
 ### GtkExpander
 
@@ -119,41 +119,41 @@ import { GtkExpander, GtkLabel } from "@gtkx/react";
 ## Nested Panes Example
 
 ```tsx
-import { GtkPaned, GtkBox, Slot } from "@gtkx/react";
+import { x, GtkPaned, GtkBox } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const ThreePaneLayout = () => (
     <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={200}>
-        <Slot for={GtkPaned} id="startChild">
+        <x.Slot for={GtkPaned} id="startChild">
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["sidebar"]}>
                 Sidebar
             </GtkBox>
-        </Slot>
-        <Slot for={GtkPaned} id="endChild">
+        </x.Slot>
+        <x.Slot for={GtkPaned} id="endChild">
             <GtkPaned orientation={Gtk.Orientation.VERTICAL} position={400}>
-                <Slot for={GtkPaned} id="startChild">
+                <x.Slot for={GtkPaned} id="startChild">
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["content"]}>
                         Main Content
                     </GtkBox>
-                </Slot>
-                <Slot for={GtkPaned} id="endChild">
+                </x.Slot>
+                <x.Slot for={GtkPaned} id="endChild">
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["panel"]}>
                         Bottom Panel
                     </GtkBox>
-                </Slot>
+                </x.Slot>
             </GtkPaned>
-        </Slot>
+        </x.Slot>
     </GtkPaned>
 );
 ```
 
 ## When to Use Slots
 
-Use `Slot` when:
+Use `x.Slot` when:
 - A widget has a named property that accepts a widget (like `popover`, `titleWidget`)
 - You need to place content in a specific position (`startChild`, `endChild`)
 - The GTK documentation mentions a widget property rather than child packing
 
-Don't use `Slot` when:
+Don't use `x.Slot` when:
 - Adding regular children to a container (just use JSX children)
 - The widget uses standard child packing (`GtkBox`, `GtkListBox`)

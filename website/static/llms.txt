@@ -19,8 +19,8 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - [CLI Reference](https://eugeniodepalo.github.io/gtkx/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
 - [Slots](https://eugeniodepalo.github.io/gtkx/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
 - [Styling](https://eugeniodepalo.github.io/gtkx/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
-- [Lists](https://eugeniodepalo.github.io/gtkx/lists): ListView, GridView, ColumnView, TreeListView, DropDown with virtual scrolling
-- [Menus](https://eugeniodepalo.github.io/gtkx/menus): Menu.Item, Menu.Section, Menu.Submenu, keyboard shortcuts, GtkPopoverMenu
+- [Lists](https://eugeniodepalo.github.io/gtkx/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
+- [Menus](https://eugeniodepalo.github.io/gtkx/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
 - [Adwaita](https://eugeniodepalo.github.io/gtkx/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView
 - [Portals and Dialogs](https://eugeniodepalo.github.io/gtkx/portals): createPortal(), AlertDialog, AboutDialog, FileDialog, modal windows
 - [Async Operations](https://eugeniodepalo.github.io/gtkx/async-operations): Async event handlers, loading states, file I/O, network requests
