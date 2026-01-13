@@ -19,6 +19,14 @@ export type SlotProps = {
 };
 
 /**
+ * Props for virtual child containers that don't expose slot id.
+ */
+export type VirtualChildProps = {
+    /** Content to place in the slot */
+    children?: ReactNode;
+};
+
+/**
  * Props for items in a {@link ListView} or {@link GridView}.
  *
  * @typeParam T - The type of data associated with this list item
@@ -151,7 +159,7 @@ export type NotebookPageProps = Omit<SlotProps, "id"> & {
 /**
  * Props for custom notebook page tab widgets.
  */
-export type NotebookPageTabProps = SlotProps;
+export type NotebookPageTabProps = VirtualChildProps;
 
 /**
  * Props for the root Stack component.
@@ -332,33 +340,45 @@ export type ExpanderRowChildProps = {
     children?: ReactNode;
 };
 
+type NavigationPageBaseProps = {
+    title?: string;
+    canPop?: boolean;
+    children?: ReactNode;
+};
+
 /**
- * Props for the NavigationPage virtual element.
+ * Props for the NavigationPage virtual element with type-safe targeting.
  *
- * Used to declaratively define pages in an AdwNavigationView.
+ * The `for` prop is required and determines valid `id` values:
+ * - `AdwNavigationView`: `id` can be any string (page tags for navigation history)
+ * - `AdwNavigationSplitView`: `id` is narrowed to `"content" | "sidebar"` (slot positions)
  *
  * @example
  * ```tsx
+ * // In NavigationView - id can be any string
  * <AdwNavigationView history={["home", "details"]}>
- *   <x.NavigationPage id="home" title="Home">
+ *   <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
  *     <HomeContent />
  *   </x.NavigationPage>
- *   <x.NavigationPage id="details" title="Details">
- *     <DetailsContent />
- *   </x.NavigationPage>
  * </AdwNavigationView>
+ *
+ * // In NavigationSplitView - id is narrowed to "content" | "sidebar"
+ * <AdwNavigationSplitView>
+ *   <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Sidebar">
+ *     <SidebarContent />
+ *   </x.NavigationPage>
+ *   <x.NavigationPage for={AdwNavigationSplitView} id="content" title="Content">
+ *     <MainContent />
+ *   </x.NavigationPage>
+ * </AdwNavigationSplitView>
  * ```
  */
-export type NavigationPageProps = {
-    /** Unique identifier for this page (used in history array) */
-    id: string;
-    /** Title displayed in the header bar */
-    title?: string;
-    /** Whether the page can be popped via back button/gestures */
-    canPop?: boolean;
-    /** Page content */
-    children?: ReactNode;
-};
+export type NavigationPageProps =
+    | (NavigationPageBaseProps & { for: "AdwNavigationView"; id: string })
+    | (NavigationPageBaseProps & {
+          for: "AdwNavigationSplitView";
+          id: import("./generated/jsx.js").WidgetSlotNames["AdwNavigationSplitView"];
+      });
 
 /**
  * Type mapping widget names to their available slot IDs.
@@ -841,18 +861,30 @@ export const x = {
     ExpanderRowAction: "ExpanderRowAction" as const,
 
     /**
-     * A page within an AdwNavigationView.
+     * Type-safe page component for AdwNavigationView or AdwNavigationSplitView.
+     *
+     * The `for` prop is required and determines valid `id` values:
+     * - `AdwNavigationView`: any string (page tags for navigation history)
+     * - `AdwNavigationSplitView`: `"content"` or `"sidebar"` (slot positions)
      *
      * @example
      * ```tsx
+     * // In NavigationView - id can be any string
      * <AdwNavigationView history={["home"]}>
-     *   <x.NavigationPage id="home" title="Home">
+     *   <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
      *     <GtkLabel label="Welcome!" />
      *   </x.NavigationPage>
-     *   <x.NavigationPage id="settings" title="Settings">
-     *     <GtkLabel label="Settings page" />
-     *   </x.NavigationPage>
      * </AdwNavigationView>
+     *
+     * // In NavigationSplitView - id is narrowed to "content" | "sidebar"
+     * <AdwNavigationSplitView>
+     *   <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Sidebar">
+     *     <GtkLabel label="Sidebar" />
+     *   </x.NavigationPage>
+     *   <x.NavigationPage for={AdwNavigationSplitView} id="content" title="Content">
+     *     <GtkLabel label="Content" />
+     *   </x.NavigationPage>
+     * </AdwNavigationSplitView>
      * ```
      */
     NavigationPage: "NavigationPage" as const,
@@ -862,8 +894,8 @@ declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-                ActionRowPrefix: SlotProps;
-                ActionRowSuffix: SlotProps;
+                ActionRowPrefix: VirtualChildProps;
+                ActionRowSuffix: VirtualChildProps;
                 CalendarMark: CalendarMarkProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
@@ -877,16 +909,16 @@ declare global {
                 MenuSection: MenuSectionProps;
                 MenuSubmenu: MenuSubmenuProps;
                 NotebookPage: NotebookPageProps;
-                NotebookPageTab: NotebookPageTabProps;
+                NotebookPageTab: VirtualChildProps;
                 OverlayChild: OverlayChildProps;
-                PackEnd: SlotProps;
-                PackStart: SlotProps;
+                PackEnd: VirtualChildProps;
+                PackStart: VirtualChildProps;
                 ScaleMark: ScaleMarkProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
-                ToolbarBottom: SlotProps;
-                ToolbarTop: SlotProps;
+                ToolbarBottom: VirtualChildProps;
+                ToolbarTop: VirtualChildProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 TreeListItem: TreeListItemProps<any>;
                 NavigationPage: NavigationPageProps;

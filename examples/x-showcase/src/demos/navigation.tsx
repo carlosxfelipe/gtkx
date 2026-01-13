@@ -38,9 +38,13 @@ const splitViewItems: SplitViewItem[] = [
 
 export const NavigationDemo = () => {
     const [stackPage, setStackPage] = useState("page1");
-    const [stack, setStack] = useState<Gtk.Stack | null>(null);
+    const [stack, setStack] = useState<Gtk.Stack>();
     const [history, setHistory] = useState(["home"]);
     const [selectedItem, setSelectedItem] = useState(defaultSplitViewItem);
+
+    const handleStackRef = useCallback((instance: Gtk.Stack | null) => {
+        setStack(instance ?? undefined);
+    }, []);
 
     const handleHistoryChanged = useCallback((newHistory: string[]) => {
         setHistory(newHistory);
@@ -61,7 +65,7 @@ export const NavigationDemo = () => {
                 <GtkFrame marginTop={12}>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                         <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} marginTop={12} />
-                        <GtkStack ref={setStack} page={stackPage} heightRequest={150}>
+                        <GtkStack ref={handleStackRef} page={stackPage} heightRequest={150}>
                             <x.StackPage id="page1" title="Home" iconName="go-home-symbolic">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
@@ -128,7 +132,7 @@ export const NavigationDemo = () => {
             >
                 <GtkFrame marginTop={12}>
                     <AdwNavigationView history={history} onHistoryChanged={handleHistoryChanged} heightRequest={280}>
-                        <x.NavigationPage id="home" title="Home">
+                        <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
                             <AdwToolbarView>
                                 <x.ToolbarTop>
                                     <AdwHeaderBar />
@@ -149,7 +153,7 @@ export const NavigationDemo = () => {
                                 </GtkBox>
                             </AdwToolbarView>
                         </x.NavigationPage>
-                        <x.NavigationPage id="details" title="Details">
+                        <x.NavigationPage for={AdwNavigationView} id="details" title="Details">
                             <AdwToolbarView>
                                 <x.ToolbarTop>
                                     <AdwHeaderBar />
@@ -177,7 +181,7 @@ export const NavigationDemo = () => {
                                 </GtkBox>
                             </AdwToolbarView>
                         </x.NavigationPage>
-                        <x.NavigationPage id="settings" title="Settings">
+                        <x.NavigationPage for={AdwNavigationView} id="settings" title="Settings">
                             <AdwToolbarView>
                                 <x.ToolbarTop>
                                     <AdwHeaderBar />
@@ -213,7 +217,7 @@ export const NavigationDemo = () => {
             >
                 <GtkFrame marginTop={12}>
                     <AdwNavigationSplitView sidebarWidthFraction={0.35} minSidebarWidth={200} maxSidebarWidth={300}>
-                        <x.NavigationPage id="sidebar" title="Mail">
+                        <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Mail">
                             <AdwToolbarView>
                                 <x.ToolbarTop>
                                     <AdwHeaderBar showTitle={false} />
@@ -247,7 +251,7 @@ export const NavigationDemo = () => {
                             </AdwToolbarView>
                         </x.NavigationPage>
 
-                        <x.NavigationPage id="content" title={selectedItem.title}>
+                        <x.NavigationPage for={AdwNavigationSplitView} id="content" title={selectedItem.title}>
                             <AdwToolbarView>
                                 <x.ToolbarTop>
                                     <AdwHeaderBar />
