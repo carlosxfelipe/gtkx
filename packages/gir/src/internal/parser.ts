@@ -463,7 +463,7 @@ export class RawGirParser {
                 readable: prop["@_readable"] !== "0",
                 writable: prop["@_writable"] === "1",
                 constructOnly: prop["@_construct-only"] === "1",
-                hasDefault: prop["@_default-value"] !== undefined,
+                defaultValueRaw: prop["@_default-value"] !== undefined ? String(prop["@_default-value"]) : undefined,
                 getter,
                 setter,
                 doc: extractDoc(prop),

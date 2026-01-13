@@ -431,7 +431,7 @@ describe("GirProperty", () => {
             readable: true,
             writable: true,
             constructOnly: false,
-            hasDefault: false,
+            defaultValue: null,
             ...options,
         });
 

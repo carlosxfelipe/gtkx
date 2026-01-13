@@ -71,9 +71,11 @@ export class WidgetPropsBuilder {
 
         for (const prop of properties) {
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
+            const qualifiedType = qualifyType(prop.type, namespace);
+            const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
             allProps.push({
                 name: prop.camelName,
-                type: `${qualifyType(prop.type, namespace)} | null`,
+                type: typeWithNull,
                 optional: true,
                 doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
             });
@@ -118,9 +120,10 @@ export class WidgetPropsBuilder {
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const isOptional = !prop.isRequired;
+            const typeWithNull = prop.isNullable ? `${qualifiedType} | null` : qualifiedType;
             allProps.push({
                 name: prop.camelName,
-                type: isOptional ? `${qualifiedType} | null` : qualifiedType,
+                type: typeWithNull,
                 optional: isOptional,
                 doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
             });

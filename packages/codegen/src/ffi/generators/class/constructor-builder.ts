@@ -4,14 +4,15 @@
  * Builds constructor and factory method code for classes.
  */
 
-import type { GirClass, GirConstructor } from "@gtkx/gir";
+import type { DefaultValue, GirClass, GirConstructor, GirProperty, GirRepository } from "@gtkx/gir";
 import type { ClassDeclaration, MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { Scope, StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
+import { convertDefaultValue } from "../../../core/utils/default-value.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { normalizeClassName, toCamelCase } from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toKebabCase } from "../../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
 
 /**
@@ -21,16 +22,100 @@ export class ConstructorBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
     private parentFactoryMethodNames: Set<string> = new Set();
+    private propertyDefaults: Map<string, GirProperty> = new Map();
 
     constructor(
         private readonly cls: GirClass,
         ffiMapper: FfiMapper,
         private readonly ctx: GenerationContext,
+        private readonly repository: GirRepository,
         writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name, options.namespace);
         this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.propertyDefaults = this.collectPropertyDefaults();
+    }
+
+    private collectPropertyDefaults(): Map<string, GirProperty> {
+        const defaults = new Map<string, GirProperty>();
+
+        for (const prop of this.cls.getAllProperties()) {
+            if (prop.defaultValue) {
+                defaults.set(prop.name, prop);
+            }
+        }
+
+        for (const ifaceQn of this.cls.getAllImplementedInterfaces()) {
+            const iface = this.repository.resolveInterface(ifaceQn);
+            if (iface) {
+                for (const prop of iface.properties) {
+                    if (prop.defaultValue && !defaults.has(prop.name)) {
+                        defaults.set(prop.name, prop);
+                    }
+                }
+            }
+        }
+
+        return defaults;
+    }
+
+    private getDefaultForParameter(paramName: string): DefaultValue | null {
+        const kebabName = toKebabCase(paramName);
+
+        const prop = this.propertyDefaults.get(paramName) ?? this.propertyDefaults.get(kebabName);
+        return prop?.defaultValue ?? null;
+    }
+
+    private isDefaultCompatible(
+        defaultValue: DefaultValue,
+        param: { type: string; hasQuestionToken?: boolean },
+    ): boolean {
+        switch (defaultValue.kind) {
+            case "null":
+                return param.hasQuestionToken === true || param.type.includes("| null");
+            case "boolean":
+                return param.type === "boolean";
+            case "number":
+                return param.type === "number";
+            case "string":
+                return param.type === "string";
+            case "enum":
+                return !param.hasQuestionToken && !param.type.includes("| null");
+            default:
+                return false;
+        }
+    }
+
+    private buildConstructorParameters(
+        ctor: GirConstructor,
+    ): Array<{ name: string; type: string; hasQuestionToken?: boolean; initializer?: string }> {
+        const baseParams = this.methodBody.buildParameterList(ctor.parameters);
+
+        return baseParams.map((param) => {
+            const defaultValue = this.getDefaultForParameter(param.name);
+            if (!defaultValue) return param;
+
+            if (!this.isDefaultCompatible(defaultValue, param)) return param;
+
+            const conversion = convertDefaultValue(defaultValue, this.repository, this.options.namespace);
+            if (!conversion) return param;
+
+            for (const imp of conversion.imports) {
+                this.ctx.usedExternalTypes.set(`${imp.namespace}.${imp.name}`, {
+                    namespace: imp.namespace,
+                    name: imp.name,
+                    transformedName: imp.name,
+                    kind: "enum",
+                });
+            }
+
+            return {
+                ...param,
+                hasQuestionToken: false,
+                initializer: conversion.initializer,
+            };
+        });
     }
 
     setParentFactoryMethodNames(names: Set<string>): void {
@@ -100,7 +185,7 @@ export class ConstructorBuilder {
 
     private addConstructorWithFlag(classDecl: ClassDeclaration, ctor: GirConstructor): void {
         this.ctx.usesInstantiating = true;
-        const params = this.methodBody.buildParameterList(ctor.parameters);
+        const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
         classDecl.addConstructor({

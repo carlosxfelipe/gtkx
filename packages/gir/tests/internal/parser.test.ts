@@ -215,7 +215,7 @@ describe("GirParser", () => {
             expect(result.classes[0].properties[0].readable).toBe(true);
             expect(result.classes[0].properties[0].writable).toBe(true);
             expect(result.classes[0].properties[0].constructOnly).toBe(false);
-            expect(result.classes[0].properties[0].hasDefault).toBe(true);
+            expect(result.classes[0].properties[0].defaultValueRaw).toBe("TRUE");
             expect(result.classes[0].properties[0].getter).toBe("get_visible");
             expect(result.classes[0].properties[0].setter).toBe("set_visible");
             expect(result.classes[0].properties[0].doc).toBe("Widget visibility");

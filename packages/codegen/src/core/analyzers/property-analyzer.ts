@@ -51,6 +51,7 @@ export class PropertyAnalyzer {
             type: qualifyType(typeMapping.ts, namespace),
             isRequired: requiredParams.has(prop.name) || requiredParams.has(kebabToSnake(prop.name)),
             isWritable: prop.writable,
+            isNullable: prop.type.nullable,
             getter,
             setter,
             doc: prop.doc,
@@ -74,13 +75,42 @@ export class PropertyAnalyzer {
         const mainCtor = cls.getConstructor("new");
         if (!mainCtor) return required;
 
+        const propsWithDefaults = this.getPropertiesWithDefaults(cls);
+
         for (const param of mainCtor.parameters) {
             if (!param.nullable && !param.optional) {
                 if (param.name === APPLICATION_PARAM_NAME) continue;
-                required.add(snakeToKebab(param.name));
+                const kebabName = snakeToKebab(param.name);
+                if (propsWithDefaults.has(param.name) || propsWithDefaults.has(kebabName)) {
+                    continue;
+                }
+                required.add(kebabName);
             }
         }
 
         return required;
+    }
+
+    private getPropertiesWithDefaults(cls: GirClass): Set<string> {
+        const withDefaults = new Set<string>();
+
+        for (const prop of cls.getAllProperties()) {
+            if (prop.hasDefault) {
+                withDefaults.add(prop.name);
+            }
+        }
+
+        for (const ifaceQn of cls.getAllImplementedInterfaces()) {
+            const iface = this.repo.resolveInterface(ifaceQn);
+            if (iface) {
+                for (const prop of iface.properties) {
+                    if (prop.hasDefault) {
+                        withDefaults.add(prop.name);
+                    }
+                }
+            }
+        }
+
+        return withDefaults;
     }
 }

@@ -79,7 +79,7 @@ export function createNormalizedProperty(overrides: Partial<NormalizedPropertyDa
         readable: true,
         writable: true,
         constructOnly: false,
-        hasDefault: false,
+        defaultValue: null,
         getter: "get_label",
         setter: "set_label",
         ...overrides,

@@ -25,6 +25,7 @@ import {
     GirRecord,
     GirSignal,
     GirType,
+    parseDefaultValue,
     type QualifiedName,
     qualifiedName,
 } from "../types.js";
@@ -486,7 +487,7 @@ const normalizeProperty = (raw: RawProperty, currentNamespace: string, ctx: Norm
         readable: raw.readable ?? true,
         writable: raw.writable ?? false,
         constructOnly: raw.constructOnly ?? false,
-        hasDefault: raw.hasDefault ?? false,
+        defaultValue: parseDefaultValue(raw.defaultValueRaw),
         getter: raw.getter,
         setter: raw.setter,
         doc: raw.doc,

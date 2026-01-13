@@ -82,7 +82,7 @@ export class ClassGenerator {
     ) {
         this.className = normalizeClassName(cls.name, options.namespace);
 
-        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, ctx, writers, options);
+        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, ctx, repository, writers, options);
         this.methodBuilder = new MethodBuilder(ffiMapper, ctx, writers, options);
         this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, ctx, writers, options);
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, ctx, repository, writers, options);

@@ -8,6 +8,7 @@ export function createPropertyAnalysis(overrides: Partial<PropertyAnalysis> = {}
         type: "string",
         isRequired: false,
         isWritable: true,
+        isNullable: false,
         getter: "getLabel",
         setter: "setLabel",
         referencedNamespaces: [],

@@ -217,7 +217,7 @@ export type RawProperty = {
     readable?: boolean;
     writable?: boolean;
     constructOnly?: boolean;
-    hasDefault?: boolean;
+    defaultValueRaw?: string;
     getter?: string;
     setter?: string;
     doc?: string;

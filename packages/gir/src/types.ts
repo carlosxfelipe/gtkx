@@ -42,6 +42,53 @@ export type TypeKind = "class" | "interface" | "record" | "enum" | "flags" | "ca
  */
 export type ContainerType = "ghashtable" | "gptrarray" | "garray" | "glist" | "gslist";
 
+/**
+ * Parsed default value from GIR property definitions.
+ */
+export type DefaultValue =
+    | { kind: "null" }
+    | { kind: "boolean"; value: boolean }
+    | { kind: "number"; value: number }
+    | { kind: "string"; value: string }
+    | { kind: "enum"; cIdentifier: string }
+    | { kind: "unknown"; raw: string };
+
+/**
+ * Parses a raw default value string from GIR into a typed DefaultValue.
+ */
+export function parseDefaultValue(raw: string | undefined): DefaultValue | null {
+    if (raw === undefined) {
+        return null;
+    }
+
+    if (raw === "NULL") {
+        return { kind: "null" };
+    }
+
+    if (raw === "TRUE") {
+        return { kind: "boolean", value: true };
+    }
+
+    if (raw === "FALSE") {
+        return { kind: "boolean", value: false };
+    }
+
+    const num = Number(raw);
+    if (!Number.isNaN(num)) {
+        return { kind: "number", value: num };
+    }
+
+    if (raw.startsWith('"') && raw.endsWith('"')) {
+        return { kind: "string", value: raw.slice(1, -1) };
+    }
+
+    if (/^[A-Z][A-Z0-9_]*$/.test(raw)) {
+        return { kind: "enum", cIdentifier: raw };
+    }
+
+    return { kind: "unknown", raw };
+}
+
 type RepositoryLike = {
     resolveClass(name: QualifiedName): GirClass | null;
     resolveInterface(name: QualifiedName): GirInterface | null;
@@ -864,7 +911,7 @@ export class GirProperty {
     readonly readable: boolean;
     readonly writable: boolean;
     readonly constructOnly: boolean;
-    readonly hasDefault: boolean;
+    readonly defaultValue: DefaultValue | null;
     readonly getter?: string;
     readonly setter?: string;
     readonly doc?: string;
@@ -875,7 +922,7 @@ export class GirProperty {
         readable: boolean;
         writable: boolean;
         constructOnly: boolean;
-        hasDefault: boolean;
+        defaultValue: DefaultValue | null;
         getter?: string;
         setter?: string;
         doc?: string;
@@ -885,10 +932,14 @@ export class GirProperty {
         this.readable = data.readable;
         this.writable = data.writable;
         this.constructOnly = data.constructOnly;
-        this.hasDefault = data.hasDefault;
+        this.defaultValue = data.defaultValue;
         this.getter = data.getter;
         this.setter = data.setter;
         this.doc = data.doc;
+    }
+
+    get hasDefault(): boolean {
+        return this.defaultValue !== null;
     }
 
     /** True if readable but not writable. */

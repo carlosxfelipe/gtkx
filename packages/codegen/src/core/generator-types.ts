@@ -29,6 +29,7 @@ export type PropertyAnalysis = {
     type: string;
     isRequired: boolean;
     isWritable: boolean;
+    isNullable: boolean;
     getter?: string;
     setter?: string;
     doc?: string;

@@ -34,6 +34,7 @@ export {
 export { GirRepository } from "./repository.js";
 export type {
     ContainerType,
+    DefaultValue,
     QualifiedName,
     TypeKind,
 } from "./types.js";
@@ -54,6 +55,7 @@ export {
     GirRecord,
     GirSignal,
     GirType,
+    parseDefaultValue,
     parseQualifiedName,
     qualifiedName,
 } from "./types.js";

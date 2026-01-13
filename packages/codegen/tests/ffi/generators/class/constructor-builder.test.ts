@@ -46,7 +46,7 @@ function createTestSetup(
     const sourceFile = createTestSourceFile(project, "button.ts");
     const classDecl = sourceFile.addClass({ name: "Button" });
 
-    const builder = new ConstructorBuilder(cls, ffiMapper, ctx, writers, options);
+    const builder = new ConstructorBuilder(cls, ffiMapper, ctx, repo, writers, options);
     return { cls, builder, ctx, ffiMapper, classDecl, sourceFile };
 }
 
