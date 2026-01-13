@@ -525,7 +525,7 @@ const ImageFilteringDemo = () => {
 
 export const imageFilteringDemo: Demo = {
     id: "image-filtering",
-    title: "Image Filters",
+    title: "Image Filtering",
     description: "Image filters and effects using Cairo convolution",
     keywords: [
         "image",

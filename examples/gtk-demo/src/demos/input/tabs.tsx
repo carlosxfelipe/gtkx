@@ -52,7 +52,10 @@ const TabsDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+                    <GtkScrolledWindow
+                        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                    >
                         <GtkTextView
                             ref={textViewRef}
                             buffer={buffer}

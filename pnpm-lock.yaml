@@ -36,6 +36,25 @@ importers:
         specifier: ^4.0.17
         version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.8)(jiti@2.6.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
+  examples/browser:
+    dependencies:
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../../packages/css
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../../packages/ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+    devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+
   examples/deploying:
     dependencies:
       '@gtkx/ffi':

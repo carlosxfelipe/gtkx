@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkWindow } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
 import { render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -126,18 +126,18 @@ describe("render - children", () => {
 
     describe("root level widgets", () => {
         it("renders root level window", async () => {
-            const windowRef = createRef<Gtk.Window>();
+            const windowRef = createRef<Gtk.ApplicationWindow>();
 
-            await render(<GtkWindow ref={windowRef} title="Root Container" />, { wrapper: false });
+            await render(<GtkApplicationWindow ref={windowRef} title="Root Container" />, { wrapper: false });
 
             expect(windowRef.current).not.toBeNull();
         });
 
         it("removes root level window", async () => {
-            const windowRef = createRef<Gtk.Window>();
+            const windowRef = createRef<Gtk.ApplicationWindow>();
 
             function App({ showWindow }: { showWindow: boolean }) {
-                return showWindow ? <GtkWindow ref={windowRef} title="Window" /> : null;
+                return showWindow ? <GtkApplicationWindow ref={windowRef} title="Window" /> : null;
             }
 
             const { rerender } = await render(<App showWindow={true} />, { wrapper: false });
@@ -148,14 +148,14 @@ describe("render - children", () => {
         });
 
         it("inserts root level window before sibling", async () => {
-            const window1Ref = createRef<Gtk.Window>();
-            const window2Ref = createRef<Gtk.Window>();
+            const window1Ref = createRef<Gtk.ApplicationWindow>();
+            const window2Ref = createRef<Gtk.ApplicationWindow>();
 
             function App({ windows }: { windows: string[] }) {
                 return (
                     <>
                         {windows.map((title, i) => (
-                            <GtkWindow key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
+                            <GtkApplicationWindow key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
                         ))}
                     </>
                 );

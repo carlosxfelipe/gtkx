@@ -476,8 +476,17 @@ export const constraintsDemo: Demo = {
     id: "constraints",
     title: "Constraints/Simple Constraints",
     description:
-        "GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as \"constraints\") to compute the position and size of each child.",
-    keywords: ["constraint", "layout", "GtkConstraintLayout", "GtkConstraint", "positioning", "alignment", "centering", "GtkLayoutManager"],
+        'GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as "constraints") to compute the position and size of each child.',
+    keywords: [
+        "constraint",
+        "layout",
+        "GtkConstraintLayout",
+        "GtkConstraint",
+        "positioning",
+        "alignment",
+        "centering",
+        "GtkLayoutManager",
+    ],
     component: ConstraintsDemo,
     sourceCode,
 };

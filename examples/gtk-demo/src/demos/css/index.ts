@@ -7,7 +7,6 @@ import { cssPixbufsDemo } from "./css-pixbufs.js";
 import { cssShadowsDemo } from "./css-shadows.js";
 import { errorstatesDemo } from "./errorstates.js";
 import { styleClassesDemo } from "./style-classes.js";
-import { themesDemo } from "./themes.js";
 
 export const cssDemos: Demo[] = [
     cssBasicsDemo,
@@ -17,6 +16,5 @@ export const cssDemos: Demo[] = [
     cssMultiplebgsDemo,
     cssPixbufsDemo,
     errorstatesDemo,
-    themesDemo,
     styleClassesDemo,
 ];

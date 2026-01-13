@@ -181,7 +181,7 @@ const FishbowlDemo = () => {
 
 export const fishbowlDemo: Demo = {
     id: "fishbowl",
-    title: "Fishbowl",
+    title: "Benchmark/Fishbowl",
     description: "Performance stress test with many animated widgets",
     keywords: ["performance", "stress test", "animation", "benchmark", "fps", "widgets"],
     component: FishbowlDemo,

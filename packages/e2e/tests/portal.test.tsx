@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkEnums from "@gtkx/ffi/gtk";
-import { createPortal, GtkBox, GtkButton, GtkLabel, GtkWindow, useApplication } from "@gtkx/react";
+import { createPortal, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
 import { render, tick } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,11 +12,11 @@ const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: stri
 
 describe("createPortal", () => {
     it("renders children at root level when no container specified", async () => {
-        const windowRef = createRef<Gtk.Window>();
+        const windowRef = createRef<Gtk.ApplicationWindow>();
 
         await render(
             <Portal>
-                <GtkWindow ref={windowRef} title="Portal Window" />
+                <GtkApplicationWindow ref={windowRef} title="Portal Window" />
             </Portal>,
         );
 
@@ -46,11 +46,11 @@ describe("createPortal", () => {
     });
 
     it("preserves key when provided", async () => {
-        const windowRef = createRef<Gtk.Window>();
+        const windowRef = createRef<Gtk.ApplicationWindow>();
 
         await render(
             <Portal portalKey="my-key">
-                <GtkWindow ref={windowRef} title="Keyed Window" />
+                <GtkApplicationWindow ref={windowRef} title="Keyed Window" />
             </Portal>,
         );
 
@@ -60,11 +60,11 @@ describe("createPortal", () => {
     });
 
     it("unmounts portal children when portal is removed", async () => {
-        const windowRef = createRef<Gtk.Window>();
+        const windowRef = createRef<Gtk.ApplicationWindow>();
 
         function App({ showPortal }: { showPortal: boolean }) {
             const app = useApplication();
-            return <>{showPortal && createPortal(<GtkWindow ref={windowRef} title="Portal" />, app)}</>;
+            return <>{showPortal && createPortal(<GtkApplicationWindow ref={windowRef} title="Portal" />, app)}</>;
         }
 
         await render(<App showPortal={true} />);
@@ -76,11 +76,11 @@ describe("createPortal", () => {
     });
 
     it("updates portal children when props change", async () => {
-        const windowRef = createRef<Gtk.Window>();
+        const windowRef = createRef<Gtk.ApplicationWindow>();
 
         function App({ title }: { title: string }) {
             const app = useApplication();
-            return <>{createPortal(<GtkWindow ref={windowRef} title={title} />, app)}</>;
+            return <>{createPortal(<GtkApplicationWindow ref={windowRef} title={title} />, app)}</>;
         }
 
         await render(<App title="First" />);

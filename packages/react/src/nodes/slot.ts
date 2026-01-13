@@ -28,12 +28,21 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P> {
 
     public override unmount(): void {
         if (this.parent && this.child) {
+            const parent = this.parent;
             const oldChild = this.child;
             this.child = undefined;
-            this.onChildChange(oldChild ?? null);
+
+            queueMicrotask(() => {
+                if (parent.getRoot() !== null) {
+                    this.parent = parent;
+                    this.onChildChange(oldChild);
+                }
+                this.parent = undefined;
+            });
+        } else {
+            this.parent = undefined;
         }
 
-        this.parent = undefined;
         super.unmount();
     }
 

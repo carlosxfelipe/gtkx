@@ -1,6 +1,7 @@
-import { type Context } from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
+    createPortal,
     GtkBox,
     GtkButton,
     GtkDrawingArea,
@@ -8,7 +9,6 @@ import {
     GtkHeaderBar,
     GtkLabel,
     GtkWindow,
-    createPortal,
     useApplication,
     x,
 } from "@gtkx/react";

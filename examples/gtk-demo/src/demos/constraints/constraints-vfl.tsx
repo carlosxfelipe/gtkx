@@ -506,7 +506,8 @@ const ConstraintsVflDemo = () => {
 export const constraintsVflDemo: Demo = {
     id: "constraints-vfl",
     title: "Constraints/VFL",
-    description: "GtkConstraintLayout allows defining constraints using a compact syntax called Visual Format Language, or VFL.",
+    description:
+        "GtkConstraintLayout allows defining constraints using a compact syntax called Visual Format Language, or VFL.",
     keywords: ["constraint", "VFL", "visual format language", "GtkConstraintLayout", "layout", "ASCII"],
     component: ConstraintsVflDemo,
     sourceCode,

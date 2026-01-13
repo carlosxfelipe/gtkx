@@ -11,6 +11,7 @@ import {
     GtkNotebook,
     GtkPaned,
     GtkPopover,
+    GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
     GtkWindow,
@@ -70,17 +71,17 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     return createPortal(
         <GtkWindow title={currentDemo.title} defaultWidth={800} defaultHeight={600} onClose={onClose}>
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                marginTop={12}
-                marginBottom={12}
-                marginStart={12}
-                marginEnd={12}
-                vexpand
-                hexpand
-            >
-                <DemoComponent />
-            </GtkBox>
+            <GtkScrolledWindow vexpand hexpand>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <DemoComponent />
+                </GtkBox>
+            </GtkScrolledWindow>
         </GtkWindow>,
         activeWindow,
     );
@@ -123,74 +124,84 @@ const AppContent = () => {
 
     return (
         <>
-            <GtkHeaderBar>
-                <x.Slot for={GtkHeaderBar} id="titleWidget">
-                    <GtkLabel label="GTK Demo" cssClasses={["title"]} />
-                </x.Slot>
-                <x.PackStart>
-                    <GtkButton
-                        label="Run"
-                        cssClasses={["suggested-action"]}
-                        onClicked={handleRun}
-                        sensitive={!!currentDemo}
-                    />
-                </x.PackStart>
-                <x.PackEnd>
-                    <GtkMenuButton iconName="open-menu-symbolic">
-                        <x.Slot for={GtkMenuButton} id="popover">
-                            <GtkPopover>
-                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                                    <GtkButton
-                                        label="Inspector"
-                                        cssClasses={["flat"]}
-                                        onClicked={handleInspector}
-                                    />
-                                    <GtkButton
-                                        label="Keyboard Shortcuts"
-                                        cssClasses={["flat"]}
-                                        onClicked={handleKeyboardShortcuts}
-                                    />
-                                    <GtkButton
-                                        label="About GTK Demo"
-                                        cssClasses={["flat"]}
-                                        onClicked={handleAbout}
-                                    />
-                                </GtkBox>
-                            </GtkPopover>
-                        </x.Slot>
-                    </GtkMenuButton>
-                    <GtkButton
-                        iconName="edit-find-symbolic"
-                        cssClasses={searchMode ? ["suggested-action"] : []}
-                        onClicked={() => setSearchMode(!searchMode)}
-                    />
-                </x.PackEnd>
-            </GtkHeaderBar>
+            <x.Slot for={GtkWindow} id="titlebar">
+                <GtkHeaderBar>
+                    <x.Slot for={GtkHeaderBar} id="titleWidget">
+                        <GtkLabel label="GTK Demo" cssClasses={["title"]} />
+                    </x.Slot>
+                    <x.PackStart>
+                        <GtkButton
+                            label="Run"
+                            cssClasses={["suggested-action"]}
+                            onClicked={handleRun}
+                            sensitive={!!currentDemo}
+                        />
+                        <GtkButton
+                            iconName="edit-find-symbolic"
+                            cssClasses={searchMode ? ["suggested-action"] : []}
+                            onClicked={() => setSearchMode(!searchMode)}
+                        />
+                    </x.PackStart>
+                    <x.PackEnd>
+                        <GtkMenuButton iconName="open-menu-symbolic">
+                            <x.Slot for={GtkMenuButton} id="popover">
+                                <GtkPopover>
+                                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                                        <GtkButton
+                                            label="_Inspector"
+                                            useUnderline
+                                            cssClasses={["flat"]}
+                                            onClicked={handleInspector}
+                                        />
+                                        <GtkButton
+                                            label="_Keyboard Shortcuts"
+                                            useUnderline
+                                            cssClasses={["flat"]}
+                                            onClicked={handleKeyboardShortcuts}
+                                        />
+                                        <GtkButton
+                                            label="_About GTK Demo"
+                                            useUnderline
+                                            cssClasses={["flat"]}
+                                            onClicked={handleAbout}
+                                        />
+                                    </GtkBox>
+                                </GtkPopover>
+                            </x.Slot>
+                        </GtkMenuButton>
+                    </x.PackEnd>
+                </GtkHeaderBar>
+            </x.Slot>
 
-            <GtkSearchBar searchModeEnabled={searchMode}>
-                <GtkSearchEntry
-                    hexpand
-                    placeholderText="Search demos..."
-                    text={searchQuery}
-                    onSearchChanged={(entry: Gtk.SearchEntry) => setSearchQuery(entry.getText())}
-                />
-            </GtkSearchBar>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
+                <GtkSearchBar searchModeEnabled={searchMode}>
+                    <GtkSearchEntry
+                        hexpand
+                        placeholderText="Search demos..."
+                        text={searchQuery}
+                        onSearchChanged={(entry: Gtk.SearchEntry) => setSearchQuery(entry.getText())}
+                    />
+                </GtkSearchBar>
 
-            <GtkPaned wideHandle vexpand hexpand shrinkStartChild={false} shrinkEndChild={false} position={280}>
-                <x.Slot for={GtkPaned} id="startChild">
-                    <Sidebar />
-                </x.Slot>
-                <x.Slot for={GtkPaned} id="endChild">
-                    <GtkNotebook vexpand hexpand scrollable showBorder={false}>
-                        <x.NotebookPage label="Info">
-                            <InfoTab />
-                        </x.NotebookPage>
-                        <x.NotebookPage label="Source">
-                            <SourceViewer />
-                        </x.NotebookPage>
-                    </GtkNotebook>
-                </x.Slot>
-            </GtkPaned>
+                <GtkPaned wideHandle vexpand hexpand shrinkStartChild={false} shrinkEndChild={false} position={280}>
+                    <x.Slot for={GtkPaned} id="startChild">
+                        <Sidebar />
+                    </x.Slot>
+                    <x.Slot for={GtkPaned} id="endChild">
+                        <GtkNotebook vexpand hexpand scrollable showBorder={false}>
+                            <x.NotebookPage>
+                                <x.NotebookPageTab>
+                                    <GtkLabel label="_Info" useUnderline />
+                                </x.NotebookPageTab>
+                                <InfoTab />
+                            </x.NotebookPage>
+                            <x.NotebookPage label="Source">
+                                <SourceViewer />
+                            </x.NotebookPage>
+                        </GtkNotebook>
+                    </x.Slot>
+                </GtkPaned>
+            </GtkBox>
 
             {demoWindows.map((id) => (
                 <DemoWindow key={id} onClose={() => handleCloseWindow(id)} />
@@ -220,9 +231,7 @@ const AppContent = () => {
 export const App = () => (
     <DemoProvider categories={categories}>
         <GtkApplicationWindow title="GTK Demo" defaultWidth={800} defaultHeight={600} onClose={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
-                <AppContent />
-            </GtkBox>
+            <AppContent />
         </GtkApplicationWindow>
     </DemoProvider>
 );
