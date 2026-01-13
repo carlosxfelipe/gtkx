@@ -4,8 +4,38 @@
  * Converts GIR DefaultValue to TypeScript initializer strings.
  */
 
-import type { DefaultValue, GirRepository } from "@gtkx/gir";
+import type { DefaultValue, GirClass, GirProperty, GirRepository } from "@gtkx/gir";
 import { toConstantCase, toPascalCase } from "./naming.js";
+
+/**
+ * Collects all properties with default values from a class and its implemented interfaces.
+ *
+ * @param cls - The class to analyze
+ * @param repo - The GIR repository for interface resolution
+ * @returns Map of property names to their GirProperty objects
+ */
+export function collectPropertiesWithDefaults(cls: GirClass, repo: GirRepository): Map<string, GirProperty> {
+    const defaults = new Map<string, GirProperty>();
+
+    for (const prop of cls.getAllProperties()) {
+        if (prop.defaultValue) {
+            defaults.set(prop.name, prop);
+        }
+    }
+
+    for (const ifaceQn of cls.getAllImplementedInterfaces()) {
+        const iface = repo.resolveInterface(ifaceQn);
+        if (iface) {
+            for (const prop of iface.properties) {
+                if (prop.defaultValue && !defaults.has(prop.name)) {
+                    defaults.set(prop.name, prop);
+                }
+            }
+        }
+    }
+
+    return defaults;
+}
 
 type EnumResolution = {
     enumName: string;

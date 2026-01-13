@@ -110,7 +110,7 @@ export class JsxTypesGenerator {
 
         sourceFile.addImportDeclaration({
             moduleSpecifier: "../types.js",
-            namedImports: ["EventControllerProps"],
+            namedImports: ["EventControllerProps", "DragSourceProps", "DropTargetProps"],
             isTypeOnly: true,
         });
 

@@ -95,7 +95,7 @@ export class WidgetPropsBuilder {
             name: "WidgetProps",
             isExported: true,
             docs: widgetDoc ? [{ description: this.formatDocDescription(widgetDoc, namespace) }] : undefined,
-            type: this.buildIntersectionTypeWriter("EventControllerProps", allProps),
+            type: this.buildIntersectionTypeWriter("EventControllerProps & DragSourceProps & DropTargetProps", allProps),
         });
     }
 

@@ -5,6 +5,7 @@ import type { PropertyAnalysis } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import { collectExternalNamespaces } from "../type-system/ffi-types.js";
 import { collectDirectMembers, collectParentPropertyNames } from "../utils/class-traversal.js";
+import { collectPropertiesWithDefaults } from "../utils/default-value.js";
 import { kebabToSnake, snakeToKebab, toCamelCase } from "../utils/naming.js";
 import { qualifyType } from "../utils/type-qualification.js";
 
@@ -75,7 +76,7 @@ export class PropertyAnalyzer {
         const mainCtor = cls.getConstructor("new");
         if (!mainCtor) return required;
 
-        const propsWithDefaults = this.getPropertiesWithDefaults(cls);
+        const propsWithDefaults = collectPropertiesWithDefaults(cls, this.repo);
 
         for (const param of mainCtor.parameters) {
             if (!param.nullable && !param.optional) {
@@ -89,28 +90,5 @@ export class PropertyAnalyzer {
         }
 
         return required;
-    }
-
-    private getPropertiesWithDefaults(cls: GirClass): Set<string> {
-        const withDefaults = new Set<string>();
-
-        for (const prop of cls.getAllProperties()) {
-            if (prop.hasDefault) {
-                withDefaults.add(prop.name);
-            }
-        }
-
-        for (const ifaceQn of cls.getAllImplementedInterfaces()) {
-            const iface = this.repo.resolveInterface(ifaceQn);
-            if (iface) {
-                for (const prop of iface.properties) {
-                    if (prop.hasDefault) {
-                        withDefaults.add(prop.name);
-                    }
-                }
-            }
-        }
-
-        return withDefaults;
     }
 }

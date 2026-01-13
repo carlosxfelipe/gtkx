@@ -33,55 +33,65 @@ const fruits: FruitItem[] = [
     { id: "watermelon", name: "Watermelon", icon: "emoji-food-symbolic", color: "Green" },
 ];
 
-type SelectionMode = "NONE" | "SINGLE" | "BROWSE" | "MULTIPLE";
-
-const selectionModes: { mode: SelectionMode; label: string; description: string }[] = [
-    { mode: "NONE", label: "None", description: "No selection allowed" },
-    { mode: "SINGLE", label: "Single", description: "Select one item (click to toggle)" },
-    { mode: "BROWSE", label: "Browse", description: "Always have one item selected" },
-    { mode: "MULTIPLE", label: "Multiple", description: "Select multiple items (Ctrl+click, Shift+click)" },
+const selectionModes = [
+    {
+        mode: Gtk.SelectionMode.NONE,
+        label: "None",
+        description: "No selection allowed",
+    },
+    {
+        mode: Gtk.SelectionMode.SINGLE,
+        label: "Single",
+        description: "Select one item (click to toggle)",
+    },
+    {
+        mode: Gtk.SelectionMode.BROWSE,
+        label: "Browse",
+        description: "Always have one item selected",
+    },
+    {
+        mode: Gtk.SelectionMode.MULTIPLE,
+        label: "Multiple",
+        description: "Select multiple items (Ctrl+click, Shift+click)",
+    },
 ];
 
 const ListViewSelectionsDemo = () => {
-    const [selectionMode, setSelectionMode] = useState<SelectionMode>("SINGLE");
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectionMode, setSelectionMode] = useState(Gtk.SelectionMode.SINGLE);
+    const [selected, setSelected] = useState<string[]>([]);
     const [lastActivated, setLastActivated] = useState<string | null>(null);
+
+    const handleModeChange = (mode: Gtk.SelectionMode) => {
+        setSelectionMode(mode);
+        if (mode === Gtk.SelectionMode.NONE) {
+            setSelected([]);
+        } else if (mode === Gtk.SelectionMode.BROWSE && selected.length === 0) {
+            setSelected([fruits[0]?.id ?? ""]);
+        } else if (mode === Gtk.SelectionMode.SINGLE && selected.length > 1) {
+            setSelected(selected.slice(0, 1));
+        }
+    };
 
     const handleActivate = (_list: Gtk.ListView, position: number) => {
         const item = fruits[position];
         if (item) {
             setLastActivated(item.name);
-            if (selectionMode === "SINGLE") {
-                if (selectedIds.has(item.id)) {
-                    setSelectedIds(new Set());
-                } else {
-                    setSelectedIds(new Set([item.id]));
-                }
-            } else if (selectionMode === "BROWSE") {
-                setSelectedIds(new Set([item.id]));
-            } else if (selectionMode === "MULTIPLE") {
-                const newSelection = new Set(selectedIds);
-                if (newSelection.has(item.id)) {
-                    newSelection.delete(item.id);
-                } else {
-                    newSelection.add(item.id);
-                }
-                setSelectedIds(newSelection);
-            }
         }
     };
 
     const selectAll = () => {
-        if (selectionMode === "MULTIPLE") {
-            setSelectedIds(new Set(fruits.map((f) => f.id)));
+        if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
+            setSelected(fruits.map((f) => f.id));
         }
     };
 
     const selectNone = () => {
-        if (selectionMode !== "BROWSE") {
-            setSelectedIds(new Set());
+        if (selectionMode !== Gtk.SelectionMode.BROWSE) {
+            setSelected([]);
         }
     };
+
+    const currentModeInfo = selectionModes.find((m) => m.mode === selectionMode);
 
     return (
         <GtkBox
@@ -95,7 +105,7 @@ const ListViewSelectionsDemo = () => {
             <GtkLabel label="Selection Modes" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Demonstrates the four GTK selection modes: NONE (no selection), SINGLE (toggle one item), BROWSE (always one selected), and MULTIPLE (select many items)."
+                label="Demonstrates the four GTK selection modes using GTKX's declarative selection props: selectionMode, selected, and onSelectionChanged."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -111,27 +121,17 @@ const ListViewSelectionsDemo = () => {
                     marginEnd={12}
                 >
                     <GtkBox spacing={8}>
-                        {selectionModes.map((mode) => (
+                        {selectionModes.map((m) => (
                             <GtkButton
-                                key={mode.mode}
-                                label={mode.label}
-                                onClicked={() => {
-                                    setSelectionMode(mode.mode);
-                                    if (mode.mode === "NONE") {
-                                        setSelectedIds(new Set());
-                                    } else if (mode.mode === "BROWSE" && selectedIds.size === 0) {
-                                        setSelectedIds(new Set([fruits[0]?.id ?? ""]));
-                                    } else if (mode.mode === "SINGLE" && selectedIds.size > 1) {
-                                        const first = Array.from(selectedIds)[0];
-                                        setSelectedIds(new Set(first ? [first] : []));
-                                    }
-                                }}
-                                cssClasses={selectionMode === mode.mode ? ["suggested-action"] : ["flat"]}
+                                key={m.mode}
+                                label={m.label}
+                                onClicked={() => handleModeChange(m.mode)}
+                                cssClasses={selectionMode === m.mode ? ["suggested-action"] : ["flat"]}
                             />
                         ))}
                     </GtkBox>
                     <GtkLabel
-                        label={selectionModes.find((m) => m.mode === selectionMode)?.description ?? ""}
+                        label={currentModeInfo?.description ?? ""}
                         cssClasses={["dim-label"]}
                         halign={Gtk.Align.START}
                     />
@@ -151,17 +151,19 @@ const ListViewSelectionsDemo = () => {
                         <GtkButton
                             label="Select All"
                             onClicked={selectAll}
-                            sensitive={selectionMode === "MULTIPLE"}
+                            sensitive={selectionMode === Gtk.SelectionMode.MULTIPLE}
                             cssClasses={["flat"]}
                         />
                         <GtkButton
                             label="Select None"
                             onClicked={selectNone}
-                            sensitive={selectionMode !== "BROWSE" && selectionMode !== "NONE"}
+                            sensitive={
+                                selectionMode !== Gtk.SelectionMode.BROWSE && selectionMode !== Gtk.SelectionMode.NONE
+                            }
                             cssClasses={["flat"]}
                         />
                         <GtkLabel
-                            label={`${selectedIds.size} selected`}
+                            label={`${selected.length} selected`}
                             cssClasses={["dim-label"]}
                             hexpand
                             halign={Gtk.Align.END}
@@ -172,29 +174,14 @@ const ListViewSelectionsDemo = () => {
                         <x.ListView<FruitItem>
                             estimatedItemHeight={48}
                             showSeparators
+                            selectionMode={selectionMode}
+                            selected={selected}
+                            onSelectionChanged={setSelected}
                             onActivate={handleActivate}
                             renderItem={(item) => (
-                                <GtkBox
-                                    spacing={12}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                    cssClasses={selectedIds.has(item?.id ?? "") ? ["card"] : []}
-                                >
-                                    <GtkImage
-                                        iconName={
-                                            selectedIds.has(item?.id ?? "") ? "emblem-ok-symbolic" : (item?.icon ?? "")
-                                        }
-                                        pixelSize={24}
-                                        cssClasses={selectedIds.has(item?.id ?? "") ? ["success"] : []}
-                                    />
-                                    <GtkLabel
-                                        label={item?.name ?? ""}
-                                        hexpand
-                                        halign={Gtk.Align.START}
-                                        cssClasses={selectedIds.has(item?.id ?? "") ? ["heading"] : []}
-                                    />
+                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
+                                    <GtkImage iconName={item?.icon ?? ""} pixelSize={24} />
+                                    <GtkLabel label={item?.name ?? ""} hexpand halign={Gtk.Align.START} />
                                     <GtkLabel label={item?.color ?? ""} cssClasses={["dim-label", "caption"]} />
                                 </GtkBox>
                             )}
@@ -224,11 +211,11 @@ const ListViewSelectionsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    {selectedIds.size === 0 ? (
+                    {selected.length === 0 ? (
                         <GtkLabel label="No items selected" cssClasses={["dim-label"]} halign={Gtk.Align.START} />
                     ) : (
                         <GtkBox spacing={8}>
-                            {Array.from(selectedIds).map((id) => {
+                            {selected.map((id) => {
                                 const fruit = fruits.find((f) => f.id === id);
                                 return (
                                     <GtkBox
@@ -256,9 +243,9 @@ const ListViewSelectionsDemo = () => {
             </GtkFrame>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Selection Mode Reference" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="NONE: Items cannot be selected. SINGLE: Click to toggle selection of one item. BROWSE: One item is always selected; click to change. MULTIPLE: Select multiple items using Ctrl+click to toggle or Shift+click for range selection."
+                    label="This demo uses GTKX's declarative selection API: the selectionMode prop sets the GTK selection model, the selected prop controls which items are selected, and onSelectionChanged receives updates when the user interacts with the list. GTK handles all keyboard navigation (Ctrl+click, Shift+click for ranges) automatically."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

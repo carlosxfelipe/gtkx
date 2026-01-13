@@ -10,7 +10,7 @@ import { Scope, StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { convertDefaultValue } from "../../../core/utils/default-value.js";
+import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../core/utils/default-value.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase, toKebabCase } from "../../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
@@ -34,30 +34,7 @@ export class ConstructorBuilder {
     ) {
         this.className = normalizeClassName(cls.name, options.namespace);
         this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
-        this.propertyDefaults = this.collectPropertyDefaults();
-    }
-
-    private collectPropertyDefaults(): Map<string, GirProperty> {
-        const defaults = new Map<string, GirProperty>();
-
-        for (const prop of this.cls.getAllProperties()) {
-            if (prop.defaultValue) {
-                defaults.set(prop.name, prop);
-            }
-        }
-
-        for (const ifaceQn of this.cls.getAllImplementedInterfaces()) {
-            const iface = this.repository.resolveInterface(ifaceQn);
-            if (iface) {
-                for (const prop of iface.properties) {
-                    if (prop.defaultValue && !defaults.has(prop.name)) {
-                        defaults.set(prop.name, prop);
-                    }
-                }
-            }
-        }
-
-        return defaults;
+        this.propertyDefaults = collectPropertiesWithDefaults(cls, repository);
     }
 
     private getDefaultForParameter(paramName: string): DefaultValue | null {

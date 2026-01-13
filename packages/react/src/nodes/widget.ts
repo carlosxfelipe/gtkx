@@ -1,4 +1,5 @@
 import { batch, isObjectEqual, NativeObject } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/ffi/gdk";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
@@ -29,6 +30,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private clickController?: Gtk.GestureClick;
     private keyController?: Gtk.EventControllerKey;
     private scrollController?: Gtk.EventControllerScroll;
+    private dragSourceController?: Gtk.DragSource;
+    private dropTargetController?: Gtk.DropTarget;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Widget, containerOrClass);
@@ -177,8 +180,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    private updateEventControllerProp(propName: string, handler: SignalHandler | null): void {
-        const wrappedHandler = handler ? (_self: unknown, ...args: unknown[]) => handler(...args) : undefined;
+    private updateEventControllerProp(propName: string, handlerOrValue: SignalHandler | unknown | null): void {
+        const wrappedHandler =
+            typeof handlerOrValue === "function"
+                ? (_self: unknown, ...args: unknown[]) => (handlerOrValue as SignalHandler)(...args)
+                : undefined;
 
         switch (propName) {
             case "onEnter":
@@ -220,6 +226,67 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 signalStore.set(this, this.scrollController, "scroll", wrappedHandler);
                 break;
             }
+            case "onDragPrepare":
+            case "onDragBegin":
+            case "onDragEnd":
+            case "onDragCancel":
+            case "dragActions": {
+                this.ensureDragSource();
+                if (propName === "dragActions") {
+                    this.dragSourceController!.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
+                } else {
+                    const signalName =
+                        propName === "onDragPrepare"
+                            ? "prepare"
+                            : propName === "onDragBegin"
+                              ? "drag-begin"
+                              : propName === "onDragEnd"
+                                ? "drag-end"
+                                : "drag-cancel";
+                    signalStore.set(this, this.dragSourceController!, signalName, wrappedHandler);
+                }
+                break;
+            }
+            case "onDrop":
+            case "onDropEnter":
+            case "onDropLeave":
+            case "onDropMotion":
+            case "dropActions":
+            case "dropTypes": {
+                this.ensureDropTarget();
+                if (propName === "dropActions") {
+                    this.dropTargetController!.setActions((handlerOrValue as Gdk.DragAction) ?? Gdk.DragAction.COPY);
+                } else if (propName === "dropTypes") {
+                    const types = (handlerOrValue as number[]) ?? [];
+                    this.dropTargetController!.setGtypes(types.length, types);
+                } else {
+                    const signalName =
+                        propName === "onDrop"
+                            ? "drop"
+                            : propName === "onDropEnter"
+                              ? "enter"
+                              : propName === "onDropLeave"
+                                ? "leave"
+                                : "motion";
+                    signalStore.set(this, this.dropTargetController!, signalName, wrappedHandler);
+                }
+                break;
+            }
+        }
+    }
+
+    private ensureDragSource(): void {
+        if (!this.dragSourceController) {
+            this.dragSourceController = new Gtk.DragSource();
+            this.dragSourceController.setActions(Gdk.DragAction.COPY);
+            this.container.addController(this.dragSourceController);
+        }
+    }
+
+    private ensureDropTarget(): void {
+        if (!this.dropTargetController) {
+            this.dropTargetController = new Gtk.DropTarget(0, Gdk.DragAction.COPY);
+            this.container.addController(this.dropTargetController);
         }
     }
 

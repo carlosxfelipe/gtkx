@@ -7,3 +7,4 @@ export * from "./native/lifecycle.js";
 export * from "./native/object.js";
 export * from "./registry.js";
 import "./cairo/cairo.js";
+import "./gobject/value.js";
