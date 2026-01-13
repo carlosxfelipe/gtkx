@@ -12,6 +12,8 @@
 //! - `TreeListModelCreateFunc`: For `GtkTreeListModel` child creation
 
 use std::ffi::c_void;
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::Arc;
 
 use gtk4::glib::{
     self, gobject_ffi, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _,
@@ -69,6 +71,10 @@ impl CallbackTrampoline {
                 let arg_types = callback_type.arg_types.clone();
                 let return_type = callback_type.return_type.clone();
 
+                let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
+                    Arc::new(AtomicPtr::new(std::ptr::null_mut()));
+                let closure_holder_for_callback = closure_holder.clone();
+
                 let closure = glib::Closure::new(move |args: &[glib::Value]| {
                     let return_type_inner =
                         *return_type.clone().unwrap_or(Box::new(Type::Undefined));
@@ -76,7 +82,12 @@ impl CallbackTrampoline {
                     let args_values = value::Value::from_glib_values(args, &arg_types)
                         .expect("Failed to convert GLib callback arguments");
 
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
+                    let closure_ptr = closure_holder_for_callback.load(Ordering::Acquire);
+                    if !closure_ptr.is_null() {
+                        unsafe { gobject_ffi::g_closure_ref(closure_ptr) };
+                    }
+
+                    let result = js_dispatch::JsDispatcher::global().invoke_and_wait(
                         &channel,
                         &js_func,
                         args_values,
@@ -91,10 +102,18 @@ impl CallbackTrampoline {
                                 Some(&return_type_inner),
                             ),
                         },
-                    )
+                    );
+
+                    if !closure_ptr.is_null() {
+                        unsafe { gobject_ffi::g_closure_unref(closure_ptr) };
+                    }
+
+                    result
                 });
 
                 let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+                closure_holder.store(closure_ptr, Ordering::Release);
+
                 ffi::FfiValue::Storage(FfiStorage::new(
                     closure_ptr as *mut c_void,
                     FfiStorageKind::Unit,

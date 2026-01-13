@@ -1,5 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkGrid, GtkImage, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkFrame,
+    GtkGrid,
+    GtkImage,
+    GtkLabel,
+    GtkScrolledWindow,
+    GtkTextView,
+    x,
+} from "@gtkx/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scrolling.tsx?raw";
@@ -56,7 +66,8 @@ const colors = [
     "#dc8add",
 ];
 
-const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+const loremIpsum =
+    `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
 Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet sed, vulputate eget, feugiat a, nunc.
 
@@ -79,12 +90,9 @@ const IconsContent = () => {
     return (
         <GtkGrid rowSpacing={8} columnSpacing={8} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
             {items.map((item) => (
-                <GtkImage
-                    key={`${item.row}-${item.col}`}
-                    iconName={item.iconName}
-                    iconSize={Gtk.IconSize.LARGE}
-                    {...{ "layout-row": item.row, "layout-column": item.col }}
-                />
+                <x.GridChild key={`${item.row}-${item.col}`} row={item.row} column={item.col}>
+                    <GtkImage iconName={item.iconName} iconSize={Gtk.IconSize.LARGE} />
+                </x.GridChild>
             ))}
         </GtkGrid>
     );
@@ -115,14 +123,9 @@ const ColorGridContent = () => {
     return (
         <GtkGrid rowSpacing={4} columnSpacing={4} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
             {items.map((item) => (
-                <GtkLabel
-                    key={`${item.row}-${item.col}`}
-                    label=""
-                    widthRequest={24}
-                    heightRequest={24}
-                    cssClasses={["card"]}
-                    {...{ "layout-row": item.row, "layout-column": item.col }}
-                />
+                <x.GridChild key={`${item.row}-${item.col}`} row={item.row} column={item.col}>
+                    <GtkLabel label="" widthRequest={24} heightRequest={24} cssClasses={["card"]} />
+                </x.GridChild>
             ))}
         </GtkGrid>
     );
@@ -172,7 +175,7 @@ const ScrollingDemo = () => {
         }, 16);
 
         return () => clearInterval(interval);
-    }, [isScrolling, scrollSpeed]);
+    }, [isScrolling]);
 
     const currentContent = contentTypes[contentIndex];
 

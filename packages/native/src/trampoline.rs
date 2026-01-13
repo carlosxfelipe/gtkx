@@ -75,6 +75,8 @@ impl CallbackData {
         let data = unsafe { data_ptr.as_ref() };
 
         unsafe {
+            gobject_ffi::g_closure_ref(data.closure.as_ptr());
+
             let mut args: [glib::Value; 4] = [
                 glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
                 glib::Value::from_type_unchecked(cairo::Context::static_type()),
@@ -98,6 +100,8 @@ impl CallbackData {
                 args[0].to_glib_none_mut().0,
                 std::ptr::null_mut(),
             );
+
+            gobject_ffi::g_closure_unref(data.closure.as_ptr());
         }
     }
 
@@ -121,6 +125,8 @@ impl CallbackData {
         let data = unsafe { data_ptr.as_ref() };
 
         unsafe {
+            gobject_ffi::g_closure_ref(data.closure.as_ptr());
+
             let mut param_values: [glib::Value; 2] = [
                 glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
                 glib::Value::from_type_unchecked(glib::types::Type::VARIANT),
@@ -138,6 +144,8 @@ impl CallbackData {
                 param_values[0].to_glib_none_mut().0,
                 std::ptr::null_mut(),
             );
+
+            gobject_ffi::g_closure_unref(data.closure.as_ptr());
 
             return_value.get::<bool>().unwrap_or(false) as glib::ffi::gboolean
         }
@@ -161,6 +169,8 @@ impl CallbackData {
         let data = unsafe { data_ptr.as_ref() };
 
         unsafe {
+            gobject_ffi::g_closure_ref(data.closure.as_ptr());
+
             let mut param_value = glib::Value::from_type_unchecked(glib::types::Type::OBJECT);
             gobject_ffi::g_value_set_object(param_value.to_glib_none_mut().0, item);
 
@@ -173,6 +183,8 @@ impl CallbackData {
                 param_value.to_glib_none_mut().0,
                 std::ptr::null_mut(),
             );
+
+            gobject_ffi::g_closure_unref(data.closure.as_ptr());
 
             let result_ptr = gobject_ffi::g_value_get_object(return_value.to_glib_none().0);
             if !result_ptr.is_null() {
@@ -194,6 +206,8 @@ pub unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     };
 
     unsafe {
+        gobject_ffi::g_closure_ref(closure_ptr.as_ptr());
+
         gobject_ffi::g_closure_invoke(
             closure_ptr.as_ptr(),
             std::ptr::null_mut(),
@@ -202,6 +216,7 @@ pub unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
             std::ptr::null_mut(),
         );
 
+        gobject_ffi::g_closure_unref(closure_ptr.as_ptr());
         gobject_ffi::g_closure_unref(closure_ptr.as_ptr());
     }
 }
@@ -223,6 +238,8 @@ pub unsafe extern "C" fn async_ready_trampoline(
     };
 
     unsafe {
+        gobject_ffi::g_closure_ref(closure_ptr.as_ptr());
+
         let source_obj: Option<glib::Object> =
             NonNull::new(source_object).map(|p| glib::Object::from_glib_none(p.as_ptr()));
 
@@ -241,6 +258,7 @@ pub unsafe extern "C" fn async_ready_trampoline(
             std::ptr::null_mut(),
         );
 
+        gobject_ffi::g_closure_unref(closure_ptr.as_ptr());
         gobject_ffi::g_closure_unref(closure_ptr.as_ptr());
     }
 }

@@ -116,11 +116,8 @@ impl GtkDispatcher {
         self.started.store(true, Ordering::Release);
     }
 
-    pub fn assert_started(&self) {
-        assert!(
-            self.started.load(Ordering::Acquire),
-            "GTK application has not been started. Call start() first."
-        );
+    pub fn is_started(&self) -> bool {
+        self.started.load(Ordering::Acquire)
     }
 
     pub fn mark_stopped(&self) {

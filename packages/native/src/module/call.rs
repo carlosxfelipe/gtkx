@@ -139,7 +139,9 @@ impl CallRequest {
 }
 
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
-    gtk_dispatch::GtkDispatcher::global().assert_started();
+    if !gtk_dispatch::GtkDispatcher::global().is_started() {
+        return cx.throw_error("GTK application has not been started. Call start() first.");
+    }
 
     let request = CallRequest::from_js(&mut cx)?;
 
@@ -169,7 +171,9 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    gtk_dispatch::GtkDispatcher::global().assert_started();
+    if !gtk_dispatch::GtkDispatcher::global().is_started() {
+        return cx.throw_error("GTK application has not been started. Call start() first.");
+    }
 
     let js_calls = cx.argument::<JsArray>(0)?;
     let len = js_calls.len(&mut cx);
