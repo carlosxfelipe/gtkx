@@ -22,7 +22,7 @@ const VolumeSlider = () => {
         upper={100}
         stepIncrement={1}
         pageIncrement={10}
-        onValueChange={setVolume}
+        onValueChanged={setVolume}
       />
       <x.ScaleMark value={0} label="0" position={Gtk.PositionType.BOTTOM} />
       <x.ScaleMark value={25} position={Gtk.PositionType.BOTTOM} />
@@ -523,7 +523,7 @@ const VolumeControl = () => {
           upper={100}
           stepIncrement={1}
           pageIncrement={10}
-          onValueChange={setVolume}
+          onValueChanged={setVolume}
         />
       </GtkScale>
       <GtkLabel label={`Volume: ${Math.round(volume)}%`} />
@@ -542,7 +542,7 @@ const VolumeControl = () => {
 | `stepIncrement` | number                  | Increment for arrow keys (default: 1)    |
 | `pageIncrement` | number                  | Increment for page up/down (default: 10) |
 | `pageSize`      | number                  | Page size, usually 0 for scales          |
-| `onValueChange` | (value: number) => void | Callback when value changes              |
+| `onValueChanged` | (value: number) => void | Callback when value changes              |
 
 ## TextBuffer
 
@@ -575,9 +575,9 @@ const TextEditor = () => {
           <x.TextBuffer
             text={text}
             enableUndo
-            onTextChange={setText}
-            onCanUndoChange={setCanUndo}
-            onCanRedoChange={setCanRedo}
+            onTextChanged={setText}
+            onCanUndoChanged={setCanUndo}
+            onCanRedoChanged={setCanRedo}
           />
         </GtkTextView>
       </GtkScrolledWindow>
@@ -594,9 +594,9 @@ When `enableUndo` is true, the built-in keyboard shortcuts `Ctrl+Z` (undo) and `
 | ----------------- | -------------------------- | --------------------------------------- |
 | `text`            | string                     | Text content                            |
 | `enableUndo`      | boolean                    | Enable undo/redo functionality          |
-| `onTextChange`    | (text: string) => void     | Callback when text changes              |
-| `onCanUndoChange` | (canUndo: boolean) => void | Callback when undo availability changes |
-| `onCanRedoChange` | (canRedo: boolean) => void | Callback when redo availability changes |
+| `onTextChanged`    | (text: string) => void     | Callback when text changes              |
+| `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes |
+| `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes |
 
 ## Keyboard Shortcuts
 

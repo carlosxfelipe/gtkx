@@ -160,7 +160,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
         estimatedRowHeight={48}
         sortColumn={sortColumn}
         sortOrder={sortOrder}
-        onSortChange={handleSortChange}
+        onSortChanged={handleSortChange}
       >
         <x.ColumnViewColumn
           id="name"

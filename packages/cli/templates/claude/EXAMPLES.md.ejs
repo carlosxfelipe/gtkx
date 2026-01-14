@@ -339,7 +339,7 @@ const FileTable = () => {
 
     return (
         <GtkScrolledWindow vexpand cssClasses={["card"]}>
-            <GtkColumnView estimatedRowHeight={48} sortColumn={sortColumn} sortOrder={sortOrder} onSortChange={handleSort}>
+            <GtkColumnView estimatedRowHeight={48} sortColumn={sortColumn} sortOrder={sortOrder} onSortChanged={handleSort}>
                 <x.ColumnViewColumn<FileItem> title="Name" id="name" expand sortable renderCell={(f) => <GtkLabel label={f?.name ?? ""} />} />
                 <x.ColumnViewColumn<FileItem> title="Size" id="size" fixedWidth={100} sortable renderCell={(f) => <GtkLabel label={`${f?.size ?? 0} KB`} />} />
                 <x.ColumnViewColumn<FileItem> title="Modified" id="modified" fixedWidth={120} sortable renderCell={(f) => <GtkLabel label={f?.modified ?? ""} />} />

@@ -169,7 +169,7 @@ Grid-based virtual scrolling.
 Table with sortable columns.
 
 ```tsx
-<GtkColumnView estimatedRowHeight={48} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} onSortChange={handleSort}>
+<GtkColumnView estimatedRowHeight={48} sortColumn="name" sortOrder={Gtk.SortType.ASCENDING} onSortChanged={handleSort}>
     <x.ColumnViewColumn<Item>
         title="Name"
         id="name"
@@ -578,33 +578,26 @@ All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBeg
 
 ```tsx
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
-import { typeFromName } from "@gtkx/ffi/gobject";
+import { Type, Value } from "@gtkx/ffi/gobject";
 import { GtkButton, GtkBox, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 
 const DraggableButton = ({ label }: { label: string }) => {
-    const stringType = typeFromName("gchararray");
-    const value = new GObject.Value();
-    value.init(stringType);
-    value.setString(label);
-
     return (
         <GtkButton
             label={label}
-            onDragPrepare={() => Gdk.ContentProvider.newForValue(value)}
+            onDragPrepare={() => Gdk.ContentProvider.newForValue(Value.newFromString(label))}
         />
     );
 };
 
 const DropZone = () => {
     const [dropped, setDropped] = useState<string | null>(null);
-    const stringType = typeFromName("gchararray");
 
     return (
         <GtkBox
-            dropTypes={[stringType]}
-            onDrop={(value: GObject.Value) => {
+            dropTypes={[Type.STRING]}
+            onDrop={(value: Value) => {
                 setDropped(value.getString());
                 return true;
             }}
@@ -613,3 +606,124 @@ const DropZone = () => {
         </GtkBox>
     );
 };
+```
+
+## GValue Factories
+
+Create typed values for drag-and-drop and signal emission:
+
+| Factory                        | Description                   |
+| ------------------------------ | ----------------------------- |
+| `Value.newFromString(str)`     | String values                 |
+| `Value.newFromDouble(num)`     | 64-bit floating point         |
+| `Value.newFromInt(num)`        | 32-bit signed integer         |
+| `Value.newFromBoolean(bool)`   | Boolean values                |
+| `Value.newFromObject(obj)`     | GObject instances             |
+| `Value.newFromBoxed(boxed)`    | Boxed types (Gdk.RGBA, etc.)  |
+| `Value.newFromEnum(gtype, n)`  | Enum values (requires GType)  |
+| `Value.newFromFlags(gtype, n)` | Flags values (requires GType) |
+
+Type constants for `dropTypes`: `Type.STRING`, `Type.INT`, `Type.DOUBLE`, `Type.BOOLEAN`, `Type.OBJECT`.
+
+## Custom Drawing
+
+Render custom graphics with `GtkDrawingArea` using the `onDraw` callback:
+
+```tsx
+import { GtkDrawingArea } from "@gtkx/react";
+import type { Context } from "@gtkx/ffi/cairo";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+const Canvas = () => {
+    const handleDraw = (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+        cr.setSourceRgb(0.2, 0.4, 0.8);
+        cr.rectangle(10, 10, width - 20, height - 20);
+        cr.fill();
+    };
+
+    return <GtkDrawingArea contentWidth={400} contentHeight={300} onDraw={handleDraw} />;
+};
+```
+
+Use `onGestureDragBegin`, `onGestureDragUpdate`, `onGestureDragEnd` for interactive drawing. Call `widget.queueDraw()` to trigger redraws.
+
+## Adjustment
+
+Configure adjustable widgets declaratively with `x.Adjustment`:
+
+```tsx
+import { x, GtkScale, GtkBox, GtkLabel } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const VolumeControl = () => {
+    const [volume, setVolume] = useState(50);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <GtkScale drawValue hexpand>
+                <x.Adjustment value={volume} lower={0} upper={100} stepIncrement={1} pageIncrement={10} onValueChanged={setVolume} />
+            </GtkScale>
+            <GtkLabel label={`Volume: ${Math.round(volume)}%`} />
+        </GtkBox>
+    );
+};
+```
+
+Works with `GtkScale`, `GtkScrollbar`, `GtkScaleButton`, `GtkSpinButton`, `GtkListBox`.
+
+**Props:** `value`, `lower`, `upper`, `stepIncrement`, `pageIncrement`, `pageSize`, `onValueChanged`
+
+## TextBuffer
+
+Configure `GtkTextView` buffers declaratively with `x.TextBuffer`:
+
+```tsx
+import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const TextEditor = () => {
+    const [text, setText] = useState("Hello, World!");
+
+    return (
+        <GtkScrolledWindow minContentHeight={200}>
+            <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
+                <x.TextBuffer text={text} enableUndo onTextChanged={setText} />
+            </GtkTextView>
+        </GtkScrolledWindow>
+    );
+};
+```
+
+**Props:** `text`, `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`
+
+## Keyboard Shortcuts
+
+Attach shortcuts with `x.ShortcutController` and `x.Shortcut`:
+
+```tsx
+import { x, GtkBox, GtkLabel } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const App = () => {
+    const [count, setCount] = useState(0);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
+            <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
+                <x.Shortcut trigger="<Control>equal" onActivate={() => setCount((c) => c + 1)} />
+                <x.Shortcut trigger="<Control>minus" onActivate={() => setCount((c) => c - 1)} />
+            </x.ShortcutController>
+            <GtkLabel label={`Count: ${count}`} />
+        </GtkBox>
+    );
+};
+```
+
+**Scopes:** `LOCAL` (widget focus), `MANAGED` (parent managed), `GLOBAL` (window-wide)
+
+**Trigger syntax:** `<Control>s`, `<Control><Shift>s`, `<Alt>F4`, `<Primary>q`, `F5`
+
+**Multiple triggers:** `trigger={["F5", "<Control>r"]}`
