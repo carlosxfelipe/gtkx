@@ -118,6 +118,7 @@ Use `fireEvent` to emit signals directly on widgets or event controllers. This i
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
+import { Value } from "@gtkx/ffi/gobject";
 import { fireEvent } from "@gtkx/testing";
 
 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
@@ -126,8 +127,8 @@ const gesture = button.observeControllers().getObject(0) as Gtk.GestureDrag;
 await fireEvent(
   gesture,
   "drag-begin",
-  { type: { type: "float", size: 64 }, value: 100 },
-  { type: { type: "float", size: 64 }, value: 100 },
+  Value.newFromDouble(100),
+  Value.newFromDouble(100),
 );
 ```
 

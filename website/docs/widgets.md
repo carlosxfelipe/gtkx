@@ -4,7 +4,7 @@ GTKX provides declarative child components for various GTK widgets, allowing you
 
 ## Scale with Marks
 
-Add marks to a `GtkScale` slider using `x.ScaleMark`:
+Add marks to a `GtkScale` slider using `x.ScaleMark`, and configure the adjustment with `x.Adjustment`:
 
 ```tsx
 import { x, GtkScale } from "@gtkx/react";
@@ -15,11 +15,15 @@ const VolumeSlider = () => {
   const [volume, setVolume] = useState(50);
 
   return (
-    <GtkScale
-      hexpand
-      adjustment={new Gtk.Adjustment(volume, 0, 100, 1, 10, 0)}
-      onValueChanged={(scale) => setVolume(Math.round(scale.getValue()))}
-    >
+    <GtkScale hexpand>
+      <x.Adjustment
+        value={volume}
+        lower={0}
+        upper={100}
+        stepIncrement={1}
+        pageIncrement={10}
+        onValueChange={setVolume}
+      />
       <x.ScaleMark value={0} label="0" position={Gtk.PositionType.BOTTOM} />
       <x.ScaleMark value={25} position={Gtk.PositionType.BOTTOM} />
       <x.ScaleMark value={50} label="50" position={Gtk.PositionType.BOTTOM} />
@@ -325,33 +329,28 @@ All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBeg
 
 ```tsx
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
-import { typeFromName } from "@gtkx/ffi/gobject";
+import { Type, Value } from "@gtkx/ffi/gobject";
 import { GtkButton, GtkBox, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 
 const DraggableButton = ({ label }: { label: string }) => {
-  const stringType = typeFromName("gchararray");
-  const value = new GObject.Value();
-  value.init(stringType);
-  value.setString(label);
-
   return (
     <GtkButton
       label={label}
-      onDragPrepare={() => Gdk.ContentProvider.newForValue(value)}
+      onDragPrepare={() =>
+        Gdk.ContentProvider.newForValue(Value.newFromString(label))
+      }
     />
   );
 };
 
 const DropZone = () => {
   const [dropped, setDropped] = useState<string | null>(null);
-  const stringType = typeFromName("gchararray");
 
   return (
     <GtkBox
-      dropTypes={[stringType]}
-      onDrop={(value: GObject.Value) => {
+      dropTypes={[Type.STRING]}
+      onDrop={(value: Value) => {
         setDropped(value.getString());
         return true;
       }}
@@ -363,3 +362,325 @@ const DropZone = () => {
 ```
 
 For a complete example with visual feedback, see the drag-and-drop demo in `examples/gtk-demo/src/demos/gestures/dnd.tsx`.
+
+### GValue Factories
+
+Create typed values for drag-and-drop content and signal emission:
+
+| Factory                        | Description                        |
+| ------------------------------ | ---------------------------------- |
+| `Value.newFromString(str)`     | String values                      |
+| `Value.newFromDouble(num)`     | 64-bit floating point              |
+| `Value.newFromInt(num)`        | 32-bit signed integer              |
+| `Value.newFromUint(num)`       | 32-bit unsigned integer            |
+| `Value.newFromBoolean(bool)`   | Boolean values                     |
+| `Value.newFromObject(obj)`     | GObject instances                  |
+| `Value.newFromBoxed(boxed)`    | Boxed types (Gdk.RGBA, etc.)       |
+| `Value.newFromEnum(gtype, n)`  | Enum values (requires GType)       |
+| `Value.newFromFlags(gtype, n)` | Flags values (requires GType)      |
+
+Type constants for `dropTypes`:
+
+```tsx
+import { Type } from "@gtkx/ffi/gobject";
+
+<GtkBox
+  dropTypes={[Type.STRING]}
+  onDrop={(value) => {
+    console.log(value.getString());
+    return true;
+  }}
+/>
+```
+
+## Custom Drawing
+
+Render custom graphics using `GtkDrawingArea` with the `onDraw` callback. The callback receives a Cairo context for 2D drawing:
+
+```tsx
+import { GtkDrawingArea } from "@gtkx/react";
+import type { Context } from "@gtkx/ffi/cairo";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+const CustomCanvas = () => {
+    const handleDraw = (
+        self: Gtk.DrawingArea,
+        cr: Context,
+        width: number,
+        height: number,
+    ) => {
+        cr.setSourceRgb(0.2, 0.4, 0.8);
+        cr.rectangle(10, 10, width - 20, height - 20);
+        cr.fill();
+
+        cr.setSourceRgb(1, 1, 1);
+        cr.moveTo(width / 2, 20);
+        cr.lineTo(width - 20, height - 20);
+        cr.lineTo(20, height - 20);
+        cr.closePath();
+        cr.fill();
+    };
+
+    return (
+        <GtkDrawingArea
+            contentWidth={400}
+            contentHeight={300}
+            onDraw={handleDraw}
+        />
+    );
+};
+```
+
+### Interactive Drawing
+
+Combine `onDraw` with gesture callbacks for interactive applications like paint programs:
+
+```tsx
+import { GtkDrawingArea } from "@gtkx/react";
+import type { Context } from "@gtkx/ffi/cairo";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useRef, useState } from "react";
+
+interface Point {
+    x: number;
+    y: number;
+}
+
+const PaintCanvas = () => {
+    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const [points, setPoints] = useState<Point[]>([]);
+    const startRef = useRef<Point | null>(null);
+
+    const handleDraw = (
+        self: Gtk.DrawingArea,
+        cr: Context,
+        width: number,
+        height: number,
+    ) => {
+        cr.setSourceRgb(1, 1, 1);
+        cr.rectangle(0, 0, width, height);
+        cr.fill();
+
+        if (points.length > 1) {
+            cr.setSourceRgb(0, 0, 0);
+            cr.setLineWidth(2);
+            cr.moveTo(points[0].x, points[0].y);
+            for (const point of points.slice(1)) {
+                cr.lineTo(point.x, point.y);
+            }
+            cr.stroke();
+        }
+    };
+
+    return (
+        <GtkDrawingArea
+            ref={ref}
+            contentWidth={400}
+            contentHeight={300}
+            onDraw={handleDraw}
+            onGestureDragBegin={(startX, startY) => {
+                startRef.current = { x: startX, y: startY };
+                setPoints([{ x: startX, y: startY }]);
+            }}
+            onGestureDragUpdate={(offsetX, offsetY) => {
+                if (startRef.current) {
+                    const x = startRef.current.x + offsetX;
+                    const y = startRef.current.y + offsetY;
+                    setPoints((prev) => [...prev, { x, y }]);
+                    ref.current?.queueDraw();
+                }
+            }}
+            onGestureDragEnd={() => {
+                startRef.current = null;
+            }}
+        />
+    );
+};
+```
+
+Call `widget.queueDraw()` to request a redraw when state changes outside of React's render cycle.
+
+For a complete painting application with colors and brush sizes, see `examples/gtk-demo/src/demos/drawing/paint.tsx`.
+
+## Adjustment
+
+Configure adjustable widgets declaratively using `x.Adjustment`. This works with `GtkScale`, `GtkScrollbar`, `GtkScaleButton`, `GtkSpinButton`, and `GtkListBox`.
+
+```tsx
+import { x, GtkScale, GtkBox, GtkLabel } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const VolumeControl = () => {
+  const [volume, setVolume] = useState(50);
+
+  return (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+      <GtkScale drawValue hexpand>
+        <x.Adjustment
+          value={volume}
+          lower={0}
+          upper={100}
+          stepIncrement={1}
+          pageIncrement={10}
+          onValueChange={setVolume}
+        />
+      </GtkScale>
+      <GtkLabel label={`Volume: ${Math.round(volume)}%`} />
+    </GtkBox>
+  );
+};
+```
+
+### x.Adjustment Props
+
+| Prop            | Type                    | Description                              |
+| --------------- | ----------------------- | ---------------------------------------- |
+| `value`         | number                  | Current value                            |
+| `lower`         | number                  | Minimum value (default: 0)               |
+| `upper`         | number                  | Maximum value (default: 100)             |
+| `stepIncrement` | number                  | Increment for arrow keys (default: 1)    |
+| `pageIncrement` | number                  | Increment for page up/down (default: 10) |
+| `pageSize`      | number                  | Page size, usually 0 for scales          |
+| `onValueChange` | (value: number) => void | Callback when value changes              |
+
+## TextBuffer
+
+Configure a `GtkTextView` buffer declaratively using `x.TextBuffer`. This provides controlled text input with optional undo/redo support.
+
+```tsx
+import {
+  x,
+  GtkTextView,
+  GtkScrolledWindow,
+  GtkBox,
+  GtkButton,
+} from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const TextEditor = () => {
+  const [text, setText] = useState("Hello, World!");
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  return (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+      <GtkBox spacing={8}>
+        <GtkButton label="Undo" sensitive={canUndo} />
+        <GtkButton label="Redo" sensitive={canRedo} />
+      </GtkBox>
+      <GtkScrolledWindow minContentHeight={200}>
+        <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
+          <x.TextBuffer
+            text={text}
+            enableUndo
+            onTextChange={setText}
+            onCanUndoChange={setCanUndo}
+            onCanRedoChange={setCanRedo}
+          />
+        </GtkTextView>
+      </GtkScrolledWindow>
+    </GtkBox>
+  );
+};
+```
+
+When `enableUndo` is true, the built-in keyboard shortcuts `Ctrl+Z` (undo) and `Ctrl+Shift+Z` (redo) are automatically available.
+
+### x.TextBuffer Props
+
+| Prop              | Type                       | Description                             |
+| ----------------- | -------------------------- | --------------------------------------- |
+| `text`            | string                     | Text content                            |
+| `enableUndo`      | boolean                    | Enable undo/redo functionality          |
+| `onTextChange`    | (text: string) => void     | Callback when text changes              |
+| `onCanUndoChange` | (canUndo: boolean) => void | Callback when undo availability changes |
+| `onCanRedoChange` | (canRedo: boolean) => void | Callback when redo availability changes |
+
+## Keyboard Shortcuts
+
+Attach keyboard shortcuts to widgets using `x.ShortcutController` with `x.Shortcut` children:
+
+```tsx
+import { x, GtkBox, GtkLabel } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const App = () => {
+  const [count, setCount] = useState(0);
+  const [searchMode, setSearchMode] = useState(false);
+
+  return (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
+      <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
+        <x.Shortcut
+          trigger="<Control>equal"
+          onActivate={() => setCount((c) => c + 1)}
+        />
+        <x.Shortcut
+          trigger="<Control>minus"
+          onActivate={() => setCount((c) => c - 1)}
+        />
+        <x.Shortcut
+          trigger="<Control>f"
+          onActivate={() => setSearchMode((s) => !s)}
+        />
+      </x.ShortcutController>
+      <GtkLabel label={`Count: ${count}`} />
+      <GtkLabel label={searchMode ? "Search mode ON" : "Search mode OFF"} />
+    </GtkBox>
+  );
+};
+```
+
+### Controller Scopes
+
+| Scope     | Description                                     |
+| --------- | ----------------------------------------------- |
+| `LOCAL`   | Shortcuts active only when the widget has focus |
+| `MANAGED` | Shortcuts managed by a parent controller        |
+| `GLOBAL`  | Shortcuts active anywhere in the window         |
+
+### Trigger Syntax
+
+Shortcuts use GTK accelerator string format:
+
+| Example             | Description                          |
+| ------------------- | ------------------------------------ |
+| `<Control>s`        | Ctrl+S                               |
+| `<Control><Shift>s` | Ctrl+Shift+S                         |
+| `<Alt>F4`           | Alt+F4                               |
+| `<Primary>q`        | Platform primary key (Ctrl on Linux) |
+| `_m`                | Mnemonic trigger (Alt+M)             |
+| `F5`                | F5 key                               |
+
+### Multiple Triggers
+
+Pass an array to `trigger` for alternative key combinations:
+
+```tsx
+<x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
+```
+
+### Disabling Shortcuts
+
+Use the `disabled` prop to temporarily disable a shortcut without removing it:
+
+```tsx
+<x.Shortcut trigger="<Control>s" onActivate={save} disabled={!hasChanges} />
+```
+
+### x.ShortcutController Props
+
+| Prop    | Type                | Description               |
+| ------- | ------------------- | ------------------------- |
+| `scope` | `Gtk.ShortcutScope` | Shortcut activation scope |
+
+### x.Shortcut Props
+
+| Prop         | Type                  | Description                                         |
+| ------------ | --------------------- | --------------------------------------------------- |
+| `trigger`    | string \| string[]    | Key combination(s) to trigger the shortcut          |
+| `onActivate` | () => boolean \| void | Callback when triggered (return false to propagate) |
+| `disabled`   | boolean               | Whether the shortcut is disabled                    |
