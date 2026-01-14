@@ -153,8 +153,8 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             }
         }
 
-        this.list.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
-        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
     }
 
     private getColumn(columnId: string): Gtk.ColumnViewColumn {

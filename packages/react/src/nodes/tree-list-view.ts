@@ -84,7 +84,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
 
         const previousModel = this.treeList.getSelectionModel();
         this.treeList.updateProps(
-            oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
+            filterProps(oldProps ?? {}, RENDERER_PROP_NAMES),
             filterProps(newProps, RENDERER_PROP_NAMES),
         );
         const currentModel = this.treeList.getSelectionModel();
@@ -93,7 +93,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
             this.container.setModel(currentModel);
         }
 
-        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
     }
 }
 
