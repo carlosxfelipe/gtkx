@@ -1,3 +1,4 @@
+import { CallbackAnimationTarget, TimedAnimation } from "@gtkx/ffi/adw";
 import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
@@ -120,6 +121,9 @@ const createMultiArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
     };
 };
 
+const ROTATION_PER_CYCLE = Math.PI * 2;
+const BASE_DURATION_MS = 1250;
+
 const AnimatedSpinner = ({
     width,
     height,
@@ -144,6 +148,8 @@ const AnimatedSpinner = ({
     const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const rotationRef = useRef(0);
     const pulseRef = useRef(0);
+    const animationRef = useRef<TimedAnimation | null>(null);
+    const pulseAnimationRef = useRef<TimedAnimation | null>(null);
 
     const drawFunc = useCallback(
         (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
@@ -153,17 +159,34 @@ const AnimatedSpinner = ({
     );
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            rotationRef.current += 0.08 * speed;
-            if (withPulse) {
-                pulseRef.current += 0.1;
-            }
-            if (areaRef.current) {
-                areaRef.current.queueDraw();
-            }
-        }, 16);
+        const area = areaRef.current;
+        if (!area) return;
 
-        return () => clearInterval(interval);
+        const target = new CallbackAnimationTarget((value) => {
+            rotationRef.current = value * ROTATION_PER_CYCLE;
+            area.queueDraw();
+        });
+
+        const animation = new TimedAnimation(area, 0, 1, Math.round(BASE_DURATION_MS / speed), target);
+        animation.setRepeatCount(0);
+        animationRef.current = animation;
+        animation.play();
+
+        let pulseAnimation: TimedAnimation | null = null;
+        if (withPulse) {
+            const pulseTarget = new CallbackAnimationTarget((value) => {
+                pulseRef.current = value * Math.PI * 2;
+            });
+            pulseAnimation = new TimedAnimation(area, 0, 1, Math.round(800 / speed), pulseTarget);
+            pulseAnimation.setRepeatCount(0);
+            pulseAnimationRef.current = pulseAnimation;
+            pulseAnimation.play();
+        }
+
+        return () => {
+            animation.reset();
+            pulseAnimation?.reset();
+        };
     }, [speed, withPulse]);
 
     return (
@@ -186,6 +209,7 @@ const ConfigurableSpinner = () => {
     const [speed, setSpeed] = useState(1);
     const [isRunning, setIsRunning] = useState(true);
     const rotationRef = useRef(0);
+    const animationRef = useRef<TimedAnimation | null>(null);
 
     const drawFunc = useCallback(
         (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
@@ -195,17 +219,38 @@ const ConfigurableSpinner = () => {
     );
 
     useEffect(() => {
-        if (!isRunning) return;
+        const area = areaRef.current;
+        if (!area) return;
 
-        const interval = setInterval(() => {
-            rotationRef.current += 0.08 * speed;
-            if (areaRef.current) {
-                areaRef.current.queueDraw();
-            }
-        }, 16);
+        const target = new CallbackAnimationTarget((value) => {
+            rotationRef.current = value * ROTATION_PER_CYCLE;
+            area.queueDraw();
+        });
 
-        return () => clearInterval(interval);
+        const animation = new TimedAnimation(area, 0, 1, Math.round(BASE_DURATION_MS / speed), target);
+        animation.setRepeatCount(0);
+        animationRef.current = animation;
+
+        if (isRunning) {
+            animation.play();
+        }
+
+        return () => {
+            animation.reset();
+        };
     }, [speed, isRunning]);
+
+    const handleToggle = useCallback(() => {
+        const animation = animationRef.current;
+        if (!animation) return;
+
+        if (isRunning) {
+            animation.pause();
+        } else {
+            animation.resume();
+        }
+        setIsRunning(!isRunning);
+    }, [isRunning]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -244,11 +289,7 @@ const ConfigurableSpinner = () => {
                             />
                         </GtkScale>
                     </GtkBox>
-                    <GtkButton
-                        label={isRunning ? "Pause" : "Resume"}
-                        onClicked={() => setIsRunning(!isRunning)}
-                        cssClasses={["flat"]}
-                    />
+                    <GtkButton label={isRunning ? "Pause" : "Resume"} onClicked={handleToggle} cssClasses={["flat"]} />
                 </GtkBox>
             </GtkBox>
         </GtkBox>
@@ -261,7 +302,7 @@ const PathSpinnerDemo = () => {
             <GtkLabel label="Path-Based Spinners" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Loading spinners created with arc paths. Use animated rotation and configurable stroke widths for different visual effects."
+                label="Loading spinners created with arc paths using GTK's native TimedAnimation API. Animations are frame-synchronized and respect system animation settings."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -345,8 +386,8 @@ const PathSpinnerDemo = () => {
 export const pathSpinnerDemo: Demo = {
     id: "path-spinner",
     title: "Path/Spinner",
-    description: "Path-based loading spinners with animation",
-    keywords: ["path", "spinner", "loading", "animation", "arc", "rotation", "progress", "indicator"],
+    description: "Path-based loading spinners with GTK animation",
+    keywords: ["path", "spinner", "loading", "animation", "arc", "rotation", "progress", "indicator", "TimedAnimation"],
     component: PathSpinnerDemo,
     sourceCode,
 };

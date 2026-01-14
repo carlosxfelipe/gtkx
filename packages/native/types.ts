@@ -56,7 +56,15 @@ type UndefinedType = { type: "undefined" };
 
 type CallbackType = {
     type: "callback";
-    trampoline: "closure" | "asyncReady" | "destroy" | "drawFunc" | "shortcutFunc" | "treeListModelCreateFunc";
+    trampoline:
+        | "animationTargetFunc"
+        | "asyncReady"
+        | "closure"
+        | "destroy"
+        | "drawFunc"
+        | "shortcutFunc"
+        | "tickCallback"
+        | "treeListModelCreateFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

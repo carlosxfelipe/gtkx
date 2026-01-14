@@ -17,12 +17,14 @@ export const APPLICATION_PARAM_NAME = "application";
  * Trampoline names that are implemented in the native module.
  */
 export type TrampolineName =
+    | "animationTargetFunc"
     | "asyncReady"
     | "closure"
     | "destroy"
     | "drawFunc"
     | "scaleFormatValueFunc"
     | "shortcutFunc"
+    | "tickCallback"
     | "treeListModelCreateFunc";
 
 /**
@@ -33,10 +35,12 @@ export type TrampolineName =
  * Value: Trampoline function name in native module
  */
 const CALLBACK_TRAMPOLINES: Record<string, TrampolineName> = {
+    "Adw.AnimationTargetFunc": "animationTargetFunc",
     "Gio.AsyncReadyCallback": "asyncReady",
     "GLib.DestroyNotify": "destroy",
     "Gtk.DrawingAreaDrawFunc": "drawFunc",
     "Gtk.ShortcutFunc": "shortcutFunc",
+    "Gtk.TickCallback": "tickCallback",
     "Gtk.TreeListModelCreateModelFunc": "treeListModelCreateFunc",
 };
 

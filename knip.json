@@ -68,7 +68,7 @@
         },
         "packages/vitest": {
             "project": ["src/**/*"],
-            "entry": ["src/index.ts", "src/setup.ts"]
+            "entry": ["src/index.ts", "src/setup.ts", "src/global-setup.ts"]
         }
     }
 }

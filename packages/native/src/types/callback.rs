@@ -36,6 +36,8 @@ pub enum CallbackTrampoline {
     DrawFunc,
     ShortcutFunc,
     TreeListModelCreateFunc,
+    AnimationTargetFunc,
+    TickCallback,
 }
 
 impl std::str::FromStr for CallbackTrampoline {
@@ -49,8 +51,10 @@ impl std::str::FromStr for CallbackTrampoline {
             "drawFunc" => Ok(CallbackTrampoline::DrawFunc),
             "shortcutFunc" => Ok(CallbackTrampoline::ShortcutFunc),
             "treeListModelCreateFunc" => Ok(CallbackTrampoline::TreeListModelCreateFunc),
+            "animationTargetFunc" => Ok(CallbackTrampoline::AnimationTargetFunc),
+            "tickCallback" => Ok(CallbackTrampoline::TickCallback),
             _ => Err(format!(
-                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc'; got '{}'",
+                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc', 'animationTargetFunc', 'tickCallback'; got '{}'",
                 s
             )),
         }
@@ -255,6 +259,53 @@ impl CallbackTrampoline {
                 TrampolineCallbackValue::build(
                     closure,
                     CallbackData::tree_list_model_create_func as *mut c_void,
+                )
+            }
+
+            CallbackTrampoline::AnimationTargetFunc => {
+                let arg_types = callback_type.arg_types.clone();
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values = value::Value::from_glib_values(args, &arg_types)
+                        .expect("Failed to convert animation target callback arguments");
+
+                    js_dispatch::JsDispatcher::global().invoke_and_wait(
+                        &channel,
+                        &js_func,
+                        args_values,
+                        false,
+                        |_| None::<glib::Value>,
+                    )
+                });
+
+                TrampolineCallbackValue::build(
+                    closure,
+                    CallbackData::animation_target_func as *mut c_void,
+                )
+            }
+
+            CallbackTrampoline::TickCallback => {
+                let arg_types = callback_type.arg_types.clone();
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values = value::Value::from_glib_values(args, &arg_types)
+                        .expect("Failed to convert tick callback arguments");
+
+                    js_dispatch::JsDispatcher::global().invoke_and_wait(
+                        &channel,
+                        &js_func,
+                        args_values,
+                        true,
+                        |result| match result {
+                            Ok(value::Value::Boolean(b)) => Some(b.to_value()),
+                            _ => Some(true.to_value()),
+                        },
+                    )
+                });
+
+                TrampolineCallbackValue::build(
+                    closure,
+                    CallbackData::tick_callback as *mut c_void,
                 )
             }
         }

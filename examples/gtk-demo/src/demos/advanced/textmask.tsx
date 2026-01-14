@@ -1,9 +1,10 @@
+import { CallbackAnimationTarget, TimedAnimation } from "@gtkx/ffi/adw";
 import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
 
@@ -19,19 +20,30 @@ const TextmaskDemo = () => {
     const [text, setText] = useState("GTKX");
     const [fontSize, setFontSize] = useState(120);
     const [gradientIndex, setGradientIndex] = useState(0);
-    const [animationOffset, setAnimationOffset] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
+    const animationRef = useRef<TimedAnimation | null>(null);
+    const offsetRef = useRef(0);
 
     const currentGradient = GRADIENT_PRESETS[gradientIndex] ?? GRADIENT_PRESETS[0];
 
     useEffect(() => {
-        if (!isAnimating) return;
+        const area = areaRef.current;
+        if (!area || !isAnimating) return;
 
-        const interval = setInterval(() => {
-            setAnimationOffset((prev) => (prev + 0.02) % 1);
-        }, 50);
+        const target = new CallbackAnimationTarget((value: number) => {
+            offsetRef.current = value;
+            area.queueDraw();
+        });
 
-        return () => clearInterval(interval);
+        const animation = new TimedAnimation(area, 0, 1, 2000, target);
+        animation.setRepeatCount(0);
+        animationRef.current = animation;
+        animation.play();
+
+        return () => {
+            animation.reset();
+        };
     }, [isAnimating]);
 
     const drawFunc = useCallback(
@@ -50,11 +62,12 @@ const TextmaskDemo = () => {
             const textWidth = logicalRect.width;
             const textHeight = logicalRect.height;
 
-            const x = (width - textWidth) / 2;
-            const y = (height - textHeight) / 2;
+            const xPos = (width - textWidth) / 2;
+            const yPos = (height - textHeight) / 2;
 
-            cr.save().translate(x, y);
+            cr.save().translate(xPos, yPos);
 
+            const animationOffset = isAnimating ? offsetRef.current : 0;
             const gradient = Pattern.createLinear(
                 animationOffset * textWidth - textWidth * 0.5,
                 0,
@@ -79,12 +92,19 @@ const TextmaskDemo = () => {
 
             cr.restore();
 
-            cr.save().translate(x, y);
+            cr.save().translate(xPos, yPos);
             PangoCairo.layoutPath(cr, layout);
             cr.setSourceRgba(1, 1, 1, 0.3).setLineWidth(1).stroke().restore();
         },
-        [text, fontSize, animationOffset, currentGradient?.colors],
+        [text, fontSize, currentGradient?.colors, isAnimating],
     );
+
+    const handleToggleAnimation = useCallback(() => {
+        if (isAnimating) {
+            animationRef.current?.reset();
+        }
+        setIsAnimating(!isAnimating);
+    }, [isAnimating]);
 
     return (
         <GtkBox
@@ -98,14 +118,14 @@ const TextmaskDemo = () => {
             <GtkLabel label="Text Mask" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Text can be used as a clipping mask to reveal gradients, images, or other content. This technique uses Cairo's clip path with Pango text layouts."
+                label="Text can be used as a clipping mask to reveal gradients, images, or other content. Animation uses GTK's native TimedAnimation API."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
             <GtkFrame label="Preview">
-                <GtkDrawingArea onDraw={drawFunc} contentWidth={500} contentHeight={200} hexpand />
+                <GtkDrawingArea ref={areaRef} onDraw={drawFunc} contentWidth={500} contentHeight={200} hexpand />
             </GtkFrame>
 
             <GtkFrame label="Text">
@@ -162,7 +182,7 @@ const TextmaskDemo = () => {
                         <GtkButton
                             label={isAnimating ? "Stop Animation" : "Start Animation"}
                             cssClasses={isAnimating ? ["destructive-action"] : ["suggested-action"]}
-                            onClicked={() => setIsAnimating(!isAnimating)}
+                            onClicked={handleToggleAnimation}
                         />
                     </GtkBox>
                 </GtkBox>
@@ -189,8 +209,8 @@ function hexToRgb(hex: string): [number, number, number] {
 export const textmaskDemo: Demo = {
     id: "textmask",
     title: "Pango/Text Mask",
-    description: "Text masking with gradient fills",
-    keywords: ["text", "mask", "clip", "gradient", "cairo", "pango", "effects"],
+    description: "Text masking with gradient fills using GTK animation",
+    keywords: ["text", "mask", "clip", "gradient", "cairo", "pango", "effects", "TimedAnimation"],
     component: TextmaskDemo,
     sourceCode,
 };

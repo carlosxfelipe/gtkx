@@ -1,3 +1,4 @@
+import { CallbackAnimationTarget, Easing, TimedAnimation } from "@gtkx/ffi/adw";
 import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
@@ -5,7 +6,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-sweep.tsx?raw";
 
-const easings = {
+const easingMap: Record<string, Easing> = {
+    linear: Easing.LINEAR,
+    easeInQuad: Easing.EASE_IN_QUAD,
+    easeOutQuad: Easing.EASE_OUT_QUAD,
+    easeInOutQuad: Easing.EASE_IN_OUT_QUAD,
+    easeInCubic: Easing.EASE_IN_CUBIC,
+    easeOutCubic: Easing.EASE_OUT_CUBIC,
+    easeInOutCubic: Easing.EASE_IN_OUT_CUBIC,
+    easeOutElastic: Easing.EASE_OUT_ELASTIC,
+    easeOutBounce: Easing.EASE_OUT_BOUNCE,
+};
+
+type EasingName = keyof typeof easingMap;
+
+const easingNames = Object.keys(easingMap) as EasingName[];
+
+const easingFunctions = {
     linear: (t: number) => t,
     easeInQuad: (t: number) => t * t,
     easeOutQuad: (t: number) => t * (2 - t),
@@ -32,8 +49,6 @@ const easings = {
         }
     },
 };
-
-type EasingName = keyof typeof easings;
 
 const createDashSweepDrawFunc = (progress: number, dashLength: number = 20) => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -170,6 +185,8 @@ const createMultiDashSweepDrawFunc = (progress: number) => {
     };
 };
 
+const ANIMATION_DURATION_MS = 1600;
+
 const AnimatedSweep = ({
     width,
     height,
@@ -190,33 +207,49 @@ const AnimatedSweep = ({
 }) => {
     const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const progressRef = useRef(0);
-    const directionRef = useRef(1);
-    const easedProgressRef = useRef(0);
+    const forwardRef = useRef(true);
 
     const drawFunc = useCallback(
         (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
-            createDrawFunc(easedProgressRef.current, 80)(self, cr, w, h);
+            createDrawFunc(progressRef.current, 80)(self, cr, w, h);
         },
         [createDrawFunc],
     );
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            progressRef.current += 0.01 * speed * directionRef.current;
-            if (progressRef.current >= 1) {
-                directionRef.current = -1;
-            } else if (progressRef.current <= 0) {
-                directionRef.current = 1;
-            }
+        const area = areaRef.current;
+        if (!area) return;
 
-            easedProgressRef.current = easings[easing](Math.max(0, Math.min(1, progressRef.current)));
+        const runAnimation = () => {
+            const target = new CallbackAnimationTarget((value: number) => {
+                progressRef.current = forwardRef.current ? value : 1 - value;
+                area.queueDraw();
+            });
 
-            if (areaRef.current) {
-                areaRef.current.queueDraw();
-            }
-        }, 16);
+            const animation = new TimedAnimation(
+                area,
+                0,
+                1,
+                Math.round(ANIMATION_DURATION_MS / speed),
+                target,
+            );
+            animation.setEasing(easingMap[easing] ?? Easing.LINEAR);
 
-        return () => clearInterval(interval);
+            animation.connect("done", () => {
+                forwardRef.current = !forwardRef.current;
+                runAnimation();
+            });
+
+            animation.play();
+
+            return animation;
+        };
+
+        const animation = runAnimation();
+
+        return () => {
+            animation.reset();
+        };
     }, [speed, easing]);
 
     return (
@@ -253,7 +286,7 @@ const EasingVisualizer = () => {
                 .stroke();
 
             cr.setSourceRgba(0.5, 0.5, 0.5, 0.3).setLineWidth(2);
-            const easingFn = easings[selectedEasing];
+            const easingFn = easingFunctions[selectedEasing as keyof typeof easingFunctions];
 
             for (let i = 0; i <= 100; i++) {
                 const t = i / 100;
@@ -295,17 +328,22 @@ const EasingVisualizer = () => {
     );
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            progressRef.current = (progressRef.current + 0.008) % 1;
-            if (areaRef.current) {
-                areaRef.current.queueDraw();
-            }
-        }, 16);
+        const area = areaRef.current;
+        if (!area) return;
 
-        return () => clearInterval(interval);
+        const target = new CallbackAnimationTarget((value: number) => {
+            progressRef.current = value;
+            area.queueDraw();
+        });
+
+        const animation = new TimedAnimation(area, 0, 1, 2000, target);
+        animation.setRepeatCount(0);
+        animation.play();
+
+        return () => {
+            animation.reset();
+        };
     }, []);
-
-    const easingNames = Object.keys(easings) as EasingName[];
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -347,7 +385,7 @@ const PathSweepDemo = () => {
             <GtkLabel label="Path Sweep Animations" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="Animate dash offset along paths to create sweep and reveal effects. Use easing functions for natural motion."
+                label="Animate dash offset along paths using GTK's native TimedAnimation API with built-in easing functions. Animations respect system accessibility settings."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
@@ -404,8 +442,8 @@ const PathSweepDemo = () => {
 export const pathSweepDemo: Demo = {
     id: "path-sweep",
     title: "Path/Sweep",
-    description: "Animate dash offset for sweep and reveal effects",
-    keywords: ["path", "sweep", "dash", "animation", "reveal", "easing", "offset", "stroke"],
+    description: "Animate dash offset for sweep and reveal effects with GTK easing",
+    keywords: ["path", "sweep", "dash", "animation", "reveal", "easing", "offset", "stroke", "TimedAnimation"],
     component: PathSweepDemo,
     sourceCode,
 };

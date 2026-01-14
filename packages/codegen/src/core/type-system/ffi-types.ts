@@ -74,12 +74,14 @@ export type FfiTypeDescriptor = {
     elementSize?: number;
 
     trampoline?:
-        | "closure"
+        | "animationTargetFunc"
         | "asyncReady"
+        | "closure"
         | "destroy"
         | "drawFunc"
         | "scaleFormatValueFunc"
         | "shortcutFunc"
+        | "tickCallback"
         | "treeListModelCreateFunc";
 
     sourceType?: FfiTypeDescriptor;

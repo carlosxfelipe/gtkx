@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-animated.tsx?raw";
 
@@ -114,38 +114,71 @@ const PaintableAnimatedDemo = () => {
     const [speed, setSpeed] = useState(1.0);
     const [animationType, setAnimationType] = useState<"plasma" | "wave" | "spiral">("plasma");
     const [resolution, setResolution] = useState(128);
-    const [texture, setTexture] = useState<Gdk.MemoryTexture | null>(null);
-    const mountedRef = useRef(false);
+    const pictureRef = useRef<Gtk.Picture | null>(null);
+    const lastFrameTimeRef = useRef<number | null>(null);
+    const tickIdRef = useRef<number | null>(null);
+    const timeRef = useRef(0);
+    const speedRef = useRef(speed);
+    speedRef.current = speed;
 
-    useEffect(() => {
-        mountedRef.current = true;
-        return () => {
-            mountedRef.current = false;
-        };
+    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const frameTime = frameClock.getFrameTime();
+        if (lastFrameTimeRef.current !== null) {
+            const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
+            timeRef.current += delta * speedRef.current;
+            setTime(timeRef.current);
+        }
+        lastFrameTimeRef.current = frameTime;
+        return true;
     }, []);
 
-    useEffect(() => {
-        if (!isPlaying) return;
+    const startAnimation = useCallback(() => {
+        const picture = pictureRef.current;
+        if (!picture || tickIdRef.current !== null) return;
+        lastFrameTimeRef.current = null;
+        tickIdRef.current = picture.addTickCallback(tickCallback);
+    }, [tickCallback]);
 
-        let lastFrameTime = Date.now();
+    const stopAnimation = useCallback(() => {
+        const picture = pictureRef.current;
+        if (!picture || tickIdRef.current === null) return;
+        picture.removeTickCallback(tickIdRef.current);
+        tickIdRef.current = null;
+        lastFrameTimeRef.current = null;
+    }, []);
 
-        const intervalId = setInterval(() => {
-            const now = Date.now();
-            const delta = (now - lastFrameTime) / 1000;
-            lastFrameTime = now;
-            setTime((prevTime) => prevTime + delta * speed);
-        }, 33);
+    const handlePictureRef = useCallback(
+        (picture: Gtk.Picture | null) => {
+            if (pictureRef.current && tickIdRef.current !== null) {
+                pictureRef.current.removeTickCallback(tickIdRef.current);
+                tickIdRef.current = null;
+            }
+            pictureRef.current = picture;
+            if (picture && isPlaying) {
+                startAnimation();
+            }
+        },
+        [isPlaying, startAnimation],
+    );
 
-        return () => clearInterval(intervalId);
-    }, [isPlaying, speed]);
-
-    useEffect(() => {
-        setTexture(createAnimatedFrame(resolution, resolution, time, animationType));
-    }, [time, animationType, resolution]);
+    const handleTogglePlay = useCallback(() => {
+        if (isPlaying) {
+            stopAnimation();
+        } else {
+            startAnimation();
+        }
+        setIsPlaying(!isPlaying);
+    }, [isPlaying, startAnimation, stopAnimation]);
 
     const handleReset = useCallback(() => {
+        timeRef.current = 0;
         setTime(0);
     }, []);
+
+    const currentTexture = useMemo(
+        () => createAnimatedFrame(resolution, resolution, time, animationType),
+        [resolution, time, animationType],
+    );
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -168,7 +201,8 @@ const PaintableAnimatedDemo = () => {
                     marginEnd={12}
                 >
                     <GtkPicture
-                        paintable={texture ?? undefined}
+                        ref={handlePictureRef}
+                        paintable={currentTexture}
                         contentFit={Gtk.ContentFit.CONTAIN}
                         widthRequest={300}
                         heightRequest={300}
@@ -179,7 +213,7 @@ const PaintableAnimatedDemo = () => {
                     <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={isPlaying ? "Pause" : "Play"}
-                            onClicked={() => setIsPlaying(!isPlaying)}
+                            onClicked={handleTogglePlay}
                             cssClasses={isPlaying ? [] : ["suggested-action"]}
                         />
                         <GtkButton label="Reset" onClicked={handleReset} />
