@@ -1,8 +1,7 @@
 import type { Context } from "@gtkx/ffi/cairo";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkSpinButton, useApplication } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkSpinButton, useApplication, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
 
@@ -23,7 +22,6 @@ const ORIENTATION_LABELS: Record<number, string> = {
 
 const PageSetupDemo = () => {
     const app = useApplication();
-    const previewRef = useRef<Gtk.DrawingArea | null>(null);
 
     const [paperSize, setPaperSize] = useState(PAPER_SIZES[0] ?? { name: "A4", width: 210, height: 297 });
     const [orientation, setOrientation] = useState<Gtk.PageOrientation>(Gtk.PageOrientation.PORTRAIT);
@@ -32,29 +30,6 @@ const PageSetupDemo = () => {
     const [leftMargin, setLeftMargin] = useState(25.4);
     const [rightMargin, setRightMargin] = useState(25.4);
     const [lastDialogResult, setLastDialogResult] = useState<string | null>(null);
-
-    const topMarginAdj = useMemo(() => new Gtk.Adjustment(topMargin, 0, 100, 1, 10, 0), [topMargin]);
-    const bottomMarginAdj = useMemo(() => new Gtk.Adjustment(bottomMargin, 0, 100, 1, 10, 0), [bottomMargin]);
-    const leftMarginAdj = useMemo(() => new Gtk.Adjustment(leftMargin, 0, 100, 1, 10, 0), [leftMargin]);
-    const rightMarginAdj = useMemo(() => new Gtk.Adjustment(rightMargin, 0, 100, 1, 10, 0), [rightMargin]);
-
-    useEffect(() => {
-        const topId = topMarginAdj.connect("value-changed", (adj: Gtk.Adjustment) => setTopMargin(adj.getValue()));
-        const bottomId = bottomMarginAdj.connect("value-changed", (adj: Gtk.Adjustment) =>
-            setBottomMargin(adj.getValue()),
-        );
-        const leftId = leftMarginAdj.connect("value-changed", (adj: Gtk.Adjustment) => setLeftMargin(adj.getValue()));
-        const rightId = rightMarginAdj.connect("value-changed", (adj: Gtk.Adjustment) =>
-            setRightMargin(adj.getValue()),
-        );
-
-        return () => {
-            GObject.signalHandlerDisconnect(topMarginAdj, topId);
-            GObject.signalHandlerDisconnect(bottomMarginAdj, bottomId);
-            GObject.signalHandlerDisconnect(leftMarginAdj, leftId);
-            GObject.signalHandlerDisconnect(rightMarginAdj, rightId);
-        };
-    }, [topMarginAdj, bottomMarginAdj, leftMarginAdj, rightMarginAdj]);
 
     const effectiveWidth =
         orientation === Gtk.PageOrientation.LANDSCAPE || orientation === Gtk.PageOrientation.REVERSE_LANDSCAPE
@@ -153,12 +128,6 @@ const PageSetupDemo = () => {
         [effectiveWidth, effectiveHeight, topMargin, bottomMargin, leftMargin, rightMargin],
     );
 
-    useEffect(() => {
-        if (previewRef.current) {
-            previewRef.current.setDrawFunc(drawPreview);
-        }
-    }, [drawPreview]);
-
     const handleShowPageSetupDialog = async () => {
         try {
             const printDialog = new Gtk.PrintDialog();
@@ -216,10 +185,10 @@ const PageSetupDemo = () => {
     };
 
     const resetMargins = () => {
-        topMarginAdj.setValue(25.4);
-        bottomMarginAdj.setValue(25.4);
-        leftMarginAdj.setValue(25.4);
-        rightMarginAdj.setValue(25.4);
+        setTopMargin(25.4);
+        setBottomMargin(25.4);
+        setLeftMargin(25.4);
+        setRightMargin(25.4);
     };
 
     return (
@@ -244,7 +213,12 @@ const PageSetupDemo = () => {
                         marginEnd={12}
                         halign={Gtk.Align.CENTER}
                     >
-                        <GtkDrawingArea ref={previewRef} contentWidth={200} contentHeight={260} cssClasses={["card"]} />
+                        <GtkDrawingArea
+                            onDraw={drawPreview}
+                            contentWidth={200}
+                            contentHeight={260}
+                            cssClasses={["card"]}
+                        />
                         <GtkLabel
                             label={`${paperSize.name} - ${ORIENTATION_LABELS[orientation]}`}
                             cssClasses={["dim-label", "caption"]}
@@ -296,19 +270,55 @@ const PageSetupDemo = () => {
                         >
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Top:" widthChars={8} xalign={0} />
-                                <GtkSpinButton adjustment={topMarginAdj} climbRate={1} digits={1} hexpand />
+                                <GtkSpinButton climbRate={1} digits={1} hexpand>
+                                    <x.Adjustment
+                                        value={topMargin}
+                                        lower={0}
+                                        upper={100}
+                                        stepIncrement={1}
+                                        pageIncrement={10}
+                                        onValueChange={setTopMargin}
+                                    />
+                                </GtkSpinButton>
                             </GtkBox>
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Bottom:" widthChars={8} xalign={0} />
-                                <GtkSpinButton adjustment={bottomMarginAdj} climbRate={1} digits={1} hexpand />
+                                <GtkSpinButton climbRate={1} digits={1} hexpand>
+                                    <x.Adjustment
+                                        value={bottomMargin}
+                                        lower={0}
+                                        upper={100}
+                                        stepIncrement={1}
+                                        pageIncrement={10}
+                                        onValueChange={setBottomMargin}
+                                    />
+                                </GtkSpinButton>
                             </GtkBox>
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Left:" widthChars={8} xalign={0} />
-                                <GtkSpinButton adjustment={leftMarginAdj} climbRate={1} digits={1} hexpand />
+                                <GtkSpinButton climbRate={1} digits={1} hexpand>
+                                    <x.Adjustment
+                                        value={leftMargin}
+                                        lower={0}
+                                        upper={100}
+                                        stepIncrement={1}
+                                        pageIncrement={10}
+                                        onValueChange={setLeftMargin}
+                                    />
+                                </GtkSpinButton>
                             </GtkBox>
                             <GtkBox spacing={12}>
                                 <GtkLabel label="Right:" widthChars={8} xalign={0} />
-                                <GtkSpinButton adjustment={rightMarginAdj} climbRate={1} digits={1} hexpand />
+                                <GtkSpinButton climbRate={1} digits={1} hexpand>
+                                    <x.Adjustment
+                                        value={rightMargin}
+                                        lower={0}
+                                        upper={100}
+                                        stepIncrement={1}
+                                        pageIncrement={10}
+                                        onValueChange={setRightMargin}
+                                    />
+                                </GtkSpinButton>
                             </GtkBox>
                             <GtkButton label="Reset Margins" onClicked={resetMargins} halign={Gtk.Align.END} />
                         </GtkBox>

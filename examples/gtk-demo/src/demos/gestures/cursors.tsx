@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./cursors.tsx?raw";
 
@@ -38,19 +38,10 @@ interface CursorBoxProps {
 }
 
 const CursorBox = ({ cursorName, description, isActive }: CursorBoxProps) => {
-    const boxRef = useRef<Gtk.Box | null>(null);
-
-    useEffect(() => {
-        const box = boxRef.current;
-        if (!box) return;
-
-        const cursor = new Gdk.Cursor(cursorName);
-        box.setCursor(cursor);
-    }, [cursorName]);
+    const cursor = useMemo(() => new Gdk.Cursor(cursorName), [cursorName]);
 
     return (
         <GtkBox
-            ref={boxRef}
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
             cssClasses={isActive ? ["card", "suggested-action"] : ["card"]}
@@ -62,6 +53,7 @@ const CursorBox = ({ cursorName, description, isActive }: CursorBoxProps) => {
             marginEnd={8}
             marginTop={8}
             marginBottom={8}
+            cursor={cursor}
         >
             <GtkLabel label={cursorName} cssClasses={["heading"]} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
             <GtkLabel
@@ -78,19 +70,7 @@ const CursorBox = ({ cursorName, description, isActive }: CursorBoxProps) => {
 const CursorsDemo = () => {
     const [activeCursor] = useState<string>("default");
     const [customCursor, setCustomCursor] = useState<string | null>(null);
-    const previewRef = useRef<Gtk.Box | null>(null);
-
-    useEffect(() => {
-        const preview = previewRef.current;
-        if (!preview) return;
-
-        if (customCursor) {
-            const cursor = new Gdk.Cursor(customCursor);
-            preview.setCursor(cursor);
-        } else {
-            preview.setCursor(null);
-        }
-    }, [customCursor]);
+    const previewCursor = useMemo(() => (customCursor ? new Gdk.Cursor(customCursor) : undefined), [customCursor]);
 
     return (
         <GtkBox
@@ -152,7 +132,6 @@ const CursorsDemo = () => {
 
             <GtkFrame label="Cursor Preview Area">
                 <GtkBox
-                    ref={previewRef}
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={16}
                     marginStart={16}
@@ -162,6 +141,7 @@ const CursorsDemo = () => {
                     heightRequest={150}
                     cssClasses={["card"]}
                     valign={Gtk.Align.CENTER}
+                    cursor={previewCursor}
                 >
                     <GtkLabel
                         label={customCursor ? `Current: ${customCursor}` : "Select a cursor below"}

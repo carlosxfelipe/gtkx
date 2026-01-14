@@ -188,9 +188,17 @@ const AnimatedSweep = ({
     speed?: number;
     easing?: EasingName;
 }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const progressRef = useRef(0);
     const directionRef = useRef(1);
+    const easedProgressRef = useRef(0);
+
+    const drawFunc = useCallback(
+        (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
+            createDrawFunc(easedProgressRef.current, 80)(self, cr, w, h);
+        },
+        [createDrawFunc],
+    );
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -201,83 +209,87 @@ const AnimatedSweep = ({
                 directionRef.current = 1;
             }
 
-            const easedProgress = easings[easing](Math.max(0, Math.min(1, progressRef.current)));
+            easedProgressRef.current = easings[easing](Math.max(0, Math.min(1, progressRef.current)));
 
-            if (ref.current) {
-                ref.current.setDrawFunc(createDrawFunc(easedProgress, 80));
-                ref.current.queueDraw();
+            if (areaRef.current) {
+                areaRef.current.queueDraw();
             }
         }, 16);
 
         return () => clearInterval(interval);
-    }, [createDrawFunc, speed, easing]);
+    }, [speed, easing]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea ref={ref} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
+            <GtkDrawingArea
+                ref={areaRef}
+                onDraw={drawFunc}
+                contentWidth={width}
+                contentHeight={height}
+                cssClasses={["card"]}
+            />
             <GtkLabel label={label} cssClasses={["dim-label", "caption"]} />
         </GtkBox>
     );
 };
 
 const EasingVisualizer = () => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [selectedEasing, setSelectedEasing] = useState<EasingName>("easeOutQuad");
     const progressRef = useRef(0);
 
     const drawEasing = useCallback(
-        (progress: number) => {
-            return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-                const padding = 30;
-                const w = width - padding * 2;
-                const h = height - padding * 2;
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+            const progress = progressRef.current;
+            const padding = 30;
+            const w = width - padding * 2;
+            const h = height - padding * 2;
 
-                cr.setSourceRgba(0.5, 0.5, 0.5, 0.5)
-                    .setLineWidth(1)
-                    .moveTo(padding, padding)
-                    .lineTo(padding, padding + h)
-                    .lineTo(padding + w, padding + h)
-                    .stroke();
+            cr.setSourceRgba(0.5, 0.5, 0.5, 0.5)
+                .setLineWidth(1)
+                .moveTo(padding, padding)
+                .lineTo(padding, padding + h)
+                .lineTo(padding + w, padding + h)
+                .stroke();
 
-                cr.setSourceRgba(0.5, 0.5, 0.5, 0.3).setLineWidth(2);
-                const easingFn = easings[selectedEasing];
+            cr.setSourceRgba(0.5, 0.5, 0.5, 0.3).setLineWidth(2);
+            const easingFn = easings[selectedEasing];
 
-                for (let i = 0; i <= 100; i++) {
-                    const t = i / 100;
-                    const x = padding + t * w;
-                    const y = padding + h - easingFn(t) * h;
-                    if (i === 0) {
-                        cr.moveTo(x, y);
-                    } else {
-                        cr.lineTo(x, y);
-                    }
+            for (let i = 0; i <= 100; i++) {
+                const t = i / 100;
+                const x = padding + t * w;
+                const y = padding + h - easingFn(t) * h;
+                if (i === 0) {
+                    cr.moveTo(x, y);
+                } else {
+                    cr.lineTo(x, y);
                 }
-                cr.stroke();
+            }
+            cr.stroke();
 
-                const x = padding + progress * w;
-                const y = padding + h - easingFn(progress) * h;
+            const x = padding + progress * w;
+            const y = padding + h - easingFn(progress) * h;
 
-                cr.setSourceRgba(0.2, 0.6, 0.9, 0.5)
-                    .setLineWidth(1)
-                    .moveTo(x, padding + h)
-                    .lineTo(x, y)
-                    .stroke();
+            cr.setSourceRgba(0.2, 0.6, 0.9, 0.5)
+                .setLineWidth(1)
+                .moveTo(x, padding + h)
+                .lineTo(x, y)
+                .stroke();
 
-                cr.moveTo(padding, y).lineTo(x, y).stroke();
+            cr.moveTo(padding, y).lineTo(x, y).stroke();
 
-                cr.setSourceRgb(0.9, 0.3, 0.3)
-                    .arc(x, y, 6, 0, 2 * Math.PI)
-                    .fill();
+            cr.setSourceRgb(0.9, 0.3, 0.3)
+                .arc(x, y, 6, 0, 2 * Math.PI)
+                .fill();
 
-                cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
-                    .setFontSize(10)
-                    .setSourceRgb(0.5, 0.5, 0.5)
-                    .moveTo(padding - 5, padding + h + 15)
-                    .showText("0");
-                cr.moveTo(padding + w - 5, padding + h + 15).showText("1");
-                cr.moveTo(padding - 20, padding + h).showText("0");
-                cr.moveTo(padding - 20, padding + 5).showText("1");
-            };
+            cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
+                .setFontSize(10)
+                .setSourceRgb(0.5, 0.5, 0.5)
+                .moveTo(padding - 5, padding + h + 15)
+                .showText("0");
+            cr.moveTo(padding + w - 5, padding + h + 15).showText("1");
+            cr.moveTo(padding - 20, padding + h).showText("0");
+            cr.moveTo(padding - 20, padding + 5).showText("1");
         },
         [selectedEasing],
     );
@@ -285,21 +297,21 @@ const EasingVisualizer = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             progressRef.current = (progressRef.current + 0.008) % 1;
-            if (ref.current) {
-                ref.current.setDrawFunc(drawEasing(progressRef.current));
-                ref.current.queueDraw();
+            if (areaRef.current) {
+                areaRef.current.queueDraw();
             }
         }, 16);
 
         return () => clearInterval(interval);
-    }, [drawEasing]);
+    }, []);
 
     const easingNames = Object.keys(easings) as EasingName[];
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
             <GtkDrawingArea
-                ref={ref}
+                ref={areaRef}
+                onDraw={drawEasing}
                 contentWidth={300}
                 contentHeight={200}
                 cssClasses={["card"]}

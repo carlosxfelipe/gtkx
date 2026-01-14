@@ -1,7 +1,6 @@
 import { type Context, FillRule, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-fill.tsx?raw";
 
@@ -143,17 +142,9 @@ const DrawingCanvas = ({
     drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     label: string;
 }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
-
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea ref={ref} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
+            <GtkDrawingArea onDraw={drawFunc} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
             <GtkLabel label={label} cssClasses={["dim-label", "caption"]} />
         </GtkBox>
     );

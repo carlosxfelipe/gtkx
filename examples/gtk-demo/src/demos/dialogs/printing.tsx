@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, useApplication } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./printing.tsx?raw";
 
@@ -38,7 +38,6 @@ const PrintingDemo = () => {
     const app = useApplication();
     const [printStatus, setPrintStatus] = useState<string | null>(null);
     const [lastResult, setLastResult] = useState<string | null>(null);
-    const previewRef = useRef<Gtk.DrawingArea | null>(null);
     const [previewPage, setPreviewPage] = useState(0);
 
     const totalPages = Math.ceil(SAMPLE_LINES.length / LINES_PER_PAGE);
@@ -101,12 +100,6 @@ const PrintingDemo = () => {
         },
         [previewPage, totalPages],
     );
-
-    useEffect(() => {
-        if (previewRef.current) {
-            previewRef.current.setDrawFunc(drawPreview);
-        }
-    }, [drawPreview]);
 
     const handlePrint = () => {
         try {
@@ -331,7 +324,7 @@ const PrintingDemo = () => {
                     marginEnd={12}
                     halign={Gtk.Align.CENTER}
                 >
-                    <GtkDrawingArea ref={previewRef} contentWidth={200} contentHeight={260} cssClasses={["card"]} />
+                    <GtkDrawingArea onDraw={drawPreview} contentWidth={200} contentHeight={260} cssClasses={["card"]} />
                     <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             iconName="go-previous-symbolic"

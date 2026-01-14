@@ -1,7 +1,7 @@
 import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkPicture } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./image-scaling.tsx?raw";
 
@@ -106,8 +106,6 @@ const drawSampleImage = (
 };
 
 const ContentFitDemo = ({ mode, name, description }: { mode: Gtk.ContentFit; name: string; description: string }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
-
     const drawFunc = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             drawSampleImage(cr, width, height, 100, 60, mode);
@@ -115,15 +113,9 @@ const ContentFitDemo = ({ mode, name, description }: { mode: Gtk.ContentFit; nam
         [mode],
     );
 
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea ref={ref} contentWidth={120} contentHeight={100} cssClasses={["card"]} />
+            <GtkDrawingArea onDraw={drawFunc} contentWidth={120} contentHeight={100} cssClasses={["card"]} />
             <GtkLabel label={name} cssClasses={["heading"]} />
             <GtkLabel label={description} wrap cssClasses={["dim-label", "caption"]} widthChars={20} />
         </GtkBox>
@@ -139,8 +131,6 @@ const AspectRatioDemo = ({
     sourceHeight: number;
     label: string;
 }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
-
     const drawFunc = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             drawSampleImage(cr, width, height, sourceWidth, sourceHeight, Gtk.ContentFit.CONTAIN);
@@ -148,15 +138,9 @@ const AspectRatioDemo = ({
         [sourceWidth, sourceHeight],
     );
 
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea ref={ref} contentWidth={100} contentHeight={100} cssClasses={["card"]} />
+            <GtkDrawingArea onDraw={drawFunc} contentWidth={100} contentHeight={100} cssClasses={["card"]} />
             <GtkLabel label={label} cssClasses={["dim-label", "caption"]} />
         </GtkBox>
     );

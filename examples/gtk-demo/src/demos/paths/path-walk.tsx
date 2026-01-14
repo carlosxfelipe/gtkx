@@ -166,7 +166,7 @@ const drawPlane = (cr: Context, x: number, y: number, angle: number, size: numbe
 };
 
 const PathWalkDemo = () => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [speed, setSpeed] = useState(1);
     const [objectType, setObjectType] = useState<"arrow" | "car" | "plane">("arrow");
     const [isRunning, setIsRunning] = useState(true);
@@ -189,75 +189,74 @@ const PathWalkDemo = () => {
     }, []);
 
     const drawScene = useCallback(
-        (progress: number) => {
-            return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-                if (!pathTableRef.current) return;
+        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+            const progress = progressRef.current;
+            if (!pathTableRef.current) return;
 
-                const { totalLength } = pathTableRef.current;
-                const padding = 40;
+            const { totalLength } = pathTableRef.current;
+            const padding = 40;
 
-                const p0 = { x: padding, y: height - padding };
-                const p1 = { x: width * 0.25, y: padding };
-                const p2 = { x: width * 0.75, y: height - padding };
-                const p3 = { x: width - padding, y: padding };
+            const p0 = { x: padding, y: height - padding };
+            const p1 = { x: width * 0.25, y: padding };
+            const p2 = { x: width * 0.75, y: height - padding };
+            const p3 = { x: width - padding, y: padding };
 
-                if (showPath) {
-                    cr.setSourceRgba(0.5, 0.5, 0.5, 0.4)
-                        .setLineWidth(3)
-                        .setLineCap(LineCap.ROUND)
-                        .moveTo(p0.x, p0.y)
-                        .curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
-                        .stroke();
+            if (showPath) {
+                cr.setSourceRgba(0.5, 0.5, 0.5, 0.4)
+                    .setLineWidth(3)
+                    .setLineCap(LineCap.ROUND)
+                    .moveTo(p0.x, p0.y)
+                    .curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
+                    .stroke();
 
-                    cr.setSourceRgba(0.8, 0.4, 0.4, 0.5).setLineWidth(1);
+                cr.setSourceRgba(0.8, 0.4, 0.4, 0.5).setLineWidth(1);
 
-                    cr.moveTo(p0.x, p0.y).lineTo(p1.x, p1.y).stroke();
-                    cr.moveTo(p2.x, p2.y).lineTo(p3.x, p3.y).stroke();
+                cr.moveTo(p0.x, p0.y).lineTo(p1.x, p1.y).stroke();
+                cr.moveTo(p2.x, p2.y).lineTo(p3.x, p3.y).stroke();
 
-                    for (const p of [p0, p1, p2, p3]) {
-                        cr.arc(p.x, p.y, 5, 0, 2 * Math.PI).fill();
-                    }
+                for (const p of [p0, p1, p2, p3]) {
+                    cr.arc(p.x, p.y, 5, 0, 2 * Math.PI).fill();
                 }
+            }
 
-                const distance = progress * totalLength;
-                const point = getPointAtLength(distance, pathTableRef.current);
+            const distance = progress * totalLength;
+            const point = getPointAtLength(distance, pathTableRef.current);
 
-                cr.setSourceRgba(0.2, 0.6, 0.9, 0.3).setLineWidth(2);
-                const numTrailPoints = 30;
-                for (let i = numTrailPoints; i >= 0; i--) {
-                    const trailProgress = Math.max(0, progress - i * 0.005);
-                    const trailDistance = trailProgress * totalLength;
-                    const trailPoint = getPointAtLength(trailDistance, pathTableRef.current);
-                    if (i === numTrailPoints) {
-                        cr.moveTo(trailPoint.x, trailPoint.y);
-                    } else {
-                        cr.lineTo(trailPoint.x, trailPoint.y);
-                    }
+            cr.setSourceRgba(0.2, 0.6, 0.9, 0.3).setLineWidth(2);
+            const numTrailPoints = 30;
+            for (let i = numTrailPoints; i >= 0; i--) {
+                const trailProgress = Math.max(0, progress - i * 0.005);
+                const trailDistance = trailProgress * totalLength;
+                const trailPoint = getPointAtLength(trailDistance, pathTableRef.current);
+                if (i === numTrailPoints) {
+                    cr.moveTo(trailPoint.x, trailPoint.y);
+                } else {
+                    cr.lineTo(trailPoint.x, trailPoint.y);
                 }
-                cr.stroke();
+            }
+            cr.stroke();
 
-                const objectSize = 25;
-                switch (objectType) {
-                    case "arrow":
-                        cr.setSourceRgb(0.9, 0.4, 0.2);
-                        drawArrow(cr, point.x, point.y, point.angle, objectSize);
-                        cr.fill();
-                        break;
-                    case "car":
-                        drawCar(cr, point.x, point.y, point.angle, objectSize);
-                        break;
-                    case "plane":
-                        drawPlane(cr, point.x, point.y, point.angle, objectSize);
-                        break;
-                }
+            const objectSize = 25;
+            switch (objectType) {
+                case "arrow":
+                    cr.setSourceRgb(0.9, 0.4, 0.2);
+                    drawArrow(cr, point.x, point.y, point.angle, objectSize);
+                    cr.fill();
+                    break;
+                case "car":
+                    drawCar(cr, point.x, point.y, point.angle, objectSize);
+                    break;
+                case "plane":
+                    drawPlane(cr, point.x, point.y, point.angle, objectSize);
+                    break;
+            }
 
-                cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
-                    .setFontSize(12)
-                    .setSourceRgb(0.5, 0.5, 0.5)
-                    .moveTo(10, 20)
-                    .showText(`Progress: ${(progress * 100).toFixed(1)}%`);
-                cr.moveTo(10, 35).showText(`Angle: ${((point.angle * 180) / Math.PI).toFixed(1)}°`);
-            };
+            cr.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL)
+                .setFontSize(12)
+                .setSourceRgb(0.5, 0.5, 0.5)
+                .moveTo(10, 20)
+                .showText(`Progress: ${(progress * 100).toFixed(1)}%`);
+            cr.moveTo(10, 35).showText(`Angle: ${((point.angle * 180) / Math.PI).toFixed(1)}°`);
         },
         [objectType, showPath],
     );
@@ -267,14 +266,13 @@ const PathWalkDemo = () => {
 
         const interval = setInterval(() => {
             progressRef.current = (progressRef.current + 0.003 * speed) % 1;
-            if (ref.current) {
-                ref.current.setDrawFunc(drawScene(progressRef.current));
-                ref.current.queueDraw();
+            if (areaRef.current) {
+                areaRef.current.queueDraw();
             }
         }, 16);
 
         return () => clearInterval(interval);
-    }, [drawScene, speed, isRunning]);
+    }, [speed, isRunning]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -297,7 +295,8 @@ const PathWalkDemo = () => {
                     marginEnd={12}
                 >
                     <GtkDrawingArea
-                        ref={ref}
+                        ref={areaRef}
+                        onDraw={drawScene}
                         contentWidth={canvasWidth}
                         contentHeight={canvasHeight}
                         cssClasses={["card"]}

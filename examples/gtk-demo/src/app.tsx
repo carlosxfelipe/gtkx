@@ -1,3 +1,7 @@
+import path from "node:path";
+import * as Adw from "@gtkx/ffi/adw";
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as GdkPixbuf from "@gtkx/ffi/gdkpixbuf";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     createPortal,
@@ -10,7 +14,6 @@ import {
     GtkMenuButton,
     GtkNotebook,
     GtkPaned,
-    GtkPopover,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
@@ -19,7 +22,7 @@ import {
     useApplication,
     x,
 } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, useDemo } from "./context/demo-context.js";
@@ -93,8 +96,15 @@ const AppContent = () => {
     const [demoWindows, setDemoWindows] = useState<number[]>([]);
     const [nextWindowId, setNextWindowId] = useState(1);
     const [showAbout, setShowAbout] = useState(false);
+    const [notebookPage, setNotebookPage] = useState(0);
     const app = useApplication();
     const activeWindow = app.getActiveWindow();
+
+    const gtkxLogo = useMemo(() => {
+        const logoPath = path.resolve(import.meta.dirname, "../../..", "logo.svg");
+        const pixbuf = GdkPixbuf.Pixbuf.newFromFileAtScale(logoPath, 64, 64, true);
+        return new Gdk.Texture(pixbuf);
+    }, []);
 
     const handleRun = useCallback(() => {
         if (!currentDemo) return;
@@ -111,8 +121,23 @@ const AppContent = () => {
     }, []);
 
     const handleKeyboardShortcuts = useCallback(() => {
-        // TODO: Implement help overlay when available
-    }, []);
+        if (!activeWindow) return;
+
+        const dialog = new Adw.ShortcutsDialog();
+
+        const general = new Adw.ShortcutsSection("General");
+        general.add(new Adw.ShortcutsItem("Search demos", "<Control>f"));
+        general.add(new Adw.ShortcutsItem("Open Inspector", "<Control><Shift>i"));
+        general.add(new Adw.ShortcutsItem("Keyboard Shortcuts", "<Control>question"));
+        dialog.add(general);
+
+        const navigation = new Adw.ShortcutsSection("Navigation");
+        navigation.add(new Adw.ShortcutsItem("Next tab", "<Control>Page_Down"));
+        navigation.add(new Adw.ShortcutsItem("Previous tab", "<Control>Page_Up"));
+        dialog.add(navigation);
+
+        dialog.present(activeWindow);
+    }, [activeWindow]);
 
     const handleAbout = useCallback(() => {
         setShowAbout(true);
@@ -127,7 +152,7 @@ const AppContent = () => {
             <x.Slot for={GtkWindow} id="titlebar">
                 <GtkHeaderBar>
                     <x.Slot for={GtkHeaderBar} id="titleWidget">
-                        <GtkLabel label="GTK Demo" cssClasses={["title"]} />
+                        <GtkLabel label="GTKX Demo" cssClasses={["title"]} />
                     </x.Slot>
                     <x.PackStart>
                         <GtkButton
@@ -144,38 +169,46 @@ const AppContent = () => {
                     </x.PackStart>
                     <x.PackEnd>
                         <GtkMenuButton iconName="open-menu-symbolic">
-                            <x.Slot for={GtkMenuButton} id="popover">
-                                <GtkPopover>
-                                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                                        <GtkButton
-                                            label="_Inspector"
-                                            useUnderline
-                                            cssClasses={["flat"]}
-                                            onClicked={handleInspector}
-                                        />
-                                        <GtkButton
-                                            label="_Keyboard Shortcuts"
-                                            useUnderline
-                                            cssClasses={["flat"]}
-                                            onClicked={handleKeyboardShortcuts}
-                                        />
-                                        <GtkButton
-                                            label="_About GTK Demo"
-                                            useUnderline
-                                            cssClasses={["flat"]}
-                                            onClicked={handleAbout}
-                                        />
-                                    </GtkBox>
-                                </GtkPopover>
-                            </x.Slot>
+                            <x.MenuSection>
+                                <x.MenuItem
+                                    id="inspector"
+                                    label="Inspector"
+                                    onActivate={handleInspector}
+                                    accels="<Control><Shift>i"
+                                />
+                                <x.MenuItem
+                                    id="shortcuts"
+                                    label="Keyboard Shortcuts"
+                                    onActivate={handleKeyboardShortcuts}
+                                    accels="<Control>question"
+                                />
+                                <x.MenuItem id="about" label="About GTKX Demo" onActivate={handleAbout} />
+                            </x.MenuSection>
                         </GtkMenuButton>
                     </x.PackEnd>
                 </GtkHeaderBar>
             </x.Slot>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
+                <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                    <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode((prev) => !prev)} />
+                    <x.Shortcut
+                        trigger="<Control><Shift>i"
+                        onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
+                    />
+                    <x.Shortcut trigger="<Control>question" onActivate={handleKeyboardShortcuts} />
+                    <x.Shortcut
+                        trigger="<Control>Page_Down"
+                        onActivate={() => setNotebookPage((prev) => Math.min(prev + 1, 1))}
+                    />
+                    <x.Shortcut
+                        trigger="<Control>Page_Up"
+                        onActivate={() => setNotebookPage((prev) => Math.max(prev - 1, 0))}
+                    />
+                </x.ShortcutController>
                 <GtkSearchBar searchModeEnabled={searchMode}>
                     <GtkSearchEntry
+                        grabFocus={searchMode}
                         hexpand
                         placeholderText="Search demos..."
                         text={searchQuery}
@@ -188,7 +221,14 @@ const AppContent = () => {
                         <Sidebar />
                     </x.Slot>
                     <x.Slot for={GtkPaned} id="endChild">
-                        <GtkNotebook vexpand hexpand scrollable showBorder={false}>
+                        <GtkNotebook
+                            page={notebookPage}
+                            onSwitchPage={(_, __, pageNum) => setNotebookPage(pageNum)}
+                            vexpand
+                            hexpand
+                            scrollable
+                            showBorder={false}
+                        >
                             <x.NotebookPage>
                                 <x.NotebookPageTab>
                                     <GtkLabel label="_Info" useUnderline />
@@ -211,14 +251,14 @@ const AppContent = () => {
                 activeWindow &&
                 createPortal(
                     <GtkAboutDialog
-                        programName="GTK Demo"
-                        version={`${Gtk.getMajorVersion()}.${Gtk.getMinorVersion()}.${Gtk.getMicroVersion()}`}
-                        copyright="© 1997—2024 The GTK Team"
-                        website="http://www.gtk.org"
-                        comments="Program to demonstrate GTK widgets"
-                        authors={["The GTK Team"]}
-                        logoIconName="org.gtk.Demo4"
-                        licenseType={Gtk.License.LGPL_2_1}
+                        programName="GTKX Demo"
+                        version="0.14.0"
+                        copyright="© 2026 The GTKX Team"
+                        website="https://gtkx.dev"
+                        comments="Program to demonstrate GTKX widgets"
+                        authors={["The GTKX Team"]}
+                        logo={gtkxLogo}
+                        licenseType={Gtk.License.MIT_X11}
                         wrapLicense
                         onClose={handleCloseAbout}
                     />,
@@ -230,7 +270,7 @@ const AppContent = () => {
 
 export const App = () => (
     <DemoProvider categories={categories}>
-        <GtkApplicationWindow title="GTK Demo" defaultWidth={800} defaultHeight={600} onClose={quit}>
+        <GtkApplicationWindow title="GTKX Demo" defaultWidth={800} defaultHeight={600} onClose={quit}>
             <AppContent />
         </GtkApplicationWindow>
     </DemoProvider>

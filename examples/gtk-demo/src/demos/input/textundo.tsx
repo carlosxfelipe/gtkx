@@ -1,57 +1,34 @@
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textundo.tsx?raw";
 
 const TextUndoDemo = () => {
-    const [buffer] = useState(() => new Gtk.TextBuffer());
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
-    const [actionCount, setActionCount] = useState(0);
+    const [text, setText] = useState("");
+    const textViewRef = useRef<Gtk.TextView | null>(null);
 
-    useEffect(() => {
-        buffer.setEnableUndo(true);
+    const handleUndo = useCallback(() => {
+        textViewRef.current?.getBuffer()?.undo();
+    }, []);
 
-        const changedHandler = buffer.connect("changed", () => {
-            setActionCount((prev) => prev + 1);
-        });
+    const handleRedo = useCallback(() => {
+        textViewRef.current?.getBuffer()?.redo();
+    }, []);
 
-        const canUndoHandler = buffer.connect("notify::can-undo", () => {
-            setCanUndo(buffer.getCanUndo());
-        });
+    const handleInsertSample = useCallback(() => {
+        setText("Type here to test undo/redo functionality.");
+    }, []);
 
-        const canRedoHandler = buffer.connect("notify::can-redo", () => {
-            setCanRedo(buffer.getCanRedo());
-        });
+    const handleBeginUserAction = useCallback(() => {
+        textViewRef.current?.getBuffer()?.beginUserAction();
+    }, []);
 
-        return () => {
-            GObject.signalHandlerDisconnect(buffer, changedHandler);
-            GObject.signalHandlerDisconnect(buffer, canUndoHandler);
-            GObject.signalHandlerDisconnect(buffer, canRedoHandler);
-        };
-    }, [buffer]);
-
-    const handleUndo = () => {
-        buffer.undo();
-    };
-
-    const handleRedo = () => {
-        buffer.redo();
-    };
-
-    const handleInsertSample = () => {
-        buffer.setText("Type here to test undo/redo functionality.", -1);
-    };
-
-    const handleBeginUserAction = () => {
-        buffer.beginUserAction();
-    };
-
-    const handleEndUserAction = () => {
-        buffer.endUserAction();
-    };
+    const handleEndUserAction = useCallback(() => {
+        textViewRef.current?.getBuffer()?.endUserAction();
+    }, []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -74,20 +51,26 @@ const TextUndoDemo = () => {
                 <GtkFrame>
                     <GtkScrolledWindow minContentHeight={150} hexpand vexpand>
                         <GtkTextView
-                            buffer={buffer}
+                            ref={textViewRef}
                             leftMargin={12}
                             rightMargin={12}
                             topMargin={12}
                             bottomMargin={12}
                             wrapMode={Gtk.WrapMode.WORD_CHAR}
-                        />
+                        >
+                            <x.TextBuffer
+                                text={text}
+                                enableUndo
+                                onCanUndoChange={setCanUndo}
+                                onCanRedoChange={setCanRedo}
+                            />
+                        </GtkTextView>
                     </GtkScrolledWindow>
                 </GtkFrame>
 
                 <GtkBox spacing={16}>
                     <GtkLabel label={`Can Undo: ${canUndo ? "Yes" : "No"}`} cssClasses={["dim-label"]} />
                     <GtkLabel label={`Can Redo: ${canRedo ? "Yes" : "No"}`} cssClasses={["dim-label"]} />
-                    <GtkLabel label={`Actions: ${actionCount}`} cssClasses={["dim-label"]} />
                 </GtkBox>
             </GtkBox>
 

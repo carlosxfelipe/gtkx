@@ -1,7 +1,7 @@
 import { type Context, LineCap, LineJoin, Operator } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
@@ -157,17 +157,9 @@ const DrawingCanvas = ({
     drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     label: string;
 }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
-
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea ref={ref} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
+            <GtkDrawingArea onDraw={drawFunc} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
             <GtkLabel label={label} cssClasses={["dim-label", "caption"]} />
         </GtkBox>
     );
@@ -215,39 +207,28 @@ const ScribbleArea = () => {
         [strokes],
     );
 
-    useEffect(() => {
-        const area = ref.current;
-        if (!area) return;
+    const handleDragBegin = useCallback((startX: number, startY: number) => {
+        startPointRef.current = { x: startX, y: startY };
+        currentStrokeRef.current = [{ x: startX, y: startY }];
+        ref.current?.queueDraw();
+    }, []);
 
-        area.setDrawFunc(drawScribble);
+    const handleDragUpdate = useCallback((offsetX: number, offsetY: number) => {
+        if (startPointRef.current) {
+            const x = startPointRef.current.x + offsetX;
+            const y = startPointRef.current.y + offsetY;
+            currentStrokeRef.current.push({ x, y });
+            ref.current?.queueDraw();
+        }
+    }, []);
 
-        const drag = new Gtk.GestureDrag();
-
-        drag.connect("drag-begin", (_gesture: Gtk.GestureDrag, startX: number, startY: number) => {
-            startPointRef.current = { x: startX, y: startY };
-            currentStrokeRef.current = [{ x: startX, y: startY }];
-            area.queueDraw();
-        });
-
-        drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, offsetY: number) => {
-            if (startPointRef.current) {
-                const x = startPointRef.current.x + offsetX;
-                const y = startPointRef.current.y + offsetY;
-                currentStrokeRef.current.push({ x, y });
-                area.queueDraw();
-            }
-        });
-
-        drag.connect("drag-end", (_gesture: Gtk.GestureDrag, _offsetX: number, _offsetY: number) => {
-            if (currentStrokeRef.current.length > 0) {
-                setStrokes((prev) => [...prev, [...currentStrokeRef.current]]);
-                currentStrokeRef.current = [];
-                startPointRef.current = null;
-            }
-        });
-
-        area.addController(drag);
-    }, [drawScribble]);
+    const handleDragEnd = useCallback(() => {
+        if (currentStrokeRef.current.length > 0) {
+            setStrokes((prev) => [...prev, [...currentStrokeRef.current]]);
+            currentStrokeRef.current = [];
+            startPointRef.current = null;
+        }
+    }, []);
 
     const handleClear = () => {
         setStrokes([]);
@@ -257,7 +238,16 @@ const ScribbleArea = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <GtkDrawingArea ref={ref} contentWidth={300} contentHeight={200} cssClasses={["card"]} />
+            <GtkDrawingArea
+                ref={ref}
+                contentWidth={300}
+                contentHeight={200}
+                cssClasses={["card"]}
+                onDraw={drawScribble}
+                onGestureDragBegin={handleDragBegin}
+                onGestureDragUpdate={handleDragUpdate}
+                onGestureDragEnd={handleDragEnd}
+            />
             <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                 <GtkLabel label="Draw with mouse or touch" cssClasses={["dim-label", "caption"]} />
                 <GtkButton label="Clear" onClicked={handleClear} cssClasses={["flat"]} />

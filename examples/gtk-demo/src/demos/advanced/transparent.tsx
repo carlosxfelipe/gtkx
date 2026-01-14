@@ -2,7 +2,7 @@ import { css } from "@gtkx/css";
 import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./transparent.tsx?raw";
 
@@ -104,33 +104,15 @@ const drawLayeredTransparency = (_self: Gtk.DrawingArea, cr: Context, width: num
 const TransparentDemo = () => {
     const [alpha, setAlpha] = useState(0.5);
     const [gradientType, setGradientType] = useState<"solid" | "linear" | "radial">("solid");
-    const mainDrawingRef = useRef<Gtk.DrawingArea | null>(null);
-    const overlappingRef = useRef<Gtk.DrawingArea | null>(null);
-    const layeredRef = useRef<Gtk.DrawingArea | null>(null);
 
     const alphaAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
 
-    useEffect(() => {
-        const area = mainDrawingRef.current;
-        if (area) {
-            area.setDrawFunc(drawTransparencyDemo(alpha, gradientType));
-            area.queueDraw();
-        }
-    }, [alpha, gradientType]);
-
-    useEffect(() => {
-        const area = overlappingRef.current;
-        if (area) {
-            area.setDrawFunc(drawOverlappingShapes);
-        }
-    }, []);
-
-    useEffect(() => {
-        const area = layeredRef.current;
-        if (area) {
-            area.setDrawFunc(drawLayeredTransparency);
-        }
-    }, []);
+    const drawMain = useCallback(
+        (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+            drawTransparencyDemo(alpha, gradientType)(self, cr, width, height);
+        },
+        [alpha, gradientType],
+    );
 
     return (
         <GtkBox
@@ -160,7 +142,7 @@ const TransparentDemo = () => {
                     marginBottom={16}
                 >
                     <GtkDrawingArea
-                        ref={mainDrawingRef}
+                        onDraw={drawMain}
                         contentWidth={300}
                         contentHeight={150}
                         halign={Gtk.Align.CENTER}
@@ -195,7 +177,12 @@ const TransparentDemo = () => {
 
             <GtkFrame label="Overlapping Transparent Shapes">
                 <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
-                    <GtkDrawingArea ref={overlappingRef} contentWidth={200} contentHeight={180} cssClasses={["card"]} />
+                    <GtkDrawingArea
+                        onDraw={drawOverlappingShapes}
+                        contentWidth={200}
+                        contentHeight={180}
+                        cssClasses={["card"]}
+                    />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                         <GtkLabel
                             label="RGB circles at 60% opacity blend together where they overlap, creating secondary and tertiary colors."
@@ -212,7 +199,12 @@ const TransparentDemo = () => {
 
             <GtkFrame label="Layered Transparency">
                 <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
-                    <GtkDrawingArea ref={layeredRef} contentWidth={200} contentHeight={150} cssClasses={["card"]} />
+                    <GtkDrawingArea
+                        onDraw={drawLayeredTransparency}
+                        contentWidth={200}
+                        contentHeight={150}
+                        cssClasses={["card"]}
+                    />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                         <GtkLabel
                             label="Multiple layers stack with their alpha values affecting the final composited color."

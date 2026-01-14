@@ -1,13 +1,13 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { GtkBox, GtkFrame, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
 
 const ShortcutTriggersDemo = () => {
     const [lastTriggered, setLastTriggered] = useState<string | null>(null);
     const [triggerInfo, setTriggerInfo] = useState<string | null>(null);
-    const boxRef = useRef<Gtk.Box | null>(null);
+    const neverTriggerDisabled = true;
 
     const showTrigger = useCallback((name: string, details?: string) => {
         setLastTriggered(name);
@@ -18,51 +18,8 @@ const ShortcutTriggersDemo = () => {
         }, 2000);
     }, []);
 
-    useEffect(() => {
-        const box = boxRef.current;
-        if (!box) return;
-
-        const controller = new Gtk.ShortcutController();
-        controller.setScope(Gtk.ShortcutScope.LOCAL);
-
-        const keyvalTrigger = new Gtk.ShortcutTrigger("<Control>1");
-
-        const trigger2a = new Gtk.ShortcutTrigger("<Control>2");
-        const trigger2b = new Gtk.ShortcutTrigger("<Control><Shift>2");
-        const alternativeTrigger = new Gtk.AlternativeTrigger(trigger2a, trigger2b);
-
-        const mnemonicTrigger = new Gtk.MnemonicTrigger(0x006d);
-
-        const neverTrigger = Gtk.NeverTrigger.get();
-
-        const createAction = (name: string, details: string) => {
-            return new Gtk.CallbackAction((_widget: Gtk.Widget, _args: unknown) => {
-                showTrigger(name, details);
-                return true;
-            });
-        };
-
-        const shortcut1 = new Gtk.Shortcut(keyvalTrigger, createAction("KeyvalTrigger", "Triggered by Ctrl+1"));
-        controller.addShortcut(shortcut1);
-
-        const shortcut2 = new Gtk.Shortcut(
-            alternativeTrigger,
-            createAction("AlternativeTrigger", "Triggered by Ctrl+2 OR Ctrl+Shift+2"),
-        );
-        controller.addShortcut(shortcut2);
-
-        const shortcut3 = new Gtk.Shortcut(mnemonicTrigger, createAction("MnemonicTrigger", "Triggered by Alt+M"));
-        controller.addShortcut(shortcut3);
-
-        const shortcut4 = new Gtk.Shortcut(neverTrigger, createAction("NeverTrigger", "This should never trigger"));
-        controller.addShortcut(shortcut4);
-
-        box.addController(controller);
-    }, [showTrigger]);
-
     return (
         <GtkBox
-            ref={boxRef}
             orientation={Gtk.Orientation.VERTICAL}
             spacing={24}
             marginStart={20}
@@ -70,6 +27,22 @@ const ShortcutTriggersDemo = () => {
             marginTop={20}
             focusable
         >
+            <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
+                <x.Shortcut
+                    trigger="<Control>1"
+                    onActivate={() => showTrigger("KeyvalTrigger", "Triggered by Ctrl+1")}
+                />
+                <x.Shortcut
+                    trigger={["<Control>2", "<Control><Shift>2"]}
+                    onActivate={() => showTrigger("AlternativeTrigger", "Triggered by Ctrl+2 OR Ctrl+Shift+2")}
+                />
+                <x.Shortcut trigger="_m" onActivate={() => showTrigger("MnemonicTrigger", "Triggered by Alt+M")} />
+                <x.Shortcut
+                    trigger="<Control>n"
+                    onActivate={() => showTrigger("NeverTrigger", "This should never trigger")}
+                    disabled={neverTriggerDisabled}
+                />
+            </x.ShortcutController>
             <GtkLabel label="Shortcut Triggers" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
@@ -305,7 +278,10 @@ Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}
                 </GtkBox>
             </GtkFrame>
 
-            <GtkButton label="Click here to focus this demo" onClicked={() => void boxRef.current?.grabFocus()} />
+            <GtkLabel
+                label="Click anywhere in this demo area and press the shortcuts above"
+                cssClasses={["dim-label"]}
+            />
         </GtkBox>
     );
 };

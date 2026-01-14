@@ -1,7 +1,7 @@
 import { type Context, LineCap } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-spinner.tsx?raw";
 
@@ -141,9 +141,16 @@ const AnimatedSpinner = ({
     speed?: number;
     withPulse?: boolean;
 }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const rotationRef = useRef(0);
     const pulseRef = useRef(0);
+
+    const drawFunc = useCallback(
+        (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
+            createDrawFunc(rotationRef.current, strokeWidth, pulseRef.current)(self, cr, w, h);
+        },
+        [createDrawFunc, strokeWidth],
+    );
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -151,25 +158,30 @@ const AnimatedSpinner = ({
             if (withPulse) {
                 pulseRef.current += 0.1;
             }
-            if (ref.current) {
-                ref.current.setDrawFunc(createDrawFunc(rotationRef.current, strokeWidth, pulseRef.current));
-                ref.current.queueDraw();
+            if (areaRef.current) {
+                areaRef.current.queueDraw();
             }
         }, 16);
 
         return () => clearInterval(interval);
-    }, [createDrawFunc, strokeWidth, speed, withPulse]);
+    }, [speed, withPulse]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea ref={ref} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
+            <GtkDrawingArea
+                ref={areaRef}
+                onDraw={drawFunc}
+                contentWidth={width}
+                contentHeight={height}
+                cssClasses={["card"]}
+            />
             <GtkLabel label={label} cssClasses={["dim-label", "caption"]} />
         </GtkBox>
     );
 };
 
 const ConfigurableSpinner = () => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [strokeWidth, setStrokeWidth] = useState(8);
     const [speed, setSpeed] = useState(1);
     const [isRunning, setIsRunning] = useState(true);
@@ -177,24 +189,36 @@ const ConfigurableSpinner = () => {
     const strokeAdjustment = useMemo(() => new Gtk.Adjustment(8, 2, 16, 1, 1, 0), []);
     const speedAdjustment = useMemo(() => new Gtk.Adjustment(1, 0.2, 3, 0.1, 0.5, 0), []);
 
+    const drawFunc = useCallback(
+        (self: Gtk.DrawingArea, cr: Context, w: number, h: number) => {
+            createArcSpinnerDrawFunc(rotationRef.current, strokeWidth)(self, cr, w, h);
+        },
+        [strokeWidth],
+    );
+
     useEffect(() => {
         if (!isRunning) return;
 
         const interval = setInterval(() => {
             rotationRef.current += 0.08 * speed;
-            if (ref.current) {
-                ref.current.setDrawFunc(createArcSpinnerDrawFunc(rotationRef.current, strokeWidth));
-                ref.current.queueDraw();
+            if (areaRef.current) {
+                areaRef.current.queueDraw();
             }
         }, 16);
 
         return () => clearInterval(interval);
-    }, [strokeWidth, speed, isRunning]);
+    }, [speed, isRunning]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
             <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
-                <GtkDrawingArea ref={ref} contentWidth={120} contentHeight={120} cssClasses={["card"]} />
+                <GtkDrawingArea
+                    ref={areaRef}
+                    onDraw={drawFunc}
+                    contentWidth={120}
+                    contentHeight={120}
+                    cssClasses={["card"]}
+                />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                     <GtkBox spacing={8}>
                         <GtkLabel label="Stroke:" cssClasses={["dim-label"]} />

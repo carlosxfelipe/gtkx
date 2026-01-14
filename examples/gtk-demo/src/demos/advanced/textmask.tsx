@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkEntry, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
 
@@ -21,7 +21,6 @@ const TextmaskDemo = () => {
     const [gradientIndex, setGradientIndex] = useState(0);
     const [animationOffset, setAnimationOffset] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
-    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
 
     const fontSizeAdjustment = useMemo(() => new Gtk.Adjustment(120, 48, 200, 4, 16, 0), []);
 
@@ -37,11 +36,8 @@ const TextmaskDemo = () => {
         return () => clearInterval(interval);
     }, [isAnimating]);
 
-    useEffect(() => {
-        const drawingArea = drawingAreaRef.current;
-        if (!drawingArea) return;
-
-        const drawFunc = (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const drawFunc = useCallback(
+        (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             cr.setSourceRgba(0.12, 0.12, 0.12, 1).paint();
 
             if (!text.trim()) return;
@@ -88,14 +84,9 @@ const TextmaskDemo = () => {
             cr.save().translate(x, y);
             PangoCairo.layoutPath(cr, layout);
             cr.setSourceRgba(1, 1, 1, 0.3).setLineWidth(1).stroke().restore();
-        };
-
-        drawingArea.setDrawFunc(drawFunc);
-    }, [text, fontSize, animationOffset, currentGradient?.colors]);
-
-    useEffect(() => {
-        drawingAreaRef.current?.queueDraw();
-    }, []);
+        },
+        [text, fontSize, animationOffset, currentGradient?.colors],
+    );
 
     return (
         <GtkBox
@@ -116,7 +107,7 @@ const TextmaskDemo = () => {
             />
 
             <GtkFrame label="Preview">
-                <GtkDrawingArea ref={drawingAreaRef} contentWidth={500} contentHeight={200} hexpand />
+                <GtkDrawingArea onDraw={drawFunc} contentWidth={500} contentHeight={200} hexpand />
             </GtkFrame>
 
             <GtkFrame label="Text">

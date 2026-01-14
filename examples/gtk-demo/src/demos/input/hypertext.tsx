@@ -35,6 +35,7 @@ const HypertextDemo = () => {
     const [buffer] = useState(() => new Gtk.TextBuffer());
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
     const [clickedLink, setClickedLink] = useState<string | null>(null);
+    const [cursor, setCursor] = useState(() => new Gdk.Cursor("text"));
     const textViewRef = useRef<Gtk.TextView | null>(null);
 
     const linkTag = useMemo(() => {
@@ -87,10 +88,10 @@ const HypertextDemo = () => {
 
         if (foundLink) {
             setHoveredLink(foundLink.url);
-            textView.setCursor(new Gdk.Cursor("pointer"));
+            setCursor(new Gdk.Cursor("pointer"));
         } else {
             setHoveredLink(null);
-            textView.setCursor(new Gdk.Cursor("text"));
+            setCursor(new Gdk.Cursor("text"));
         }
     };
 
@@ -149,6 +150,7 @@ const HypertextDemo = () => {
                             buffer={buffer}
                             editable={false}
                             cursorVisible={false}
+                            cursor={cursor}
                             wrapMode={Gtk.WrapMode.WORD}
                             cssClasses={[hypertextViewStyle]}
                             onMotion={handleMotion}

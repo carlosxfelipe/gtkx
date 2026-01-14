@@ -1,7 +1,7 @@
 import { type Context, FontSlant, FontWeight, Operator, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./mask.tsx?raw";
 
@@ -158,49 +158,15 @@ const drawTextMask = (_self: Gtk.DrawingArea, cr: Context, width: number, height
 
 const MaskDemo = () => {
     const [feather, setFeather] = useState(0.5);
-    const gradientMaskRef = useRef<Gtk.DrawingArea | null>(null);
-    const circularMaskRef = useRef<Gtk.DrawingArea | null>(null);
-    const starMaskRef = useRef<Gtk.DrawingArea | null>(null);
-    const horizontalMaskRef = useRef<Gtk.DrawingArea | null>(null);
-    const textMaskRef = useRef<Gtk.DrawingArea | null>(null);
 
     const featherAdjustment = useMemo(() => new Gtk.Adjustment(0.5, 0, 1, 0.05, 0.1, 0), []);
 
-    useEffect(() => {
-        const area = circularMaskRef.current;
-        if (area) {
-            area.setDrawFunc(drawCircularMask);
-        }
-    }, []);
-
-    useEffect(() => {
-        const area = gradientMaskRef.current;
-        if (area) {
-            area.setDrawFunc(drawGradientMask(feather));
-            area.queueDraw();
-        }
-    }, [feather]);
-
-    useEffect(() => {
-        const area = starMaskRef.current;
-        if (area) {
-            area.setDrawFunc(drawStarMask);
-        }
-    }, []);
-
-    useEffect(() => {
-        const area = horizontalMaskRef.current;
-        if (area) {
-            area.setDrawFunc(drawHorizontalGradientMask);
-        }
-    }, []);
-
-    useEffect(() => {
-        const area = textMaskRef.current;
-        if (area) {
-            area.setDrawFunc(drawTextMask);
-        }
-    }, []);
+    const gradientMaskDrawFunc = useCallback(
+        (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+            drawGradientMask(feather)(self, cr, width, height);
+        },
+        [feather],
+    );
 
     return (
         <GtkBox
@@ -231,7 +197,7 @@ const MaskDemo = () => {
                 >
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkDrawingArea
-                            ref={circularMaskRef}
+                            onDraw={drawCircularMask}
                             contentWidth={150}
                             contentHeight={150}
                             cssClasses={["card"]}
@@ -241,7 +207,7 @@ const MaskDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkDrawingArea
-                            ref={starMaskRef}
+                            onDraw={drawStarMask}
                             contentWidth={150}
                             contentHeight={150}
                             cssClasses={["card"]}
@@ -251,7 +217,7 @@ const MaskDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkDrawingArea
-                            ref={textMaskRef}
+                            onDraw={drawTextMask}
                             contentWidth={150}
                             contentHeight={150}
                             cssClasses={["card"]}
@@ -272,7 +238,7 @@ const MaskDemo = () => {
                 >
                     <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkDrawingArea
-                            ref={gradientMaskRef}
+                            onDraw={gradientMaskDrawFunc}
                             contentWidth={200}
                             contentHeight={200}
                             cssClasses={["card"]}
@@ -304,7 +270,7 @@ const MaskDemo = () => {
             <GtkFrame label="Linear Gradient Mask">
                 <GtkBox spacing={24} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkDrawingArea
-                        ref={horizontalMaskRef}
+                        onDraw={drawHorizontalGradientMask}
                         contentWidth={250}
                         contentHeight={120}
                         cssClasses={["card"]}

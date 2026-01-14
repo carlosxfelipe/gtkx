@@ -155,7 +155,6 @@ const FilterPreview = ({
     isActive: boolean;
     onSelect: () => void;
 }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
     const imageData = useRef(generateSampleImage(20, 20));
 
     const drawFunc = useCallback(
@@ -200,16 +199,10 @@ const FilterPreview = ({
         [filter, isActive],
     );
 
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
             <GtkButton onClicked={onSelect} cssClasses={isActive ? ["suggested-action"] : []}>
-                <GtkDrawingArea ref={ref} contentWidth={80} contentHeight={80} />
+                <GtkDrawingArea onDraw={drawFunc} contentWidth={80} contentHeight={80} />
             </GtkButton>
             <GtkLabel label={label} cssClasses={["caption", isActive ? "heading" : "dim-label"]} />
         </GtkBox>
@@ -217,7 +210,6 @@ const FilterPreview = ({
 };
 
 const MainPreview = ({ filter, intensity }: { filter: FilterType; intensity: number }) => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
     const imageData = useRef(generateSampleImage(40, 40));
 
     const drawFunc = useCallback(
@@ -260,13 +252,7 @@ const MainPreview = ({ filter, intensity }: { filter: FilterType; intensity: num
         [filter, intensity],
     );
 
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
-    return <GtkDrawingArea ref={ref} contentWidth={240} contentHeight={240} cssClasses={["card"]} />;
+    return <GtkDrawingArea onDraw={drawFunc} contentWidth={240} contentHeight={240} cssClasses={["card"]} />;
 };
 
 const ImageFilteringDemo = () => {

@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkDrawingArea, GtkDropDown, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
@@ -65,8 +65,6 @@ const FontRenderPreview = ({
     showGrid: boolean;
     text: string;
 }) => {
-    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-
     const drawFunc = useCallback(
         (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             cr.setSourceRgb(1, 1, 1).paint();
@@ -119,17 +117,7 @@ const FontRenderPreview = ({
         [options, fontSize, scale, showGrid, text],
     );
 
-    useEffect(() => {
-        if (drawingAreaRef.current) {
-            drawingAreaRef.current.setDrawFunc(drawFunc);
-        }
-    }, [drawFunc]);
-
-    useEffect(() => {
-        drawingAreaRef.current?.queueDraw();
-    }, []);
-
-    return <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={120} cssClasses={["card"]} hexpand />;
+    return <GtkDrawingArea onDraw={drawFunc} contentWidth={400} contentHeight={120} cssClasses={["card"]} hexpand />;
 };
 
 /**

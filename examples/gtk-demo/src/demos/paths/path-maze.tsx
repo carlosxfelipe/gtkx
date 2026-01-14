@@ -217,7 +217,7 @@ const solveMazeAStar = (maze: Cell[][]): { path: [number, number][]; visited: [n
 };
 
 const MazeDemo = () => {
-    const ref = useRef<Gtk.DrawingArea | null>(null);
+    const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [mazeSize, setMazeSize] = useState(21);
     const [maze, setMaze] = useState<Cell[][]>(() => generateMaze(21, 21));
     const [solution, setSolution] = useState<{ path: [number, number][]; visited: [number, number][] }>({
@@ -316,12 +316,6 @@ const MazeDemo = () => {
     );
 
     useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawMaze);
-        }
-    }, [drawMaze]);
-
-    useEffect(() => {
         if (!isAnimating) return;
 
         const totalSteps = solution.visited.length + solution.path.length;
@@ -332,8 +326,8 @@ const MazeDemo = () => {
 
         const timer = setTimeout(() => {
             setAnimationStep((s) => s + 1);
-            if (ref.current) {
-                ref.current.queueDraw();
+            if (areaRef.current) {
+                areaRef.current.queueDraw();
             }
         }, 30);
 
@@ -360,8 +354,8 @@ const MazeDemo = () => {
         setSolution({ path: [], visited: [] });
         setAnimationStep(0);
         setIsAnimating(false);
-        if (ref.current) {
-            ref.current.queueDraw();
+        if (areaRef.current) {
+            areaRef.current.queueDraw();
         }
     };
 
@@ -386,7 +380,8 @@ const MazeDemo = () => {
                     marginEnd={12}
                 >
                     <GtkDrawingArea
-                        ref={ref}
+                        ref={areaRef}
+                        onDraw={drawMaze}
                         contentWidth={400}
                         contentHeight={400}
                         cssClasses={["card"]}

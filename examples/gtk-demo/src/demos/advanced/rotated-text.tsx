@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./rotated-text.tsx?raw";
 
@@ -13,17 +13,13 @@ const RotatedTextDemo = () => {
     const [rotation, setRotation] = useState(0);
     const [fontSize, setFontSize] = useState(24);
     const [spacing, setSpacing] = useState(30);
-    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
 
     const rotationAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 1, 15, 0), []);
     const fontSizeAdjustment = useMemo(() => new Gtk.Adjustment(24, 12, 72, 1, 4, 0), []);
     const spacingAdjustment = useMemo(() => new Gtk.Adjustment(30, 0, 90, 5, 15, 0), []);
 
-    useEffect(() => {
-        const drawingArea = drawingAreaRef.current;
-        if (!drawingArea) return;
-
-        const drawFunc = (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const drawFunc = useCallback(
+        (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             cr.setSourceRgba(0.1, 0.1, 0.1, 1).paint();
 
             const centerX = width / 2;
@@ -69,14 +65,9 @@ const RotatedTextDemo = () => {
             cr.arc(centerX, centerY, 10, 0, 2 * Math.PI)
                 .setSourceRgba(1, 1, 1, 0.3)
                 .fill();
-        };
-
-        drawingArea.setDrawFunc(drawFunc);
-    }, [rotation, fontSize, spacing]);
-
-    useEffect(() => {
-        drawingAreaRef.current?.queueDraw();
-    }, []);
+        },
+        [rotation, fontSize, spacing],
+    );
 
     return (
         <GtkBox
@@ -97,7 +88,7 @@ const RotatedTextDemo = () => {
             />
 
             <GtkFrame label="Preview">
-                <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={350} hexpand />
+                <GtkDrawingArea onDraw={drawFunc} contentWidth={400} contentHeight={350} hexpand />
             </GtkFrame>
 
             <GtkFrame label="Controls">

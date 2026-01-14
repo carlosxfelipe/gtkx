@@ -1,7 +1,7 @@
 import { type Context, FontSlant, FontWeight, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-explorer.tsx?raw";
 
@@ -209,15 +209,8 @@ const PathExplorerDemo = () => {
         [path, selectedPoint, showHandles, showPath, strokeWidth, getAllPoints],
     );
 
-    useEffect(() => {
-        const area = ref.current;
-        if (!area) return;
-
-        area.setDrawFunc(drawPath);
-
-        const drag = new Gtk.GestureDrag();
-
-        drag.connect("drag-begin", (_gesture: Gtk.GestureDrag, startX: number, startY: number) => {
+    const handleDragBegin = useCallback(
+        (startX: number, startY: number) => {
             dragStartRef.current = { x: startX, y: startY };
 
             const allPoints = getAllPoints();
@@ -237,9 +230,12 @@ const PathExplorerDemo = () => {
                 }
             }
             setSelectedPoint(null);
-        });
+        },
+        [getAllPoints, path],
+    );
 
-        drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, offsetY: number) => {
+    const handleDragUpdate = useCallback(
+        (offsetX: number, offsetY: number) => {
             if (!selectedPoint || !originalPointRef.current) return;
 
             const newX = Math.max(0, Math.min(canvasWidth, originalPointRef.current.x + offsetX));
@@ -263,23 +259,15 @@ const PathExplorerDemo = () => {
                 });
             }
 
-            area.queueDraw();
-        });
+            ref.current?.queueDraw();
+        },
+        [selectedPoint],
+    );
 
-        drag.connect("drag-end", () => {
-            dragStartRef.current = null;
-            originalPointRef.current = null;
-        });
-
-        area.addController(drag);
-    }, [drawPath, selectedPoint, getAllPoints, path]);
-
-    useEffect(() => {
-        if (ref.current) {
-            ref.current.setDrawFunc(drawPath);
-            ref.current.queueDraw();
-        }
-    }, [drawPath]);
+    const handleDragEnd = useCallback(() => {
+        dragStartRef.current = null;
+        originalPointRef.current = null;
+    }, []);
 
     const handleReset = () => {
         setPath(createDefaultPath(canvasWidth, canvasHeight));
@@ -358,6 +346,10 @@ const PathExplorerDemo = () => {
                         contentHeight={canvasHeight}
                         cssClasses={["card"]}
                         halign={Gtk.Align.CENTER}
+                        onDraw={drawPath}
+                        onGestureDragBegin={handleDragBegin}
+                        onGestureDragUpdate={handleDragUpdate}
+                        onGestureDragEnd={handleDragEnd}
                     />
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>

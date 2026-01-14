@@ -35,8 +35,6 @@ const ConstraintVisualizer = ({
     widgets: Map<string, WidgetPosition>;
     constraints: ConstraintDef[];
 }) => {
-    const drawingRef = useRef<Gtk.DrawingArea | null>(null);
-
     const draw = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             cr.setSourceRgb(0.15, 0.15, 0.18).rectangle(0, 0, width, height).fill();
@@ -155,15 +153,9 @@ const ConstraintVisualizer = ({
         [widgets, constraints],
     );
 
-    useEffect(() => {
-        if (drawingRef.current) {
-            drawingRef.current.setDrawFunc(draw);
-        }
-    }, [draw]);
-
     return (
         <GtkDrawingArea
-            ref={drawingRef}
+            onDraw={draw}
             contentWidth={containerWidth}
             contentHeight={containerHeight}
             cssClasses={["card"]}

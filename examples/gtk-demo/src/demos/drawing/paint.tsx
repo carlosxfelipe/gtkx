@@ -1,7 +1,8 @@
 import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paint.tsx?raw";
 
@@ -23,14 +24,17 @@ interface Stroke {
     brushSize: number;
 }
 
+const initialColor: Color = { red: 0, green: 0, blue: 0, alpha: 1 };
+
 const PaintDemo = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const [strokes, setStrokes] = useState<Stroke[]>([]);
-    const [color, setColor] = useState<Color>({ red: 0, green: 0, blue: 0, alpha: 1 });
+    const [color, setColor] = useState<Color>(initialColor);
     const [brushSize, setBrushSize] = useState(4);
     const currentStrokeRef = useRef<Point[]>([]);
     const startPointRef = useRef<Point | null>(null);
     const brushSizeAdjustment = useMemo(() => new Gtk.Adjustment(4, 1, 20, 1, 5, 0), []);
+    const rgba = useMemo(() => new Gdk.RGBA(color), [color]);
 
     const drawCanvas = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -70,46 +74,35 @@ const PaintDemo = () => {
         [strokes, color, brushSize],
     );
 
-    useEffect(() => {
-        const area = ref.current;
-        if (!area) return;
+    const handleDragBegin = useCallback((startX: number, startY: number) => {
+        startPointRef.current = { x: startX, y: startY };
+        currentStrokeRef.current = [{ x: startX, y: startY }];
+        ref.current?.queueDraw();
+    }, []);
 
-        area.setDrawFunc(drawCanvas);
+    const handleDragUpdate = useCallback((offsetX: number, offsetY: number) => {
+        if (startPointRef.current) {
+            const x = startPointRef.current.x + offsetX;
+            const y = startPointRef.current.y + offsetY;
+            currentStrokeRef.current.push({ x, y });
+            ref.current?.queueDraw();
+        }
+    }, []);
 
-        const drag = new Gtk.GestureDrag();
-
-        drag.connect("drag-begin", (_gesture: Gtk.GestureDrag, startX: number, startY: number) => {
-            startPointRef.current = { x: startX, y: startY };
-            currentStrokeRef.current = [{ x: startX, y: startY }];
-            area.queueDraw();
-        });
-
-        drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, offsetY: number) => {
-            if (startPointRef.current) {
-                const x = startPointRef.current.x + offsetX;
-                const y = startPointRef.current.y + offsetY;
-                currentStrokeRef.current.push({ x, y });
-                area.queueDraw();
-            }
-        });
-
-        drag.connect("drag-end", (_gesture: Gtk.GestureDrag, _offsetX: number, _offsetY: number) => {
-            if (currentStrokeRef.current.length > 0) {
-                setStrokes((prev) => [
-                    ...prev,
-                    {
-                        points: [...currentStrokeRef.current],
-                        color: { ...color },
-                        brushSize,
-                    },
-                ]);
-                currentStrokeRef.current = [];
-                startPointRef.current = null;
-            }
-        });
-
-        area.addController(drag);
-    }, [drawCanvas, color, brushSize]);
+    const handleDragEnd = useCallback(() => {
+        if (currentStrokeRef.current.length > 0) {
+            setStrokes((prev) => [
+                ...prev,
+                {
+                    points: [...currentStrokeRef.current],
+                    color: { ...color },
+                    brushSize,
+                },
+            ]);
+            currentStrokeRef.current = [];
+            startPointRef.current = null;
+        }
+    }, [color, brushSize]);
 
     const handleClear = () => {
         setStrokes([]);
@@ -169,7 +162,11 @@ const PaintDemo = () => {
                     marginBottom={16}
                 >
                     <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                        <GtkColorDialogButton dialog={new Gtk.ColorDialog()} onNotify={handleColorButtonNotify} />
+                        <GtkColorDialogButton
+                            dialog={new Gtk.ColorDialog()}
+                            rgba={rgba}
+                            onNotify={handleColorButtonNotify}
+                        />
 
                         {presetColors.map((preset) => (
                             <GtkButton
@@ -207,7 +204,16 @@ const PaintDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkDrawingArea ref={ref} contentWidth={500} contentHeight={350} cssClasses={["card"]} />
+                    <GtkDrawingArea
+                        ref={ref}
+                        contentWidth={500}
+                        contentHeight={350}
+                        cssClasses={["card"]}
+                        onDraw={drawCanvas}
+                        onGestureDragBegin={handleDragBegin}
+                        onGestureDragUpdate={handleDragUpdate}
+                        onGestureDragEnd={handleDragEnd}
+                    />
 
                     <GtkLabel
                         label="Click and drag to draw. Use the color picker or preset buttons to change the brush color."

@@ -67,8 +67,6 @@ const FramesWindow = ({ onClose }: { onClose: () => void }) => {
         const area = drawingRef.current;
         if (!area) return;
 
-        area.setDrawFunc(draw);
-
         const interval = setInterval(() => {
             area.queueDraw();
             frameCountRef.current++;
@@ -83,7 +81,7 @@ const FramesWindow = ({ onClose }: { onClose: () => void }) => {
         }, 16);
 
         return () => clearInterval(interval);
-    }, [draw]);
+    }, []);
 
     if (!activeWindow) return null;
 
@@ -94,7 +92,7 @@ const FramesWindow = ({ onClose }: { onClose: () => void }) => {
                     <GtkLabel label={`${fps.toFixed(2)} fps`} cssClasses={["monospace"]} />
                 </x.PackEnd>
             </GtkHeaderBar>
-            <GtkDrawingArea ref={drawingRef} hexpand vexpand />
+            <GtkDrawingArea ref={drawingRef} onDraw={draw} hexpand vexpand />
         </GtkWindow>,
         activeWindow,
     );

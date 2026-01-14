@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
@@ -8,11 +8,6 @@ const ScaleDemo = () => {
     const [horizontalValue, setHorizontalValue] = useState(50);
     const [verticalValue, setVerticalValue] = useState(25);
     const [markedValue, setMarkedValue] = useState(0);
-
-    const horizontalAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
-    const verticalAdjustment = useMemo(() => new Gtk.Adjustment(25, 0, 100, 1, 10, 0), []);
-    const markedAdjustment = useMemo(() => new Gtk.Adjustment(0, -10, 10, 1, 5, 0), []);
-    const brightnessAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -34,13 +29,16 @@ const ScaleDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkScale
-                        onValueChanged={(scale: Gtk.Range) => setHorizontalValue(scale.getValue())}
-                        adjustment={horizontalAdjustment}
-                        drawValue
-                        valuePos={Gtk.PositionType.TOP}
-                        hexpand
-                    />
+                    <GtkScale drawValue valuePos={Gtk.PositionType.TOP} hexpand>
+                        <x.Adjustment
+                            value={50}
+                            lower={0}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setHorizontalValue}
+                        />
+                    </GtkScale>
                     <GtkLabel
                         label={`Value: ${Math.round(horizontalValue)}`}
                         halign={Gtk.Align.START}
@@ -53,13 +51,20 @@ const ScaleDemo = () => {
                 <GtkBox spacing={24} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                     <GtkScale
                         orientation={Gtk.Orientation.VERTICAL}
-                        onValueChanged={(scale: Gtk.Range) => setVerticalValue(scale.getValue())}
-                        adjustment={verticalAdjustment}
                         drawValue
                         valuePos={Gtk.PositionType.LEFT}
                         inverted
                         heightRequest={150}
-                    />
+                    >
+                        <x.Adjustment
+                            value={25}
+                            lower={0}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChange={setVerticalValue}
+                        />
+                    </GtkScale>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} valign={Gtk.Align.CENTER}>
                         <GtkLabel label="Volume Control" cssClasses={["heading"]} />
                         <GtkLabel label={`Level: ${Math.round(verticalValue)}%`} cssClasses={["dim-label"]} />
@@ -76,13 +81,16 @@ const ScaleDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkScale
-                        onValueChanged={(scale: Gtk.Range) => setMarkedValue(scale.getValue())}
-                        adjustment={markedAdjustment}
-                        drawValue
-                        hasOrigin
-                        hexpand
-                    />
+                    <GtkScale drawValue hasOrigin hexpand>
+                        <x.Adjustment
+                            value={0}
+                            lower={-10}
+                            upper={10}
+                            stepIncrement={1}
+                            pageIncrement={5}
+                            onValueChange={setMarkedValue}
+                        />
+                    </GtkScale>
                     <GtkLabel
                         label={`Temperature offset: ${markedValue > 0 ? "+" : ""}${Math.round(markedValue)}`}
                         halign={Gtk.Align.START}
@@ -102,7 +110,9 @@ const ScaleDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Brightness:" halign={Gtk.Align.START} />
-                        <GtkScale adjustment={brightnessAdjustment} hexpand />
+                        <GtkScale hexpand>
+                            <x.Adjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />
+                        </GtkScale>
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>
