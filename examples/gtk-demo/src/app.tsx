@@ -121,7 +121,8 @@ const AppContent = () => {
     }, []);
 
     const handleKeyboardShortcuts = useCallback(() => {
-        if (!activeWindow) return;
+        const window = app.getActiveWindow();
+        if (!window) return;
 
         const dialog = new Adw.ShortcutsDialog();
 
@@ -136,8 +137,8 @@ const AppContent = () => {
         navigation.add(new Adw.ShortcutsItem("Previous tab", "<Control>Page_Up"));
         dialog.add(navigation);
 
-        dialog.present(activeWindow);
-    }, [activeWindow]);
+        dialog.present(window);
+    }, [app]);
 
     const handleAbout = useCallback(() => {
         setShowAbout(true);
