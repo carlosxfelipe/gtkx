@@ -41,7 +41,6 @@
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
-        "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*"
     },
     "devDependencies": {

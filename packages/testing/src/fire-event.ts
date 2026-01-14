@@ -1,6 +1,5 @@
+import { type GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Arg } from "@gtkx/native";
-import { call } from "@gtkx/native";
 import { tick } from "./timing.js";
 
 /**
@@ -11,18 +10,19 @@ import { tick } from "./timing.js";
  *
  * @param element - The widget or event controller to emit the signal on
  * @param signalName - GTK signal name (e.g., "clicked", "activate", "drag-begin")
- * @param args - Additional signal arguments
+ * @param args - Additional signal arguments as GValues
  *
  * @example
  * ```tsx
  * import { fireEvent } from "@gtkx/testing";
+ * import { Value } from "@gtkx/ffi/gobject";
  *
  * // Emit signal on widget
  * await fireEvent(widget, "clicked");
  *
  * // Emit signal on gesture controller
  * const gesture = widget.observeControllers().getObject(0) as Gtk.GestureDrag;
- * await fireEvent(gesture, "drag-begin", { type: { type: "float", size: 64 }, value: 100 }, { type: { type: "float", size: 64 }, value: 100 });
+ * await fireEvent(gesture, "drag-begin", Value.newFromDouble(100), Value.newFromDouble(100));
  * ```
  *
  * @see {@link userEvent} for high-level user interactions
@@ -30,18 +30,14 @@ import { tick } from "./timing.js";
 export const fireEvent = async (
     element: Gtk.Widget | Gtk.EventController,
     signalName: string,
-    ...args: Arg[]
+    ...args: Value[]
 ): Promise<void> => {
-    call(
-        "libgobject-2.0.so.0",
-        "g_signal_emit_by_name",
-        [
-            { type: { type: "gobject", ownership: "borrowed" }, value: element.handle },
-            { type: { type: "string", ownership: "borrowed" }, value: signalName },
-            ...args,
-        ],
-        { type: "undefined" },
-    );
+    const gtype = typeFromName((element.constructor as typeof GObject).glibTypeName);
+    const signalId = signalLookup(signalName, gtype);
+
+    const instanceValue = Value.newFromObject(element as GObject);
+
+    signalEmitv([instanceValue, ...args], signalId, 0, null);
 
     await tick();
 };
