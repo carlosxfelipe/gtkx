@@ -13,7 +13,7 @@ const sidebars: SidebarsConfig = {
         {
             type: "category",
             label: "Components",
-            items: ["adwaita", "lists", "menus", "slots", "portals"],
+            items: ["widgets", "lists", "menus", "slots", "portals", "adwaita"],
         },
         {
             type: "category",

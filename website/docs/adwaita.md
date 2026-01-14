@@ -146,20 +146,6 @@ import { AdwPreferencesGroup, AdwActionRow, GtkSwitch, GtkSpinButton } from "@gt
 </AdwPreferencesGroup>;
 ```
 
-### AdwClamp
-
-Constrain content width for readability:
-
-```tsx
-import { AdwClamp, GtkBox } from "@gtkx/react";
-
-<AdwClamp maximumSize={600} tighteningThreshold={400}>
- <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
- This content is constrained to a readable width On wide screens, it won't stretch too far
- </GtkBox>
-</AdwClamp>;
-```
-
 ### AdwToolbarView
 
 Container for header bars and toolbars with content:
@@ -208,7 +194,7 @@ const NavigationExample = () => {
 
  return (
  <AdwNavigationView history={history} onHistoryChanged={setHistory}>
- <x.NavigationPage id="home" title="Main">
+ <x.NavigationPage for={AdwNavigationView} id="home" title="Main">
  <GtkBox orientation={Gtk.Orientation.VERTICAL}>
  <AdwHeaderBar />
  <GtkBox
@@ -224,7 +210,7 @@ const NavigationExample = () => {
  </GtkBox>
  </x.NavigationPage>
 
- <x.NavigationPage id="detail" title="Details">
+ <x.NavigationPage for={AdwNavigationView} id="detail" title="Details">
  <GtkBox orientation={Gtk.Orientation.VERTICAL}>
  <AdwHeaderBar />
  <GtkBox
@@ -281,7 +267,7 @@ const SplitViewExample = () => {
 
  return (
  <AdwNavigationSplitView sidebarWidthFraction={0.33} minSidebarWidth={200} maxSidebarWidth={300}>
- <x.NavigationPage id="sidebar" title="Mail">
+ <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Mail">
  <AdwToolbarView>
  <x.ToolbarTop>
  <AdwHeaderBar />
@@ -307,7 +293,7 @@ const SplitViewExample = () => {
  </AdwToolbarView>
  </x.NavigationPage>
 
- <x.NavigationPage id="content" title={selected?.title ?? ""}>
+ <x.NavigationPage for={AdwNavigationSplitView} id="content" title={selected?.title ?? ""}>
  <AdwToolbarView>
  <x.ToolbarTop>
  <AdwHeaderBar />
@@ -329,7 +315,7 @@ const SplitViewExample = () => {
 };
 ```
 
-The `x.NavigationPage` component works with both `AdwNavigationView` (stack-based navigation) and `AdwNavigationSplitView` (sidebar/content layout). For split views, the `id` prop determines which slot the page occupies: `"sidebar"` for the left pane and `"content"` for the right pane.
+The `x.NavigationPage` component works with both `AdwNavigationView` (stack-based navigation) and `AdwNavigationSplitView` (sidebar/content layout). The `for` prop is required and determines valid `id` values: for `AdwNavigationView`, `id` can be any string (page tags); for `AdwNavigationSplitView`, `id` must be `"sidebar"` or `"content"` (slot positions).
 
 ## Settings Page Example
 
@@ -340,11 +326,9 @@ import {
  GtkBox,
  GtkScrolledWindow,
  AdwHeaderBar,
- AdwClamp,
  AdwPreferencesGroup,
  AdwActionRow,
  GtkSwitch,
- GtkLabel,
  quit,
 } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -360,8 +344,14 @@ const SettingsPage = () => {
  <AdwHeaderBar />
 
  <GtkScrolledWindow vexpand>
- <AdwClamp maximumSize={600}>
- <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginTop={24} marginBottom={24}>
+ <GtkBox
+ orientation={Gtk.Orientation.VERTICAL}
+ spacing={24}
+ marginTop={24}
+ marginBottom={24}
+ marginStart={24}
+ marginEnd={24}
+>
  <AdwPreferencesGroup title="Appearance">
  <AdwActionRow title="Dark Mode" subtitle="Use dark color scheme">
  <GtkSwitch
@@ -393,7 +383,6 @@ const SettingsPage = () => {
  <AdwActionRow title="License" subtitle="MIT" />
  </AdwPreferencesGroup>
  </GtkBox>
- </AdwClamp>
  </GtkScrolledWindow>
  </GtkBox>
  </GtkApplicationWindow>
@@ -404,10 +393,9 @@ const SettingsPage = () => {
 ## Tips
 
 1. **Use AdwActionRow for settings** — Provides consistent list item styling
-2. **Wrap content in AdwClamp** — Prevents content from stretching too wide
-3. **Use boxed-list class** — Gives lists a modern card-like appearance
-4. **Prefer Adw components** — They handle responsive behavior automatically
-5. **Follow GNOME HIG** — Check the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/) for design patterns
+2. **Use boxed-list class** — Gives lists a modern card-like appearance
+3. **Prefer Adw components** — They handle responsive behavior automatically
+4. **Follow GNOME HIG** — Check the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/) for design patterns
 
 ## Reference
 

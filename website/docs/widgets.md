@@ -304,3 +304,48 @@ const TabbedView = () => (
 ### x.NotebookPageTab
 
 Custom widget to use as the tab label instead of text.
+
+## Drag and Drop
+
+All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBegin`, and `onDragEnd` to make a widget draggable, and `dropTypes`, `onDrop`, `onDropEnter`, and `onDropLeave` to accept drops.
+
+```tsx
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as GObject from "@gtkx/ffi/gobject";
+import { typeFromName } from "@gtkx/ffi/gobject";
+import { GtkButton, GtkBox, GtkLabel } from "@gtkx/react";
+import { useState } from "react";
+
+const DraggableButton = ({ label }: { label: string }) => {
+    const stringType = typeFromName("gchararray");
+    const value = new GObject.Value();
+    value.init(stringType);
+    value.setString(label);
+
+    return (
+        <GtkButton
+            label={label}
+            onDragPrepare={() => Gdk.ContentProvider.newForValue(value)}
+        />
+    );
+};
+
+const DropZone = () => {
+    const [dropped, setDropped] = useState<string | null>(null);
+    const stringType = typeFromName("gchararray");
+
+    return (
+        <GtkBox
+            dropTypes={[stringType]}
+            onDrop={(value: GObject.Value) => {
+                setDropped(value.getString());
+                return true;
+            }}
+        >
+            <GtkLabel label={dropped ?? "Drop here"} />
+        </GtkBox>
+    );
+};
+```
+
+For a complete example with visual feedback, see the drag-and-drop demo in `examples/gtk-demo/src/demos/gestures/dnd.tsx`.

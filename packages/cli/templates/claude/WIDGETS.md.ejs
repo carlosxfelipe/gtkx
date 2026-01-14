@@ -99,6 +99,22 @@ Stack widgets on top of each other. First child is base layer, additional childr
 </GtkOverlay>
 ```
 
+### GtkFixed
+Absolute positioning. Use `x.FixedChild` wrapper for children.
+
+```tsx
+<GtkFixed>
+    <x.FixedChild x={20} y={30}>
+        <GtkLabel label="Top Left" />
+    </x.FixedChild>
+    <x.FixedChild x={200} y={100}>
+        <GtkLabel label="Middle" />
+    </x.FixedChild>
+</GtkFixed>
+```
+
+**FixedChild props:** `x`, `y` (pixel coordinates)
+
 ### GtkScrolledWindow
 Scrollable container.
 
@@ -553,3 +569,47 @@ const [selected, setSelected] = useState(items[0]);
 | `AdwSpinner` | Loading indicator |
 | `AdwWindowTitle` | Title + subtitle for header bars |
 | `AdwButtonRow` | Button styled as list row |
+
+---
+
+## Drag and Drop
+
+All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBegin`, and `onDragEnd` to make a widget draggable, and `dropTypes`, `onDrop`, `onDropEnter`, and `onDropLeave` to accept drops.
+
+```tsx
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as GObject from "@gtkx/ffi/gobject";
+import { typeFromName } from "@gtkx/ffi/gobject";
+import { GtkButton, GtkBox, GtkLabel } from "@gtkx/react";
+import { useState } from "react";
+
+const DraggableButton = ({ label }: { label: string }) => {
+    const stringType = typeFromName("gchararray");
+    const value = new GObject.Value();
+    value.init(stringType);
+    value.setString(label);
+
+    return (
+        <GtkButton
+            label={label}
+            onDragPrepare={() => Gdk.ContentProvider.newForValue(value)}
+        />
+    );
+};
+
+const DropZone = () => {
+    const [dropped, setDropped] = useState<string | null>(null);
+    const stringType = typeFromName("gchararray");
+
+    return (
+        <GtkBox
+            dropTypes={[stringType]}
+            onDrop={(value: GObject.Value) => {
+                setDropped(value.getString());
+                return true;
+            }}
+        >
+            <GtkLabel label={dropped ?? "Drop here"} />
+        </GtkBox>
+    );
+};

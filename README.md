@@ -80,6 +80,7 @@ render(<App />, "com.example.counter");
 
 Explore complete applications in the [`examples/`](./examples) directory:
 
+- **[browser](./examples/browser)** — Simple browser using WebKitWebView
 - **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
 - **[hello-world](./examples/hello-world)** — Minimal application showing a counter
 - **[todo](./examples/todo)** — Full-featured todo application with Adwaita styling and testing

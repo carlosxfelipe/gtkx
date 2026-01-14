@@ -107,6 +107,25 @@ await userEvent.click(checkbox);
 await userEvent.selectOptions(dropdown, 0);
 ```
 
+## Firing Signals on Event Controllers
+
+Use `fireEvent` to emit signals directly on widgets or event controllers. This is useful for testing gesture handlers and other controller-based interactions:
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent } from "@gtkx/testing";
+
+const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+
+const gesture = button.observeControllers().getObject(0) as Gtk.GestureDrag;
+await fireEvent(gesture, "drag-begin",
+    { type: { type: "float", size: 64 }, value: 100 },
+    { type: { type: "float", size: 64 }, value: 100 }
+);
+```
+
+The `fireEvent` function accepts both `Gtk.Widget` and `Gtk.EventController` objects, allowing you to test gesture signals like `drag-begin`, `drag-update`, and `drag-end`.
+
 ## Scoped Queries
 
 Use `within` to query within a specific widget subtree:
