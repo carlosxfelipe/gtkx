@@ -21,6 +21,11 @@ const HIDDEN_PROPS: Readonly<Record<string, readonly string[]>> = {
     GraphicsOffload: ["child"],
     Stack: ["visibleChild", "visibleChildName"],
     ViewStack: ["visibleChild", "visibleChildName"],
+    Range: ["adjustment"],
+    ScaleButton: ["adjustment"],
+    VolumeButton: ["adjustment"],
+    SpinButton: ["adjustment"],
+    TextView: ["buffer"],
 };
 
 /**
