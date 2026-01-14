@@ -102,11 +102,9 @@ impl ArrayType {
             other => other,
         };
 
-        let element_size: Option<usize> = if list_type == ListType::GArray {
+        let element_size: Option<usize> = {
             let size_prop: Option<Handle<JsNumber>> = obj.get_opt(cx, "elementSize")?;
             size_prop.map(|n| n.value(cx) as usize)
-        } else {
-            None
         };
 
         let ownership = Ownership::from_js_value(cx, obj, "array")?;
@@ -226,6 +224,26 @@ impl ffi::FfiEncode for ArrayType {
                         value::Value::Object(id) => ids.push(*id),
                         _ => bail!("Expected an Object for gobject item type, got {:?}", value),
                     }
+                }
+
+                if let Some(element_size) = self.element_size {
+                    let mut buffer = vec![0u8; ids.len() * element_size];
+                    for (i, id) in ids.iter().enumerate() {
+                        match id.get_ptr() {
+                            Some(ptr) => {
+                                let offset = i * element_size;
+                                unsafe {
+                                    std::ptr::copy_nonoverlapping(
+                                        ptr as *const u8,
+                                        buffer.as_mut_ptr().add(offset),
+                                        element_size,
+                                    );
+                                }
+                            }
+                            None => bail!("GObject in array has been garbage collected"),
+                        }
+                    }
+                    return Ok(ffi::FfiValue::Storage(buffer.into()));
                 }
 
                 let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(ids.len());
