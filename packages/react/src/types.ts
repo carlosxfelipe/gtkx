@@ -116,3 +116,30 @@ export interface DropTargetProps {
      */
     dropTypes?: number[];
 }
+
+/**
+ * Props for GestureDrag controller.
+ *
+ * Enables tracking drag gestures (mouse/touch drag movements) on a widget.
+ * Use this for drawing, panning, or any interaction that tracks movement from a start point.
+ */
+export interface GestureDragProps {
+    /**
+     * Called when a drag gesture begins.
+     * @param startX - X coordinate where the drag started
+     * @param startY - Y coordinate where the drag started
+     */
+    onGestureDragBegin?: (startX: number, startY: number) => void;
+    /**
+     * Called as the drag gesture continues.
+     * @param offsetX - Horizontal offset from the start point
+     * @param offsetY - Vertical offset from the start point
+     */
+    onGestureDragUpdate?: (offsetX: number, offsetY: number) => void;
+    /**
+     * Called when the drag gesture ends.
+     * @param offsetX - Final horizontal offset from the start point
+     * @param offsetY - Final vertical offset from the start point
+     */
+    onGestureDragEnd?: (offsetX: number, offsetY: number) => void;
+}

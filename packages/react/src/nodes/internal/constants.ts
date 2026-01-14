@@ -18,4 +18,7 @@ export const EVENT_CONTROLLER_PROPS = new Set([
     "onDropMotion",
     "dropActions",
     "dropTypes",
+    "onGestureDragBegin",
+    "onGestureDragUpdate",
+    "onGestureDragEnd",
 ]);
