@@ -31,19 +31,79 @@ declare module "../generated/gobject/value.js" {
     }
 
     namespace Value {
+        /**
+         * Creates a GValue initialized with a boolean.
+         * @param value - The boolean value
+         */
         function newFromBoolean(value: boolean): Value;
+        /**
+         * Creates a GValue initialized with a signed 32-bit integer.
+         * @param value - The integer value
+         */
         function newFromInt(value: number): Value;
+        /**
+         * Creates a GValue initialized with an unsigned 32-bit integer.
+         * @param value - The unsigned integer value
+         */
         function newFromUint(value: number): Value;
+        /**
+         * Creates a GValue initialized with a signed long integer.
+         * @param value - The long value
+         */
         function newFromLong(value: number): Value;
+        /**
+         * Creates a GValue initialized with an unsigned long integer.
+         * @param value - The unsigned long value
+         */
         function newFromUlong(value: number): Value;
+        /**
+         * Creates a GValue initialized with a signed 64-bit integer.
+         * @param value - The 64-bit integer value
+         */
         function newFromInt64(value: number): Value;
+        /**
+         * Creates a GValue initialized with an unsigned 64-bit integer.
+         * @param value - The unsigned 64-bit integer value
+         */
         function newFromUint64(value: number): Value;
+        /**
+         * Creates a GValue initialized with a 32-bit float.
+         * @param value - The float value
+         */
         function newFromFloat(value: number): Value;
+        /**
+         * Creates a GValue initialized with a 64-bit double.
+         * @param value - The double value
+         */
         function newFromDouble(value: number): Value;
+        /**
+         * Creates a GValue initialized with a string.
+         * @param value - The string value, or null
+         */
         function newFromString(value: string | null): Value;
+        /**
+         * Creates a GValue initialized with a GObject instance.
+         * The GType is automatically determined from the object's class.
+         * @param value - The GObject instance, or null
+         */
         function newFromObject(value: GObject | null): Value;
+        /**
+         * Creates a GValue initialized with a boxed type instance.
+         * The GType is automatically determined from the object's class.
+         * @param value - The boxed type instance (e.g., Gdk.RGBA, Graphene.Rect)
+         */
         function newFromBoxed(value: NativeObject): Value;
+        /**
+         * Creates a GValue initialized with an enum value.
+         * @param gtype - The GType of the enum
+         * @param value - The enum value
+         */
         function newFromEnum(gtype: number, value: number): Value;
+        /**
+         * Creates a GValue initialized with a flags value.
+         * @param gtype - The GType of the flags
+         * @param value - The flags value (can be combined with bitwise OR)
+         */
         function newFromFlags(gtype: number, value: number): Value;
     }
 }

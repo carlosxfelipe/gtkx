@@ -23,6 +23,20 @@ let paramType: number | undefined;
 let objectType: number | undefined;
 let variantType: number | undefined;
 
+/**
+ * Fundamental GLib type constants.
+ *
+ * Provides lazy-loaded GType identifiers for primitive and object types.
+ * Use with {@link Value} factory methods that require explicit type specification.
+ *
+ * @example
+ * ```ts
+ * import { Type, Value } from "@gtkx/ffi/gobject";
+ *
+ * const enumValue = Value.newFromEnum(myEnumGType, 0);
+ * console.log(Type.STRING); // GType for gchararray
+ * ```
+ */
 export const Type = {
     get INVALID(): number {
         invalidType ??= typeFromName("void");
