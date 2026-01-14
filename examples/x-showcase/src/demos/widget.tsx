@@ -44,9 +44,15 @@ export const WidgetDemo = () => {
                         <GtkLabel label={`Value: ${scaleValue}`} />
                         <GtkScale
                             hexpand
-                            adjustment={new Gtk.Adjustment(scaleValue, 0, 100, 1, 10, 0)}
-                            onValueChanged={(scale) => setScaleValue(Math.round(scale.getValue()))}
+                            onValueChanged={(range: Gtk.Range) => setScaleValue(Math.round(range.getValue()))}
                         >
+                            <x.Adjustment
+                                value={scaleValue}
+                                lower={0}
+                                upper={100}
+                                stepIncrement={1}
+                                pageIncrement={10}
+                            />
                             <x.ScaleMark value={0} label="0" position={Gtk.PositionType.BOTTOM} />
                             <x.ScaleMark value={25} position={Gtk.PositionType.BOTTOM} />
                             <x.ScaleMark value={50} label="50" position={Gtk.PositionType.BOTTOM} />
@@ -55,7 +61,8 @@ export const WidgetDemo = () => {
                         </GtkScale>
 
                         <GtkLabel label="With labels on specific marks" cssClasses={["dim-label"]} marginTop={12} />
-                        <GtkScale hexpand adjustment={new Gtk.Adjustment(50, 0, 100, 1, 10, 0)}>
+                        <GtkScale hexpand>
+                            <x.Adjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />
                             <x.ScaleMark value={0} label="Min" position={Gtk.PositionType.TOP} />
                             <x.ScaleMark value={50} label="Mid" position={Gtk.PositionType.TOP} />
                             <x.ScaleMark value={100} label="Max" position={Gtk.PositionType.TOP} />
@@ -109,9 +116,16 @@ export const WidgetDemo = () => {
                             <GtkLabel label="0%" cssClasses={["dim-label"]} />
                             <GtkScale
                                 widthRequest={200}
-                                adjustment={new Gtk.Adjustment(levelValue, 0, 1, 0.01, 0.1, 0)}
-                                onValueChanged={(scale) => setLevelValue(scale.getValue())}
-                            />
+                                onValueChanged={(range: Gtk.Range) => setLevelValue(range.getValue())}
+                            >
+                                <x.Adjustment
+                                    value={levelValue}
+                                    lower={0}
+                                    upper={1}
+                                    stepIncrement={0.01}
+                                    pageIncrement={0.1}
+                                />
+                            </GtkScale>
                             <GtkLabel label="100%" cssClasses={["dim-label"]} />
                         </GtkBox>
 
