@@ -23,12 +23,16 @@ class StackPageNode extends SlotNode<Props> {
             return;
         }
 
-        if (newProps.title && (!oldProps || oldProps.title !== newProps.title)) {
-            this.page.setTitle(newProps.title);
+        if (!oldProps || oldProps.title !== newProps.title) {
+            if (newProps.title !== undefined) {
+                this.page.setTitle(newProps.title);
+            }
         }
 
-        if (newProps.iconName && (!oldProps || oldProps.iconName !== newProps.iconName)) {
-            this.page.setIconName(newProps.iconName);
+        if (!oldProps || oldProps.iconName !== newProps.iconName) {
+            if (newProps.iconName !== undefined) {
+                this.page.setIconName(newProps.iconName);
+            }
         }
 
         if (!oldProps || oldProps.needsAttention !== newProps.needsAttention) {

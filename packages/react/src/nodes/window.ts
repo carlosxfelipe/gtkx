@@ -103,12 +103,14 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             this.container.setDefaultSize(width, height);
         }
 
-        if (oldProps?.onClose !== newProps.onClose) {
+        if (!oldProps || oldProps.onClose !== newProps.onClose) {
             const userHandler = newProps.onClose;
-            const wrappedHandler = () => {
-                userHandler?.();
-                return true;
-            };
+            const wrappedHandler = userHandler
+                ? () => {
+                      userHandler();
+                      return true;
+                  }
+                : undefined;
             signalStore.set(this, this.container, "close-request", wrappedHandler);
         }
 

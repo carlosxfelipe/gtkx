@@ -21,16 +21,22 @@ export class NavigationPageNode extends SlotNode<Props> {
             return;
         }
 
-        if (newProps.id !== undefined && (!oldProps || oldProps.id !== newProps.id)) {
-            child.setTag(newProps.id);
+        if (!oldProps || oldProps.id !== newProps.id) {
+            if (newProps.id !== undefined) {
+                child.setTag(newProps.id);
+            }
         }
 
-        if (newProps.title !== undefined && (!oldProps || oldProps.title !== newProps.title)) {
-            child.setTitle(newProps.title);
+        if (!oldProps || oldProps.title !== newProps.title) {
+            if (newProps.title !== undefined) {
+                child.setTitle(newProps.title);
+            }
         }
 
-        if (newProps.canPop !== undefined && (!oldProps || oldProps.canPop !== newProps.canPop)) {
-            child.setCanPop(newProps.canPop);
+        if (!oldProps || oldProps.canPop !== newProps.canPop) {
+            if (newProps.canPop !== undefined) {
+                child.setCanPop(newProps.canPop);
+            }
         }
     }
 

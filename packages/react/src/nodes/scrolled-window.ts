@@ -20,8 +20,9 @@ class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowPr
 
     public override updateProps(oldProps: ScrolledWindowProps | null, newProps: ScrolledWindowProps): void {
         if (
-            oldProps?.hscrollbarPolicy !== newProps.hscrollbarPolicy ||
-            oldProps?.vscrollbarPolicy !== newProps.vscrollbarPolicy
+            !oldProps ||
+            oldProps.hscrollbarPolicy !== newProps.hscrollbarPolicy ||
+            oldProps.vscrollbarPolicy !== newProps.vscrollbarPolicy
         ) {
             const hPolicy = newProps.hscrollbarPolicy ?? Gtk.PolicyType.AUTOMATIC;
             const vPolicy = newProps.vscrollbarPolicy ?? Gtk.PolicyType.AUTOMATIC;
