@@ -110,19 +110,19 @@ export class PropertySetterBuilder {
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 
         const primitiveTypeMap: Record<string, GValueSetterInfo> = {
-            utf8: { gtypeName: "gchararray", setMethod: "setString" },
-            gchararray: { gtypeName: "gchararray", setMethod: "setString" },
-            gboolean: { gtypeName: "gboolean", setMethod: "setBoolean" },
-            gint: { gtypeName: "gint", setMethod: "setInt" },
-            gint32: { gtypeName: "gint", setMethod: "setInt" },
-            guint: { gtypeName: "guint", setMethod: "setUint" },
-            guint32: { gtypeName: "guint", setMethod: "setUint" },
-            gint64: { gtypeName: "gint64", setMethod: "setInt64" },
-            guint64: { gtypeName: "guint64", setMethod: "setUint64" },
-            gfloat: { gtypeName: "gfloat", setMethod: "setFloat" },
-            gdouble: { gtypeName: "gdouble", setMethod: "setDouble" },
-            glong: { gtypeName: "glong", setMethod: "setLong" },
-            gulong: { gtypeName: "gulong", setMethod: "setUlong" },
+            utf8: { staticConstructor: "newFromString" },
+            gchararray: { staticConstructor: "newFromString" },
+            gboolean: { staticConstructor: "newFromBoolean" },
+            gint: { staticConstructor: "newFromInt" },
+            gint32: { staticConstructor: "newFromInt" },
+            guint: { staticConstructor: "newFromUint" },
+            guint32: { staticConstructor: "newFromUint" },
+            gint64: { staticConstructor: "newFromInt64" },
+            guint64: { staticConstructor: "newFromUint64" },
+            gfloat: { staticConstructor: "newFromFloat" },
+            gdouble: { staticConstructor: "newFromDouble" },
+            glong: { staticConstructor: "newFromLong" },
+            gulong: { staticConstructor: "newFromUlong" },
         };
 
         if (primitiveTypeMap[typeName]) {
@@ -138,11 +138,11 @@ export class PropertySetterBuilder {
         }
 
         if (typeMapping.kind === "class") {
-            return { gtypeName: "GObject", setMethod: "setObject", isClass: true };
+            return { staticConstructor: "newFromObject", isClass: true };
         }
 
         if (typeMapping.kind === "interface") {
-            return { gtypeName: "GObject", setMethod: "setObject", isInterface: true };
+            return { staticConstructor: "newFromObject", isInterface: true };
         }
 
         return null;
@@ -153,17 +153,22 @@ export class PropertySetterBuilder {
         this.ctx.usesSyntheticPropertySetter = true;
 
         return (writer) => {
-            writer.writeLine(`const gvalue = new GObject.Value();`);
-            writer.writeLine(`gvalue.init(GObject.typeFromName("${setterInfo.gtypeName}"));`);
-
-            if (setterInfo.isInterface) {
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value as unknown as GObject.GObject);`);
-            } else if (setterInfo.isClass) {
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value as GObject.GObject);`);
-            } else if (setterInfo.isEnum || setterInfo.isFlags) {
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value as number);`);
+            if (setterInfo.staticConstructor) {
+                if (setterInfo.isInterface) {
+                    writer.writeLine(
+                        `const gvalue = GObject.Value.${setterInfo.staticConstructor}(value as unknown as GObject.GObject);`,
+                    );
+                } else if (setterInfo.isClass) {
+                    writer.writeLine(
+                        `const gvalue = GObject.Value.${setterInfo.staticConstructor}(value as GObject.GObject);`,
+                    );
+                } else {
+                    writer.writeLine(`const gvalue = GObject.Value.${setterInfo.staticConstructor}(value);`);
+                }
             } else {
-                writer.writeLine(`gvalue.${setterInfo.setMethod}(value);`);
+                writer.writeLine(`const gvalue = new GObject.Value();`);
+                writer.writeLine(`gvalue.init(GObject.typeFromName("${setterInfo.gtypeName}"));`);
+                writer.writeLine(`gvalue.${setterInfo.setMethod}(value as number);`);
             }
 
             writer.writeLine("call(");
@@ -187,8 +192,9 @@ export class PropertySetterBuilder {
 }
 
 interface GValueSetterInfo {
-    gtypeName: string;
-    setMethod: string;
+    staticConstructor?: string;
+    gtypeName?: string;
+    setMethod?: string;
     isEnum?: boolean;
     isFlags?: boolean;
     isClass?: boolean;
