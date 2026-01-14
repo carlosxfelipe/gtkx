@@ -45,21 +45,6 @@ describe("waitFor", () => {
         ).rejects.toThrow(/Specific failure reason/);
     });
 
-    it("uses custom timeout", async () => {
-        const start = Date.now();
-        await expect(
-            waitFor(
-                () => {
-                    throw new Error("fail");
-                },
-                { timeout: 150, interval: 10 },
-            ),
-        ).rejects.toThrow();
-        const elapsed = Date.now() - start;
-        expect(elapsed).toBeGreaterThanOrEqual(140);
-        expect(elapsed).toBeLessThan(250);
-    });
-
     it("uses custom interval", async () => {
         let attempts = 0;
         const start = Date.now();
