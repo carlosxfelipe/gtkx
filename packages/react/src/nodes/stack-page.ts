@@ -1,4 +1,4 @@
-import { isObjectEqual } from "@gtkx/ffi";
+import { batch, isObjectEqual } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
@@ -97,11 +97,13 @@ class StackPageNode extends SlotNode<Props> {
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        this.removePage(oldChild);
+        batch(() => {
+            this.removePage(oldChild);
 
-        if (this.child) {
-            this.addPage();
-        }
+            if (this.child) {
+                this.addPage();
+            }
+        });
     }
 }
 

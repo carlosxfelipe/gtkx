@@ -1,3 +1,4 @@
+import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { NotebookPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -122,13 +123,15 @@ export class NotebookPageNode extends SlotNode<Props> {
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
-        if (oldChild) {
-            this.detachPage(oldChild);
-        }
+        batch(() => {
+            if (oldChild) {
+                this.detachPage(oldChild);
+            }
 
-        if (this.child) {
-            this.attachPage();
-        }
+            if (this.child) {
+                this.attachPage();
+            }
+        });
     }
 }
 
