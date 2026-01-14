@@ -60,7 +60,7 @@ impl ffi::FfiEncode for RefType {
                         )))
                     }
                     _ => bail!(
-                        "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}. Use callerAllocates pattern instead.",
+                        "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}",
                         ref_val.value
                     ),
                 }
@@ -115,6 +115,7 @@ impl ffi::FfiDecode for RefType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let storage = match ffi_value {
             ffi::FfiValue::Storage(s) => s,
+            ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
             _ => bail!(
                 "Expected a Storage ffi::FfiValue for Ref, got {:?}",
                 ffi_value

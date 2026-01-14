@@ -142,8 +142,6 @@ const gtkx = (): Plugin => {
 
             handlersRegistered = true;
             process.on("exit", teardown);
-            process.on("SIGTERM", teardown);
-            process.on("SIGINT", teardown);
         },
         async onTestRunStart(specifications: readonly TestSpecification[]): Promise<void> {
             const firstSpec = specifications[0];

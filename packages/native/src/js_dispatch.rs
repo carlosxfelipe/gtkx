@@ -74,6 +74,10 @@ impl JsDispatcher {
         self.queue.lock().expect("queue mutex poisoned").pop_front()
     }
 
+    pub fn clear(&self) {
+        self.queue.lock().expect("queue mutex poisoned").clear();
+    }
+
     pub fn queue(
         &self,
         callback: Arc<Root<JsFunction>>,

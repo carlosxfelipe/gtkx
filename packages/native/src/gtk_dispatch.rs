@@ -24,7 +24,8 @@
 //!
 //! When JavaScript is blocking waiting for a GTK operation to complete,
 //! callbacks must be routed differently. The wait depth tracking methods
-//! ([`GtkDispatcher::enter_js_wait`], [`GtkDispatcher::exit_js_wait`], [`GtkDispatcher::is_js_waiting`]) coordinate this.
+//! ([`GtkDispatcher::enter_js_wait`], [`GtkDispatcher::exit_js_wait`],
+//! [`GtkDispatcher::is_js_waiting`]) coordinate this.
 //!
 //! ## Shutdown
 //!
@@ -33,10 +34,9 @@
 //! application hold guard is released and the GTK main loop has exited.
 
 use std::collections::VecDeque;
-use std::process;
 use std::sync::{
     Mutex, OnceLock,
-    atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
+    atomic::{AtomicBool, AtomicUsize, Ordering},
     mpsc,
 };
 
@@ -51,7 +51,6 @@ pub struct GtkDispatcher {
     queue: Mutex<VecDeque<Task>>,
     dispatch_scheduled: AtomicBool,
     started: AtomicBool,
-    started_pid: AtomicU32,
     stopped: AtomicBool,
     js_wait_depth: AtomicUsize,
 }
@@ -68,7 +67,6 @@ impl GtkDispatcher {
             queue: Mutex::new(VecDeque::new()),
             dispatch_scheduled: AtomicBool::new(false),
             started: AtomicBool::new(false),
-            started_pid: AtomicU32::new(0),
             stopped: AtomicBool::new(false),
             js_wait_depth: AtomicUsize::new(0),
         }
@@ -87,6 +85,11 @@ impl GtkDispatcher {
 
     fn is_queue_empty(&self) -> bool {
         self.queue.lock().expect("queue mutex poisoned").is_empty()
+    }
+
+    pub fn clear(&self) {
+        self.queue.lock().expect("queue mutex poisoned").clear();
+        self.dispatch_scheduled.store(false, Ordering::Release);
     }
 
     pub fn run_on_gtk_thread<F, T>(&self, task: F) -> mpsc::Receiver<T>
@@ -116,16 +119,16 @@ impl GtkDispatcher {
     }
 
     pub fn mark_started(&self) {
-        self.started_pid.store(process::id(), Ordering::Release);
+        self.stopped.store(false, Ordering::Release);
         self.started.store(true, Ordering::Release);
     }
 
     pub fn is_started(&self) -> bool {
         self.started.load(Ordering::Acquire)
-            && self.started_pid.load(Ordering::Acquire) == process::id()
     }
 
     pub fn mark_stopped(&self) {
+        self.started.store(false, Ordering::Release);
         self.stopped.store(true, Ordering::Release);
     }
 

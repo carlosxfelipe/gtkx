@@ -302,6 +302,7 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
 
     for (const action of actions) {
         const signalName = action.press ? "key-pressed" : "key-released";
+        const returnValue = Value.newFromBoolean(false);
         signalEmitv(
             [
                 Value.newFromObject(controller),
@@ -311,7 +312,7 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
             ],
             getSignalId(controller, signalName),
             0,
-            null,
+            returnValue,
         );
 
         if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element)) {

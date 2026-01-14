@@ -57,6 +57,12 @@ impl GtkThread {
             let _ = handle.join();
         }
     }
+
+    pub fn clear(&self) {
+        if let Ok(mut guard) = self.handle.lock() {
+            guard.take();
+        }
+    }
 }
 
 pub struct GtkThreadState {

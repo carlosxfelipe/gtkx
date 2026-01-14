@@ -187,6 +187,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         ]);
 
         const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
+        const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
 
         for (const name of propNames) {
             const oldValue = oldProps?.[name];
@@ -209,17 +210,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             if (resolveSignal(this.container, signalName)) {
                 pendingSignals.push({ name, newValue });
             } else if (newValue !== undefined) {
-                const isEditableText = name === "text" && isEditable(this.container);
-
-                if (isEditableText && oldValue !== undefined) {
-                    const currentValue = this.getProperty(name);
-
-                    if (oldValue !== currentValue) {
-                        continue;
-                    }
-                }
-
-                this.setProperty(name, newValue);
+                pendingProperties.push({ name, oldValue, newValue });
             }
         }
 
@@ -233,6 +224,20 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 signalStore.set(this, this.container, signalName, handler);
             }
+        }
+
+        for (const { name, oldValue, newValue } of pendingProperties) {
+            const isEditableText = name === "text" && isEditable(this.container);
+
+            if (isEditableText && oldValue !== undefined) {
+                const currentValue = this.getProperty(name);
+
+                if (oldValue !== currentValue) {
+                    continue;
+                }
+            }
+
+            this.setProperty(name, newValue);
         }
     }
 

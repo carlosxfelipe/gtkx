@@ -204,7 +204,11 @@ export class FfiMapper {
             const isBoxedOrGObjectOrStruct =
                 innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject" || innerType.ffi.type === "struct";
 
-            if (param.callerAllocates && isBoxedOrGObjectOrStruct) {
+            const passHandleDirectly =
+                (param.callerAllocates && isBoxedOrGObjectOrStruct) ||
+                (param.direction === "inout" && isBoxedOrGObjectOrStruct);
+
+            if (passHandleDirectly) {
                 return {
                     ts: innerType.ts,
                     ffi: { ...innerType.ffi, ownership: "borrowed" as const },

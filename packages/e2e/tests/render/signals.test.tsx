@@ -268,7 +268,7 @@ describe("render - signals", () => {
 
         describe("key controller", () => {
             it("connects onKeyPressed handler", async () => {
-                const handleKeyPressed = vi.fn();
+                const handleKeyPressed = vi.fn(() => false);
 
                 await render(<GtkEntry onKeyPressed={handleKeyPressed} placeholderText="Type here" />);
 
@@ -279,7 +279,7 @@ describe("render - signals", () => {
             });
 
             it("connects onKeyReleased handler", async () => {
-                const handleKeyReleased = vi.fn();
+                const handleKeyReleased = vi.fn(() => false);
 
                 await render(<GtkEntry onKeyReleased={handleKeyReleased} placeholderText="Type here" />);
 
@@ -290,7 +290,7 @@ describe("render - signals", () => {
             });
 
             it("disconnects key handlers when removed", async () => {
-                const handleKeyPressed = vi.fn();
+                const handleKeyPressed = vi.fn(() => false);
 
                 function App({ hasHandler }: { hasHandler: boolean }) {
                     return <GtkEntry onKeyPressed={hasHandler ? handleKeyPressed : undefined} placeholderText="Test" />;

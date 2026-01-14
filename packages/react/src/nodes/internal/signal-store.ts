@@ -27,6 +27,7 @@ type HandlerEntry = { obj: GObject.GObject; handlerId: number };
 class SignalStore {
     private ownerHandlers: Map<SignalOwner, Map<string, HandlerEntry>> = new Map();
     private blockedHandlers: Set<number> = new Set();
+    private isBlocking = false;
 
     private getOwnerMap(owner: SignalOwner): Map<string, HandlerEntry> {
         let map = this.ownerHandlers.get(owner);
@@ -54,6 +55,11 @@ class SignalStore {
         const key = `${objectId}:${signal}`;
         const handlerId = obj.connect(signal, handler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });
+
+        if (this.isBlocking && !LIFECYCLE_SIGNALS.has(signal)) {
+            GObject.signalHandlerBlock(obj, handlerId);
+            this.blockedHandlers.add(handlerId);
+        }
     }
 
     public set(owner: SignalOwner, obj: GObject.GObject, signal: string, handler?: SignalHandler | null): void {
@@ -77,6 +83,7 @@ class SignalStore {
     }
 
     public blockAll(): void {
+        this.isBlocking = true;
         this.blockedHandlers.clear();
 
         for (const ownerMap of this.ownerHandlers.values()) {
@@ -92,6 +99,8 @@ class SignalStore {
     }
 
     public unblockAll(): void {
+        this.isBlocking = false;
+
         for (const ownerMap of this.ownerHandlers.values()) {
             for (const { obj, handlerId } of ownerMap.values()) {
                 if (this.blockedHandlers.has(handlerId)) {
