@@ -115,7 +115,7 @@ function SortableColumnView({
                 ref={columnViewRef}
                 sortColumn={sortColumn}
                 sortOrder={sortOrder}
-                onSortChange={handleSortChange}
+                onSortChanged={handleSortChange}
             >
                 <x.ColumnViewColumn
                     id="name"
@@ -408,13 +408,13 @@ describe("render - ColumnView", () => {
             );
         });
 
-        it("calls onSortChange when sort changes", async () => {
+        it("calls onSortChanged when sort changes", async () => {
             const ref = createRef<Gtk.ColumnView>();
-            const onSortChange = vi.fn();
+            const onSortChanged = vi.fn();
 
             await render(
                 <ScrollWrapper>
-                    <GtkColumnView ref={ref} onSortChange={onSortChange}>
+                    <GtkColumnView ref={ref} onSortChanged={onSortChanged}>
                         <x.ColumnViewColumn id="name" title="Name" expand renderCell={() => "Cell"} />
                         <x.ListItem id="1" value={{ name: "First" }} />
                     </GtkColumnView>

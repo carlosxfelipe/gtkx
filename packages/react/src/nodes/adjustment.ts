@@ -18,7 +18,7 @@ import { VirtualNode } from "./virtual.js";
  *         lower={0}
  *         upper={100}
  *         stepIncrement={1}
- *         onValueChange={(v) => console.log("Value:", v)}
+ *         onValueChanged={(v) => console.log("Value:", v)}
  *     />
  * </GtkScale>
  * ```
@@ -37,7 +37,7 @@ export type AdjustmentProps = {
     /** The page size (usually 0 for scales) */
     pageSize?: number;
     /** Callback when the value changes */
-    onValueChange?: (value: number) => void;
+    onValueChanged?: (value: number) => void;
 };
 
 export class AdjustmentNode extends VirtualNode<AdjustmentProps> {
@@ -69,10 +69,10 @@ export class AdjustmentNode extends VirtualNode<AdjustmentProps> {
     private updateSignalHandler(): void {
         if (!this.adjustment) return;
 
-        const { onValueChange } = this.props;
-        if (onValueChange) {
+        const { onValueChanged } = this.props;
+        if (onValueChanged) {
             const adjustment = this.adjustment;
-            signalStore.set(this, adjustment, "value-changed", () => onValueChange(adjustment.getValue()));
+            signalStore.set(this, adjustment, "value-changed", () => onValueChanged(adjustment.getValue()));
         } else {
             signalStore.set(this, this.adjustment, "value-changed", null);
         }
@@ -104,7 +104,7 @@ export class AdjustmentNode extends VirtualNode<AdjustmentProps> {
             }
         }
 
-        if (!oldProps || oldProps.onValueChange !== newProps.onValueChange) {
+        if (!oldProps || oldProps.onValueChanged !== newProps.onValueChanged) {
             this.updateSignalHandler();
         }
     }

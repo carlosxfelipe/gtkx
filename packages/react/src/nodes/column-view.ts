@@ -10,12 +10,12 @@ import { ListItemNode } from "./list-item.js";
 import { List, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChange", "estimatedRowHeight"];
+const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"];
 
 type ColumnViewProps = ListProps & {
     sortColumn?: string;
     sortOrder?: Gtk.SortType;
-    onSortChange?: (column: string | null, order: Gtk.SortType) => void;
+    onSortChanged?: (column: string | null, order: Gtk.SortType) => void;
     estimatedRowHeight?: number;
 };
 
@@ -122,13 +122,13 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
     }
 
     public override updateProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
-        if (!oldProps || oldProps.onSortChange !== newProps.onSortChange) {
+        if (!oldProps || oldProps.onSortChanged !== newProps.onSortChanged) {
             const sorter = this.container.getSorter() as Gtk.ColumnViewSorter | null;
-            const onSortChange = newProps.onSortChange;
+            const onSortChanged = newProps.onSortChanged;
 
             if (sorter) {
                 this.handleSortChange = () => {
-                    onSortChange?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
+                    onSortChanged?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
                 };
 
                 signalStore.set(this, sorter, "changed", this.handleSortChange);

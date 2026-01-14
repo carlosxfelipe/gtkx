@@ -7,6 +7,7 @@ import { VirtualNode } from "./virtual.js";
  * Props for the TextBuffer virtual element.
  *
  * Used to declaratively configure the text buffer for a GtkTextView.
+ * For GtkSourceView with syntax highlighting, use {@link SourceBufferProps} instead.
  *
  * @example
  * ```tsx
@@ -14,22 +15,22 @@ import { VirtualNode } from "./virtual.js";
  *     <x.TextBuffer
  *         text="Hello, World!"
  *         enableUndo
- *         onTextChange={(text) => console.log("Text:", text)}
+ *         onTextChanged={(text) => console.log("Text:", text)}
  *     />
  * </GtkTextView>
  * ```
  */
 export type TextBufferProps = {
-    /** Initial text content */
+    /** Text content */
     text?: string;
     /** Whether to enable undo/redo */
     enableUndo?: boolean;
     /** Callback when the text content changes */
-    onTextChange?: (text: string) => void;
+    onTextChanged?: (text: string) => void;
     /** Callback when can-undo state changes */
-    onCanUndoChange?: (canUndo: boolean) => void;
+    onCanUndoChanged?: (canUndo: boolean) => void;
     /** Callback when can-redo state changes */
-    onCanRedoChange?: (canRedo: boolean) => void;
+    onCanRedoChanged?: (canRedo: boolean) => void;
 };
 
 export class TextBufferNode extends VirtualNode<TextBufferProps> {
@@ -77,22 +78,22 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> {
         if (!this.buffer) return;
 
         const buffer = this.buffer;
-        const { onTextChange, onCanUndoChange, onCanRedoChange } = this.props;
+        const { onTextChanged, onCanUndoChanged, onCanRedoChanged } = this.props;
 
-        signalStore.set(this, buffer, "changed", onTextChange ? () => onTextChange(this.getBufferText()) : null);
+        signalStore.set(this, buffer, "changed", onTextChanged ? () => onTextChanged(this.getBufferText()) : null);
 
         signalStore.set(
             this,
             buffer,
             "notify::can-undo",
-            onCanUndoChange ? () => onCanUndoChange(buffer.getCanUndo()) : null,
+            onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
         );
 
         signalStore.set(
             this,
             buffer,
             "notify::can-redo",
-            onCanRedoChange ? () => onCanRedoChange(buffer.getCanRedo()) : null,
+            onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
         );
     }
 
@@ -118,9 +119,9 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> {
 
         if (
             !oldProps ||
-            oldProps.onTextChange !== newProps.onTextChange ||
-            oldProps.onCanUndoChange !== newProps.onCanUndoChange ||
-            oldProps.onCanRedoChange !== newProps.onCanRedoChange
+            oldProps.onTextChanged !== newProps.onTextChanged ||
+            oldProps.onCanUndoChanged !== newProps.onCanUndoChanged ||
+            oldProps.onCanRedoChanged !== newProps.onCanRedoChanged
         ) {
             this.updateSignalHandlers();
         }

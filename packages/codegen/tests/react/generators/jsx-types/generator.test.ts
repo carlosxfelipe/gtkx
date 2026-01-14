@@ -322,7 +322,7 @@ describe("JsxTypesGenerator", () => {
             expect(code).toContain("sortOrder");
         });
 
-        it("adds onSortChange callback for column view widgets", () => {
+        it("adds onSortChanged callback for column view widgets", () => {
             const columnViewMeta = createCodegenWidgetMeta({
                 className: "ColumnView",
                 jsxName: "GtkColumnView",
@@ -333,7 +333,7 @@ describe("JsxTypesGenerator", () => {
 
             const sourceFile = project.getSourceFile("react/jsx.ts");
             const code = sourceFile?.getFullText() ?? "";
-            expect(code).toContain("onSortChange");
+            expect(code).toContain("onSortChanged");
         });
     });
 

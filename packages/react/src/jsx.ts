@@ -6,9 +6,11 @@ import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
+import type { SourceBufferProps } from "./nodes/source-buffer.js";
 import type { TextBufferProps } from "./nodes/text-buffer.js";
 
 export type { AdjustmentProps } from "./nodes/adjustment.js";
+export type { SourceBufferProps } from "./nodes/source-buffer.js";
 export type { TextBufferProps } from "./nodes/text-buffer.js";
 export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
 
@@ -149,7 +151,7 @@ export type ColumnViewRootProps<C extends string = string> = {
     /** Sort direction (ascending or descending) */
     sortOrder?: Gtk.SortType;
     /** Callback when sort changes */
-    onSortChange?: (column: C | null, order: Gtk.SortType) => void;
+    onSortChanged?: (column: C | null, order: Gtk.SortType) => void;
     /** Estimated row height in pixels for proper virtualization before content loads */
     estimatedRowHeight?: number;
 };
@@ -813,7 +815,7 @@ export const x = {
      *     value={50}
      *     lower={0}
      *     upper={100}
-     *     onValueChange={(v) => console.log(v)}
+     *     onValueChanged={(v) => console.log(v)}
      *   />
      * </GtkScale>
      * ```
@@ -843,12 +845,30 @@ export const x = {
      *   <x.TextBuffer
      *     text="Hello!"
      *     enableUndo
-     *     onTextChange={(text) => console.log(text)}
+     *     onTextChanged={(text) => console.log(text)}
      *   />
      * </GtkTextView>
      * ```
      */
     TextBuffer: "TextBuffer" as const,
+
+    /**
+     * Declarative source buffer for a GtkSourceView with syntax highlighting.
+     *
+     * @example
+     * ```tsx
+     * <GtkSourceView>
+     *   <x.SourceBuffer
+     *     text={code}
+     *     language="typescript"
+     *     styleScheme="Adwaita-dark"
+     *     highlightMatchingBrackets
+     *     onTextChanged={(text) => console.log(text)}
+     *   />
+     * </GtkSourceView>
+     * ```
+     */
+    SourceBuffer: "SourceBuffer" as const,
 
     /**
      * A day mark on a GtkCalendar.
@@ -1006,6 +1026,7 @@ declare global {
                 PackStart: VirtualSlotProps;
                 Adjustment: AdjustmentProps;
                 ScaleMark: ScaleMarkProps;
+                SourceBuffer: SourceBufferProps;
                 TextBuffer: TextBufferProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;

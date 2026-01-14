@@ -231,7 +231,7 @@ export class WidgetPropsBuilder {
                     doc: "The current sort direction",
                 },
                 {
-                    name: "onSortChange",
+                    name: "onSortChanged",
                     type: '((column: string | null, order: import("@gtkx/ffi/gtk").SortType) => void) | null',
                     optional: true,
                     doc: "Called when a column header is clicked to change sort",

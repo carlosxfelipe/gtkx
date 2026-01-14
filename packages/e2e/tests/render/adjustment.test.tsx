@@ -206,13 +206,13 @@ describe("render - Adjustment", () => {
             expect(adjustment?.getPageSize()).toBe(0);
         });
 
-        it("connects onValueChange callback", async () => {
+        it("connects onValueChanged callback", async () => {
             const ref = createRef<Gtk.Scale>();
-            const onValueChange = vi.fn();
+            const onValueChanged = vi.fn();
 
             await render(
                 <GtkScale ref={ref}>
-                    <x.Adjustment value={50} lower={0} upper={100} onValueChange={onValueChange} />
+                    <x.Adjustment value={50} lower={0} upper={100} onValueChanged={onValueChanged} />
                 </GtkScale>,
             );
 
@@ -222,42 +222,42 @@ describe("render - Adjustment", () => {
             adjustment?.setValue(75);
 
             await waitFor(() => {
-                expect(onValueChange).toHaveBeenCalledWith(75);
+                expect(onValueChanged).toHaveBeenCalledWith(75);
             });
         });
 
-        it("updates onValueChange callback when prop changes", async () => {
+        it("updates onValueChanged callback when prop changes", async () => {
             const ref = createRef<Gtk.Scale>();
-            const onValueChange1 = vi.fn();
-            const onValueChange2 = vi.fn();
+            const onValueChanged1 = vi.fn();
+            const onValueChanged2 = vi.fn();
 
-            function App({ onValueChange }: { onValueChange: (value: number) => void }) {
+            function App({ onValueChanged }: { onValueChanged: (value: number) => void }) {
                 return (
                     <GtkScale ref={ref}>
-                        <x.Adjustment value={50} lower={0} upper={100} onValueChange={onValueChange} />
+                        <x.Adjustment value={50} lower={0} upper={100} onValueChanged={onValueChanged} />
                     </GtkScale>
                 );
             }
 
-            await render(<App onValueChange={onValueChange1} />);
+            await render(<App onValueChanged={onValueChanged1} />);
             const adjustment = ref.current?.getAdjustment();
             adjustment?.setValue(60);
 
             await waitFor(() => {
-                expect(onValueChange1).toHaveBeenCalledWith(60);
+                expect(onValueChanged1).toHaveBeenCalledWith(60);
             });
 
-            await render(<App onValueChange={onValueChange2} />);
+            await render(<App onValueChanged={onValueChanged2} />);
             adjustment?.setValue(70);
 
             await waitFor(() => {
-                expect(onValueChange2).toHaveBeenCalledWith(70);
+                expect(onValueChanged2).toHaveBeenCalledWith(70);
             });
         });
 
-        it("removes onValueChange callback when cleared", async () => {
+        it("removes onValueChanged callback when cleared", async () => {
             const ref = createRef<Gtk.Scale>();
-            const onValueChange = vi.fn();
+            const onValueChanged = vi.fn();
 
             function App({ hasCallback }: { hasCallback: boolean }) {
                 return (
@@ -266,7 +266,7 @@ describe("render - Adjustment", () => {
                             value={50}
                             lower={0}
                             upper={100}
-                            onValueChange={hasCallback ? onValueChange : undefined}
+                            onValueChanged={hasCallback ? onValueChanged : undefined}
                         />
                     </GtkScale>
                 );
@@ -277,16 +277,16 @@ describe("render - Adjustment", () => {
             adjustment?.setValue(60);
 
             await waitFor(() => {
-                expect(onValueChange).toHaveBeenCalledWith(60);
+                expect(onValueChanged).toHaveBeenCalledWith(60);
             });
 
-            const callCount = onValueChange.mock.calls.length;
+            const callCount = onValueChanged.mock.calls.length;
 
             await render(<App hasCallback={false} />);
             adjustment?.setValue(70);
 
             await new Promise((resolve) => setTimeout(resolve, 50));
-            expect(onValueChange.mock.calls.length).toBe(callCount);
+            expect(onValueChanged.mock.calls.length).toBe(callCount);
         });
 
         it("sets all adjustment properties together", async () => {
