@@ -12,6 +12,7 @@ import { getTrampolineName, isSupportedCallback, type TrampolineName } from "../
 import { normalizeClassName, toPascalCase } from "../utils/naming.js";
 import {
     arrayType,
+    BOXED_TYPE_SIZES,
     boxedType,
     FFI_INT32,
     FFI_POINTER,
@@ -135,9 +136,18 @@ export class FfiMapper {
                 );
                 imports.push(...elementResult.imports);
 
+                const elementSize = BOXED_TYPE_SIZES.get(type.elementType.name);
+
                 return {
                     ts: `${elementResult.ts}[]`,
-                    ffi: arrayType(elementResult.ffi, listType, transferFull, adjustedLengthParamIndex, type.fixedSize),
+                    ffi: arrayType(
+                        elementResult.ffi,
+                        listType,
+                        transferFull,
+                        adjustedLengthParamIndex,
+                        type.fixedSize,
+                        elementSize,
+                    ),
                     imports,
                 };
             }

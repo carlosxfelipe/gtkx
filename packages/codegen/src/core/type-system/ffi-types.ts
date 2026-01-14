@@ -248,6 +248,11 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["FreeFunc", { ts: "number", ffi: FFI_POINTER }],
 ]);
 
+export const BOXED_TYPE_SIZES = new Map<string, number>([
+    ["GValue", 24],
+    ["GObject.Value", 24],
+]);
+
 /**
  * Converts a transfer full flag to ownership string.
  * @param transferFull - true means "full" (caller takes ownership), false means "borrowed" (caller must not free)
@@ -332,6 +337,7 @@ export const arrayType = (
     transferFull: boolean = true,
     lengthParamIndex?: number,
     fixedSize?: number,
+    elementSize?: number,
 ): FfiTypeDescriptor => {
     const result: FfiTypeDescriptor = {
         type: "array",
@@ -344,6 +350,9 @@ export const arrayType = (
     }
     if (fixedSize !== undefined) {
         result.fixedSize = fixedSize;
+    }
+    if (elementSize !== undefined) {
+        result.elementSize = elementSize;
     }
     return result;
 };

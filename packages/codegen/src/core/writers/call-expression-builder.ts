@@ -123,6 +123,7 @@ export class CallExpressionBuilder {
      * Builds a value expression that handles object ID extraction.
      *
      * For gobject/boxed/struct types, extracts the `.handle` property (NativeHandle).
+     * For arrays of gobject/boxed/struct types, maps each item to its `.handle`.
      * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples.
      * For primitives, just returns the value name.
      */
@@ -141,6 +142,16 @@ export class CallExpressionBuilder {
                     : `(${valueName} as { handle: NativeHandle }).handle`;
             }
             return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+        }
+
+        if (mappedType.ffi.type === "array" && mappedType.ffi.itemType) {
+            const itemType = mappedType.ffi.itemType.type;
+            const itemNeedsPtr =
+                itemType === "gobject" || itemType === "boxed" || itemType === "struct" || itemType === "fundamental";
+
+            if (itemNeedsPtr) {
+                return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
+            }
         }
 
         if (mappedType.ffi.type === "hashtable") {
