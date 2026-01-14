@@ -38,6 +38,10 @@
             "types": "./dist/cairo/index.d.ts",
             "default": "./dist/cairo/index.js"
         },
+        "./gobject": {
+            "types": "./dist/gobject/index.d.ts",
+            "default": "./dist/gobject/index.js"
+        },
         "./*": {
             "types": "./dist/generated/*/index.d.ts",
             "default": "./dist/generated/*/index.js"
