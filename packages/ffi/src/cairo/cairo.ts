@@ -11,9 +11,10 @@ import type {
 } from "../generated/cairo/enums.js";
 import { FontOptions } from "../generated/cairo/font-options.js";
 import { Pattern } from "../generated/cairo/pattern.js";
+import { Surface } from "../generated/cairo/surface.js";
 import { getNativeObject } from "../native/object.js";
 
-export { Context, Pattern, FontOptions };
+export { Context, Pattern, FontOptions, Surface };
 
 const LIB = "libcairo.so.2";
 const LIB_GOBJECT = "libcairo-gobject.so.2";
@@ -50,6 +51,22 @@ const PATTERN_T_NONE = {
     ownership: "borrowed",
 } as const;
 
+const SURFACE_T = {
+    type: "boxed",
+    innerType: "CairoSurface",
+    lib: LIB_GOBJECT,
+    getTypeFn: "cairo_gobject_surface_get_type",
+    ownership: "full",
+} as const;
+
+const SURFACE_T_NONE = {
+    type: "boxed",
+    innerType: "CairoSurface",
+    lib: LIB_GOBJECT,
+    getTypeFn: "cairo_gobject_surface_get_type",
+    ownership: "borrowed",
+} as const;
+
 const DOUBLE_TYPE = { type: "float", size: 64 } as const;
 
 declare module "../generated/cairo/context.js" {
@@ -66,6 +83,28 @@ declare module "../generated/cairo/context.js" {
          * @param y - The Y coordinate of the end of the line
          */
         lineTo(x: number, y: number): this;
+        /**
+         * Relative move: begins a new sub-path offset from the current point.
+         * @param dx - The X offset from the current point
+         * @param dy - The Y offset from the current point
+         */
+        relMoveTo(dx: number, dy: number): this;
+        /**
+         * Relative line: adds a line from the current point by the given offset.
+         * @param dx - The X offset from the current point
+         * @param dy - The Y offset from the current point
+         */
+        relLineTo(dx: number, dy: number): this;
+        /**
+         * Relative curve: adds a cubic Bézier spline with control points relative to current point.
+         * @param dx1 - X offset of the first control point
+         * @param dy1 - Y offset of the first control point
+         * @param dx2 - X offset of the second control point
+         * @param dy2 - Y offset of the second control point
+         * @param dx3 - X offset of the end point
+         * @param dy3 - Y offset of the end point
+         */
+        relCurveTo(dx1: number, dy1: number, dx2: number, dy2: number, dx3: number, dy3: number): this;
         /**
          * Adds a cubic Bézier spline to the path from the current point to (x3, y3),
          * using (x1, y1) and (x2, y2) as control points.
@@ -292,6 +331,26 @@ declare module "../generated/cairo/context.js" {
          * @returns The current antialiasing mode
          */
         getAntialias(): Antialias;
+        /**
+         * Emits the current page for backends that support multiple pages (PDF, PostScript).
+         * After this call, the current page is cleared.
+         */
+        showPage(): this;
+    }
+}
+
+declare module "../generated/cairo/surface.js" {
+    interface Surface {
+        /**
+         * Creates a Cairo drawing context for this surface.
+         * @returns A new Context for drawing on this surface
+         */
+        createContext(): Context;
+        /**
+         * Finishes the surface and flushes any pending output.
+         * After calling this, the surface should not be used.
+         */
+        finish(): void;
     }
 }
 
@@ -402,6 +461,59 @@ Context.prototype.lineTo = function (x: number, y: number): Context {
             { type: CAIRO_T, value: this.handle },
             { type: DOUBLE_TYPE, value: x },
             { type: DOUBLE_TYPE, value: y },
+        ],
+        { type: "undefined" },
+    );
+    return this;
+};
+
+Context.prototype.relMoveTo = function (dx: number, dy: number): Context {
+    call(
+        LIB,
+        "cairo_rel_move_to",
+        [
+            { type: CAIRO_T, value: this.handle },
+            { type: DOUBLE_TYPE, value: dx },
+            { type: DOUBLE_TYPE, value: dy },
+        ],
+        { type: "undefined" },
+    );
+    return this;
+};
+
+Context.prototype.relLineTo = function (dx: number, dy: number): Context {
+    call(
+        LIB,
+        "cairo_rel_line_to",
+        [
+            { type: CAIRO_T, value: this.handle },
+            { type: DOUBLE_TYPE, value: dx },
+            { type: DOUBLE_TYPE, value: dy },
+        ],
+        { type: "undefined" },
+    );
+    return this;
+};
+
+Context.prototype.relCurveTo = function (
+    dx1: number,
+    dy1: number,
+    dx2: number,
+    dy2: number,
+    dx3: number,
+    dy3: number,
+): Context {
+    call(
+        LIB,
+        "cairo_rel_curve_to",
+        [
+            { type: CAIRO_T, value: this.handle },
+            { type: DOUBLE_TYPE, value: dx1 },
+            { type: DOUBLE_TYPE, value: dy1 },
+            { type: DOUBLE_TYPE, value: dx2 },
+            { type: DOUBLE_TYPE, value: dy2 },
+            { type: DOUBLE_TYPE, value: dx3 },
+            { type: DOUBLE_TYPE, value: dy3 },
         ],
         { type: "undefined" },
     );
@@ -1028,3 +1140,35 @@ FontOptions.prototype.setSubpixelOrder = function (subpixelOrder: number): FontO
     );
     return this;
 };
+
+Context.prototype.showPage = function (): Context {
+    call(LIB, "cairo_show_page", [{ type: CAIRO_T, value: this.handle }], { type: "undefined" });
+    return this;
+};
+
+Surface.prototype.createContext = function (): Context {
+    const ptr = call(LIB, "cairo_create", [{ type: SURFACE_T_NONE, value: this.handle }], CAIRO_T) as NativeHandle;
+    return getNativeObject(ptr, Context) as Context;
+};
+
+Surface.prototype.finish = function (): void {
+    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+};
+
+export class PdfSurface extends Surface {
+    static override readonly glibTypeName: string = "CairoSurface";
+
+    constructor(filename: string, widthInPoints: number, heightInPoints: number) {
+        super();
+        this.handle = call(
+            LIB,
+            "cairo_pdf_surface_create",
+            [
+                { type: { type: "string", ownership: "full" }, value: filename },
+                { type: DOUBLE_TYPE, value: widthInPoints },
+                { type: DOUBLE_TYPE, value: heightInPoints },
+            ],
+            SURFACE_T,
+        ) as NativeHandle;
+    }
+}
