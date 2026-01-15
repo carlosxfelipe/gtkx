@@ -9,10 +9,14 @@ import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
 import type { SourceBufferProps } from "./nodes/source-buffer.js";
 import type { TextBufferProps } from "./nodes/text-buffer.js";
+import type { TextAnchorProps } from "./nodes/text-anchor.js";
+import type { TextTagProps } from "./nodes/text-tag.js";
 
 export type { AdjustmentProps } from "./nodes/adjustment.js";
 export type { SourceBufferProps } from "./nodes/source-buffer.js";
+export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextBufferProps } from "./nodes/text-buffer.js";
+export type { TextTagProps } from "./nodes/text-tag.js";
 export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
 
 /**
@@ -165,6 +169,10 @@ export type ColumnViewRootProps<C extends string = string> = {
 export type NotebookPageProps = VirtualSlotProps & {
     /** Tab label text (optional when using Notebook.PageTab) */
     label?: string;
+    /** Whether the tab should expand to fill available space */
+    tabExpand?: boolean;
+    /** Whether the tab should fill its allocated space */
+    tabFill?: boolean;
 };
 
 /**
@@ -856,6 +864,46 @@ export const x = {
     TextBuffer: "TextBuffer" as const,
 
     /**
+     * Declarative text tag for styling ranges of text in a TextBuffer.
+     *
+     * Define a tag with styling properties and optionally apply it to a range
+     * by specifying `start` and `end` offsets.
+     *
+     * @example
+     * ```tsx
+     * <GtkTextView>
+     *   <x.TextBuffer text="Hello bold world">
+     *     <x.TextTag id="bold" weight={Pango.Weight.BOLD} start={6} end={10} />
+     *     <x.TextTag id="red" foreground="red" start={11} end={16} />
+     *   </x.TextBuffer>
+     * </GtkTextView>
+     * ```
+     */
+    TextTag: "TextTag" as const,
+
+    /**
+     * Declarative anchor for embedding widgets in a TextBuffer.
+     *
+     * Use the Unicode object replacement character (\uFFFC) in your text as placeholders,
+     * then reference them by index.
+     *
+     * @example
+     * ```tsx
+     * <GtkTextView>
+     *   <x.TextBuffer text="Click here: \uFFFC and here: \uFFFC">
+     *     <x.TextAnchor index={0}>
+     *       <GtkButton label="First" />
+     *     </x.TextAnchor>
+     *     <x.TextAnchor index={1}>
+     *       <GtkButton label="Second" />
+     *     </x.TextAnchor>
+     *   </x.TextBuffer>
+     * </GtkTextView>
+     * ```
+     */
+    TextAnchor: "TextAnchor" as const,
+
+    /**
      * Declarative source buffer for a GtkSourceView with syntax highlighting.
      *
      * @example
@@ -1030,7 +1078,9 @@ declare global {
                 Adjustment: AdjustmentProps;
                 ScaleMark: ScaleMarkProps;
                 SourceBuffer: SourceBufferProps;
+                TextAnchor: TextAnchorProps;
                 TextBuffer: TextBufferProps;
+                TextTag: TextTagProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
