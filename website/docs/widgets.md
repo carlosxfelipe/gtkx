@@ -120,11 +120,10 @@ const ViewModeSelector = () => {
 
   return (
     <AdwToggleGroup
-      active={viewMode === "list" ? 0 : viewMode === "grid" ? 1 : 2}
+      activeName={viewMode}
       onNotify={(group, prop) => {
-        if (prop === "active") {
-          const toggle = group.getToggle(group.getActive());
-          if (toggle) setViewMode(toggle.getName() ?? "list");
+        if (prop === "active-name") {
+          setViewMode(group.getActiveName() ?? "list");
         }
       }}
     >
@@ -597,6 +596,63 @@ When `enableUndo` is true, the built-in keyboard shortcuts `Ctrl+Z` (undo) and `
 | `onTextChanged`    | (text: string) => void     | Callback when text changes              |
 | `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes |
 | `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes |
+
+## SourceBuffer
+
+Configure a `GtkSourceView` buffer declaratively using `x.SourceBuffer`. This extends TextBuffer with syntax highlighting, bracket matching, and language-specific features for source code editing.
+
+```tsx
+import {
+  x,
+  GtkSourceView,
+  GtkScrolledWindow,
+} from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+const CodeEditor = () => {
+  const [code, setCode] = useState('console.log("Hello, World!");');
+
+  return (
+    <GtkScrolledWindow minContentHeight={300}>
+      <GtkSourceView
+        showLineNumbers
+        highlightCurrentLine
+        tabWidth={4}
+        indentWidth={4}
+        autoIndent
+      >
+        <x.SourceBuffer
+          text={code}
+          language="typescript"
+          styleScheme="Adwaita-dark"
+          highlightSyntax
+          highlightMatchingBrackets
+          enableUndo
+          onTextChanged={setCode}
+        />
+      </GtkSourceView>
+    </GtkScrolledWindow>
+  );
+};
+```
+
+### x.SourceBuffer Props
+
+| Prop                       | Type                                   | Description                                        |
+| -------------------------- | -------------------------------------- | -------------------------------------------------- |
+| `text`                     | string                                 | Text content                                       |
+| `language`                 | string \| GtkSource.Language           | Language ID (e.g., "typescript", "python", "rust") |
+| `styleScheme`              | string \| GtkSource.StyleScheme        | Color scheme ID (e.g., "Adwaita-dark", "classic")  |
+| `highlightSyntax`          | boolean                                | Enable syntax highlighting (default: true if language set) |
+| `highlightMatchingBrackets`| boolean                                | Highlight matching brackets (default: true)        |
+| `enableUndo`               | boolean                                | Enable undo/redo functionality                     |
+| `implicitTrailingNewline`  | boolean                                | Handle trailing newlines automatically             |
+| `onTextChanged`            | (text: string) => void                 | Callback when text changes                         |
+| `onCanUndoChanged`         | (canUndo: boolean) => void             | Callback when undo availability changes            |
+| `onCanRedoChanged`         | (canRedo: boolean) => void             | Callback when redo availability changes            |
+| `onCursorMoved`            | () => void                             | Callback when cursor position changes              |
+| `onHighlightUpdated`       | (start, end: Gtk.TextIter) => void     | Callback when highlighting is updated              |
 
 ## Keyboard Shortcuts
 

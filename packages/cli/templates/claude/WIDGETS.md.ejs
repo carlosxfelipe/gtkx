@@ -500,7 +500,16 @@ Input in list row.
 Segmented button group for mutually exclusive options.
 
 ```tsx
-<AdwToggleGroup active={viewMode} onToggled={setViewMode}>
+const [viewMode, setViewMode] = useState("list");
+
+<AdwToggleGroup
+    activeName={viewMode}
+    onNotify={(group, prop) => {
+        if (prop === "active-name") {
+            setViewMode(group.getActiveName() ?? "list");
+        }
+    }}
+>
     <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List view" />
     <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid view" />
     <x.Toggle id="flow" label="Flow" />
@@ -697,6 +706,37 @@ const TextEditor = () => {
 ```
 
 **Props:** `text`, `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`
+
+## SourceBuffer
+
+Configure `GtkSourceView` buffers with syntax highlighting using `x.SourceBuffer`:
+
+```tsx
+import { x, GtkSourceView, GtkScrolledWindow } from "@gtkx/react";
+import { useState } from "react";
+
+const CodeEditor = () => {
+    const [code, setCode] = useState('console.log("Hello!");');
+
+    return (
+        <GtkScrolledWindow minContentHeight={300}>
+            <GtkSourceView showLineNumbers highlightCurrentLine tabWidth={4}>
+                <x.SourceBuffer
+                    text={code}
+                    language="typescript"
+                    styleScheme="Adwaita-dark"
+                    highlightSyntax
+                    highlightMatchingBrackets
+                    enableUndo
+                    onTextChanged={setCode}
+                />
+            </GtkSourceView>
+        </GtkScrolledWindow>
+    );
+};
+```
+
+**Props:** `text`, `language`, `styleScheme`, `highlightSyntax`, `highlightMatchingBrackets`, `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`, `onCursorMoved`
 
 ## Keyboard Shortcuts
 

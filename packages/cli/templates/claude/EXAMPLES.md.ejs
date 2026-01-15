@@ -701,7 +701,15 @@ const ViewSwitcher = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <AdwToggleGroup active={view} onToggled={setView} halign={Gtk.Align.CENTER}>
+            <AdwToggleGroup
+                activeName={view}
+                onNotify={(group, prop) => {
+                    if (prop === "active-name") {
+                        setView(group.getActiveName() ?? "list");
+                    }
+                }}
+                halign={Gtk.Align.CENTER}
+            >
                 <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List view" />
                 <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid view" />
             </AdwToggleGroup>
