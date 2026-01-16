@@ -406,6 +406,10 @@ impl ffi::FfiEncode for IntegerKind {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
+            value::Value::Object(handle) => handle
+                .get_ptr_as_usize()
+                .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?
+                as f64,
             value::Value::Null | value::Value::Undefined if optional => 0.0,
             _ => bail!("Expected a Number for integer type, got {:?}", value),
         };

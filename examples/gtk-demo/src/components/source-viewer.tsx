@@ -5,23 +5,9 @@ import { useDemo } from "../context/demo-context.js";
 export const SourceViewer = () => {
     const { currentDemo } = useDemo();
 
-    if (!currentDemo?.sourceCode) {
-        return (
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                valign={Gtk.Align.CENTER}
-                halign={Gtk.Align.CENTER}
-                vexpand
-                hexpand
-            >
-                <GtkLabel label="No source" cssClasses={["dim-label"]} />
-            </GtkBox>
-        );
-    }
-
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
-            <GtkScrolledWindow vexpand hexpand>
+        <GtkScrolledWindow vexpand hexpand>
+            {currentDemo?.sourceCode ? (
                 <GtkSourceView
                     editable={false}
                     showLineNumbers
@@ -32,9 +18,13 @@ export const SourceViewer = () => {
                     bottomMargin={20}
                     monospace
                 >
-                    <x.SourceBuffer text={currentDemo.sourceCode} language="typescript" styleScheme="Adwaita-dark" />
+                    <x.SourceBuffer text={currentDemo.sourceCode} language="typescript-jsx" styleScheme="Adwaita-dark" />
                 </GtkSourceView>
-            </GtkScrolledWindow>
-        </GtkBox>
+            ) : (
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} vexpand>
+                    <GtkLabel label="No source" cssClasses={["dim-label"]} />
+                </GtkBox>
+            )}
+        </GtkScrolledWindow>
     );
 };

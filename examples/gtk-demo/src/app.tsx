@@ -220,7 +220,7 @@ const AppContent = () => {
                     showBorder={false}
                     enablePopup
                 >
-                    <x.NotebookPage tabExpand>
+                    <x.NotebookPage>
                         <x.NotebookPageTab>
                             <GtkLabel label="_Info" useUnderline />
                         </x.NotebookPageTab>
@@ -228,7 +228,7 @@ const AppContent = () => {
                             <InfoTab />
                         </GtkScrolledWindow>
                     </x.NotebookPage>
-                    <x.NotebookPage tabExpand>
+                    <x.NotebookPage>
                         <x.NotebookPageTab>
                             <GtkLabel label="Source" />
                         </x.NotebookPageTab>
