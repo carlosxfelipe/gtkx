@@ -8,14 +8,10 @@
 
 import type { SourceFile } from "ts-morph";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import type { CodegenProject } from "../../../core/project.js";
-import { toCamelCase } from "../../../core/utils/naming.js";
-import { addNamespaceImports } from "../../../core/utils/structure-helpers.js";
 import {
     COLUMN_VIEW_WIDGET_NAMES,
     DRAWING_AREA_WIDGET_NAMES,
     DROP_DOWN_WIDGET_NAMES,
-    getHiddenProps,
     LIST_WIDGET_NAMES,
     NAVIGATION_VIEW_WIDGET_NAMES,
     NOTEBOOK_WIDGET_NAMES,
@@ -23,7 +19,10 @@ import {
     STACK_WIDGET_NAMES,
     VIRTUAL_CHILDREN_WIDGET_NAMES,
     WINDOW_WIDGET_NAMES,
-} from "../../constants/index.js";
+} from "../../../core/config/index.js";
+import type { CodegenProject } from "../../../core/project.js";
+import { toCamelCase } from "../../../core/utils/naming.js";
+import { addNamespaceImports } from "../../../core/utils/structure-helpers.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
 import { WidgetPropsBuilder } from "./widget-props-builder.js";
@@ -86,8 +85,7 @@ export class JsxTypesGenerator {
     }
 
     private toJsxWidget(meta: CodegenWidgetMeta): JsxWidget {
-        const hiddenProps = getHiddenProps(meta.className);
-
+        const hiddenProps = new Set(meta.hiddenPropNames);
         const filteredSlots = meta.slots.filter((slot) => !hiddenProps.has(toCamelCase(slot)));
 
         return {

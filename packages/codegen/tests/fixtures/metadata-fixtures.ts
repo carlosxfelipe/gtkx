@@ -1,4 +1,5 @@
 import type { CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
+import { getClassification, getHiddenPropNames } from "../../src/core/config/index.js";
 import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../src/core/generator-types.js";
 
 export function createPropertyAnalysis(overrides: Partial<PropertyAnalysis> = {}): PropertyAnalysis {
@@ -37,11 +38,13 @@ export function createSignalAnalysis(overrides: Partial<SignalAnalysis> = {}): S
 }
 
 export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = {}): CodegenWidgetMeta {
+    const className = overrides.className ?? "Button";
     return {
-        className: "Button",
+        className,
         namespace: "Gtk",
         jsxName: "GtkButton",
         isContainer: true,
+        isAdjustable: false,
         slots: [],
         propNames: ["label", "icon-name"],
         signalNames: ["clicked"],
@@ -51,6 +54,9 @@ export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = 
         properties: [createPropertyAnalysis()],
         signals: [createSignalAnalysis()],
         constructorParams: [],
+        doc: undefined,
+        classification: getClassification(className),
+        hiddenPropNames: getHiddenPropNames(className),
         ...overrides,
     };
 }

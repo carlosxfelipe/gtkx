@@ -9,6 +9,7 @@
  */
 
 import type { SourceFile } from "ts-morph";
+import type { WidgetClassificationType } from "./config/index.js";
 import type { PropertyAnalysis, SignalAnalysis } from "./generator-types.js";
 
 /**
@@ -48,6 +49,10 @@ export type CodegenWidgetMeta = {
     readonly constructorParams: readonly string[];
     /** Class documentation from GIR */
     readonly doc: string | undefined;
+    /** Pre-computed widget classification for React */
+    readonly classification: WidgetClassificationType | null;
+    /** Hidden prop names for this widget (camelCase) */
+    readonly hiddenPropNames: readonly string[];
 };
 
 /**

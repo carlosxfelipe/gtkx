@@ -48,6 +48,8 @@ export type WidgetInfo = Pick<
     | "parentClassName"
     | "modulePath"
     | "constructorParams"
+    | "classification"
+    | "hiddenPropNames"
 >;
 
 /**
@@ -93,7 +95,7 @@ export class MetadataReader {
     }
 
     private toWidgetInfo(meta: CodegenWidgetMeta): WidgetInfo {
-        const { properties: _, signals: __, parentNamespace: ___, ...widgetInfo } = meta;
+        const { properties: _, signals: __, parentNamespace: ___, doc: ____, ...widgetInfo } = meta;
         return widgetInfo;
     }
 }

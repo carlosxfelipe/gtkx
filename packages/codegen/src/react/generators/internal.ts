@@ -11,6 +11,7 @@
  */
 
 import { type SourceFile, type WriterFunction, Writers } from "ts-morph";
+import { PACK_INTERFACE_METHODS, PREFIX_SUFFIX_INTERFACE_METHODS, WIDGET_CLASSIFICATIONS } from "../../core/config/index.js";
 import type { CodegenProject } from "../../core/project.js";
 import { toCamelCase } from "../../core/utils/naming.js";
 import {
@@ -21,7 +22,6 @@ import {
     writeStringArray,
     writeStringSet,
 } from "../../core/utils/structure-helpers.js";
-import { PACK_INTERFACE_METHODS, PREFIX_SUFFIX_INTERFACE_METHODS, WIDGET_CLASSIFICATIONS } from "../constants/index.js";
 import { type MetadataReader, sortWidgetsByClassName, type WidgetInfo } from "../metadata-reader.js";
 
 /**
@@ -71,8 +71,7 @@ export class InternalGenerator {
         const usedNamespaces = new Set<string>();
 
         for (const widget of widgets) {
-            const isClassified = WIDGET_CLASSIFICATIONS.some((c) => c.classNames.has(widget.className));
-            if (isClassified) {
+            if (widget.classification !== null) {
                 usedNamespaces.add(widget.namespace);
             }
         }
@@ -87,7 +86,7 @@ export class InternalGenerator {
     private generateClassificationConstants(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
         for (const classification of WIDGET_CLASSIFICATIONS) {
             const matchingWidgets = widgets
-                .filter((w) => classification.classNames.has(w.className))
+                .filter((w) => w.classification === classification.type)
                 .map((w) => `${w.namespace}.${w.className}`);
 
             sourceFile.addVariableStatement(

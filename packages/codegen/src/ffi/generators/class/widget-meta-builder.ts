@@ -9,6 +9,7 @@ import type { GirClass, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
+import { getClassification, getHiddenPropNames, type WidgetClassificationType } from "../../../core/config/index.js";
 import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { isAdjustableMethod, isContainerMethod, isWidgetType } from "../../../core/utils/widget-detection.js";
 
@@ -40,7 +41,9 @@ export class WidgetMetaBuilder {
         }
 
         const className = normalizeClassName(this.cls.name, this.namespace);
-        const properties = this.analyzers.property.analyzeWidgetProperties(this.cls);
+        const hiddenPropNames = getHiddenPropNames(className);
+        const hiddenPropsSet = new Set(hiddenPropNames);
+        const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, hiddenPropsSet);
         const signals = this.analyzers.signal.analyzeWidgetSignals(this.cls);
         const propNames = properties.filter((p) => p.isWritable).map((p) => p.name);
         const constructorParams = this.analyzers.constructor.getConstructorParamNames(this.cls);
@@ -62,7 +65,13 @@ export class WidgetMetaBuilder {
             signals,
             constructorParams,
             doc: this.cls.doc,
+            classification: this.computeClassification(className),
+            hiddenPropNames,
         };
+    }
+
+    private computeClassification(className: string): WidgetClassificationType | null {
+        return getClassification(className);
     }
 
     private detectIsContainer(): boolean {
