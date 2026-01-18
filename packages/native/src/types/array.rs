@@ -217,19 +217,19 @@ impl ffi::FfiEncode for ArrayType {
                 )))
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                let mut ids = Vec::new();
+                let mut handles = Vec::new();
 
                 for value in array {
                     match value {
-                        value::Value::Object(id) => ids.push(*id),
+                        value::Value::Object(handle) => handles.push(*handle),
                         _ => bail!("Expected an Object for gobject item type, got {:?}", value),
                     }
                 }
 
                 if let Some(element_size) = self.element_size {
-                    let mut buffer = vec![0u8; ids.len() * element_size];
-                    for (i, id) in ids.iter().enumerate() {
-                        match id.get_ptr() {
+                    let mut buffer = vec![0u8; handles.len() * element_size];
+                    for (i, handle) in handles.iter().enumerate() {
+                        match handle.get_ptr() {
                             Some(ptr) => {
                                 let offset = i * element_size;
                                 unsafe {
@@ -246,9 +246,9 @@ impl ffi::FfiEncode for ArrayType {
                     return Ok(ffi::FfiValue::Storage(buffer.into()));
                 }
 
-                let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(ids.len());
-                for id in &ids {
-                    match id.get_ptr() {
+                let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
+                for handle in &handles {
+                    match handle.get_ptr() {
                         Some(ptr) => ptrs.push(ptr),
                         None => bail!("GObject in array has been garbage collected"),
                     }
@@ -257,7 +257,7 @@ impl ffi::FfiEncode for ArrayType {
 
                 Ok(ffi::FfiValue::Storage(FfiStorage::new(
                     ptr,
-                    FfiStorageKind::ObjectArray(ids, ptrs),
+                    FfiStorageKind::ObjectArray(handles, ptrs),
                 )))
             }
             Type::Boolean => {
@@ -437,8 +437,8 @@ impl ArrayType {
                     .collect()
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                let ids = storage.as_object_array()?;
-                ids.iter().map(|id| value::Value::Object(*id)).collect()
+                let handles = storage.as_object_array()?;
+                handles.iter().map(|handle| value::Value::Object(*handle)).collect()
             }
             _ => bail!(
                 "Unsupported array item type for ffi value conversion: {:?}",

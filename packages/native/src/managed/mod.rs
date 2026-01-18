@@ -42,10 +42,10 @@ pub struct NativeHandle(pub(crate) usize);
 impl From<NativeValue> for NativeHandle {
     fn from(object: NativeValue) -> Self {
         GtkThreadState::with(|state| {
-            let id = state.next_handle_id;
+            let key = state.next_handle_id;
             state.next_handle_id = state.next_handle_id.wrapping_add(1);
-            state.handle_map.insert(id, object);
-            NativeHandle(id)
+            state.handle_map.insert(key, object);
+            NativeHandle(key)
         })
     }
 }
@@ -69,13 +69,13 @@ impl NativeHandle {
 
     pub(crate) fn require_ptr(&self) -> anyhow::Result<*mut c_void> {
         self.get_ptr()
-            .ok_or_else(|| anyhow::anyhow!("Object with ID {} has been garbage collected", self.0))
+            .ok_or_else(|| anyhow::anyhow!("Object with handle {} has been garbage collected", self.0))
     }
 
     pub(crate) fn require_non_null_ptr(&self) -> anyhow::Result<*mut c_void> {
         let ptr = self.require_ptr()?;
         if ptr.is_null() {
-            anyhow::bail!("Object with ID {} has a null pointer", self.0);
+            anyhow::bail!("Object with handle {} has a null pointer", self.0);
         }
         Ok(ptr)
     }
@@ -92,7 +92,7 @@ impl NativeHandle {
         Ok(unsafe { (ptr as *const u8).add(offset) })
     }
 
-    pub fn id(&self) -> usize {
+    pub fn inner(&self) -> usize {
         self.0
     }
 }

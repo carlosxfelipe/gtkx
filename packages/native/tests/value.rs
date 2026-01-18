@@ -684,7 +684,7 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
     let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
-    if let Value::Object(_id) = result.unwrap() {
+    if let Value::Object(_handle) = result.unwrap() {
     } else {
         panic!("Expected Value::Object");
     }
@@ -896,7 +896,7 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
     let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
-    if let Value::Object(_id) = result.unwrap() {
+    if let Value::Object(_handle) = result.unwrap() {
     } else {
         panic!("Expected Value::Object for struct");
     }
@@ -920,7 +920,7 @@ fn from_cif_value_struct_full_transfer() {
     let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
-    if let Value::Object(_id) = result.unwrap() {
+    if let Value::Object(_handle) = result.unwrap() {
     } else {
         panic!("Expected Value::Object for struct");
     }
@@ -990,7 +990,7 @@ fn from_cif_value_struct_owned_without_size() {
     let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
-    if let Value::Object(_id) = result.unwrap() {
+    if let Value::Object(_handle) = result.unwrap() {
     } else {
         panic!("Expected Value::Object for struct");
     }

@@ -101,7 +101,7 @@ pub enum Value {
 impl Value {
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
-            Value::Object(id) => id
+            Value::Object(handle) => handle
                 .get_ptr()
                 .ok_or_else(|| anyhow::anyhow!("{} has been garbage collected", type_name)),
             Value::Null | Value::Undefined => Ok(std::ptr::null_mut()),
@@ -170,8 +170,8 @@ impl Value {
             }
             Value::String(s) => Ok(s.into()),
             Value::Boolean(b) => Ok(b.into()),
-            Value::Object(id) => {
-                if let Some(ptr) = id.get_ptr() {
+            Value::Object(handle) => {
+                if let Some(ptr) = handle.get_ptr() {
                     let obj: glib::Object = unsafe {
                         glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
                     };
@@ -283,7 +283,7 @@ impl Value {
             Value::Number(n) => Ok(cx.number(*n).upcast()),
             Value::String(s) => Ok(cx.string(s).upcast()),
             Value::Boolean(b) => Ok(cx.boolean(*b).upcast()),
-            Value::Object(id) => Ok(cx.boxed(*id).upcast()),
+            Value::Object(handle) => Ok(cx.boxed(*handle).upcast()),
             Value::Array(arr) => {
                 let js_array = cx.empty_array();
 

@@ -10,14 +10,14 @@ use neon::prelude::*;
 use crate::{gtk_dispatch, managed::NativeHandle};
 
 pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
-    let id = *handle.as_inner();
+    let boxed_handle = cx.argument::<JsBox<NativeHandle>>(0)?;
+    let native_handle = *boxed_handle.as_inner();
 
     let (tx, rx) = mpsc::channel();
 
     gtk_dispatch::GtkDispatcher::global().enter_js_wait();
     gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let _ = tx.send(id.get_ptr_as_usize());
+        let _ = tx.send(native_handle.get_ptr_as_usize());
     });
 
     let ptr = gtk_dispatch::GtkDispatcher::global()

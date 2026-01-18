@@ -16,75 +16,75 @@ fn create_test_gobject() -> glib::Object {
 }
 
 #[test]
-fn object_id_from_registers_in_map() {
+fn handle_from_registers_in_map() {
     let obj = create_test_gobject();
     let object = NativeValue::GObject(obj);
-    let id: NativeHandle = object.into();
+    let handle: NativeHandle = object.into();
 
-    assert!(id.id() > 0);
+    assert!(handle.inner() > 0);
 
     GtkThreadState::with(|state| {
-        assert!(state.handle_map.contains_key(&id.id()));
+        assert!(state.handle_map.contains_key(&handle.inner()));
     });
 }
 
 #[test]
-fn object_id_as_ptr_returns_correct_pointer() {
+fn handle_get_ptr_returns_correct_pointer() {
     let obj = create_test_gobject();
     let expected_ptr = obj.as_ptr() as *mut c_void;
     let object = NativeValue::GObject(obj);
-    let id: NativeHandle = object.into();
+    let handle: NativeHandle = object.into();
 
-    let ptr = id.get_ptr();
+    let ptr = handle.get_ptr();
     assert_eq!(ptr, Some(expected_ptr));
 }
 
 #[test]
-fn object_id_as_ptr_returns_none_after_removal() {
+fn handle_get_ptr_returns_none_after_removal() {
     let obj = create_test_gobject();
     let object = NativeValue::GObject(obj);
-    let id: NativeHandle = object.into();
+    let handle: NativeHandle = object.into();
 
     GtkThreadState::with(|state| {
-        state.handle_map.remove(&id.id());
+        state.handle_map.remove(&handle.inner());
     });
 
-    assert_eq!(id.get_ptr(), None);
+    assert_eq!(handle.get_ptr(), None);
 }
 
 #[test]
-fn object_id_get_ptr_as_usize_returns_usize() {
+fn handle_get_ptr_as_usize_returns_usize() {
     let obj = create_test_gobject();
     let expected_ptr = obj.as_ptr() as usize;
     let object = NativeValue::GObject(obj);
-    let id: NativeHandle = object.into();
+    let handle: NativeHandle = object.into();
 
-    let ptr = id.get_ptr_as_usize();
+    let ptr = handle.get_ptr_as_usize();
     assert_eq!(ptr, Some(expected_ptr));
 }
 
 #[test]
-fn object_id_increments_sequentially() {
+fn handle_increments_sequentially() {
     let obj1 = create_test_gobject();
     let obj2 = create_test_gobject();
 
-    let id1: NativeHandle = NativeValue::GObject(obj1).into();
-    let id2: NativeHandle = NativeValue::GObject(obj2).into();
+    let handle1: NativeHandle = NativeValue::GObject(obj1).into();
+    let handle2: NativeHandle = NativeValue::GObject(obj2).into();
 
-    assert!(id2.id() > id1.id());
+    assert!(handle2.inner() > handle1.inner());
 }
 
 #[test]
-fn object_boxed_stores_and_retrieves() {
+fn boxed_handle_stores_and_retrieves() {
     common::ensure_gtk_init();
 
     let gtype = gdk::RGBA::static_type();
     let ptr = common::allocate_test_boxed(gtype);
     let boxed = Boxed::from_glib_full(Some(gtype), ptr);
     let object = NativeValue::Boxed(boxed);
-    let id: NativeHandle = object.into();
+    let handle: NativeHandle = object.into();
 
-    let retrieved_ptr = id.get_ptr();
+    let retrieved_ptr = handle.get_ptr();
     assert_eq!(retrieved_ptr, Some(ptr));
 }
 
@@ -138,7 +138,7 @@ fn gobject_refcount_preserved_in_map() {
         (*ptr).ref_count
     };
 
-    let _id: NativeHandle = NativeValue::GObject(obj.clone()).into();
+    let _handle: NativeHandle = NativeValue::GObject(obj.clone()).into();
 
     let after_ref = unsafe {
         let ptr = obj.as_ptr();
@@ -149,17 +149,17 @@ fn gobject_refcount_preserved_in_map() {
 }
 
 #[test]
-fn multiple_objects_independent() {
+fn multiple_handles_independent() {
     let obj1 = create_test_gobject();
     let obj2 = create_test_gobject();
 
-    let id1: NativeHandle = NativeValue::GObject(obj1.clone()).into();
-    let id2: NativeHandle = NativeValue::GObject(obj2.clone()).into();
+    let handle1: NativeHandle = NativeValue::GObject(obj1.clone()).into();
+    let handle2: NativeHandle = NativeValue::GObject(obj2.clone()).into();
 
     GtkThreadState::with(|state| {
-        state.handle_map.remove(&id1.id());
+        state.handle_map.remove(&handle1.inner());
     });
 
-    assert_eq!(id1.get_ptr(), None);
-    assert!(id2.get_ptr().is_some());
+    assert_eq!(handle1.get_ptr(), None);
+    assert!(handle2.get_ptr().is_some());
 }
