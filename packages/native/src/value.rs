@@ -464,23 +464,11 @@ impl Value {
         }
     }
 
-    pub fn from_glib_values(
-        args: &[glib::Value],
-        arg_types: &Option<Vec<Type>>,
-    ) -> anyhow::Result<Vec<Self>> {
-        match arg_types {
-            Some(types) => args
-                .iter()
-                .zip(types.iter())
-                .map(|(gval, ty)| Self::from_glib_value(gval, ty))
-                .collect(),
-            None if args.is_empty() => Ok(vec![]),
-            None => bail!(
-                "Callback received {} argument(s) but no argTypes were provided - \
-                 this indicates a bug in the FFI binding definition",
-                args.len()
-            ),
-        }
+    pub fn from_glib_values(args: &[glib::Value], arg_types: &[Type]) -> anyhow::Result<Vec<Self>> {
+        args.iter()
+            .zip(arg_types.iter())
+            .map(|(gval, ty)| Self::from_glib_value(gval, ty))
+            .collect()
     }
 
     fn from_glib_gobject(gvalue: &glib::Value) -> anyhow::Result<Value> {

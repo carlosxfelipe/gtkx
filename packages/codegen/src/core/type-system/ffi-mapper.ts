@@ -671,8 +671,8 @@ export class FfiMapper {
     ): {
         type: "callback";
         callbackType: CallbackName;
-        argTypes?: FfiTypeDescriptor[];
-        returnType?: FfiTypeDescriptor;
+        argTypes: FfiTypeDescriptor[];
+        returnType: FfiTypeDescriptor;
     } {
         const argTypes = callback.parameters
             .filter((p) => p.name !== "user_data" && p.name !== "data")
@@ -681,12 +681,12 @@ export class FfiMapper {
         const hasReturn = callback.returnType.name !== "none" && callback.returnType.name !== "void";
         const returnType = hasReturn
             ? this.mapType(callback.returnType, true, callback.returnType.transferOwnership).ffi
-            : undefined;
+            : FFI_VOID;
 
         return {
             type: "callback",
             callbackType,
-            argTypes: argTypes.length > 0 ? argTypes : undefined,
+            argTypes,
             returnType,
         };
     }

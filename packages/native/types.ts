@@ -67,10 +67,10 @@ export type CallbackType = {
         | "shortcutFunc"
         | "tickCallback"
         | "treeListModelCreateModelFunc";
-    argTypes?: Type[];
+    argTypes: Type[];
+    returnType: Type;
     sourceType?: Type;
     resultType?: Type;
-    returnType?: Type;
 };
 
 /**

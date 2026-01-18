@@ -126,7 +126,10 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
         [
             { type: GOBJECT_NONE, value: obj },
             { type: STRING, value: signalName },
-            { type: { type: "callback", callbackType: "closure" }, value: callback },
+            {
+                type: { type: "callback", callbackType: "closure", argTypes: [], returnType: { type: "undefined" } },
+                value: callback,
+            },
             { type: NULL, value: null },
             { type: NULL, value: null },
             { type: INT32, value: 0 },

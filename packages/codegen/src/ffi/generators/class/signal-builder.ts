@@ -318,7 +318,9 @@ export class SignalBuilder {
         });
         writer.writeLine("};");
         this.writeSignalConnectCall(writer, (w) => {
-            w.write('type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], callbackType: "closure"');
+            w.write(
+                'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "undefined" }, callbackType: "closure"',
+            );
         });
     }
 

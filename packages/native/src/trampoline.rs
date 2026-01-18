@@ -394,13 +394,13 @@ pub unsafe extern "C" fn async_ready_trampoline(
 pub struct TickCallbackData {
     pub channel: neon::event::Channel,
     pub js_func: std::sync::Arc<neon::handle::Root<neon::types::JsFunction>>,
-    pub arg_types: Option<Vec<crate::types::Type>>,
+    pub arg_types: Vec<crate::types::Type>,
 }
 
 pub struct PathIntersectionCallbackData {
     pub channel: neon::event::Channel,
     pub js_func: std::sync::Arc<neon::handle::Root<neon::types::JsFunction>>,
-    pub arg_types: Option<Vec<crate::types::Type>>,
+    pub arg_types: Vec<crate::types::Type>,
 }
 
 impl TickCallbackData {

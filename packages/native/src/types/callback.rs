@@ -19,7 +19,7 @@ use crate::{ffi, value};
 struct ClosureContext {
     channel: neon::event::Channel,
     js_func: Arc<neon::handle::Root<neon::types::JsFunction>>,
-    arg_types: Option<Vec<Type>>,
+    arg_types: Vec<Type>,
 }
 
 impl ClosureContext {
@@ -109,13 +109,13 @@ impl ClosureContext {
         })
     }
 
-    fn build_closure_with_guard(self, return_type: Option<Box<Type>>) -> glib::Closure {
+    fn build_closure_with_guard(self, return_type: Box<Type>) -> glib::Closure {
         let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
             Arc::new(AtomicPtr::new(std::ptr::null_mut()));
         let closure_holder_for_callback = closure_holder.clone();
 
         let closure = glib::Closure::new(move |args: &[glib::Value]| {
-            let return_type_inner = *return_type.clone().unwrap_or(Box::new(Type::Undefined));
+            let return_type_inner = *return_type.clone();
 
             let args_values = value::Value::from_glib_values(args, &self.arg_types)
                 .expect("Failed to convert GLib callback arguments");
@@ -381,8 +381,8 @@ impl CallbackTrampoline {
 #[derive(Debug, Clone)]
 pub struct CallbackType {
     pub trampoline: CallbackTrampoline,
-    pub arg_types: Option<Vec<Type>>,
-    pub return_type: Option<Box<Type>>,
+    pub arg_types: Vec<Type>,
+    pub return_type: Box<Type>,
     pub source_type: Option<Box<Type>>,
     pub result_type: Option<Box<Type>>,
 }
@@ -403,24 +403,20 @@ impl CallbackType {
             .parse()
             .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())?;
 
-        let arg_types: Option<Handle<JsArray>> = obj.get_opt(cx, "argTypes")?;
-        let arg_types = match arg_types {
-            Some(arr) => {
-                let vec = arr.to_vec(cx)?;
-                let mut types = Vec::with_capacity(vec.len());
-                for item in vec {
-                    types.push(Type::from_js_value(cx, item)?);
-                }
-                Some(types)
-            }
-            None => None,
-        };
+        let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
+        let arg_types_arr = arg_types_prop
+            .downcast::<JsArray, _>(cx)
+            .or_else(|_| cx.throw_type_error("'argTypes' property is required for callback types"))?;
+        let arg_types_vec = arg_types_arr.to_vec(cx)?;
+        let mut arg_types = Vec::with_capacity(arg_types_vec.len());
+        for item in arg_types_vec {
+            arg_types.push(Type::from_js_value(cx, item)?);
+        }
 
-        let return_type: Option<Handle<JsValue>> = obj.get_opt(cx, "returnType")?;
-        let return_type = match return_type {
-            Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
-            None => None,
-        };
+        let return_type_prop: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
+        let return_type = Box::new(Type::from_js_value(cx, return_type_prop).or_else(|_| {
+            cx.throw_type_error("'returnType' property is required for callback types")
+        })?);
 
         let source_type: Option<Handle<JsValue>> = obj.get_opt(cx, "sourceType")?;
         let source_type = match source_type {

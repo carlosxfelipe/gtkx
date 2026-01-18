@@ -311,19 +311,19 @@ export class FfiTypeWriter {
 
         props.push({ name: "callbackType", value: `"${type.callbackType ?? "closure"}"` });
 
-        if (type.argTypes && type.argTypes.length > 0) {
-            props.push({
-                name: "argTypes",
-                value: (writer) => {
-                    writer.write("[");
-                    type.argTypes?.forEach((argType: FfiTypeDescriptor, index: number) => {
-                        if (index > 0) writer.write(", ");
-                        this.toWriter(argType)(writer);
-                    });
-                    writer.write("]");
-                },
-            });
-        }
+        props.push({
+            name: "argTypes",
+            value: (writer) => {
+                writer.write("[");
+                type.argTypes?.forEach((argType: FfiTypeDescriptor, index: number) => {
+                    if (index > 0) writer.write(", ");
+                    this.toWriter(argType)(writer);
+                });
+                writer.write("]");
+            },
+        });
+
+        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "undefined" }) });
 
         if (type.sourceType) {
             props.push({ name: "sourceType", value: this.toWriter(type.sourceType) });
@@ -331,10 +331,6 @@ export class FfiTypeWriter {
 
         if (type.resultType) {
             props.push({ name: "resultType", value: this.toWriter(type.resultType) });
-        }
-
-        if (type.returnType) {
-            props.push({ name: "returnType", value: this.toWriter(type.returnType) });
         }
 
         return props;
