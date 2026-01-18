@@ -14,6 +14,7 @@
 //! - [`ClosureCallbackData::shortcut_func`]: For `GtkShortcutAction` callbacks
 //! - [`ClosureCallbackData::tree_list_model_create_func`]: For `GtkTreeListModel` create_func
 //! - [`ClosureCallbackData::animation_target_func`]: For `AdwCallbackAnimationTarget`
+//! - [`ClosureCallbackData::scale_format_value_func`]: For `GtkScale` set_format_value_func
 //! - [`ClosureCallbackData::tick_callback`]: For `GtkWidget` add_tick_callback
 //! - [`destroy_trampoline`]: Generic destroy notify callback
 //! - [`async_ready_trampoline`]: For `GAsyncReadyCallback`
@@ -232,6 +233,50 @@ impl ClosureCallbackData {
                 param_value.to_glib_none_mut().0,
                 std::ptr::null_mut(),
             );
+        }
+    }
+
+    /// Trampoline for `GtkScaleFormatValueFunc`.
+    ///
+    /// # Safety
+    ///
+    /// - `scale` must be a valid `GtkScale` pointer.
+    /// - `value` is the scale value to format.
+    /// - `user_data` must be a valid pointer to a `ClosureCallbackData`, or null.
+    pub unsafe extern "C" fn scale_format_value_func(
+        scale: *mut gobject_ffi::GObject,
+        value: f64,
+        user_data: *mut c_void,
+    ) -> *mut std::ffi::c_char {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
+            eprintln!(
+                "[gtkx] WARNING: ClosureCallbackData::scale_format_value_func: user_data is null, callback skipped"
+            );
+            return std::ptr::null_mut();
+        };
+
+        let data = unsafe { data_ptr.as_ref() };
+
+        unsafe {
+            let mut param_values: [glib::Value; 2] = [
+                glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+                glib::Value::from_type_unchecked(glib::types::Type::F64),
+            ];
+
+            gobject_ffi::g_value_set_object(param_values[0].to_glib_none_mut().0, scale);
+            gobject_ffi::g_value_set_double(param_values[1].to_glib_none_mut().0, value);
+
+            let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::STRING);
+
+            gobject_ffi::g_closure_invoke(
+                data.closure.as_ptr(),
+                return_value.to_glib_none_mut().0,
+                2,
+                param_values[0].to_glib_none_mut().0,
+                std::ptr::null_mut(),
+            );
+
+            gobject_ffi::g_value_dup_string(return_value.to_glib_none().0)
         }
     }
 

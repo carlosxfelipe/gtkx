@@ -90,6 +90,24 @@ impl ClosureContext {
         })
     }
 
+    fn build_string_closure(self) -> glib::Closure {
+        glib::Closure::new(move |args: &[glib::Value]| {
+            let args_values = value::Value::from_glib_values(args, &self.arg_types)
+                .expect("Failed to convert GLib callback arguments");
+
+            js_dispatch::JsDispatcher::global().invoke_and_wait(
+                &self.channel,
+                &self.js_func,
+                args_values,
+                true,
+                |result| match result {
+                    Ok(value::Value::String(s)) => Some(s.to_value()),
+                    _ => Some(String::new().to_value()),
+                },
+            )
+        })
+    }
+
     fn build_closure_with_guard(self, return_type: Option<Box<Type>>) -> glib::Closure {
         let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
             Arc::new(AtomicPtr::new(std::ptr::null_mut()));
@@ -139,6 +157,7 @@ pub enum CallbackTrampoline {
     AnimationTargetFunc,
     TickCallback,
     PathIntersectionFunc,
+    ScaleFormatValueFunc,
 }
 
 impl std::str::FromStr for CallbackTrampoline {
@@ -155,8 +174,9 @@ impl std::str::FromStr for CallbackTrampoline {
             "animationTargetFunc" => Ok(CallbackTrampoline::AnimationTargetFunc),
             "tickCallback" => Ok(CallbackTrampoline::TickCallback),
             "pathIntersectionFunc" => Ok(CallbackTrampoline::PathIntersectionFunc),
+            "scaleFormatValueFunc" => Ok(CallbackTrampoline::ScaleFormatValueFunc),
             _ => Err(format!(
-                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc'; got '{}'",
+                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc'; got '{}'",
                 s
             )),
         }
@@ -336,6 +356,14 @@ impl CallbackTrampoline {
                     data,
                     crate::trampoline::PathIntersectionCallbackData::path_intersection_func as *mut c_void,
                     crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
+                )
+            }
+
+            CallbackTrampoline::ScaleFormatValueFunc => {
+                let closure = ctx.build_string_closure();
+                TrampolineCallbackValue::build(
+                    closure,
+                    ClosureCallbackData::scale_format_value_func as *mut c_void,
                 )
             }
         }

@@ -7,6 +7,7 @@ export type TrampolineName =
     | "destroy"
     | "drawFunc"
     | "pathIntersectionFunc"
+    | "scaleFormatValueFunc"
     | "shortcutFunc"
     | "tickCallback"
     | "treeListModelCreateFunc";
@@ -17,6 +18,7 @@ const CALLBACK_TRAMPOLINES: Record<string, TrampolineName> = {
     "GLib.DestroyNotify": "destroy",
     "Gsk.PathIntersectionFunc": "pathIntersectionFunc",
     "Gtk.DrawingAreaDrawFunc": "drawFunc",
+    "Gtk.ScaleFormatValueFunc": "scaleFormatValueFunc",
     "Gtk.ShortcutFunc": "shortcutFunc",
     "Gtk.TickCallback": "tickCallback",
     "Gtk.TreeListModelCreateModelFunc": "treeListModelCreateFunc",

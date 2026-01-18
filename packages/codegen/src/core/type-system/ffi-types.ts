@@ -80,6 +80,7 @@ export type FfiTypeDescriptor = {
         | "destroy"
         | "drawFunc"
         | "pathIntersectionFunc"
+        | "scaleFormatValueFunc"
         | "shortcutFunc"
         | "tickCallback"
         | "treeListModelCreateFunc";
