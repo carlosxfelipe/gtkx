@@ -281,3 +281,88 @@ fn plain_struct_debug_format() {
     assert!(debug_str.contains("Boxed"));
     assert!(debug_str.contains("is_owned: true"));
 }
+
+#[test]
+fn borrowed_creates_non_owned_boxed() {
+    common::ensure_gtk_init();
+
+    let gtype = gdk::RGBA::static_type();
+    let ptr = common::allocate_test_boxed(gtype);
+
+    let boxed = Boxed::borrowed(Some(gtype), ptr);
+
+    assert!(!boxed.is_owned());
+    assert_eq!(boxed.as_ptr(), ptr);
+    assert_eq!(boxed.gtype(), Some(gtype));
+
+    drop(boxed);
+
+    assert!(common::is_valid_boxed_ptr(ptr, gtype));
+
+    unsafe {
+        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
+    }
+}
+
+#[test]
+fn borrowed_null_ptr_safe() {
+    common::ensure_gtk_init();
+
+    let boxed = Boxed::borrowed(None, std::ptr::null_mut());
+
+    assert!(!boxed.is_owned());
+    assert!(boxed.as_ptr().is_null());
+}
+
+#[test]
+fn borrowed_does_not_free_on_drop() {
+    common::ensure_gtk_init();
+
+    let gtype = gdk::RGBA::static_type();
+    let ptr = common::allocate_test_boxed(gtype);
+
+    {
+        let boxed = Boxed::borrowed(Some(gtype), ptr);
+        assert!(!boxed.is_owned());
+    }
+
+    assert!(common::is_valid_boxed_ptr(ptr, gtype));
+
+    unsafe {
+        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
+    }
+}
+
+#[test]
+fn borrowed_clone_remains_borrowed() {
+    common::ensure_gtk_init();
+
+    let gtype = gdk::RGBA::static_type();
+    let ptr = common::allocate_test_boxed(gtype);
+
+    let boxed = Boxed::borrowed(Some(gtype), ptr);
+    let cloned = boxed.clone();
+
+    assert!(!cloned.is_owned());
+    assert_eq!(cloned.as_ptr(), ptr);
+
+    drop(cloned);
+    drop(boxed);
+
+    assert!(common::is_valid_boxed_ptr(ptr, gtype));
+
+    unsafe {
+        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
+    }
+}
+
+#[test]
+#[should_panic(expected = "Cannot clone owned Boxed without GType")]
+fn clone_owned_without_gtype_panics() {
+    common::ensure_gtk_init();
+
+    let ptr = unsafe { glib::ffi::g_malloc0(16) };
+    let boxed = Boxed::from_glib_full(None, ptr);
+
+    let _cloned = boxed.clone();
+}

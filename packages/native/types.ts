@@ -6,7 +6,7 @@
  */
 export type NativeHandle = { readonly __brand: "NativeHandle" };
 
-type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean; lib?: string; getTypeFn?: string };
+type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean; library?: string; getTypeFn?: string };
 
 type FloatType = { type: "float"; size: 32 | 64 };
 
@@ -18,7 +18,7 @@ type StringType = { type: "string"; ownership: Ownership; length?: number };
 
 type GObjectType = { type: "gobject"; ownership: Ownership };
 
-type BoxedType = { type: "boxed"; ownership: Ownership; innerType: string; lib?: string; getTypeFn?: string };
+type BoxedType = { type: "boxed"; ownership: Ownership; innerType: string; library?: string; getTypeFn?: string };
 
 type StructType = { type: "struct"; ownership: Ownership; innerType: string; size?: number };
 
@@ -54,19 +54,21 @@ type NullType = { type: "null" };
 
 type UndefinedType = { type: "undefined" };
 
+export type TrampolineName =
+    | "animationTargetFunc"
+    | "asyncReady"
+    | "closure"
+    | "destroy"
+    | "drawFunc"
+    | "pathIntersectionFunc"
+    | "scaleFormatValueFunc"
+    | "shortcutFunc"
+    | "tickCallback"
+    | "treeListModelCreateFunc";
+
 type CallbackType = {
     type: "callback";
-    trampoline:
-        | "animationTargetFunc"
-        | "asyncReady"
-        | "closure"
-        | "destroy"
-        | "drawFunc"
-        | "pathIntersectionFunc"
-        | "scaleFormatValueFunc"
-        | "shortcutFunc"
-        | "tickCallback"
-        | "treeListModelCreateFunc";
+    trampoline: TrampolineName;
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

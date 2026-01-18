@@ -20,6 +20,14 @@ impl Boxed {
         }
     }
 
+    #[must_use]
+    pub fn borrowed(gtype: Option<glib::Type>, ptr: *mut c_void) -> Self {
+        Self {
+            inner: OwnedPtr::from_none(ptr),
+            gtype,
+        }
+    }
+
     pub fn from_glib_none(gtype: Option<glib::Type>, ptr: *mut c_void) -> anyhow::Result<Self> {
         Self::from_glib_none_with_size(gtype, ptr, None, None)
     }
@@ -106,10 +114,13 @@ impl Clone for Boxed {
                     gtype: self.gtype,
                 }
             }
-            None => Self {
-                inner: self.inner.borrow(),
-                gtype: None,
-            },
+            None => {
+                panic!(
+                    "Cannot clone owned Boxed without GType - the size is unknown and \
+                     returning a borrowed reference would create a dangling pointer. \
+                     Use Boxed::borrowed() for non-owned pointers or ensure GType is available."
+                );
+            }
         }
     }
 }

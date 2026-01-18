@@ -507,14 +507,14 @@ impl PathIntersectionCallbackData {
         let path1_value =
             crate::value::Value::Object(crate::managed::NativeValue::GObject(path1_obj).into());
 
-        let point1_boxed = crate::managed::Boxed::from_glib_full(None, point1 as *mut c_void);
+        let point1_boxed = crate::managed::Boxed::borrowed(None, point1 as *mut c_void);
         let point1_value =
             crate::value::Value::Object(crate::managed::NativeValue::Boxed(point1_boxed).into());
 
         let path2_value =
             crate::value::Value::Object(crate::managed::NativeValue::GObject(path2_obj).into());
 
-        let point2_boxed = crate::managed::Boxed::from_glib_full(None, point2 as *mut c_void);
+        let point2_boxed = crate::managed::Boxed::borrowed(None, point2 as *mut c_void);
         let point2_value =
             crate::value::Value::Object(crate::managed::NativeValue::Boxed(point2_boxed).into());
 

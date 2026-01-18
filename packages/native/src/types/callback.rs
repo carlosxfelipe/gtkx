@@ -3,7 +3,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 use gtk4::glib::{
-    self, gobject_ffi, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _,
+    self, gobject_ffi,
+    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
     value::ToValue as _,
 };
 use neon::prelude::*;
@@ -142,7 +143,7 @@ impl ClosureContext {
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
         closure_holder.store(closure_ptr, Ordering::Release);
 
-        unsafe { glib::Closure::from_glib_none(closure_ptr) }
+        unsafe { glib::Closure::from_glib_full(closure_ptr) }
     }
 }
 
