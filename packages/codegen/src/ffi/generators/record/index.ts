@@ -5,7 +5,7 @@
  * Orchestrates sub-builders for different aspects of record generation.
  */
 
-import type { GirConstructor, GirField, GirFunction, GirMethod, GirRecord } from "@gtkx/gir";
+import type { GirConstructor, GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "@gtkx/gir";
 import {
     type ClassDeclaration,
     type MethodDeclarationStructure,
@@ -16,7 +16,7 @@ import {
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { boxedSelfType, type FfiTypeDescriptor, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
+import { boxedSelfType, type FfiTypeDescriptor, isPrimitiveFieldType, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
@@ -28,7 +28,7 @@ import { FieldBuilder } from "./field-builder.js";
  *
  * @example
  * ```typescript
- * const generator = new RecordGenerator(ffiMapper, ctx, builders, options);
+ * const generator = new RecordGenerator(ffiMapper, ctx, builders, options, repo);
  * generator.generateToSourceFile(record, sourceFile);
  * ```
  */
@@ -41,8 +41,9 @@ export class RecordGenerator {
         private readonly ctx: GenerationContext,
         private readonly writers: Writers,
         private readonly options: FfiGeneratorOptions,
+        repo?: GirRepository,
     ) {
-        this.fieldBuilder = new FieldBuilder(ffiMapper, ctx, writers);
+        this.fieldBuilder = new FieldBuilder(ffiMapper, ctx, writers, repo, options.namespace);
         this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
     }
 
@@ -395,36 +396,79 @@ export class RecordGenerator {
             if (methodNames.has(fieldName)) continue;
             if (fieldName === "id") fieldName = "id_";
 
-            const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-            this.ctx.addTypeImports(typeMapping.imports);
+            const typeName = String(field.type.name);
+            const isNestedStruct = this.fieldBuilder.isNestedStructType(typeName);
 
-            if (isReadable) {
-                this.ctx.usesRead = true;
-                classDecl.addGetAccessor({
-                    name: fieldName,
-                    returnType: typeMapping.ts,
-                    docs: buildJsDocStructure(field.doc, this.options.namespace),
-                    statements: (writer) => {
-                        writer.write("return read(this.handle, ");
-                        this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                        writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
-                    },
-                });
-            }
+            if (isNestedStruct) {
+                this.generateNestedStructAccessor(field, fieldName, offset, classDecl);
+            } else {
+                const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+                this.ctx.addTypeImports(typeMapping.imports);
 
-            if (isWritable && this.fieldBuilder.isWritableType(field.type)) {
-                this.ctx.usesWrite = true;
-                classDecl.addSetAccessor({
-                    name: fieldName,
-                    parameters: [{ name: "value", type: typeMapping.ts }],
-                    docs: buildJsDocStructure(field.doc, this.options.namespace),
-                    statements: (writer) => {
-                        writer.write("write(this.handle, ");
-                        this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                        writer.writeLine(`, ${offset}, value);`);
-                    },
-                });
+                if (isReadable) {
+                    this.ctx.usesRead = true;
+                    classDecl.addGetAccessor({
+                        name: fieldName,
+                        returnType: typeMapping.ts,
+                        docs: buildJsDocStructure(field.doc, this.options.namespace),
+                        statements: (writer) => {
+                            writer.write("return read(this.handle, ");
+                            this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                            writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
+                        },
+                    });
+                }
+
+                if (isWritable && this.fieldBuilder.isWritableType(field.type)) {
+                    this.ctx.usesWrite = true;
+                    classDecl.addSetAccessor({
+                        name: fieldName,
+                        parameters: [{ name: "value", type: typeMapping.ts }],
+                        docs: buildJsDocStructure(field.doc, this.options.namespace),
+                        statements: (writer) => {
+                            writer.write("write(this.handle, ");
+                            this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                            writer.writeLine(`, ${offset}, value);`);
+                        },
+                    });
+                }
             }
         }
+    }
+
+    private generateNestedStructAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        classDecl: ClassDeclaration,
+    ): void {
+        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        this.ctx.addTypeImports(typeMapping.imports);
+
+        const cacheFieldName = `_${fieldName}`;
+
+        classDecl.addProperty({
+            name: cacheFieldName,
+            type: `${typeMapping.ts} | null`,
+            initializer: "null",
+            scope: "private" as unknown as undefined,
+        });
+
+        this.ctx.usesNativeHandle = true;
+
+        classDecl.addGetAccessor({
+            name: fieldName,
+            returnType: typeMapping.ts,
+            docs: buildJsDocStructure(field.doc, this.options.namespace),
+            statements: (writer) => {
+                writer.writeLine(`if (!this.${cacheFieldName}) {`);
+                writer.writeLine(`    this.${cacheFieldName} = new ${typeMapping.ts}();`);
+                writer.writeLine(
+                    `    (this.${cacheFieldName} as { handle: NativeHandle }).handle = (BigInt(this.handle as unknown as bigint) + ${offset}n) as unknown as NativeHandle;`,
+                );
+                writer.writeLine(`}`);
+                writer.writeLine(`return this.${cacheFieldName};`);
+            },
+        });
     }
 }

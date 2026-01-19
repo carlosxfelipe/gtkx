@@ -9,9 +9,11 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkColorDialogButton,
     GtkDropDown,
     GtkEntry,
     GtkExpander,
+    GtkFontDialogButton,
     GtkFrame,
     GtkLabel,
     GtkScale,
@@ -631,7 +633,7 @@ const FontFeaturesDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Font:" widthRequest={80} halign={Gtk.Align.START} />
-                        <x.FontDialogButton
+                        <GtkFontDialogButton
                             fontDesc={fontDesc}
                             onFontDescChanged={setFontDesc}
                             title="Select Font"
@@ -759,7 +761,7 @@ const FontFeaturesDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Foreground:" widthRequest={100} halign={Gtk.Align.START} />
-                        <x.ColorDialogButton
+                        <GtkColorDialogButton
                             rgba={fgColor}
                             onRgbaChanged={setFgColor}
                             title="Select Foreground Color"
@@ -768,7 +770,7 @@ const FontFeaturesDemo = () => {
 
                     <GtkBox spacing={12}>
                         <GtkLabel label="Background:" widthRequest={100} halign={Gtk.Align.START} />
-                        <x.ColorDialogButton
+                        <GtkColorDialogButton
                             rgba={bgColor}
                             onRgbaChanged={setBgColor}
                             title="Select Background Color"

@@ -2,14 +2,14 @@
  * Field Builder
  *
  * Builds field getters/setters for record (struct/boxed) types.
- * Handles struct memory layout calculations.
+ * Handles struct memory layout calculations, including nested structs.
  */
 
-import type { GirField } from "@gtkx/gir";
+import type { GirField, GirRecord, GirRepository, QualifiedName } from "@gtkx/gir";
 import type { WriterFunction } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { getPrimitiveTypeSize, isMemoryWritableType } from "../../../core/type-system/ffi-types.js";
+import { getPrimitiveTypeSize, isMemoryWritableType, isPrimitiveFieldType } from "../../../core/type-system/ffi-types.js";
 import { toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import type { Writers } from "../../../core/writers/index.js";
 
@@ -27,10 +27,14 @@ export type FieldLayout = {
  * Builds field getters/setters and handles struct memory layout.
  */
 export class FieldBuilder {
+    private readonly sizeCache = new Map<string, number>();
+
     constructor(
         private readonly ffiMapper: FfiMapper,
         private readonly ctx: GenerationContext,
         private readonly writers: Writers,
+        private readonly repo?: GirRepository,
+        private readonly currentNamespace?: string,
     ) {}
 
     /**
@@ -118,11 +122,70 @@ export class FieldBuilder {
         return isMemoryWritableType(String(type.name));
     }
 
-    private getFieldSize(type: { name: string | unknown; cType?: string }): number {
-        return getPrimitiveTypeSize(String(type.name));
+    /**
+     * Checks if a field type is a nested struct (not a primitive).
+     */
+    isNestedStructType(typeName: string): boolean {
+        if (isPrimitiveFieldType(typeName)) return false;
+        const record = this.resolveRecord(typeName);
+        if (!record || record.opaque || record.disguised) return false;
+        if (record.glibTypeName) return false;
+        return true;
     }
 
-    private getFieldAlignment(type: { name: string | unknown; cType?: string }): number {
-        return this.getFieldSize(type);
+    private resolveRecord(typeName: string): GirRecord | null {
+        if (!this.repo) return null;
+
+        if (typeName.includes(".")) {
+            return this.repo.resolveRecord(typeName as QualifiedName);
+        }
+
+        if (!this.currentNamespace) return null;
+        const ns = this.repo.getNamespace(this.currentNamespace);
+        return ns?.records.get(typeName) ?? null;
+    }
+
+    private getFieldSize(type: { name: string | unknown; cType?: string }): number {
+        const typeName = String(type.name);
+
+        if (isPrimitiveFieldType(typeName)) {
+            return getPrimitiveTypeSize(typeName);
+        }
+
+        if (this.sizeCache.has(typeName)) {
+            return this.sizeCache.get(typeName)!;
+        }
+
+        const record = this.resolveRecord(typeName);
+        if (record && !record.opaque && !record.disguised) {
+            this.sizeCache.set(typeName, 0);
+            const size = this.calculateStructSize(record.fields);
+            this.sizeCache.set(typeName, size);
+            return size;
+        }
+
+        return 8;
+    }
+
+    private getFieldAlignment(type: { name: string | unknown; cType?: string }, visited = new Set<string>()): number {
+        const typeName = String(type.name);
+
+        if (isPrimitiveFieldType(typeName)) {
+            return getPrimitiveTypeSize(typeName);
+        }
+
+        if (visited.has(typeName)) {
+            return 8;
+        }
+        visited.add(typeName);
+
+        const record = this.resolveRecord(typeName);
+        if (record && !record.opaque && !record.disguised) {
+            const fields = record.getPublicFields();
+            if (fields.length === 0) return 8;
+            return Math.max(...fields.map((f) => this.getFieldAlignment(f.type, visited)));
+        }
+
+        return 8;
     }
 }

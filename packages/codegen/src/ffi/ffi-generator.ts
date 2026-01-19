@@ -1,4 +1,4 @@
-import type { GirClass, GirNamespace, GirRecord, GirRepository } from "@gtkx/gir";
+import type { GirClass, GirNamespace, GirRecord, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import type { SourceFile } from "ts-morph";
 import { GenerationContext } from "../core/generation-context.js";
@@ -109,7 +109,7 @@ export class FfiGenerator {
             gobjectLibrary,
         };
 
-        const recordGenerator = new RecordGenerator(this.ffiMapper, this.ctx, writers, generatorOptions);
+        const recordGenerator = new RecordGenerator(this.ffiMapper, this.ctx, writers, generatorOptions, this.options.repository);
 
         for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
@@ -272,6 +272,36 @@ export class FfiGenerator {
         }
     }
 
+    private isGeneratableFieldType(typeName: string, visited: Set<string> = new Set()): boolean {
+        if (isPrimitiveFieldType(typeName)) return true;
+
+        if (visited.has(typeName)) return false;
+        visited.add(typeName);
+
+        const resolved = this.resolveRecordType(typeName);
+        if (!resolved) return false;
+
+        if (resolved.glibTypeName) return true;
+
+        if (resolved.opaque || resolved.disguised) return false;
+
+        const publicFields = resolved.getPublicFields();
+        if (publicFields.length === 0) return false;
+
+        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string, visited));
+    }
+
+    private resolveRecordType(typeName: string): GirRecord | null {
+        if (typeName.includes(".")) {
+            return this.options.repository.resolveRecord(typeName as QualifiedName);
+        }
+
+        const ns = this.options.repository.getNamespace(this.ctx.currentNamespace ?? this.options.namespace);
+        if (!ns) return null;
+
+        return ns.records.get(typeName) ?? null;
+    }
+
     private shouldGenerateRecord(record: GirRecord): boolean {
         if (record.disguised) return false;
 
@@ -286,7 +316,7 @@ export class FfiGenerator {
         const publicFields = record.getPublicFields();
         if (publicFields.length === 0) return false;
 
-        return publicFields.every((field) => isPrimitiveFieldType(field.type.name as string));
+        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string));
     }
 
     private isUsableStubRecord(record: GirRecord): boolean {

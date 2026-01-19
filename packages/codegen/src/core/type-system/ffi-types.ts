@@ -231,6 +231,11 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["DestroyNotify", { ts: "number", ffi: FFI_POINTER }],
     ["GLib.FreeFunc", { ts: "number", ffi: FFI_POINTER }],
     ["FreeFunc", { ts: "number", ffi: FFI_POINTER }],
+    ["GlyphUnit", { ts: "number", ffi: FFI_INT32 }],
+    ["Pango.GlyphUnit", { ts: "number", ffi: FFI_INT32 }],
+    ["Glyph", { ts: "number", ffi: FFI_UINT32 }],
+    ["Pango.Glyph", { ts: "number", ffi: FFI_UINT32 }],
+    ["cairo.Glyph", { ts: "number", ffi: FFI_UINT32 }],
 ]);
 
 export const BOXED_TYPE_SIZES = new Map<string, number>([
@@ -395,6 +400,7 @@ export const refType = (innerType: FfiTypeDescriptor): FfiTypeDescriptor => ({
 /**
  * GLib primitive type names that can be used in plain struct fields.
  * Derived from PRIMITIVE_TYPE_MAP, excluding special/pointer types.
+ * Also includes well-known type aliases from GTK libraries.
  */
 const PRIMITIVE_FIELD_TYPES = new Set([
     "gint",
@@ -416,11 +422,17 @@ const PRIMITIVE_FIELD_TYPES = new Set([
     "gssize",
     "glong",
     "gulong",
+    "GlyphUnit",
+    "Pango.GlyphUnit",
+    "Glyph",
+    "Pango.Glyph",
+    "cairo.Glyph",
 ]);
 
 /**
  * Types that can be written to memory in struct fields.
  * Subset of PRIMITIVE_FIELD_TYPES that are safe for memory writes.
+ * Also includes well-known type aliases from GTK libraries.
  */
 const MEMORY_WRITABLE_TYPES = new Set([
     "gboolean",
@@ -446,6 +458,11 @@ const MEMORY_WRITABLE_TYPES = new Set([
     "gssize",
     "gdouble",
     "double",
+    "GlyphUnit",
+    "Pango.GlyphUnit",
+    "Glyph",
+    "Pango.Glyph",
+    "cairo.Glyph",
 ]);
 
 /**

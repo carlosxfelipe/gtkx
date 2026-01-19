@@ -75,6 +75,9 @@ export class GenerationContext {
     /** Whether the module uses NativeObject base class */
     usesNativeObject = false;
 
+    /** Whether the module uses NativeHandle type */
+    usesNativeHandle = false;
+
     /** Whether the module uses getNativeObject helper */
     usesGetNativeObject = false;
 
@@ -135,6 +138,7 @@ export class GenerationContext {
         this.usesNativeError = false;
         this.currentNamespace = undefined;
         this.usesNativeObject = false;
+        this.usesNativeHandle = false;
         this.usesGetNativeObject = false;
         this.usesRegisterNativeClass = false;
         this.usesGetClassByTypeName = false;
