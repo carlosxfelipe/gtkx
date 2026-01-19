@@ -74,13 +74,13 @@ const RotatedTextDemo = () => {
     const labelRef = useRef<Gtk.Label | null>(null);
     const shapeRendererSetup = useRef(false);
 
-    const fancyShapeRenderer = useCallback((cr: Context, _attr: Pango.AttrShape, doPath: boolean) => {
+    const fancyShapeRenderer = useCallback((cr: Context, attr: Pango.AttrShape, doPath: boolean) => {
         const currentPoint = cr.getCurrentPoint();
         if (currentPoint) {
             cr.translate(currentPoint.x, currentPoint.y);
         }
 
-        cr.scale(18, 18);
+        cr.scale(attr.inkRect.width / Pango.SCALE, attr.inkRect.height / Pango.SCALE);
         drawHeart(cr, doPath);
     }, []);
 

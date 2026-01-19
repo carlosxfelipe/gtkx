@@ -77,17 +77,28 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 **Required Changes**: Add editable source view that re-renders on toggle. Load markup from external file.
 
 ### rotated-text.tsx
-**Status**: Reviewed
+**Status**: ✅ FIXED (January 2026)
 **Files Compared**: rotated-text.tsx ↔ rotated_text.c
 
-**Differences Found**:
-- 🔴 **Critical**: Official demo shows "I ♥ GTK" text with custom Pango shape renderer drawing actual heart - gtkx shows different text in circle
-- 🔴 **Critical**: Official demo has two panes: DrawingArea on left + GtkLabel on right (both with heart rendering) - gtkx only has drawing area
-- 🔴 **Critical**: Official demo uses gradient colors (red-blue) - gtkx uses HSL rainbow colors
-- 🟠 **Major**: Official has no controls (static) - gtkx adds rotation/font-size/spacing sliders
-- 🟠 **Major**: Official uses N_WORDS=5 copies of same text - gtkx uses 4 different sample texts
+**Previous Differences (All Resolved)**:
+- ~~🔴 **Critical**: Shape renderer used hardcoded scaling~~ ✅ Now uses attr.inkRect dimensions
+- ~~🔴 **Critical**: Hearts not properly sized relative to font~~ ✅ Scales using Pango.SCALE
+- ~~🔴 **Critical**: Missing two-pane layout~~ ✅ DrawingArea + GtkLabel with hearts
+- ~~🔴 **Critical**: Wrong gradient colors~~ ✅ Uses red-blue gradient matching official
+- ~~🟠 **Major**: Wrong text count~~ ✅ Uses N_WORDS=5 copies of "I ♥ GTK"
 
-**Required Changes**: Implement custom shape renderer for heart character. Match the "I ♥ GTK" visual. Add second pane with GtkLabel.
+**Implementation Summary**:
+- Added manual Pango.AttrShape extension (`packages/ffi/src/pango/pango.ts`) with `inkRect` and `logicalRect` getters
+- Uses module augmentation pattern (same as Cairo extensions)
+- Shape renderer now uses `attr.inkRect.width / Pango.SCALE` for proper scaling
+- Two-pane layout: DrawingArea (5 rotated texts in circle) + GtkLabel (with heart)
+
+**Infrastructure Changes**:
+- Created `packages/ffi/src/pango/pango.ts` - AttrShape field accessors via pointer arithmetic
+- Created `packages/ffi/src/pango/index.ts` - re-exports generated types + imports extension
+- Updated `packages/ffi/src/index.ts` - imports pango extension
+
+**Required Changes**: None - demo now matches official GTK4 rotated_text demo.
 
 ### textmask.tsx
 **Status**: Reviewed
@@ -1072,7 +1083,7 @@ The following demos were removed because they require custom GObject subclasses 
 
 | Category | Total | Critical | Major | Minor | Trivial |
 |----------|-------|----------|-------|-------|---------|
-| Advanced | 6 | 2 | 6 | 4 | 2 | *(font-features FIXED)*
+| Advanced | 6 | 1 | 4 | 4 | 2 | *(font-features, rotated-text FIXED)*
 | Benchmark | 2 | 0 | 4 | 1 | 0 |
 | Buttons | 4 | 0 | 1 | 2 | 4 |
 | Constraints | 3 | 0 | 1 | 1 | 4 |
@@ -1088,13 +1099,13 @@ The following demos were removed because they require custom GObject subclasses 
 | Navigation | 3 | 0 | 1 | 1 | 4 |
 | OpenGL | 3 | 1 | 1 | 1 | 3 |
 | Paths | 7 | 4 | 10 | 2 | 1 |
-| **Total** | **77** | **20** | **73** | **59** | **43** |
+| **Total** | **77** | **19** | **71** | **59** | **43** |
 
 ## Priority Fixes by Severity
 
-### Critical (Must Fix - 15 issues remaining)
+### Critical (Must Fix - 14 issues remaining)
 - ~~**font-features**: Complete rewrite~~ ✅ **FIXED** - full feature parity achieved
-- **rotated-text**: Missing heart shape renderer, two-pane layout
+- ~~**rotated-text**: Missing heart shape renderer, two-pane layout~~ ✅ **FIXED** - shape renderer scaling
 - **transparent**: Missing backdrop-filter blur
 - **listview-colors**: Wrong view type (ListView vs GridView)
 - **dnd**: Missing GtkGestureRotate, context menus, item editing
