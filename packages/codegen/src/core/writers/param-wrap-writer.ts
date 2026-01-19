@@ -1,4 +1,4 @@
-import type { WriterFunction } from "ts-morph";
+import type { CodeBlockWriter, WriterFunction } from "ts-morph";
 import type { MappedType } from "../type-system/ffi-types.js";
 
 export type ParamWrapInfo = {
@@ -121,10 +121,7 @@ export class ParamWrapWriter {
         };
     }
 
-    private writeWrapExpressionsList(
-        wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
-        writer: import("ts-morph").CodeBlockWriter,
-    ): void {
+    private writeWrapExpressionsList(wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>, writer: CodeBlockWriter): void {
         wrapInfos.forEach((w, index) => {
             const argAccess = `args[${index}]`;
             const expression = this.writeWrapExpression(argAccess, w.wrapInfo);

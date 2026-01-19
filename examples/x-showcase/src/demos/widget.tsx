@@ -31,7 +31,7 @@ export const WidgetDemo = () => {
         >
             <GtkLabel label="Widget Components" cssClasses={["title-1"]} halign={Gtk.Align.START} />
 
-            <AdwPreferencesGroup title="x.ScaleMark" description="Marks on a GtkScale slider">
+            <AdwPreferencesGroup title="GtkScale marks" description="Marks on a GtkScale slider via the marks prop">
                 <GtkFrame marginTop={12}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -44,34 +44,43 @@ export const WidgetDemo = () => {
                         <GtkLabel label={`Value: ${scaleValue}`} />
                         <GtkScale
                             hexpand
-                            onValueChanged={(range: Gtk.Range) => setScaleValue(Math.round(range.getValue()))}
-                        >
-                            <x.Adjustment
-                                value={scaleValue}
-                                lower={0}
-                                upper={100}
-                                stepIncrement={1}
-                                pageIncrement={10}
-                            />
-                            <x.ScaleMark value={0} label="0" position={Gtk.PositionType.BOTTOM} />
-                            <x.ScaleMark value={25} position={Gtk.PositionType.BOTTOM} />
-                            <x.ScaleMark value={50} label="50" position={Gtk.PositionType.BOTTOM} />
-                            <x.ScaleMark value={75} position={Gtk.PositionType.BOTTOM} />
-                            <x.ScaleMark value={100} label="100" position={Gtk.PositionType.BOTTOM} />
-                        </GtkScale>
+                            value={scaleValue}
+                            lower={0}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChanged={(value) => setScaleValue(Math.round(value))}
+                            marks={[
+                                { value: 0, label: "0", position: Gtk.PositionType.BOTTOM },
+                                { value: 25, position: Gtk.PositionType.BOTTOM },
+                                { value: 50, label: "50", position: Gtk.PositionType.BOTTOM },
+                                { value: 75, position: Gtk.PositionType.BOTTOM },
+                                { value: 100, label: "100", position: Gtk.PositionType.BOTTOM },
+                            ]}
+                        />
 
                         <GtkLabel label="With labels on specific marks" cssClasses={["dim-label"]} marginTop={12} />
-                        <GtkScale hexpand>
-                            <x.Adjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />
-                            <x.ScaleMark value={0} label="Min" position={Gtk.PositionType.TOP} />
-                            <x.ScaleMark value={50} label="Mid" position={Gtk.PositionType.TOP} />
-                            <x.ScaleMark value={100} label="Max" position={Gtk.PositionType.TOP} />
-                        </GtkScale>
+                        <GtkScale
+                            hexpand
+                            value={50}
+                            lower={0}
+                            upper={100}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            marks={[
+                                { value: 0, label: "Min", position: Gtk.PositionType.TOP },
+                                { value: 50, label: "Mid", position: Gtk.PositionType.TOP },
+                                { value: 100, label: "Max", position: Gtk.PositionType.TOP },
+                            ]}
+                        />
                     </GtkBox>
                 </GtkFrame>
             </AdwPreferencesGroup>
 
-            <AdwPreferencesGroup title="x.CalendarMark" description="Mark specific days on a GtkCalendar">
+            <AdwPreferencesGroup
+                title="GtkCalendar markedDays"
+                description="Mark specific days on a GtkCalendar via the markedDays prop"
+            >
                 <GtkFrame marginTop={12}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -86,16 +95,20 @@ export const WidgetDemo = () => {
                             halign={Gtk.Align.START}
                             cssClasses={["dim-label"]}
                         />
-                        <GtkCalendar year={today.getFullYear()} month={today.getMonth()} day={today.getDate()}>
-                            {markedDays.map((day) => (
-                                <x.CalendarMark key={day} day={day} />
-                            ))}
-                        </GtkCalendar>
+                        <GtkCalendar
+                            year={today.getFullYear()}
+                            month={today.getMonth()}
+                            day={today.getDate()}
+                            markedDays={markedDays}
+                        />
                     </GtkBox>
                 </GtkFrame>
             </AdwPreferencesGroup>
 
-            <AdwPreferencesGroup title="x.LevelBarOffset" description="Named thresholds on a GtkLevelBar">
+            <AdwPreferencesGroup
+                title="GtkLevelBar offsets"
+                description="Named thresholds on a GtkLevelBar via the offsets prop"
+            >
                 <GtkFrame marginTop={12}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -106,26 +119,28 @@ export const WidgetDemo = () => {
                         marginEnd={12}
                     >
                         <GtkLabel label={`Level: ${Math.round(levelValue * 100)}%`} />
-                        <GtkLevelBar value={levelValue} minValue={0} maxValue={1}>
-                            <x.LevelBarOffset id="low" value={0.25} />
-                            <x.LevelBarOffset id="high" value={0.75} />
-                            <x.LevelBarOffset id="full" value={1.0} />
-                        </GtkLevelBar>
+                        <GtkLevelBar
+                            value={levelValue}
+                            minValue={0}
+                            maxValue={1}
+                            offsets={[
+                                { id: "low", value: 0.25 },
+                                { id: "high", value: 0.75 },
+                                { id: "full", value: 1.0 },
+                            ]}
+                        />
 
                         <GtkBox halign={Gtk.Align.CENTER} spacing={6}>
                             <GtkLabel label="0%" cssClasses={["dim-label"]} />
                             <GtkScale
                                 widthRequest={200}
-                                onValueChanged={(range: Gtk.Range) => setLevelValue(range.getValue())}
-                            >
-                                <x.Adjustment
-                                    value={levelValue}
-                                    lower={0}
-                                    upper={1}
-                                    stepIncrement={0.01}
-                                    pageIncrement={0.1}
-                                />
-                            </GtkScale>
+                                value={levelValue}
+                                lower={0}
+                                upper={1}
+                                stepIncrement={0.01}
+                                pageIncrement={0.1}
+                                onValueChanged={(value) => setLevelValue(value)}
+                            />
                             <GtkLabel label="100%" cssClasses={["dim-label"]} />
                         </GtkBox>
 

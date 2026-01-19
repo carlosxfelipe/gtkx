@@ -2,6 +2,11 @@ import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
+import type {
+    GtkGridViewProps as GeneratedGtkGridViewProps,
+    GtkListViewProps as GeneratedGtkListViewProps,
+    WidgetSlotNames,
+} from "./generated/jsx.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
@@ -356,20 +361,17 @@ export type NavigationPageProps =
     | (NavigationPageBaseProps & { for: "AdwNavigationView"; id: string })
     | (NavigationPageBaseProps & {
           for: "AdwNavigationSplitView";
-          id: import("./generated/jsx.js").WidgetSlotNames["AdwNavigationSplitView"];
+          id: WidgetSlotNames["AdwNavigationSplitView"];
       });
 
-/**
- * Type mapping widget names to their available slot IDs.
- */
-export type { WidgetSlotNames } from "./generated/jsx.js";
+export type { WidgetSlotNames };
 
 /**
  * Props for the ListView component.
  *
  * @typeParam T - The type of items in the list
  */
-export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
+export type ListViewProps<T = unknown> = Omit<GeneratedGtkListViewProps, "renderItem"> & {
     /** Function to render each list item */
     renderItem: (item: T | null) => ReactNode;
     /** Estimated item height in pixels for proper virtualization before content loads */
@@ -381,7 +383,7 @@ export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkLi
  *
  * @typeParam T - The type of items in the grid
  */
-export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGridViewProps, "renderItem"> & {
+export type GridViewProps<T = unknown> = Omit<GeneratedGtkGridViewProps, "renderItem"> & {
     /** Function to render each grid item */
     renderItem: (item: T | null) => ReactNode;
     /** Estimated item height in pixels for proper virtualization before content loads */
@@ -393,7 +395,7 @@ export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGr
  *
  * @typeParam T - The type of items in the tree
  */
-export type TreeListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
+export type TreeListViewProps<T = unknown> = Omit<GeneratedGtkListViewProps, "renderItem"> & {
     /** Function to render each tree item */
     renderItem: TreeRenderItemFn<T>;
     /** Estimated item height in pixels for proper virtualization before content loads */
@@ -446,9 +448,9 @@ export const x = {
      * </GtkHeaderBar>
      * ```
      */
-    Slot<W extends keyof import("./generated/jsx.js").WidgetSlotNames>(props: {
+    Slot<W extends keyof WidgetSlotNames>(props: {
         for: W;
-        id: import("./generated/jsx.js").WidgetSlotNames[W];
+        id: WidgetSlotNames[W];
         children?: ReactNode;
     }): ReactElement {
         return createElement("Slot", { id: props.id }, props.children);

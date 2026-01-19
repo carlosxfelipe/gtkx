@@ -242,9 +242,10 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.hasMarks && widget.className === "Scale") {
+            this.usedNamespaces.add("Gtk");
             props.push({
                 name: "marks",
-                type: 'Array<{ value: number; position?: import("@gtkx/ffi/gtk").PositionType; label?: string | null }> | null',
+                type: "Array<{ value: number; position?: Gtk.PositionType; label?: string | null }> | null",
                 optional: true,
                 doc: "Array of marks to display on the scale",
             });
@@ -269,6 +270,7 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.hasBuffer && widget.className === "TextView") {
+            this.usedNamespaces.add("Gtk");
             props.push(
                 {
                     name: "enableUndo",
@@ -278,19 +280,19 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "onBufferChanged",
-                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer) => void) | null',
+                    type: "((buffer: Gtk.TextBuffer) => void) | null",
                     optional: true,
                     doc: "Callback when the buffer content changes. Use buffer.getText() to extract text.",
                 },
                 {
                     name: "onTextInserted",
-                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, offset: number, text: string) => void) | null',
+                    type: "((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null",
                     optional: true,
                     doc: "Callback when text is inserted into the buffer",
                 },
                 {
                     name: "onTextDeleted",
-                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, startOffset: number, endOffset: number) => void) | null',
+                    type: "((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null",
                     optional: true,
                     doc: "Callback when text is deleted from the buffer",
                 },
@@ -310,6 +312,8 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.hasBuffer && widget.namespace === "GtkSource") {
+            this.usedNamespaces.add("Gtk");
+            this.usedNamespaces.add("GtkSource");
             props.push(
                 {
                     name: "enableUndo",
@@ -319,19 +323,19 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "onBufferChanged",
-                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer) => void) | null',
+                    type: "((buffer: Gtk.TextBuffer) => void) | null",
                     optional: true,
                     doc: "Callback when the buffer content changes. Use buffer.getText() to extract text.",
                 },
                 {
                     name: "onTextInserted",
-                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, offset: number, text: string) => void) | null',
+                    type: "((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null",
                     optional: true,
                     doc: "Callback when text is inserted into the buffer",
                 },
                 {
                     name: "onTextDeleted",
-                    type: '((buffer: import("@gtkx/ffi/gtk").TextBuffer, startOffset: number, endOffset: number) => void) | null',
+                    type: "((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null",
                     optional: true,
                     doc: "Callback when text is deleted from the buffer",
                 },
@@ -349,13 +353,13 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "language",
-                    type: 'string | import("@gtkx/ffi/gtksource").Language',
+                    type: "string | GtkSource.Language",
                     optional: true,
                     doc: 'Language for syntax highlighting. Can be a language ID string (e.g., "typescript", "python") or a GtkSource.Language object.',
                 },
                 {
                     name: "styleScheme",
-                    type: 'string | import("@gtkx/ffi/gtksource").StyleScheme',
+                    type: "string | GtkSource.StyleScheme",
                     optional: true,
                     doc: 'Style scheme for syntax highlighting colors. Can be a scheme ID string (e.g., "Adwaita-dark") or a GtkSource.StyleScheme object.',
                 },
@@ -385,7 +389,7 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "onHighlightUpdated",
-                    type: '((start: import("@gtkx/ffi/gtk").TextIter, end: import("@gtkx/ffi/gtk").TextIter) => void) | null',
+                    type: "((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null",
                     optional: true,
                     doc: "Callback when syntax highlighting is updated for a region",
                 },
@@ -393,6 +397,7 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.isListWidget || widget.isColumnViewWidget) {
+            this.usedNamespaces.add("Gtk");
             props.push(
                 {
                     name: "selected",
@@ -408,7 +413,7 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "selectionMode",
-                    type: 'import("@gtkx/ffi/gtk").SelectionMode | null',
+                    type: "Gtk.SelectionMode | null",
                     optional: true,
                     doc: "Selection mode: SINGLE (default) or MULTIPLE",
                 },
@@ -416,6 +421,7 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.isColumnViewWidget) {
+            this.usedNamespaces.add("Gtk");
             props.push(
                 {
                     name: "sortColumn",
@@ -425,13 +431,13 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "sortOrder",
-                    type: 'import("@gtkx/ffi/gtk").SortType | null',
+                    type: "Gtk.SortType | null",
                     optional: true,
                     doc: "The current sort direction",
                 },
                 {
                     name: "onSortChanged",
-                    type: '((column: string | null, order: import("@gtkx/ffi/gtk").SortType) => void) | null',
+                    type: "((column: string | null, order: Gtk.SortType) => void) | null",
                     optional: true,
                     doc: "Called when a column header is clicked to change sort",
                 },
@@ -447,7 +453,7 @@ export class WidgetPropsBuilder {
         if (widget.isListWidget) {
             props.push({
                 name: "renderItem",
-                type: '(item: any) => import("react").ReactNode',
+                type: "(item: any) => ReactNode",
                 optional: false,
                 doc: "Render function for list items.\nCalled with null during setup (for loading state) and with the actual item during bind.",
             });
@@ -506,9 +512,11 @@ export class WidgetPropsBuilder {
         }
 
         if (widget.isDrawingArea) {
+            this.usedNamespaces.add("Gtk");
+            this.usedNamespaces.add("cairo");
             props.push({
                 name: "onDraw",
-                type: '((self: import("@gtkx/ffi/gtk").DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void) | null',
+                type: "((self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void) | null",
                 optional: true,
                 doc: "Called to draw the contents of the drawing area.\n@param self - The drawing area widget\n@param cr - The Cairo context to draw with\n@param width - The actual width of the drawing area\n@param height - The actual height of the drawing area",
             });

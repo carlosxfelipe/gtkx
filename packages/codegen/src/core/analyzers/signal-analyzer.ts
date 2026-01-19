@@ -2,6 +2,7 @@ import type { GirClass, GirRepository, GirSignal } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import type { SignalAnalysis, SignalParam } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
+import type { TypeImport } from "../type-system/ffi-types.js";
 import { collectExternalNamespaces } from "../type-system/ffi-types.js";
 import { collectDirectMembers, collectParentSignalNames } from "../utils/class-traversal.js";
 import { createHandlerName, toCamelCase } from "../utils/naming.js";
@@ -40,7 +41,7 @@ export class SignalAnalyzer {
         const camelName = toCamelCase(signal.name);
         const handlerName = createHandlerName(camelName);
 
-        const allImports: import("../type-system/ffi-types.js").TypeImport[] = [];
+        const allImports: TypeImport[] = [];
 
         const parameters: SignalParam[] = signal.parameters.map((param) => {
             const typeMapping = this.ffiMapper.mapParameter(param);
