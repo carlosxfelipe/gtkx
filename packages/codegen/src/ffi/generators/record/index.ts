@@ -16,7 +16,7 @@ import {
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { boxedSelfType, type FfiTypeDescriptor, isPrimitiveFieldType, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
+import { boxedSelfType, type FfiTypeDescriptor, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";

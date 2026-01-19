@@ -10,14 +10,13 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 
 ## Advanced
 - [✓] font-features.tsx ↔ font_features.c (FIXED - full feature parity)
-- [x] fontrendering.tsx ↔ fontrendering.c (🔴 Critical - missing glyph inspection)
+- [✓] fontrendering.tsx ↔ fontrendering.c (matches)
 - [x] markup.tsx ↔ markup.c (🟠 Major - add editable source)
 - [x] rotated-text.tsx ↔ rotated_text.c (🔴 Critical - different visual)
 - [✓] textmask.tsx ↔ textmask.c (gtkx superset)
 - [x] transparent.tsx ↔ transparent.c (🔴 Critical - missing backdrop blur)
 
 ## Benchmark
-- [x] fishbowl.tsx ↔ fishbowl.c (🔴 Critical - complete reimplementation)
 - [x] frames.tsx ↔ frames.c (🟠 Major - frame clock timing)
 - [x] themes.tsx ↔ themes.c (🟠 Major - visual demo content)
 
@@ -43,24 +42,20 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] theming-style-classes.tsx ↔ theming_style_classes.c (🟠 Major - enhanced)
 
 ## Dialogs
-- [x] dialog.tsx ↔ dialog.c (🔴 Critical - missing interactive dialog)
+- [✓] dialog.tsx ↔ dialog.c (FIXED - interactive dialog added)
 - [✓] pagesetup.tsx ↔ pagesetup.c (uses modern GTK4 API)
 - [x] pickers.tsx ↔ pickers.c (🟡 Minor - missing drag-drop)
 - [x] printing.tsx ↔ printing.c (🟠 Major - hardcoded text)
 
 ## Drawing
 - [x] drawingarea.tsx ↔ drawingarea.c (🟡 Minor)
-- [x] image-filtering.tsx ↔ image_filtering.c (🔴 Critical - CSS vs GSK)
 - [x] image-scaling.tsx ↔ image_scaling.c (gtkx enhancement)
 - [x] images.tsx ↔ images.c (🟠 Major - missing features)
 - [✓] mask.tsx ↔ mask.c (matches)
 - [x] paint.tsx ↔ paint.c (🟠 Major - missing tablet features)
 - [x] paintable.tsx ↔ paintable.c (🟡 Minor)
 - [x] paintable-animated.tsx ↔ paintable_animated.c (improved)
-- [x] paintable-emblem.tsx ↔ paintable_emblem.c (🟠 Major - architecture)
-- [x] paintable-mediastream.tsx ↔ paintable_mediastream.c (🟠 Major)
 - [x] paintable-svg.tsx ↔ paintable_svg.c (🟡 Minor)
-- [x] paintable-symbolic.tsx ↔ paintable_symbolic.c (🟡 Minor)
 
 ## Games
 - [x] listview-minesweeper.tsx ↔ listview_minesweeper.c (🔴 Critical - flood-fill)
@@ -80,10 +75,8 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] entry-undo.tsx ↔ entry_undo.c (🟡 Minor)
 - [x] hypertext.tsx ↔ hypertext.c (🔴 Critical - pages, widgets)
 - [x] password-entry.tsx ↔ password_entry.c (🟠 Major - header bar)
-- [x] read-more.tsx ↔ read_more.c (🔴 Critical - custom widget)
 - [x] search-entry.tsx ↔ search_entry.c (🟠 Major - header bar)
 - [x] tabs.tsx ↔ tabs.c (🟡 Minor)
-- [x] tagged-entry.tsx ↔ tagged_entry.c (🔴 Critical - custom widget)
 - [x] textscroll.tsx ↔ textscroll.c (🟡 Minor)
 - [x] textundo.tsx ↔ textundo.c (🟡 Minor)
 - [x] textview.tsx ↔ textview.c (🟠 Major - features, i18n)
@@ -94,8 +87,6 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] fixed2.tsx ↔ fixed2.c (🟠 Major - timing, window size)
 - [x] flowbox.tsx ↔ flowbox.c (🟠 Major - dataset size)
 - [x] headerbar.tsx ↔ headerbar.c (🔴 Critical - titlebar integration)
-- [x] layoutmanager.tsx ↔ layoutmanager.c (🟠 Major - different approach)
-- [x] layoutmanager2.tsx ↔ layoutmanager2.c (🟠 Major - icon dataset)
 - [x] overlay.tsx ↔ overlay.c (🟡 Minor - spacing)
 - [x] overlay-decorative.tsx ↔ overlay_decorative.c (🔴 Critical - wrong images)
 - [✓] panes.tsx ↔ panes.c (matches well)
@@ -105,7 +96,6 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] listbox.tsx ↔ listbox.c (🟠 Major - sort function)
 - [x] listbox-controls.tsx ↔ listbox_controls.c (🟠 Major - rich-list)
 - [x] listview-applauncher.tsx ↔ listview_applauncher.c (🟠 Major - GridView)
-- [x] listview-clocks.tsx ↔ listview_clocks.c (🟠 Major - analog clocks)
 - [x] listview-colors.tsx ↔ listview_colors.c (🔴 Critical - wrong view type)
 - [x] listview-filebrowser.tsx ↔ listview_filebrowser.c (🟠 Major - polling)
 - [x] listview-selections.tsx ↔ listview_selections.c (🟠 Major - suggestion)
@@ -139,10 +129,23 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 
 ---
 
+## Removed Demos (require GObject subclassing)
+The following demos were removed because they require custom GObject subclasses that cannot be implemented in GTKX:
+- fishbowl.tsx - requires custom GtkFishbowl widget
+- image-filtering.tsx - requires custom GtkFilterPaintable
+- paintable-emblem.tsx - requires custom DemoIcon GdkPaintable
+- paintable-mediastream.tsx - requires custom GtkNuclearMediaStream
+- paintable-symbolic.tsx - requires custom GtkNuclearSymbolic
+- read-more.tsx - requires custom ReadMore widget
+- tagged-entry.tsx - requires custom DemoTaggedEntry widget
+- layoutmanager.tsx - requires custom DemoLayout manager
+- layoutmanager2.tsx - requires custom Demo2Layout manager
+- listview-clocks.tsx - requires custom GtkClock GdkPaintable
+
 ## Summary
-- Total demos: 87
+- Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 73
+- Reviewed: 63
 - Fully matched: 14
-- Critical issues: 19 (font-features fixed)
-- Major issues: 42
+- Critical issues: 15
+- Major issues: 37

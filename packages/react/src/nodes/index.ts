@@ -1,11 +1,13 @@
 import "./action-row.js";
 import "./adjustable.js";
+import "./alert-dialog-response.js";
 import "./application.js";
 import "./autowrapped.js";
 import "./calendar.js";
 import "./color-dialog-button.js";
 import "./column-view-column.js";
 import "./column-view.js";
+import "./dialog.js";
 import "./drawing-area.js";
 import "./expander-row.js";
 import "./fixed-child.js";

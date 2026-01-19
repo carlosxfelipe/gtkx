@@ -109,7 +109,13 @@ export class FfiGenerator {
             gobjectLibrary,
         };
 
-        const recordGenerator = new RecordGenerator(this.ffiMapper, this.ctx, writers, generatorOptions, this.options.repository);
+        const recordGenerator = new RecordGenerator(
+            this.ffiMapper,
+            this.ctx,
+            writers,
+            generatorOptions,
+            this.options.repository,
+        );
 
         for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {

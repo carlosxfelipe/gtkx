@@ -2,7 +2,6 @@ import type { Demo } from "../types.js";
 import { listboxDemo } from "./listbox.js";
 import { listboxControlsDemo } from "./listbox-controls.js";
 import { listviewApplauncherDemo } from "./listview-applauncher.js";
-import { listviewClocksDemo } from "./listview-clocks.js";
 import { listviewColorsDemo } from "./listview-colors.js";
 import { listviewFilebrowserDemo } from "./listview-filebrowser.js";
 import { listviewSelectionsDemo } from "./listview-selections.js";
@@ -16,7 +15,6 @@ export const listsDemos: Demo[] = [
     listboxDemo,
     listboxControlsDemo,
     listviewApplauncherDemo,
-    listviewClocksDemo,
     listviewColorsDemo,
     listviewFilebrowserDemo,
     listviewSelectionsDemo,

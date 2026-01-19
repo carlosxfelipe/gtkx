@@ -10,10 +10,16 @@ import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["defaultWidth", "defaultHeight", "onClose"] as const;
 
-type WindowProps = Props & {
+type CreditSection = {
+    name: string;
+    people: string[];
+};
+
+export type WindowProps = Props & {
     defaultWidth?: number;
     defaultHeight?: number;
     onClose?: () => void;
+    creditSections?: CreditSection[];
 };
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
@@ -55,6 +61,12 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
         this.menu = new MenuModel("root", {}, actionMap, application);
+
+        if (container instanceof Gtk.AboutDialog && props.creditSections) {
+            for (const section of props.creditSections) {
+                container.addCreditSection(section.name, section.people);
+            }
+        }
     }
 
     public override appendChild(child: Node): void {

@@ -61,8 +61,7 @@ const FontRenderingDemo = () => {
     const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
-        const targetPixelAlpha =
-            overlays.showPixels && overlays.showOutlines ? 0.5 : overlays.showPixels ? 1.0 : 0.0;
+        const targetPixelAlpha = overlays.showPixels && overlays.showOutlines ? 0.5 : overlays.showPixels ? 1.0 : 0.0;
         const targetOutlineAlpha = overlays.showOutlines ? 1.0 : 0.0;
 
         if (pixelAlpha === targetPixelAlpha && outlineAlpha === targetOutlineAlpha) return;
@@ -102,8 +101,7 @@ const FontRenderingDemo = () => {
                 animationRef.current = null;
             }
         };
-    }, [overlays.showPixels, overlays.showOutlines]);
-
+    }, [overlays.showPixels, overlays.showOutlines, outlineAlpha, pixelAlpha]);
 
     const drawTextMode = useCallback(
         (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -326,21 +324,12 @@ const FontRenderingDemo = () => {
     const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), []);
 
     return (
-        <GtkWindow
-            title="Font Rendering"
-            defaultWidth={800}
-            defaultHeight={600}
-            cssClasses={["background"]}
-        >
+        <GtkWindow title="Font Rendering" defaultWidth={800} defaultHeight={600} cssClasses={["background"]}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkHeaderBar>
                     <x.PackStart>
                         <GtkBox cssClasses={["linked"]}>
-                            <GtkToggleButton
-                                label="Text"
-                                active={mode === "text"}
-                                onToggled={() => setMode("text")}
-                            />
+                            <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
                             <GtkToggleButton
                                 label="Glyphs"
                                 active={mode === "glyphs"}
@@ -376,17 +365,11 @@ const FontRenderingDemo = () => {
                         marginBottom={12}
                     >
                         <GtkLabel label="Text:" halign={Gtk.Align.END} />
-                        <GtkEntry
-                            text={text}
-                            onChanged={(entry) => setText(entry.getText())}
-                            hexpand
-                        />
+                        <GtkEntry text={text} onChanged={(entry) => setText(entry.getText())} hexpand />
                         <GtkCheckButton
                             label="Show Pixels"
                             active={overlays.showPixels}
-                            onToggled={(btn) =>
-                                setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))
-                            }
+                            onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
                         />
                         <GtkDropDown
                             selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
@@ -402,24 +385,16 @@ const FontRenderingDemo = () => {
                         <GtkCheckButton
                             label="Show Extents"
                             active={overlays.showExtents}
-                            onToggled={(btn) =>
-                                setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))
-                            }
+                            onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
                         />
                         <GtkLabel label={`Zoom: ${scale}x`} halign={Gtk.Align.END} />
 
                         <GtkLabel label="Font:" halign={Gtk.Align.END} />
-                        <GtkFontDialogButton
-                            fontDesc={fontDesc}
-                            onFontDescChanged={setFontDesc}
-                            hexpand
-                        />
+                        <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} hexpand />
                         <GtkCheckButton
                             label="Show Outlines"
                             active={overlays.showOutlines}
-                            onToggled={(btn) =>
-                                setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))
-                            }
+                            onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
                         />
                         <GtkBox spacing={12}>
                             <GtkCheckButton
@@ -436,9 +411,7 @@ const FontRenderingDemo = () => {
                         <GtkCheckButton
                             label="Show Grid"
                             active={overlays.showGrid}
-                            onToggled={(btn) =>
-                                setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))
-                            }
+                            onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
                         />
                         <GtkBox />
                     </GtkGrid>

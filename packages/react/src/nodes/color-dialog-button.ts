@@ -6,7 +6,7 @@ import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
-export interface ColorDialogButtonProps extends Props {
+interface ColorDialogButtonProps extends Props {
     rgba?: Gdk.RGBA | null;
     onRgbaChanged?: (rgba: Gdk.RGBA) => void;
     title?: string;

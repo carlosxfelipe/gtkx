@@ -6,7 +6,7 @@ import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
-export interface FontDialogButtonProps extends Props {
+interface FontDialogButtonProps extends Props {
     fontDesc?: Pango.FontDescription | null;
     onFontDescChanged?: (fontDesc: Pango.FontDescription) => void;
     title?: string;

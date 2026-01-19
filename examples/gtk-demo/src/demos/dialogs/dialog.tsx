@@ -1,223 +1,112 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, useApplication } from "@gtkx/react";
-import { useState } from "react";
+import { AdwAlertDialog, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, GtkSeparator, x } from "@gtkx/react";
+import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
 const DialogDemo = () => {
-    const [lastResponse, setLastResponse] = useState<string | null>(null);
-    const [confirmResult, setConfirmResult] = useState<string | null>(null);
     const [clickCount, setClickCount] = useState(0);
-    const app = useApplication();
+    const [entry1, setEntry1] = useState("");
+    const [entry2, setEntry2] = useState("");
 
-    const showSimpleDialog = async () => {
-        const dialog = new Adw.AlertDialog("Simple Dialog", "This is a basic alert dialog with a single button.");
-        dialog.addResponse("ok", "OK");
-        dialog.setDefaultResponse("ok");
-        dialog.setCloseResponse("ok");
+    const [showMessageDialog, setShowMessageDialog] = useState(false);
+    const [showInteractiveDialog, setShowInteractiveDialog] = useState(false);
 
-        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
-        setLastResponse(response);
+    const dialogEntry1Ref = useRef<Gtk.Entry>(null);
+    const dialogEntry2Ref = useRef<Gtk.Entry>(null);
+
+    const handleMessageDialogOpen = () => {
+        setClickCount((c) => c + 1);
+        setShowMessageDialog(true);
     };
 
-    const showConfirmDialog = async () => {
-        const dialog = new Adw.AlertDialog(
-            "Confirm Action",
-            "Are you sure you want to proceed with this action? This cannot be undone.",
-        );
-        dialog.addResponse("cancel", "Cancel");
-        dialog.addResponse("confirm", "Confirm");
-        dialog.setResponseAppearance("confirm", Adw.ResponseAppearance.SUGGESTED);
-        dialog.setDefaultResponse("confirm");
-        dialog.setCloseResponse("cancel");
-
-        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
-        setConfirmResult(response === "confirm" ? "Confirmed" : "Cancelled");
-    };
-
-    const showDestructiveDialog = async () => {
-        const dialog = new Adw.AlertDialog(
-            "Delete Item?",
-            "This will permanently delete the selected item. This action cannot be undone.",
-        );
-        dialog.addResponse("cancel", "Cancel");
-        dialog.addResponse("delete", "Delete");
-        dialog.setResponseAppearance("delete", Adw.ResponseAppearance.DESTRUCTIVE);
-        dialog.setDefaultResponse("cancel");
-        dialog.setCloseResponse("cancel");
-
-        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
-        setLastResponse(response === "delete" ? "Item deleted" : "Delete cancelled");
-    };
-
-    const showMultipleChoiceDialog = async () => {
-        const dialog = new Adw.AlertDialog("Save Changes?", "You have unsaved changes. What would you like to do?");
-        dialog.addResponse("discard", "Discard");
-        dialog.addResponse("cancel", "Cancel");
-        dialog.addResponse("save", "Save");
-        dialog.setResponseAppearance("discard", Adw.ResponseAppearance.DESTRUCTIVE);
-        dialog.setResponseAppearance("save", Adw.ResponseAppearance.SUGGESTED);
-        dialog.setDefaultResponse("save");
-        dialog.setCloseResponse("cancel");
-
-        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
-        const messages: Record<string, string> = {
-            save: "Changes saved",
-            discard: "Changes discarded",
-            cancel: "Action cancelled",
-        };
-        setLastResponse(messages[response] ?? response);
-    };
-
-    const showClickCountDialog = async () => {
-        const newCount = clickCount + 1;
-        setClickCount(newCount);
-
-        const dialog = new Adw.AlertDialog(
-            "Click Counter",
-            `This button has been clicked ${newCount} time${newCount === 1 ? "" : "s"}.`,
-        );
-        dialog.addResponse("ok", "OK");
-        dialog.addResponse("reset", "Reset Counter");
-        dialog.setDefaultResponse("ok");
-        dialog.setCloseResponse("ok");
-
-        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
-        if (response === "reset") {
-            setClickCount(0);
+    const handleInteractiveDialogResponse = (_dialog: Adw.AlertDialog, response: string) => {
+        if (response === "ok") {
+            setEntry1(dialogEntry1Ref.current?.getText() ?? "");
+            setEntry2(dialogEntry2Ref.current?.getText() ?? "");
         }
+        setShowInteractiveDialog(false);
     };
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Modal Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            marginTop={8}
+            marginBottom={8}
+            marginStart={8}
+            marginEnd={8}
+        >
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkButton label="_Message Dialog" useUnderline onClicked={handleMessageDialogOpen} />
+            </GtkBox>
 
-            <GtkLabel
-                label="AdwAlertDialog provides a simple way to show modal dialogs with a heading, body text, and response buttons. Dialogs are presented using the async choose() method."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+            <GtkSeparator orientation={Gtk.Orientation.HORIZONTAL} />
 
-            <GtkFrame label="Simple Alert">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkButton label="_Interactive Dialog" useUnderline onClicked={() => setShowInteractiveDialog(true)} />
+                <GtkGrid rowSpacing={4} columnSpacing={4}>
+                    <x.GridChild column={0} row={0}>
+                        <GtkLabel label="_Entry 1" useUnderline />
+                    </x.GridChild>
+                    <x.GridChild column={1} row={0}>
+                        <GtkEntry text={entry1} onChanged={(e) => setEntry1(e.getText())} />
+                    </x.GridChild>
+                    <x.GridChild column={0} row={1}>
+                        <GtkLabel label="E_ntry 2" useUnderline />
+                    </x.GridChild>
+                    <x.GridChild column={1} row={1}>
+                        <GtkEntry text={entry2} onChanged={(e) => setEntry2(e.getText())} />
+                    </x.GridChild>
+                </GtkGrid>
+            </GtkBox>
+
+            {showMessageDialog && (
+                <AdwAlertDialog
+                    heading="Information"
+                    body={`This message box has been popped up ${clickCount} time${clickCount === 1 ? "" : "s"}.`}
+                    defaultResponse="ok"
+                    closeResponse="ok"
+                    onResponse={() => setShowMessageDialog(false)}
                 >
-                    <GtkLabel
-                        label="A basic dialog with a single OK button."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkButton
-                        label="Show Simple Dialog"
-                        onClicked={() => void showSimpleDialog()}
-                        halign={Gtk.Align.START}
-                    />
-                </GtkBox>
-            </GtkFrame>
+                    <x.AlertDialogResponse id="ok" label="_OK" />
+                </AdwAlertDialog>
+            )}
 
-            <GtkFrame label="Confirmation Dialog">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+            {showInteractiveDialog && (
+                <AdwAlertDialog
+                    heading="Interactive Dialog"
+                    defaultResponse="ok"
+                    closeResponse="cancel"
+                    onResponse={handleInteractiveDialogResponse}
                 >
-                    <GtkLabel
-                        label="A dialog asking the user to confirm an action with Cancel and Confirm buttons."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={12}>
-                        <GtkButton label="Show Confirm Dialog" onClicked={() => void showConfirmDialog()} />
-                        {confirmResult && <GtkLabel label={`Result: ${confirmResult}`} cssClasses={["dim-label"]} />}
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Destructive Action">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="A dialog with a destructive action button (styled in red) for dangerous operations."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkButton
-                        label="Show Delete Dialog"
-                        onClicked={() => void showDestructiveDialog()}
-                        halign={Gtk.Align.START}
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Multiple Choices">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="A dialog with three response options: Save, Discard, and Cancel."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkButton
-                        label="Show Save Changes Dialog"
-                        onClicked={() => void showMultipleChoiceDialog()}
-                        halign={Gtk.Align.START}
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Click Counter">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="A dialog that shows how many times the button has been clicked. Similar to the official GTK demo."
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={12}>
-                        <GtkButton
-                            label="Click Me"
-                            onClicked={() => void showClickCountDialog()}
-                            cssClasses={["suggested-action"]}
-                        />
-                        <GtkLabel label={`Current count: ${clickCount}`} cssClasses={["dim-label"]} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            {lastResponse && (
-                <GtkLabel
-                    label={`Last response: ${lastResponse}`}
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
+                    <x.Slot for="AdwAlertDialog" id="extraChild">
+                        <GtkGrid
+                            rowSpacing={6}
+                            columnSpacing={6}
+                            hexpand
+                            vexpand
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                        >
+                            <x.GridChild column={0} row={0}>
+                                <GtkLabel label="_Entry 1" useUnderline />
+                            </x.GridChild>
+                            <x.GridChild column={1} row={0}>
+                                <GtkEntry ref={dialogEntry1Ref} text={entry1} />
+                            </x.GridChild>
+                            <x.GridChild column={0} row={1}>
+                                <GtkLabel label="E_ntry 2" useUnderline />
+                            </x.GridChild>
+                            <x.GridChild column={1} row={1}>
+                                <GtkEntry ref={dialogEntry2Ref} text={entry2} />
+                            </x.GridChild>
+                        </GtkGrid>
+                    </x.Slot>
+                    <x.AlertDialogResponse id="cancel" label="_Cancel" />
+                    <x.AlertDialogResponse id="ok" label="_OK" appearance={Adw.ResponseAppearance.SUGGESTED} />
+                </AdwAlertDialog>
             )}
         </GtkBox>
     );
@@ -227,8 +116,8 @@ export const dialogDemo: Demo = {
     id: "dialog",
     title: "Dialogs",
     description:
-        "A dialog is a transient window that appears in response to some user action. This demo shows modal dialogs with response buttons.",
-    keywords: ["dialog", "modal", "alert", "confirm", "message", "AdwAlertDialog", "response", "button", "GtkDialog"],
+        "A dialog is a transient window that appears in response to some user action. The Message Dialog shows a simple message box, while the Interactive Dialog demonstrates bidirectional data transfer with form fields.",
+    keywords: ["dialog", "modal", "alert", "message", "interactive", "AdwAlertDialog", "entry", "form"],
     component: DialogDemo,
     sourceCode,
 };

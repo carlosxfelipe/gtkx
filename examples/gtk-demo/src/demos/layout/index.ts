@@ -4,8 +4,6 @@ import { fixedDemo } from "./fixed.js";
 import { fixed2Demo } from "./fixed2.js";
 import { flowboxDemo } from "./flowbox.js";
 import { headerbarDemo } from "./headerbar.js";
-import { layoutManagerDemo } from "./layoutmanager.js";
-import { layoutManager2Demo } from "./layoutmanager2.js";
 import { overlayDemo } from "./overlay.js";
 import { overlayDecorativeDemo } from "./overlay-decorative.js";
 import { panesDemo } from "./panes.js";
@@ -21,6 +19,4 @@ export const layoutDemos: Demo[] = [
     overlayDemo,
     overlayDecorativeDemo,
     sizegroupDemo,
-    layoutManagerDemo,
-    layoutManager2Demo,
 ];

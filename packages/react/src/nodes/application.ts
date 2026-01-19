@@ -3,6 +3,7 @@ import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { DialogNode } from "./dialog.js";
 import { matchesAnyClass } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
@@ -34,7 +35,13 @@ class ApplicationNode extends Node<Gtk.Application> {
             return;
         }
 
-        throw new Error(`Cannot append '${child.typeName}' to 'Application': expected ApplicationWindow or MenuItem`);
+        if (child instanceof DialogNode) {
+            return;
+        }
+
+        throw new Error(
+            `Cannot append '${child.typeName}' to 'Application': expected ApplicationWindow, Dialog, or MenuItem`,
+        );
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -47,7 +54,13 @@ class ApplicationNode extends Node<Gtk.Application> {
             return;
         }
 
-        throw new Error(`Cannot insert '${child.typeName}' into 'Application': expected ApplicationWindow or MenuItem`);
+        if (child instanceof DialogNode) {
+            return;
+        }
+
+        throw new Error(
+            `Cannot insert '${child.typeName}' into 'Application': expected ApplicationWindow, Dialog, or MenuItem`,
+        );
     }
 
     public override removeChild(child: Node): void {
@@ -66,7 +79,13 @@ class ApplicationNode extends Node<Gtk.Application> {
             return;
         }
 
-        throw new Error(`Cannot remove '${child.typeName}' from 'Application': expected ApplicationWindow or MenuItem`);
+        if (child instanceof DialogNode) {
+            return;
+        }
+
+        throw new Error(
+            `Cannot remove '${child.typeName}' from 'Application': expected ApplicationWindow, Dialog, or MenuItem`,
+        );
     }
 }
 

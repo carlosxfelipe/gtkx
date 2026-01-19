@@ -9,7 +9,11 @@ import type { GirField, GirRecord, GirRepository, QualifiedName } from "@gtkx/gi
 import type { WriterFunction } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { getPrimitiveTypeSize, isMemoryWritableType, isPrimitiveFieldType } from "../../../core/type-system/ffi-types.js";
+import {
+    getPrimitiveTypeSize,
+    isMemoryWritableType,
+    isPrimitiveFieldType,
+} from "../../../core/type-system/ffi-types.js";
 import { toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import type { Writers } from "../../../core/writers/index.js";
 
@@ -152,8 +156,9 @@ export class FieldBuilder {
             return getPrimitiveTypeSize(typeName);
         }
 
-        if (this.sizeCache.has(typeName)) {
-            return this.sizeCache.get(typeName)!;
+        const cachedSize = this.sizeCache.get(typeName);
+        if (cachedSize !== undefined) {
+            return cachedSize;
         }
 
         const record = this.resolveRecord(typeName);

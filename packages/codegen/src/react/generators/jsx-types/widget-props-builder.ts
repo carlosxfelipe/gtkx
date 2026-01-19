@@ -601,6 +601,15 @@ export class WidgetPropsBuilder {
             );
         }
 
+        if (widget.className === "AboutDialog" && widget.namespace === "Gtk") {
+            props.push({
+                name: "creditSections",
+                type: "Array<{ name: string; people: string[] }>",
+                optional: true,
+                doc: "Custom credit sections to add to the Credits page. Each section has a name and list of people. Changes to this prop after mount are ignored.",
+            });
+        }
+
         return props;
     }
 

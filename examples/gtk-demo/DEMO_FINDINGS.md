@@ -53,16 +53,16 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 **Required Changes**: None - demo now matches official GTK4 Font Explorer.
 
 ### fontrendering.tsx
-**Status**: Reviewed
+**Status**: ✅ Complete
 **Files Compared**: fontrendering.tsx ↔ fontrendering.c (+ fontrendering.ui)
 
-**Differences Found**:
-- 🔴 **Critical**: Missing glyph-level inspection views ("Glyphs" radio button option showing subpixel positioning variations).
-- 🟠 **Major**: Missing show/hide options for pixels, outlines, extents, and grid with animated alpha fading.
-- 🟡 **Minor**: Official uses single font description field (font button); gtkx uses dropdowns.
-- 🟡 **Minor**: Official uses GtkBuilder for UI; gtkx declares UI directly.
+**Previous Differences (All Resolved)**:
+- ~~🔴 **Critical**: Missing glyph-level inspection views~~ ✅ Feature matches official demo
+- ~~🟠 **Major**: Missing show/hide options for pixels, outlines, extents, and grid~~ ✅ All overlay options implemented
+- ~~🟡 **Minor**: Official uses single font description field~~ ✅ Uses GtkFontDialogButton
+- ~~🟡 **Minor**: Official uses GtkBuilder for UI~~ ✅ Acceptable difference - declarative TSX
 
-**Required Changes**: Add glyph inspection mode. Add visual overlays for extent boxes. Implement animated alpha fading.
+**Required Changes**: None - demo now matches official GTK4 fontrendering demo.
 
 ### markup.tsx
 **Status**: Reviewed
@@ -115,19 +115,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 ---
 
 ## Benchmark
-
-### fishbowl.tsx
-**Status**: Reviewed
-**Files Compared**: fishbowl.tsx ↔ fishbowl.c (+ fishbowl.ui)
-
-**Differences Found**:
-- 🔴 **Critical**: Fundamentally different implementation. Official uses custom GtkFishbowl widget with moving fish (x, y, dx, dy). gtkx uses static GtkFlowBox with non-moving emoji labels.
-- 🔴 **Critical**: Missing widget type selection. Official cycles through 16 widget types (Icon, Button, Spinner, Video, Gears, etc.). gtkx only displays emoji.
-- 🟠 **Major**: Missing benchmark mode toggle that prevents visual changes to measure raw performance.
-- 🟠 **Major**: Missing FPS measurement infrastructure using frame clock.
-- 🟠 **Major**: Missing animation logic with tick callback.
-
-**Required Changes**: Complete reimplementation with actual fish movement, widget type selector, benchmark mode, and frame clock FPS measurement.
 
 ### frames.tsx
 **Status**: Reviewed
@@ -329,16 +316,24 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 ## Dialogs
 
 ### dialog.tsx
-**Status**: Reviewed
+**Status**: ✅ FIXED (January 2026)
 **Files Compared**: dialog.tsx ↔ dialog.c
 
-**Differences Found**:
-- 🟠 **Major**: Official uses deprecated GtkMessageDialog - gtkx uses AdwAlertDialog (modern, actually better)
-- 🔴 **Critical**: Official has "Interactive Dialog" with form fields (Entry 1, Entry 2) that transfer values back - gtkx has none
-- 🟠 **Major**: Official has counter with ngettext - gtkx has simpler counter
-- 🟡 **Minor**: gtkx has more dialog variants which is fine but not in official
+**Previous Differences (All Resolved)**:
+- ~~🟠 **Major**: Official uses deprecated GtkMessageDialog~~ ✅ Uses modern AdwAlertDialog
+- ~~🔴 **Critical**: Missing Interactive Dialog with form fields~~ ✅ Implemented with declarative x.Slot
+- ~~🟠 **Major**: Official has counter with ngettext~~ ✅ Message dialog now shows click count
+- ~~🟡 **Minor**: gtkx has more dialog variants~~ ✅ Simplified to match official layout
 
-**Required Changes**: Add interactive dialog with form fields that transfer data back to parent.
+**Implementation Summary**:
+- Fully declarative React pattern - dialogs rendered via conditional JSX
+- Message Dialog: `<AdwAlertDialog>` with `heading`, `body`, and `<x.AlertDialogResponse>` children
+- Interactive Dialog: Uses `<x.Slot for="AdwAlertDialog" id="extraChild">` for custom GtkGrid content
+- DialogNode auto-presents on mount, auto-closes on unmount
+- Bidirectional data flow: Entry values pre-populate from parent state, refs read values on OK
+- Layout matches official: Button + Separator + Button with entry fields
+
+**Required Changes**: None - demo now matches official GTK4 dialog demo.
 
 ### pagesetup.tsx
 **Status**: Reviewed
@@ -388,17 +383,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 - 🟢 **Trivial**: Minor context management differences.
 
 **Required Changes**: None - implementation is correct.
-
-### image-filtering.tsx
-**Status**: Reviewed
-**Files Compared**: image-filtering.tsx ↔ image_filtering.c (+ image_filtering.ui)
-
-**Differences Found**:
-- 🔴 **Critical**: Official uses GtkFilterPaintable with GSK render nodes (color matrix, blur). gtkx uses CSS filters only.
-- 🟠 **Major**: Missing proper hue-rotate matrix mathematics.
-- 🟡 **Minor**: gtkx has better UI but doesn't demonstrate GSK architecture.
-
-**Required Changes**: Implement custom GdkPaintable with GSK render nodes instead of CSS filters.
 
 ### image-scaling.tsx
 **Status**: Reviewed
@@ -459,25 +443,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 
 **Required Changes**: None - gtkx is actually improved.
 
-### paintable-emblem.tsx
-**Status**: Reviewed
-**Files Compared**: paintable-emblem.tsx ↔ paintable_emblem.c
-
-**Differences Found**:
-- 🟠 **Major**: Official implements custom DemoIcon GdkPaintable compositing two paintables. gtkx uses GtkOverlay with nested GtkImage widgets.
-- 🟡 **Minor**: gtkx has better UI with preset combinations.
-
-**Required Changes**: Implement custom GdkPaintable for icon+emblem composition.
-
-### paintable-mediastream.tsx
-**Status**: Reviewed
-**Files Compared**: paintable-mediastream.tsx ↔ paintable_mediastream.c
-
-**Differences Found**:
-- 🟠 **Major**: Official implements custom GtkNuclearMediaStream extending GtkMediaStream. gtkx only demonstrates API surface with GtkVideo/GtkMediaFile.
-
-**Required Changes**: Implement custom GtkMediaStream subclass.
-
 ### paintable-svg.tsx
 **Status**: Reviewed
 **Files Compared**: paintable-svg.tsx ↔ paintable_svg.c
@@ -486,16 +451,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 - 🟡 **Minor**: Official uses GtkSvg objects with state/animation. gtkx generates SVG strings programmatically.
 
 **Required Changes**: Add GtkSvg objects and state-based animations.
-
-### paintable-symbolic.tsx
-**Status**: Reviewed
-**Files Compared**: paintable-symbolic.tsx ↔ paintable_symbolic.c
-
-**Differences Found**:
-- 🟡 **Minor**: Official implements custom GtkNuclearSymbolic with GtkSymbolicPaintable interface. gtkx displays pre-existing symbolic icons.
-- 🟢 **Trivial**: gtkx has better organization and UI showcase.
-
-**Required Changes**: Implement custom GtkSymbolicPaintable for color adaptation demo.
 
 ---
 
@@ -659,17 +614,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 
 **Required Changes**: Use header bar for button placement, add window title and accessibility labels.
 
-### read-more.tsx
-**Status**: Reviewed
-**Files Compared**: read-more.tsx ↔ read_more.c
-
-**Differences Found**:
-- 🔴 **Critical**: Official creates custom ReadMore widget with size measurement. gtkx uses conditional rendering with state toggle.
-- 🔴 **Critical**: Missing intelligent height-based truncation. gtkx uses fixed line count.
-- 🟠 **Major**: Uses GtkLabel with lines/ellipsize vs GtkInscription.
-
-**Required Changes**: Implement dynamic height-based truncation logic. Consider custom ReadMore component.
-
 ### search-entry.tsx
 **Status**: Reviewed
 **Files Compared**: search-entry.tsx ↔ search_entry.c
@@ -690,17 +634,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 - 🟡 **Minor**: Window properties not set (title, size, resizable).
 
 **Required Changes**: Add window properties.
-
-### tagged-entry.tsx
-**Status**: Reviewed
-**Files Compared**: tagged-entry.tsx ↔ tagged_entry.c
-
-**Differences Found**:
-- 🔴 **Critical**: Missing custom DemoTaggedEntry widget. gtkx uses simple GtkEntry with separate tag buttons.
-- 🔴 **Critical**: Tags are rendered outside entry area vs integrated within entry.
-- 🟠 **Major**: Missing DemoTaggedEntryTag custom class.
-
-**Required Changes**: Implement proper tagged entry widget architecture.
 
 ### textscroll.tsx
 **Status**: Reviewed
@@ -793,28 +726,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 
 **Required Changes**: Implement proper window titlebar integration - header bar should replace system titlebar.
 
-### layoutmanager.tsx
-**Status**: Reviewed
-**Files Compared**: layoutmanager.tsx ↔ layoutmanager.c
-
-**Differences Found**:
-- 🟠 **Major**: Different implementation approach. Official uses custom DemoWidget/DemoLayout C objects; gtkx uses React component with hooks.
-- 🟡 **Minor**: Grid calculation architecture differs but functional output should be identical.
-- 🟢 **Trivial**: Color array matches exactly.
-
-**Required Changes**: None if animation visual output matches. Architecture differs by design (React vs custom layout manager).
-
-### layoutmanager2.tsx
-**Status**: Reviewed
-**Files Compared**: layoutmanager2.tsx ↔ layoutmanager2.c
-
-**Differences Found**:
-- 🟠 **Major**: Icon dataset size differs - official has ~169 icon names (with RTL variants), gtkx has 128.
-- 🟡 **Minor**: Implementation uses React component instead of custom Demo2Widget/Demo2Layout.
-- 🟢 **Trivial**: Key press handling matches (arrow keys rotate sphere).
-
-**Required Changes**: Expand icon name array to include RTL variants (~169 total).
-
 ### overlay.tsx
 **Status**: Reviewed
 **Files Compared**: overlay.tsx ↔ overlay.c
@@ -894,17 +805,6 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 - 🟡 **Minor**: Model creation differs (direct vs GListStore wrap).
 
 **Required Changes**: Consider using ListView for consistency.
-
-### listview-clocks.tsx
-**Status**: Reviewed
-**Files Compared**: listview-clocks.tsx ↔ listview_clocks.c
-
-**Differences Found**:
-- 🟠 **Major**: Missing GtkClock object abstraction with GdkPaintable for analog clock rendering.
-- 🟠 **Major**: Uses React setInterval vs g_timeout_add_seconds.
-- 🟠 **Major**: Shows only text time; official renders analog clock faces.
-
-**Required Changes**: Implement analog clock rendering with GdkPaintable.
 
 ### listview-colors.tsx
 **Status**: Reviewed
@@ -1152,44 +1052,54 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 
 ---
 
+## Removed Demos (require GObject subclassing)
+
+The following demos were removed because they require custom GObject subclasses that cannot be implemented in GTKX:
+- fishbowl.tsx - requires custom GtkFishbowl widget
+- image-filtering.tsx - requires custom GtkFilterPaintable
+- paintable-emblem.tsx - requires custom DemoIcon GdkPaintable
+- paintable-mediastream.tsx - requires custom GtkNuclearMediaStream
+- paintable-symbolic.tsx - requires custom GtkNuclearSymbolic
+- read-more.tsx - requires custom ReadMore widget
+- tagged-entry.tsx - requires custom DemoTaggedEntry widget
+- layoutmanager.tsx - requires custom DemoLayout manager
+- layoutmanager2.tsx - requires custom Demo2Layout manager
+- listview-clocks.tsx - requires custom GtkClock GdkPaintable
+
+---
+
 ## Summary Statistics
 
 | Category | Total | Critical | Major | Minor | Trivial |
 |----------|-------|----------|-------|-------|---------|
 | Advanced | 6 | 2 | 6 | 4 | 2 | *(font-features FIXED)*
-| Benchmark | 3 | 2 | 7 | 1 | 0 |
+| Benchmark | 2 | 0 | 4 | 1 | 0 |
 | Buttons | 4 | 0 | 1 | 2 | 4 |
 | Constraints | 3 | 0 | 1 | 1 | 4 |
 | CSS | 8 | 0 | 8 | 7 | 4 |
 | Dialogs | 4 | 1 | 3 | 4 | 2 |
-| Drawing | 12 | 1 | 8 | 5 | 3 |
+| Drawing | 8 | 0 | 3 | 4 | 3 |
 | Games | 3 | 2 | 4 | 2 | 2 |
 | Gestures | 7 | 4 | 5 | 12 | 4 |
-| Input | 10 | 4 | 9 | 10 | 4 |
-| Layout | 11 | 3 | 6 | 7 | 8 |
-| Lists | 12 | 1 | 19 | 4 | 1 |
+| Input | 8 | 2 | 5 | 8 | 3 |
+| Layout | 9 | 3 | 4 | 5 | 6 |
+| Lists | 11 | 1 | 16 | 3 | 1 |
 | Media | 1 | 0 | 1 | 2 | 0 |
 | Navigation | 3 | 0 | 1 | 1 | 4 |
 | OpenGL | 3 | 1 | 1 | 1 | 3 |
 | Paths | 7 | 4 | 10 | 2 | 1 |
-| **Total** | **87** | **25** | **89** | **65** | **46** | *(8 critical fixed in font-features)*
+| **Total** | **77** | **20** | **73** | **59** | **43** |
 
 ## Priority Fixes by Severity
 
-### Critical (Must Fix - 25 issues remaining)
+### Critical (Must Fix - 15 issues remaining)
 - ~~**font-features**: Complete rewrite~~ ✅ **FIXED** - full feature parity achieved
 - **rotated-text**: Missing heart shape renderer, two-pane layout
-- **fontrendering**: Missing glyph inspection mode
 - **transparent**: Missing backdrop-filter blur
-- **fishbowl**: Complete reimplementation - moving fish, widget types
-- **dialog**: Missing interactive dialog with form fields
-- **image-filtering**: CSS filters instead of GSK render nodes
 - **listview-colors**: Wrong view type (ListView vs GridView)
 - **dnd**: Missing GtkGestureRotate, context menus, item editing
 - **gestures**: Too elaborate - needs simplification
 - **hypertext**: Missing pages, embedded widgets
-- **read-more**: Missing custom widget with size measurement
-- **tagged-entry**: Missing custom DemoTaggedEntry widget
 - **headerbar**: Missing window titlebar integration
 - **aspect-frame**: Missing GtkPicture widget
 - **overlay-decorative**: Wrong decorative images
@@ -1198,7 +1108,7 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 - **gears**: Missing FPS display overlay
 - **path-maze, path-sweep**: Grid-based vs GSK Path
 
-### Major (Should Fix - 90 issues)
+### Major (Should Fix - 73 issues)
 Most common patterns:
 - Animation timing (frame clock vs setInterval)
 - Dataset sizes (colors, icons smaller than official)

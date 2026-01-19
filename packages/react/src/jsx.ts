@@ -1,3 +1,4 @@
+import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
@@ -295,6 +296,17 @@ export type ToggleProps = {
     enabled?: boolean;
     /** Whether underline in label indicates mnemonic */
     useUnderline?: boolean;
+};
+
+export type AlertDialogResponseProps = {
+    /** Unique response ID (used in response signal and for default/close response) */
+    id: string;
+    /** Button label text */
+    label: string;
+    /** Visual appearance of the response button */
+    appearance?: Adw.ResponseAppearance;
+    /** Whether the response button is enabled */
+    enabled?: boolean;
 };
 
 /**
@@ -803,6 +815,24 @@ export const x = {
     Toggle: "Toggle" as const,
 
     /**
+     * A response button for an AdwAlertDialog.
+     *
+     * @example
+     * ```tsx
+     * <AdwAlertDialog
+     *   heading="Delete File?"
+     *   body="This cannot be undone."
+     *   defaultResponse="cancel"
+     *   closeResponse="cancel"
+     * >
+     *   <x.AlertDialogResponse id="cancel" label="Cancel" />
+     *   <x.AlertDialogResponse id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
+     * </AdwAlertDialog>
+     * ```
+     */
+    AlertDialogResponse: "AlertDialogResponse" as const,
+
+    /**
      * Nested rows container for AdwExpanderRow.
      *
      * @example
@@ -898,6 +928,7 @@ declare global {
             interface IntrinsicElements {
                 ActionRowPrefix: VirtualSlotProps;
                 ActionRowSuffix: VirtualSlotProps;
+                AlertDialogResponse: AlertDialogResponseProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
                 ExpanderRowAction: ExpanderRowChildProps;
