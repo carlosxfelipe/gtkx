@@ -14,7 +14,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] markup.tsx ↔ markup.c (🟠 Major - add editable source)
 - [✓] rotated-text.tsx ↔ rotated_text.c (FIXED - shape renderer scaling)
 - [✓] textmask.tsx ↔ textmask.c (gtkx superset)
-- [x] transparent.tsx ↔ transparent.c (🔴 Critical - missing backdrop blur)
+- [✓] transparent.tsx ↔ transparent.c (FIXED - backdrop blur implementation)
 
 ## Benchmark
 - [x] frames.tsx ↔ frames.c (🟠 Major - frame clock timing)
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 62
-- Fully matched: 15
-- Critical issues: 14
+- Reviewed: 61
+- Fully matched: 16
+- Critical issues: 13
 - Major issues: 37

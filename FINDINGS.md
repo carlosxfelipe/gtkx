@@ -112,16 +112,26 @@ Complete rewrite from ~200 lines to ~900+ lines with full GTK4 feature parity:
 **Required Changes**: None required - gtkx is a superset with additional interactive features.
 
 ### transparent.tsx
-**Status**: Reviewed
+**Status**: ✅ FIXED (January 2026)
 **Files Compared**: transparent.tsx ↔ transparent.c (+ transparent.css)
 
-**Differences Found**:
-- 🔴 **Critical**: Missing backdrop-filter: blur() CSS property to blur background behind overlay buttons. This is the primary feature of official demo.
-- 🟠 **Major**: Official is minimal (background image + floating buttons with blur); gtkx extensively demonstrates transparency/alpha but lacks blur.
-- 🟡 **Minor**: Official loads background image (portland-rose.jpg); gtkx uses checkered pattern.
-- 🟡 **Minor**: Official uses CSS classes; gtkx uses inline CSS through API.
+**Previous Differences (All Resolved)**:
+- ~~🔴 **Critical**: Missing backdrop-filter: blur() CSS property~~ ✅ Added via injectGlobal CSS
+- ~~🟠 **Major**: Overly elaborate demo vs official's minimal design~~ ✅ Rewritten to match official
+- ~~🟡 **Minor**: Missing portland-rose.jpg background image~~ ✅ Copied from GTK repo
+- ~~🟡 **Minor**: Different structure and CSS approach~~ ✅ Now uses CSS classes
 
-**Required Changes**: Add backdrop-filter: blur() CSS support. Consider using real background image.
+**Implementation Summary**:
+Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
+- Background: GtkPicture with portland-rose.jpg (Gdk.Texture.newFromFilename)
+- Layout: GtkOverlay with image as main child, floating button box at bottom
+- Blur: `.blur-overlay { backdrop-filter: blur(14px); }` CSS class
+- Hover transition: Changes background-color with 1s transition while maintaining blur
+- Graceful degradation: Works without blur on GTK < 4.21 (property silently ignored)
+
+**Note**: `backdrop-filter: blur()` was added to GTK on November 20, 2025 (commit a476d94d43) and requires GTK 4.21+.
+
+**Required Changes**: None - demo now matches official GTK4 transparent demo.
 
 ---
 
@@ -1083,7 +1093,7 @@ The following demos were removed because they require custom GObject subclasses 
 
 | Category | Total | Critical | Major | Minor | Trivial |
 |----------|-------|----------|-------|-------|---------|
-| Advanced | 6 | 1 | 4 | 4 | 2 | *(font-features, rotated-text FIXED)*
+| Advanced | 6 | 0 | 4 | 4 | 2 | *(font-features, rotated-text, transparent FIXED)*
 | Benchmark | 2 | 0 | 4 | 1 | 0 |
 | Buttons | 4 | 0 | 1 | 2 | 4 |
 | Constraints | 3 | 0 | 1 | 1 | 4 |
@@ -1099,14 +1109,14 @@ The following demos were removed because they require custom GObject subclasses 
 | Navigation | 3 | 0 | 1 | 1 | 4 |
 | OpenGL | 3 | 1 | 1 | 1 | 3 |
 | Paths | 7 | 4 | 10 | 2 | 1 |
-| **Total** | **77** | **19** | **71** | **59** | **43** |
+| **Total** | **77** | **18** | **70** | **55** | **43** |
 
 ## Priority Fixes by Severity
 
-### Critical (Must Fix - 14 issues remaining)
+### Critical (Must Fix - 13 issues remaining)
 - ~~**font-features**: Complete rewrite~~ ✅ **FIXED** - full feature parity achieved
 - ~~**rotated-text**: Missing heart shape renderer, two-pane layout~~ ✅ **FIXED** - shape renderer scaling
-- **transparent**: Missing backdrop-filter blur
+- ~~**transparent**: Missing backdrop-filter blur~~ ✅ **FIXED** - backdrop blur implementation
 - **listview-colors**: Wrong view type (ListView vs GridView)
 - **dnd**: Missing GtkGestureRotate, context menus, item editing
 - **gestures**: Too elaborate - needs simplification
