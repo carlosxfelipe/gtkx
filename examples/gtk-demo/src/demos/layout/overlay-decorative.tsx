@@ -1,62 +1,39 @@
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkImage, GtkOverlay, GtkScale, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { GtkOverlay, GtkPicture, GtkScale, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
-const INITIAL_TEXT = "Dear diary...";
+const DIARY_TEXT = " diary...";
 
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
-    const textViewRef = useRef<Gtk.TextView | null>(null);
 
-    const handleMarginChanged = useCallback((value: number) => {
-        setMargin(value);
-        if (textViewRef.current) {
-            textViewRef.current.setLeftMargin(Math.round(value));
-        }
-    }, []);
-
-    const handleTextViewRef = useCallback(
-        (textView: Gtk.TextView | null) => {
-            textViewRef.current = textView;
-            if (textView) {
-                const buffer = textView.getBuffer();
-                buffer.setText(INITIAL_TEXT, -1);
-                textView.setLeftMargin(Math.round(margin));
-            }
-        },
-        [margin],
+    const decor1 = useMemo(
+        () => Gdk.Texture.newFromFilename(new URL("./decor1.png", import.meta.url).pathname),
+        [],
+    );
+    const decor2 = useMemo(
+        () => Gdk.Texture.newFromFilename(new URL("./decor2.png", import.meta.url).pathname),
+        [],
     );
 
     return (
         <GtkOverlay>
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-                <GtkTextView ref={handleTextViewRef} hexpand vexpand />
+                <GtkTextView hexpand vexpand leftMargin={Math.round(margin)}>
+                    <x.TextTag id="top-margin" pixelsAboveLines={Math.round(margin)}>
+                        Dear
+                    </x.TextTag>
+                    {DIARY_TEXT}
+                </GtkTextView>
             </GtkScrolledWindow>
             <x.OverlayChild>
-                <GtkImage
-                    iconName="starred-symbolic"
-                    pixelSize={64}
-                    halign={Gtk.Align.START}
-                    valign={Gtk.Align.START}
-                    canTarget={false}
-                    opacity={0.3}
-                    marginStart={8}
-                    marginTop={8}
-                />
+                <GtkPicture paintable={decor1} halign={Gtk.Align.START} valign={Gtk.Align.START} canTarget={false} />
             </x.OverlayChild>
             <x.OverlayChild>
-                <GtkImage
-                    iconName="starred-symbolic"
-                    pixelSize={64}
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.END}
-                    canTarget={false}
-                    opacity={0.3}
-                    marginEnd={8}
-                    marginBottom={8}
-                />
+                <GtkPicture paintable={decor2} halign={Gtk.Align.END} valign={Gtk.Align.END} canTarget={false} />
             </x.OverlayChild>
             <x.OverlayChild>
                 <GtkScale
@@ -74,7 +51,7 @@ const OverlayDecorativeDemo = () => {
                     upper={100}
                     stepIncrement={1}
                     pageIncrement={1}
-                    onValueChanged={handleMarginChanged}
+                    onValueChanged={setMargin}
                 />
             </x.OverlayChild>
         </GtkOverlay>
