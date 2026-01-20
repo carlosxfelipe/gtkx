@@ -60,7 +60,7 @@ Tabbed container with visible tabs.
 ```tsx
 <GtkNotebook>
     <x.NotebookPage label="Tab 1"><Content1 /></x.NotebookPage>
-    <x.NotebookPage label="Tab 2"><Content2 /></x.NotebookPage>
+    <x.NotebookPage label="Tab 2" tabExpand tabFill><Content2 /></x.NotebookPage>
 </GtkNotebook>
 ```
 
@@ -90,7 +90,7 @@ Resizable split with draggable divider. **Requires Slot components.**
 ```
 
 ### GtkOverlay
-Stack widgets on top of each other. First child is base layer, additional children need `OverlayChild` wrapper.
+Stack widgets on top of each other. First child is base layer, additional children need `OverlayChild` wrapper. Multiple children supported per overlay.
 
 ```tsx
 <GtkOverlay>
@@ -102,20 +102,20 @@ Stack widgets on top of each other. First child is base layer, additional childr
 ```
 
 ### GtkFixed
-Absolute positioning. Use `x.FixedChild` wrapper for children.
+Absolute positioning with optional 3D transforms. Use `x.FixedChild` wrapper for children.
 
 ```tsx
 <GtkFixed>
     <x.FixedChild x={20} y={30}>
         <GtkLabel label="Top Left" />
     </x.FixedChild>
-    <x.FixedChild x={200} y={100}>
-        <GtkLabel label="Middle" />
+    <x.FixedChild x={200} y={100} transform={someGskTransform}>
+        <GtkLabel label="Transformed" />
     </x.FixedChild>
 </GtkFixed>
 ```
 
-**FixedChild props:** `x`, `y` (pixel coordinates)
+**FixedChild props:** `x`, `y` (pixel coordinates), `transform` (optional `Gsk.Transform`)
 
 ### GtkScrolledWindow
 Scrollable container.
@@ -184,7 +184,7 @@ Table with sortable columns.
         title="Size"
         id="size"
         fixedWidth={100}
-        renderCell={(item) => <GtkLabel label={item?.size ?? ""} />}
+        renderCell={(item) => <GtkLabel label={`${item?.size ?? 0} KB`} />}
     />
     {items.map(item => <x.ListItem key={item.id} id={item.id} value={item} />)}
 </GtkColumnView>
@@ -263,48 +263,66 @@ On/off switch.
 ```
 
 ### GtkSpinButton
-Numeric input with increment/decrement.
+Numeric input with increment/decrement. Adjustment props are set directly.
 
 ```tsx
-<GtkSpinButton value={count} onValueChanged={(sb) => setCount(sb.getValue())} />
+<GtkSpinButton
+    value={count}
+    lower={0}
+    upper={100}
+    stepIncrement={1}
+    onValueChanged={setCount}
+/>
 ```
 
 ### GtkScale
-Slider with optional marks.
+Slider with adjustment props and optional marks.
 
 ```tsx
 <GtkScale
     drawValue
     valuePos={Gtk.PositionType.TOP}
->
-    <x.ScaleMark value={0} label="Min" />
-    <x.ScaleMark value={50} />
-    <x.ScaleMark value={100} label="Max" />
-</GtkScale>
+    value={volume}
+    lower={0}
+    upper={100}
+    stepIncrement={1}
+    onValueChanged={setVolume}
+    marks={[
+        { value: 0, label: "Min", position: Gtk.PositionType.BOTTOM },
+        { value: 50, position: Gtk.PositionType.BOTTOM },
+        { value: 100, label: "Max", position: Gtk.PositionType.BOTTOM },
+    ]}
+/>
 ```
 
-**ScaleMark props:** `value` (required), `position`, `label`
+**Adjustment props:** `value`, `lower`, `upper`, `stepIncrement`, `pageIncrement`, `pageSize`, `onValueChanged`
+**ScaleMark type:** `{ value: number, position?: Gtk.PositionType, label?: string }`
 
 ### GtkCalendar
 Date picker with markable days.
 
 ```tsx
-<GtkCalendar onDaySelected={(cal) => setDate(cal.getDate())}>
-    <x.CalendarMark day={15} />
-    <x.CalendarMark day={20} />
-</GtkCalendar>
+<GtkCalendar
+    onDaySelected={(cal) => setDate(cal.getDate())}
+    markedDays={[15, 20, 25]}
+/>
 ```
 
 ### GtkLevelBar
 Progress/level indicator with customizable thresholds.
 
 ```tsx
-<GtkLevelBar value={0.6}>
-    <x.LevelBarOffset id="low" value={0.25} />
-    <x.LevelBarOffset id="high" value={0.75} />
-    <x.LevelBarOffset id="full" value={1.0} />
-</GtkLevelBar>
+<GtkLevelBar
+    value={0.6}
+    offsets={[
+        { id: "low", value: 0.25 },
+        { id: "high", value: 0.75 },
+        { id: "full", value: 1.0 },
+    ]}
+/>
 ```
+
+**LevelBarOffset type:** `{ id: string, value: number }`
 
 ---
 
@@ -571,6 +589,37 @@ const [selected, setSelected] = useState(items[0]);
 **NavigationPage slots:** Use `id="sidebar"` for left pane, `id="content"` for right pane.
 **Selection:** Use `GtkListBox` with `onRowSelected` (single click) not `onRowActivated` (double click).
 
+### AdwAlertDialog
+Modern modal alert dialogs with response buttons.
+
+```tsx
+const [showDialog, setShowDialog] = useState(false);
+
+{showDialog && (
+    <AdwAlertDialog
+        heading="Delete File?"
+        body="This action cannot be undone."
+        onResponse={(id) => {
+            if (id === "delete") handleDelete();
+            setShowDialog(false);
+        }}
+    >
+        <x.AlertDialogResponse id="cancel" label="Cancel" />
+        <x.AlertDialogResponse id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
+    </AdwAlertDialog>
+)}
+```
+
+**AlertDialogResponse props:** `id`, `label`, `appearance` (SUGGESTED, DESTRUCTIVE), `enabled`
+
+### AdwColorDialogButton / AdwFontDialogButton
+Color and font picker dialogs.
+
+```tsx
+<AdwColorDialogButton rgba={color} onRgbaChanged={setColor} title="Select Color" modal withAlpha />
+<AdwFontDialogButton fontDesc={font} onFontDescChanged={setFont} title="Select Font" modal useFont useSize />
+```
+
 ### Other Adwaita Widgets
 
 | Widget | Description |
@@ -583,6 +632,26 @@ const [selected, setSelected] = useState(items[0]);
 
 ---
 
+## Animations
+
+Wrap widgets in `x.Animation` for declarative animations with spring or timed transitions:
+
+```tsx
+<x.Animation
+    initial={{ opacity: 0, scaleX: 0.8 }}
+    animate={{ opacity: 1, scaleX: 1 }}
+    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    onAnimationComplete={() => console.log("done")}
+>
+    <GtkBox>...</GtkBox>
+</x.Animation>
+```
+
+**Props:** `initial`, `animate`, `transition`, `onAnimationComplete`
+**Transition types:** `{ type: "spring", stiffness, damping }` or `{ type: "timed", duration, easing }`
+
+---
+
 ## Drag and Drop
 
 All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBegin`, and `onDragEnd` to make a widget draggable, and `dropTypes`, `onDrop`, `onDropEnter`, and `onDropLeave` to accept drops.
@@ -590,34 +659,31 @@ All widgets support drag-and-drop through props. Use `onDragPrepare`, `onDragBeg
 ```tsx
 import * as Gdk from "@gtkx/ffi/gdk";
 import { Type, Value } from "@gtkx/ffi/gobject";
-import { GtkButton, GtkBox, GtkLabel } from "@gtkx/react";
-import { useState } from "react";
 
-const DraggableButton = ({ label }: { label: string }) => {
-    return (
-        <GtkButton
-            label={label}
-            onDragPrepare={() => Gdk.ContentProvider.newForValue(Value.newFromString(label))}
-        />
-    );
-};
+const DraggableButton = ({ label }: { label: string }) => (
+    <GtkButton
+        label={label}
+        onDragPrepare={() => Gdk.ContentProvider.newForValue(Value.newFromString(label))}
+        dragIcon={someTexture}
+        dragIconHotX={16}
+        dragIconHotY={16}
+    />
+);
 
 const DropZone = () => {
     const [dropped, setDropped] = useState<string | null>(null);
-
     return (
         <GtkBox
             dropTypes={[Type.STRING]}
-            onDrop={(value: Value) => {
-                setDropped(value.getString());
-                return true;
-            }}
+            onDrop={(value: Value) => { setDropped(value.getString()); return true; }}
         >
             <GtkLabel label={dropped ?? "Drop here"} />
         </GtkBox>
     );
 };
 ```
+
+**Drag source props:** `dragIcon`, `dragIconHotX`, `dragIconHotY`
 
 ## GValue Factories
 
@@ -641,9 +707,7 @@ Type constants for `dropTypes`: `Type.STRING`, `Type.INT`, `Type.DOUBLE`, `Type.
 Render custom graphics with `GtkDrawingArea` using the `onDraw` callback:
 
 ```tsx
-import { GtkDrawingArea } from "@gtkx/react";
 import type { Context } from "@gtkx/ffi/cairo";
-import * as Gtk from "@gtkx/ffi/gtk";
 
 const Canvas = () => {
     const handleDraw = (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -658,147 +722,72 @@ const Canvas = () => {
 
 Use `onGestureDragBegin`, `onGestureDragUpdate`, `onGestureDragEnd` for interactive drawing. Call `widget.queueDraw()` to trigger redraws.
 
-## Adjustment
+## Gesture Controllers
 
-Configure adjustable widgets declaratively with `x.Adjustment`:
+All widgets support gesture props. Event callbacks receive `Gdk.Event | null` as the final parameter.
 
-```tsx
-import { x, GtkScale, GtkBox, GtkLabel } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
+### Basic Gestures
+- `onEnter(x, y, event)`, `onLeave(event)`, `onMotion(x, y, event)`
+- `onPressed(nPress, x, y, event)`, `onReleased(nPress, x, y, event)`
+- `onKeyPressed(keyval, keycode, state, event)`, `onKeyReleased(keyval, keycode, state, event)`
+- `onScroll(dx, dy, event)`
+- `onGestureDragBegin`, `onGestureDragUpdate`, `onGestureDragEnd`
 
-const VolumeControl = () => {
-    const [volume, setVolume] = useState(50);
+### Advanced Gestures
+- **Stylus:** `onStylusDown`, `onStylusMotion`, `onStylusUp`, `onStylusProximity` (with pressure, tilt)
+- **Rotate:** `onRotateAngleChanged`, `onRotateBegin`, `onRotateEnd`, `gestureRotateRef`
+- **Swipe:** `onSwipe(velocityX, velocityY, event)`
+- **Long Press:** `onLongPressPressed`, `onLongPressCancelled`
+- **Zoom:** `onZoomScaleChanged(scale, event)`, `gestureZoomRef`
 
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <GtkScale drawValue hexpand>
-                <x.Adjustment value={volume} lower={0} upper={100} stepIncrement={1} pageIncrement={10} onValueChanged={setVolume} />
-            </GtkScale>
-            <GtkLabel label={`Volume: ${Math.round(volume)}%`} />
-        </GtkBox>
-    );
-};
-```
+## TextView / SourceView
 
-Works with `GtkScale`, `GtkScrollbar`, `GtkScaleButton`, `GtkSpinButton`, `GtkListBox`.
-
-**Props:** `value`, `lower`, `upper`, `stepIncrement`, `pageIncrement`, `pageSize`, `onValueChanged`
-
-## TextBuffer
-
-Configure `GtkTextView` buffers declaratively with `x.TextBuffer`. Text content is provided as children, with optional `x.TextTag` elements for formatting.
+Text content is provided as direct children. Use `x.TextTag` for formatting and `x.TextAnchor` for embedded widgets.
 
 ```tsx
-import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
-
-const TextEditor = () => (
-    <GtkScrolledWindow minContentHeight={200}>
-        <GtkTextView>
-            <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
-                Hello, World!
-            </x.TextBuffer>
-        </GtkTextView>
-    </GtkScrolledWindow>
-);
-```
-
-### Rich Text with TextTag
-
-Apply formatting to portions of text using `x.TextTag`:
-
-```tsx
-import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
-import * as Pango from "@gtkx/ffi/pango";
-
-const RichTextEditor = () => (
-    <GtkScrolledWindow minContentHeight={200}>
-        <GtkTextView>
-            <x.TextBuffer>
-                Normal text, <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag>,{" "}
-                <x.TextTag id="italic" style={Pango.Style.ITALIC}>italic</x.TextTag>, and{" "}
-                <x.TextTag id="red" foreground="red">
-                    <x.TextTag id="underline" underline={Pango.Underline.SINGLE}>nested</x.TextTag>
-                </x.TextTag> text.
-            </x.TextBuffer>
-        </GtkTextView>
-    </GtkScrolledWindow>
-);
-```
-
-### Embedded Widgets with TextAnchor
-
-Embed widgets inline with text content:
-
-```tsx
-<GtkTextView>
-    <x.TextBuffer>
-        Click here: <x.TextAnchor>
-            <GtkButton label="Click me" />
-        </x.TextAnchor> to continue.
-    </x.TextBuffer>
+<GtkTextView enableUndo onBufferChanged={(text) => console.log(text)}>
+    Normal text, <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag>, and
+    <x.TextAnchor><GtkButton label="Click" /></x.TextAnchor> inline.
 </GtkTextView>
 ```
 
-**TextBuffer props:** `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`, `children`
+**TextView props:** `enableUndo`, `onBufferChanged`, `onTextInserted`, `onTextDeleted`, `onCanUndoChanged`, `onCanRedoChanged`
 
 **TextTag props:** `id` (required), `priority`, `foreground`, `background`, `weight`, `style`, `underline`, `strikethrough`, `family`, `size`, `sizePoints`, `scale`, `justification`, `leftMargin`, `rightMargin`, `indent`, `editable`, `invisible`
 
-**TextAnchor props:** `children` (widget to embed)
+**TextAnchor:** Embeds widgets inline with `children`
 
-## SourceBuffer
-
-Configure `GtkSourceView` buffers with syntax highlighting using `x.SourceBuffer`:
+**TextPaintable:** Embeds images inline with `paintable` prop
 
 ```tsx
-import { x, GtkSourceView, GtkScrolledWindow } from "@gtkx/react";
-import { useState } from "react";
-
-const CodeEditor = () => {
-    const [code, setCode] = useState('console.log("Hello!");');
-
-    return (
-        <GtkScrolledWindow minContentHeight={300}>
-            <GtkSourceView showLineNumbers highlightCurrentLine tabWidth={4}>
-                <x.SourceBuffer
-                    text={code}
-                    language="typescript"
-                    styleScheme="Adwaita-dark"
-                    highlightSyntax
-                    highlightMatchingBrackets
-                    enableUndo
-                    onTextChanged={setCode}
-                />
-            </GtkSourceView>
-        </GtkScrolledWindow>
-    );
-};
+<GtkSourceView
+    showLineNumbers
+    highlightCurrentLine
+    language="typescript"
+    styleScheme="Adwaita-dark"
+    highlightSyntax
+    highlightMatchingBrackets
+    enableUndo
+    onBufferChanged={setCode}
+>
+    {code}
+</GtkSourceView>
 ```
 
-**Props:** `text`, `language`, `styleScheme`, `highlightSyntax`, `highlightMatchingBrackets`, `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`, `onCursorMoved`
+**SourceView additional props:** `language`, `styleScheme`, `highlightSyntax`, `highlightMatchingBrackets`, `implicitTrailingNewline`, `onCursorMoved`, `onHighlightUpdated`
 
 ## Keyboard Shortcuts
 
 Attach shortcuts with `x.ShortcutController` and `x.Shortcut`:
 
 ```tsx
-import { x, GtkBox, GtkLabel } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
-
-const App = () => {
-    const [count, setCount] = useState(0);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
-            <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
-                <x.Shortcut trigger="<Control>equal" onActivate={() => setCount((c) => c + 1)} />
-                <x.Shortcut trigger="<Control>minus" onActivate={() => setCount((c) => c - 1)} />
-            </x.ShortcutController>
-            <GtkLabel label={`Count: ${count}`} />
-        </GtkBox>
-    );
-};
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
+    <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
+        <x.Shortcut trigger="<Control>equal" onActivate={() => setCount((c) => c + 1)} />
+        <x.Shortcut trigger="<Control>minus" onActivate={() => setCount((c) => c - 1)} />
+    </x.ShortcutController>
+    <GtkLabel label={`Count: ${count}`} />
+</GtkBox>
 ```
 
 **Scopes:** `LOCAL` (widget focus), `MANAGED` (parent managed), `GLOBAL` (window-wide)

@@ -8,7 +8,7 @@ const sidebars: SidebarsConfig = {
         {
             type: "category",
             label: "Core Concepts",
-            items: ["styling", "async-operations", "error-handling"],
+            items: ["styling", "animations", "async-operations", "error-handling"],
         },
         {
             type: "category",

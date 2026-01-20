@@ -79,7 +79,7 @@ const selectedStyle = css`
  color: @theme_selected_fg_color;
 `;
 
-<GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={[cx(itemStyle, isSelected && selectedStyle)]}>
+<GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={cx(itemStyle, isSelected && selectedStyle)}>
  {item.name}
 </GtkBox>
 ```

@@ -4,10 +4,10 @@ GTKX provides declarative child components for various GTK widgets, allowing you
 
 ## Scale with Marks
 
-Add marks to a `GtkScale` slider using `x.ScaleMark`, and configure the adjustment with `x.Adjustment`:
+Add marks to a `GtkScale` slider using the `marks` prop, and configure the adjustment with direct props:
 
 ```tsx
-import { x, GtkScale } from "@gtkx/react";
+import { GtkScale } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -15,28 +15,41 @@ const VolumeSlider = () => {
   const [volume, setVolume] = useState(50);
 
   return (
-    <GtkScale hexpand>
-      <x.Adjustment
-        value={volume}
-        lower={0}
-        upper={100}
-        stepIncrement={1}
-        pageIncrement={10}
-        onValueChanged={setVolume}
-      />
-      <x.ScaleMark value={0} label="0" position={Gtk.PositionType.BOTTOM} />
-      <x.ScaleMark value={25} position={Gtk.PositionType.BOTTOM} />
-      <x.ScaleMark value={50} label="50" position={Gtk.PositionType.BOTTOM} />
-      <x.ScaleMark value={75} position={Gtk.PositionType.BOTTOM} />
-      <x.ScaleMark value={100} label="100" position={Gtk.PositionType.BOTTOM} />
-    </GtkScale>
+    <GtkScale
+      hexpand
+      value={volume}
+      lower={0}
+      upper={100}
+      stepIncrement={1}
+      pageIncrement={10}
+      onValueChanged={setVolume}
+      marks={[
+        { value: 0, label: "0", position: Gtk.PositionType.BOTTOM },
+        { value: 25, position: Gtk.PositionType.BOTTOM },
+        { value: 50, label: "50", position: Gtk.PositionType.BOTTOM },
+        { value: 75, position: Gtk.PositionType.BOTTOM },
+        { value: 100, label: "100", position: Gtk.PositionType.BOTTOM },
+      ]}
+    />
   );
 };
 ```
 
-### x.ScaleMark Props
+### Scale Props
 
-| Prop       | Type               | Description                               |
+| Prop            | Type               | Description                               |
+| --------------- | ------------------ | ----------------------------------------- |
+| `value`         | number             | Current value                             |
+| `lower`         | number             | Minimum value (default: 0)                |
+| `upper`         | number             | Maximum value (default: 100)              |
+| `stepIncrement` | number             | Increment for arrow keys (default: 1)     |
+| `pageIncrement` | number             | Increment for page up/down (default: 10)  |
+| `onValueChanged`| (value: number) => void | Callback when value changes          |
+| `marks`         | ScaleMark[]        | Array of marks to display                 |
+
+### ScaleMark Type
+
+| Field      | Type               | Description                               |
 | ---------- | ------------------ | ----------------------------------------- |
 | `value`    | number             | Position on the scale                     |
 | `label`    | string             | Optional text label                       |
@@ -44,10 +57,10 @@ const VolumeSlider = () => {
 
 ## Calendar with Marks
 
-Mark specific days on a `GtkCalendar` using `x.CalendarMark`:
+Mark specific days on a `GtkCalendar` using the `markedDays` prop:
 
 ```tsx
-import { x, GtkCalendar } from "@gtkx/react";
+import { GtkCalendar } from "@gtkx/react";
 
 const EventCalendar = () => {
   const today = new Date();
@@ -58,38 +71,40 @@ const EventCalendar = () => {
       year={today.getFullYear()}
       month={today.getMonth()}
       day={today.getDate()}
-    >
-      {eventDays.map((day) => (
-        <x.CalendarMark key={day} day={day} />
-      ))}
-    </GtkCalendar>
+      markedDays={eventDays}
+    />
   );
 };
 ```
 
-### x.CalendarMark Props
+### Calendar Props
 
-| Prop  | Type   | Description                     |
-| ----- | ------ | ------------------------------- |
-| `day` | number | Day of the month to mark (1-31) |
+| Prop         | Type     | Description                     |
+| ------------ | -------- | ------------------------------- |
+| `markedDays` | number[] | Array of days to mark (1-31)    |
 
 ## LevelBar with Offsets
 
-Define color thresholds on a `GtkLevelBar` using `x.LevelBarOffset`:
+Define color thresholds on a `GtkLevelBar` using the `offsets` prop:
 
 ```tsx
-import { x, GtkLevelBar } from "@gtkx/react";
+import { GtkLevelBar } from "@gtkx/react";
 import { useState } from "react";
 
 const BatteryIndicator = () => {
   const [level, setLevel] = useState(0.6);
 
   return (
-    <GtkLevelBar value={level} minValue={0} maxValue={1}>
-      <x.LevelBarOffset id="low" value={0.25} />
-      <x.LevelBarOffset id="high" value={0.75} />
-      <x.LevelBarOffset id="full" value={1.0} />
-    </GtkLevelBar>
+    <GtkLevelBar
+      value={level}
+      minValue={0}
+      maxValue={1}
+      offsets={[
+        { id: "low", value: 0.25 },
+        { id: "high", value: 0.75 },
+        { id: "full", value: 1.0 },
+      ]}
+    />
   );
 };
 ```
@@ -100,9 +115,9 @@ The level bar changes color at each offset threshold:
 - 25-75%: Normal
 - Above 75%: High (green)
 
-### x.LevelBarOffset Props
+### LevelBarOffset Type
 
-| Prop    | Type   | Description                      |
+| Field   | Type   | Description                      |
 | ------- | ------ | -------------------------------- |
 | `id`    | string | Unique identifier for the offset |
 | `value` | number | Threshold value                  |
@@ -258,14 +273,15 @@ const AbsoluteLayout = () => (
 
 ### x.FixedChild Props
 
-| Prop | Type   | Description            |
-| ---- | ------ | ---------------------- |
-| `x`  | number | X coordinate in pixels |
-| `y`  | number | Y coordinate in pixels |
+| Prop        | Type           | Description                   |
+| ----------- | -------------- | ----------------------------- |
+| `x`         | number         | X coordinate in pixels        |
+| `y`         | number         | Y coordinate in pixels        |
+| `transform` | `Gsk.Transform`| Optional 3D transform         |
 
 ## Overlay Children
 
-Layer widgets on top of each other using `x.OverlayChild`:
+Layer widgets on top of each other using `x.OverlayChild`. You can include multiple children in a single overlay:
 
 ```tsx
 import { x, GtkOverlay, GtkImage, GtkLabel } from "@gtkx/react";
@@ -280,6 +296,12 @@ const BadgedImage = () => (
         cssClasses={["badge"]}
         halign={Gtk.Align.END}
         valign={Gtk.Align.START}
+      />
+      <GtkLabel
+        label="New"
+        cssClasses={["badge"]}
+        halign={Gtk.Align.START}
+        valign={Gtk.Align.END}
       />
     </x.OverlayChild>
   </GtkOverlay>
@@ -299,7 +321,7 @@ const TabbedView = () => (
     <x.NotebookPage label="Documents">
       <GtkLabel label="Documents content" vexpand />
     </x.NotebookPage>
-    <x.NotebookPage>
+    <x.NotebookPage tabExpand tabFill>
       <x.NotebookPageTab>
         <GtkBox spacing={4}>
           <GtkImage iconName="folder-symbolic" />
@@ -341,6 +363,9 @@ const DraggableButton = ({ label }: { label: string }) => {
       onDragPrepare={() =>
         Gdk.ContentProvider.newForValue(Value.newFromString(label))
       }
+      dragIcon={Gdk.Texture.newFromFilename("/path/to/icon.png")}
+      dragIconHotX={16}
+      dragIconHotY={16}
     />
   );
 };
@@ -363,6 +388,14 @@ const DropZone = () => {
 ```
 
 For a complete example with visual feedback, see the drag-and-drop demo in `examples/gtk-demo/src/demos/gestures/dnd.tsx`.
+
+### Drag Source Props
+
+| Prop           | Type              | Description                   |
+| -------------- | ----------------- | ----------------------------- |
+| `dragIcon`     | `Gdk.Paintable`   | Custom drag icon              |
+| `dragIconHotX` | number            | Drag icon hotspot X coordinate|
+| `dragIconHotY` | number            | Drag icon hotspot Y coordinate|
 
 ### GValue Factories
 
@@ -503,51 +536,9 @@ Call `widget.queueDraw()` to request a redraw when state changes outside of Reac
 
 For a complete painting application with colors and brush sizes, see `examples/gtk-demo/src/demos/drawing/paint.tsx`.
 
-## Adjustment
+## TextView with Rich Text
 
-Configure adjustable widgets declaratively using `x.Adjustment`. This works with `GtkScale`, `GtkScrollbar`, `GtkScaleButton`, `GtkSpinButton`, and `GtkListBox`.
-
-```tsx
-import { x, GtkScale, GtkBox, GtkLabel } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
-
-const VolumeControl = () => {
-  const [volume, setVolume] = useState(50);
-
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkScale drawValue hexpand>
-        <x.Adjustment
-          value={volume}
-          lower={0}
-          upper={100}
-          stepIncrement={1}
-          pageIncrement={10}
-          onValueChanged={setVolume}
-        />
-      </GtkScale>
-      <GtkLabel label={`Volume: ${Math.round(volume)}%`} />
-    </GtkBox>
-  );
-};
-```
-
-### x.Adjustment Props
-
-| Prop             | Type                    | Description                              |
-| ---------------- | ----------------------- | ---------------------------------------- |
-| `value`          | number                  | Current value                            |
-| `lower`          | number                  | Minimum value (default: 0)               |
-| `upper`          | number                  | Maximum value (default: 100)             |
-| `stepIncrement`  | number                  | Increment for arrow keys (default: 1)    |
-| `pageIncrement`  | number                  | Increment for page up/down (default: 10) |
-| `pageSize`       | number                  | Page size, usually 0 for scales          |
-| `onValueChanged` | (value: number) => void | Callback when value changes              |
-
-## TextBuffer
-
-Configure a `GtkTextView` buffer declaratively using `x.TextBuffer`. Text content is provided as children, with optional `x.TextTag` elements for rich text formatting.
+Configure a `GtkTextView` with rich text content using `x.TextTag` children for formatting and `x.TextAnchor` for embedded widgets.
 
 ### Basic Usage
 
@@ -558,10 +549,12 @@ import * as Gtk from "@gtkx/ffi/gtk";
 const TextEditor = () => {
   return (
     <GtkScrolledWindow minContentHeight={200}>
-      <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
-        <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
-          Hello, World!
-        </x.TextBuffer>
+      <GtkTextView
+        wrapMode={Gtk.WrapMode.WORD_CHAR}
+        enableUndo
+        onBufferChanged={(text) => console.log(text)}
+      >
+        Hello, World!
       </GtkTextView>
     </GtkScrolledWindow>
   );
@@ -583,23 +576,21 @@ const RichTextEditor = () => {
   return (
     <GtkScrolledWindow minContentHeight={200}>
       <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
-        <x.TextBuffer>
-          Normal text,{" "}
-          <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
-            bold text
+        Normal text,{" "}
+        <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
+          bold text
+        </x.TextTag>
+        ,{" "}
+        <x.TextTag id="italic" style={Pango.Style.ITALIC}>
+          italic text
+        </x.TextTag>
+        , and{" "}
+        <x.TextTag id="colored" foreground="red">
+          <x.TextTag id="underlined" underline={Pango.Underline.SINGLE}>
+            nested red underlined
           </x.TextTag>
-          ,{" "}
-          <x.TextTag id="italic" style={Pango.Style.ITALIC}>
-            italic text
-          </x.TextTag>
-          , and{" "}
-          <x.TextTag id="colored" foreground="red">
-            <x.TextTag id="underlined" underline={Pango.Underline.SINGLE}>
-              nested red underlined
-            </x.TextTag>
-          </x.TextTag>{" "}
-          text.
-        </x.TextBuffer>
+        </x.TextTag>{" "}
+        text.
       </GtkTextView>
     </GtkScrolledWindow>
   );
@@ -617,31 +608,52 @@ const TextWithWidgets = () => {
   return (
     <GtkScrolledWindow minContentHeight={200}>
       <GtkTextView>
-        <x.TextBuffer>
-          Click here:{" "}
-          <x.TextAnchor>
-            <GtkButton
-              label="Click me"
-              onClicked={() => console.log("Clicked!")}
-            />
-          </x.TextAnchor>{" "}
-          to continue.
-        </x.TextBuffer>
+        Click here:{" "}
+        <x.TextAnchor>
+          <GtkButton
+            label="Click me"
+            onClicked={() => console.log("Clicked!")}
+          />
+        </x.TextAnchor>{" "}
+        to continue.
       </GtkTextView>
     </GtkScrolledWindow>
   );
 };
 ```
 
-### x.TextBuffer Props
+### Inline Images with TextPaintable
+
+Use `x.TextPaintable` to embed inline images or icons in text:
+
+```tsx
+import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+const TextWithIcons = () => {
+  const iconTheme = Gtk.IconTheme.getForDisplay(Gdk.Display.getDefault()!);
+  const icon = iconTheme.lookupIcon("starred-symbolic", null, 16, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.NONE);
+
+  return (
+    <GtkScrolledWindow minContentHeight={200}>
+      <GtkTextView>
+        This is a <x.TextPaintable paintable={icon} /> star icon inline with text.
+      </GtkTextView>
+    </GtkScrolledWindow>
+  );
+};
+```
+
+### TextView Props
 
 | Prop               | Type                       | Description                                    |
 | ------------------ | -------------------------- | ---------------------------------------------- |
 | `enableUndo`       | boolean                    | Enable undo/redo functionality                 |
-| `onTextChanged`    | (text: string) => void     | Callback when text changes                     |
+| `onBufferChanged`  | (text: string) => void     | Callback when text changes                     |
+| `onTextInserted`   | (text: string, offset: number) => void | Callback when text is inserted   |
+| `onTextDeleted`    | (offset: number, length: number) => void | Callback when text is deleted  |
 | `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes        |
 | `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes        |
-| `children`         | ReactNode                  | Text content, TextTag, and TextAnchor elements |
 
 ### x.TextTag Props
 
@@ -676,12 +688,18 @@ const TextWithWidgets = () => {
 | ---------- | --------- | -------------------------------------- |
 | `children` | ReactNode | Widget to embed at the anchor position |
 
-## SourceBuffer
+### x.TextPaintable Props
 
-Configure a `GtkSourceView` buffer declaratively using `x.SourceBuffer`. This extends TextBuffer with syntax highlighting, bracket matching, and language-specific features for source code editing.
+| Prop        | Type           | Description                            |
+| ----------- | -------------- | -------------------------------------- |
+| `paintable` | Gdk.Paintable  | The paintable to display inline        |
+
+## SourceView for Code Editing
+
+Configure a `GtkSourceView` for syntax-highlighted code editing:
 
 ```tsx
-import { x, GtkSourceView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkSourceView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -696,34 +714,31 @@ const CodeEditor = () => {
         tabWidth={4}
         indentWidth={4}
         autoIndent
+        language="typescript"
+        styleScheme="Adwaita-dark"
+        highlightSyntax
+        highlightMatchingBrackets
+        enableUndo
+        onBufferChanged={setCode}
       >
-        <x.SourceBuffer
-          text={code}
-          language="typescript"
-          styleScheme="Adwaita-dark"
-          highlightSyntax
-          highlightMatchingBrackets
-          enableUndo
-          onTextChanged={setCode}
-        />
+        {code}
       </GtkSourceView>
     </GtkScrolledWindow>
   );
 };
 ```
 
-### x.SourceBuffer Props
+### SourceView Props
 
 | Prop                        | Type                               | Description                                                |
 | --------------------------- | ---------------------------------- | ---------------------------------------------------------- |
-| `text`                      | string                             | Text content                                               |
 | `language`                  | string \| GtkSource.Language       | Language ID (e.g., "typescript", "python", "rust")         |
 | `styleScheme`               | string \| GtkSource.StyleScheme    | Color scheme ID (e.g., "Adwaita-dark", "classic")          |
 | `highlightSyntax`           | boolean                            | Enable syntax highlighting (default: true if language set) |
 | `highlightMatchingBrackets` | boolean                            | Highlight matching brackets (default: true)                |
 | `enableUndo`                | boolean                            | Enable undo/redo functionality                             |
 | `implicitTrailingNewline`   | boolean                            | Handle trailing newlines automatically                     |
-| `onTextChanged`             | (text: string) => void             | Callback when text changes                                 |
+| `onBufferChanged`           | (text: string) => void             | Callback when text changes                                 |
 | `onCanUndoChanged`          | (canUndo: boolean) => void         | Callback when undo availability changes                    |
 | `onCanRedoChanged`          | (canRedo: boolean) => void         | Callback when redo availability changes                    |
 | `onCursorMoved`             | () => void                         | Callback when cursor position changes                      |
@@ -815,3 +830,98 @@ Use the `disabled` prop to temporarily disable a shortcut without removing it:
 | `trigger`    | string \| string[]    | Key combination(s) to trigger the shortcut          |
 | `onActivate` | () => boolean \| void | Callback when triggered (return false to propagate) |
 | `disabled`   | boolean               | Whether the shortcut is disabled                    |
+
+## Alert Dialog Responses
+
+Create alert dialogs with `AdwAlertDialog` and `x.AlertDialogResponse` children:
+
+```tsx
+import { x, AdwAlertDialog, GtkButton } from "@gtkx/react";
+import { useState } from "react";
+import * as Adw from "@gtkx/ffi/adw";
+
+const DeleteConfirmation = () => {
+  const [showDialog, setShowDialog] = useState(false);
+
+  return (
+    <>
+      <GtkButton label="Delete" onClicked={() => setShowDialog(true)} />
+      {showDialog && (
+        <AdwAlertDialog
+          heading="Delete File?"
+          body="This action cannot be undone."
+          onResponse={(id) => {
+            if (id === "delete") {
+              console.log("Deleting...");
+            }
+            setShowDialog(false);
+          }}
+        >
+          <x.AlertDialogResponse id="cancel" label="Cancel" />
+          <x.AlertDialogResponse
+            id="delete"
+            label="Delete"
+            appearance={Adw.ResponseAppearance.DESTRUCTIVE}
+          />
+        </AdwAlertDialog>
+      )}
+    </>
+  );
+};
+```
+
+### x.AlertDialogResponse Props
+
+| Prop         | Type                      | Description                      |
+| ------------ | ------------------------- | -------------------------------- |
+| `id`         | string                    | Response identifier              |
+| `label`      | string                    | Button label                     |
+| `appearance` | `Adw.ResponseAppearance`  | Visual style (SUGGESTED, DESTRUCTIVE) |
+| `enabled`    | boolean                   | Whether the response is enabled  |
+
+## Color and Font Dialog Buttons
+
+### Color Dialog Button
+
+```tsx
+import { AdwColorDialogButton } from "@gtkx/react";
+import * as Gdk from "@gtkx/ffi/gdk";
+import { useState } from "react";
+
+const ColorPicker = () => {
+  const [color, setColor] = useState(new Gdk.RGBA({ red: 1, green: 0, blue: 0, alpha: 1 }));
+
+  return (
+    <AdwColorDialogButton
+      rgba={color}
+      onRgbaChanged={setColor}
+      title="Select Color"
+      modal
+      withAlpha
+    />
+  );
+};
+```
+
+### Font Dialog Button
+
+```tsx
+import { AdwFontDialogButton } from "@gtkx/react";
+import * as Pango from "@gtkx/ffi/pango";
+import { useState } from "react";
+
+const FontPicker = () => {
+  const [font, setFont] = useState(Pango.FontDescription.fromString("Sans 12"));
+
+  return (
+    <AdwFontDialogButton
+      fontDesc={font}
+      onFontDescChanged={setFont}
+      title="Select Font"
+      modal
+      useFont
+      useSize
+    />
+  );
+};
+```
