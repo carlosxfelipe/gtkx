@@ -1,4 +1,5 @@
 import { getNativeObject } from "@gtkx/ffi";
+import * as Adw from "@gtkx/ffi/adw";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkHeaderBar, GtkLabel, GtkToggleButton, x } from "@gtkx/react";
@@ -28,12 +29,13 @@ const ThemesDemo = () => {
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const settings = Gtk.Settings.getDefault();
-        if (!settings) return true;
+        const styleManager = Adw.StyleManager.getDefault();
+        if (!settings || !styleManager) return true;
 
         const theme = THEMES[themeIndexRef.current % THEMES.length];
         if (theme) {
             settings.setGtkThemeName(theme.name);
-            settings.setGtkApplicationPreferDarkTheme(theme.dark);
+            styleManager.setColorScheme(theme.dark ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.FORCE_LIGHT);
         }
 
         themeIndexRef.current++;
@@ -64,9 +66,12 @@ const ThemesDemo = () => {
                     tickIdRef.current = null;
                 }
                 const settings = Gtk.Settings.getDefault();
+                const styleManager = Adw.StyleManager.getDefault();
                 if (settings) {
                     settings.setGtkThemeName("Adwaita");
-                    settings.setGtkApplicationPreferDarkTheme(false);
+                }
+                if (styleManager) {
+                    styleManager.setColorScheme(Adw.ColorScheme.DEFAULT);
                 }
                 setIsRunning(false);
                 setFps("");
@@ -81,9 +86,12 @@ const ThemesDemo = () => {
                 windowRef.current.removeTickCallback(tickIdRef.current);
             }
             const settings = Gtk.Settings.getDefault();
+            const styleManager = Adw.StyleManager.getDefault();
             if (settings) {
                 settings.setGtkThemeName("Adwaita");
-                settings.setGtkApplicationPreferDarkTheme(false);
+            }
+            if (styleManager) {
+                styleManager.setColorScheme(Adw.ColorScheme.DEFAULT);
             }
         };
     }, []);

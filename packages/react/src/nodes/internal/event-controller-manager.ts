@@ -9,6 +9,7 @@ type ControllerType =
     | "click"
     | "key"
     | "scroll"
+    | "focus"
     | "dragSource"
     | "dropTarget"
     | "gestureDrag"
@@ -35,6 +36,8 @@ const PROP_CONTROLLER_MAP: PropToControllerMap = {
     onKeyPressed: { type: "key", signalName: "key-pressed" },
     onKeyReleased: { type: "key", signalName: "key-released" },
     onScroll: { type: "scroll", signalName: "scroll" },
+    onFocusEnter: { type: "focus", signalName: "enter" },
+    onFocusLeave: { type: "focus", signalName: "leave" },
     onDragPrepare: { type: "dragSource", signalName: "prepare" },
     onDragBegin: { type: "dragSource", signalName: "drag-begin" },
     onDragEnd: { type: "dragSource", signalName: "drag-end" },
@@ -84,6 +87,7 @@ export class EventControllerManager {
         click: () => new Gtk.GestureClick(),
         key: () => new Gtk.EventControllerKey(),
         scroll: () => new Gtk.EventControllerScroll(Gtk.EventControllerScrollFlags.BOTH_AXES),
+        focus: () => new Gtk.EventControllerFocus(),
         dragSource: () => {
             const controller = new Gtk.DragSource();
             controller.setActions(Gdk.DragAction.COPY);

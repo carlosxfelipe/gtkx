@@ -75,6 +75,18 @@ export interface EventControllerProps {
      * @returns true if the scroll was handled
      */
     onScroll?: (dx: number, dy: number, event: Gdk.Event | null) => boolean;
+    /**
+     * Called when keyboard focus enters the widget or one of its descendants.
+     * Note: This may not fire when focus moves from a descendant to the widget itself.
+     * @param event - The underlying Gdk.Event
+     */
+    onFocusEnter?: (event: Gdk.Event | null) => void;
+    /**
+     * Called when keyboard focus leaves the widget and all of its descendants.
+     * Note: This may not fire when focus moves from the widget to one of its descendants.
+     * @param event - The underlying Gdk.Event
+     */
+    onFocusLeave?: (event: Gdk.Event | null) => void;
 }
 
 /**

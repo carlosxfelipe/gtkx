@@ -68,7 +68,7 @@ image.blue {
 }
 
 image.blend1 {
-    background: red, blue;
+    background: linear-gradient(red, red), linear-gradient(blue, blue);
     background-blend-mode: ${blendMode};
     min-width: 200px;
     min-height: 200px;
@@ -93,7 +93,7 @@ image.yellow {
 }
 
 image.blend2 {
-    background: cyan, magenta, yellow;
+    background: linear-gradient(cyan, cyan), linear-gradient(magenta, magenta), linear-gradient(yellow, yellow);
     background-blend-mode: ${blendMode};
     min-width: 200px;
     min-height: 200px;

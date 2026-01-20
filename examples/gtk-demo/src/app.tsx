@@ -75,17 +75,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     return createPortal(
         <GtkWindow title={displayTitle} defaultWidth={800} defaultHeight={600} onClose={onClose}>
-            <GtkScrolledWindow vexpand hexpand>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <DemoComponent />
-                </GtkBox>
-            </GtkScrolledWindow>
+            <DemoComponent />
         </GtkWindow>,
         activeWindow,
     );
