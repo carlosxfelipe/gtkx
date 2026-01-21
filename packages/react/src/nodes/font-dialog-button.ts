@@ -1,7 +1,9 @@
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import type { SignalHandler } from "./internal/signal-store.js";
 import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
@@ -32,7 +34,7 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
     public static override priority = 1;
 
     private dialog: Gtk.FontDialog;
-    private notifyHandler: ((button: Gtk.FontDialogButton, propName: string) => void) | null = null;
+    private notifyHandler: SignalHandler | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass([Gtk.FontDialogButton], containerOrClass);
@@ -105,8 +107,8 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
         }
 
         if (callback) {
-            this.notifyHandler = (_button: Gtk.FontDialogButton, propName: string) => {
-                if (propName === "font-desc") {
+            this.notifyHandler = (_button: Gtk.FontDialogButton, pspec: GObject.ParamSpec) => {
+                if (pspec.getName() === "font-desc") {
                     const fontDesc = this.container.getFontDesc();
                     if (fontDesc) {
                         callback(fontDesc);

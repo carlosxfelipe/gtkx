@@ -215,7 +215,7 @@ const SuggestionEntry = () => {
                     onSearchChanged={(entry) => setText(entry.getText())}
                 />
                 <GtkMenuButton iconName="view-more-symbolic" sensitive={hasSuggestions} active={hasSuggestions}>
-                    <x.Slot id="popover">
+                    <x.Slot for={GtkMenuButton} id="popover">
                         <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                             <GtkScrolledWindow
                                 heightRequest={200}
@@ -224,11 +224,7 @@ const SuggestionEntry = () => {
                             >
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                                     {suggestions.map((word) => (
-                                        <GtkButton
-                                            key={word}
-                                            cssClasses={["flat"]}
-                                            onClicked={() => setText(word)}
-                                        >
+                                        <GtkButton key={word} cssClasses={["flat"]} onClicked={() => setText(word)}>
                                             <GtkLabel label={word} halign={Gtk.Align.START} hexpand />
                                         </GtkButton>
                                     ))}
@@ -301,229 +297,237 @@ const ListViewSelectionsDemo = () => {
 
     return (
         <GtkScrolledWindow hexpand vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginStart={24} marginEnd={24} marginTop={24} marginBottom={24}>
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={24}
+                marginStart={24}
+                marginEnd={24}
+                marginTop={24}
+                marginBottom={24}
+            >
                 <GtkLabel label="Selections" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <GtkLabel
-                label="GtkDropDown provides a compact way to select from a list of options. This demo shows basic dropdowns, filtered dropdowns, and dropdowns with custom content alongside ListView selection modes."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+                <GtkLabel
+                    label="GtkDropDown provides a compact way to select from a list of options. This demo shows basic dropdowns, filtered dropdowns, and dropdowns with custom content alongside ListView selection modes."
+                    wrap
+                    halign={Gtk.Align.START}
+                    cssClasses={["dim-label"]}
+                />
 
-            <GtkFrame label="Basic Dropdown">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="A simple dropdown using GtkDropDown with string items. Click to open the popup and select an option."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={16}>
-                        <GtkLabel label="Select a fruit:" halign={Gtk.Align.START} />
-                        <GtkDropDown selectedId={selectedFruit} onSelectionChanged={setSelectedFruit} hexpand>
-                            {fruits.map((fruit) => (
-                                <x.SimpleListItem key={fruit.id} id={fruit.id} value={fruit.name} />
-                            ))}
-                        </GtkDropDown>
-                    </GtkBox>
-                    {selectedFruitInfo && (
+                <GtkFrame label="Basic Dropdown">
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
+                    >
                         <GtkLabel
-                            label={`Selected: ${selectedFruitInfo.name} (${selectedFruitInfo.color})`}
-                            cssClasses={["dim-label"]}
+                            label="A simple dropdown using GtkDropDown with string items. Click to open the popup and select an option."
+                            wrap
                             halign={Gtk.Align.START}
+                            cssClasses={["dim-label"]}
                         />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Dropdown with Search Filter">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="For larger lists, adding a search filter helps users find items quickly. Type to filter the list."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={16}>
-                        <GtkLabel label="Country:" halign={Gtk.Align.START} />
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
-                            <GtkSearchEntry
-                                placeholderText="Search countries..."
-                                text={countryFilter}
-                                onSearchChanged={(entry) => setCountryFilter(entry.getText())}
-                            />
-                            <GtkDropDown selectedId={selectedCountry} onSelectionChanged={setSelectedCountry}>
-                                {filteredCountries.map((country) => (
-                                    <x.SimpleListItem
-                                        key={country.id}
-                                        id={country.id}
-                                        value={`${country.name} (${country.code})`}
-                                    />
+                        <GtkBox spacing={16}>
+                            <GtkLabel label="Select a fruit:" halign={Gtk.Align.START} />
+                            <GtkDropDown selectedId={selectedFruit} onSelectionChanged={setSelectedFruit} hexpand>
+                                {fruits.map((fruit) => (
+                                    <x.SimpleListItem key={fruit.id} id={fruit.id} value={fruit.name} />
                                 ))}
                             </GtkDropDown>
                         </GtkBox>
-                    </GtkBox>
-                    {selectedCountryInfo && (
-                        <GtkLabel
-                            label={`Selected: ${selectedCountryInfo.name} - ${selectedCountryInfo.continent}`}
-                            cssClasses={["dim-label"]}
-                            halign={Gtk.Align.START}
-                        />
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Dropdown with Icons">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Dropdowns can display icons alongside text for better visual identification."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={16}>
-                        <GtkLabel label="Navigation:" halign={Gtk.Align.START} />
-                        <GtkDropDown selectedId={selectedIcon} onSelectionChanged={setSelectedIcon} hexpand>
-                            {iconOptions.map((option) => (
-                                <x.SimpleListItem key={option.id} id={option.id} value={option.name} />
-                            ))}
-                        </GtkDropDown>
-                    </GtkBox>
-                    {selectedIconInfo && (
-                        <GtkBox spacing={8} halign={Gtk.Align.START}>
-                            <GtkImage iconName={selectedIconInfo.icon} pixelSize={24} />
-                            <GtkLabel label={`Selected: ${selectedIconInfo.name}`} cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    )}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Suggestion Entry">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="A suggestion entry provides autocomplete suggestions as you type. Matching words are shown in a dropdown that can be selected."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <SuggestionEntry />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="ListView Selection Modes">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="ListView supports four selection modes that control how users can select items."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={8}>
-                        {selectionModes.map((m) => (
-                            <GtkButton
-                                key={m.mode}
-                                label={m.label}
-                                onClicked={() => handleModeChange(m.mode)}
-                                cssClasses={selectionMode === m.mode ? ["suggested-action"] : ["flat"]}
+                        {selectedFruitInfo && (
+                            <GtkLabel
+                                label={`Selected: ${selectedFruitInfo.name} (${selectedFruitInfo.color})`}
+                                cssClasses={["dim-label"]}
+                                halign={Gtk.Align.START}
                             />
-                        ))}
+                        )}
                     </GtkBox>
-                    <GtkLabel
-                        label={currentModeInfo?.description ?? ""}
-                        cssClasses={["dim-label"]}
-                        halign={Gtk.Align.START}
-                    />
+                </GtkFrame>
 
-                    <GtkBox spacing={8}>
-                        <GtkButton
-                            label="Select All"
-                            onClicked={selectAll}
-                            sensitive={selectionMode === Gtk.SelectionMode.MULTIPLE}
-                            cssClasses={["flat"]}
-                        />
-                        <GtkButton
-                            label="Select None"
-                            onClicked={selectNone}
-                            sensitive={
-                                selectionMode !== Gtk.SelectionMode.BROWSE && selectionMode !== Gtk.SelectionMode.NONE
-                            }
-                            cssClasses={["flat"]}
-                        />
+                <GtkFrame label="Dropdown with Search Filter">
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
+                    >
                         <GtkLabel
-                            label={`${selected.length} selected`}
+                            label="For larger lists, adding a search filter helps users find items quickly. Type to filter the list."
+                            wrap
+                            halign={Gtk.Align.START}
                             cssClasses={["dim-label"]}
-                            hexpand
-                            halign={Gtk.Align.END}
                         />
+                        <GtkBox spacing={16}>
+                            <GtkLabel label="Country:" halign={Gtk.Align.START} />
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
+                                <GtkSearchEntry
+                                    placeholderText="Search countries..."
+                                    text={countryFilter}
+                                    onSearchChanged={(entry) => setCountryFilter(entry.getText())}
+                                />
+                                <GtkDropDown selectedId={selectedCountry} onSelectionChanged={setSelectedCountry}>
+                                    {filteredCountries.map((country) => (
+                                        <x.SimpleListItem
+                                            key={country.id}
+                                            id={country.id}
+                                            value={`${country.name} (${country.code})`}
+                                        />
+                                    ))}
+                                </GtkDropDown>
+                            </GtkBox>
+                        </GtkBox>
+                        {selectedCountryInfo && (
+                            <GtkLabel
+                                label={`Selected: ${selectedCountryInfo.name} - ${selectedCountryInfo.continent}`}
+                                cssClasses={["dim-label"]}
+                                halign={Gtk.Align.START}
+                            />
+                        )}
                     </GtkBox>
+                </GtkFrame>
 
-                    <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                        <x.ListView<FruitItem>
-                            estimatedItemHeight={48}
-                            showSeparators
-                            selectionMode={selectionMode}
-                            selected={selected}
-                            onSelectionChanged={setSelected}
-                            onActivate={handleActivate}
-                            renderItem={(item) => (
-                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
-                                    <GtkImage iconName={item?.icon ?? ""} pixelSize={24} />
-                                    <GtkLabel label={item?.name ?? ""} hexpand halign={Gtk.Align.START} />
-                                    <GtkLabel label={item?.color ?? ""} cssClasses={["dim-label", "caption"]} />
-                                </GtkBox>
-                            )}
-                        >
-                            {fruits.map((fruit) => (
-                                <x.ListItem key={fruit.id} id={fruit.id} value={fruit} />
-                            ))}
-                        </x.ListView>
-                    </GtkScrolledWindow>
-
-                    {lastActivated && (
+                <GtkFrame label="Dropdown with Icons">
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
+                    >
                         <GtkLabel
-                            label={`Last activated: ${lastActivated}`}
-                            cssClasses={["dim-label", "caption"]}
+                            label="Dropdowns can display icons alongside text for better visual identification."
+                            wrap
+                            halign={Gtk.Align.START}
+                            cssClasses={["dim-label"]}
+                        />
+                        <GtkBox spacing={16}>
+                            <GtkLabel label="Navigation:" halign={Gtk.Align.START} />
+                            <GtkDropDown selectedId={selectedIcon} onSelectionChanged={setSelectedIcon} hexpand>
+                                {iconOptions.map((option) => (
+                                    <x.SimpleListItem key={option.id} id={option.id} value={option.name} />
+                                ))}
+                            </GtkDropDown>
+                        </GtkBox>
+                        {selectedIconInfo && (
+                            <GtkBox spacing={8} halign={Gtk.Align.START}>
+                                <GtkImage iconName={selectedIconInfo.icon} pixelSize={24} />
+                                <GtkLabel label={`Selected: ${selectedIconInfo.name}`} cssClasses={["dim-label"]} />
+                            </GtkBox>
+                        )}
+                    </GtkBox>
+                </GtkFrame>
+
+                <GtkFrame label="Suggestion Entry">
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
+                    >
+                        <GtkLabel
+                            label="A suggestion entry provides autocomplete suggestions as you type. Matching words are shown in a dropdown that can be selected."
+                            wrap
+                            halign={Gtk.Align.START}
+                            cssClasses={["dim-label"]}
+                        />
+                        <SuggestionEntry />
+                    </GtkBox>
+                </GtkFrame>
+
+                <GtkFrame label="ListView Selection Modes">
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
+                    >
+                        <GtkLabel
+                            label="ListView supports four selection modes that control how users can select items."
+                            wrap
+                            halign={Gtk.Align.START}
+                            cssClasses={["dim-label"]}
+                        />
+                        <GtkBox spacing={8}>
+                            {selectionModes.map((m) => (
+                                <GtkButton
+                                    key={m.mode}
+                                    label={m.label}
+                                    onClicked={() => handleModeChange(m.mode)}
+                                    cssClasses={selectionMode === m.mode ? ["suggested-action"] : ["flat"]}
+                                />
+                            ))}
+                        </GtkBox>
+                        <GtkLabel
+                            label={currentModeInfo?.description ?? ""}
+                            cssClasses={["dim-label"]}
                             halign={Gtk.Align.START}
                         />
-                    )}
-                </GtkBox>
-            </GtkFrame>
+
+                        <GtkBox spacing={8}>
+                            <GtkButton
+                                label="Select All"
+                                onClicked={selectAll}
+                                sensitive={selectionMode === Gtk.SelectionMode.MULTIPLE}
+                                cssClasses={["flat"]}
+                            />
+                            <GtkButton
+                                label="Select None"
+                                onClicked={selectNone}
+                                sensitive={
+                                    selectionMode !== Gtk.SelectionMode.BROWSE &&
+                                    selectionMode !== Gtk.SelectionMode.NONE
+                                }
+                                cssClasses={["flat"]}
+                            />
+                            <GtkLabel
+                                label={`${selected.length} selected`}
+                                cssClasses={["dim-label"]}
+                                hexpand
+                                halign={Gtk.Align.END}
+                            />
+                        </GtkBox>
+
+                        <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                            <x.ListView<FruitItem>
+                                estimatedItemHeight={48}
+                                showSeparators
+                                selectionMode={selectionMode}
+                                selected={selected}
+                                onSelectionChanged={setSelected}
+                                onActivate={handleActivate}
+                                renderItem={(item) => (
+                                    <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
+                                        <GtkImage iconName={item?.icon ?? ""} pixelSize={24} />
+                                        <GtkLabel label={item?.name ?? ""} hexpand halign={Gtk.Align.START} />
+                                        <GtkLabel label={item?.color ?? ""} cssClasses={["dim-label", "caption"]} />
+                                    </GtkBox>
+                                )}
+                            >
+                                {fruits.map((fruit) => (
+                                    <x.ListItem key={fruit.id} id={fruit.id} value={fruit} />
+                                ))}
+                            </x.ListView>
+                        </GtkScrolledWindow>
+
+                        {lastActivated && (
+                            <GtkLabel
+                                label={`Last activated: ${lastActivated}`}
+                                cssClasses={["dim-label", "caption"]}
+                                halign={Gtk.Align.START}
+                            />
+                        )}
+                    </GtkBox>
+                </GtkFrame>
             </GtkBox>
         </GtkScrolledWindow>
     );

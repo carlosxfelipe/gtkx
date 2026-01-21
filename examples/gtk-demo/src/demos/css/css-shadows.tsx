@@ -1,7 +1,7 @@
 import { batch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
@@ -80,26 +80,29 @@ const CssShadowsDemo = () => {
             vexpand
             hexpand
         >
-            <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                <GtkButton iconName="go-next" />
-                <GtkButton iconName="go-previous" />
-                <GtkButton label="Hello World" />
-            </GtkBox>
-
-            <GtkScrolledWindow vexpand hexpand>
-                <GtkTextView
-                    ref={textViewRef}
-                    monospace
-                    wrapMode={Gtk.WrapMode.WORD_CHAR}
-                    topMargin={8}
-                    bottomMargin={8}
-                    leftMargin={8}
-                    rightMargin={8}
-                    onBufferChanged={handleBufferChanged}
-                >
-                    {cssText}
-                </GtkTextView>
-            </GtkScrolledWindow>
+            <x.Slot for={GtkPaned} id="startChild">
+                <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                    <GtkButton iconName="go-next" />
+                    <GtkButton iconName="go-previous" />
+                    <GtkButton label="Hello World" />
+                </GtkBox>
+            </x.Slot>
+            <x.Slot for={GtkPaned} id="endChild">
+                <GtkScrolledWindow vexpand hexpand>
+                    <GtkTextView
+                        ref={textViewRef}
+                        monospace
+                        wrapMode={Gtk.WrapMode.WORD_CHAR}
+                        topMargin={8}
+                        bottomMargin={8}
+                        leftMargin={8}
+                        rightMargin={8}
+                        onBufferChanged={handleBufferChanged}
+                    >
+                        {cssText}
+                    </GtkTextView>
+                </GtkScrolledWindow>
+            </x.Slot>
         </GtkPaned>
     );
 };

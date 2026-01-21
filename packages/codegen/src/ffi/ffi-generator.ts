@@ -180,9 +180,7 @@ export class FfiGenerator {
                         this.ctx.usesCall = true;
                         this.ctx.usesNativeHandle = true;
                         this.ctx.usesGetNativeObject = true;
-                        this.ctx.usesRef = supportedMethods.some((m) =>
-                            methodBody.hasRefParameter(m.parameters),
-                        );
+                        this.ctx.usesRef = supportedMethods.some((m) => methodBody.hasRefParameter(m.parameters));
 
                         const methodStructures: MethodDeclarationStructure[] = [];
                         for (const method of supportedMethods) {

@@ -2,7 +2,7 @@ import { injectGlobal } from "@gtkx/css";
 import { batch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-pixbufs.tsx?raw";
@@ -172,59 +172,67 @@ const CssPixbufsDemo = () => {
             vexpand
             hexpand
         >
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={12}
-                marginTop={12}
-                marginStart={12}
-                marginEnd={12}
-                marginBottom={12}
-            >
-                <GtkLabel label="Animated Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="GTK CSS supports @keyframes animations for continuous motion effects. Animate gradients, icons, filters, and transforms. Edit the CSS below to experiment."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
-
-                <GtkBox cssClasses={["animated-bg"]} hexpand vexpand>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        hexpand
-                        vexpand
-                    >
-                        <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
-                        <GtkLabel label="Watch the animation" cssClasses={["dim-label"]} />
-                    </GtkBox>
-                </GtkBox>
-
-                <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
-                    {Object.keys(PRESETS).map((name) => (
-                        <GtkButton key={name} label={name} cssClasses={["flat"]} onClicked={() => handlePreset(name)} />
-                    ))}
-                </GtkBox>
-
-                {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
-            </GtkBox>
-
-            <GtkScrolledWindow vexpand hexpand>
-                <GtkTextView
-                    ref={textViewRef}
-                    monospace
-                    wrapMode={Gtk.WrapMode.WORD_CHAR}
-                    topMargin={8}
-                    bottomMargin={8}
-                    leftMargin={8}
-                    rightMargin={8}
-                    onBufferChanged={handleBufferChanged}
+            <x.Slot for={GtkPaned} id="startChild">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginStart={12}
+                    marginEnd={12}
+                    marginBottom={12}
                 >
-                    {cssText}
-                </GtkTextView>
-            </GtkScrolledWindow>
+                    <GtkLabel label="Animated Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
+                    <GtkLabel
+                        label="GTK CSS supports @keyframes animations for continuous motion effects. Animate gradients, icons, filters, and transforms. Edit the CSS below to experiment."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox cssClasses={["animated-bg"]} hexpand vexpand>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                            hexpand
+                            vexpand
+                        >
+                            <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
+                            <GtkLabel label="Watch the animation" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </GtkBox>
+
+                    <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
+                        {Object.keys(PRESETS).map((name) => (
+                            <GtkButton
+                                key={name}
+                                label={name}
+                                cssClasses={["flat"]}
+                                onClicked={() => handlePreset(name)}
+                            />
+                        ))}
+                    </GtkBox>
+
+                    {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
+                </GtkBox>
+            </x.Slot>
+            <x.Slot for={GtkPaned} id="endChild">
+                <GtkScrolledWindow vexpand hexpand>
+                    <GtkTextView
+                        ref={textViewRef}
+                        monospace
+                        wrapMode={Gtk.WrapMode.WORD_CHAR}
+                        topMargin={8}
+                        bottomMargin={8}
+                        leftMargin={8}
+                        rightMargin={8}
+                        onBufferChanged={handleBufferChanged}
+                    >
+                        {cssText}
+                    </GtkTextView>
+                </GtkScrolledWindow>
+            </x.Slot>
         </GtkPaned>
     );
 };

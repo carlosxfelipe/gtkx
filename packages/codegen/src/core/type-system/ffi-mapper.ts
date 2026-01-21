@@ -27,8 +27,8 @@ import {
     PRIMITIVE_TYPE_MAP,
     ptrArrayType,
     refType,
-    stringType,
     STRUCT_ELEMENT_SIZES,
+    stringType,
     structType,
     type TypeImport,
 } from "./ffi-types.js";

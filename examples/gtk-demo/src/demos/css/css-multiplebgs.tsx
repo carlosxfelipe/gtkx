@@ -1,7 +1,7 @@
 import { batch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
@@ -134,60 +134,68 @@ const CssMultiplebgsDemo = () => {
             vexpand
             hexpand
         >
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={12}
-                marginTop={12}
-                marginStart={12}
-                marginEnd={12}
-                marginBottom={12}
-            >
-                <GtkLabel label="Multiple Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="CSS allows stacking multiple background layers. Each layer can be a gradient, image, or color. The first layer appears on top. Edit the CSS below to experiment."
-                    wrap
-                    halign={Gtk.Align.START}
-                    cssClasses={["dim-label"]}
-                />
-
-                <GtkBox cssClasses={["multi-bg-demo"]} hexpand vexpand>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        hexpand
-                        vexpand
-                    >
-                        <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
-                        <GtkLabel label="Edit CSS below to see changes" cssClasses={["dim-label"]} />
-                    </GtkBox>
-                </GtkBox>
-
-                <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                    <GtkLabel label="Presets:" cssClasses={["dim-label"]} />
-                    {Object.keys(PRESETS).map((name) => (
-                        <GtkButton key={name} label={name} cssClasses={["flat"]} onClicked={() => handlePreset(name)} />
-                    ))}
-                </GtkBox>
-
-                {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
-            </GtkBox>
-
-            <GtkScrolledWindow vexpand hexpand>
-                <GtkTextView
-                    ref={textViewRef}
-                    monospace
-                    wrapMode={Gtk.WrapMode.WORD_CHAR}
-                    topMargin={8}
-                    bottomMargin={8}
-                    leftMargin={8}
-                    rightMargin={8}
-                    onBufferChanged={handleBufferChanged}
+            <x.Slot for={GtkPaned} id="startChild">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginStart={12}
+                    marginEnd={12}
+                    marginBottom={12}
                 >
-                    {cssText}
-                </GtkTextView>
-            </GtkScrolledWindow>
+                    <GtkLabel label="Multiple Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
+                    <GtkLabel
+                        label="CSS allows stacking multiple background layers. Each layer can be a gradient, image, or color. The first layer appears on top. Edit the CSS below to experiment."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkBox cssClasses={["multi-bg-demo"]} hexpand vexpand>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                            hexpand
+                            vexpand
+                        >
+                            <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
+                            <GtkLabel label="Edit CSS below to see changes" cssClasses={["dim-label"]} />
+                        </GtkBox>
+                    </GtkBox>
+
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
+                        <GtkLabel label="Presets:" cssClasses={["dim-label"]} />
+                        {Object.keys(PRESETS).map((name) => (
+                            <GtkButton
+                                key={name}
+                                label={name}
+                                cssClasses={["flat"]}
+                                onClicked={() => handlePreset(name)}
+                            />
+                        ))}
+                    </GtkBox>
+
+                    {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
+                </GtkBox>
+            </x.Slot>
+            <x.Slot for={GtkPaned} id="endChild">
+                <GtkScrolledWindow vexpand hexpand>
+                    <GtkTextView
+                        ref={textViewRef}
+                        monospace
+                        wrapMode={Gtk.WrapMode.WORD_CHAR}
+                        topMargin={8}
+                        bottomMargin={8}
+                        leftMargin={8}
+                        rightMargin={8}
+                        onBufferChanged={handleBufferChanged}
+                    >
+                        {cssText}
+                    </GtkTextView>
+                </GtkScrolledWindow>
+            </x.Slot>
         </GtkPaned>
     );
 };

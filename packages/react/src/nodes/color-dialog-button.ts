@@ -1,7 +1,9 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import type { SignalHandler } from "./internal/signal-store.js";
 import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
@@ -20,7 +22,7 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
     public static override priority = 1;
 
     private dialog: Gtk.ColorDialog;
-    private notifyHandler: ((button: Gtk.ColorDialogButton, propName: string) => void) | null = null;
+    private notifyHandler: SignalHandler | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass([Gtk.ColorDialogButton], containerOrClass);
@@ -81,8 +83,8 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
         }
 
         if (callback) {
-            this.notifyHandler = (_button: Gtk.ColorDialogButton, propName: string) => {
-                if (propName === "rgba") {
+            this.notifyHandler = (_button: Gtk.ColorDialogButton, pspec: GObject.ParamSpec) => {
+                if (pspec.getName() === "rgba") {
                     const rgba = this.container.getRgba();
                     callback(rgba);
                 }

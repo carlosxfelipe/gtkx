@@ -305,7 +305,8 @@ export class MethodBodyWriter {
         const needsHashTableWrap = returnTypeMapping.ffi.type === "hashtable";
 
         return {
-            needsWrap: needsGObjectWrap || needsBoxedWrap || needsFundamentalWrap || needsInterfaceWrap || needsStructWrap,
+            needsWrap:
+                needsGObjectWrap || needsBoxedWrap || needsFundamentalWrap || needsInterfaceWrap || needsStructWrap,
             needsGObjectWrap,
             needsBoxedWrap,
             needsFundamentalWrap,
@@ -666,7 +667,12 @@ export class MethodBodyWriter {
                     if (isNullable) {
                         writer.writeLine("if (ptr === null) return null;");
                     }
-                    if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsInterfaceWrap || wrapInfo.needsStructWrap) {
+                    if (
+                        wrapInfo.needsBoxedWrap ||
+                        wrapInfo.needsFundamentalWrap ||
+                        wrapInfo.needsInterfaceWrap ||
+                        wrapInfo.needsStructWrap
+                    ) {
                         writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
                     } else {
                         writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);

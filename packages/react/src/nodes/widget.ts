@@ -1,6 +1,14 @@
 import { batch, getNativeObject, isObjectEqual, NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
-import { ObjectClass, Type, typeClassRef, typeFromName, typeFundamental, TypeInstance, typeNameFromInstance } from "@gtkx/ffi/gobject";
+import {
+    ObjectClass,
+    Type,
+    TypeInstance,
+    typeClassRef,
+    typeFromName,
+    typeFundamental,
+    typeNameFromInstance,
+} from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";

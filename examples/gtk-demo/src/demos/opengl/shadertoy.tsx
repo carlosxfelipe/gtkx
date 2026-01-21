@@ -486,7 +486,11 @@ const ShadertoyDemo = () => {
             <GtkCenterBox>
                 <x.Slot for={GtkCenterBox} id="startWidget">
                     <GtkBox spacing={6}>
-                        <GtkButton iconName="view-refresh-symbolic" tooltipText="Restart the demo" onClicked={handleRun} />
+                        <GtkButton
+                            iconName="view-refresh-symbolic"
+                            tooltipText="Restart the demo"
+                            onClicked={handleRun}
+                        />
                         <GtkButton
                             iconName="edit-clear-all-symbolic"
                             tooltipText="Clear the text view"
@@ -497,7 +501,11 @@ const ShadertoyDemo = () => {
                 <x.Slot for={GtkCenterBox} id="centerWidget">
                     <GtkBox spacing={6}>
                         {SHADER_PRESETS.map((preset) => (
-                            <GtkButton key={preset.name} label={preset.name} onClicked={() => loadPreset(preset.code)} />
+                            <GtkButton
+                                key={preset.name}
+                                label={preset.name}
+                                onClicked={() => loadPreset(preset.code)}
+                            />
                         ))}
                     </GtkBox>
                 </x.Slot>
