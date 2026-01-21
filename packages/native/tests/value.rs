@@ -957,7 +957,7 @@ fn from_glib_value_struct_fails() {
 }
 
 #[test]
-fn from_cif_value_struct_transfer_none_without_size_returns_error() {
+fn from_cif_value_struct_transfer_none_without_size_borrows_pointer() {
     common::ensure_gtk_init();
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
@@ -969,7 +969,11 @@ fn from_cif_value_struct_transfer_none_without_size_returns_error() {
     let cif_value = ffi::FfiValue::Ptr(struct_ptr);
     let result = Value::from_ffi_value(&cif_value, &type_);
 
-    assert!(result.is_err());
+    assert!(result.is_ok());
+    if let Value::Object(_handle) = result.unwrap() {
+    } else {
+        panic!("Expected Value::Object for struct");
+    }
 
     unsafe {
         glib::ffi::g_free(struct_ptr);

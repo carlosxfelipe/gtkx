@@ -249,10 +249,6 @@ export class FfiTypeWriter {
 
         props.push({ name: "innerType", value: `"${innerType}"` });
 
-        if (type.size !== undefined) {
-            props.push({ name: "size", value: type.size });
-        }
-
         return props;
     }
 

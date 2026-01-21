@@ -165,16 +165,6 @@ describe("structType", () => {
             type: "struct",
             innerType: "Rectangle",
             ownership: "full",
-            size: undefined,
-        });
-    });
-
-    it("creates struct type with size", () => {
-        expect(structType("Rectangle", true, 16)).toEqual({
-            type: "struct",
-            innerType: "Rectangle",
-            ownership: "full",
-            size: 16,
         });
     });
 });

@@ -195,7 +195,7 @@ impl ffi::FfiDecode for StructType {
         let boxed = if self.ownership.is_full() {
             Boxed::from_glib_full(None, struct_ptr)
         } else {
-            Boxed::from_glib_none_with_size(None, struct_ptr, self.size, Some(&self.type_name))?
+            Boxed::borrowed(None, struct_ptr)
         };
 
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))

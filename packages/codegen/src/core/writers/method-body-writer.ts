@@ -262,6 +262,7 @@ export class MethodBodyWriter {
         needsBoxedWrap: boolean;
         needsFundamentalWrap: boolean;
         needsInterfaceWrap: boolean;
+        needsStructWrap: boolean;
         needsArrayItemWrap: boolean;
         arrayItemType: string | undefined;
         needsHashTableWrap: boolean;
@@ -288,6 +289,11 @@ export class MethodBodyWriter {
             baseReturnType !== "unknown" &&
             returnTypeMapping.kind === "interface";
 
+        const needsStructWrap =
+            returnTypeMapping.ffi.type === "struct" &&
+            baseReturnType !== "unknown" &&
+            returnTypeMapping.kind !== "interface";
+
         const itemType = returnTypeMapping.ffi.itemType;
         const needsArrayItemWrap =
             returnTypeMapping.ffi.type === "array" &&
@@ -299,11 +305,12 @@ export class MethodBodyWriter {
         const needsHashTableWrap = returnTypeMapping.ffi.type === "hashtable";
 
         return {
-            needsWrap: needsGObjectWrap || needsBoxedWrap || needsFundamentalWrap || needsInterfaceWrap,
+            needsWrap: needsGObjectWrap || needsBoxedWrap || needsFundamentalWrap || needsInterfaceWrap || needsStructWrap,
             needsGObjectWrap,
             needsBoxedWrap,
             needsFundamentalWrap,
             needsInterfaceWrap,
+            needsStructWrap,
             needsArrayItemWrap,
             arrayItemType,
             needsHashTableWrap,
@@ -659,7 +666,7 @@ export class MethodBodyWriter {
                     if (isNullable) {
                         writer.writeLine("if (ptr === null) return null;");
                     }
-                    if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsInterfaceWrap) {
+                    if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsInterfaceWrap || wrapInfo.needsStructWrap) {
                         writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
                     } else {
                         writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);

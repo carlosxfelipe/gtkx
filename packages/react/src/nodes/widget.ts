@@ -1,6 +1,6 @@
 import { batch, getNativeObject, isObjectEqual, NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
-import { ObjectClass, Type, typeClassPeek, typeFromName, typeFundamental, TypeInstance, typeNameFromInstance } from "@gtkx/ffi/gobject";
+import { ObjectClass, Type, typeClassRef, typeFromName, typeFundamental, TypeInstance, typeNameFromInstance } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
@@ -32,9 +32,7 @@ function findProperty(obj: NativeObject, propertyName: string): GObject.ParamSpe
     const typeInstance = getNativeObject(obj.handle, TypeInstance);
     const typeName = typeNameFromInstance(typeInstance);
     const gtype = typeFromName(typeName);
-    const typeClass = typeClassPeek(gtype);
-    if (!typeClass) return null;
-
+    const typeClass = typeClassRef(gtype);
     const objectClass = getNativeObject(typeClass.handle, ObjectClass);
     return objectClass.findProperty(propertyName) ?? null;
 }

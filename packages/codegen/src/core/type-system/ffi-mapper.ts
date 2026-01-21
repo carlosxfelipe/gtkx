@@ -12,7 +12,6 @@ import { type CallbackName, getNativeCallbackName, isSupportedCallback } from ".
 import { normalizeClassName, toPascalCase } from "../utils/naming.js";
 import {
     arrayType,
-    BOXED_TYPE_SIZES,
     boxedType,
     FFI_INT32,
     FFI_POINTER,
@@ -29,6 +28,7 @@ import {
     ptrArrayType,
     refType,
     stringType,
+    STRUCT_ELEMENT_SIZES,
     structType,
     type TypeImport,
 } from "./ffi-types.js";
@@ -136,7 +136,7 @@ export class FfiMapper {
                 );
                 imports.push(...elementResult.imports);
 
-                const elementSize = BOXED_TYPE_SIZES.get(type.elementType.name);
+                const elementSize = STRUCT_ELEMENT_SIZES.get(type.elementType.name);
 
                 return {
                     ts: `${elementResult.ts}[]`,
@@ -570,11 +570,9 @@ export class FfiMapper {
 
                 const { glibTypeName, glibGetType } = resolved;
                 if (!glibTypeName || !glibGetType) {
-                    const qualifiedTypeName = `${resolved.namespace}.${resolved.name}`;
-                    const size = BOXED_TYPE_SIZES.get(resolved.name) ?? BOXED_TYPE_SIZES.get(qualifiedTypeName);
                     return {
                         ts: qualifiedName,
-                        ffi: structType(resolved.transformedName, transferFull, size),
+                        ffi: structType(resolved.transformedName, transferFull),
                         imports,
                         kind: "record",
                     };
