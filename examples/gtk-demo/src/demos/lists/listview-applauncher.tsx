@@ -38,7 +38,7 @@ const ListViewApplauncherDemo = () => {
     }, []);
 
     const handleActivate = useCallback(
-        (_listView: Gtk.ListView, position: number) => {
+        (position: number) => {
             const app = apps[position];
             if (!app) return;
 

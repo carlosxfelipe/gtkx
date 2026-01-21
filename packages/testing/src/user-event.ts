@@ -46,15 +46,29 @@ const click = async (element: Gtk.Widget): Promise<void> => {
     }
 };
 
+const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<void> => {
+    const controller = getOrCreateController(element, Gtk.GestureClick);
+
+    for (let i = 1; i <= nPress; i++) {
+        const args = [
+            Value.newFromObject(controller),
+            Value.newFromInt(i),
+            Value.newFromDouble(0),
+            Value.newFromDouble(0),
+        ];
+        signalEmitv(args, getSignalId(controller, "pressed"), 0, null);
+        signalEmitv(args, getSignalId(controller, "released"), 0, null);
+    }
+
+    await tick();
+};
+
 const dblClick = async (element: Gtk.Widget): Promise<void> => {
-    await fireEvent(element, "clicked");
-    await fireEvent(element, "clicked");
+    await emitClickSequence(element, 2);
 };
 
 const tripleClick = async (element: Gtk.Widget): Promise<void> => {
-    await fireEvent(element, "clicked");
-    await fireEvent(element, "clicked");
-    await fireEvent(element, "clicked");
+    await emitClickSequence(element, 3);
 };
 
 const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
@@ -391,13 +405,13 @@ export const userEvent = {
     /**
      * Double-clicks a widget.
      *
-     * Emits two consecutive clicked signals.
+     * Emits pressed/released signals with n_press=1, then n_press=2.
      */
     dblClick,
     /**
      * Triple-clicks a widget.
      *
-     * Emits three consecutive clicked signals. Useful for text selection.
+     * Emits pressed/released signals with n_press=1, 2, then 3. Useful for text selection.
      */
     tripleClick,
     /**

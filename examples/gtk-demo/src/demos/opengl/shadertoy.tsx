@@ -360,7 +360,7 @@ const ShadertoyDemo = () => {
     }, [compiledCode]);
 
     const handleRender = useCallback(
-        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
+        (_context: Gdk.GLContext, self: Gtk.GLArea) => {
             if (!glStateRef.current) {
                 if (self.getError()) return true;
                 const vertexShader = gl.createShader(gl.VERTEX_SHADER);
@@ -419,7 +419,7 @@ const ShadertoyDemo = () => {
         [resolution, compiledCode],
     );
 
-    const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
+    const handleResize = useCallback((width: number, height: number) => {
         setResolution({ x: width, y: height });
     }, []);
 

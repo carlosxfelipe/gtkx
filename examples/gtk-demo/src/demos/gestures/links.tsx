@@ -38,7 +38,7 @@ const LinksDemo = () => {
             marginEnd={20}
             marginTop={20}
             marginBottom={20}
-            onActivateLink={(_self, uri) => handleActivateLink(uri)}
+            onActivateLink={(uri) => handleActivateLink(uri)}
         />
     );
 };

@@ -128,9 +128,7 @@ class SourceViewNode extends TextViewNode {
             this,
             buffer,
             "highlight-updated",
-            onHighlightUpdated
-                ? (_buffer: GtkSource.Buffer, start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end)
-                : null,
+            onHighlightUpdated ? (start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end) : null,
         );
     }
 }

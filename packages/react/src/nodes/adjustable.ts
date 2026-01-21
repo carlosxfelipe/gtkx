@@ -16,7 +16,7 @@ type AdjustableProps = Props & {
     stepIncrement?: number;
     pageIncrement?: number;
     pageSize?: number;
-    onValueChanged?: ((value: number) => void) | null;
+    onValueChanged?: ((value: number, self: AdjustableWidget) => void) | null;
 };
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
@@ -82,10 +82,9 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
 
         const { onValueChanged } = props;
         if (onValueChanged) {
-            const adjustment = this.adjustment;
-            signalStore.set(this, adjustment, "value-changed", () => onValueChanged(adjustment.getValue()));
+            signalStore.set(this, this.container, "value-changed", (self: T) => onValueChanged(self.getValue(), self));
         } else {
-            signalStore.set(this, this.adjustment, "value-changed", null);
+            signalStore.set(this, this.container, "value-changed", null);
         }
     }
 }

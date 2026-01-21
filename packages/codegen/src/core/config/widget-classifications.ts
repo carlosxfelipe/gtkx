@@ -76,7 +76,7 @@ export const PACK_INTERFACE_METHODS = ["packStart", "packEnd", "remove"] as cons
 
 export const PREFIX_SUFFIX_INTERFACE_METHODS = ["addPrefix", "addSuffix", "remove"] as const;
 
-export const ADJUSTABLE_INTERFACE_METHODS = ["getAdjustment", "setAdjustment"] as const;
+export const ADJUSTABLE_INTERFACE_METHODS = ["getAdjustment", "setAdjustment", "getValue"] as const;
 
 export const getClassification = (className: string): WidgetClassificationType | null => {
     for (const c of WIDGET_CLASSIFICATIONS) {

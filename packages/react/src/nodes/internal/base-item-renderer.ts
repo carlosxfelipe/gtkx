@@ -72,7 +72,7 @@ export abstract class BaseItemRenderer<TStore = unknown> {
     }
 
     private initializeFactory(): void {
-        signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "setup", (listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const container = this.onSetup(listItem, ptr);
             const fiberRoot = createFiberRoot(container);
@@ -84,18 +84,18 @@ export abstract class BaseItemRenderer<TStore = unknown> {
             });
         });
 
-        signalStore.set(this, this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "bind", (listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
             if (!fiberRoot) return;
             this.onBind(listItem, ptr, fiberRoot);
         });
 
-        signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "unbind", (listItem: Gtk.ListItem) => {
             this.onUnbind(listItem);
         });
 
-        signalStore.set(this, this.factory, "teardown", (_self, listItem) => {
+        signalStore.set(this, this.factory, "teardown", (listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
             const fiberRoot = this.fiberRoots.get(ptr);
 

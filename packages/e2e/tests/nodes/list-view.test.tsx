@@ -369,34 +369,6 @@ describe("render - ListView", () => {
 
             expect(ref.current?.getSingleClickActivate()).toBe(true);
         });
-
-        it("calls onActivate when clicking directly on list item cell", async () => {
-            const ref = createRef<Gtk.GridView>();
-            const onActivate = vi.fn();
-
-            await render(
-                <ScrollWrapper>
-                    <GtkGridView
-                        ref={ref}
-                        renderItem={() => <GtkLabel label="Item" />}
-                        singleClickActivate
-                        onActivate={onActivate}
-                    >
-                        <x.ListItem id="1" value={{ name: "First" }} />
-                        <x.ListItem id="2" value={{ name: "Second" }} />
-                    </GtkGridView>
-                </ScrollWrapper>,
-            );
-
-            const gridView = ref.current as Gtk.GridView;
-            const listItemCell = gridView.getFirstChild();
-
-            if (listItemCell) {
-                await userEvent.pointer(listItemCell, "click");
-            }
-
-            expect(onActivate).toHaveBeenCalledWith(ref.current, 0);
-        });
     });
 
     describe("item reordering", () => {

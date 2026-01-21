@@ -203,7 +203,7 @@ const AppContent = () => {
 
                 <GtkNotebook
                     page={notebookPage}
-                    onSwitchPage={(_, __, pageNum) => setNotebookPage(pageNum)}
+                    onSwitchPage={(_page, pageNum) => setNotebookPage(pageNum)}
                     vexpand
                     hexpand
                     scrollable

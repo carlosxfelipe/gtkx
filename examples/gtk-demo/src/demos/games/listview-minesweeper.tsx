@@ -136,7 +136,7 @@ const ListViewMinesweeperDemo = () => {
                     minColumns={GRID_SIZE}
                     maxColumns={GRID_SIZE}
                     singleClickActivate
-                    onActivate={(_grid, position) => handleCellClick(position)}
+                    onActivate={(position) => handleCellClick(position)}
                     renderItem={(item) => (
                         <GtkLabel
                             label={getCellDisplay(item ?? defaultCell)}

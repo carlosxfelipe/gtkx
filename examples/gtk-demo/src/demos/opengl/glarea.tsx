@@ -142,7 +142,7 @@ const GLAreaDemo = () => {
     }, []);
 
     const handleRender = useCallback(
-        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
+        (_context: Gdk.GLContext, self: Gtk.GLArea) => {
             if (!glStateRef.current) {
                 const glError = self.getError();
                 if (glError) {
@@ -181,7 +181,7 @@ const GLAreaDemo = () => {
         [rotationX, rotationY, rotationZ],
     );
 
-    const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
+    const handleResize = useCallback((width: number, height: number) => {
         gl.viewport(0, 0, width, height);
     }, []);
 

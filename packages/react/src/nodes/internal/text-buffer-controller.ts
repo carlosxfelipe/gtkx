@@ -91,7 +91,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             buffer,
             "insert-text",
             onTextInserted
-                ? (_buffer: Gtk.TextBuffer, location: Gtk.TextIter, text: string, _len: number) =>
+                ? (location: Gtk.TextIter, text: string, _len: number) =>
                       onTextInserted(buffer, location.getOffset(), text)
                 : null,
         );
@@ -101,8 +101,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             buffer,
             "delete-range",
             onTextDeleted
-                ? (_buffer: Gtk.TextBuffer, start: Gtk.TextIter, end: Gtk.TextIter) =>
-                      onTextDeleted(buffer, start.getOffset(), end.getOffset())
+                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onTextDeleted(buffer, start.getOffset(), end.getOffset())
                 : null,
         );
 

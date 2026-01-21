@@ -37,6 +37,7 @@ type EditableWidget = Gtk.Widget & {
 };
 export type AdjustableWidget = Gtk.Widget & {
     setAdjustment: (adjustment: Gtk.Adjustment) => void;
+    getValue: () => number;
 };
 type BufferedWidget = Gtk.Widget & {
     getBuffer: () => Gtk.TextBuffer;

@@ -117,7 +117,7 @@ const ListViewUcdDemo = () => {
         );
     }, [characters, searchText]);
 
-    const handleActivate = (_view: Gtk.ColumnView, position: number) => {
+    const handleActivate = (position: number) => {
         const char = filteredCharacters[position];
         if (char) {
             setSelectedChar(char);
@@ -161,7 +161,7 @@ const ListViewUcdDemo = () => {
                             <x.ListView<{ name: string }>
                                 estimatedItemHeight={40}
                                 showSeparators
-                                onActivate={(_list, position) => {
+                                onActivate={(position) => {
                                     const block = unicodeBlocks[position];
                                     if (block) {
                                         setSelectedBlock(block.name);

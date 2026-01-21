@@ -51,7 +51,7 @@ const ErrorstatesDemo = () => {
     );
 
     const handleModeStateSet = useCallback(
-        (_sw: Gtk.Switch, state: boolean) => {
+        (state: boolean) => {
             if (!state || level > 50) {
                 setShowError(false);
                 setModeActive(state);

@@ -126,7 +126,7 @@ const MessageRow = ({ message, onFavorite, onReshare }: MessageRowProps) => {
 
     return (
         <GtkListBoxRow
-            onStateFlagsChanged={(_, flags) => {
+            onStateFlagsChanged={(flags) => {
                 const isHovered = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
                 setHovered(isHovered);
             }}
@@ -227,7 +227,7 @@ const ListBoxDemo = () => {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nReshares: m.nReshares + 1 } : m)));
     }, []);
 
-    const handleRowActivated = useCallback((_listBox: Gtk.ListBox, _row: Gtk.ListBoxRow) => {}, []);
+    const handleRowActivated = useCallback((_row: Gtk.ListBoxRow) => {}, []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>

@@ -194,9 +194,9 @@ export class EventControllerManager {
     ): SignalHandler | undefined {
         if (!handler) return undefined;
 
-        return (_self: unknown, ...args: unknown[]) => {
+        return (...args: unknown[]) => {
             const event = controller.getCurrentEvent();
-            return handler(...args, event);
+            return handler(...args.slice(0, -1), event);
         };
     }
 
@@ -206,7 +206,7 @@ export class EventControllerManager {
         const needsAxisData = propName === "onStylusDown" || propName === "onStylusMotion";
 
         if (needsAxisData) {
-            return (gesture: Gtk.GestureStylus, x: number, y: number) => {
+            return (x: number, y: number, gesture: Gtk.GestureStylus) => {
                 const pressureRef = createRef(0);
                 const tiltXRef = createRef(0);
                 const tiltYRef = createRef(0);
@@ -220,7 +220,7 @@ export class EventControllerManager {
             };
         }
 
-        return (gesture: Gtk.GestureStylus, x: number, y: number) => {
+        return (x: number, y: number, gesture: Gtk.GestureStylus) => {
             const event = gesture.getCurrentEvent();
             handler(x, y, event);
         };

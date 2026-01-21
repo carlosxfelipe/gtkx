@@ -429,10 +429,10 @@ describe("widget - signals", () => {
             const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
             await userEvent.click(switchWidget);
 
-            expect(handleStateSet).toHaveBeenCalledWith(expect.anything(), true);
+            expect(handleStateSet).toHaveBeenCalledWith(true, expect.anything());
         });
 
-        it("receives widget as first argument", async () => {
+        it("receives widget as last argument", async () => {
             const handleClick = vi.fn();
             const ref = createRef<Gtk.Button>();
 

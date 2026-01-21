@@ -264,7 +264,7 @@ const ListViewSelectionsDemo = () => {
         }
     };
 
-    const handleActivate = (_list: Gtk.ListView, position: number) => {
+    const handleActivate = (position: number) => {
         const item = fruits[position];
         if (item) {
             setLastActivated(item.name);

@@ -398,7 +398,7 @@ const GearsDemo = () => {
         glStateRef.current = null;
     }, []);
 
-    const handleRender = useCallback((self: Gtk.GLArea, _context: Gdk.GLContext) => {
+    const handleRender = useCallback((_context: Gdk.GLContext, self: Gtk.GLArea) => {
         if (!glStateRef.current) {
             const glError = self.getError();
             if (glError) {

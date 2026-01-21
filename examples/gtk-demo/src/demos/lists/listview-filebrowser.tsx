@@ -142,7 +142,7 @@ const ListViewFilebrowserDemo = () => {
     }, [currentPath]);
 
     const handleActivate = useCallback(
-        (_view: Gtk.GridView, position: number) => {
+        (position: number) => {
             const item = files[position];
             if (!item) return;
 

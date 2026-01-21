@@ -35,7 +35,7 @@ const DialogDemo = () => {
         setShowMessageDialog(true);
     };
 
-    const handleInteractiveDialogResponse = (_dialog: Adw.AlertDialog, response: string) => {
+    const handleInteractiveDialogResponse = (response: string) => {
         if (response === "ok") {
             setEntry1(dialogEntry1Ref.current?.getText() ?? "");
             setEntry2(dialogEntry2Ref.current?.getText() ?? "");

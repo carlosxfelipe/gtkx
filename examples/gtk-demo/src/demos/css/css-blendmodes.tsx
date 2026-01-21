@@ -106,7 +106,7 @@ const CssBlendmodesDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [listbox, setListbox] = useState<Gtk.ListBox | null>(null);
 
-    const handleRowActivated = useCallback((_listbox: Gtk.ListBox, row: Gtk.ListBoxRow) => {
+    const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
         if (mode) {

@@ -25,22 +25,27 @@ const SpinButtonDemo = () => {
     const [timeValue, setTimeValue] = useState(0);
     const [monthValue, setMonthValue] = useState(1);
 
-    const formatHex = useCallback((value: number) => {
-        if (Math.abs(value) < 1e-5) {
-            return "0x00";
-        }
-        return `0x${Math.round(value).toString(16).toUpperCase().padStart(2, "0")}`;
+    const handleHexOutput = useCallback((spin: Gtk.SpinButton) => {
+        const value = spin.getValue();
+        const text =
+            Math.abs(value) < 1e-5 ? "0x00" : `0x${Math.round(value).toString(16).toUpperCase().padStart(2, "0")}`;
+        spin.setText(text);
+        return true;
     }, []);
 
-    const formatTime = useCallback((value: number) => {
+    const handleTimeOutput = useCallback((spin: Gtk.SpinButton) => {
+        const value = spin.getValue();
         const hours = Math.floor(value / 60);
         const minutes = Math.round((value / 60 - hours) * 60);
-        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+        spin.setText(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
+        return true;
     }, []);
 
-    const formatMonth = useCallback((value: number) => {
+    const handleMonthOutput = useCallback((spin: Gtk.SpinButton) => {
+        const value = spin.getValue();
         const index = Math.round(value) - 1;
-        return MONTHS[index] ?? "January";
+        spin.setText(MONTHS[index] ?? "January");
+        return true;
     }, []);
 
     return (
@@ -68,7 +73,7 @@ const SpinButtonDemo = () => {
                         upper={10000}
                         stepIncrement={0.5}
                         pageIncrement={100}
-                        onValueChanged={(self) => setNumericValue(self.getValue())}
+                        onValueChanged={setNumericValue}
                     />
                 </x.GridChild>
                 <x.GridChild column={2} row={0}>
@@ -83,13 +88,13 @@ const SpinButtonDemo = () => {
                         halign={Gtk.Align.START}
                         widthChars={4}
                         wrap
-                        text={formatHex(hexValue)}
                         value={hexValue}
                         lower={0}
                         upper={255}
                         stepIncrement={1}
                         pageIncrement={16}
-                        onValueChanged={(self) => setHexValue(self.getValue())}
+                        onValueChanged={setHexValue}
+                        onOutput={handleHexOutput}
                     />
                 </x.GridChild>
                 <x.GridChild column={2} row={1}>
@@ -104,13 +109,13 @@ const SpinButtonDemo = () => {
                         halign={Gtk.Align.START}
                         widthChars={5}
                         wrap
-                        text={formatTime(timeValue)}
                         value={timeValue}
                         lower={0}
                         upper={1410}
                         stepIncrement={30}
                         pageIncrement={60}
-                        onValueChanged={(self) => setTimeValue(self.getValue())}
+                        onValueChanged={setTimeValue}
+                        onOutput={handleTimeOutput}
                     />
                 </x.GridChild>
                 <x.GridChild column={2} row={2}>
@@ -126,13 +131,13 @@ const SpinButtonDemo = () => {
                         widthChars={9}
                         wrap
                         updatePolicy={Gtk.SpinButtonUpdatePolicy.IF_VALID}
-                        text={formatMonth(monthValue)}
                         value={monthValue}
                         lower={1}
                         upper={12}
                         stepIncrement={1}
                         pageIncrement={5}
-                        onValueChanged={(self) => setMonthValue(self.getValue())}
+                        onValueChanged={setMonthValue}
+                        onOutput={handleMonthOutput}
                     />
                 </x.GridChild>
                 <x.GridChild column={2} row={3}>

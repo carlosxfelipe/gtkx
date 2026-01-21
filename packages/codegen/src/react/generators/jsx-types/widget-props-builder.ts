@@ -142,6 +142,9 @@ export class WidgetPropsBuilder {
         }
 
         for (const signal of signals) {
+            if (widget.isAdjustable && signal.handlerName === "onValueChanged") {
+                continue;
+            }
             this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
             allProps.push({
                 name: signal.handlerName,
@@ -195,6 +198,7 @@ export class WidgetPropsBuilder {
         const props: PropInfo[] = [];
 
         if (widget.isAdjustable) {
+            this.usedNamespaces.add(widget.namespace);
             props.push(
                 {
                     name: "value",
@@ -234,7 +238,7 @@ export class WidgetPropsBuilder {
                 },
                 {
                     name: "onValueChanged",
-                    type: "((value: number) => void) | null",
+                    type: `((value: number, self: ${widget.namespace}.${widget.className}) => void) | null`,
                     optional: true,
                     doc: "Callback when the value changes",
                 },
@@ -630,7 +634,7 @@ export class WidgetPropsBuilder {
     private buildHandlerType(signal: SignalAnalysis, widgetName: string, namespace: string): string {
         const selfParam = `self: ${namespace}.${toPascalCase(widgetName)}`;
         const otherParams = signal.parameters.map((p: SignalParam) => `${p.name}: ${p.type}`).join(", ");
-        const params = otherParams ? `${selfParam}, ${otherParams}` : selfParam;
+        const params = otherParams ? `${otherParams}, ${selfParam}` : selfParam;
         return `(${params}) => ${signal.returnType}`;
     }
 

@@ -28,7 +28,7 @@ const ListBoxControlsDemo = () => {
     const checkRef = useRef<Gtk.CheckButton | null>(null);
     const imageRef = useRef<Gtk.Image | null>(null);
 
-    const handleRowActivated = useCallback((_listbox: Gtk.ListBox, row: Gtk.ListBoxRow) => {
+    const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
         const sw = switchRef.current;
         const chk = checkRef.current;
         const img = imageRef.current;
