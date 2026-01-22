@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { GtkSourceView } from "@gtkx/react";
@@ -10,10 +9,8 @@ const getBufferText = (buffer: GtkSource.Buffer): string => {
     const startIter = new Gtk.TextIter();
     const endIter = new Gtk.TextIter();
 
-    batch(() => {
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
-    });
+    buffer.getStartIter(startIter);
+    buffer.getEndIter(endIter);
 
     return buffer.getText(startIter, endIter, true);
 };

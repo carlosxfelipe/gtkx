@@ -368,9 +368,14 @@ class McpClient {
                 let widgets: Gtk.Widget[] = [];
 
                 switch (p.queryType) {
-                    case "role":
-                        widgets = await testing.findAllByRole(app, p.value as Gtk.AccessibleRole, p.options);
+                    case "role": {
+                        const roleValue =
+                            typeof p.value === "string"
+                                ? (Gtk.AccessibleRole[p.value as keyof typeof Gtk.AccessibleRole] as Gtk.AccessibleRole)
+                                : (p.value as Gtk.AccessibleRole);
+                        widgets = await testing.findAllByRole(app, roleValue, p.options);
                         break;
+                    }
                     case "text":
                         widgets = await testing.findAllByText(app, String(p.value), p.options);
                         break;
@@ -426,32 +431,38 @@ class McpClient {
                 const p = params as {
                     widgetId: string;
                     signal: string;
-                    args?: { type: string; value: unknown }[];
+                    args?: (unknown | { type: string; value: unknown })[];
                 };
                 const widget = getWidgetById(p.widgetId);
                 if (!widget) {
                     throw widgetNotFoundError(p.widgetId);
                 }
                 const signalArgs = (p.args ?? []).map((arg) => {
-                    switch (arg.type) {
+                    const isTypedArg =
+                        typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
+                    const argType = isTypedArg ? (arg as { type: string }).type : typeof arg;
+                    const argValue = isTypedArg ? (arg as { value: unknown }).value : arg;
+
+                    switch (argType) {
                         case "boolean":
-                            return Value.newFromBoolean(arg.value as boolean);
+                            return Value.newFromBoolean(argValue as boolean);
                         case "int":
-                            return Value.newFromInt(arg.value as number);
+                            return Value.newFromInt(argValue as number);
                         case "uint":
-                            return Value.newFromUint(arg.value as number);
+                            return Value.newFromUint(argValue as number);
                         case "int64":
-                            return Value.newFromInt64(arg.value as number);
+                            return Value.newFromInt64(argValue as number);
                         case "uint64":
-                            return Value.newFromUint64(arg.value as number);
+                            return Value.newFromUint64(argValue as number);
                         case "float":
-                            return Value.newFromFloat(arg.value as number);
+                            return Value.newFromFloat(argValue as number);
                         case "double":
-                            return Value.newFromDouble(arg.value as number);
+                        case "number":
+                            return Value.newFromDouble(argValue as number);
                         case "string":
-                            return Value.newFromString(arg.value as string | null);
+                            return Value.newFromString(argValue as string | null);
                         default:
-                            throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${arg.type}`);
+                            throw new McpError(McpErrorCode.INVALID_REQUEST, `Unknown argument type: ${argType}`);
                     }
                 });
                 await testing.fireEvent(widget, p.signal, ...signalArgs);

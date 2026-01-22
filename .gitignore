@@ -1,4 +1,5 @@
 .claude
+.mcp.json
 .pnpm-store
 .turbo
 *.log

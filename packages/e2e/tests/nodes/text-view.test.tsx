@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { GtkButton, GtkTextView, x } from "@gtkx/react";
@@ -10,10 +9,8 @@ const getBufferText = (buffer: Gtk.TextBuffer): string => {
     const startIter = new Gtk.TextIter();
     const endIter = new Gtk.TextIter();
 
-    batch(() => {
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
-    });
+    buffer.getStartIter(startIter);
+    buffer.getEndIter(endIter);
 
     return buffer.getText(startIter, endIter, true);
 };

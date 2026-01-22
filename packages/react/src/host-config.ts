@@ -108,7 +108,9 @@ export function createHostConfig(): HostConfig {
             parent.appendChild(child);
         },
         finalizeInitialChildren: (instance, _type, props) => {
+            signalStore.blockAll();
             instance.updateProps(null, props);
+            signalStore.unblockAll();
             return true;
         },
         commitUpdate: (instance, _type, oldProps, newProps) => {

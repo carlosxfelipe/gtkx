@@ -154,6 +154,7 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
 
         reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
             if (this.tornDown.has(ptr)) return;
+            if (this.estimatedItemHeight !== null) return;
             const currentExpander = this.expanders.get(ptr);
             if (!currentExpander) return;
             const box = currentExpander.getChild();

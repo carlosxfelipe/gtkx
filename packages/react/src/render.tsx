@@ -3,6 +3,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { formatBoundaryError, formatRenderError } from "./errors.js";
+import { signalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
 
 /**
@@ -117,10 +118,12 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
         "",
         (error: unknown) => {
             discardAllBatches();
+            signalStore.unblockAll();
             throw formatRenderError(error);
         },
         (error: unknown) => {
             discardAllBatches();
+            signalStore.unblockAll();
             const formattedError = formatBoundaryError(error);
             console.error(formattedError.toString());
         },

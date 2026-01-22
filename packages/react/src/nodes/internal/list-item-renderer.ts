@@ -59,6 +59,7 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
 
         reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
             if (this.tornDown.has(ptr)) return;
+            if (this.estimatedItemHeight !== null) return;
             const currentFiberRoot = this.fiberRoots.get(ptr);
             if (!currentFiberRoot) return;
             this.clearBoxSizeRequest(currentFiberRoot.containerInfo);

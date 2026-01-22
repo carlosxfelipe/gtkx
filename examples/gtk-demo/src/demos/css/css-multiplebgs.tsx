@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
@@ -112,10 +111,8 @@ const CssMultiplebgsDemo = () => {
     const handleBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
         const startIter = new Gtk.TextIter();
         const endIter = new Gtk.TextIter();
-        batch(() => {
-            buffer.getStartIter(startIter);
-            buffer.getEndIter(endIter);
-        });
+        buffer.getStartIter(startIter);
+        buffer.getEndIter(endIter);
         setCssText(buffer.getText(startIter, endIter, true));
     }, []);
 
