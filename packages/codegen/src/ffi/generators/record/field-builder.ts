@@ -245,9 +245,20 @@ export class FieldBuilder {
         return ns?.records.get(typeName) ?? null;
     }
 
-    private getFieldSize(type: { name: string | unknown; cType?: string }): number {
+    private getFieldSize(type: {
+        name: string | unknown;
+        cType?: string;
+        isArray?: boolean;
+        elementType?: { name: string | unknown; cType?: string } | null;
+        fixedSize?: number;
+    }): number {
         if (type.cType?.includes("*")) {
             return 8;
+        }
+
+        if (type.isArray && type.fixedSize !== undefined && type.elementType) {
+            const elementSize = this.getFieldSize(type.elementType);
+            return elementSize * type.fixedSize;
         }
 
         const typeName = String(type.name);
@@ -272,9 +283,22 @@ export class FieldBuilder {
         return 8;
     }
 
-    private getFieldAlignment(type: { name: string | unknown; cType?: string }, visited = new Set<string>()): number {
+    private getFieldAlignment(
+        type: {
+            name: string | unknown;
+            cType?: string;
+            isArray?: boolean;
+            elementType?: { name: string | unknown; cType?: string } | null;
+            fixedSize?: number;
+        },
+        visited = new Set<string>(),
+    ): number {
         if (type.cType?.includes("*")) {
             return 8;
+        }
+
+        if (type.isArray && type.fixedSize !== undefined && type.elementType) {
+            return this.getFieldAlignment(type.elementType, visited);
         }
 
         const typeName = String(type.name);
