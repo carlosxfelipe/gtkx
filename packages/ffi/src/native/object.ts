@@ -41,7 +41,7 @@ export function getNativeObject<
         return null as Result;
     }
 
-    if (targetType) {
+    if (targetType && targetType.objectType !== "interface") {
         const instance = Object.create(targetType.prototype) as NativeObject;
         instance.handle = handle;
         return instance as Result;
@@ -50,6 +50,19 @@ export function getNativeObject<
     const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
     typeInstance.handle = handle;
     const runtimeTypeName = typeNameFromInstance(typeInstance);
+
+    if (targetType && targetType.objectType === "interface") {
+        const cls = findNativeClass(runtimeTypeName, false);
+        if (cls) {
+            const instance = Object.create(cls.prototype) as NativeObject;
+            instance.handle = handle;
+            return instance as Result;
+        }
+        const instance = Object.create(targetType.prototype) as NativeObject;
+        instance.handle = handle;
+        return instance as Result;
+    }
+
     const cls = findNativeClass(runtimeTypeName);
 
     if (!cls) {

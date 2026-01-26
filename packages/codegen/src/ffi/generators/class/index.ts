@@ -86,7 +86,7 @@ export class ClassGenerator {
         writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.className = normalizeClassName(cls.name, options.namespace);
+        this.className = normalizeClassName(cls.name);
 
         this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, ctx, repository, writers, options);
         this.methodBuilder = new MethodBuilder(ffiMapper, ctx, writers, options);
@@ -195,6 +195,10 @@ export class ClassGenerator {
         }
 
         const objectType = isFundamental ? "fundamental" : "gobject";
+        const isRootGObject = !parentInfo.hasParent && objectType === "gobject";
+        const objectTypeInitializer = isRootGObject
+            ? `"gobject" as "gobject" | "interface"`
+            : `"${objectType}" as const`;
         const staticProperties = this.cls.glibTypeName
             ? [
                   {
@@ -209,7 +213,7 @@ export class ClassGenerator {
                       name: "objectType",
                       isStatic: true,
                       isReadonly: true,
-                      initializer: `"${objectType}" as const`,
+                      initializer: objectTypeInitializer,
                       hasOverrideKeyword: parentInfo.hasParent,
                   },
               ]

@@ -127,17 +127,7 @@ export class PropertySetterBuilder {
 
         return (writer) => {
             if (setterInfo.staticConstructor) {
-                if (setterInfo.isInterface) {
-                    writer.writeLine(
-                        `const gvalue = GObject.Value.${setterInfo.staticConstructor}(value as unknown as GObject.GObject);`,
-                    );
-                } else if (setterInfo.isClass) {
-                    writer.writeLine(
-                        `const gvalue = GObject.Value.${setterInfo.staticConstructor}(value as GObject.GObject);`,
-                    );
-                } else {
-                    writer.writeLine(`const gvalue = GObject.Value.${setterInfo.staticConstructor}(value);`);
-                }
+                writer.writeLine(`const gvalue = GObject.Value.${setterInfo.staticConstructor}(value);`);
             } else {
                 writer.writeLine(`const gvalue = new GObject.Value();`);
                 writer.writeLine(`gvalue.init(GObject.typeFromName("${setterInfo.gtypeName}"));`);

@@ -11,9 +11,10 @@ import type { GenerationContext } from "../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
+import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedMethods } from "../../core/utils/filtering.js";
-import { generateConflictingMethodName, toPascalCase } from "../../core/utils/naming.js";
+import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../core/writers/index.js";
 
 /**
@@ -61,12 +62,19 @@ export class InterfaceGenerator {
 
         this.ctx.usesCall = allMethods.length > 0;
         this.ctx.usesRef = allMethods.some((m) => this.methodBody.hasRefParameter(m.parameters));
-        this.ctx.usesNativeObject = true;
+
+        const isGObjectNamespace = this.options.namespace === "GObject";
+        const extendsExpr = isGObjectNamespace ? "Object" : "GObject.Object";
+        if (isGObjectNamespace) {
+            this.ctx.usedSameNamespaceClasses.set("Object", "Object");
+        } else {
+            this.ctx.usesGObjectNamespace = true;
+        }
 
         const classDecl = sourceFile.addClass({
             name: interfaceName,
             isExported: true,
-            extends: "NativeObject",
+            extends: extendsExpr,
             docs: buildJsDocStructure(iface.doc, this.options.namespace),
         });
 
@@ -77,20 +85,23 @@ export class InterfaceGenerator {
                 isReadonly: true,
                 type: "string",
                 initializer: `"${iface.glibTypeName}"`,
+                hasOverrideKeyword: true,
             });
             classDecl.addProperty({
                 name: "objectType",
                 isStatic: true,
                 isReadonly: true,
                 initializer: '"interface" as const',
+                hasOverrideKeyword: true,
             });
         }
 
+        const gobjectMethodNames = collectGObjectMethodNames(this.repository);
         const methodStructures: MethodDeclarationStructure[] = [];
 
-        methodStructures.push(...this.buildMethodStructures(iface.methods));
+        methodStructures.push(...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames));
 
-        methodStructures.push(...this.buildMethodStructures(prerequisiteMethods));
+        methodStructures.push(...this.buildMethodStructures(prerequisiteMethods, iface.name, gobjectMethodNames));
 
         if (methodStructures.length > 0) {
             classDecl.addMethods(methodStructures);
@@ -99,11 +110,22 @@ export class InterfaceGenerator {
         return true;
     }
 
-    private buildMethodStructures(methods: readonly GirMethod[]): MethodDeclarationStructure[] {
+    private buildMethodStructures(
+        methods: readonly GirMethod[],
+        ifaceName: string,
+        gobjectMethodNames: Set<string>,
+    ): MethodDeclarationStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
-        return supportedMethods.map((method) => this.buildMethodStructure(method));
+        return supportedMethods.map((method) => {
+            const methodName = toCamelCase(method.name);
+            if (gobjectMethodNames.has(methodName)) {
+                const renamedMethod = generateConflictingMethodName(ifaceName, method.name);
+                this.ctx.methodRenames.set(method.cIdentifier, renamedMethod);
+            }
+            return this.buildMethodStructure(method);
+        });
     }
 
     private buildMethodStructure(method: GirMethod): MethodDeclarationStructure {

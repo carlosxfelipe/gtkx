@@ -6,6 +6,10 @@ const EDITABLE_ROLES = new Set([
     Gtk.AccessibleRole.SPIN_BUTTON,
 ]);
 
-export const isEditable = (widget: Gtk.Widget): boolean => {
+export const isEditable = (widget: unknown): widget is Gtk.Editable => {
+    if (!(widget instanceof Gtk.Widget)) {
+        return false;
+    }
+
     return EDITABLE_ROLES.has(widget.getAccessibleRole());
 };

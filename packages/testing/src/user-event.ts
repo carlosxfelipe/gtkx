@@ -1,6 +1,5 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
-import { type GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
+import { type Object as GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
@@ -75,8 +74,8 @@ const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => 
     const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
     const root = element.getRoot();
 
-    if (root) {
-        (getNativeObject(root.handle) as Gtk.Widget).childFocus(direction);
+    if (root && root instanceof Gtk.Widget) {
+        root.childFocus(direction);
     }
 
     await tick();
@@ -87,9 +86,8 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
         throw new Error("Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    const editable = getNativeObject(element.handle, Gtk.Editable);
-    const currentText = editable.getText();
-    editable.setText(currentText + text);
+    const currentText = element.getText();
+    element.setText(currentText + text);
 
     await tick();
 };
@@ -99,7 +97,8 @@ const clear = async (element: Gtk.Widget): Promise<void> => {
         throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    getNativeObject(element.handle, Gtk.Editable)?.setText("");
+    element.setText("");
+
     await tick();
 };
 

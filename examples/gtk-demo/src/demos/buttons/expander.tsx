@@ -1,5 +1,4 @@
 import path from "node:path";
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
@@ -19,9 +18,7 @@ const ExpanderDemo = () => {
         const root = expander.getRoot();
         if (!root) return;
 
-        const window = getNativeObject(root.handle, Gtk.Window);
-        if (!window) return;
-        window.setResizable(expander.getExpanded());
+        (root as Gtk.Window).setResizable(expander.getExpanded());
     }, []);
 
     useEffect(() => {
@@ -60,9 +57,7 @@ const ExpanderDemo = () => {
         const root = expander.getRoot();
         if (!root) return;
 
-        const window = getNativeObject(root.handle, Gtk.Window);
-        if (!window) return;
-        window.setResizable(expander.getExpanded());
+        (root as Gtk.Window).setResizable(expander.getExpanded());
     }, []);
 
     return (

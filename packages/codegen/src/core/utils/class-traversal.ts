@@ -174,6 +174,24 @@ export type CollectDirectMembersOptions<T extends { name: string }> = {
  *
  * @returns Array of direct members from the class and its direct interfaces
  */
+/**
+ * Collects method names from GObject.Object class.
+ * Used by interfaces to detect method name conflicts with their base class.
+ * Returns camelCase method names for comparison with generated interface methods.
+ */
+export function collectGObjectMethodNames(repo: GirRepository): Set<string> {
+    const names = new Set<string>();
+    const gobjectClass = repo.resolveClass("GObject.Object" as QualifiedName);
+    if (gobjectClass) {
+        for (const method of gobjectClass.methods) {
+            names.add(toCamelCase(method.name));
+        }
+    }
+    names.add("connect");
+    names.add("create");
+    return names;
+}
+
 export function collectDirectMembers<T extends { name: string }>(options: CollectDirectMembersOptions<T>): T[] {
     const {
         cls,

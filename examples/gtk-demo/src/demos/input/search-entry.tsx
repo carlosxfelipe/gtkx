@@ -1,4 +1,3 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,7 +15,7 @@ const SearchEntryDemo = () => {
 
         const root = searchBar.getRoot();
         if (root) {
-            const widget = getNativeObject(root.handle, Gtk.Widget);
+            const widget = root as unknown as Gtk.Widget;
             if (widget) {
                 searchBar.setKeyCaptureWidget(widget);
             }

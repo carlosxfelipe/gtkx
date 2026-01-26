@@ -1,4 +1,3 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -14,6 +13,7 @@ import {
 } from "@gtkx/react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent } from "../src/index.js";
+import { isEditable } from "../src/widget.js";
 
 describe("userEvent.click", () => {
     it("emits clicked signal on button", async () => {
@@ -88,8 +88,11 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "Hello World");
 
-        const editable = getNativeObject(entry.handle, Gtk.Editable);
-        expect(editable?.getText()).toBe("Hello World");
+        if (!isEditable(entry)) {
+            throw new Error("Element is not editable");
+        }
+
+        expect(entry.getText()).toBe("Hello World");
     });
 
     it("appends text to existing content", async () => {
@@ -98,8 +101,11 @@ describe("userEvent.type", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "appended");
 
-        const editable = getNativeObject(entry.handle, Gtk.Editable);
-        expect(editable?.getText()).toBe("Initial appended");
+        if (!isEditable(entry)) {
+            throw new Error("Element is not editable");
+        }
+
+        expect(entry.getText()).toBe("Initial appended");
     });
 
     describe("error handling", () => {
@@ -121,8 +127,10 @@ describe("userEvent.clear", () => {
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.clear(entry);
 
-        const editable = getNativeObject(entry.handle, Gtk.Editable);
-        expect(editable?.getText()).toBe("");
+        if (!isEditable(entry)) {
+            throw new Error("Element is not editable");
+        }
+        expect(entry.getText()).toBe("");
     });
 
     describe("error handling", () => {

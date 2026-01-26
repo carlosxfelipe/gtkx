@@ -145,14 +145,8 @@ export class PropertyGetterBuilder {
             });
             writer.writeLine(");");
 
-            if (getterInfo.isClass) {
+            if (getterInfo.isClass || getterInfo.isInterface) {
                 writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
-            } else if (getterInfo.isInterface) {
-                this.ctx.usesGetNativeInterface = true;
-                const baseType = returnType.replace(/ \| null$/, "");
-                writer.writeLine(`const obj = gvalue.${getterInfo.getMethod}();`);
-                writer.writeLine(`if (obj === null) return null;`);
-                writer.writeLine(`return getNativeInterface(obj, ${baseType});`);
             } else if (getterInfo.isEnum || getterInfo.isFlags) {
                 writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
             } else if (getterInfo.isString) {

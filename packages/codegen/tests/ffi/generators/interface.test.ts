@@ -79,7 +79,7 @@ describe("InterfaceGenerator", () => {
             generator.generateToSourceFile(iface, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("extends NativeObject");
+            expect(code).toContain("extends GObject.Object");
         });
 
         it("adds glibTypeName property when present", () => {
@@ -178,7 +178,7 @@ describe("InterfaceGenerator", () => {
     });
 
     describe("context updates", () => {
-        it("sets usesNativeObject flag", () => {
+        it("sets usesGObjectNamespace flag for non-GObject namespace", () => {
             const { generator, sourceFile, ctx } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
@@ -187,7 +187,7 @@ describe("InterfaceGenerator", () => {
 
             generator.generateToSourceFile(iface, sourceFile);
 
-            expect(ctx.usesNativeObject).toBe(true);
+            expect(ctx.usesGObjectNamespace).toBe(true);
         });
 
         it("sets usesCall flag when interface has methods", () => {
@@ -388,7 +388,7 @@ describe("InterfaceGenerator", () => {
             generator.generateToSourceFile(iface, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("export class Orientable extends NativeObject");
+            expect(code).toContain("export class Orientable extends GObject.Object");
             expect(code).toContain("glibTypeName");
             expect(code).toContain("getOrientation");
             expect(code).toContain("setOrientation");

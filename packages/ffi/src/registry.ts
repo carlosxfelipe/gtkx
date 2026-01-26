@@ -40,18 +40,21 @@ export function getNativeClass(glibTypeName: string): NativeClass | null {
  * Finds a native class by walking the type hierarchy.
  *
  * If the exact type is not registered, walks up the parent chain
- * until a registered type is found.
+ * until a registered type is found (unless walkHierarchy is false).
  *
  * @param glibTypeName - The GLib type name to start from
+ * @param walkHierarchy - Whether to walk up the parent chain (default: true)
  * @returns The closest registered parent class, or null
  */
-export const findNativeClass = (glibTypeName: string): NativeClass | null => {
+export const findNativeClass = (glibTypeName: string, walkHierarchy = true): NativeClass | null => {
+    const cls = getNativeClass(glibTypeName);
+    if (cls) return cls;
+
+    if (!walkHierarchy) return null;
+
     let currentTypeName: string | null = glibTypeName;
 
     while (currentTypeName) {
-        const cls = getNativeClass(currentTypeName);
-        if (cls) return cls;
-
         const gtype = typeFromName(currentTypeName);
         if (gtype === 0) break;
 
@@ -59,6 +62,10 @@ export const findNativeClass = (glibTypeName: string): NativeClass | null => {
         if (parentGtype === 0) break;
 
         currentTypeName = typeName(parentGtype);
+        if (!currentTypeName) break;
+
+        const parentCls = getNativeClass(currentTypeName);
+        if (parentCls) return parentCls;
     }
 
     return null;

@@ -1,4 +1,3 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -51,7 +50,7 @@ const ThemesDemo = () => {
             if (!windowRef.current && boxRef.current) {
                 const root = boxRef.current.getRoot();
                 if (root) {
-                    windowRef.current = getNativeObject(root.handle, Gtk.Window);
+                    windowRef.current = root as Gtk.Window;
                 }
             }
             const window = windowRef.current;

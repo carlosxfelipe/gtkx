@@ -1,6 +1,5 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
+import type * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -130,8 +129,7 @@ const ClipboardDemo = () => {
                 }
             }
         } else if (sourceType === "File" && sourceFile) {
-            const fileAsGObject = getNativeObject(sourceFile.handle, GObject.GObject);
-            const value = GObject.Value.newFromObject(fileAsGObject);
+            const value = GObject.Value.newFromObject(sourceFile);
             clipboard.setValue(value);
         }
     }, [sourceType, sourceText, sourceColor, selectedImage, sourceFile, getClipboard]);
@@ -164,7 +162,7 @@ const ClipboardDemo = () => {
                 const value = await clipboard.readValueAsync(getGFileType(), 0);
                 const obj = value.getObject();
                 if (obj) {
-                    const file = getNativeObject(obj.handle, Gio.File);
+                    const file = obj as Gio.File;
                     setPastedContent({ type: "File", filePath: file.getPath() ?? file.getUri() });
                     return;
                 }

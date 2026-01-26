@@ -1,4 +1,3 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkToggleButton, GtkVideo } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +13,7 @@ const ImagesDemo = () => {
         if (boxRef.current) {
             const root = boxRef.current.getRoot();
             if (root) {
-                const window = getNativeObject(root.handle, Gtk.Window);
+                const window = root as Gtk.Window;
                 if (window) {
                     const paintable = new Gtk.WidgetPaintable(window);
                     setWidgetPaintable(paintable);

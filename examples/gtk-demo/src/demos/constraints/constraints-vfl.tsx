@@ -1,4 +1,3 @@
-import { getNativeInterface } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
@@ -34,16 +33,10 @@ const ConstraintsVflDemo = () => {
 
         const layout = layoutRef.current;
 
-        const target1 = getNativeInterface(button1, Gtk.ConstraintTarget);
-        const target2 = getNativeInterface(button2, Gtk.ConstraintTarget);
-        const target3 = getNativeInterface(button3, Gtk.ConstraintTarget);
-
-        if (!target1 || !target2 || !target3) return;
-
         const views = new Map<string, Gtk.ConstraintTarget>([
-            ["button1", target1],
-            ["button2", target2],
-            ["button3", target3],
+            ["button1", button1],
+            ["button2", button2],
+            ["button3", button3],
         ]);
 
         try {
