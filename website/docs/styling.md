@@ -1,6 +1,6 @@
 # Styling
 
-GTKX provides a CSS-in-JS styling system through the `@gtkx/css` package, offering an API similar to Emotion.
+GTKX provides a CSS-in-JS styling system through the `@gtkx/css` package, built on top of [Emotion](https://emotion.sh/).
 
 ## Overview
 

@@ -8,7 +8,7 @@ GTKX enables React developers to build Linux desktop applications using familiar
 
 - `@gtkx/react`: React reconciler, GTK/Adwaita components, render() function, portals
 - `@gtkx/ffi`: TypeScript FFI bindings, GTK/GLib/Adwaita type definitions and enums
-- `@gtkx/css`: CSS-in-JS styling (Emotion-like API adapted for GTK CSS syntax)
+- `@gtkx/css`: CSS-in-JS styling (Emotion-based, adapted for GTK CSS syntax)
 - `@gtkx/testing`: Component testing utilities (Testing Library-style API for GTK)
 - `@gtkx/cli`: Project scaffolding (gtkx create) and dev server with hot module replacement
 - `@gtkx/mcp`: MCP server for AI-powered app interaction, widget tree inspection, automated testing
