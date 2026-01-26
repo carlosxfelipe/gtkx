@@ -138,16 +138,6 @@ export function getNativeId(handle: unknown): number {
 }
 
 /**
- * Processes pending GTK events.
- *
- * Called automatically in the event loop. Only needed for
- * special runtime environments (e.g., Deno).
- */
-export function poll(): void {
-    native.poll();
-}
-
-/**
  * Reads a value from memory pointed to by a pointer field.
  *
  * Used for accessing array elements or dereferencing pointer fields.

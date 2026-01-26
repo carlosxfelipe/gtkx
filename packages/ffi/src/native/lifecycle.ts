@@ -3,7 +3,6 @@ import {
     type NativeHandle,
     alloc as nativeAlloc,
     call as nativeCall,
-    poll as nativePoll,
     read as nativeRead,
     readPointer as nativeReadPointer,
     start as nativeStart,
@@ -19,11 +18,7 @@ import { finalize as finalizeGtkSource, init as initGtkSource } from "../generat
 import { events } from "./events.js";
 import { getNativeObject } from "./object.js";
 
-declare const Deno: unknown;
-const isDeno = typeof Deno !== "undefined";
-
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
-let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
 let isStopping = false;
 
@@ -170,18 +165,6 @@ const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
 };
 
-const startPolling = (): void => {
-    if (pollInterval) return;
-    pollInterval = setInterval(() => nativePoll(), 0);
-};
-
-const stopPolling = (): void => {
-    if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-    }
-};
-
 /**
  * Initializes the GTK application runtime.
  *
@@ -217,10 +200,6 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
 
     keepAlive();
 
-    if (isDeno) {
-        startPolling();
-    }
-
     events.emit("start");
     return application;
 };
@@ -246,7 +225,6 @@ export const stop = (): void => {
         keepAliveTimeout = null;
     }
 
-    stopPolling();
     events.emit("stop");
 
     try {
