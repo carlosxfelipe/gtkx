@@ -9,7 +9,7 @@
 import type { GirCallback, GirNamespace, GirParameter, GirRepository, GirType, QualifiedName } from "@gtkx/gir";
 import { isIntrinsicType, isStringType, parseQualifiedName } from "@gtkx/gir";
 import { type CallbackName, getNativeCallbackName, isSupportedCallback } from "../constants/index.js";
-import { normalizeClassName, toPascalCase } from "../utils/naming.js";
+import { normalizeClassName, toCamelCase, toPascalCase, toValidIdentifier } from "../utils/naming.js";
 import {
     arrayType,
     boxedType,
@@ -149,6 +149,7 @@ export class FfiMapper {
                         elementSize,
                     ),
                     imports,
+                    itemKind: elementResult.kind,
                 };
             }
 
@@ -381,7 +382,7 @@ export class FfiMapper {
                 kind: "class",
                 name,
                 namespace,
-                transformedName: normalizeClassName(name, namespace),
+                transformedName: normalizeClassName(name),
                 isExternal,
                 glibTypeName: cls.glibTypeName,
                 glibGetType: cls.glibGetType,
@@ -397,7 +398,7 @@ export class FfiMapper {
                 kind: "interface",
                 name,
                 namespace,
-                transformedName: normalizeClassName(name, namespace),
+                transformedName: normalizeClassName(name),
                 isExternal,
                 glibTypeName: iface.glibTypeName,
             };
@@ -409,7 +410,7 @@ export class FfiMapper {
                 kind: "record",
                 name,
                 namespace,
-                transformedName: normalizeClassName(name, namespace),
+                transformedName: normalizeClassName(name),
                 isExternal,
                 glibTypeName: record.glibTypeName,
                 glibGetType: record.glibGetType,
@@ -664,7 +665,8 @@ export class FfiMapper {
             imports.push(...mapped.imports);
 
             const nullable = param.nullable ? " | null" : "";
-            result.push(`${param.name}: ${mapped.ts}${nullable}`);
+            const paramName = toValidIdentifier(toCamelCase(param.name));
+            result.push(`${paramName}: ${mapped.ts}${nullable}`);
         }
 
         return result;

@@ -303,6 +303,7 @@ export class MethodBuilder {
                                         if (
                                             wrapInfo.needsBoxedWrap ||
                                             wrapInfo.needsFundamentalWrap ||
+                                            wrapInfo.needsStructWrap ||
                                             wrapInfo.needsInterfaceWrap
                                         ) {
                                             writer.writeLine(

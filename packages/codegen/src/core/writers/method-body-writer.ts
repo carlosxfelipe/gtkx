@@ -27,6 +27,7 @@ export type GtkAllocatedRef = {
     innerType: string;
     nullable: boolean;
     isBoxed: boolean;
+    isInterface: boolean;
     boxedTypeName: string | undefined;
 };
 
@@ -237,6 +238,7 @@ export class MethodBodyWriter {
                     mapped.innerTsType
                 ) {
                     const isBoxed = mapped.ffi.innerType.type === "boxed";
+                    const isInterface = mapped.kind === "interface";
                     const boxedTypeName = isBoxed
                         ? (mapped.ffi.innerType as { innerType?: string }).innerType
                         : undefined;
@@ -245,6 +247,7 @@ export class MethodBodyWriter {
                         innerType: mapped.innerTsType,
                         nullable: this.ffiMapper.isNullable(param),
                         isBoxed,
+                        isInterface,
                         boxedTypeName,
                     };
                 }
@@ -265,6 +268,7 @@ export class MethodBodyWriter {
         needsStructWrap: boolean;
         needsArrayItemWrap: boolean;
         arrayItemType: string | undefined;
+        arrayItemIsInterface: boolean;
         needsHashTableWrap: boolean;
     } {
         const baseReturnType = returnTypeMapping.ts === "void" ? "void" : returnTypeMapping.ts;
@@ -301,6 +305,7 @@ export class MethodBodyWriter {
             (itemType.type === "gobject" || itemType.type === "boxed" || itemType.type === "fundamental");
 
         const arrayItemType = needsArrayItemWrap ? baseReturnType.replace(/\[\]$/, "") : undefined;
+        const arrayItemIsInterface = returnTypeMapping.itemKind === "interface";
 
         const needsHashTableWrap = returnTypeMapping.ffi.type === "hashtable";
 
@@ -314,6 +319,7 @@ export class MethodBodyWriter {
             needsStructWrap,
             needsArrayItemWrap,
             arrayItemType,
+            arrayItemIsInterface,
             needsHashTableWrap,
         };
     }
@@ -674,8 +680,8 @@ export class MethodBodyWriter {
                     if (
                         wrapInfo.needsBoxedWrap ||
                         wrapInfo.needsFundamentalWrap ||
-                        wrapInfo.needsInterfaceWrap ||
-                        wrapInfo.needsStructWrap
+                        wrapInfo.needsStructWrap ||
+                        wrapInfo.needsInterfaceWrap
                     ) {
                         writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
                     } else {
@@ -702,9 +708,15 @@ export class MethodBodyWriter {
                 }
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
-                writer.writeLine(
-                    `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
-                );
+                if (wrapInfo.arrayItemIsInterface) {
+                    writer.writeLine(
+                        `return arr.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
+                    );
+                } else {
+                    writer.writeLine(
+                        `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
+                    );
+                }
             } else if (wrapInfo.needsHashTableWrap) {
                 writer.write("const tuples = ");
                 this.callExpression.toWriter({
@@ -806,7 +818,7 @@ export class MethodBodyWriter {
     private writeRefRewrap(writer: Parameters<WriterFunction>[0], refs: GtkAllocatedRef[]): void {
         for (const ref of refs) {
             this.ctx.usesGetNativeObject = true;
-            if (ref.isBoxed) {
+            if (ref.isBoxed || ref.isInterface) {
                 writer.writeLine(
                     `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as NativeHandle, ${ref.innerType});`,
                 );

@@ -135,6 +135,9 @@ export type MappedType = {
     /** Original type kind if applicable */
     kind?: ImportType;
 
+    /** For array types, the kind of the item type */
+    itemKind?: ImportType;
+
     /** Whether the type is nullable */
     nullable?: boolean;
 
