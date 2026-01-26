@@ -53,7 +53,7 @@ export class RecordGenerator {
     generateToSourceFile(record: GirRecord, sourceFile: SourceFile): void {
         this.trackFeatureUsage(record);
 
-        const recordName = normalizeClassName(record.name, this.options.namespace);
+        const recordName = normalizeClassName(record.name);
 
         this.generateInitInterface(record, recordName, sourceFile);
 

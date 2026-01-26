@@ -312,16 +312,7 @@ describe("normalizeClassName", () => {
         expect(normalizeClassName("error")).toBe("GError");
     });
 
-    it("handles Object from GObject namespace as GObject", () => {
-        expect(normalizeClassName("Object", "GObject")).toBe("GObject");
-    });
-
-    it("handles Object from other namespaces with namespace prefix", () => {
-        expect(normalizeClassName("Object", "Gtk")).toBe("GtkObject");
-        expect(normalizeClassName("Object", "Gio")).toBe("GioObject");
-    });
-
-    it("does not modify Object when no namespace provided", () => {
+    it("preserves Object class name", () => {
         expect(normalizeClassName("Object")).toBe("Object");
     });
 
@@ -342,9 +333,9 @@ describe("normalizeClassName", () => {
 });
 
 describe("generateConflictingMethodName", () => {
-    it("combines prefix and method name with PascalCase suffix", () => {
-        expect(generateConflictingMethodName("Widget", "connect")).toBe("WidgetConnect");
-        expect(generateConflictingMethodName("Button", "activate")).toBe("ButtonActivate");
+    it("combines prefix and method name in camelCase", () => {
+        expect(generateConflictingMethodName("Widget", "connect")).toBe("widgetConnect");
+        expect(generateConflictingMethodName("Button", "activate")).toBe("buttonActivate");
     });
 
     it("handles snake_case names", () => {

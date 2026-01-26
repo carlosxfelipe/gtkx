@@ -93,17 +93,16 @@ export const toValidIdentifier = (str: string): string => {
 
 export const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
 
-export const normalizeClassName = (name: string, namespace?: string): string => {
+export const normalizeClassName = (name: string): string => {
     const pascalName = toPascalCase(name);
     if (CLASS_RENAMES.has(pascalName)) {
         return CLASS_RENAMES.get(pascalName) as string;
-    }
-    if (pascalName === "Object" && namespace) {
-        return namespace === "GObject" ? "GObject" : `${namespace}Object`;
     }
     return pascalName;
 };
 
 export const generateConflictingMethodName = (prefix: string, methodName: string): string => {
-    return toCamelCase(prefix) + toPascalCase(methodName);
+    const camelPrefix = toCamelCase(prefix);
+    const lowerPrefix = camelPrefix.charAt(0).toLowerCase() + camelPrefix.slice(1);
+    return lowerPrefix + toPascalCase(methodName);
 };

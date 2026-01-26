@@ -49,9 +49,9 @@ describe("parseParentReference", () => {
             expect(result.hasParent).toBe(true);
             expect(result.isCrossNamespace).toBe(true);
             expect(result.namespace).toBe("GObject");
-            expect(result.className).toBe("GObject");
+            expect(result.className).toBe("Object");
             expect(result.originalName).toBe("Object");
-            expect(result.extendsClause).toBe(" extends GObject.GObject");
+            expect(result.extendsClause).toBe(" extends GObject.Object");
             expect(result.importStatement).toBeUndefined();
         });
 
@@ -82,13 +82,13 @@ describe("parseParentReference", () => {
             expect(result.extendsClause).toBe(" extends GLib.GError");
         });
 
-        it("handles GObject.Object -> GObject renaming in GObject namespace", () => {
+        it("handles GObject.Object in GObject namespace", () => {
             const result = parseParentReference(qualifiedName("GObject", "Object"), "GObject");
             expect(result.hasParent).toBe(true);
             expect(result.isCrossNamespace).toBe(false);
-            expect(result.className).toBe("GObject");
+            expect(result.className).toBe("Object");
             expect(result.originalName).toBe("Object");
-            expect(result.importStatement).toBe('import { GObject } from "./object.js";');
+            expect(result.importStatement).toBe('import { Object } from "./object.js";');
         });
     });
 

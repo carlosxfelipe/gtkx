@@ -32,7 +32,7 @@ export class ConstructorBuilder {
         writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.className = normalizeClassName(cls.name, options.namespace);
+        this.className = normalizeClassName(cls.name);
         this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
         this.propertyDefaults = collectPropertiesWithDefaults(cls, repository);
     }

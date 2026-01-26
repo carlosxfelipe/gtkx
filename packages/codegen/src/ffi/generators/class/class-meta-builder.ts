@@ -53,7 +53,7 @@ export class ClassMetaBuilder {
             return null;
         }
 
-        const className = normalizeClassName(this.cls.name, this.namespace);
+        const className = normalizeClassName(this.cls.name);
         const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, new Set());
         const signals = this.analyzers.signal.analyzeWidgetSignals(this.cls);
         const propNames = properties.filter((p) => p.isWritable).map((p) => p.camelName);
@@ -81,7 +81,7 @@ export class ClassMetaBuilder {
             return null;
         }
 
-        const className = normalizeClassName(this.cls.name, this.namespace);
+        const className = normalizeClassName(this.cls.name);
         const hiddenPropNames = getHiddenPropNames(className);
         const hiddenPropsSet = new Set(hiddenPropNames);
         const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, hiddenPropsSet);
@@ -195,13 +195,13 @@ export class ClassMetaBuilder {
         if (parent.includes(".")) {
             const { namespace: parentNs, name } = parseQualifiedName(parent as QualifiedName);
             return {
-                className: normalizeClassName(name, parentNs),
+                className: normalizeClassName(name),
                 namespace: parentNs,
             };
         }
 
         return {
-            className: normalizeClassName(parent, this.namespace),
+            className: normalizeClassName(parent),
             namespace: this.namespace,
         };
     }

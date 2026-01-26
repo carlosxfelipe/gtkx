@@ -47,7 +47,7 @@ export class SignalBuilder {
         private readonly writers: Writers,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.className = normalizeClassName(cls.name, options.namespace);
+        this.className = normalizeClassName(cls.name);
     }
 
     buildConnectMethodStructures(): MethodDeclarationStructure[] {

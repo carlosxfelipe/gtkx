@@ -59,7 +59,7 @@ export const parseParentReference = (
     }
 
     const { namespace: ns, name: originalName } = parseQualifiedName(parent as QualifiedName);
-    const normalizedClass = normalizeClassName(originalName, ns);
+    const normalizedClass = normalizeClassName(originalName);
     const isCrossNamespace = ns !== currentNamespace;
 
     if (isCrossNamespace) {

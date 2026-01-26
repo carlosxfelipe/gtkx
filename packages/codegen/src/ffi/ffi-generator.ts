@@ -129,7 +129,7 @@ export class FfiGenerator {
 
                 const importsBuilder = new ImportsBuilder(this.ctx, {
                     namespace: this.options.namespace,
-                    currentClassName: normalizeClassName(record.name, this.options.namespace),
+                    currentClassName: normalizeClassName(record.name),
                 });
                 importsBuilder.applyToSourceFile(sourceFile);
             } else if (this.isUsableStubRecord(record)) {
@@ -138,7 +138,7 @@ export class FfiGenerator {
 
                 const fileName = `${toKebabCase(record.name)}.ts`;
                 const sourceFile = this.createSourceFile(fileName);
-                const recordName = normalizeClassName(record.name, this.options.namespace);
+                const recordName = normalizeClassName(record.name);
 
                 const hasMethods = record.methods.length > 0;
                 sourceFile.addImportDeclaration({
@@ -236,7 +236,7 @@ export class FfiGenerator {
 
             const result = classGenerator.generateToSourceFile(sourceFile);
             if (result.success) {
-                const className = normalizeClassName(cls.name, this.options.namespace);
+                const className = normalizeClassName(cls.name);
                 const parentInfo = this.getParentInfo(cls.parent);
 
                 const importsBuilder = new ImportsBuilder(this.ctx, {
@@ -325,7 +325,7 @@ export class FfiGenerator {
     private registerRecords(namespace: GirNamespace): void {
         for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
-                const normalizedName = normalizeClassName(record.name, this.options.namespace);
+                const normalizedName = normalizeClassName(record.name);
                 this.ctx.recordNameToFile.set(normalizedName, record.name);
             }
         }
