@@ -30,13 +30,13 @@ const SearchEntryDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackEnd>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkToggleButton
                             iconName="system-search-symbolic"
                             active={searchMode}
                             onToggled={handleToggleButtonClicked}
                         />
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>

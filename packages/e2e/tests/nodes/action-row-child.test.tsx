@@ -6,17 +6,17 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - ActionRowChild", () => {
-    describe("ActionRowChild (ActionRow.Prefix/ActionRow.Suffix)", () => {
-        it("adds child as prefix via ActionRow.Prefix", async () => {
+    describe("ContainerSlot (addPrefix/addSuffix)", () => {
+        it("adds child as prefix via addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
 
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ActionRowPrefix>
+                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                             <GtkLabel ref={prefixRef} label="Prefix" />
-                        </x.ActionRowPrefix>
+                        </x.ContainerSlot>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -24,16 +24,16 @@ describe("render - ActionRowChild", () => {
             expect(prefixRef.current).not.toBeNull();
         });
 
-        it("adds child as suffix via ActionRow.Suffix", async () => {
+        it("adds child as suffix via addSuffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
 
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ActionRowSuffix>
+                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                             <GtkLabel ref={suffixRef} label="Suffix" />
-                        </x.ActionRowSuffix>
+                        </x.ContainerSlot>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -41,7 +41,7 @@ describe("render - ActionRowChild", () => {
             expect(suffixRef.current).not.toBeNull();
         });
 
-        it("combines ActionRow.Prefix and ActionRow.Suffix", async () => {
+        it("combines addPrefix and addSuffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
             const suffixRef = createRef<Gtk.Label>();
@@ -49,12 +49,12 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ActionRowPrefix>
+                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                             <GtkLabel ref={prefixRef} label="Prefix" />
-                        </x.ActionRowPrefix>
-                        <x.ActionRowSuffix>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                             <GtkLabel ref={suffixRef} label="Suffix" />
-                        </x.ActionRowSuffix>
+                        </x.ContainerSlot>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -73,13 +73,13 @@ describe("render - ActionRowChild", () => {
                     <GtkListBox>
                         <AdwActionRow ref={rowRef} title="Test Row">
                             {showPrefix && (
-                                <x.ActionRowPrefix>
+                                <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                                     <GtkLabel ref={prefixRef} label="Prefix" />
-                                </x.ActionRowPrefix>
+                                </x.ContainerSlot>
                             )}
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkLabel ref={alwaysRef} label="Always" />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                     </GtkListBox>
                 );
@@ -96,7 +96,7 @@ describe("render - ActionRowChild", () => {
             expect(alwaysRef.current).not.toBeNull();
         });
 
-        it("adds multiple children as prefix via ActionRow.Prefix", async () => {
+        it("adds multiple children as prefix via addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
@@ -104,10 +104,10 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ActionRowPrefix>
+                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                             <GtkLabel ref={firstRef} label="First" />
                             <GtkLabel ref={secondRef} label="Second" />
-                        </x.ActionRowPrefix>
+                        </x.ContainerSlot>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -116,7 +116,7 @@ describe("render - ActionRowChild", () => {
             expect(secondRef.current).not.toBeNull();
         });
 
-        it("adds multiple children as suffix via ActionRow.Suffix", async () => {
+        it("adds multiple children as suffix via addSuffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
@@ -124,10 +124,10 @@ describe("render - ActionRowChild", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ActionRowSuffix>
+                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                             <GtkLabel ref={firstRef} label="First" />
                             <GtkLabel ref={secondRef} label="Second" />
-                        </x.ActionRowSuffix>
+                        </x.ContainerSlot>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -136,7 +136,7 @@ describe("render - ActionRowChild", () => {
             expect(secondRef.current).not.toBeNull();
         });
 
-        it("removes individual children from ActionRow.Prefix", async () => {
+        it("removes individual children from addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
             const secondRef = createRef<Gtk.Label>();
@@ -145,10 +145,10 @@ describe("render - ActionRowChild", () => {
                 return (
                     <GtkListBox>
                         <AdwActionRow ref={rowRef} title="Test Row">
-                            <x.ActionRowPrefix>
+                            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                                 <GtkLabel ref={firstRef} label="First" />
                                 {showSecond && <GtkLabel ref={secondRef} label="Second" />}
-                            </x.ActionRowPrefix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                     </GtkListBox>
                 );

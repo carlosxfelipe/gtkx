@@ -129,9 +129,9 @@ export const NavigationDemo = () => {
                     <AdwNavigationView history={history} onHistoryChanged={handleHistoryChanged} heightRequest={350}>
                         <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
                             <AdwToolbarView>
-                                <x.ToolbarTop>
+                                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                                     <AdwHeaderBar />
-                                </x.ToolbarTop>
+                                </x.ContainerSlot>
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={12}
@@ -150,9 +150,9 @@ export const NavigationDemo = () => {
                         </x.NavigationPage>
                         <x.NavigationPage for={AdwNavigationView} id="details" title="Details">
                             <AdwToolbarView>
-                                <x.ToolbarTop>
+                                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                                     <AdwHeaderBar />
-                                </x.ToolbarTop>
+                                </x.ContainerSlot>
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={12}
@@ -178,9 +178,9 @@ export const NavigationDemo = () => {
                         </x.NavigationPage>
                         <x.NavigationPage for={AdwNavigationView} id="settings" title="Settings">
                             <AdwToolbarView>
-                                <x.ToolbarTop>
+                                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                                     <AdwHeaderBar />
-                                </x.ToolbarTop>
+                                </x.ContainerSlot>
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={12}
@@ -214,9 +214,9 @@ export const NavigationDemo = () => {
                     <AdwNavigationSplitView sidebarWidthFraction={0.35} minSidebarWidth={200} maxSidebarWidth={300}>
                         <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Mail">
                             <AdwToolbarView>
-                                <x.ToolbarTop>
+                                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                                     <AdwHeaderBar showTitle={false} />
-                                </x.ToolbarTop>
+                                </x.ContainerSlot>
                                 <GtkScrolledWindow vexpand propagateNaturalHeight>
                                     <GtkListBox
                                         cssClasses={["navigation-sidebar"]}
@@ -228,16 +228,16 @@ export const NavigationDemo = () => {
                                     >
                                         {splitViewItems.map((item) => (
                                             <AdwActionRow key={item.id} title={item.title} cssClasses={["activatable"]}>
-                                                <x.ActionRowPrefix>
+                                                <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                                                     <GtkImage iconName={item.icon} />
-                                                </x.ActionRowPrefix>
+                                                </x.ContainerSlot>
                                                 {item.count > 0 && (
-                                                    <x.ActionRowSuffix>
+                                                    <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                                         <GtkLabel
                                                             label={String(item.count)}
                                                             cssClasses={["dim-label"]}
                                                         />
-                                                    </x.ActionRowSuffix>
+                                                    </x.ContainerSlot>
                                                 )}
                                             </AdwActionRow>
                                         ))}
@@ -248,9 +248,9 @@ export const NavigationDemo = () => {
 
                         <x.NavigationPage for={AdwNavigationSplitView} id="content" title={selectedItem.title}>
                             <AdwToolbarView>
-                                <x.ToolbarTop>
+                                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                                     <AdwHeaderBar />
-                                </x.ToolbarTop>
+                                </x.ContainerSlot>
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={12}

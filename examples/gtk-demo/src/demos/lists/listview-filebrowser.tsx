@@ -159,10 +159,10 @@ const ListViewFilebrowserDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackStart>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkButton iconName="go-up-symbolic" onClicked={navigateUp} />
-                    </x.PackStart>
-                    <x.PackEnd>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkBox cssClasses={["linked"]}>
                             <GtkToggleButton
                                 iconName="view-list-symbolic"
@@ -183,7 +183,7 @@ const ListViewFilebrowserDemo = () => {
                                 onToggled={() => setViewMode("paged")}
                             />
                         </GtkBox>
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
 

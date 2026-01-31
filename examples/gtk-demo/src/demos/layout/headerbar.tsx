@@ -7,18 +7,18 @@ const HeaderBarDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackStart>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkBox cssClasses={["linked"]}>
                             <GtkButton iconName="go-previous-symbolic" tooltipText="Back" />
                             <GtkButton iconName="go-next-symbolic" tooltipText="Forward" />
                         </GtkBox>
-                    </x.PackStart>
-                    <x.PackStart>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkSwitch />
-                    </x.PackStart>
-                    <x.PackEnd>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkButton iconName="mail-send-receive-symbolic" tooltipText="Check out" />
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkTextView hexpand vexpand />

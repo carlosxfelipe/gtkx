@@ -11,15 +11,15 @@ interface TodoRowProps {
 export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
     return (
         <AdwActionRow title={todo.text} name={`todo-${todo.id}`} cssClasses={todo.completed ? ["dim-label"] : []}>
-            <x.ActionRowPrefix>
+            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                 <GtkCheckButton
                     active={todo.completed}
                     onToggled={() => onToggle(todo.id)}
                     name={`toggle-${todo.id}`}
                     valign={Gtk.Align.CENTER}
                 />
-            </x.ActionRowPrefix>
-            <x.ActionRowSuffix>
+            </x.ContainerSlot>
+            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                 <GtkButton
                     iconName="edit-delete-symbolic"
                     tooltipText="Delete task"
@@ -28,7 +28,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     name={`delete-${todo.id}`}
                     valign={Gtk.Align.CENTER}
                 />
-            </x.ActionRowSuffix>
+            </x.ContainerSlot>
         </AdwActionRow>
     );
 };

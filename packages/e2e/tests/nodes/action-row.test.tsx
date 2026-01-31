@@ -27,12 +27,12 @@ describe("render - ActionRow", () => {
             await render(
                 <GtkListBox>
                     <AdwActionRow ref={rowRef} title="Test Row">
-                        <x.ActionRowPrefix>
+                        <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                             <GtkLabel ref={prefixRef} label="First" />
-                        </x.ActionRowPrefix>
-                        <x.ActionRowSuffix>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                             <GtkLabel ref={suffixRef} label="Second" />
-                        </x.ActionRowSuffix>
+                        </x.ContainerSlot>
                     </AdwActionRow>
                 </GtkListBox>,
             );
@@ -52,9 +52,9 @@ describe("render - ActionRow", () => {
                         <AdwActionRow ref={rowRef} title="Test Row">
                             {Array.from({ length: count }, (_, i) => (
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Test fixture with stable items
-                                <x.ActionRowSuffix key={`suffix-label-${i}`}>
+                                <x.ContainerSlot for={AdwActionRow} id="addSuffix" key={`suffix-label-${i}`}>
                                     <GtkLabel ref={labelRefs[i]} label={`Label ${i}`} />
-                                </x.ActionRowSuffix>
+                                </x.ContainerSlot>
                             ))}
                         </AdwActionRow>
                     </GtkListBox>

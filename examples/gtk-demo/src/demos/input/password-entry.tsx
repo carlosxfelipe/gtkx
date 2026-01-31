@@ -22,7 +22,7 @@ const PasswordEntryDemo = ({ onClose }: DemoProps) => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar showTitleButtons={false}>
-                    <x.PackEnd>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkButton
                             label="_Done"
                             useUnderline
@@ -30,7 +30,7 @@ const PasswordEntryDemo = ({ onClose }: DemoProps) => {
                             sensitive={passwordsMatch}
                             onClicked={onClose}
                         />
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkBox

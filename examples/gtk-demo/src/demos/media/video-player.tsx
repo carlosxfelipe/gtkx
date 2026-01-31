@@ -63,14 +63,14 @@ const VideoPlayerDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackStart>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
                         <GtkButton label="GTK Logo" onClicked={handleLogo} />
                         <GtkButton label="Big Buck Bunny" onClicked={handleBBB} />
-                    </x.PackStart>
-                    <x.PackEnd>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkButton iconName="view-fullscreen-symbolic" onClicked={handleFullscreen} />
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkVideo file={videoFile ?? undefined} autoplay />

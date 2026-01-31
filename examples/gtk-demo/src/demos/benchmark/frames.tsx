@@ -88,9 +88,9 @@ const FramesDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackEnd>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkLabel label={`${fps.toFixed(2)} fps`} />
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkBox>

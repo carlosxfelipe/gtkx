@@ -43,9 +43,9 @@ const PaintableSvgDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackStart>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
-                    </x.PackStart>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
 

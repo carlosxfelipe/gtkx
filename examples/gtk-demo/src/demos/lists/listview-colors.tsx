@@ -361,7 +361,7 @@ const ListViewColorsDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackStart>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkButton
                             iconName="view-refresh-symbolic"
                             tooltipText="Refill colors"
@@ -373,11 +373,11 @@ const ListViewColorsDemo = () => {
                             onClicked={() => setShowSelectionInfo(!showSelectionInfo)}
                             cssClasses={showSelectionInfo ? ["suggested-action"] : []}
                         />
-                    </x.PackStart>
+                    </x.ContainerSlot>
                     <x.Slot for={GtkHeaderBar} id="titleWidget">
                         <GtkLabel label={`${selected.length} / ${sortedColors.length}`} />
                     </x.Slot>
-                    <x.PackEnd>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkDropDown
                             selectedId={displayFactory}
                             onSelectionChanged={(id) => setDisplayFactory(id as DisplayFactory)}
@@ -405,7 +405,7 @@ const ListViewColorsDemo = () => {
                                 <x.SimpleListItem key={l.id} id={l.id} value={l.label} />
                             ))}
                         </GtkDropDown>
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
 

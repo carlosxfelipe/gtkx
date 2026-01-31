@@ -6,16 +6,16 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - ToolbarChild", () => {
-    describe("ToolbarChildNode", () => {
-        it("adds child to top bar via Toolbar.Top", async () => {
+    describe("ContainerSlot (ToolbarView)", () => {
+        it("adds child to top bar via addTopBar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const contentRef = createRef<Gtk.Label>();
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <x.ToolbarTop>
+                    <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                         <AdwHeaderBar />
-                    </x.ToolbarTop>
+                    </x.ContainerSlot>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
             );
@@ -24,16 +24,16 @@ describe("render - ToolbarChild", () => {
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
-        it("adds child to bottom bar via Toolbar.Bottom", async () => {
+        it("adds child to bottom bar via addBottomBar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const contentRef = createRef<Gtk.Label>();
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel ref={contentRef} label="Content" />
-                    <x.ToolbarBottom>
+                    <x.ContainerSlot for={AdwToolbarView} id="addBottomBar">
                         <AdwHeaderBar />
-                    </x.ToolbarBottom>
+                    </x.ContainerSlot>
                 </AdwToolbarView>,
             );
 
@@ -48,12 +48,12 @@ describe("render - ToolbarChild", () => {
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <x.ToolbarTop>
+                    <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                         <AdwHeaderBar />
-                    </x.ToolbarTop>
-                    <x.ToolbarTop>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                         <GtkLabel ref={secondTopRef} label="Second Top Bar" />
-                    </x.ToolbarTop>
+                    </x.ContainerSlot>
                     <GtkLabel ref={contentRef} label="Content" />
                 </AdwToolbarView>,
             );
@@ -70,9 +70,9 @@ describe("render - ToolbarChild", () => {
                 return (
                     <AdwToolbarView ref={toolbarRef}>
                         {showTop && (
-                            <x.ToolbarTop>
+                            <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                                 <AdwHeaderBar />
-                            </x.ToolbarTop>
+                            </x.ContainerSlot>
                         )}
                         <GtkLabel ref={contentRef} label="Content" />
                     </AdwToolbarView>

@@ -29,15 +29,15 @@ describe("render - ExpanderRow", () => {
             expect(ref.current?.getTitle()).toBe("Updated");
         });
 
-        it("adds prefix and suffix widgets via ActionRowChild", async () => {
+        it("adds prefix and suffix widgets via ContainerSlot", async () => {
             await render(
                 <AdwExpanderRow title="Row">
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addPrefix">
                         <GtkButton label="Prefix" />
-                    </x.ActionRowPrefix>
-                    <x.ActionRowSuffix>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addSuffix">
                         <GtkButton label="Suffix" />
-                    </x.ActionRowSuffix>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>,
             );
 

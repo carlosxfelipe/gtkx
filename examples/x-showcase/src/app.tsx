@@ -25,13 +25,13 @@ export const App = () => {
     return (
         <AdwApplicationWindow title="x.* Showcase" defaultWidth={900} defaultHeight={700} onClose={quit}>
             <AdwToolbarView>
-                <x.ToolbarTop>
+                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                     <AdwHeaderBar>
                         <x.Slot for={AdwHeaderBar} id="titleWidget">
                             <AdwViewSwitcher stack={stack ?? undefined} policy={Adw.ViewSwitcherPolicy.WIDE} />
                         </x.Slot>
                     </AdwHeaderBar>
-                </x.ToolbarTop>
+                </x.ContainerSlot>
 
                 <AdwViewStack ref={setStack} onPageChanged={setCurrentPage}>
                     <x.StackPage id="layout" title="Layout" iconName="view-grid-symbolic">

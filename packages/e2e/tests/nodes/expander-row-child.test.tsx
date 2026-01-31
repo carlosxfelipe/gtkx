@@ -5,15 +5,15 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - ExpanderRowChild", () => {
-    describe("ExpanderRowRow", () => {
+    describe("ContainerSlot (addRow)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             await render(
                 <AdwExpanderRow title="Settings">
-                    <x.ExpanderRowRow>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                         <AdwActionRow ref={rowRef} title="Option 1" />
-                    </x.ExpanderRowRow>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>,
             );
 
@@ -27,10 +27,10 @@ describe("render - ExpanderRowChild", () => {
 
             await render(
                 <AdwExpanderRow title="Settings">
-                    <x.ExpanderRowRow>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                         <AdwActionRow ref={row1Ref} title="Option 1" />
                         <AdwActionRow ref={row2Ref} title="Option 2" />
-                    </x.ExpanderRowRow>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>,
             );
 
@@ -44,10 +44,10 @@ describe("render - ExpanderRowChild", () => {
             function App({ showRow }: { showRow: boolean }) {
                 return (
                     <AdwExpanderRow ref={expanderRef} title="Settings">
-                        <x.ExpanderRowRow>
+                        <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                             <AdwActionRow title="Always" />
                             {showRow && <AdwActionRow title="Conditional" />}
-                        </x.ExpanderRowRow>
+                        </x.ContainerSlot>
                     </AdwExpanderRow>
                 );
             }
@@ -60,13 +60,13 @@ describe("render - ExpanderRowChild", () => {
         });
     });
 
-    describe("ExpanderRowAction", () => {
+    describe("ContainerSlot (addAction)", () => {
         it("adds action widgets to ExpanderRow", async () => {
             await render(
                 <AdwExpanderRow title="Group">
-                    <x.ExpanderRowAction>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
                         <GtkButton label="Action" />
-                    </x.ExpanderRowAction>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>,
             );
 
@@ -76,10 +76,10 @@ describe("render - ExpanderRowChild", () => {
         it("adds multiple action widgets", async () => {
             await render(
                 <AdwExpanderRow title="Group">
-                    <x.ExpanderRowAction>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
                         <GtkButton label="Action 1" />
                         <GtkButton label="Action 2" />
-                    </x.ExpanderRowAction>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>,
             );
 
@@ -93,15 +93,15 @@ describe("render - ExpanderRowChild", () => {
 
             await render(
                 <AdwExpanderRow ref={ref} title="Complex">
-                    <x.ExpanderRowAction>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
                         <GtkButton label="Action 1" />
                         <GtkButton label="Action 2" />
-                    </x.ExpanderRowAction>
-                    <x.ExpanderRowRow>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                         <AdwActionRow title="Row 1" />
                         <AdwActionRow title="Row 2" />
                         <AdwActionRow title="Row 3" />
-                    </x.ExpanderRowRow>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>,
             );
 

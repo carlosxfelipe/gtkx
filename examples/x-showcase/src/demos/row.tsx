@@ -35,10 +35,10 @@ export const RowDemo = () => {
                 description="Add widgets to the start or end of action rows"
             >
                 <AdwActionRow title="Notifications" subtitle="Receive push notifications">
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                         <GtkImage iconName="preferences-system-notifications-symbolic" />
-                    </x.ActionRowPrefix>
-                    <x.ActionRowSuffix>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                         <GtkSwitch
                             valign={Gtk.Align.CENTER}
                             active={switchValue}
@@ -47,101 +47,101 @@ export const RowDemo = () => {
                                 return true;
                             }}
                         />
-                    </x.ActionRowSuffix>
+                    </x.ContainerSlot>
                 </AdwActionRow>
 
                 <AdwActionRow title="Dark Mode" subtitle="Use dark color scheme">
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                         <GtkImage iconName="weather-clear-night-symbolic" />
-                    </x.ActionRowPrefix>
-                    <x.ActionRowSuffix>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                         <GtkCheckButton active={checkValue} onToggled={(button) => setCheckValue(button.getActive())} />
-                    </x.ActionRowSuffix>
+                    </x.ContainerSlot>
                 </AdwActionRow>
 
                 <AdwActionRow title="Account" subtitle="Manage your account settings" activatable>
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                         <GtkImage iconName="avatar-default-symbolic" />
-                    </x.ActionRowPrefix>
-                    <x.ActionRowSuffix>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                         <GtkImage iconName="go-next-symbolic" cssClasses={["dim-label"]} />
-                    </x.ActionRowSuffix>
+                    </x.ContainerSlot>
                 </AdwActionRow>
             </AdwPreferencesGroup>
 
             <AdwPreferencesGroup title="x.ExpanderRowRow" description="Nested rows inside an expander row">
                 <AdwExpanderRow title="Network Settings" subtitle="Configure network options">
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addPrefix">
                         <GtkImage iconName="network-wired-symbolic" />
-                    </x.ActionRowPrefix>
-                    <x.ExpanderRowRow>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                         <AdwActionRow title="WiFi">
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkSwitch valign={Gtk.Align.CENTER} active />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                         <AdwActionRow title="Bluetooth">
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkSwitch valign={Gtk.Align.CENTER} />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                         <AdwActionRow title="Airplane Mode">
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkSwitch valign={Gtk.Align.CENTER} />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
-                    </x.ExpanderRowRow>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>
 
                 <AdwExpanderRow title="Privacy" subtitle="Control your privacy settings">
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addPrefix">
                         <GtkImage iconName="channel-secure-symbolic" />
-                    </x.ActionRowPrefix>
-                    <x.ExpanderRowRow>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                         <AdwActionRow title="Location Services" activatable>
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkImage iconName="go-next-symbolic" cssClasses={["dim-label"]} />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                         <AdwActionRow title="Camera Access" activatable>
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkImage iconName="go-next-symbolic" cssClasses={["dim-label"]} />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                         <AdwActionRow title="Microphone Access" activatable>
-                            <x.ActionRowSuffix>
+                            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                                 <GtkImage iconName="go-next-symbolic" cssClasses={["dim-label"]} />
-                            </x.ActionRowSuffix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
-                    </x.ExpanderRowRow>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>
             </AdwPreferencesGroup>
 
             <AdwPreferencesGroup title="x.ExpanderRowAction" description="Action widgets in the expander row header">
                 <AdwExpanderRow title="Accounts" subtitle="Manage connected accounts">
-                    <x.ActionRowPrefix>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addPrefix">
                         <GtkImage iconName="system-users-symbolic" />
-                    </x.ActionRowPrefix>
-                    <x.ExpanderRowAction>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
                         <GtkButton
                             iconName="list-add-symbolic"
                             valign={Gtk.Align.CENTER}
                             cssClasses={["flat"]}
                             tooltipText="Add Account"
                         />
-                    </x.ExpanderRowAction>
-                    <x.ExpanderRowRow>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
                         <AdwActionRow title="Google" subtitle="alice@gmail.com">
-                            <x.ActionRowPrefix>
+                            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                                 <GtkImage iconName="mail-symbolic" />
-                            </x.ActionRowPrefix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
                         <AdwActionRow title="GitHub" subtitle="alice-dev">
-                            <x.ActionRowPrefix>
+                            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                                 <GtkImage iconName="applications-development-symbolic" />
-                            </x.ActionRowPrefix>
+                            </x.ContainerSlot>
                         </AdwActionRow>
-                    </x.ExpanderRowRow>
+                    </x.ContainerSlot>
                 </AdwExpanderRow>
             </AdwPreferencesGroup>
 
@@ -151,13 +151,13 @@ export const RowDemo = () => {
             >
                 <GtkFrame marginTop={12}>
                     <AdwToolbarView>
-                        <x.ToolbarTop>
+                        <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                             <GtkBox cssClasses={["toolbar"]} spacing={6}>
                                 <GtkButton iconName="document-new-symbolic" tooltipText="New" />
                                 <GtkButton iconName="document-open-symbolic" tooltipText="Open" />
                                 <GtkButton iconName="document-save-symbolic" tooltipText="Save" />
                             </GtkBox>
-                        </x.ToolbarTop>
+                        </x.ContainerSlot>
 
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -168,13 +168,13 @@ export const RowDemo = () => {
                             <GtkLabel label="Content Area" cssClasses={["dim-label"]} />
                         </GtkBox>
 
-                        <x.ToolbarBottom>
+                        <x.ContainerSlot for={AdwToolbarView} id="addBottomBar">
                             <GtkBox cssClasses={["toolbar"]} spacing={6}>
                                 <GtkLabel label="Status: Ready" hexpand halign={Gtk.Align.START} marginStart={6} />
                                 <GtkButton iconName="zoom-out-symbolic" tooltipText="Zoom Out" />
                                 <GtkButton iconName="zoom-in-symbolic" tooltipText="Zoom In" />
                             </GtkBox>
-                        </x.ToolbarBottom>
+                        </x.ContainerSlot>
                     </AdwToolbarView>
                 </GtkFrame>
             </AdwPreferencesGroup>

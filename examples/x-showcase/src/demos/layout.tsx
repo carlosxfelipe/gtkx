@@ -31,12 +31,12 @@ export const LayoutDemo = () => {
                         <x.Slot for={AdwHeaderBar} id="titleWidget">
                             <GtkLabel label="Custom Title Widget" cssClasses={["heading"]} />
                         </x.Slot>
-                        <x.PackStart>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
                             <GtkButton iconName="go-previous-symbolic" />
-                        </x.PackStart>
-                        <x.PackEnd>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packEnd">
                             <GtkButton iconName="open-menu-symbolic" />
-                        </x.PackEnd>
+                        </x.ContainerSlot>
                     </AdwHeaderBar>
                 </GtkFrame>
             </AdwPreferencesGroup>
@@ -47,18 +47,18 @@ export const LayoutDemo = () => {
             >
                 <GtkFrame>
                     <AdwHeaderBar showTitle={false}>
-                        <x.PackStart>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
                             <GtkButton label="Start 1" />
-                        </x.PackStart>
-                        <x.PackStart>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
                             <GtkButton label="Start 2" />
-                        </x.PackStart>
-                        <x.PackEnd>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packEnd">
                             <GtkButton label="End 1" />
-                        </x.PackEnd>
-                        <x.PackEnd>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packEnd">
                             <GtkButton label="End 2" />
-                        </x.PackEnd>
+                        </x.ContainerSlot>
                     </AdwHeaderBar>
                 </GtkFrame>
             </AdwPreferencesGroup>

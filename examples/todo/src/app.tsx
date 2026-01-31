@@ -102,13 +102,13 @@ export const App = ({ onClose = quit }: AppProps) => {
     return (
         <AdwApplicationWindow title="Tasks" defaultWidth={450} defaultHeight={600} onClose={onClose}>
             <AdwToolbarView>
-                <x.ToolbarTop>
+                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                     <AdwHeaderBar>
                         <x.Slot for={AdwHeaderBar} id="titleWidget">
                             <GtkLabel label="Tasks" cssClasses={["title"]} />
                         </x.Slot>
                     </AdwHeaderBar>
-                </x.ToolbarTop>
+                </x.ContainerSlot>
 
                 <AdwToastOverlay ref={toastOverlayRef}>
                     <GtkBox

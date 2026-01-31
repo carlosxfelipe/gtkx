@@ -106,31 +106,31 @@ export const App = () => {
     return (
         <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onClose={quit}>
             <AdwToolbarView>
-                <x.ToolbarTop>
+                <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
                     <AdwHeaderBar>
-                        <x.PackStart>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
                             <GtkButton
                                 iconName="go-previous-symbolic"
                                 onClicked={handleBack}
                                 sensitive={canGoBack}
                                 tooltipText="Go back"
                             />
-                        </x.PackStart>
-                        <x.PackStart>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
                             <GtkButton
                                 iconName="go-next-symbolic"
                                 onClicked={handleForward}
                                 sensitive={canGoForward}
                                 tooltipText="Go forward"
                             />
-                        </x.PackStart>
-                        <x.PackStart>
+                        </x.ContainerSlot>
+                        <x.ContainerSlot for={AdwHeaderBar} id="packStart">
                             <GtkButton
                                 iconName={isLoading ? "process-stop-symbolic" : "view-refresh-symbolic"}
                                 onClicked={isLoading ? handleStop : handleReload}
                                 tooltipText={isLoading ? "Stop loading" : "Reload"}
                             />
-                        </x.PackStart>
+                        </x.ContainerSlot>
                         <x.Slot for="AdwHeaderBar" id="titleWidget">
                             <GtkEntry
                                 text={url}
@@ -142,7 +142,7 @@ export const App = () => {
                             />
                         </x.Slot>
                     </AdwHeaderBar>
-                </x.ToolbarTop>
+                </x.ContainerSlot>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                     <GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />
                     <WebKitWebView

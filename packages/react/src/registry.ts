@@ -13,6 +13,7 @@ import { CalendarNode } from "./nodes/calendar.js";
 import { ColorDialogButtonNode } from "./nodes/color-dialog-button.js";
 import { ColumnViewNode } from "./nodes/column-view.js";
 import { ColumnViewColumnNode } from "./nodes/column-view-column.js";
+import { ContainerSlotNode } from "./nodes/container-slot.js";
 import { DialogNode } from "./nodes/dialog.js";
 import { DrawingAreaNode } from "./nodes/drawing-area.js";
 import { EventControllerNode } from "./nodes/event-controller.js";
@@ -24,7 +25,6 @@ import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListItemNode } from "./nodes/list-item.js";
 import { ListViewNode } from "./nodes/list-view.js";
 import { MenuNode } from "./nodes/menu.js";
-import { MethodChildNode } from "./nodes/method-child.js";
 import { NavigationPageNode } from "./nodes/navigation-page.js";
 import { NavigationViewNode } from "./nodes/navigation-view.js";
 import { NotebookNode } from "./nodes/notebook.js";
@@ -67,19 +67,7 @@ type RegistryKey = string | ClassKey | (string | ClassKey)[];
 type NodeRegistryEntry = [RegistryKey, NodeClass];
 
 export const NODE_REGISTRY: NodeRegistryEntry[] = [
-    [
-        [
-            "ActionRowPrefix",
-            "ActionRowSuffix",
-            "ExpanderRowRow",
-            "ExpanderRowAction",
-            "PackStart",
-            "PackEnd",
-            "ToolbarTop",
-            "ToolbarBottom",
-        ],
-        MethodChildNode,
-    ],
+    ["ContainerSlot", ContainerSlotNode],
     ["AlertDialogResponse", AlertDialogResponseNode],
     ["Animation", AnimationNode],
     ["ColumnViewColumn", ColumnViewColumnNode],

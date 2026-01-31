@@ -143,7 +143,7 @@ const AppContent = () => {
         <>
             <x.Slot for={GtkWindow} id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackStart>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
                         <GtkButton
                             label="Run"
                             onClicked={handleRun}
@@ -158,8 +158,8 @@ const AppContent = () => {
                             valign={Gtk.Align.CENTER}
                             focusOnClick={false}
                         />
-                    </x.PackStart>
-                    <x.PackEnd>
+                    </x.ContainerSlot>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkMenuButton iconName="open-menu-symbolic" valign={Gtk.Align.CENTER} focusOnClick={false}>
                             <x.MenuSection>
                                 <x.MenuItem
@@ -177,7 +177,7 @@ const AppContent = () => {
                                 <x.MenuItem id="about" label="_About GTK Demo" onActivate={handleAbout} />
                             </x.MenuSection>
                         </GtkMenuButton>
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
 

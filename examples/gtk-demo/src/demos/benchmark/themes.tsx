@@ -99,9 +99,9 @@ const ThemesDemo = () => {
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.PackEnd>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkLabel label={fps} widthChars={12} />
-                    </x.PackEnd>
+                    </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkBox

@@ -69,6 +69,34 @@ export type SlotProps = {
 };
 
 /**
+ * Type mapping widgets to their valid container slot method names.
+ *
+ * Each key is a JSX element name and each value is a union of method names
+ * that can be used as the `id` prop on `x.ContainerSlot`.
+ */
+export type ContainerSlotNames = {
+    AdwActionRow: "addPrefix" | "addSuffix";
+    AdwEntryRow: "addPrefix" | "addSuffix";
+    AdwExpanderRow: "addPrefix" | "addSuffix" | "addRow" | "addAction";
+    AdwHeaderBar: "packStart" | "packEnd";
+    AdwToolbarView: "addTopBar" | "addBottomBar";
+    GtkActionBar: "packStart" | "packEnd";
+    GtkHeaderBar: "packStart" | "packEnd";
+};
+
+/**
+ * Props for method-based container slot child positioning.
+ *
+ * @see {@link x.ContainerSlot} for type-safe usage
+ */
+export type ContainerSlotProps = {
+    /** The method name to call on the parent widget */
+    id: string;
+    /** Content to place in the container slot */
+    children?: ReactNode;
+};
+
+/**
  * Props for virtual child containers that don't expose slot id.
  */
 export type VirtualSlotProps = {
@@ -332,14 +360,6 @@ export type AlertDialogResponseProps = {
     enabled?: boolean;
 };
 
-/**
- * Props for ExpanderRow child slots (Row and Action).
- */
-export type ExpanderRowChildProps = {
-    /** Children to add to this slot */
-    children?: ReactNode;
-};
-
 type NavigationPageBaseProps = {
     title?: string;
     canPop?: boolean;
@@ -592,88 +612,43 @@ export const x = {
     },
 
     /**
-     * Place child as a prefix (left side) of AdwActionRow, AdwEntryRow, or AdwExpanderRow.
+     * Type-safe container slot for placing children via parent widget methods.
      *
-     * @example
-     * ```tsx
-     * <AdwActionRow title="Setting">
-     *   <x.ActionRowPrefix>
-     *     <GtkCheckButton />
-     *   </x.ActionRowPrefix>
-     * </AdwActionRow>
-     * ```
-     */
-    ActionRowPrefix: "ActionRowPrefix" as const,
-
-    /**
-     * Place child as a suffix (right side) of AdwActionRow, AdwEntryRow, or AdwExpanderRow.
+     * Unlike `x.Slot` (which uses property setters for single-child slots),
+     * `x.ContainerSlot` calls attachment methods that support multiple children
+     * (e.g., `addPrefix()`, `packStart()`, `addTopBar()`).
      *
-     * @example
-     * ```tsx
-     * <AdwActionRow title="Setting">
-     *   <x.ActionRowSuffix>
-     *     <GtkButton iconName="go-next-symbolic" />
-     *   </x.ActionRowSuffix>
-     * </AdwActionRow>
-     * ```
-     */
-    ActionRowSuffix: "ActionRowSuffix" as const,
-
-    /**
-     * Place child at the start (left in LTR) of HeaderBar or ActionBar.
-     *
-     * @example
-     * ```tsx
-     * <GtkHeaderBar>
-     *   <x.PackStart>
-     *     <GtkButton label="Back" />
-     *   </x.PackStart>
-     * </GtkHeaderBar>
-     * ```
-     */
-    PackStart: "PackStart" as const,
-
-    /**
-     * Place child at the end (right in LTR) of HeaderBar or ActionBar.
-     *
-     * @example
-     * ```tsx
-     * <GtkHeaderBar>
-     *   <x.PackEnd>
-     *     <GtkMenuButton />
-     *   </x.PackEnd>
-     * </GtkHeaderBar>
-     * ```
-     */
-    PackEnd: "PackEnd" as const,
-
-    /**
-     * Place toolbar at the top of AdwToolbarView.
+     * The `for` prop provides TypeScript type narrowing for the `id` prop
+     * and is not used at runtime.
      *
      * @example
      * ```tsx
      * <AdwToolbarView>
-     *   <x.ToolbarTop>
+     *   <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
      *     <AdwHeaderBar />
-     *   </x.ToolbarTop>
+     *   </x.ContainerSlot>
      * </AdwToolbarView>
-     * ```
-     */
-    ToolbarTop: "ToolbarTop" as const,
-
-    /**
-     * Place toolbar at the bottom of AdwToolbarView.
      *
-     * @example
-     * ```tsx
-     * <AdwToolbarView>
-     *   <x.ToolbarBottom>
-     *     <GtkActionBar />
-     *   </x.ToolbarBottom>
-     * </AdwToolbarView>
+     * <GtkHeaderBar>
+     *   <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+     *     <GtkButton label="Back" />
+     *   </x.ContainerSlot>
+     * </GtkHeaderBar>
+     *
+     * <AdwActionRow title="Setting">
+     *   <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+     *     <GtkCheckButton />
+     *   </x.ContainerSlot>
+     * </AdwActionRow>
      * ```
      */
-    ToolbarBottom: "ToolbarBottom" as const,
+    ContainerSlot<W extends keyof ContainerSlotNames>(props: {
+        for: W;
+        id: ContainerSlotNames[W];
+        children?: ReactNode;
+    }): ReactElement {
+        return createElement("ContainerSlot", { id: props.id }, props.children);
+    },
 
     /**
      * Element type for overlay children positioned above the main content.
@@ -808,35 +783,6 @@ export const x = {
     AlertDialogResponse: "AlertDialogResponse" as const,
 
     /**
-     * Nested rows container for AdwExpanderRow.
-     *
-     * @example
-     * ```tsx
-     * <AdwExpanderRow title="Settings">
-     *   <ExpanderRow.Row>
-     *     <AdwActionRow title="Option 1" />
-     *     <AdwActionRow title="Option 2" />
-     *   </ExpanderRow.Row>
-     * </AdwExpanderRow>
-     * ```
-     */
-    ExpanderRowRow: "ExpanderRowRow" as const,
-
-    /**
-     * Action widget container for AdwExpanderRow header.
-     *
-     * @example
-     * ```tsx
-     * <AdwExpanderRow title="Group">
-     *   <ExpanderRow.Action>
-     *     <GtkButton iconName="emblem-system-symbolic" />
-     *   </ExpanderRow.Action>
-     * </AdwExpanderRow>
-     * ```
-     */
-    ExpanderRowAction: "ExpanderRowAction" as const,
-
-    /**
      * Type-safe page component for AdwNavigationView or AdwNavigationSplitView.
      *
      * The `for` prop is required and determines valid `id` values:
@@ -920,14 +866,11 @@ declare global {
     namespace React {
         namespace JSX {
             interface IntrinsicElements {
-                ActionRowPrefix: VirtualSlotProps;
-                ActionRowSuffix: VirtualSlotProps;
                 AlertDialogResponse: AlertDialogResponseProps;
                 Animation: AnimationProps;
+                ContainerSlot: ContainerSlotProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
-                ExpanderRowAction: ExpanderRowChildProps;
-                ExpanderRowRow: ExpanderRowChildProps;
                 FixedChild: FixedChildProps;
                 GridChild: GridChildProps;
                 ListItem: ListItemProps;
@@ -937,16 +880,12 @@ declare global {
                 NotebookPage: NotebookPageProps;
                 NotebookPageTab: VirtualSlotProps;
                 OverlayChild: OverlayChildProps;
-                PackEnd: VirtualSlotProps;
-                PackStart: VirtualSlotProps;
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
                 TextTag: TextTagProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
-                ToolbarBottom: VirtualSlotProps;
-                ToolbarTop: VirtualSlotProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 TreeListItem: TreeListItemProps<any>;
                 NavigationPage: NavigationPageProps;
