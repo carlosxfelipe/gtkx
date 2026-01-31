@@ -13,10 +13,7 @@ export class CalendarNode extends WidgetNode<Gtk.Calendar> {
     private appliedMarks: number[] = [];
 
     public override commitUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as CalendarProps) : null,
-            filterProps(newProps, OWN_PROPS) as CalendarProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyMarkedDays(newProps);
     }
 

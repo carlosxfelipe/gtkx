@@ -15,10 +15,7 @@ export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
     private notifyHandler: SignalHandler | null = null;
 
     public override commitUpdate(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as SearchBarProps) : null,
-            filterProps(newProps, OWN_PROPS) as SearchBarProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
 
         if (hasChanged(oldProps, newProps, "onSearchModeChanged")) {
             this.setupNotifyHandler(newProps.onSearchModeChanged);

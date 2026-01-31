@@ -1,6 +1,5 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { DeferredAction } from "./deferred-action.js";
 import type { SignalStore } from "./signal-store.js";
 
 type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
@@ -18,8 +17,6 @@ export class SelectionModelManager {
     private signalStore: SignalStore;
     private selectionModel: SelectionModel;
     private handleSelectionChange: (() => void) | null = null;
-    private pendingSelection: string[] | null = null;
-    private selectionAction: DeferredAction;
     private getSelection: () => string[];
     private resolveSelectionIndices: (ids: string[]) => Gtk.Bitset;
     private getItemCount: () => number;
@@ -38,7 +35,6 @@ export class SelectionModelManager {
         this.getSelection = getSelection;
         this.resolveSelectionIndices = resolveSelectionIndices;
         this.getItemCount = getItemCount;
-        this.selectionAction = new DeferredAction(() => this.applySelection());
         this.initSelectionHandler(config.onSelectionChanged);
         this.setSelection(config.selected);
     }
@@ -104,16 +100,7 @@ export class SelectionModelManager {
     }
 
     private setSelection(ids?: string[]): void {
-        this.pendingSelection = ids ?? null;
-        this.selectionAction.schedule();
-    }
-
-    private applySelection(): void {
-        const ids = this.pendingSelection;
         const nItems = this.getItemCount();
-
-        this.pendingSelection = null;
-
         const selected = ids ? this.resolveSelectionIndices(ids) : new Gtk.Bitset();
         const mask = Gtk.Bitset.newRange(0, nItems);
 

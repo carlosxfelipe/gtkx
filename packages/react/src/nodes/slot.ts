@@ -34,7 +34,7 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P, Wi
         }
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: WidgetNode): void {
         const oldChildWidget = this.children[0]?.container ?? null;
 
         super.appendChild(child);
@@ -44,8 +44,8 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P, Wi
         }
     }
 
-    public override removeChild(child: Node): void {
-        const oldChildWidget = (child as WidgetNode).container;
+    public override removeChild(child: WidgetNode): void {
+        const oldChildWidget = child.container;
 
         super.removeChild(child);
 
@@ -58,22 +58,19 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P, Wi
         const parentWidget = this.parent?.container ?? this.detachedParentWidget;
 
         if (parentWidget && this.children[0]) {
-            const oldChild = this.children[0].container;
-
-            queueMicrotask(() => {
-                if (parentWidget.getRoot() !== null) {
-                    this.cachedSetter = null;
-                    const setter = this.resolveChildSetter(parentWidget);
-                    if (setter) {
-                        const focusWidget = this.getFocusWidget(oldChild);
-                        if (focusWidget && this.isDescendantOf(focusWidget, oldChild)) {
-                            parentWidget.grabFocus();
-                        }
-                        setter(null);
+            if (parentWidget.getRoot() !== null) {
+                this.cachedSetter = null;
+                const setter = this.resolveChildSetter(parentWidget);
+                if (setter) {
+                    const oldChild = this.children[0].container;
+                    const focusWidget = this.getFocusWidget(oldChild);
+                    if (focusWidget && this.isDescendantOf(focusWidget, oldChild)) {
+                        parentWidget.grabFocus();
                     }
+                    setter(null);
                 }
-                this.detachedParentWidget = null;
-            });
+            }
+            this.detachedParentWidget = null;
         }
 
         super.detachDeletedInstance();

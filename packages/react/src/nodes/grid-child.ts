@@ -23,16 +23,16 @@ export class GridChildNode extends VirtualNode<Props, WidgetNode<Gtk.Grid>, Widg
         }
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
 
         if (this.parent) {
-            this.attachToParent(this.parent.container, (child as WidgetNode).container);
+            this.attachToParent(this.parent.container, child.container);
         }
     }
 
-    public override removeChild(child: Node): void {
-        const widget = (child as WidgetNode).container;
+    public override removeChild(child: WidgetNode): void {
+        const widget = child.container;
 
         super.removeChild(child);
 

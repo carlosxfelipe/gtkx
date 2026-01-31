@@ -51,10 +51,7 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
     }
 
     public override commitUpdate(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as FontDialogButtonProps) : null,
-            filterProps(newProps, OWN_PROPS) as FontDialogButtonProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

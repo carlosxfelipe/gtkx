@@ -36,37 +36,37 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         this.parent = parent;
     }
 
-    public appendInitialChild(child: Node): void {
+    public appendInitialChild(child: TChild): void {
         this.appendChild(child);
     }
 
-    public appendChild(child: Node): void {
+    public appendChild(child: TChild): void {
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
-        (this.children as Node[]).push(child);
+        this.children.push(child);
         child.setParent(this);
     }
 
-    public removeChild(child: Node): void {
-        const index = (this.children as Node[]).indexOf(child);
+    public removeChild(child: TChild): void {
+        const index = this.children.indexOf(child);
         if (index !== -1) {
             child.setParent(null);
             this.children.splice(index, 1);
         }
     }
 
-    public insertBefore(child: Node, before: Node): void {
-        const beforeIndex = (this.children as Node[]).indexOf(before);
+    public insertBefore(child: TChild, before: TChild): void {
+        const beforeIndex = this.children.indexOf(before);
         if (beforeIndex === -1) {
             throw new Error(`Cannot find 'before' child '${before.typeName}' in '${this.typeName}'`);
         }
 
-        const existingIndex = (this.children as Node[]).indexOf(child);
+        const existingIndex = this.children.indexOf(child);
         if (existingIndex !== -1) {
             this.children.splice(existingIndex, 1);
             const adjustedIndex = existingIndex < beforeIndex ? beforeIndex - 1 : beforeIndex;
-            (this.children as Node[]).splice(adjustedIndex, 0, child);
+            this.children.splice(adjustedIndex, 0, child);
             return;
         }
 
@@ -74,7 +74,7 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}'`);
         }
 
-        (this.children as Node[]).splice(beforeIndex, 0, child);
+        this.children.splice(beforeIndex, 0, child);
         child.setParent(this);
     }
 

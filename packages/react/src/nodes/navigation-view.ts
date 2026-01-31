@@ -42,10 +42,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
     }
 
     public override commitUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as NavigationViewProps) : null,
-            filterProps(newProps, OWN_PROPS) as NavigationViewProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

@@ -18,10 +18,7 @@ export class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
     private appliedOffsetIds = new Set<string>();
 
     public override commitUpdate(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as LevelBarProps) : null,
-            filterProps(newProps, OWN_PROPS) as LevelBarProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOffsets(oldProps, newProps);
     }
 

@@ -40,10 +40,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
     }
 
     public override commitUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as TextViewProps) : null,
-            filterProps(newProps, OWN_PROPS) as TextViewProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.ensureBufferController().applyOwnProps(oldProps, newProps);
     }
 

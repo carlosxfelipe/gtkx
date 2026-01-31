@@ -15,10 +15,7 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProp
     private notifyHandler: SignalHandler | null = null;
 
     public override commitUpdate(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as ToggleGroupProps) : null,
-            filterProps(newProps, OWN_PROPS) as ToggleGroupProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
 
         if (hasChanged(oldProps, newProps, "onActiveChanged")) {
             this.setupNotifyHandler(newProps.onActiveChanged);

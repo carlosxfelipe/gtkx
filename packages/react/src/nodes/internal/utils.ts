@@ -20,7 +20,7 @@ export const matchesAnyClass = (
     );
 };
 
-export const filterProps = (props: Props, excludeKeys: readonly string[]): Props => {
+export const filterProps = <T extends Props>(props: T, excludeKeys: readonly string[]): T => {
     const result: Props = {};
 
     for (const key of Object.keys(props)) {
@@ -29,7 +29,7 @@ export const filterProps = (props: Props, excludeKeys: readonly string[]): Props
         }
     }
 
-    return result;
+    return result as T;
 };
 
 type GObjectClass = { glibTypeName?: string };

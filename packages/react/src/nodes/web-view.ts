@@ -13,8 +13,8 @@ type WebViewProps = Props & {
 export class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
     public override commitUpdate(oldProps: WebViewProps | null, newProps: WebViewProps): void {
         super.commitUpdate(
-            oldProps ? (filterProps(oldProps, NON_BLOCKABLE_SIGNALS) as WebViewProps) : null,
-            filterProps(newProps, NON_BLOCKABLE_SIGNALS) as WebViewProps,
+            oldProps ? filterProps(oldProps, NON_BLOCKABLE_SIGNALS) : null,
+            filterProps(newProps, NON_BLOCKABLE_SIGNALS),
         );
         this.applyNonBlockableSignals(oldProps, newProps);
     }

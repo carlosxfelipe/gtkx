@@ -44,10 +44,7 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
     }
 
     public override commitUpdate(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as ColorDialogButtonProps) : null,
-            filterProps(newProps, OWN_PROPS) as ColorDialogButtonProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

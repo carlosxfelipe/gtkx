@@ -24,25 +24,25 @@ export class OverlayChildNode extends VirtualNode<Props, WidgetNode<Gtk.Overlay>
         }
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
 
         if (this.parent) {
-            this.attachOverlayChild(this.parent.container, (child as WidgetNode).container);
+            this.attachOverlayChild(this.parent.container, child.container);
         }
     }
 
-    public override insertBefore(child: Node, before: Node): void {
+    public override insertBefore(child: WidgetNode, before: WidgetNode): void {
         super.insertBefore(child, before);
 
         if (this.parent) {
-            this.attachOverlayChild(this.parent.container, (child as WidgetNode).container);
+            this.attachOverlayChild(this.parent.container, child.container);
         }
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: WidgetNode): void {
         if (this.parent) {
-            const widget = (child as WidgetNode).container;
+            const widget = child.container;
             const currentParent = widget.getParent();
             if (currentParent && currentParent === this.parent.container) {
                 this.parent.container.removeOverlay(widget);

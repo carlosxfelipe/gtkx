@@ -47,7 +47,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: WidgetNode): void {
         const oldChildWidget = this.children[0]?.container ?? null;
 
         super.appendChild(child);
@@ -57,8 +57,8 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
     }
 
-    public override removeChild(child: Node): void {
-        const oldChildWidget = (child as WidgetNode).container;
+    public override removeChild(child: WidgetNode): void {
+        const oldChildWidget = child.container;
 
         super.removeChild(child);
 

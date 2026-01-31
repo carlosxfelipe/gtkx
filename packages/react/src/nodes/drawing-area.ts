@@ -16,10 +16,7 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
     private pendingDrawFunc: DrawFunc | null = null;
 
     public override commitUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
-        super.commitUpdate(
-            oldProps ? (filterProps(oldProps, OWN_PROPS) as DrawingAreaProps) : null,
-            filterProps(newProps, OWN_PROPS) as DrawingAreaProps,
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -36,9 +33,8 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
 
     private onRealize(): void {
         if (this.pendingDrawFunc) {
-            const drawFunc = this.pendingDrawFunc;
+            this.container.setDrawFunc(this.pendingDrawFunc);
             this.pendingDrawFunc = null;
-            queueMicrotask(() => this.container.setDrawFunc(drawFunc));
         }
         this.signalStore.set(this, this.container, "realize", null);
     }

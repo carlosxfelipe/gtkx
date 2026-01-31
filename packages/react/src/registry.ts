@@ -4,7 +4,6 @@ import * as GtkSource from "@gtkx/ffi/gtksource";
 import * as Vte from "@gtkx/ffi/vte";
 import * as WebKit from "@gtkx/ffi/webkit";
 import type { Node } from "./node.js";
-import { ActionRowPrefixNode, ActionRowSuffixNode } from "./nodes/action-row-child.js";
 import { AdjustableNode } from "./nodes/adjustable.js";
 import { AlertDialogResponseNode } from "./nodes/alert-dialog-response.js";
 import { AnimationNode } from "./nodes/animation.js";
@@ -17,7 +16,6 @@ import { ColumnViewColumnNode } from "./nodes/column-view-column.js";
 import { DialogNode } from "./nodes/dialog.js";
 import { DrawingAreaNode } from "./nodes/drawing-area.js";
 import { EventControllerNode } from "./nodes/event-controller.js";
-import { ExpanderRowActionNode, ExpanderRowRowNode } from "./nodes/expander-row-child.js";
 import { FixedChildNode } from "./nodes/fixed-child.js";
 import { FontDialogButtonNode } from "./nodes/font-dialog-button.js";
 import { GridNode } from "./nodes/grid.js";
@@ -26,13 +24,13 @@ import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListItemNode } from "./nodes/list-item.js";
 import { ListViewNode } from "./nodes/list-view.js";
 import { MenuNode } from "./nodes/menu.js";
+import { MethodChildNode } from "./nodes/method-child.js";
 import { NavigationPageNode } from "./nodes/navigation-page.js";
 import { NavigationViewNode } from "./nodes/navigation-view.js";
 import { NotebookNode } from "./nodes/notebook.js";
 import { NotebookPageNode } from "./nodes/notebook-page.js";
 import { NotebookPageTabNode } from "./nodes/notebook-page-tab.js";
 import { OverlayChildNode } from "./nodes/overlay-child.js";
-import { PackEndNode, PackStartNode } from "./nodes/pack-child.js";
 import { PopoverMenuNode } from "./nodes/popover-menu.js";
 import { ScaleNode } from "./nodes/scale.js";
 import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
@@ -52,7 +50,6 @@ import { TextTagNode } from "./nodes/text-tag.js";
 import { TextViewNode } from "./nodes/text-view.js";
 import { ToggleNode } from "./nodes/toggle.js";
 import { ToggleGroupNode } from "./nodes/toggle-group.js";
-import { ToolbarBottomNode, ToolbarTopNode } from "./nodes/toolbar-child.js";
 import { TreeListItemNode } from "./nodes/tree-list-item.js";
 import { TreeListViewNode } from "./nodes/tree-list-view.js";
 import { WebViewNode } from "./nodes/web-view.js";
@@ -70,13 +67,22 @@ type RegistryKey = string | ClassKey | (string | ClassKey)[];
 type NodeRegistryEntry = [RegistryKey, NodeClass];
 
 export const NODE_REGISTRY: NodeRegistryEntry[] = [
-    ["ActionRowPrefix", ActionRowPrefixNode],
-    ["ActionRowSuffix", ActionRowSuffixNode],
+    [
+        [
+            "ActionRowPrefix",
+            "ActionRowSuffix",
+            "ExpanderRowRow",
+            "ExpanderRowAction",
+            "PackStart",
+            "PackEnd",
+            "ToolbarTop",
+            "ToolbarBottom",
+        ],
+        MethodChildNode,
+    ],
     ["AlertDialogResponse", AlertDialogResponseNode],
     ["Animation", AnimationNode],
     ["ColumnViewColumn", ColumnViewColumnNode],
-    ["ExpanderRowRow", ExpanderRowRowNode],
-    ["ExpanderRowAction", ExpanderRowActionNode],
     ["FixedChild", FixedChildNode],
     ["GridChild", GridChildNode],
     ["ListItem", ListItemNode],
@@ -85,8 +91,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["NotebookPage", NotebookPageNode],
     ["NotebookPageTab", NotebookPageTabNode],
     ["OverlayChild", OverlayChildNode],
-    ["PackStart", PackStartNode],
-    ["PackEnd", PackEndNode],
     ["Shortcut", ShortcutNode],
     ["SimpleListItem", SimpleListItemNode],
     ["Slot", SlotNode],
@@ -96,8 +100,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["TextSegment", TextSegmentNode],
     ["TextTag", TextTagNode],
     ["Toggle", ToggleNode],
-    ["ToolbarTop", ToolbarTopNode],
-    ["ToolbarBottom", ToolbarBottomNode],
     ["TreeListItem", TreeListItemNode],
     ["TreeListView", TreeListViewNode],
 
