@@ -7,9 +7,7 @@ import type * as GtkSource from "@gtkx/ffi/gtksource";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
-import type { GtkListViewProps, WidgetSlotNames } from "./generated/jsx.js";
-
-export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
+import type { WidgetSlotNames } from "./generated/jsx.js";
 
 /**
  * CSS properties that can be animated on a widget.
@@ -209,14 +207,12 @@ export type TextTagProps = {
     id: string;
     /** Priority of this tag (higher wins when multiple tags affect same property) */
     priority?: number;
-
     /** Background color as a string (e.g., "red", "#ff0000") */
     background?: string;
     /** Whether the background fills the entire line height */
     backgroundFullHeight?: boolean;
     /** Foreground (text) color as a string */
     foreground?: string;
-
     /** Font family name (e.g., "Sans", "Monospace") */
     family?: string;
     /** Font description string (e.g., "Sans Italic 12") */
@@ -235,21 +231,18 @@ export type TextTagProps = {
     stretch?: Pango.Stretch;
     /** Font variant (use Pango.Variant constants) */
     variant?: Pango.Variant;
-
     /** Whether to strike through the text */
     strikethrough?: boolean;
     /** Underline style (use Pango.Underline constants) */
     underline?: Pango.Underline;
     /** Overline style (use Pango.Overline constants) */
     overline?: Pango.Overline;
-
     /** Offset of text above baseline in Pango units (negative = below) */
     rise?: number;
     /** Extra spacing between characters in Pango units */
     letterSpacing?: number;
     /** Factor to scale line height by */
     lineHeight?: number;
-
     /** Left margin in pixels */
     leftMargin?: number;
     /** Right margin in pixels */
@@ -262,14 +255,12 @@ export type TextTagProps = {
     pixelsBelowLines?: number;
     /** Pixels of blank space between wrapped lines */
     pixelsInsideWrap?: number;
-
     /** Text justification */
     justification?: Gtk.Justification;
     /** Text direction */
     direction?: Gtk.TextDirection;
     /** Wrap mode for line breaks */
     wrapMode?: Gtk.WrapMode;
-
     /** Whether the text can be modified */
     editable?: boolean;
     /** Whether the text is invisible/hidden */
@@ -282,19 +273,16 @@ export type TextTagProps = {
     fallback?: boolean;
     /** Whether margins accumulate */
     accumulativeMargin?: boolean;
-
     /** Paragraph background color as a string */
     paragraphBackground?: string;
     /** How to render invisible characters */
     showSpaces?: Pango.ShowFlags;
     /** How to transform text for display */
     textTransform?: Pango.TextTransform;
-
     /** OpenType font features as a string */
     fontFeatures?: string;
     /** Language code (e.g., "en-US") */
     language?: string;
-
     /** Text content and nested TextTag children */
     children?: ReactNode;
 };
@@ -382,31 +370,15 @@ export type ContainerSlotProps = {
 };
 
 /**
- * Props for virtual child containers that don't expose slot id.
- */
-export type VirtualSlotProps = {
-    /** Content to place in the slot */
-    children?: ReactNode;
-};
-
-/**
  * Props for items in a GtkListView, GtkGridView, or GtkColumnView.
+ *
+ * When used inside a GtkListView, items can be nested to create tree hierarchies.
+ * Tree-specific props (`indentForDepth`, `indentForIcon`, `hideExpander`) only
+ * apply when items are used inside a GtkListView with nested children.
  *
  * @typeParam T - The type of data associated with this list item
  */
 export type ListItemProps<T = unknown> = {
-    /** Unique identifier for this item */
-    id: string;
-    /** The data value for this item */
-    value: T;
-};
-
-/**
- * Props for items in a {@link TreeListView}.
- *
- * @typeParam T - The type of data associated with this tree item
- */
-export type TreeListItemProps<T = unknown> = {
     /** Unique identifier for this item */
     id: string;
     /** The data value for this item */
@@ -417,7 +389,7 @@ export type TreeListItemProps<T = unknown> = {
     indentForIcon?: boolean;
     /** Whether to hide the expand/collapse arrow */
     hideExpander?: boolean;
-    /** Nested tree items (children of this item) */
+    /** Nested list items (children of this item in a tree) */
     children?: ReactNode;
 };
 
@@ -438,7 +410,9 @@ export type StringListItemProps = {
  *
  * @see {@link GridChild} for usage
  */
-export type GridChildProps = VirtualSlotProps & {
+export type GridChildProps = {
+    /** Content to place in the grid cell */
+    children?: ReactNode;
     /** Column index (0-based) */
     column?: number;
     /** Row index (0-based) */
@@ -454,7 +428,9 @@ export type GridChildProps = VirtualSlotProps & {
  *
  * @see {@link FixedChild} for usage
  */
-export type FixedChildProps = VirtualSlotProps & {
+export type FixedChildProps = {
+    /** Content to place in the fixed container */
+    children?: ReactNode;
     /** X coordinate in pixels */
     x?: number;
     /** Y coordinate in pixels */
@@ -490,7 +466,9 @@ export type ColumnViewColumnProps<T = unknown> = {
 /**
  * Props for notebook (tabbed) pages.
  */
-export type NotebookPageProps = VirtualSlotProps & {
+export type NotebookPageProps = {
+    /** Content to place in the notebook page */
+    children?: ReactNode;
     /** Tab label text (optional when using Notebook.PageTab) */
     label?: string;
     /** Whether the tab should expand to fill available space */
@@ -502,14 +480,9 @@ export type NotebookPageProps = VirtualSlotProps & {
 /**
  * Props for custom notebook page tab widgets.
  */
-export type NotebookPageTabProps = VirtualSlotProps;
-
-/**
- * Props for the root Stack component.
- */
-export type StackRootProps = VirtualSlotProps & {
-    /** ID of the currently visible page */
-    page?: string;
+export type NotebookPageTabProps = {
+    /** Content to place in the notebook page tab */
+    children?: ReactNode;
 };
 
 /**
@@ -517,7 +490,9 @@ export type StackRootProps = VirtualSlotProps & {
  *
  * @see {@link StackPage} for usage
  */
-export type StackPageProps = VirtualSlotProps & {
+export type StackPageProps = {
+    /** Content to place in the stack page */
+    children?: ReactNode;
     /** Unique identifier for this page (used with page prop) */
     id?: string;
     /** Display title shown in stack switchers */
@@ -575,7 +550,9 @@ export type MenuSubmenuProps = {
 /**
  * Props for children within an Overlay container.
  */
-export type OverlayChildProps = VirtualSlotProps & {
+export type OverlayChildProps = {
+    /** Content to place in the overlay child */
+    children?: ReactNode;
     /** Whether to include this child in size measurement */
     measure?: boolean;
     /** Whether to clip this overlay child to the main child bounds */
@@ -673,18 +650,6 @@ export type NavigationPageProps =
       });
 
 /**
- * Props for the TreeListView component.
- *
- * @typeParam T - The type of items in the tree
- */
-export type TreeListViewProps<T = unknown> = Omit<GtkListViewProps, "renderItem"> & {
-    /** Function to render each tree item */
-    renderItem: TreeRenderItemFn<T>;
-    /** Whether to automatically expand new rows (default: false) */
-    autoexpand?: boolean;
-};
-
-/**
  * Props shared by text buffer hosts (GtkTextView, GtkSourceView).
  *
  * Provides undo control and buffer mutation callbacks.
@@ -704,15 +669,7 @@ export type TextBufferProps = {
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
 
-/**
- * Props shared by list-style renderers (GtkListView, GtkGridView).
- *
- * Provides item rendering, virtualization hints, and selection behavior.
- */
-export type ListViewProps = {
-    /** Function to render each list item */
-    // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
-    renderItem: (item: any) => ReactNode;
+type BaseListViewProps = {
     /** Estimated item height in pixels for virtualization */
     estimatedItemHeight?: number;
     /** Array of selected item IDs */
@@ -721,6 +678,20 @@ export type ListViewProps = {
     onSelectionChanged?: ((ids: string[]) => void) | null;
     /** Selection behavior (single, multiple, none, etc.) */
     selectionMode?: Gtk.SelectionMode | null;
+};
+
+export type ListViewProps = BaseListViewProps & {
+    /** Function to render each list item. The `row` parameter provides tree state for hierarchical lists. */
+    // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
+    renderItem: (item: any, row?: Gtk.TreeListRow | null) => ReactNode;
+    /** Whether to automatically expand new tree rows (default: false) */
+    autoexpand?: boolean;
+};
+
+export type GridViewProps = BaseListViewProps & {
+    /** Function to render each grid item */
+    // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
+    renderItem: (item: any) => ReactNode;
 };
 
 /**
@@ -876,28 +847,24 @@ export const x = {
     /**
      * Element type for items in a GtkListView, GtkGridView, or GtkColumnView.
      *
+     * Items can be nested to create tree hierarchies inside a GtkListView.
+     *
      * @example
      * ```tsx
+     * // Flat list
      * <GtkListView renderItem={(item) => <GtkLabel label={item.name} />}>
      *   <x.ListItem id="1" value={{ name: "Item 1" }} />
+     * </GtkListView>
+     *
+     * // Tree list (nested items)
+     * <GtkListView renderItem={(item, row) => <GtkLabel label={item.name} />} autoexpand>
+     *   <x.ListItem id="parent" value={{ name: "Parent" }}>
+     *     <x.ListItem id="child" value={{ name: "Child" }} />
+     *   </x.ListItem>
      * </GtkListView>
      * ```
      */
     ListItem: "ListItem" as const,
-
-    /**
-     * Element type for items in a TreeListView.
-     *
-     * @example
-     * ```tsx
-     * <x.TreeListView renderItem={(item) => <GtkLabel label={item.name} />}>
-     *   <x.TreeListItem id="parent" value={{ name: "Parent" }}>
-     *     <x.TreeListItem id="child" value={{ name: "Child" }} />
-     *   </x.TreeListItem>
-     * </x.TreeListView>
-     * ```
-     */
-    TreeListItem: "TreeListItem" as const,
 
     /**
      * Element type for simple string-based list items.
@@ -928,22 +895,6 @@ export const x = {
      */
     ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): ReactElement {
         return createElement("ColumnViewColumn", props);
-    },
-
-    /**
-     * Tree list component with hierarchical data and expand/collapse support.
-     *
-     * @example
-     * ```tsx
-     * <x.TreeListView renderItem={(item, row) => <GtkLabel label={item.name} />}>
-     *   <x.TreeListItem id="root" value={{ name: "Root" }}>
-     *     <x.TreeListItem id="child" value={{ name: "Child" }} />
-     *   </x.TreeListItem>
-     * </x.TreeListView>
-     * ```
-     */
-    TreeListView<T = unknown>(props: TreeListViewProps<T>): ReactElement {
-        return createElement("TreeListView", props);
     },
 
     /**
@@ -1180,6 +1131,11 @@ export const x = {
     Animation: "Animation" as const,
 };
 
+interface StackProps {
+    /** ID of the currently visible page */
+    page?: string | null;
+}
+
 declare global {
     namespace React {
         namespace JSX {
@@ -1195,7 +1151,7 @@ declare global {
                 MenuSection: MenuSectionProps;
                 MenuSubmenu: MenuSubmenuProps;
                 NotebookPage: NotebookPageProps;
-                NotebookPageTab: VirtualSlotProps;
+                NotebookPageTab: NotebookPageTabProps;
                 OverlayChild: OverlayChildProps;
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
@@ -1203,7 +1159,6 @@ declare global {
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
-                TreeListItem: TreeListItemProps;
                 NavigationPage: NavigationPageProps;
                 Shortcut: ShortcutProps;
             }
@@ -1268,7 +1223,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkListViewProps extends ListViewProps {}
 
-    interface GtkGridViewProps extends ListViewProps {}
+    interface GtkGridViewProps extends GridViewProps {}
 
     interface GtkColumnViewProps {
         /** Array of selected row IDs */
@@ -1291,16 +1246,12 @@ declare module "./generated/jsx.js" {
 
     interface AdwComboRowProps extends DropDownProps {}
 
-    interface GtkStackProps {
-        /** ID of the currently visible page */
-        page?: string | null;
+    interface GtkStackProps extends StackProps {
         /** Callback fired when the visible page changes */
         onPageChanged?: ((page: string | null, self: Gtk.Stack) => void) | null;
     }
 
-    interface AdwViewStackProps {
-        /** ID of the currently visible page */
-        page?: string | null;
+    interface AdwViewStackProps extends StackProps {
         /** Callback fired when the visible page changes */
         onPageChanged?: ((page: string | null, self: Adw.ViewStack) => void) | null;
     }

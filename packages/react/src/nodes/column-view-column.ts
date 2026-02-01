@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
-import type { ListStore } from "./internal/list-store.js";
+import type { TreeStore } from "./internal/tree-store.js";
 import { VirtualNode } from "./virtual.js";
 
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
@@ -21,7 +21,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
         super.detachDeletedInstance();
     }
 
-    public setStore(model: ListStore | null): void {
+    public setStore(model: TreeStore | null): void {
         this.itemRenderer.setStore(model);
     }
 

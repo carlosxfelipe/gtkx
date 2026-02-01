@@ -20,6 +20,7 @@ import { FixedChildNode } from "./nodes/fixed-child.js";
 import { FontDialogButtonNode } from "./nodes/font-dialog-button.js";
 import { GridNode } from "./nodes/grid.js";
 import { GridChildNode } from "./nodes/grid-child.js";
+import { GridViewNode } from "./nodes/grid-view.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListItemNode } from "./nodes/list-item.js";
 import { ListViewNode } from "./nodes/list-view.js";
@@ -49,8 +50,6 @@ import { TextTagNode } from "./nodes/text-tag.js";
 import { TextViewNode } from "./nodes/text-view.js";
 import { ToggleNode } from "./nodes/toggle.js";
 import { ToggleGroupNode } from "./nodes/toggle-group.js";
-import { TreeListItemNode } from "./nodes/tree-list-item.js";
-import { TreeListViewNode } from "./nodes/tree-list-view.js";
 import { WebViewNode } from "./nodes/web-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
@@ -60,9 +59,6 @@ export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
 
 export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
 export type StackWidget = InstanceType<(typeof StackWidgets)[number]>;
-
-export const ListViewWidgets = [Gtk.ListView, Gtk.GridView] as const;
-export type ListViewWidget = InstanceType<(typeof ListViewWidgets)[number]>;
 
 export const SimpleListViewWidgets = [Gtk.DropDown, Adw.ComboRow] as const;
 export type SimpleListViewWidget = InstanceType<(typeof SimpleListViewWidgets)[number]>;
@@ -100,8 +96,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["TextSegment", TextSegmentNode],
     ["TextTag", TextTagNode],
     ["Toggle", ToggleNode],
-    ["TreeListItem", TreeListItemNode],
-    ["TreeListView", TreeListViewNode],
     [Gtk.Application, ApplicationNode],
     [Gtk.ShortcutController, ShortcutControllerNode],
     [Gtk.EventController, EventControllerNode],
@@ -124,7 +118,8 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Gtk.Notebook, NotebookNode],
     [StackWidgets, StackNode],
     [Gtk.ColumnView, ColumnViewNode],
-    [ListViewWidgets, ListViewNode],
+    [Gtk.ListView, ListViewNode],
+    [Gtk.GridView, GridViewNode],
     [SimpleListViewWidgets, SimpleListViewNode],
     [PopoverMenuWidgets, PopoverMenuNode],
     [AdjustableWidgets, AdjustableNode],

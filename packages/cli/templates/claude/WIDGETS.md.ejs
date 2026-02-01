@@ -199,11 +199,11 @@ Selection dropdown.
 </GtkDropDown>
 ```
 
-### TreeListView
-Hierarchical tree with expand/collapse.
+### GtkListView (tree mode)
+Hierarchical tree with expand/collapse. Nesting `x.ListItem` children triggers tree behavior.
 
 ```tsx
-<x.TreeListView<FileNode>
+<GtkListView
     estimatedItemHeight={48}
     vexpand
     autoexpand={false}
@@ -218,16 +218,16 @@ Hierarchical tree with expand/collapse.
     )}
 >
     {files.map(file => (
-        <x.TreeListItem key={file.id} id={file.id} value={file}>
+        <x.ListItem key={file.id} id={file.id} value={file}>
             {file.children?.map(child => (
-                <x.TreeListItem key={child.id} id={child.id} value={child} />
+                <x.ListItem key={child.id} id={child.id} value={child} />
             ))}
-        </x.TreeListItem>
+        </x.ListItem>
     ))}
-</x.TreeListView>
+</GtkListView>
 ```
 
-**TreeListItem props:** `id`, `value`, `indentForDepth`, `indentForIcon`, `hideExpander`, nested `children`
+**ListItem tree props:** `id`, `value`, `indentForDepth`, `indentForIcon`, `hideExpander`, nested `children`
 
 ---
 

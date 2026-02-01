@@ -1,11 +1,13 @@
+import type * as Gio from "@gtkx/ffi/gio";
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkListViewProps } from "../../jsx.js";
-import { ListStore } from "../internal/list-store.js";
 import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
-import type { ListItemNode } from "../list-item.js";
+import { TreeStore } from "../internal/tree-store.js";
+import { createItemData, type ListItemNode } from "../list-item.js";
 
-export type ListModelProps = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged">;
+export type ListModelProps = Pick<GtkListViewProps, "autoexpand" | "selectionMode" | "selected" | "onSelectionChanged">;
 
 type ListModelConfig = {
     owner: object;
@@ -14,22 +16,37 @@ type ListModelConfig = {
 
 export class ListModel {
     private config: ListModelConfig;
-    private store: ListStore;
+    private store: TreeStore;
+    private treeListModel: Gtk.TreeListModel;
     private selectionManager: SelectionModelController;
 
     constructor(config: ListModelConfig, props: ListModelProps = {}) {
         this.config = config;
-        this.store = new ListStore();
+        this.store = new TreeStore();
+
+        this.treeListModel = new Gtk.TreeListModel(
+            this.store.getRootModel(),
+            false,
+            props.autoexpand ?? false,
+            (item: GObject.Object) => this.createChildModel(item),
+        );
+
         this.selectionManager = new SelectionModelController(
             { ...config, ...props },
-            this.store.getModel(),
+            this.treeListModel,
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
-            () => this.store.getModel().getNItems(),
+            () => this.treeListModel.getNItems(),
         );
     }
 
-    public getStore(): ListStore {
+    private createChildModel(item: GObject.Object): Gio.ListModel | null {
+        if (!(item instanceof Gtk.StringObject)) return null;
+        const parentId = item.getString();
+        return this.store.getChildrenModel(parentId);
+    }
+
+    public getStore(): TreeStore {
         return this.store;
     }
 
@@ -39,12 +56,22 @@ export class ListModel {
 
     public appendChild(child: ListItemNode): void {
         child.setStore(this.store);
-        this.store.addItem(child.props.id, child.props.value);
+        this.addItemWithChildren(child);
+    }
+
+    private addItemWithChildren(node: ListItemNode, parentId?: string): void {
+        const id = node.props.id;
+
+        for (const child of node.getChildNodes()) {
+            this.addItemWithChildren(child, id);
+        }
+
+        this.store.addItem(id, createItemData(node.props), parentId);
     }
 
     public insertBefore(child: ListItemNode, before: ListItemNode): void {
         child.setStore(this.store);
-        this.store.insertItemBefore(child.props.id, before.props.id, child.props.value);
+        this.store.insertItemBefore(child.props.id, before.props.id, createItemData(child.props));
     }
 
     public removeChild(child: ListItemNode): void {
@@ -53,25 +80,30 @@ export class ListModel {
     }
 
     public updateProps(oldProps: ListModelProps | null, newProps: ListModelProps): void {
+        if (!oldProps || oldProps.autoexpand !== newProps.autoexpand) {
+            this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);
+        }
+
         this.selectionManager.update(
             oldProps ? { ...this.config, ...oldProps } : null,
             { ...this.config, ...newProps },
-            this.store.getModel(),
+            this.treeListModel,
         );
     }
 
     private getSelection(): string[] {
-        const model = this.store.getModel();
         const selection = this.selectionManager.getSelectionModel().getSelection();
         const size = selection.getSize();
         const ids: string[] = [];
 
         for (let i = 0; i < size; i++) {
             const index = selection.getNth(i);
-            const id = model.getString(index);
+            const row = this.treeListModel.getRow(index);
+            if (!row) continue;
 
-            if (id !== null) {
-                ids.push(id);
+            const item = row.getItem();
+            if (item instanceof Gtk.StringObject) {
+                ids.push(item.getString());
             }
         }
 
@@ -79,14 +111,16 @@ export class ListModel {
     }
 
     private resolveSelectionIndices(ids: string[]): Gtk.Bitset {
-        const model = this.store.getModel();
-        const nItems = model.getNItems();
+        const nItems = this.treeListModel.getNItems();
         const selected = new Gtk.Bitset();
 
-        for (const id of ids) {
-            const index = model.find(id);
-            if (index < nItems) {
-                selected.add(index);
+        for (let i = 0; i < nItems; i++) {
+            const row = this.treeListModel.getRow(i);
+            if (!row) continue;
+
+            const item = row.getItem();
+            if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
+                selected.add(i);
             }
         }
 

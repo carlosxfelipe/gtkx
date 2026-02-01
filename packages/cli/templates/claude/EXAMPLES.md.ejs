@@ -628,11 +628,11 @@ const SplitViewDemo = () => {
 
 ---
 
-## File Browser with TreeListView
+## File Browser with GtkListView (tree)
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
 import { useState } from "react";
 
 interface FileNode {
@@ -660,7 +660,7 @@ const FileBrowser = () => {
 
     return (
         <GtkScrolledWindow vexpand cssClasses={["card"]}>
-            <x.TreeListView<FileNode>
+            <GtkListView
                 estimatedItemHeight={36}
                 vexpand
                 autoexpand={false}
@@ -675,13 +675,13 @@ const FileBrowser = () => {
                 )}
             >
                 {files.map((file) => (
-                    <x.TreeListItem key={file.id} id={file.id} value={file}>
+                    <x.ListItem key={file.id} id={file.id} value={file}>
                         {file.children?.map((child) => (
-                            <x.TreeListItem key={child.id} id={child.id} value={child} />
+                            <x.ListItem key={child.id} id={child.id} value={child} />
                         ))}
-                    </x.TreeListItem>
+                    </x.ListItem>
                 ))}
-            </x.TreeListView>
+            </GtkListView>
         </GtkScrolledWindow>
     );
 };

@@ -61,7 +61,11 @@ const getModelItemOrder = (columnView: Gtk.ColumnView): string[] => {
     const ids: string[] = [];
     const nItems = selectionModel.getNItems();
     for (let i = 0; i < nItems; i++) {
-        const item = selectionModel.getObject(i) as Gtk.StringObject | null;
+        const obj = selectionModel.getObject(i);
+        const item =
+            obj instanceof Gtk.TreeListRow
+                ? (obj.getItem() as Gtk.StringObject | null)
+                : (obj as Gtk.StringObject | null);
         if (item) {
             ids.push(item.getString());
         }
