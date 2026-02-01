@@ -13,8 +13,6 @@ export abstract class BaseItemRenderer<TStore = unknown> {
     private store: TStore | null = null;
     protected signalStore: SignalStore;
 
-    protected abstract getStoreTypeName(): string;
-
     constructor(signalStore: SignalStore) {
         this.signalStore = signalStore;
         this.factory = new Gtk.SignalListItemFactory();
@@ -35,7 +33,7 @@ export abstract class BaseItemRenderer<TStore = unknown> {
 
     protected getStore(): TStore {
         if (!this.store) {
-            throw new Error(`Expected ${this.getStoreTypeName()} to be set on ${this.constructor.name}`);
+            throw new Error(`Expected store to be set on ${this.constructor.name}`);
         }
         return this.store;
     }
@@ -47,13 +45,12 @@ export abstract class BaseItemRenderer<TStore = unknown> {
     }
 
     protected abstract renderItem(listItem: Gtk.ListItem): ReactNode;
-    protected abstract getItemFromListItem(listItem: Gtk.ListItem): unknown;
     protected abstract onSetup(listItem: Gtk.ListItem): Gtk.Widget;
     protected abstract onBind(listItem: Gtk.ListItem, fiberRoot: Reconciler.FiberRoot): void;
     protected abstract onUnbind(listItem: Gtk.ListItem): void;
-    protected abstract onTeardown(listItem: Gtk.ListItem): void;
 
     protected onSetupComplete(_listItem: Gtk.ListItem): void {}
+    protected onTeardown(_listItem: Gtk.ListItem): void {}
 
     protected createBox(): Gtk.Box {
         const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL);

@@ -1,27 +1,31 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../../node.js";
-import type { Container } from "../../types.js";
 import { SelectionModelManager } from "../internal/selection-model.js";
+import type { SignalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
-import { createTreeItemData, TreeListItemNode } from "../tree-list-item.js";
-import { VirtualNode } from "../virtual.js";
+import { createTreeItemData, type TreeListItemNode } from "../tree-list-item.js";
 
-export type TreeListProps = {
+export type TreeListModelProps = {
     autoexpand?: boolean;
     selectionMode?: Gtk.SelectionMode;
     selected?: string[];
     onSelectionChanged?: (ids: string[]) => void;
 };
 
-export class TreeList extends VirtualNode<TreeListProps, Node, TreeListItemNode> {
+type TreeListModelConfig = {
+    owner: object;
+    signalStore: SignalStore;
+};
+
+export class TreeListModel {
+    private config: TreeListModelConfig;
     private store: TreeStore;
     private treeListModel: Gtk.TreeListModel;
     private selectionManager: SelectionModelManager;
 
-    constructor(props: TreeListProps = {}, rootContainer: Container) {
-        super("", {}, undefined, rootContainer);
+    constructor(config: TreeListModelConfig, props: TreeListModelProps = {}) {
+        this.config = config;
         this.store = new TreeStore();
 
         this.treeListModel = new Gtk.TreeListModel(
@@ -32,7 +36,7 @@ export class TreeList extends VirtualNode<TreeListProps, Node, TreeListItemNode>
         );
 
         this.selectionManager = new SelectionModelManager(
-            { owner: this, signalStore: this.signalStore, ...props },
+            { ...config, ...props },
             this.treeListModel,
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
@@ -50,20 +54,11 @@ export class TreeList extends VirtualNode<TreeListProps, Node, TreeListItemNode>
         return this.store;
     }
 
-    public getTreeListModel(): Gtk.TreeListModel {
-        return this.treeListModel;
-    }
-
     public getSelectionModel(): Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection {
         return this.selectionManager.getSelectionModel();
     }
 
-    public override isValidChild(child: Node): boolean {
-        return child instanceof TreeListItemNode;
-    }
-
-    public override appendChild(child: TreeListItemNode): void {
-        super.appendChild(child);
+    public appendChild(child: TreeListItemNode): void {
         child.setStore(this.store);
         this.addItemWithChildren(child);
     }
@@ -78,28 +73,24 @@ export class TreeList extends VirtualNode<TreeListProps, Node, TreeListItemNode>
         this.store.addItem(id, createTreeItemData(node.props), parentId);
     }
 
-    public override insertBefore(child: TreeListItemNode, before: TreeListItemNode): void {
-        super.insertBefore(child, before);
+    public insertBefore(child: TreeListItemNode, before: TreeListItemNode): void {
         child.setStore(this.store);
         this.store.insertItemBefore(child.props.id, before.props.id, createTreeItemData(child.props));
     }
 
-    public override removeChild(child: TreeListItemNode): void {
+    public removeChild(child: TreeListItemNode): void {
         this.store.removeItem(child.props.id);
         child.setStore(null);
-        super.removeChild(child);
     }
 
-    public override commitUpdate(oldProps: TreeListProps | null, newProps: TreeListProps): void {
-        super.commitUpdate(oldProps, newProps);
-
+    public updateProps(oldProps: TreeListModelProps | null, newProps: TreeListModelProps): void {
         if (!oldProps || oldProps.autoexpand !== newProps.autoexpand) {
             this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);
         }
 
         this.selectionManager.update(
-            oldProps ? { owner: this, signalStore: this.signalStore, ...oldProps } : null,
-            { owner: this, signalStore: this.signalStore, ...newProps },
+            oldProps ? { ...this.config, ...oldProps } : null,
+            { ...this.config, ...newProps },
             this.treeListModel,
         );
     }

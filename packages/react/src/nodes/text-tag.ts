@@ -2,12 +2,52 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactNode } from "react";
 import type { Node } from "../node.js";
-import { applyStyleChanges, type TagStyleProps } from "./internal/text-tag-styles.js";
 import { hasChanged } from "./internal/utils.js";
 import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextSegmentNode } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
+
+const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag>> = {
+    background: "setBackground",
+    backgroundFullHeight: "setBackgroundFullHeight",
+    foreground: "setForeground",
+    family: "setFamily",
+    font: "setFont",
+    sizePoints: "setSizePoints",
+    size: "setSize",
+    scale: "setScale",
+    weight: "setWeight",
+    style: "setStyle",
+    stretch: "setStretch",
+    variant: "setVariant",
+    strikethrough: "setStrikethrough",
+    underline: "setUnderline",
+    overline: "setOverline",
+    rise: "setRise",
+    letterSpacing: "setLetterSpacing",
+    lineHeight: "setLineHeight",
+    leftMargin: "setLeftMargin",
+    rightMargin: "setRightMargin",
+    indent: "setIndent",
+    pixelsAboveLines: "setPixelsAboveLines",
+    pixelsBelowLines: "setPixelsBelowLines",
+    pixelsInsideWrap: "setPixelsInsideWrap",
+    justification: "setJustification",
+    direction: "setDirection",
+    wrapMode: "setWrapMode",
+    editable: "setEditable",
+    invisible: "setInvisible",
+    allowBreaks: "setAllowBreaks",
+    insertHyphens: "setInsertHyphens",
+    fallback: "setFallback",
+    accumulativeMargin: "setAccumulativeMargin",
+    paragraphBackground: "setParagraphBackground",
+    showSpaces: "setShowSpaces",
+    textTransform: "setTextTransform",
+    fontFeatures: "setFontFeatures",
+    language: "setLanguage",
+};
 
 /**
  * Props for the TextTag virtual element.
@@ -162,9 +202,17 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         this.applyTagToRange();
     }
 
-    private applyStyleProps(oldProps: TagStyleProps | null, newProps: TagStyleProps): void {
+    private applyStyleProps(oldProps: TextTagProps | null, newProps: TextTagProps): void {
         if (!this.tag) return;
-        applyStyleChanges(this.tag, oldProps, newProps);
+        for (const prop of Object.keys(STYLE_PROPS) as (keyof TextTagProps)[]) {
+            if (hasChanged(oldProps, newProps, prop)) {
+                const value = newProps[prop];
+                if (value !== undefined) {
+                    const setter = this.tag[STYLE_PROPS[prop]!] as (value: unknown) => void;
+                    setter.call(this.tag, value);
+                }
+            }
+        }
     }
 
     public getText(): string {

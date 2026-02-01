@@ -28,15 +28,11 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
         reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
     }
 
-    protected override getStoreTypeName(): string {
-        return "list store";
-    }
-
     protected override renderItem(_listItem: Gtk.ListItem): ReactNode {
         return this.renderFn?.(null);
     }
 
-    protected override getItemFromListItem(listItem: Gtk.ListItem): string | null {
+    private getItemFromListItem(listItem: Gtk.ListItem): string | null {
         const stringObject = listItem.getItem();
         if (!(stringObject instanceof Gtk.StringObject)) return null;
         return stringObject.getString();
@@ -72,6 +68,4 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
             this.boundItems.delete(id);
         }
     }
-
-    protected override onTeardown(_listItem: Gtk.ListItem): void {}
 }

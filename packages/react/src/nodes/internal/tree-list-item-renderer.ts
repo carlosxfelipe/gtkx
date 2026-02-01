@@ -37,10 +37,6 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         this.renderBind(binding.listItem, expander, binding.treeListRow, id, fiberRoot);
     }
 
-    protected override getStoreTypeName(): string {
-        return "tree store";
-    }
-
     public override dispose(): void {
         super.dispose();
         this.expanders.clear();
@@ -51,14 +47,6 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
 
     protected override renderItem(_listItem: Gtk.ListItem): ReactNode {
         return this.renderFn?.(null, null);
-    }
-
-    protected override getItemFromListItem(listItem: Gtk.ListItem): unknown {
-        const treeListRow = listItem.getItem();
-        if (!(treeListRow instanceof Gtk.TreeListRow)) return null;
-        const stringObject = treeListRow.getItem();
-        if (!(stringObject instanceof Gtk.StringObject)) return null;
-        return this.getStore().getItem(stringObject.getString());
     }
 
     protected override onSetup(listItem: Gtk.ListItem): Gtk.Widget {

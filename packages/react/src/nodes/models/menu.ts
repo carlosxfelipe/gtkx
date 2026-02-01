@@ -21,7 +21,6 @@ export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
     private type: MenuType;
     private application: Gtk.Application | null = null;
     private action: Gio.SimpleAction | null = null;
-    private menuChildren: MenuModel[] = [];
 
     constructor(
         type: MenuType,
@@ -38,11 +37,15 @@ export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
         this.menu = new Gio.Menu();
     }
 
+    public override isValidChild(child: Node): boolean {
+        return child instanceof MenuModel;
+    }
+
     public setActionMap(actionMap: Gio.ActionMap, prefix: string): void {
         this.actionMap = actionMap;
         this.actionPrefix = prefix;
 
-        for (const child of this.menuChildren) {
+        for (const child of this.children) {
             child.setActionMap(actionMap, prefix);
 
             if (child.type === "item") {
@@ -219,7 +222,7 @@ export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
     }
 
     public override appendChild(child: MenuModel): void {
-        this.menuChildren.push(child);
+        super.appendChild(child);
 
         if (this.actionMap) {
             child.setActionMap(this.actionMap, this.actionPrefix);
@@ -230,13 +233,7 @@ export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
     }
 
     public override insertBefore(child: MenuModel, before: MenuModel): void {
-        const beforeIndex = this.menuChildren.indexOf(before);
-
-        if (beforeIndex >= 0) {
-            this.menuChildren.splice(beforeIndex, 0, child);
-        } else {
-            this.menuChildren.push(child);
-        }
+        super.insertBefore(child, before);
 
         if (this.actionMap) {
             child.setActionMap(this.actionMap, this.actionPrefix);
@@ -247,13 +244,8 @@ export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
     }
 
     public override removeChild(child: MenuModel): void {
-        const index = this.menuChildren.indexOf(child);
-
-        if (index >= 0) {
-            this.menuChildren.splice(index, 1);
-        }
-
         child.removeFromParentMenu();
+        super.removeChild(child);
     }
 
     public override commitUpdate(oldProps: MenuProps | null, newProps: MenuProps): void {

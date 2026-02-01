@@ -1,15 +1,16 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { TreeListItemRenderer, type TreeRenderItemFn } from "./internal/tree-list-item-renderer.js";
-import { filterProps } from "./internal/utils.js";
-import { TreeList, type TreeListProps } from "./models/tree-list.js";
-import type { TreeListItemNode } from "./tree-list-item.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
+import { TreeListModel, type TreeListModelProps } from "./models/tree-list.js";
+import { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 
 const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"] as const;
 const PROP_NAMES = [...RENDERER_PROP_NAMES, "autoexpand", "selectionMode", "selected", "onSelectionChanged"] as const;
 
-type TreeListViewProps = TreeListProps & {
+type TreeListViewProps = TreeListModelProps & {
     renderItem?: TreeRenderItemFn<unknown>;
     estimatedItemHeight?: number;
 };
@@ -17,7 +18,7 @@ type TreeListViewProps = TreeListProps & {
 export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps, TreeListItemNode> {
     protected override readonly excludedPropNames = PROP_NAMES;
     private itemRenderer: TreeListItemRenderer;
-    private treeList: TreeList;
+    private treeList: TreeListModel;
 
     public static override createContainer(): Gtk.ListView {
         return new Gtk.ListView();
@@ -31,19 +32,23 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
     ) {
         const listView = container ?? new Gtk.ListView();
         super(typeName, props, listView, rootContainer);
-        this.treeList = new TreeList(
+        this.treeList = new TreeListModel(
+            { owner: this, signalStore: this.signalStore },
             {
                 autoexpand: props.autoexpand,
                 selectionMode: props.selectionMode,
                 selected: props.selected,
                 onSelectionChanged: props.onSelectionChanged,
             },
-            rootContainer,
         );
         this.itemRenderer = new TreeListItemRenderer(this.signalStore);
         this.itemRenderer.setStore(this.treeList.getStore());
         this.treeList.getStore().setOnItemUpdated((id) => this.itemRenderer.rebindItem(id));
         this.container.setFactory(this.itemRenderer.getFactory());
+    }
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof TreeListItemNode;
     }
 
     public override finalizeInitialChildren(props: TreeListViewProps): boolean {
@@ -77,16 +82,16 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
     }
 
     public override commitUpdate(oldProps: TreeListViewProps | null, newProps: TreeListViewProps): void {
-        if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
+        if (hasChanged(oldProps, newProps, "renderItem")) {
             this.itemRenderer.setRenderFn(newProps.renderItem ?? null);
         }
 
-        if (!oldProps || oldProps.estimatedItemHeight !== newProps.estimatedItemHeight) {
+        if (hasChanged(oldProps, newProps, "estimatedItemHeight")) {
             this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight ?? null);
         }
 
         const previousModel = this.treeList.getSelectionModel();
-        this.treeList.commitUpdate(
+        this.treeList.updateProps(
             oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
             filterProps(newProps, RENDERER_PROP_NAMES),
         );
