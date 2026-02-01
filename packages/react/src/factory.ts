@@ -16,16 +16,20 @@ export const resolveContainerClass = (type: string): ContainerClass | null => {
 // biome-ignore lint/suspicious/noExplicitAny: Required for instanceof checks against GTK class hierarchy
 type ClassKey = abstract new (...args: any[]) => any;
 
-type RegistryKey = string | ClassKey | (string | ClassKey)[];
+type RegistryKey = string | ClassKey | readonly (string | ClassKey)[];
 
-const matchesKey = (key: RegistryKey, typeName: string, target: object | null): boolean => {
-    if (Array.isArray(key)) {
-        return key.some((k) => matchesKey(k, typeName, target));
-    }
+const matchesSingleKey = (key: string | ClassKey, typeName: string, target: object | null): boolean => {
     if (typeof key === "string") {
         return key === typeName;
     }
     return !!target && (target instanceof key || target === key || Object.prototype.isPrototypeOf.call(key, target));
+};
+
+const matchesKey = (key: RegistryKey, typeName: string, target: object | null): boolean => {
+    if (typeof key === "string" || typeof key === "function") {
+        return matchesSingleKey(key, typeName, target);
+    }
+    return key.some((k) => matchesSingleKey(k, typeName, target));
 };
 
 export const createNode = (

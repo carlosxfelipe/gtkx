@@ -1,29 +1,26 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
+import type { GtkSearchBarProps } from "../jsx.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
-
-type SearchBarProps = Props & {
-    onSearchModeChanged?: (searchMode: boolean) => void;
-};
 
 const OWN_PROPS = ["onSearchModeChanged"] as const;
 
+type SearchBarProps = Pick<GtkSearchBarProps, (typeof OWN_PROPS)[number]>;
+
 export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private notifyHandler: SignalHandler | null = null;
 
     public override commitUpdate(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
 
         if (hasChanged(oldProps, newProps, "onSearchModeChanged")) {
-            this.setupNotifyHandler(newProps.onSearchModeChanged);
+            this.setSearchModeChanged(newProps.onSearchModeChanged);
         }
     }
 
-    private setupNotifyHandler(callback?: (searchMode: boolean) => void): void {
+    private setSearchModeChanged(callback?: ((searchMode: boolean) => void) | null): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;

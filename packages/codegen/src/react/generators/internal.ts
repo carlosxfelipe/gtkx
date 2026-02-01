@@ -37,10 +37,9 @@ export class InternalGenerator {
         const usedNamespaces = this.collectUsedNamespaces(allControllers);
 
         this.addImports(sourceFile, usedNamespaces);
-        this.generateConstructorProps(sourceFile, allWidgets);
+        this.generateConstructorProps(sourceFile, allWidgets, allControllers);
         this.generatePropsMap(sourceFile, allWidgets, allControllers);
         this.generateSignalsMap(sourceFile, allWidgets, allControllers);
-        this.generateControllerMetadata(sourceFile, allControllers);
 
         return sourceFile;
     }
@@ -67,7 +66,11 @@ export class InternalGenerator {
         addNamespaceImports(sourceFile, usedNamespaces);
     }
 
-    private generateConstructorProps(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
+    private generateConstructorProps(
+        sourceFile: SourceFile,
+        widgets: WidgetInfo[],
+        controllers: CodegenControllerMeta[],
+    ): void {
         const objectProperties: Record<string, WriterFunction> = {};
 
         for (const widget of widgets) {
@@ -76,10 +79,16 @@ export class InternalGenerator {
             }
         }
 
+        for (const controller of controllers) {
+            if (controller.constructorParams.length > 0) {
+                objectProperties[controller.jsxName] = writeStringArray([...controller.constructorParams]);
+            }
+        }
+
         sourceFile.addVariableStatement(
             createConstExport("CONSTRUCTOR_PROPS", writeObjectOrEmpty(objectProperties, Writers), {
                 type: "Record<string, string[]>",
-                docs: "Constructor parameters for each widget type, derived from GIR analysis.",
+                docs: "Constructor parameters for each widget and controller type, derived from GIR analysis.",
             }),
         );
     }
@@ -161,27 +170,6 @@ export class InternalGenerator {
             createConstExport("SIGNALS", writeObjectOrEmpty(objectProperties, Writers), {
                 type: "Record<string, Set<string>>",
                 docs: "Signal names for widgets and controllers, derived from CodegenMeta.",
-            }),
-        );
-    }
-
-    private generateControllerMetadata(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
-        this.generateControllerConstructorProps(sourceFile, controllers);
-    }
-
-    private generateControllerConstructorProps(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
-        const objectProperties: Record<string, WriterFunction> = {};
-
-        for (const controller of controllers) {
-            if (controller.constructorParams.length > 0) {
-                objectProperties[controller.jsxName] = writeStringArray([...controller.constructorParams]);
-            }
-        }
-
-        sourceFile.addVariableStatement(
-            createConstExport("CONTROLLER_CONSTRUCTOR_PROPS", writeObjectOrEmpty(objectProperties, Writers), {
-                type: "Record<string, string[]>",
-                docs: "Constructor props for controllers that require them.",
             }),
         );
     }

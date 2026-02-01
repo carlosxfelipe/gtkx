@@ -1,20 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
-import { hasChanged } from "./internal/utils.js";
+import type { GtkScrolledWindowProps } from "../jsx.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const PROPS = ["hscrollbarPolicy", "vscrollbarPolicy"] as const;
 
-type ScrolledWindowProps = Props & {
-    hscrollbarPolicy?: Gtk.PolicyType;
-    vscrollbarPolicy?: Gtk.PolicyType;
-};
+type ScrolledWindowProps = Pick<GtkScrolledWindowProps, (typeof PROPS)[number]>;
 
 export class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
-    protected override readonly excludedPropNames = PROPS;
-
     public override commitUpdate(oldProps: ScrolledWindowProps | null, newProps: ScrolledWindowProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROPS) : null, filterProps(newProps, PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

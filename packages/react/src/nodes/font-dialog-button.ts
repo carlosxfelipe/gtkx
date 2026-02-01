@@ -1,21 +1,11 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
-import type { Container, Props } from "../types.js";
+import type { GtkFontDialogButtonProps } from "../jsx.js";
+import type { Container } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
-
-type FontDialogButtonProps = Props & {
-    fontDesc?: Pango.FontDescription | null;
-    onFontDescChanged?: (fontDesc: Pango.FontDescription) => void;
-    title?: string;
-    modal?: boolean;
-    language?: Pango.Language | null;
-    useFont?: boolean;
-    useSize?: boolean;
-    level?: Gtk.FontLevel;
-};
 
 const OWN_PROPS = [
     "fontDesc",
@@ -28,8 +18,9 @@ const OWN_PROPS = [
     "level",
 ] as const;
 
+type FontDialogButtonProps = Pick<GtkFontDialogButtonProps, (typeof OWN_PROPS)[number]>;
+
 export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogButtonProps> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private dialog: Gtk.FontDialog;
     private notifyHandler: SignalHandler | null = null;
 
@@ -52,7 +43,7 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
     }
 
     public override commitUpdate(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -86,11 +77,11 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         }
 
         if (hasChanged(oldProps, newProps, "onFontDescChanged")) {
-            this.setupNotifyHandler(newProps.onFontDescChanged);
+            this.setFontDescChanged(newProps.onFontDescChanged);
         }
     }
 
-    private setupNotifyHandler(callback?: (fontDesc: Pango.FontDescription) => void): void {
+    private setFontDescChanged(callback?: ((fontDesc: Pango.FontDescription) => void) | null): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;

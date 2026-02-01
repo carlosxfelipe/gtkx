@@ -1,29 +1,21 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkListViewProps } from "../jsx.js";
+import type { ListViewWidget } from "../registry.js";
 import type { Container } from "../types.js";
-import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
-import { hasChanged } from "./internal/utils.js";
+import { ListItemRenderer } from "./internal/list-item-renderer.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import type { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["renderItem", "estimatedItemHeight"] as const;
 
-type ListViewProps = ListProps & {
-    renderItem?: RenderItemFn<unknown>;
-    estimatedItemHeight?: number;
-};
+type ListViewProps = Pick<GtkListViewProps, (typeof OWN_PROPS)[number]> & ListProps;
 
-export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps, ListItemNode> {
-    protected override readonly excludedPropNames = OWN_PROPS;
+export class ListViewNode extends WidgetNode<ListViewWidget, ListViewProps, ListItemNode> {
     private itemRenderer: ListItemRenderer;
     private list: ListModel;
 
-    constructor(
-        typeName: string,
-        props: ListViewProps,
-        container: Gtk.ListView | Gtk.GridView,
-        rootContainer: Container,
-    ) {
+    constructor(typeName: string, props: ListViewProps, container: ListViewWidget, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.list = new ListModel(
             { owner: this, signalStore: this.signalStore },
@@ -70,7 +62,7 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
     }
 
     public override commitUpdate(oldProps: ListViewProps | null, newProps: ListViewProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

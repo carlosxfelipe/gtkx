@@ -55,7 +55,6 @@ export class WidgetNode<
     // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
     TChild extends Node = any,
 > extends Node<T, P, Node, TChild> {
-    protected readonly excludedPropNames: readonly string[] = [];
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Widget,
@@ -129,16 +128,14 @@ export class WidgetNode<
             throw new Error(`WidgetNode.commitUpdate: container is undefined for ${this.typeName}`);
         }
 
-        const allExcluded = [...EXCLUDED_PROPS, ...this.excludedPropNames];
-
         this.signalStore.blockAll();
         try {
             this.updateSizeRequest(oldProps, newProps);
             this.updateGrabFocus(oldProps, newProps);
 
             const propNames = new Set([
-                ...Object.keys(filterProps(oldProps ?? {}, allExcluded)),
-                ...Object.keys(filterProps(newProps ?? {}, allExcluded)),
+                ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
+                ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
             ]);
 
             const pendingSignals: Array<{ name: string; newValue: unknown }> = [];

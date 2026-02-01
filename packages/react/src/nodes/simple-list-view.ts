@@ -1,29 +1,22 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Container, Props } from "../types.js";
+import type { GtkDropDownProps } from "../jsx.js";
+import type { SimpleListViewWidget } from "../registry.js";
+import type { Container } from "../types.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
+import { filterProps } from "./internal/utils.js";
 import type { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
 const PROP_NAMES = ["selectedId", "onSelectionChanged"] as const;
 
-type SimpleListViewProps = Props & {
-    selectedId?: string;
-    onSelectionChanged?: (id: string) => void;
-};
+type SimpleListViewProps = Pick<GtkDropDownProps, (typeof PROP_NAMES)[number]>;
 
-export class SimpleListViewNode extends WidgetNode<
-    Gtk.DropDown | Adw.ComboRow,
-    SimpleListViewProps,
-    SimpleListItemNode
-> {
-    protected override readonly excludedPropNames = PROP_NAMES;
+export class SimpleListViewNode extends WidgetNode<SimpleListViewWidget, SimpleListViewProps, SimpleListItemNode> {
     private store = new SimpleListStore();
 
     constructor(
         typeName: string,
         props: SimpleListViewProps,
-        container: Gtk.DropDown | Adw.ComboRow,
+        container: SimpleListViewWidget,
         rootContainer: Container,
     ) {
         super(typeName, props, container, rootContainer);
@@ -48,14 +41,14 @@ export class SimpleListViewNode extends WidgetNode<
         }
 
         if (!oldProps || oldProps.selectedId !== newProps.selectedId) {
-            const index = newProps.selectedId !== undefined ? this.store.getIndexById(newProps.selectedId) : null;
+            const index = newProps.selectedId != null ? this.store.getIndexById(newProps.selectedId) : null;
 
             if (index !== null) {
                 this.container.setSelected(index);
             }
         }
 
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 
     public override appendChild(child: SimpleListItemNode): void {

@@ -1,5 +1,4 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 
@@ -17,7 +16,7 @@ import { VirtualNode } from "./virtual.js";
  * </x.ShortcutController>
  * ```
  */
-export type ShortcutProps = Props & {
+export type ShortcutProps = {
     /** The trigger string(s) using GTK accelerator format (e.g., "\<Control\>s", "F1") */
     trigger: string | string[];
     /**

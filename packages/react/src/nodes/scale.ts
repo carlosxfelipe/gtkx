@@ -1,27 +1,20 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
+import type { GtkScaleProps, ScaleMark } from "../jsx.js";
+import type { AdjustableProps } from "./adjustable.js";
 import { AdjustableNode } from "./adjustable.js";
 import { shallowArrayEqual } from "./internal/utils.js";
 
-type ScaleMark = {
-    value: number;
-    position?: Gtk.PositionType;
-    label?: string | null;
-};
-
-type ScaleProps = Props & {
-    marks?: ScaleMark[] | null;
-};
+type ScaleProps = AdjustableProps & Pick<GtkScaleProps, "marks">;
 
 export class ScaleNode extends AdjustableNode<Gtk.Scale> {
     private appliedMarks: ScaleMark[] = [];
 
     public override commitUpdate(oldProps: ScaleProps | null, newProps: ScaleProps): void {
         super.commitUpdate(oldProps, newProps);
-        this.applyMarks(newProps);
+        this.applyMarkProps(newProps);
     }
 
-    private applyMarks(newProps: ScaleProps): void {
+    private applyMarkProps(newProps: ScaleProps): void {
         const newMarks = newProps.marks ?? [];
 
         if (shallowArrayEqual(this.appliedMarks, newMarks)) {

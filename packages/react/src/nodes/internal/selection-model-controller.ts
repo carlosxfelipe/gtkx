@@ -1,15 +1,13 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkListViewProps } from "../../jsx.js";
 import type { SignalStore } from "./signal-store.js";
 
 type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
 
-export type SelectionModelConfig = {
+export type SelectionModelConfig = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged"> & {
     owner: object;
     signalStore: SignalStore;
-    selectionMode?: Gtk.SelectionMode;
-    selected?: string[];
-    onSelectionChanged?: (ids: string[]) => void;
 };
 
 export class SelectionModelController {
@@ -68,7 +66,7 @@ export class SelectionModelController {
         return this.selectionModel;
     }
 
-    private initSelectionHandler(onSelectionChanged?: (ids: string[]) => void): void {
+    private initSelectionHandler(onSelectionChanged?: ((ids: string[]) => void) | null): void {
         if (!onSelectionChanged) {
             this.signalStore.set(this.owner, this.selectionModel, "selection-changed", null);
             return;
@@ -81,7 +79,7 @@ export class SelectionModelController {
         this.signalStore.set(this.owner, this.selectionModel, "selection-changed", this.handleSelectionChange);
     }
 
-    private createSelectionModel(mode: Gtk.SelectionMode | undefined, model: Gio.ListModel): SelectionModel {
+    private createSelectionModel(mode: Gtk.SelectionMode | null | undefined, model: Gio.ListModel): SelectionModel {
         const selectionMode = mode ?? Gtk.SelectionMode.SINGLE;
 
         if (selectionMode === Gtk.SelectionMode.NONE) {
@@ -99,7 +97,7 @@ export class SelectionModelController {
         return selectionModel;
     }
 
-    private setSelection(ids?: string[]): void {
+    private setSelection(ids?: string[] | null): void {
         const nItems = this.getItemCount();
         const selected = ids ? this.resolveSelectionIndices(ids) : new Gtk.Bitset();
         const mask = Gtk.Bitset.newRange(0, nItems);

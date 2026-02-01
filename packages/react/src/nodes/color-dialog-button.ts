@@ -1,23 +1,17 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Container, Props } from "../types.js";
+import type { GtkColorDialogButtonProps } from "../jsx.js";
+import type { Container } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
-
-type ColorDialogButtonProps = Props & {
-    rgba?: Gdk.RGBA | null;
-    onRgbaChanged?: (rgba: Gdk.RGBA) => void;
-    title?: string;
-    modal?: boolean;
-    withAlpha?: boolean;
-};
 
 const OWN_PROPS = ["rgba", "onRgbaChanged", "title", "modal", "withAlpha"] as const;
 
+type ColorDialogButtonProps = Pick<GtkColorDialogButtonProps, (typeof OWN_PROPS)[number]>;
+
 export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialogButtonProps> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private dialog: Gtk.ColorDialog;
     private notifyHandler: SignalHandler | null = null;
 
@@ -45,7 +39,7 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
     }
 
     public override commitUpdate(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -67,11 +61,11 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
         }
 
         if (hasChanged(oldProps, newProps, "onRgbaChanged")) {
-            this.setupNotifyHandler(newProps.onRgbaChanged);
+            this.setRgbaChanged(newProps.onRgbaChanged);
         }
     }
 
-    private setupNotifyHandler(callback?: (rgba: Gdk.RGBA) => void): void {
+    private setRgbaChanged(callback?: ((rgba: Gdk.RGBA) => void) | null): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;

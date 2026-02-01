@@ -1,5 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { PopoverMenuWidget } from "../registry.js";
 import type { Container, Props } from "../types.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
@@ -10,19 +11,10 @@ const ACTION_PREFIX = "menu";
 
 type PopoverMenuChild = MenuNode | SlotNode | WidgetNode;
 
-export class PopoverMenuNode extends WidgetNode<
-    Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton,
-    Props,
-    PopoverMenuChild
-> {
+export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, PopoverMenuChild> {
     private menu: MenuModel;
 
-    constructor(
-        typeName: string,
-        props: Props,
-        container: Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton,
-        rootContainer: Container,
-    ) {
+    constructor(typeName: string, props: Props, container: PopoverMenuWidget, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
 
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;

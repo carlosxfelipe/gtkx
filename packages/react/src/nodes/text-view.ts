@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
+import type { GtkTextViewProps } from "../jsx.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
+import { filterProps } from "./internal/utils.js";
 import type { SlotNode } from "./slot.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import type { TextSegmentNode } from "./text-segment.js";
@@ -15,19 +16,11 @@ const OWN_PROPS = [
     "onCanRedoChanged",
 ] as const;
 
-type TextViewProps = Props & {
-    enableUndo?: boolean;
-    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
-    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
-    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
-    onCanUndoChanged?: ((canUndo: boolean) => void) | null;
-    onCanRedoChanged?: ((canRedo: boolean) => void) | null;
-};
+type TextViewProps = Pick<GtkTextViewProps, (typeof OWN_PROPS)[number]>;
 
 type TextViewChild = TextContentChild | SlotNode | WidgetNode;
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
-    protected override readonly excludedPropNames = OWN_PROPS;
     bufferController: TextBufferController | null = null;
 
     ensureBufferController(): TextBufferController {
@@ -42,7 +35,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
     }
 
     public override commitUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.ensureBufferController().applyOwnProps(oldProps, newProps);
     }
 

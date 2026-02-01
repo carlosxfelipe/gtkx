@@ -1,25 +1,26 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
-import type { Props } from "../types.js";
+import type { GtkSourceViewProps } from "../jsx.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
 import { hasChanged } from "./internal/utils.js";
 import { TextViewNode } from "./text-view.js";
 
-type SourceViewProps = Props & {
-    enableUndo?: boolean;
-    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
-    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
-    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
-    onCanUndoChanged?: ((canUndo: boolean) => void) | null;
-    onCanRedoChanged?: ((canRedo: boolean) => void) | null;
-    language?: string | GtkSource.Language;
-    styleScheme?: string | GtkSource.StyleScheme;
-    highlightSyntax?: boolean;
-    highlightMatchingBrackets?: boolean;
-    implicitTrailingNewline?: boolean;
-    onCursorMoved?: (() => void) | null;
-    onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
-};
+type SourceViewProps = Pick<
+    GtkSourceViewProps,
+    | "enableUndo"
+    | "onBufferChanged"
+    | "onTextInserted"
+    | "onTextDeleted"
+    | "onCanUndoChanged"
+    | "onCanRedoChanged"
+    | "language"
+    | "styleScheme"
+    | "highlightSyntax"
+    | "highlightMatchingBrackets"
+    | "implicitTrailingNewline"
+    | "onCursorMoved"
+    | "onHighlightUpdated"
+>;
 
 export class SourceViewNode extends TextViewNode {
     override createBufferController(): TextBufferController<GtkSource.Buffer> {
@@ -104,11 +105,11 @@ export class SourceViewNode extends TextViewNode {
         }
 
         if (hasChanged(oldProps, newProps, "onCursorMoved") || hasChanged(oldProps, newProps, "onHighlightUpdated")) {
-            this.updateSourceViewSignalHandlers(newProps);
+            this.setSourceViewSignalsChanged(newProps);
         }
     }
 
-    private updateSourceViewSignalHandlers(props: SourceViewProps): void {
+    private setSourceViewSignalsChanged(props: SourceViewProps): void {
         const buffer = this.ensureBufferController().getBuffer();
         if (!buffer) return;
 

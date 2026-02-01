@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CONTROLLER_CONSTRUCTOR_PROPS } from "../generated/internal.js";
+import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
@@ -24,7 +24,7 @@ export class EventControllerNode<
             return new Gtk.DropTarget(G_TYPE_INVALID, actions);
         }
 
-        const args = (CONTROLLER_CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
+        const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
 
         // biome-ignore lint/suspicious/noExplicitAny: Dynamic constructor invocation
         return new (containerClass as any)(...args);

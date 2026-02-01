@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { TreeListViewProps as JsxTreeListViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
-import { TreeListItemRenderer, type TreeRenderItemFn } from "./internal/tree-list-item-renderer.js";
+import { TreeListItemRenderer } from "./internal/tree-list-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/utils.js";
 import { TreeListModel, type TreeListModelProps } from "./models/tree-list.js";
 import { TreeListItemNode } from "./tree-list-item.js";
@@ -10,13 +11,9 @@ import { WidgetNode } from "./widget.js";
 const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"] as const;
 const PROP_NAMES = [...RENDERER_PROP_NAMES, "autoexpand", "selectionMode", "selected", "onSelectionChanged"] as const;
 
-type TreeListViewProps = TreeListModelProps & {
-    renderItem?: TreeRenderItemFn<unknown>;
-    estimatedItemHeight?: number;
-};
+type TreeListViewProps = Pick<JsxTreeListViewProps, (typeof RENDERER_PROP_NAMES)[number]> & TreeListModelProps;
 
 export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps, TreeListItemNode> {
-    protected override readonly excludedPropNames = PROP_NAMES;
     private itemRenderer: TreeListItemRenderer;
     private treeList: TreeListModel;
 
@@ -101,6 +98,6 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             this.container.setModel(currentModel);
         }
 
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }

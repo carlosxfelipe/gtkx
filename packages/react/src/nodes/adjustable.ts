@@ -1,27 +1,23 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
-import type { AdjustableWidget } from "./internal/predicates.js";
-import { hasChanged } from "./internal/utils.js";
+import type { GtkRangeProps, GtkScaleButtonProps, GtkSpinButtonProps } from "../jsx.js";
+import type { AdjustableWidget } from "../registry.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;
 
-type AdjustableProps = Props & {
-    value?: number;
-    lower?: number;
-    upper?: number;
-    stepIncrement?: number;
-    pageIncrement?: number;
-    pageSize?: number;
+export type AdjustableProps = Omit<
+    Pick<GtkRangeProps | GtkScaleButtonProps | GtkSpinButtonProps, (typeof OWN_PROPS)[number]>,
+    "onValueChanged"
+> & {
     onValueChanged?: ((value: number, self: AdjustableWidget) => void) | null;
 };
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private adjustment: Gtk.Adjustment | null = null;
 
     public override commitUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyAdjustmentProps(oldProps, newProps);
     }
 
@@ -35,8 +31,10 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
                 props.pageIncrement ?? 10,
                 props.pageSize ?? 0,
             );
+
             this.container.setAdjustment(this.adjustment);
         }
+
         return this.adjustment;
     }
 
@@ -44,7 +42,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
         const adjustment = this.ensureAdjustment(newProps);
 
         if (hasChanged(oldProps, newProps, "onValueChanged")) {
-            this.updateValueChangedHandler(newProps);
+            this.setValueChanged(newProps);
         }
 
         if (!oldProps) return;
@@ -69,10 +67,11 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
         }
     }
 
-    private updateValueChangedHandler(props: AdjustableProps): void {
+    private setValueChanged(props: AdjustableProps): void {
         if (!this.adjustment) return;
 
         const { onValueChanged } = props;
+
         if (onValueChanged) {
             this.signalStore.set(this, this.container, "value-changed", (self: T) =>
                 onValueChanged(self.getValue(), self),

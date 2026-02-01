@@ -1,10 +1,10 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
-import * as Vte from "@gtkx/ffi/vte";
 import * as WebKit from "@gtkx/ffi/webkit";
 import type { Node } from "./node.js";
 import { AdjustableNode } from "./nodes/adjustable.js";
+
 import { AlertDialogResponseNode } from "./nodes/alert-dialog-response.js";
 import { AnimationNode } from "./nodes/animation.js";
 import { ApplicationNode } from "./nodes/application.js";
@@ -55,14 +55,27 @@ import { WebViewNode } from "./nodes/web-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
+export const AdjustableWidgets = [Gtk.SpinButton, Gtk.ScaleButton, Gtk.Range] as const;
+export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
+
+export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
+export type StackWidget = InstanceType<(typeof StackWidgets)[number]>;
+
+export const ListViewWidgets = [Gtk.ListView, Gtk.GridView] as const;
+export type ListViewWidget = InstanceType<(typeof ListViewWidgets)[number]>;
+
+export const SimpleListViewWidgets = [Gtk.DropDown, Adw.ComboRow] as const;
+export type SimpleListViewWidget = InstanceType<(typeof SimpleListViewWidgets)[number]>;
+
+export const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
+export type PopoverMenuWidget = InstanceType<(typeof PopoverMenuWidgets)[number]>;
+
 // biome-ignore lint/suspicious/noExplicitAny: Registry entries require flexible typing for varied node constructors
 export type NodeClass = (new (...args: any[]) => Node) & { createContainer(...args: any[]): unknown };
 
 // biome-ignore lint/suspicious/noExplicitAny: Class keys require flexible typing for GTK class hierarchy matching
-type ClassKey = abstract new (...args: any[]) => any;
-
-type RegistryKey = string | ClassKey | (string | ClassKey)[];
-
+type ClassKey = new (...args: any[]) => any;
+type RegistryKey = string | ClassKey | readonly (string | ClassKey)[];
 type NodeRegistryEntry = [RegistryKey, NodeClass];
 
 export const NODE_REGISTRY: NodeRegistryEntry[] = [
@@ -89,7 +102,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["Toggle", ToggleNode],
     ["TreeListItem", TreeListItemNode],
     ["TreeListView", TreeListViewNode],
-
     [Gtk.Application, ApplicationNode],
     [Gtk.ShortcutController, ShortcutControllerNode],
     [Gtk.EventController, EventControllerNode],
@@ -110,11 +122,11 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Adw.NavigationView, NavigationViewNode],
     [Adw.ToggleGroup, ToggleGroupNode],
     [Gtk.Notebook, NotebookNode],
-    [[Gtk.Stack, Adw.ViewStack], StackNode],
+    [StackWidgets, StackNode],
     [Gtk.ColumnView, ColumnViewNode],
-    [[Gtk.ListView, Gtk.GridView], ListViewNode],
-    [[Gtk.DropDown, Adw.ComboRow], SimpleListViewNode],
-    [[Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton], PopoverMenuNode],
-    [[Gtk.Scrollbar, Gtk.SpinButton, Vte.Terminal], AdjustableNode],
+    [ListViewWidgets, ListViewNode],
+    [SimpleListViewWidgets, SimpleListViewNode],
+    [PopoverMenuWidgets, PopoverMenuNode],
+    [AdjustableWidgets, AdjustableNode],
     [Gtk.Widget, WidgetNode],
 ];

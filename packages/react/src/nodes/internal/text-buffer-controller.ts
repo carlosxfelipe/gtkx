@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkTextViewProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
 import { TextAnchorNode } from "../text-anchor.js";
 import type { TextContentChild, TextContentParent } from "../text-content.js";
@@ -7,17 +8,12 @@ import { TextSegmentNode } from "../text-segment.js";
 import { TextTagNode } from "../text-tag.js";
 import { hasChanged } from "./utils.js";
 
-type BufferCallbackProps = {
-    onBufferChanged?: ((buffer: Gtk.TextBuffer) => void) | null;
-    onTextInserted?: ((buffer: Gtk.TextBuffer, offset: number, text: string) => void) | null;
-    onTextDeleted?: ((buffer: Gtk.TextBuffer, startOffset: number, endOffset: number) => void) | null;
-    onCanUndoChanged?: ((canUndo: boolean) => void) | null;
-    onCanRedoChanged?: ((canRedo: boolean) => void) | null;
-};
+type BufferCallbackProps = Pick<
+    GtkTextViewProps,
+    "onBufferChanged" | "onTextInserted" | "onTextDeleted" | "onCanUndoChanged" | "onCanRedoChanged"
+>;
 
-type BufferProps = {
-    enableUndo?: boolean;
-} & BufferCallbackProps;
+type BufferProps = Pick<GtkTextViewProps, "enableUndo"> & BufferCallbackProps;
 
 export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffer> {
     private buffer: TBuffer | null = null;
@@ -72,11 +68,11 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             hasChanged(oldProps, newProps, "onCanRedoChanged");
 
         if (signalHandlersChanged) {
-            this.updateSignalHandlers(newProps);
+            this.setSignalHandlersChanged(newProps);
         }
     }
 
-    private updateSignalHandlers(callbacks: BufferCallbackProps): void {
+    private setSignalHandlersChanged(callbacks: BufferCallbackProps): void {
         if (!this.buffer) return;
 
         const buffer = this.buffer;

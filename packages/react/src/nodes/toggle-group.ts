@@ -1,29 +1,26 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as GObject from "@gtkx/ffi/gobject";
-import type { Props } from "../types.js";
+import type { AdwToggleGroupProps } from "../jsx.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
-
-type ToggleGroupProps = Props & {
-    onActiveChanged?: (active: number, activeName: string | null) => void;
-};
 
 const OWN_PROPS = ["onActiveChanged"] as const;
 
+type ToggleGroupProps = Pick<AdwToggleGroupProps, (typeof OWN_PROPS)[number]>;
+
 export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private notifyHandler: SignalHandler | null = null;
 
     public override commitUpdate(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
 
         if (hasChanged(oldProps, newProps, "onActiveChanged")) {
-            this.setupNotifyHandler(newProps.onActiveChanged);
+            this.setActiveChanged(newProps.onActiveChanged);
         }
     }
 
-    private setupNotifyHandler(callback?: (active: number, activeName: string | null) => void): void {
+    private setActiveChanged(callback?: ((active: number, activeName: string | null) => void) | null): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;

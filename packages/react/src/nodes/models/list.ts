@@ -1,14 +1,11 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkListViewProps } from "../../jsx.js";
 import { ListStore } from "../internal/list-store.js";
 import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
 import type { ListItemNode } from "../list-item.js";
 
-export type ListProps = {
-    selectionMode?: Gtk.SelectionMode;
-    selected?: string[];
-    onSelectionChanged?: (ids: string[]) => void;
-};
+export type ListProps = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged">;
 
 type ListModelConfig = {
     owner: object;

@@ -1,9 +1,10 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkAboutDialogProps, GtkWindowProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
-import { hasChanged } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import type { SlotNode } from "./slot.js";
@@ -15,22 +16,15 @@ const isOrExtends = (target: object, cls: abstract new (...args: any[]) => any):
 
 const OWN_PROPS = ["defaultWidth", "defaultHeight", "onClose"] as const;
 
-type CreditSection = {
-    name: string;
-    people: string[];
-};
-
-export type WindowProps = Props & {
-    defaultWidth?: number;
-    defaultHeight?: number;
-    onClose?: () => void;
-    creditSections?: CreditSection[];
-};
+export type WindowProps = Pick<GtkWindowProps, "onClose"> &
+    Pick<GtkAboutDialogProps, "creditSections"> & {
+        defaultWidth?: number;
+        defaultHeight?: number;
+    };
 
 type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | WidgetNode;
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private menu: MenuModel;
 
     public override isValidChild(child: Node): boolean {
@@ -135,7 +129,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     }
 
     public override commitUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

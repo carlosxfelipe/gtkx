@@ -1,22 +1,17 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { hasChanged } from "./internal/utils.js";
+import type { AdwViewStackProps, GtkStackProps } from "../jsx.js";
+import type { StackWidget } from "../registry.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["page", "onPageChanged"] as const;
 
-type StackWidget = Gtk.Stack | Adw.ViewStack;
-
-type StackProps = {
-    page?: string;
+type StackProps = Omit<Pick<GtkStackProps | AdwViewStackProps, (typeof OWN_PROPS)[number]>, "onPageChanged"> & {
     onPageChanged?: ((page: string | null, self: StackWidget) => void) | null;
 };
 
 export class StackNode extends WidgetNode<StackWidget, StackProps> {
-    protected override readonly excludedPropNames = OWN_PROPS;
-
     public override commitUpdate(oldProps: StackProps | null, newProps: StackProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

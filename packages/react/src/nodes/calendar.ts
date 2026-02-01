@@ -1,24 +1,21 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../types.js";
-import { primitiveArrayEqual } from "./internal/utils.js";
+import type { GtkCalendarProps } from "../jsx.js";
+import { filterProps, primitiveArrayEqual } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
-
-type CalendarProps = Props & {
-    markedDays?: number[] | null;
-};
 
 const OWN_PROPS = ["markedDays"] as const;
 
+type CalendarProps = Pick<GtkCalendarProps, (typeof OWN_PROPS)[number]>;
+
 export class CalendarNode extends WidgetNode<Gtk.Calendar> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     private appliedMarks: number[] = [];
 
     public override commitUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {
-        super.commitUpdate(oldProps, newProps);
-        this.applyMarkedDays(newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        this.applyMarkedDayProps(newProps);
     }
 
-    private applyMarkedDays(newProps: CalendarProps): void {
+    private applyMarkedDayProps(newProps: CalendarProps): void {
         const newMarkedDays = newProps.markedDays ?? [];
 
         if (primitiveArrayEqual(this.appliedMarks, newMarkedDays)) {

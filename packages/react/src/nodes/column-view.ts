@@ -1,23 +1,19 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkColumnViewProps } from "../jsx.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
+import { filterProps } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
 const PROP_NAMES = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"] as const;
 
-type ColumnViewProps = ListProps & {
-    sortColumn?: string;
-    sortOrder?: Gtk.SortType;
-    onSortChanged?: (column: string | null, order: Gtk.SortType) => void;
-    estimatedRowHeight?: number;
-};
+type ColumnViewProps = Pick<GtkColumnViewProps, (typeof PROP_NAMES)[number]> & ListProps;
 
 type ColumnViewChild = ListItemNode | ColumnViewColumnNode;
 
 export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, ColumnViewChild> {
-    protected override readonly excludedPropNames = PROP_NAMES;
     private handleSortChange: (() => void) | null = null;
     private list: ListModel;
     private columnNodes = new Set<ColumnViewColumnNode>();
@@ -107,7 +103,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     }
 
     public override commitUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
         this.applyOwnProps(oldProps, newProps);
         this.list.updateProps(oldProps, newProps);
     }

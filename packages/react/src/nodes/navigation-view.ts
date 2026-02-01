@@ -1,21 +1,17 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import type { Props } from "../types.js";
-import { hasChanged, primitiveArrayEqual } from "./internal/utils.js";
+import type { AdwNavigationViewProps } from "../jsx.js";
+import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/utils.js";
 import type { NavigationPageNode } from "./navigation-page.js";
 import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["history", "onHistoryChanged"] as const;
 
-type NavigationViewProps = Props & {
-    history?: string[] | null;
-    onHistoryChanged?: (history: string[]) => void;
-};
+type NavigationViewProps = Pick<AdwNavigationViewProps, (typeof OWN_PROPS)[number]>;
 
 type NavigationViewChild = NavigationPageNode | SlotNode | WidgetNode;
 
 export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps, NavigationViewChild> {
-    protected override readonly excludedPropNames = OWN_PROPS;
     public override appendChild(child: NavigationViewChild): void {
         super.appendChild(child);
     }
@@ -29,7 +25,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
     }
 
     public override commitUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        super.commitUpdate(oldProps, newProps);
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
