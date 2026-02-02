@@ -96,6 +96,10 @@ export class SelectionModelController {
         return selectionModel;
     }
 
+    public reapplySelection(ids?: string[] | null): void {
+        this.setSelection(ids);
+    }
+
     private setSelection(ids?: string[] | null): void {
         const nItems = this.getItemCount();
         const selected = ids ? this.resolveSelectionIndices(ids) : new Gtk.Bitset();

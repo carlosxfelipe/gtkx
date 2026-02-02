@@ -67,6 +67,7 @@ export class GridViewNode extends WidgetNode<Gtk.GridView, GridViewProps, ListIt
 
     public override commitMount(): void {
         super.commitMount();
+        this.grid.flushBatch();
         this.container.setModel(this.grid.getSelectionModel());
     }
 

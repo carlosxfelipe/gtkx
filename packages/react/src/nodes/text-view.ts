@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkTextViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { EventControllerNode } from "./event-controller.js";
 import { filterProps } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
 import { SlotNode } from "./slot.js";
@@ -9,7 +10,6 @@ import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextPaintableNode } from "./text-paintable.js";
 import { TextSegmentNode } from "./text-segment.js";
 import { TextTagNode } from "./text-tag.js";
-import { EventControllerNode } from "./event-controller.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = [

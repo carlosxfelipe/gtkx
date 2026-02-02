@@ -13,6 +13,7 @@ type DropDownProps = Pick<GtkDropDownProps | AdwComboRowProps, (typeof OWN_PROPS
 
 export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, ListItemNode> {
     private store = new SimpleListStore();
+    private initialSelectedId: string | null | undefined;
 
     public override isValidChild(child: Node): boolean {
         return child instanceof ListItemNode;
@@ -20,7 +21,25 @@ export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, List
 
     constructor(typeName: string, props: DropDownProps, container: DropDownWidget, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
+        this.store.beginBatch();
+        this.initialSelectedId = props.selectedId;
         this.container.setModel(this.store.getModel());
+    }
+
+    public override finalizeInitialChildren(props: DropDownProps): boolean {
+        super.finalizeInitialChildren(props);
+        this.store.flushBatch();
+        this.reapplyInitialSelectedId();
+        return false;
+    }
+
+    private reapplyInitialSelectedId(): void {
+        if (this.initialSelectedId == null) return;
+        const index = this.store.getIndexById(this.initialSelectedId);
+        this.initialSelectedId = undefined;
+        if (index !== null) {
+            this.container.setSelected(index);
+        }
     }
 
     public override appendChild(child: ListItemNode): void {

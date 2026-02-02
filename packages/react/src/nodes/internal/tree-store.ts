@@ -18,9 +18,22 @@ export class TreeStore {
     private childModels = new Map<string, Gtk.StringList>();
     private items = new Map<string, TreeItemData>();
     private onItemUpdated: TreeItemUpdatedCallback | null = null;
+    private pendingBatch: string[] | null = null;
 
     public setOnItemUpdated(callback: TreeItemUpdatedCallback | null): void {
         this.onItemUpdated = callback;
+    }
+
+    public beginBatch(): void {
+        this.pendingBatch = [];
+    }
+
+    public flushBatch(): void {
+        const batch = this.pendingBatch;
+        this.pendingBatch = null;
+        if (batch && batch.length > 0) {
+            this.rootModel.splice(0, 0, batch);
+        }
     }
 
     public updateItem(id: string, item: TreeItemData): void {
@@ -45,7 +58,12 @@ export class TreeStore {
 
             this.rootIdToIndex.set(id, this.rootIds.length);
             this.rootIds.push(id);
-            this.rootModel.append(id);
+
+            if (this.pendingBatch) {
+                this.pendingBatch.push(id);
+            } else {
+                this.rootModel.append(id);
+            }
         } else {
             let siblings = this.children.get(parentId);
             let indexMap = this.childIdToIndex.get(parentId);

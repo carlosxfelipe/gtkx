@@ -17,9 +17,13 @@ export class GridModel {
     private store: ListStore;
     private selectionManager: SelectionModelController;
 
+    private initialSelected: string[] | null | undefined;
+
     constructor(config: GridModelConfig, props: GridModelProps = {}) {
         this.config = config;
         this.store = new ListStore();
+        this.store.beginBatch();
+        this.initialSelected = props.selected;
         this.selectionManager = new SelectionModelController(
             { ...config, ...props },
             this.store.getModel(),
@@ -27,6 +31,12 @@ export class GridModel {
             (ids) => this.resolveSelectionIndices(ids),
             () => this.store.getModel().getNItems(),
         );
+    }
+
+    public flushBatch(): void {
+        this.store.flushBatch();
+        this.selectionManager.reapplySelection(this.initialSelected);
+        this.initialSelected = undefined;
     }
 
     public getStore(): ListStore {

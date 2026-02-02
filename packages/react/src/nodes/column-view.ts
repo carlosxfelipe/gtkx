@@ -115,6 +115,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
 
     public override commitMount(): void {
         super.commitMount();
+        this.list.flushBatch();
         this.container.setModel(this.list.getSelectionModel());
     }
 

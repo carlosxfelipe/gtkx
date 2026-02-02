@@ -20,9 +20,13 @@ export class ListModel {
     private treeListModel: Gtk.TreeListModel;
     private selectionManager: SelectionModelController;
 
+    private initialSelected: string[] | null | undefined;
+
     constructor(config: ListModelConfig, props: ListModelProps = {}) {
         this.config = config;
         this.store = new TreeStore();
+        this.store.beginBatch();
+        this.initialSelected = props.selected;
 
         this.treeListModel = new Gtk.TreeListModel(
             this.store.getRootModel(),
@@ -38,6 +42,12 @@ export class ListModel {
             (ids) => this.resolveSelectionIndices(ids),
             () => this.treeListModel.getNItems(),
         );
+    }
+
+    public flushBatch(): void {
+        this.store.flushBatch();
+        this.selectionManager.reapplySelection(this.initialSelected);
+        this.initialSelected = undefined;
     }
 
     private createChildModel(item: GObject.Object): Gio.ListModel | null {

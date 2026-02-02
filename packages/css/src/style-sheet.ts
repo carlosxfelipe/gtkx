@@ -36,6 +36,7 @@ export class StyleSheet {
     private display: Gdk.Display | null = null;
     private isRegistered = false;
     private hasPendingRules = false;
+    private updateScheduled = false;
 
     constructor(options: StyleSheetOptions) {
         this.key = options.key;
@@ -64,12 +65,21 @@ export class StyleSheet {
         }
     }
 
+    private scheduleUpdate(): void {
+        if (this.updateScheduled) return;
+        this.updateScheduled = true;
+        queueMicrotask(() => {
+            this.updateScheduled = false;
+            this.ensureProvider();
+            this.updateProvider();
+        });
+    }
+
     insert(rule: string): void {
         this.rules.push(rule);
 
         if (isStarted()) {
-            this.ensureProvider();
-            this.updateProvider();
+            this.scheduleUpdate();
         } else if (!this.hasPendingRules) {
             this.hasPendingRules = true;
             pendingSheets.push(this);
@@ -94,6 +104,7 @@ export class StyleSheet {
         this.provider = null;
         this.display = null;
         this.hasPendingRules = false;
+        this.updateScheduled = false;
     }
 
     hydrate(_elements: unknown[]): void {}

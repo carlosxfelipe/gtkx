@@ -65,6 +65,7 @@ export class ListViewNode extends WidgetNode<Gtk.ListView, ListViewProps, ListIt
 
     public override commitMount(): void {
         super.commitMount();
+        this.list.flushBatch();
         this.container.setModel(this.list.getSelectionModel());
     }
 

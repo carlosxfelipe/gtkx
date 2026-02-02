@@ -8,9 +8,22 @@ export class ListStore {
     private idToIndex = new Map<string, number>();
     private items = new Map<string, unknown>();
     private onItemUpdated: ItemUpdatedCallback | null = null;
+    private pendingBatch: string[] | null = null;
 
     public setOnItemUpdated(callback: ItemUpdatedCallback | null): void {
         this.onItemUpdated = callback;
+    }
+
+    public beginBatch(): void {
+        this.pendingBatch = [];
+    }
+
+    public flushBatch(): void {
+        const batch = this.pendingBatch;
+        this.pendingBatch = null;
+        if (batch && batch.length > 0) {
+            this.model.splice(0, 0, batch);
+        }
     }
 
     public addItem(id: string, item: unknown): void {
@@ -25,7 +38,12 @@ export class ListStore {
 
         this.idToIndex.set(id, this.ids.length);
         this.ids.push(id);
-        this.model.append(id);
+
+        if (this.pendingBatch) {
+            this.pendingBatch.push(id);
+        } else {
+            this.model.append(id);
+        }
     }
 
     public removeItem(id: string): void {
