@@ -65,6 +65,19 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
     }
 
+    public override finalizeInitialChildren(props: AnimationProps): boolean {
+        this.commitUpdate(null, props);
+        return !!props.animateOnMount;
+    }
+
+    public override commitMount(): void {
+        const animate = this.props.animate;
+
+        if (this.props.animateOnMount && animate) {
+            this.animateTo(animate);
+        }
+    }
+
     public override commitUpdate(oldProps: AnimationProps | null, newProps: AnimationProps): void {
         super.commitUpdate(oldProps, newProps);
 
@@ -130,10 +143,6 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
                 const initialValues = initial ?? animate ?? {};
                 this.currentValues = { ...initialValues };
                 this.applyValues(this.currentValues);
-
-                if (this.props.animateOnMount && animate) {
-                    this.animateTo(animate);
-                }
             }
         }
     }

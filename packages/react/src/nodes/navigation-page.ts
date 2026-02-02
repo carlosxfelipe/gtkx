@@ -21,6 +21,8 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
             const parentWidget = this.getParentWidget();
             if (parentWidget instanceof Adw.NavigationView) {
                 parentWidget.remove(this.wrappedPage);
+            } else {
+                this.applySlotChild(parentWidget, this.wrappedPage);
             }
             this.wrappedPage = null;
         }
@@ -60,6 +62,8 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
             const parentWidget = this.getParentWidget();
             if (parentWidget instanceof Adw.NavigationView) {
                 parentWidget.remove(this.wrappedPage);
+            } else {
+                this.applySlotChild(parentWidget, this.wrappedPage);
             }
         }
         this.wrappedPage = null;
@@ -126,9 +130,7 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
             throw new Error(`Unable to find property for slot '${propId}' on type '${parentType}'`);
         }
 
-        const childWidget = this.children[0]?.container ?? null;
-
-        if (oldChild && !childWidget) {
+        if (oldChild && !this.wrappedPage) {
             const focus = getFocusWidget(oldChild);
 
             if (focus && isDescendantOf(focus, oldChild)) {
@@ -136,7 +138,7 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
             }
         }
 
-        setter(childWidget);
+        setter(this.wrappedPage);
     }
 
     private getParentWidget(): Gtk.Widget {
