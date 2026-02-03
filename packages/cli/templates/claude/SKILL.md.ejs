@@ -58,12 +58,12 @@ Some widgets require children in specific slots:
 </GtkPaned>
 ```
 
-### Packing (HeaderBar, ActionBar)
+### Container Slots (HeaderBar, ActionBar, ToolbarView, ActionRow, ExpanderRow)
 
 ```tsx
 <GtkHeaderBar>
-    <x.PackStart><GtkButton iconName="go-previous-symbolic" /></x.PackStart>
-    <x.PackEnd><GtkMenuButton iconName="open-menu-symbolic" /></x.PackEnd>
+    <x.ContainerSlot for={GtkHeaderBar} id="packStart"><GtkButton iconName="go-previous-symbolic" /></x.ContainerSlot>
+    <x.ContainerSlot for={GtkHeaderBar} id="packEnd"><GtkMenuButton iconName="open-menu-symbolic" /></x.ContainerSlot>
 </GtkHeaderBar>
 ```
 
@@ -71,10 +71,9 @@ Some widgets require children in specific slots:
 
 ```tsx
 <x.Animation
-    mode="spring"
     initial={{ opacity: 0, scale: 0.8 }}
     animate={{ opacity: 1, scale: 1 }}
-    transition={{ damping: 0.8, stiffness: 200 }}
+    transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
     animateOnMount
 >
     <GtkLabel label="Animated!" />

@@ -132,7 +132,7 @@ Text labels work too:
 
 ## ExpanderRow Children
 
-Use `x.ExpanderRowRow` and `x.ExpanderRowAction` for declarative expander row content:
+Use `x.ContainerSlot` for declarative expander row content:
 
 ```tsx
 import {
@@ -149,20 +149,20 @@ const SettingsExpander = () => (
       title="Advanced Settings"
       subtitle="Additional configuration options"
     >
-      <x.ExpanderRowAction>
+      <x.ContainerSlot for={AdwExpanderRow} id="addAction">
         <GtkButton iconName="emblem-system-symbolic" cssClasses={["flat"]} />
-      </x.ExpanderRowAction>
-      <x.ExpanderRowRow>
+      </x.ContainerSlot>
+      <x.ContainerSlot for={AdwExpanderRow} id="addRow">
         <AdwActionRow title="Option 1" />
         <AdwActionRow title="Option 2" />
         <AdwActionRow title="Option 3" />
-      </x.ExpanderRowRow>
+      </x.ContainerSlot>
     </AdwExpanderRow>
   </GtkListBox>
 );
 ```
 
-`x.ExpanderRowAction` places a widget in the expander row header (next to the expand arrow), while `x.ExpanderRowRow` contains the rows that appear when expanded.
+`x.ContainerSlot for={AdwExpanderRow} id="addAction"` places a widget in the expander row header (next to the expand arrow), while `id="addRow"` contains the rows that appear when expanded.
 
 ## Grid Layout
 

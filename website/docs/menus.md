@@ -33,24 +33,11 @@ const FileMenu = () => (
 );
 ```
 
-## Menu Components
-
-### x.MenuItem
-
-Individual menu action with optional keyboard shortcut:
-
-```tsx
-<x.MenuItem
-  id="save" // Unique identifier
-  label="Save" // Display text
-  onActivate={() => save()} // Callback when activated
-  accels="<Control>s" // Keyboard shortcut
-/>
-```
+## Sections and Submenus
 
 ### x.MenuSection
 
-Groups items with an optional header.
+Group items with a visual separator and optional header:
 
 ```tsx
 <GtkMenuButton label="Edit">

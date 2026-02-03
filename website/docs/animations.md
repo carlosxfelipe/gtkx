@@ -11,9 +11,9 @@ import { x, GtkButton } from "@gtkx/react";
 
 const FadeInButton = () => (
   <x.Animation
-    mode="timed"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
+    transition={{ mode: "timed" }}
     animateOnMount
   >
     <GtkButton label="Hello" />
@@ -27,9 +27,9 @@ You can animate properties like `opacity`, `translateX`, `translateY`, `scale`, 
 
 ```tsx
 <x.Animation
-  mode="spring"
   initial={{ opacity: 0, scale: 0.8, translateY: -20 }}
   animate={{ opacity: 1, scale: 1, translateY: 0 }}
+  transition={{ mode: "spring" }}
   animateOnMount
 >
   <GtkLabel label="Animated!" />
@@ -46,10 +46,10 @@ import { Easing } from "@gtkx/ffi/adw";
 
 const TimedExample = () => (
   <x.Animation
-    mode="timed"
     initial={{ translateX: -100 }}
     animate={{ translateX: 0 }}
     transition={{
+      mode: "timed",
       duration: 500,
       easing: Easing.EASE_OUT_CUBIC,
       delay: 100,
@@ -72,10 +72,10 @@ import { x, GtkButton } from "@gtkx/react";
 
 const SpringExample = () => (
   <x.Animation
-    mode="spring"
     initial={{ scale: 0.5 }}
     animate={{ scale: 1 }}
     transition={{
+      mode: "spring",
       damping: 0.6,
       stiffness: 200,
       mass: 1,
@@ -107,9 +107,8 @@ const ToggleAnimation = () => {
         onClicked={() => setExpanded(!expanded)}
       />
       <x.Animation
-        mode="spring"
         animate={{ scale: expanded ? 1.2 : 1 }}
-        transition={{ damping: 0.7, stiffness: 300 }}
+        transition={{ mode: "spring", damping: 0.7, stiffness: 300 }}
       >
         <GtkButton label="Animated" />
       </x.Animation>
@@ -134,11 +133,10 @@ const ExitExample = () => {
       <GtkButton label="Toggle" onClicked={() => setVisible(!visible)} />
       {visible && (
         <x.Animation
-          mode="timed"
           initial={{ opacity: 0, translateY: -20 }}
           animate={{ opacity: 1, translateY: 0 }}
           exit={{ opacity: 0, translateY: 20 }}
-          transition={{ duration: 200 }}
+          transition={{ mode: "timed", duration: 200 }}
           animateOnMount
         >
           <GtkLabel label="I fade in and out!" />
@@ -157,8 +155,8 @@ Monitor animation state with callbacks:
 
 ```tsx
 <x.Animation
-  mode="spring"
   animate={{ opacity: 1 }}
+  transition={{ mode: "spring" }}
   onAnimationStart={() => console.log("Started")}
   onAnimationComplete={() => console.log("Finished")}
   animateOnMount
@@ -173,9 +171,9 @@ Set `initial={false}` to skip the initial state and start at the `animate` value
 
 ```tsx
 <x.Animation
-  mode="timed"
   initial={false}
   animate={{ opacity: isActive ? 1 : 0.5 }}
+  transition={{ mode: "timed" }}
 >
   <GtkButton label="No mount animation" />
 </x.Animation>

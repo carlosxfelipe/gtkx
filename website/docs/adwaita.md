@@ -90,19 +90,19 @@ import * as Gtk from "@gtkx/ffi/gtk";
 
 #### ActionRow Slots
 
-Use `x.ActionRowPrefix` and `x.ActionRowSuffix` to position widgets at the start or end of the row. These work with `AdwActionRow`, `AdwEntryRow`, and `AdwExpanderRow`:
+Use `x.ContainerSlot` to position widgets at the start or end of the row. These work with `AdwActionRow`, `AdwEntryRow`, and `AdwExpanderRow`:
 
 ```tsx
 import { x, AdwActionRow, GtkListBox, GtkImage, GtkSwitch } from "@gtkx/react";
 
 <GtkListBox cssClasses={["boxed-list"]}>
   <AdwActionRow title="Airplane Mode">
-    <x.ActionRowPrefix>
+    <x.ContainerSlot for={AdwActionRow} id="addPrefix">
       <GtkImage iconName="airplane-mode-symbolic" />
-    </x.ActionRowPrefix>
-    <x.ActionRowSuffix>
+    </x.ContainerSlot>
+    <x.ContainerSlot for={AdwActionRow} id="addSuffix">
       <GtkSwitch valign={Gtk.Align.CENTER} />
-    </x.ActionRowSuffix>
+    </x.ContainerSlot>
   </AdwActionRow>
 </GtkListBox>;
 ```
@@ -167,22 +167,22 @@ import {
 import * as Gtk from "@gtkx/ffi/gtk";
 
 <AdwToolbarView>
-  <x.ToolbarTop>
+  <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
     <AdwHeaderBar />
-  </x.ToolbarTop>
+  </x.ContainerSlot>
 
   <GtkLabel label="Main content area" vexpand />
 
-  <x.ToolbarBottom>
+  <x.ContainerSlot for={AdwToolbarView} id="addBottomBar">
     <GtkActionBar>
       <GtkButton label="Cancel" />
       <GtkButton label="Save" cssClasses={["suggested-action"]} />
     </GtkActionBar>
-  </x.ToolbarBottom>
+  </x.ContainerSlot>
 </AdwToolbarView>;
 ```
 
-The `x.ToolbarTop` and `x.ToolbarBottom` components position header bars, action bars, or other toolbars at the top and bottom of the view.
+The `x.ContainerSlot for={AdwToolbarView}` with `id="addTopBar"` and `id="addBottomBar"` positions header bars, action bars, or other toolbars at the top and bottom of the view.
 
 ### AdwNavigationView
 
@@ -296,9 +296,9 @@ const SplitViewExample = () => {
     >
       <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Mail">
         <AdwToolbarView>
-          <x.ToolbarTop>
+          <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
             <AdwHeaderBar />
-          </x.ToolbarTop>
+          </x.ContainerSlot>
           <GtkScrolledWindow vexpand>
             <GtkListBox
               cssClasses={["navigation-sidebar"]}
@@ -310,9 +310,9 @@ const SplitViewExample = () => {
             >
               {items.map((item) => (
                 <AdwActionRow key={item.id} title={item.title}>
-                  <x.ActionRowPrefix>
+                  <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                     <GtkImage iconName={item.icon} />
-                  </x.ActionRowPrefix>
+                  </x.ContainerSlot>
                 </AdwActionRow>
               ))}
             </GtkListBox>
@@ -326,9 +326,9 @@ const SplitViewExample = () => {
         title={selected?.title ?? ""}
       >
         <AdwToolbarView>
-          <x.ToolbarTop>
+          <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
             <AdwHeaderBar />
-          </x.ToolbarTop>
+          </x.ContainerSlot>
           <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={12}

@@ -19,25 +19,6 @@ try {
 }
 ```
 
-## Error Codes
-
-The `error.code` property contains GTK/GLib error codes. Import the relevant enum and compare:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as Gio from "@gtkx/ffi/gio";
-
-if (error.code === Gtk.DialogError.DISMISSED) {
-  // User cancelled dialog
-}
-
-if (error.code === Gio.IOErrorEnum.NOT_FOUND) {
-  // File not found
-}
-```
-
-All GTK/GLib error enums are available through `@gtkx/ffi`. See the GTK and GLib documentation for the complete list of error codes.
-
 ## Handling Dialog Cancellation
 
 Dialogs throw `NativeError` when the user cancels. This is expected behavior:
@@ -72,18 +53,9 @@ import { NativeError } from "@gtkx/ffi";
 
 const handleError = (error: unknown) => {
   if (error instanceof NativeError) {
-    // Error from GTK/GLib
     console.log(`Native: [${error.code}] ${error.message}`);
   } else if (error instanceof Error) {
-    // Regular JavaScript error
     console.log(`JS: ${error.message}`);
   }
 };
 ```
-
-## Best Practices
-
-1. **Check for `NativeError`** — Use `instanceof NativeError` to identify GTK/GLib errors
-2. **Handle dismissal gracefully** — Dialog cancellation is expected; check for `Gtk.DialogError.DISMISSED`
-3. **Use error codes** — Check `error.code` against enum values for specific handling
-4. **Don't swallow errors** — Log errors to aid debugging

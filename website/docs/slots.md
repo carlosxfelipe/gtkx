@@ -151,15 +151,89 @@ const ThreePaneLayout = () => (
 );
 ```
 
+## Container Slots
+
+Some widgets add children through specific methods rather than single-widget properties. Use `x.ContainerSlot` for these cases. The `for` prop provides TypeScript type-narrowing for valid `id` values per parent widget type.
+
+### GtkHeaderBar / GtkActionBar Packing
+
+```tsx
+import { x, GtkHeaderBar, GtkButton, GtkMenuButton } from "@gtkx/react";
+
+<GtkHeaderBar>
+  <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+    <GtkButton iconName="go-previous-symbolic" />
+  </x.ContainerSlot>
+  <x.Slot for={GtkHeaderBar} id="titleWidget">
+    <GtkLabel label="Title" cssClasses={["title"]} />
+  </x.Slot>
+  <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
+    <GtkMenuButton iconName="open-menu-symbolic" />
+  </x.ContainerSlot>
+</GtkHeaderBar>;
+```
+
+### AdwToolbarView Bars
+
+```tsx
+import { x, AdwToolbarView, AdwHeaderBar, GtkActionBar } from "@gtkx/react";
+
+<AdwToolbarView>
+  <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
+    <AdwHeaderBar />
+  </x.ContainerSlot>
+  <MainContent />
+  <x.ContainerSlot for={AdwToolbarView} id="addBottomBar">
+    <GtkActionBar />
+  </x.ContainerSlot>
+</AdwToolbarView>;
+```
+
+### AdwActionRow Prefix/Suffix
+
+```tsx
+import { x, AdwActionRow, GtkImage, GtkSwitch } from "@gtkx/react";
+
+<AdwActionRow title="Airplane Mode">
+  <x.ContainerSlot for={AdwActionRow} id="addPrefix">
+    <GtkImage iconName="airplane-mode-symbolic" />
+  </x.ContainerSlot>
+  <x.ContainerSlot for={AdwActionRow} id="addSuffix">
+    <GtkSwitch valign={Gtk.Align.CENTER} />
+  </x.ContainerSlot>
+</AdwActionRow>;
+```
+
+### AdwExpanderRow Rows/Actions
+
+```tsx
+import { x, AdwExpanderRow, AdwActionRow, GtkButton } from "@gtkx/react";
+
+<AdwExpanderRow title="Advanced Settings">
+  <x.ContainerSlot for={AdwExpanderRow} id="addAction">
+    <GtkButton iconName="emblem-system-symbolic" cssClasses={["flat"]} />
+  </x.ContainerSlot>
+  <x.ContainerSlot for={AdwExpanderRow} id="addRow">
+    <AdwActionRow title="Option 1" />
+    <AdwActionRow title="Option 2" />
+  </x.ContainerSlot>
+</AdwExpanderRow>;
+```
+
 ## When to Use Slots
 
 Use `x.Slot` when:
 
-- A widget has a named property that accepts a widget (like `popover`, `titleWidget`)
+- A widget has a named property that accepts a single widget (like `popover`, `titleWidget`)
 - You need to place content in a specific position (`startChild`, `endChild`)
 - The GTK documentation mentions a widget property rather than child packing
 
-Don't use `x.Slot` when:
+Use `x.ContainerSlot` when:
+
+- A widget adds children through add/pack methods (like `packStart`, `addTopBar`, `addPrefix`)
+- You need to pack multiple children into a specific position
+
+Don't use either when:
 
 - Adding regular children to a container (just use JSX children)
 - The widget uses standard child packing (`GtkBox`, `GtkListBox`)

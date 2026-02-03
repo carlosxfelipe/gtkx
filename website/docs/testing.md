@@ -100,16 +100,6 @@ describe("useCounter", () => {
 
 See the [renderHook API reference](./api/testing/functions/renderHook.md) for full details.
 
-## API Overview
-
-The testing library provides:
-
-- **Query methods** on `screen`: `findByRole`, `findByText`, `findByTestId`, `findByLabelText`, and their `findAll*` variants. See the [screen API reference](./api/testing/variables/screen.md).
-- **User interactions** via `userEvent`: `click`, `type`, `clear`, `selectOptions`, and more. See the [userEvent API reference](./api/testing/variables/userEvent.md).
-- **Signal emission** via `fireEvent` for testing gesture handlers and custom interactions. See the [fireEvent API reference](./api/testing/functions/fireEvent.md).
-- **Scoped queries** via `within` for querying within a widget subtree. See the [within API reference](./api/testing/functions/within.md).
-- **Debugging** via `screen.debug()` and `screen.screenshot()`.
-
 ## Complete Example
 
 ```tsx

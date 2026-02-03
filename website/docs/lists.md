@@ -7,7 +7,7 @@ GTKX provides several list components for different use cases, from simple stati
 - **`GtkListView`** — Large lists (1000+ items) with virtual scrolling
 - **`GtkGridView`** — Photo galleries, icon grids with virtual scrolling
 - **`GtkColumnView`** — Data tables with sorting and virtual scrolling
-- **`x.TreeListView`** — Hierarchical data, file trees with virtual scrolling
+- **`GtkListView` (tree mode)** — Hierarchical data, file trees with virtual scrolling
 - **`GtkDropDown`** — Small selection lists (no virtual scrolling)
 - **`GtkListBox`** — Medium lists with complex rows (no virtual scrolling)
 - **`GtkFlowBox`** — Tag clouds, reflowing grids (no virtual scrolling)
@@ -301,12 +301,12 @@ const TagCloud = ({ tags }: { tags: string[] }) => (
 );
 ```
 
-## TreeListView
+## Tree Lists
 
-Hierarchical tree display with expand/collapse functionality and virtual scrolling. Use for file browsers, settings panels, or any nested data structure.
+Hierarchical tree display with expand/collapse functionality and virtual scrolling. Use `GtkListView` with nested `x.ListItem` children for file browsers, settings panels, or any nested data structure. The `renderItem` callback receives an optional second parameter `row` of type `Gtk.TreeListRow | null`.
 
 ```tsx
-import { x, GtkBox, GtkLabel, GtkImage, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkBox, GtkLabel, GtkImage, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 interface Category {
@@ -353,9 +353,10 @@ const categories: CategoryWithChildren[] = [
 
 const SettingsTree = () => (
   <GtkScrolledWindow vexpand>
-    <x.TreeListView
+    <GtkListView
       estimatedItemHeight={48}
-      renderItem={(item: TreeItem | null) => {
+      autoexpand
+      renderItem={(item: TreeItem | null, row?: Gtk.TreeListRow | null) => {
         if (!item) return <GtkLabel label="Loading..." />;
 
         if (item.type === "category") {
@@ -371,44 +372,47 @@ const SettingsTree = () => (
       }}
     >
       {categories.map((category) => (
-        <x.TreeListItem
+        <x.ListItem
           key={category.id}
           id={category.id}
           value={category as TreeItem}
         >
           {category.children.map((setting) => (
-            <x.TreeListItem
+            <x.ListItem
               key={setting.id}
               id={setting.id}
               value={setting as TreeItem}
               hideExpander
             />
           ))}
-        </x.TreeListItem>
+        </x.ListItem>
       ))}
-    </x.TreeListView>
+    </GtkListView>
   </GtkScrolledWindow>
 );
 ```
+
+Nesting `x.ListItem` children triggers tree behavior automatically. Tree-specific props on `x.ListItem`: `indentForDepth`, `indentForIcon`, `hideExpander`.
 
 ### Selection
 
 ```tsx
 const [selected, setSelected] = useState<string[]>([]);
 
-<x.TreeListView
+<GtkListView
   estimatedItemHeight={48}
+  autoexpand
   selected={selected}
   onSelectionChanged={setSelected}
   renderItem={(item, row) => <GtkLabel label={item?.name ?? ""} />}
 >
   {items.map((item) => (
-    <x.TreeListItem key={item.id} id={item.id} value={item}>
+    <x.ListItem key={item.id} id={item.id} value={item}>
       {item.children?.map((child) => (
-        <x.TreeListItem key={child.id} id={child.id} value={child} />
+        <x.ListItem key={child.id} id={child.id} value={child} />
       ))}
-    </x.TreeListItem>
+    </x.ListItem>
   ))}
-</x.TreeListView>;
+</GtkListView>;
 ```
 

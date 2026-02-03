@@ -348,15 +348,15 @@ Progress/level indicator with customizable thresholds.
 ## Header & Action Bars
 
 ### GtkHeaderBar
-Title bar with packed widgets. Use `Pack.Start`, `Pack.End`, and `Slot` for titleWidget.
+Title bar with packed widgets. Use `x.ContainerSlot` for packing and `x.Slot` for titleWidget.
 
 ```tsx
 <GtkHeaderBar>
-    <x.PackStart><GtkButton iconName="go-previous-symbolic" /></x.PackStart>
+    <x.ContainerSlot for={GtkHeaderBar} id="packStart"><GtkButton iconName="go-previous-symbolic" /></x.ContainerSlot>
     <x.Slot for={GtkHeaderBar} id="titleWidget">
         <GtkLabel label="Title" cssClasses={["title"]} />
     </x.Slot>
-    <x.PackEnd><GtkMenuButton iconName="open-menu-symbolic" /></x.PackEnd>
+    <x.ContainerSlot for={GtkHeaderBar} id="packEnd"><GtkMenuButton iconName="open-menu-symbolic" /></x.ContainerSlot>
 </GtkHeaderBar>
 ```
 
@@ -365,8 +365,8 @@ Bottom action bar.
 
 ```tsx
 <GtkActionBar>
-    <x.PackStart><GtkButton label="Cancel" /></x.PackStart>
-    <x.PackEnd><GtkButton label="Save" cssClasses={["suggested-action"]} /></x.PackEnd>
+    <x.ContainerSlot for={GtkActionBar} id="packStart"><GtkButton label="Cancel" /></x.ContainerSlot>
+    <x.ContainerSlot for={GtkActionBar} id="packEnd"><GtkButton label="Save" cssClasses={["suggested-action"]} /></x.ContainerSlot>
 </GtkActionBar>
 ```
 
@@ -439,17 +439,17 @@ Modern app structure.
 ```tsx
 <AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onClose={quit}>
     <AdwToolbarView>
-        <x.ToolbarTop>
+        <x.ContainerSlot for={AdwToolbarView} id="addTopBar">
             <AdwHeaderBar>
                 <x.Slot for={AdwHeaderBar} id="titleWidget">
                     <AdwWindowTitle title="App" subtitle="Description" />
                 </x.Slot>
             </AdwHeaderBar>
-        </x.ToolbarTop>
+        </x.ContainerSlot>
         <MainContent />
-        <x.ToolbarBottom>
+        <x.ContainerSlot for={AdwToolbarView} id="addBottomBar">
             <GtkActionBar />
-        </x.ToolbarBottom>
+        </x.ContainerSlot>
     </AdwToolbarView>
 </AdwApplicationWindow>
 ```
@@ -478,35 +478,35 @@ Settings UI.
     <AdwPreferencesGroup title="Appearance" description="Customize look">
         <AdwSwitchRow title="Dark Mode" active={dark} onActivated={() => setDark(!dark)} />
         <AdwActionRow title="Theme" subtitle="Select color">
-            <x.ActionRowPrefix>
+            <x.ContainerSlot for={AdwActionRow} id="addPrefix">
                 <GtkImage iconName="preferences-color-symbolic" />
-            </x.ActionRowPrefix>
-            <x.ActionRowSuffix>
+            </x.ContainerSlot>
+            <x.ContainerSlot for={AdwActionRow} id="addSuffix">
                 <GtkImage iconName="go-next-symbolic" valign={Gtk.Align.CENTER} />
-            </x.ActionRowSuffix>
+            </x.ContainerSlot>
         </AdwActionRow>
     </AdwPreferencesGroup>
 </AdwPreferencesPage>
 ```
 
-**ActionRow children:** Use `x.ActionRowPrefix` for left widgets, `x.ActionRowSuffix` for right widgets, or `x.Slot for={AdwActionRow} id="activatableWidget"` for clickable suffix.
+**ActionRow children:** Use `x.ContainerSlot for={AdwActionRow} id="addPrefix"` for left widgets, `x.ContainerSlot for={AdwActionRow} id="addSuffix"` for right widgets, or `x.Slot for={AdwActionRow} id="activatableWidget"` for clickable suffix.
 
 ### AdwExpanderRow
 Expandable settings row with optional action widget.
 
 ```tsx
 <AdwExpanderRow title="Advanced" subtitle="More options">
-    <x.ExpanderRowAction>
+    <x.ContainerSlot for={AdwExpanderRow} id="addAction">
         <GtkButton iconName="emblem-system-symbolic" cssClasses={["flat"]} />
-    </x.ExpanderRowAction>
-    <x.ExpanderRowRow>
+    </x.ContainerSlot>
+    <x.ContainerSlot for={AdwExpanderRow} id="addRow">
         <AdwSwitchRow title="Option 1" active />
         <AdwSwitchRow title="Option 2" />
-    </x.ExpanderRowRow>
+    </x.ContainerSlot>
 </AdwExpanderRow>
 ```
 
-**ExpanderRow slots:** `x.ExpanderRowRow` for nested rows, `x.ExpanderRowAction` for header action widget. Direct children also work for simple cases.
+**ExpanderRow slots:** `x.ContainerSlot for={AdwExpanderRow} id="addRow"` for nested rows, `x.ContainerSlot for={AdwExpanderRow} id="addAction"` for header action widget. Direct children also work for simple cases.
 
 ### AdwEntryRow / AdwPasswordEntryRow
 Input in list row.
@@ -560,7 +560,7 @@ const [selected, setSelected] = useState(items[0]);
 <AdwNavigationSplitView sidebarWidthFraction={0.33} minSidebarWidth={200} maxSidebarWidth={300}>
     <x.NavigationPage for={AdwNavigationSplitView} id="sidebar" title="Sidebar">
         <AdwToolbarView>
-            <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
+            <x.ContainerSlot for={AdwToolbarView} id="addTopBar"><AdwHeaderBar /></x.ContainerSlot>
             <GtkListBox cssClasses={["navigation-sidebar"]} onRowSelected={(row) => {
                     if (!row) return;
                     const item = items[row.getIndex()];
@@ -573,7 +573,7 @@ const [selected, setSelected] = useState(items[0]);
 
     <x.NavigationPage for={AdwNavigationSplitView} id="content" title={selected?.title ?? ""}>
         <AdwToolbarView>
-            <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
+            <x.ContainerSlot for={AdwToolbarView} id="addTopBar"><AdwHeaderBar /></x.ContainerSlot>
             <GtkLabel label={selected?.title ?? ""} />
         </AdwToolbarView>
     </x.NavigationPage>
@@ -633,10 +633,9 @@ Wrap widgets in `x.Animation` for declarative animations with spring or timed tr
 
 ```tsx
 <x.Animation
-    mode="spring"
     initial={{ opacity: 0, scale: 0.8 }}
     animate={{ opacity: 1, scale: 1 }}
-    transition={{ damping: 0.8, stiffness: 200, mass: 1 }}
+    transition={{ mode: "spring", damping: 0.8, stiffness: 200, mass: 1 }}
     animateOnMount
     onAnimationComplete={() => console.log("done")}
 >
@@ -644,11 +643,11 @@ Wrap widgets in `x.Animation` for declarative animations with spring or timed tr
 </x.Animation>
 ```
 
-**Props:** `mode` (`"spring"` | `"timed"`), `initial`, `animate`, `exit`, `transition`, `animateOnMount`, `onAnimationStart`, `onAnimationComplete`
+**Props:** `initial`, `animate`, `exit`, `transition` (`AnimationTransition` discriminated union), `animateOnMount`, `onAnimationStart`, `onAnimationComplete`
 
-**Spring transition:** `damping`, `stiffness`, `mass`, `initialVelocity`, `clamp`, `delay`
+**Spring transition:** `{ mode: "spring", damping, stiffness, mass, initialVelocity, clamp, delay }`
 
-**Timed transition:** `duration`, `easing` (from `Adw.Easing`), `delay`, `repeat`, `reverse`, `alternate`
+**Timed transition:** `{ mode: "timed", duration, easing (from Adw.Easing), delay, repeat, reverse, alternate }`
 
 ---
 
