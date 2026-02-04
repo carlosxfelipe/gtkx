@@ -7,8 +7,6 @@ echo "Building GTKX Example Snap..."
 
 pnpm bundle
 
-cp ../../packages/native/index.node dist/
-
 if command -v snapcraft &> /dev/null; then
     SNAPCRAFT=(snapcraft)
 else

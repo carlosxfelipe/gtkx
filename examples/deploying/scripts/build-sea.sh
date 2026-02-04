@@ -35,9 +35,7 @@ echo "Injecting SEA blob..."
 npx postject dist/app NODE_SEA_BLOB dist/sea-prep.blob \
     --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
 
-# Copy native module
-echo "Copying native module..."
-cp ../../packages/native/index.node dist/
+# gtkx build already emits dist/gtkx.node
 
 # Make executable
 chmod +x dist/app
@@ -45,6 +43,6 @@ chmod +x dist/app
 echo ""
 echo "SEA build complete!"
 echo "  Binary: dist/app"
-echo "  Native: dist/index.node"
+echo "  Native: dist/gtkx.node"
 echo ""
 echo "To run: ./dist/app"

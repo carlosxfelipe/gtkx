@@ -7,8 +7,6 @@ echo "Building GTKX Example Flatpak..."
 
 pnpm bundle
 
-cp ../../packages/native/index.node dist/
-
 flatpak-builder \
     --force-clean \
     --user \

@@ -1,10 +1,7 @@
-import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import * as esbuild from "esbuild";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const require2 = createRequire(join(projectRoot, "package.json"));
-const nativeEntryPath = require2.resolve("@gtkx/native");
 
 const nativeShim = `
 const { createRequire } = require("node:module");
@@ -12,7 +9,7 @@ const { dirname, join } = require("node:path");
 
 const execDir = dirname(process.execPath);
 const require2 = createRequire(join(execDir, "package.json"));
-module.exports = require2("./index.node");
+module.exports = require2("./gtkx.node");
 `;
 
 async function bundle() {
@@ -36,15 +33,10 @@ async function bundle() {
             {
                 name: "native-shim",
                 setup(build) {
-                    build.onResolve({ filter: /@gtkx\/native/ }, (args) => ({
+                    build.onResolve({ filter: /\.\/gtkx\.node$/ }, (args) => ({
                         path: args.path,
                         namespace: "native-shim",
                     }));
-                    build.onResolve({ filter: /.*/ }, (args) => {
-                        if (args.path === nativeEntryPath) {
-                            return { path: args.path, namespace: "native-shim" };
-                        }
-                    });
                     build.onLoad({ filter: /.*/, namespace: "native-shim" }, () => {
                         return { contents: nativeShim, loader: "js" };
                     });
