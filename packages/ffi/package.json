@@ -47,8 +47,13 @@
             "default": "./dist/generated/*/index.js"
         }
     },
+    "sideEffects": [
+        "./dist/index.js",
+        "./dist/gobject/index.js"
+    ],
     "files": [
-        "dist"
+        "dist",
+        "src"
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",

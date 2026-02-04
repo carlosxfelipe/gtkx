@@ -50,9 +50,11 @@
     "bin": {
         "gtkx": "bin/gtkx.js"
     },
+    "sideEffects": false,
     "files": [
         "bin",
         "dist",
+        "src",
         "templates"
     ],
     "scripts": {

@@ -32,8 +32,11 @@
             "default": "./dist/index.js"
         }
     },
+    "sideEffects": false,
     "files": [
-        "dist"
+        "dist",
+        "index.ts",
+        "types.ts"
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",

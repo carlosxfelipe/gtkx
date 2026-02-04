@@ -35,9 +35,11 @@
     "bin": {
         "gtkx-mcp": "bin/gtkx-mcp.js"
     },
+    "sideEffects": false,
     "files": [
         "bin",
-        "dist"
+        "dist",
+        "src"
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",

@@ -31,8 +31,10 @@
             "default": "./dist/index.js"
         }
     },
+    "sideEffects": false,
     "files": [
-        "dist"
+        "dist",
+        "src"
     ],
     "scripts": {
         "build": "tsc -b tsconfig.lib.json",
