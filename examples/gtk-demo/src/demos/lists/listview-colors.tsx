@@ -145,14 +145,7 @@ function calculateAverageColor(colors: ColorItem[]): { r: number; g: number; b: 
     return { r, g, b, hex: rgbToHex(r, g, b) };
 }
 
-function drawColorSwatch(
-    cr: Context,
-    width: number,
-    height: number,
-    r: number,
-    g: number,
-    b: number,
-): void {
+function drawColorSwatch(cr: Context, width: number, height: number, r: number, g: number, b: number): void {
     cr.setSourceRgb(r / 255, g / 255, b / 255)
         .rectangle(0, 0, width, height)
         .fill();
@@ -230,9 +223,7 @@ const SelectionInfoPanel = ({
                 <GtkDrawingArea
                     contentWidth={32}
                     contentHeight={32}
-                    onDraw={(cr, w, h) =>
-                        drawColorSwatch(cr, w, h, averageColor.r, averageColor.g, averageColor.b)
-                    }
+                    onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, averageColor.r, averageColor.g, averageColor.b)}
                 />
                 <GtkLabel label="Average" cssClasses={["dim-label", "caption"]} />
             </GtkBox>

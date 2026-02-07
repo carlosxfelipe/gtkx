@@ -16,7 +16,9 @@ type PendingDrawFuncEntry = { container: Gtk.DrawingArea; fn: DrawFunc };
 
 const pendingDrawFuncs: PendingDrawFuncEntry[] = [];
 
-function wrapDrawFunc(fn: DrawFunc): (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void {
+function wrapDrawFunc(
+    fn: DrawFunc,
+): (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void {
     return (self, cr, width, height) => fn(cr, width, height, self);
 }
 
