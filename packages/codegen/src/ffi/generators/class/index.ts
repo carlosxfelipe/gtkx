@@ -34,7 +34,7 @@ import { StaticFunctionBuilder } from "./static-function-builder.js";
 /**
  * Result of class generation.
  */
-export type ClassGenerationResult = {
+type ClassGenerationResult = {
     /** Whether generation was successful */
     success: boolean;
     /** Widget metadata for codegen (if this is a widget class) */

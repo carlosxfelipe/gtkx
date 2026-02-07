@@ -290,7 +290,7 @@ function cleanupWhitespace(text: string): string {
     return result.trim();
 }
 
-export interface SanitizeDocOptions {
+interface SanitizeDocOptions {
     escapeXmlTags?: boolean;
     namespace?: string;
     linkStyle?: "namespaced" | "prefixed";

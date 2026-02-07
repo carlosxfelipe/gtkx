@@ -8,7 +8,7 @@ export type ParamWrapInfo = {
     tsType: string;
 };
 
-export type ReturnUnwrapInfo = {
+type ReturnUnwrapInfo = {
     needsUnwrap: boolean;
 };
 

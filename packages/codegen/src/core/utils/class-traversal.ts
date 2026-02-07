@@ -147,7 +147,7 @@ export function collectOwnAndInterfaceMethodNames(
 /**
  * Options for collecting direct members.
  */
-export type CollectDirectMembersOptions<T extends { name: string }> = {
+type CollectDirectMembersOptions<T extends { name: string }> = {
     /** The class to analyze */
     cls: GirClass;
     /** GIR repository for interface resolution */

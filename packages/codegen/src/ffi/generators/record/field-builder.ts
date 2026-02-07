@@ -20,7 +20,7 @@ import type { Writers } from "../../../core/writers/index.js";
 /**
  * Field layout information.
  */
-export type FieldLayout = {
+type FieldLayout = {
     field: GirField;
     offset: number;
     size: number;

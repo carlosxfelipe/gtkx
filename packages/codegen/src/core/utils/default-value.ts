@@ -73,7 +73,7 @@ function resolveEnumByCIdentifier(cIdentifier: string, repo: GirRepository): Enu
     return null;
 }
 
-export type DefaultValueConversion = {
+type DefaultValueConversion = {
     initializer: string;
     imports: Array<{ name: string; namespace: string }>;
 };

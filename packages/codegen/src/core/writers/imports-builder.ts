@@ -14,7 +14,7 @@ import { normalizeClassName, toKebabCase } from "../utils/naming.js";
 /**
  * Options for building imports.
  */
-export type ImportsBuilderOptions = {
+type ImportsBuilderOptions = {
     /** Current namespace being generated */
     namespace: string;
     /** Current class name (to avoid self-import) */
@@ -30,7 +30,7 @@ export type ImportsBuilderOptions = {
 /**
  * Represents an import to be added.
  */
-export type ImportSpec = {
+type ImportSpec = {
     /** Module specifier (e.g., "@gtkx/native", "./button.js") */
     moduleSpecifier: string;
     /** Named imports */

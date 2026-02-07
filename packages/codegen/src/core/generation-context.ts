@@ -11,7 +11,7 @@ import type { ImportType, TypeImport } from "./type-system/ffi-types.js";
 /**
  * Represents external type usage for imports.
  */
-export type ExternalTypeUsage = {
+type ExternalTypeUsage = {
     namespace: string;
     name: string;
     transformedName: string;

@@ -5,7 +5,7 @@ import type { SignalStore } from "./signal-store.js";
 
 type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
 
-export type SelectionModelConfig = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged"> & {
+type SelectionModelConfig = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged"> & {
     owner: object;
     signalStore: SignalStore;
 };

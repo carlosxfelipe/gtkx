@@ -11,7 +11,7 @@ import type { FfiTypeDescriptor } from "../type-system/ffi-types.js";
 /**
  * Options for the FFI type writer.
  */
-export type FfiTypeWriterOptions = {
+type FfiTypeWriterOptions = {
     /** Current shared library for boxed types without explicit lib */
     currentSharedLibrary?: string;
     /** GLib shared library for GError types (derived from GIR) */

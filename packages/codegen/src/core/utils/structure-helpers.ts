@@ -133,7 +133,7 @@ export function addNamespaceImports(
     }
 }
 
-export type ConstExportOptions = {
+type ConstExportOptions = {
     type?: string;
     docs?: string | OptionalKind<JSDocStructure>[];
 };

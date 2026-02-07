@@ -8,19 +8,19 @@ import { CodegenProject } from "./project.js";
 
 const NON_INTROSPECTABLE_NAMESPACES = new Set(["Pango"]);
 
-export type CodegenOrchestratorOptions = {
+type CodegenOrchestratorOptions = {
     girsDir: string;
     ffiOutputDir: string;
     reactOutputDir: string;
 };
 
-export type CodegenResult = {
+type CodegenResult = {
     ffiFiles: Map<string, string>;
     reactFiles: Map<string, string>;
     stats: CodegenStats;
 };
 
-export type CodegenStats = {
+type CodegenStats = {
     namespaces: number;
     widgets: number;
     totalFiles: number;

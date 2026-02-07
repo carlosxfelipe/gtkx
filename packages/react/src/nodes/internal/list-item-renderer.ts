@@ -5,7 +5,7 @@ import { reconciler } from "../../reconciler.js";
 import { BaseItemRenderer } from "./base-item-renderer.js";
 import type { TreeStore } from "./tree-store.js";
 
-export type RenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
+type RenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
 
 type PendingBind = {
     treeListRow: Gtk.TreeListRow;

@@ -22,7 +22,7 @@ import { ParamWrapWriter } from "./param-wrap-writer.js";
 /**
  * Information about a Ref parameter that GTK allocates.
  */
-export type GtkAllocatedRef = {
+type GtkAllocatedRef = {
     paramName: string;
     innerType: string;
     nullable: boolean;
@@ -34,7 +34,7 @@ export type GtkAllocatedRef = {
 /**
  * Options for building instance method body statements.
  */
-export type MethodBodyStatementsOptions = {
+type MethodBodyStatementsOptions = {
     /** The shared library (e.g., "libgtk-4.so.1") */
     sharedLibrary: string;
     /** Self type descriptor for FFI marshalling */
@@ -46,7 +46,7 @@ export type MethodBodyStatementsOptions = {
 /**
  * Options for building function body statements.
  */
-export type FunctionBodyStatementsOptions = {
+type FunctionBodyStatementsOptions = {
     /** The shared library (e.g., "libgtk-4.so.1") */
     sharedLibrary: string;
     /** Class name for own-class returns */
@@ -83,7 +83,7 @@ type CallableBodyOptions = {
 /**
  * Options for building a complete method structure.
  */
-export type MethodStructureOptions = {
+type MethodStructureOptions = {
     /** The method name to use (after any renaming) */
     methodName: string;
     /** Self type descriptor for FFI marshalling */
@@ -96,7 +96,7 @@ export type MethodStructureOptions = {
     className?: string;
 };
 
-export type StaticFunctionStructureOptions = {
+type StaticFunctionStructureOptions = {
     /** The normalized TypeScript class name (e.g., "TextIter", "Button") */
     className: string;
     /** The original GIR class/record name for return type comparison */

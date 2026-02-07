@@ -5,7 +5,7 @@ import { reconciler } from "../../reconciler.js";
 import { BaseItemRenderer } from "./base-item-renderer.js";
 import type { ListStore } from "./list-store.js";
 
-export type GridRenderItemFn<T> = (item: T | null) => ReactNode;
+type GridRenderItemFn<T> = (item: T | null) => ReactNode;
 
 export class GridItemRenderer extends BaseItemRenderer<ListStore> {
     private renderFn: GridRenderItemFn<unknown> | null = () => null;

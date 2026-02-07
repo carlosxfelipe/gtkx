@@ -25,7 +25,7 @@ type HandlerEntry = { obj: GObject.Object; handlerId: number };
 
 type SignalKey = `${string}:${string}`;
 
-export interface SignalOptions {
+interface SignalOptions {
     blockable?: boolean;
 }
 

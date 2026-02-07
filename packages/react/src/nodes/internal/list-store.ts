@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 
-export type ItemUpdatedCallback = (id: string) => void;
+type ItemUpdatedCallback = (id: string) => void;
 
 export class ListStore {
     private model = new Gtk.StringList();

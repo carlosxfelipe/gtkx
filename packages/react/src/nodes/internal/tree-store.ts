@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 
-export type TreeItemUpdatedCallback = (id: string) => void;
+type TreeItemUpdatedCallback = (id: string) => void;
 
 export type TreeItemData<T = unknown> = {
     value: T;
