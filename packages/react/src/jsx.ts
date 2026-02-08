@@ -449,6 +449,8 @@ export type ColumnViewColumnProps<T = unknown> = {
     sortable?: boolean;
     /** Function to render the cell content for each row */
     renderCell: (item: T | null) => ReactNode;
+    /** Menu items for the column header context menu */
+    children?: ReactNode;
 };
 
 /**
@@ -870,7 +872,7 @@ export const x = {
      * ```
      */
     ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): ReactElement {
-        return createElement("ColumnViewColumn", props);
+        return createElement("ColumnViewColumn", props, props.children);
     },
 
     /**

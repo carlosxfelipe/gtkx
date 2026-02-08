@@ -11,7 +11,7 @@ import {
     GtkScrolledWindow,
     x,
 } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 type Person = {
     name: string;
@@ -46,9 +46,37 @@ const files: FileItem[] = [
     { name: "notes.md", isFolder: false },
 ];
 
+const ColumnMenu = ({
+    column,
+    onSort,
+    children,
+}: {
+    column: SortColumn;
+    onSort: (column: string | null, order: Gtk.SortType) => void;
+    children?: ReactNode;
+}) => (
+    <>
+        <x.MenuSection>
+            <x.MenuItem
+                id="sort-asc"
+                label="Sort Ascending"
+                onActivate={() => onSort(column, Gtk.SortType.ASCENDING)}
+            />
+            <x.MenuItem
+                id="sort-desc"
+                label="Sort Descending"
+                onActivate={() => onSort(column, Gtk.SortType.DESCENDING)}
+            />
+            <x.MenuItem id="sort-clear" label="Clear Sort" onActivate={() => onSort(null, Gtk.SortType.ASCENDING)} />
+        </x.MenuSection>
+        {children}
+    </>
+);
+
 export const ListDemo = () => {
     const [sortColumn, setSortColumn] = useState<SortColumn>(null);
     const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+    const [hiddenColumns, setHiddenColumns] = useState<Set<SortColumn>>(new Set());
 
     const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
         setSortColumn(column as SortColumn);
@@ -206,7 +234,7 @@ export const ListDemo = () => {
 
             <AdwPreferencesGroup
                 title="x.ColumnViewColumn"
-                description="Table columns with custom cell rendering and React-controlled sorting"
+                description="Table columns with header menus, sorting, and hide/show (right-click header)"
             >
                 <GtkFrame marginTop={12}>
                     <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
@@ -231,39 +259,65 @@ export const ListDemo = () => {
                                         marginEnd={8}
                                     />
                                 )}
-                            />
-                            <x.ColumnViewColumn<Person>
-                                id="role"
-                                title="Role"
-                                fixedWidth={100}
-                                sortable
-                                renderCell={(item) => (
-                                    <GtkLabel
-                                        label={item?.role ?? ""}
-                                        halign={Gtk.Align.START}
-                                        marginTop={8}
-                                        marginBottom={8}
-                                        marginStart={8}
-                                        marginEnd={8}
-                                    />
-                                )}
-                            />
-                            <x.ColumnViewColumn<Person>
-                                id="salary"
-                                title="Salary"
-                                fixedWidth={100}
-                                sortable
-                                renderCell={(item) => (
-                                    <GtkLabel
-                                        label={item ? `$${item.salary.toLocaleString()}` : ""}
-                                        halign={Gtk.Align.END}
-                                        marginTop={8}
-                                        marginBottom={8}
-                                        marginStart={8}
-                                        marginEnd={8}
-                                    />
-                                )}
-                            />
+                            >
+                                <ColumnMenu column="name" onSort={handleSortChange} />
+                            </x.ColumnViewColumn>
+                            {!hiddenColumns.has("role") && (
+                                <x.ColumnViewColumn<Person>
+                                    id="role"
+                                    title="Role"
+                                    fixedWidth={100}
+                                    sortable
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item?.role ?? ""}
+                                            halign={Gtk.Align.START}
+                                            marginTop={8}
+                                            marginBottom={8}
+                                            marginStart={8}
+                                            marginEnd={8}
+                                        />
+                                    )}
+                                >
+                                    <ColumnMenu column="role" onSort={handleSortChange}>
+                                        <x.MenuSection>
+                                            <x.MenuItem
+                                                id="hide"
+                                                label="Hide Column"
+                                                onActivate={() => setHiddenColumns((s) => new Set(s).add("role"))}
+                                            />
+                                        </x.MenuSection>
+                                    </ColumnMenu>
+                                </x.ColumnViewColumn>
+                            )}
+                            {!hiddenColumns.has("salary") && (
+                                <x.ColumnViewColumn<Person>
+                                    id="salary"
+                                    title="Salary"
+                                    fixedWidth={100}
+                                    sortable
+                                    renderCell={(item) => (
+                                        <GtkLabel
+                                            label={item ? `$${item.salary.toLocaleString()}` : ""}
+                                            halign={Gtk.Align.END}
+                                            marginTop={8}
+                                            marginBottom={8}
+                                            marginStart={8}
+                                            marginEnd={8}
+                                        />
+                                    )}
+                                >
+                                    <ColumnMenu column="salary" onSort={handleSortChange}>
+                                        <x.MenuSection>
+                                            <x.MenuItem
+                                                id="hide"
+                                                label="Hide Column"
+                                                onActivate={() => setHiddenColumns((s) => new Set(s).add("salary"))}
+                                            />
+                                        </x.MenuSection>
+                                    </ColumnMenu>
+                                </x.ColumnViewColumn>
+                            )}
                             {sortedPeople.map((person) => (
                                 <x.ListItem key={person.email} id={person.email} value={person} />
                             ))}
@@ -271,7 +325,7 @@ export const ListDemo = () => {
                     </GtkScrolledWindow>
                 </GtkFrame>
                 <GtkLabel
-                    label={`Sorting: ${sortColumn ? `${sortColumn} (${sortOrder === Gtk.SortType.ASCENDING ? "asc" : "desc"})` : "none"}`}
+                    label={`Sorting: ${sortColumn ? `${sortColumn} (${sortOrder === Gtk.SortType.ASCENDING ? "asc" : "desc"})` : "none"}${hiddenColumns.size > 0 ? ` · Hidden: ${[...hiddenColumns].join(", ")}` : ""}`}
                     cssClasses={["dim-label", "monospace"]}
                     marginTop={8}
                 />

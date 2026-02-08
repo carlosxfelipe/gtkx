@@ -63,6 +63,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
         child.setStore(this.list.getStore());
         child.setEstimatedRowHeight(this.estimatedRowHeight);
         this.container.appendColumn(child.getColumn());
+        child.attachToColumnView(this.container);
         this.columnNodes.add(child);
     }
 
@@ -94,6 +95,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             this.container.appendColumn(child.getColumn());
         }
 
+        child.attachToColumnView(this.container);
         this.columnNodes.add(child);
     }
 
@@ -105,6 +107,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
         }
 
         if (child instanceof ColumnViewColumnNode) {
+            child.detachFromColumnView();
+
             const existingColumn = this.findColumnInView(child.getColumn());
 
             if (existingColumn) {

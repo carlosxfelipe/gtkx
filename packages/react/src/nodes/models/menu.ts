@@ -49,10 +49,14 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
         this.actionPrefix = prefix;
 
         for (const child of this.children) {
+            if (child.type === "item") {
+                child.removeFromParentMenu();
+            }
+
             child.setActionMap(actionMap, prefix);
 
             if (child.type === "item") {
-                child.createAction();
+                child.appendToParentMenu();
             }
         }
     }
