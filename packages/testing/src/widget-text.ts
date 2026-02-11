@@ -1,55 +1,6 @@
 import { getNativeInterface } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 
-const ROLES_WITH_INTERNAL_LABELS = new Set([
-    Gtk.AccessibleRole.BUTTON,
-    Gtk.AccessibleRole.TOGGLE_BUTTON,
-    Gtk.AccessibleRole.CHECKBOX,
-    Gtk.AccessibleRole.RADIO,
-    Gtk.AccessibleRole.LIST_ITEM,
-    Gtk.AccessibleRole.MENU_ITEM,
-    Gtk.AccessibleRole.MENU_ITEM_CHECKBOX,
-    Gtk.AccessibleRole.MENU_ITEM_RADIO,
-    Gtk.AccessibleRole.ROW,
-    Gtk.AccessibleRole.TAB,
-    Gtk.AccessibleRole.LINK,
-]);
-
-const isInternalLabel = (widget: Gtk.Widget): boolean => {
-    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return false;
-
-    const parent = widget.getParent();
-    if (!parent) return false;
-
-    if (parent.getAccessibleRole === undefined) return false;
-    const parentRole = parent.getAccessibleRole();
-    if (!parentRole) return false;
-
-    if (ROLES_WITH_INTERNAL_LABELS.has(parentRole)) return true;
-
-    const labelText = getLabelText(widget);
-    if (!labelText) return false;
-
-    let ancestor: Gtk.Widget | null = parent;
-    while (ancestor) {
-        if (ancestor.getAccessibleRole === undefined) return false;
-        const role = ancestor.getAccessibleRole();
-        if (role && ROLES_WITH_INTERNAL_LABELS.has(role)) {
-            const ancestorText = getDefaultText(ancestor);
-            return ancestorText === null || ancestorText === labelText;
-        }
-        ancestor = ancestor.getParent();
-    }
-
-    return false;
-};
-
-const getLabelText = (widget: Gtk.Widget): string | null => {
-    const asLabel = widget as Gtk.Label;
-    const asInscription = widget as Gtk.Inscription;
-    return asLabel.getLabel?.() ?? asInscription.getText?.() ?? null;
-};
-
 const getDefaultText = (widget: Gtk.Widget): string | null => {
     if ("getLabel" in widget && typeof widget.getLabel === "function") {
         return (widget.getLabel() as string) ?? null;
@@ -72,7 +23,9 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
 
     while (child) {
         if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
-            const labelText = getLabelText(child);
+            const asLabel = child as Gtk.Label;
+            const asInscription = child as Gtk.Inscription;
+            const labelText = asLabel.getLabel?.() ?? asInscription.getText?.() ?? null;
             if (labelText) labels.push(labelText);
         }
 
@@ -90,8 +43,6 @@ const collectChildLabels = (widget: Gtk.Widget): string[] => {
  * @returns The accessible text or null if none found
  */
 export const getWidgetText = (widget: Gtk.Widget): string | null => {
-    if (isInternalLabel(widget)) return null;
-
     const role = widget.getAccessibleRole();
     if (role === undefined) return null;
 
