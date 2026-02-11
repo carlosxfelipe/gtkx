@@ -35,7 +35,8 @@ const isInternalLabel = (widget: Gtk.Widget): boolean => {
         if (ancestor.getAccessibleRole === undefined) return false;
         const role = ancestor.getAccessibleRole();
         if (role && ROLES_WITH_INTERNAL_LABELS.has(role)) {
-            return getDefaultText(ancestor) === labelText;
+            const ancestorText = getDefaultText(ancestor);
+            return ancestorText === null || ancestorText === labelText;
         }
         ancestor = ancestor.getParent();
     }
