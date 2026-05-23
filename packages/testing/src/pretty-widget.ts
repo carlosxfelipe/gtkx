@@ -30,51 +30,7 @@ export type PrettyWidgetOptions = {
     includeIds?: boolean;
 };
 
-type HighlightColors = {
-    tag: (s: string) => string;
-    attr: (s: string) => string;
-    value: (s: string) => string;
-    text: (s: string) => string;
-    reset: string;
-};
-
-const shouldHighlight = (): boolean => {
-    if (typeof process === "undefined") return false;
-    if (process.env.COLORS === "false" || process.env.NO_COLOR) return false;
-    if (process.env.COLORS === "true" || process.env.FORCE_COLOR) return true;
-    return process.stdout?.isTTY ?? false;
-};
-
-const ansi = {
-    cyan: "\x1b[36m",
-    yellow: "\x1b[33m",
-    green: "\x1b[32m",
-    reset: "\x1b[0m",
-};
-
-const createColors = (enabled: boolean): HighlightColors => {
-    if (!enabled) {
-        const identity = (s: string): string => s;
-        return { tag: identity, attr: identity, value: identity, text: identity, reset: "" };
-    }
-    return {
-        tag: (s) => `${ansi.cyan}${s}${ansi.reset}`,
-        attr: (s) => `${ansi.yellow}${s}${ansi.reset}`,
-        value: (s) => `${ansi.green}${s}${ansi.reset}`,
-        text: (s) => s,
-        reset: ansi.reset,
-    };
-};
-
-const formatTagName = (widget: Gtk.Widget): string => {
-    return widget.constructor.name;
-};
-
-const escapeAttrValue = (value: string): string => {
-    return value.replace(/"/g, "&quot;");
-};
-
-const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeIds: boolean): string => {
+const buildAttrs = (widget: Gtk.Widget, includeIds: boolean): ReadonlyArray<readonly [string, string]> => {
     const attrs: [string, string][] = [];
 
     if (includeIds) {
@@ -99,66 +55,75 @@ const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeId
         attrs.push(["aria-hidden", "true"]);
     }
 
-    if (attrs.length === 0) return "";
-
-    return attrs
-        .sort(([a], [b]) => {
-            if (a === "id") return -1;
-            if (b === "id") return 1;
-            return a.localeCompare(b);
-        })
-        .map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`)
-        .join("");
+    return attrs.toSorted(([a], [b]) => {
+        if (a === "id") return -1;
+        if (b === "id") return 1;
+        return a.localeCompare(b);
+    });
 };
 
-const hasChildren = (widget: Gtk.Widget): boolean => {
-    return widget.getFirstChild() !== null;
+type Colors = {
+    tag: (s: string) => string;
+    attr: (s: string) => string;
+    value: (s: string) => string;
 };
 
-const printWidget = (widget: Gtk.Widget, colors: HighlightColors, depth: number, includeIds: boolean): string => {
-    const indent = INDENT.repeat(depth);
-    const tagName = formatTagName(widget);
-    const attributes = formatAttributes(widget, colors, includeIds);
-    const text = getWidgetPropertyText(widget);
-    const children: string[] = [];
+const ansi = {
+    cyan: "\x1b[36m",
+    yellow: "\x1b[33m",
+    green: "\x1b[32m",
+    reset: "\x1b[0m",
+};
 
-    let child = widget.getFirstChild();
-    while (child) {
-        children.push(printWidget(child, colors, depth + 1, includeIds));
-        child = child.getNextSibling();
+const shouldHighlight = (): boolean => {
+    if (typeof process === "undefined") return false;
+    if (process.env.COLORS === "false" || process.env.NO_COLOR) return false;
+    if (process.env.COLORS === "true" || process.env.FORCE_COLOR) return true;
+    return process.stdout?.isTTY ?? false;
+};
+
+const createColors = (enabled: boolean): Colors => {
+    if (!enabled) {
+        const identity = (s: string): string => s;
+        return { tag: identity, attr: identity, value: identity };
     }
+    return {
+        tag: (s) => `${ansi.cyan}${s}${ansi.reset}`,
+        attr: (s) => `${ansi.yellow}${s}${ansi.reset}`,
+        value: (s) => `${ansi.green}${s}${ansi.reset}`,
+    };
+};
 
-    const openTag = `${colors.tag("<")}${colors.tag(tagName)}${attributes}${colors.tag(">")}`;
+const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;");
 
-    if (!hasChildren(widget) && !text) {
+const formatAttrs = (attrs: ReadonlyArray<readonly [string, string]>, colors: Colors): string =>
+    attrs.map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`).join("");
+
+const formatWidget = (widget: Gtk.Widget, depth: number, includeIds: boolean, colors: Colors): string => {
+    const indent = INDENT.repeat(depth);
+    const tag = widget.constructor.name;
+    const attrs = formatAttrs(buildAttrs(widget, includeIds), colors);
+    const openTag = `${colors.tag("<")}${colors.tag(tag)}${attrs}${colors.tag(">")}`;
+    const closeTag = `${colors.tag("</")}${colors.tag(tag)}${colors.tag(">")}`;
+
+    const text = getWidgetPropertyText(widget);
+    const firstChild = widget.getFirstChild();
+
+    if (!text && !firstChild) {
         return `${indent}${openTag}\n`;
     }
 
-    const closeTag = `${colors.tag("</")}${colors.tag(tagName)}${colors.tag(">")}`;
-
-    if (text && !hasChildren(widget)) {
-        const textContent = colors.text(text);
-        return `${indent}${openTag}\n${indent}${INDENT}${textContent}\n${indent}${closeTag}\n`;
-    }
-
-    let result = `${indent}${openTag}\n`;
+    let output = `${indent}${openTag}\n`;
     if (text) {
-        result += `${indent}${INDENT}${colors.text(text)}\n`;
+        output += `${indent}${INDENT}${text}\n`;
     }
-    for (const childOutput of children) {
-        result += childOutput;
+    let child = firstChild;
+    while (child) {
+        output += formatWidget(child, depth + 1, includeIds, colors);
+        child = child.getNextSibling();
     }
-    result += `${indent}${closeTag}\n`;
-
-    return result;
-};
-
-const printContainer = (container: Container, colors: HighlightColors, includeIds: boolean): string => {
-    if (isApplication(container)) {
-        const windows = Gtk.Window.listToplevels();
-        return windows.map((window) => printWidget(window, colors, 0, includeIds)).join("");
-    }
-    return printWidget(container, colors, 0, includeIds);
+    output += `${indent}${closeTag}\n`;
+    return output;
 };
 
 /**
@@ -187,15 +152,23 @@ const printContainer = (container: Container, colors: HighlightColors, includeId
 export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
     const maxLength = options.maxLength ?? envLimit;
-    const highlight = options.highlight ?? shouldHighlight();
-    const includeIds = options.includeIds ?? false;
 
     if (maxLength === 0) {
         return "";
     }
 
+    const highlight = options.highlight ?? shouldHighlight();
+    const includeIds = options.includeIds ?? false;
     const colors = createColors(highlight);
-    const output = printContainer(container, colors, includeIds);
+
+    let output = "";
+    if (isApplication(container)) {
+        for (const window of Gtk.Window.listToplevels()) {
+            output += formatWidget(window, 0, includeIds, colors);
+        }
+    } else if (container instanceof Gtk.Widget) {
+        output += formatWidget(container, 0, includeIds, colors);
+    }
 
     if (output.length > maxLength) {
         return `${output.slice(0, maxLength)}...`;

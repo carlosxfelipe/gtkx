@@ -5,29 +5,12 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
-import { type ScreenshotOptions, screenshot as screenshotWidget } from "./screenshot.js";
+import { screenshot as captureScreenshot, type ScreenshotOptions } from "./screenshot.js";
 import type { ScreenshotResult } from "./types.js";
-
-const getScreenshotDir = (): string => {
-    const dir = join(tmpdir(), "gtkx-screenshots");
-    if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-    }
-    return dir;
-};
-
-const saveAndLogScreenshot = (result: ScreenshotResult): void => {
-    const dir = getScreenshotDir();
-    const filename = `${Date.now()}-screenshot.png`;
-    const filepath = join(dir, filename);
-    const buffer = Buffer.from(result.data, "base64");
-    writeFileSync(filepath, buffer);
-    console.log(`Screenshot saved: file://${filepath}`);
-};
 
 let currentRoot: Gtk.Application | null = null;
 
-/** @internal */
+/** Sets the application the `screen` queries operate against; called by `render`. */
 export const setScreenRoot = (root: Gtk.Application | null): void => {
     currentRoot = root;
 };
@@ -38,6 +21,62 @@ const getRoot = (): Gtk.Application => {
     }
 
     return currentRoot;
+};
+
+type WindowSelector = number | string | RegExp | undefined;
+
+const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
+    const windows = Gtk.Window.listToplevels();
+
+    if (windows.length === 0) {
+        throw new Error("No windows available for screenshot");
+    }
+
+    if (selector === undefined) {
+        const [first] = windows;
+        if (!(first instanceof Gtk.Window)) {
+            throw new TypeError("First toplevel is not a Window");
+        }
+        return first;
+    }
+
+    if (typeof selector === "number") {
+        const indexed = windows[selector];
+        if (!(indexed instanceof Gtk.Window)) {
+            throw new TypeError(`Window at index ${selector} not found`);
+        }
+        return indexed;
+    }
+
+    const isRegex = selector instanceof RegExp;
+    const found = windows.find((w): w is Gtk.Window => {
+        if (!(w instanceof Gtk.Window)) return false;
+        const title = w.getTitle() ?? "";
+        return isRegex ? selector.test(title) : title.includes(selector);
+    });
+
+    if (!found) {
+        const pattern = isRegex ? selector.toString() : `"${selector}"`;
+        throw new Error(`No window found with title matching ${pattern}`);
+    }
+    return found;
+};
+
+const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
+    const dir = join(tmpdir(), "gtkx-screenshots");
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+    }
+    const filepath = join(dir, `${Date.now()}-screenshot.png`);
+    writeFileSync(filepath, Buffer.from(result.data, "base64"));
+    return filepath;
+};
+
+/**
+ * Logs a `file://` URI for the given screenshot path to the console.
+ */
+export const logScreenshotPath = (filepath: string): void => {
+    console.log(`Screenshot saved: file://${filepath}`);
 };
 
 const boundQueries = bindQueries(getRoot);
@@ -73,13 +112,13 @@ export const screen = {
         logRoles(getRoot());
     },
     /**
-     * Capture a screenshot of the application window, saving it to a temporary file and logging the file path.
+     * Capture a screenshot of a toplevel window, save it to a temp file, and
+     * log a clickable `file://` URI.
      *
      * @param selector - Window selector: index (number), title substring (string), or title pattern (RegExp).
      *                   If omitted, captures the first window.
      * @param options - Optional timeout and interval configuration for waiting on widget rendering.
      * @returns Screenshot result containing base64-encoded PNG data
-     * @throws Error if no windows are available or no matching window is found
      *
      * @example
      * ```tsx
@@ -89,37 +128,11 @@ export const screen = {
      * await screen.screenshot(/^My App/);     // Window with title matching regex
      * ```
      */
-    screenshot: async (selector?: number | string | RegExp, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-        const windows = Gtk.Window.listToplevels();
-
-        if (windows.length === 0) {
-            throw new Error("No windows available for screenshot");
-        }
-
-        let targetWindow: Gtk.Window | undefined;
-
-        if (selector === undefined) {
-            targetWindow = windows[0] as Gtk.Window;
-        } else if (typeof selector === "number") {
-            targetWindow = windows[selector] as Gtk.Window | undefined;
-            if (!targetWindow) {
-                throw new Error(`Window at index ${selector} not found`);
-            }
-        } else {
-            const isRegex = selector instanceof RegExp;
-            targetWindow = windows.find((w) => {
-                const title = (w as Gtk.Window).getTitle() ?? "";
-                return isRegex ? selector.test(title) : title.includes(selector);
-            }) as Gtk.Window | undefined;
-
-            if (!targetWindow) {
-                const pattern = isRegex ? selector.toString() : `"${selector}"`;
-                throw new Error(`No window found with title matching ${pattern}`);
-            }
-        }
-
-        const result = await screenshotWidget(targetWindow, options);
-        saveAndLogScreenshot(result);
+    screenshot: async (selector?: WindowSelector, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
+        const target = resolveWindow(selector);
+        const result = await captureScreenshot(target, options);
+        const filepath = saveScreenshotToTempFile(result);
+        logScreenshotPath(filepath);
         return result;
     },
 };

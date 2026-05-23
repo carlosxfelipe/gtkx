@@ -1,13 +1,13 @@
-import { start, stop } from "@gtkx/ffi";
+import { stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
-import { createRef, type ReactNode, type Ref } from "react";
+import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
-import { tick } from "./timing.js";
+import { act } from "./timing.js";
 import { type Container, isApplication, traverse } from "./traversal.js";
 import type { RenderOptions, RenderResult, WrapperComponent } from "./types.js";
 
@@ -15,21 +15,30 @@ let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
 
-type ReconcilerInstance = ReturnType<typeof reconciler.getInstance>;
+const renderInstrumentationOrigin = Date.now();
+let updateCallCounter = 0;
+const logRenderEvent = (id: number, event: string, details?: string): void => {
+    const elapsed = Date.now() - renderInstrumentationOrigin;
+    const suffix = details ? ` ${details}` : "";
+    console.error(`[gtkx:render#${id}] +${elapsed}ms ${event}${suffix}`);
+};
 
-const update = async (
-    instance: ReconcilerInstance,
-    element: ReactNode,
-    fiberRoot: Reconciler.FiberRoot,
-): Promise<void> => {
-    lastRenderError = null;
-    instance.updateContainer(element, fiberRoot, null, () => {});
-    await tick();
+const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
+    const id = ++updateCallCounter;
+    const startTime = Date.now();
+    logRenderEvent(id, "update enter", `element=${element === null ? "null" : "node"}`);
+    await act(() => {
+        logRenderEvent(id, "calling reconciler.updateContainer");
+        reconciler.updateContainer(element, fiberRoot, null, () => {});
+        logRenderEvent(id, "reconciler.updateContainer returned");
+    });
+    logRenderEvent(id, "act resolved", `total=${Date.now() - startTime}ms`);
 
     if (lastRenderError) {
-        const error = lastRenderError;
+        const captured = lastRenderError;
         lastRenderError = null;
-        throw error;
+        logRenderEvent(id, "throwing captured render error", captured.message);
+        throw captured;
     }
 };
 
@@ -38,11 +47,17 @@ const handleError = (error: Error): void => {
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
-    application = start("org.gtkx.testing", Gio.ApplicationFlags.NON_UNIQUE);
+    if (!application) {
+        application = new Gtk.Application({
+            application_id: "org.gtkx.testing",
+            flags: Gio.ApplicationFlags.NON_UNIQUE,
+        });
+        application.register(null);
+        application.activate();
+    }
 
     if (!container) {
-        const instance = reconciler.getInstance();
-        container = instance.createContainer(
+        container = reconciler.createContainer(
             application,
             1,
             null,
@@ -59,43 +74,29 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     return { app: application, container };
 };
 
-const DefaultWrapper: WrapperComponent = ({ children, ref }) => (
-    <GtkApplicationWindow ref={ref as Ref<Gtk.ApplicationWindow>} defaultWidth={800} defaultHeight={600}>
+const DefaultWrapper: WrapperComponent = ({ children }) => (
+    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
         {children}
     </GtkApplicationWindow>
 );
 
-const findFirstWidget = (root: Container): Gtk.Widget | null => {
-    for (const widget of traverse(root)) {
-        if (isApplication(root)) return widget;
-        return root;
-    }
-    return null;
-};
-
-const wrapElement = (
-    element: ReactNode,
-    wrapperRef: React.RefObject<Gtk.Widget | null>,
-    wrapper: RenderOptions["wrapper"],
-): ReactNode => {
-    if (wrapper === false || wrapper === undefined) return element;
-    const Wrapper = wrapper === true ? DefaultWrapper : wrapper;
-    return <Wrapper ref={wrapperRef}>{element}</Wrapper>;
-};
-
-const resolveContainer = (
-    wrapper: RenderOptions["wrapper"],
-    wrapperRef: React.RefObject<Gtk.Widget | null>,
-    baseElement: Container,
-): Gtk.Widget => {
-    if (wrapper !== false && wrapper !== undefined && wrapperRef.current) {
-        return wrapperRef.current;
-    }
-    const firstWidget = findFirstWidget(baseElement);
-    if (!firstWidget) {
+const resolveContainer = (baseElement: Container): Gtk.Widget => {
+    if (isApplication(baseElement)) {
+        const [firstWindow] = baseElement.getWindows();
+        if (firstWindow) return firstWindow;
+        const iterator = traverse(baseElement)[Symbol.iterator]();
+        const first = iterator.next();
+        if (!first.done) return first.value;
         throw new Error("render() produced no widgets: ensure the element renders visible content");
     }
-    return firstWidget;
+    if (baseElement instanceof Gtk.Widget) return baseElement;
+    throw new Error("render() produced no widgets: ensure the element renders visible content");
+};
+
+const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"]): ReactNode => {
+    if (wrapper === false || wrapper === undefined) return element;
+    const Wrapper = wrapper === true ? DefaultWrapper : wrapper;
+    return <Wrapper>{element}</Wrapper>;
 };
 
 /**
@@ -113,9 +114,9 @@ const resolveContainer = (
  * import { render, screen } from "@gtkx/testing";
  *
  * test("button click", async () => {
- * await render(<MyButton />);
- * const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
- * await userEvent.click(button);
+ *   await render(<MyButton />);
+ *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+ *   await userEvent.click(button);
  * });
  * ```
  *
@@ -124,27 +125,24 @@ const resolveContainer = (
  */
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
     const { app: application, container: fiberRoot } = ensureInitialized();
-    const instance = reconciler.getInstance();
     const baseElement: Container = options?.baseElement ?? application;
     const wrapper = options?.wrapper ?? true;
 
-    const wrapperRef = createRef<Gtk.Widget>();
-    const wrappedElement = wrapElement(element, wrapperRef, wrapper);
+    const wrappedElement = wrapElement(element, wrapper);
     const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
-    await update(instance, withContext, fiberRoot);
+    await update(withContext, fiberRoot);
 
     setScreenRoot(application);
 
     return {
-        container: resolveContainer(wrapper, wrapperRef, baseElement),
+        container: resolveContainer(baseElement),
         baseElement,
         ...bindQueries(baseElement),
-        unmount: () => update(instance, null, fiberRoot),
+        unmount: () => update(null, fiberRoot),
         rerender: async (newElement: ReactNode) => {
-            const newWrapperRef = createRef<Gtk.Widget>();
-            const wrapped = wrapElement(newElement, newWrapperRef, wrapper);
+            const wrapped = wrapElement(newElement, wrapper);
             const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
-            await update(instance, withCtx, fiberRoot);
+            await update(withCtx, fiberRoot);
         },
         debug: () => {
             console.log(prettyWidget(application));
@@ -163,28 +161,24 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * import { render, cleanup } from "@gtkx/testing";
  *
  * afterEach(async () => {
- * await cleanup();
+ *   await cleanup();
  * });
  *
  * test("my test", async () => {
- * await render(<MyComponent />);
- * // ...
+ *   await render(<MyComponent />);
  * });
  * ```
  */
 export const cleanup = async (): Promise<void> => {
     if (container && application) {
-        const instance = reconciler.getInstance();
-        await update(instance, null, container);
+        await update(null, container);
     }
     container = null;
     setScreenRoot(null);
 };
 
 const handleSignal = (): void => {
-    try {
-        stop();
-    } catch {}
+    stop().catch(() => {});
     process.exit(0);
 };
 

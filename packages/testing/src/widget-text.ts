@@ -1,5 +1,5 @@
-import { getNativeInterface } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { getAccessibleMetadata } from "@gtkx/react";
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
     const asLabel = widget as Gtk.Label;
@@ -7,23 +7,19 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
     return asLabel.getLabel?.() ?? asInscription.getText?.() ?? null;
 };
 
+const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
+
 const getDefaultText = (widget: Gtk.Widget): string | null => {
-    if ("getLabel" in widget && typeof widget.getLabel === "function") {
-        return (widget.getLabel() as string) || null;
+    for (const getter of DEFAULT_TEXT_GETTERS) {
+        const fn: unknown = Reflect.get(widget, getter);
+        if (typeof fn !== "function") continue;
+        const value = (fn as () => string).call(widget);
+        if (value) return value;
     }
-
-    if ("getText" in widget && typeof widget.getText === "function") {
-        return (widget.getText() as string) || null;
-    }
-
-    if ("getTitle" in widget && typeof widget.getTitle === "function") {
-        return (widget.getTitle() as string) || null;
-    }
-
-    return getNativeInterface(widget, Gtk.Editable)?.getText() || null;
+    return null;
 };
 
-const collectDirectChildLabels = (widget: Gtk.Widget): string[] => {
+const collectLabels = (widget: Gtk.Widget, recursive: boolean): string[] => {
     const labels: string[] = [];
     let child = widget.getFirstChild();
 
@@ -32,23 +28,7 @@ const collectDirectChildLabels = (widget: Gtk.Widget): string[] => {
             const labelText = getLabelText(child);
             if (labelText) labels.push(labelText);
         }
-        child = child.getNextSibling();
-    }
-
-    return labels;
-};
-
-const collectChildLabels = (widget: Gtk.Widget): string[] => {
-    const labels: string[] = [];
-    let child = widget.getFirstChild();
-
-    while (child) {
-        if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
-            const labelText = getLabelText(child);
-            if (labelText) labels.push(labelText);
-        }
-
-        labels.push(...collectChildLabels(child));
+        if (recursive) labels.push(...collectLabels(child, true));
         child = child.getNextSibling();
     }
 
@@ -69,8 +49,8 @@ export const getWidgetText = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
     if (role === undefined) return null;
 
-    const childLabels = collectDirectChildLabels(widget);
-    return childLabels.length > 0 ? childLabels.join("") : null;
+    const childLabels = collectLabels(widget, false);
+    return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
 
 /**
@@ -112,10 +92,13 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
         return null;
     }
 
+    const accessibleLabel = getAccessibleMetadata<string>(widget, "accessibleLabel");
+    if (accessibleLabel) return accessibleLabel;
+
     const ownText = getDefaultText(widget);
     if (ownText) return ownText;
 
-    const childLabels = collectChildLabels(widget);
+    const childLabels = collectLabels(widget, true);
     return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
 

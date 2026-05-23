@@ -1,40 +1,106 @@
 import { describe, expect, it } from "vitest";
-import { tick } from "../src/index.js";
+import { act } from "../src/index.js";
+import { getIsReactActEnvironment, setIsReactActEnvironment } from "../src/timing.js";
 
-describe("tick", () => {
-    it("returns a promise", () => {
-        const result = tick();
-        expect(result).toBeInstanceOf(Promise);
+describe("act / sync callback", () => {
+    it("returns a thenable", async () => {
+        const result = act(() => {});
+        expect(typeof (result as { then?: unknown }).then).toBe("function");
+        await result;
     });
 
-    it("resolves on the next event loop tick", async () => {
-        let resolved = false;
-        const promise = tick().then(() => {
-            resolved = true;
+    it("runs the callback synchronously", () => {
+        let ran = false;
+        act(() => {
+            ran = true;
         });
-
-        expect(resolved).toBe(false);
-        await promise;
-        expect(resolved).toBe(true);
+        expect(ran).toBe(true);
     });
 
-    it("can be used to yield control", async () => {
+    it("resolves with the callback result", async () => {
+        const value = await act(() => 42);
+        expect(value).toBe(42);
+    });
+
+    it("drains queued microtasks before resolving", async () => {
         const order: number[] = [];
-
-        const first = async () => {
+        await act(() => {
+            queueMicrotask(() => order.push(2));
             order.push(1);
-            await tick();
-            order.push(3);
-        };
-
-        const second = async () => {
-            order.push(2);
-        };
-
-        const p1 = first();
-        await second();
-        await p1;
-
+        });
+        order.push(3);
         expect(order).toEqual([1, 2, 3]);
+    });
+});
+
+describe("act / async callback", () => {
+    it("awaits async callbacks before resolving", async () => {
+        const order: number[] = [];
+        await act(async () => {
+            order.push(1);
+            await Promise.resolve();
+            order.push(2);
+        });
+        order.push(3);
+        expect(order).toEqual([1, 2, 3]);
+    });
+
+    it("propagates the resolved value", async () => {
+        const value = await act(async () => "ready");
+        expect(value).toBe("ready");
+    });
+});
+
+describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
+    it("sets the flag inside a sync callback and restores it synchronously", () => {
+        const before = getIsReactActEnvironment();
+        setIsReactActEnvironment(false);
+        let insideEnv: boolean | undefined;
+        act(() => {
+            insideEnv = getIsReactActEnvironment();
+        });
+        expect(insideEnv).toBe(true);
+        expect(getIsReactActEnvironment()).toBe(false);
+        setIsReactActEnvironment(before);
+    });
+
+    it("keeps the flag set across an async callback and restores it on settle", async () => {
+        const before = getIsReactActEnvironment();
+        setIsReactActEnvironment(false);
+        let envBeforeAwait: boolean | undefined;
+        let envAfterAwait: boolean | undefined;
+        await act(async () => {
+            envBeforeAwait = getIsReactActEnvironment();
+            await Promise.resolve();
+            envAfterAwait = getIsReactActEnvironment();
+        });
+        expect(envBeforeAwait).toBe(true);
+        expect(envAfterAwait).toBe(true);
+        expect(getIsReactActEnvironment()).toBe(false);
+        setIsReactActEnvironment(before);
+    });
+
+    it("restores the flag after a sync throw", () => {
+        const before = getIsReactActEnvironment();
+        setIsReactActEnvironment(false);
+        expect(() =>
+            act(() => {
+                throw new Error("boom");
+            }),
+        ).toThrow("boom");
+        expect(getIsReactActEnvironment()).toBe(false);
+        setIsReactActEnvironment(before);
+    });
+
+    it("restores the flag after an async rejection", async () => {
+        const before = getIsReactActEnvironment();
+        setIsReactActEnvironment(false);
+        await expect(
+            act(async () => {
+                throw new Error("boom");
+            }),
+        ).rejects.toThrow("boom");
+        expect(getIsReactActEnvironment()).toBe(false);
+        setIsReactActEnvironment(before);
     });
 });

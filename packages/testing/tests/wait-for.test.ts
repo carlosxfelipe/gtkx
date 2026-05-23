@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { waitFor, waitForElementToBeRemoved } from "../src/wait-for.js";
 
-describe("waitFor", () => {
+describe("waitFor success", () => {
     it("resolves immediately when callback succeeds", async () => {
         const result = await waitFor(() => "success");
         expect(result).toBe("success");
@@ -23,6 +23,19 @@ describe("waitFor", () => {
         expect(attempts).toBe(3);
     });
 
+    it("handles async callbacks", async () => {
+        let attempts = 0;
+        const result = await waitFor(async () => {
+            attempts++;
+            await new Promise((r) => setTimeout(r, 5));
+            if (attempts < 2) throw new Error("Not ready");
+            return "async success";
+        });
+        expect(result).toBe("async success");
+    });
+});
+
+describe("waitFor timeout", () => {
     it("throws timeout error when callback never succeeds", async () => {
         await expect(
             waitFor(
@@ -81,24 +94,13 @@ describe("waitFor", () => {
         expect(onTimeout).toHaveBeenCalledTimes(1);
         expect(onTimeout).toHaveBeenCalledWith(expect.any(Error));
     });
-
-    it("handles async callbacks", async () => {
-        let attempts = 0;
-        const result = await waitFor(async () => {
-            attempts++;
-            await new Promise((r) => setTimeout(r, 5));
-            if (attempts < 2) throw new Error("Not ready");
-            return "async success";
-        });
-        expect(result).toBe("async success");
-    });
 });
 
-describe("waitForElementToBeRemoved", () => {
-    const createMockWidget = (hasParent: boolean) => ({
-        getParent: () => (hasParent ? {} : null),
-    });
+const createMockWidget = (hasParent: boolean) => ({
+    getParent: () => (hasParent ? {} : null),
+});
 
+describe("waitForElementToBeRemoved preconditions", () => {
     it("throws if element is already removed", async () => {
         const element = createMockWidget(false);
 
@@ -112,7 +114,9 @@ describe("waitForElementToBeRemoved", () => {
             "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
         );
     });
+});
 
+describe("waitForElementToBeRemoved success", () => {
     it("resolves when element is removed", async () => {
         let hasParent = true;
         const element = {
@@ -123,7 +127,9 @@ describe("waitForElementToBeRemoved", () => {
             hasParent = false;
         }, 50);
 
-        await waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 });
+        await expect(
+            waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 }),
+        ).resolves.toBeUndefined();
     });
 
     it("resolves when callback returns null", async () => {
@@ -133,9 +139,31 @@ describe("waitForElementToBeRemoved", () => {
             element = null;
         }, 50);
 
-        await waitForElementToBeRemoved(() => element as never, { timeout: 500, interval: 10 });
+        await expect(
+            waitForElementToBeRemoved(() => element as never, { timeout: 500, interval: 10 }),
+        ).resolves.toBeUndefined();
     });
 
+    it("handles getParent throwing error as removed", async () => {
+        let shouldThrow = false;
+        const element = {
+            getParent: () => {
+                if (shouldThrow) throw new Error("Widget destroyed");
+                return {};
+            },
+        };
+
+        setTimeout(() => {
+            shouldThrow = true;
+        }, 50);
+
+        await expect(
+            waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 }),
+        ).resolves.toBeUndefined();
+    });
+});
+
+describe("waitForElementToBeRemoved timeout", () => {
     it("times out if element is never removed", async () => {
         const element = createMockWidget(true);
 
@@ -154,21 +182,5 @@ describe("waitForElementToBeRemoved", () => {
         ).rejects.toThrow("Custom removal timeout");
 
         expect(onTimeout).toHaveBeenCalledTimes(1);
-    });
-
-    it("handles getParent throwing error as removed", async () => {
-        let shouldThrow = false;
-        const element = {
-            getParent: () => {
-                if (shouldThrow) throw new Error("Widget destroyed");
-                return {};
-            },
-        };
-
-        setTimeout(() => {
-            shouldThrow = true;
-        }, 50);
-
-        await waitForElementToBeRemoved(element as never, { timeout: 500, interval: 10 });
     });
 });

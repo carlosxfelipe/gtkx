@@ -8,6 +8,9 @@ import type { RenderHookOptions, RenderHookResult } from "./types.js";
  * Creates a test component that executes the hook and provides utilities
  * for accessing the result, re-rendering with new props, and cleanup.
  *
+ * When the hook callback takes props, `initialProps` is required at the
+ * type level. When it takes none, `options` may be omitted entirely.
+ *
  * @param callback - Function that calls the hook and returns its result
  * @param options - Render options including initialProps and wrapper
  * @returns A promise resolving to the hook result and utilities
@@ -40,12 +43,22 @@ import type { RenderHookOptions, RenderHookResult } from "./types.js";
  * });
  * ```
  */
-export const renderHook = async <Result, Props>(
+export function renderHook<Result>(
+    callback: () => Result,
+    options?: RenderHookOptions<undefined>,
+): Promise<RenderHookResult<Result, undefined>>;
+export function renderHook<Result, Props>(
+    callback: (props: Props) => Result,
+    options: RenderHookOptions<Props>,
+): Promise<RenderHookResult<Result, Props>>;
+export async function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options?: RenderHookOptions<Props>,
-): Promise<RenderHookResult<Result, Props>> => {
-    const resultRef = { current: undefined as Result };
-    let currentProps = options?.initialProps as Props;
+): Promise<RenderHookResult<Result, Props>> {
+    const wrapper = options?.wrapper ?? true;
+    const initialProps = (options as { initialProps?: Props } | undefined)?.initialProps as Props;
+    const resultRef: { current: Result | undefined } = { current: undefined };
+    let currentProps: Props = initialProps;
 
     const TestComponent = ({ props }: { props: Props }): null => {
         const result = callback(props);
@@ -54,12 +67,10 @@ export const renderHook = async <Result, Props>(
         return null;
     };
 
-    const renderResult = await render(<TestComponent props={currentProps} />, {
-        wrapper: options?.wrapper ?? true,
-    });
+    const renderResult = await render(<TestComponent props={currentProps} />, { wrapper });
 
     return {
-        result: resultRef,
+        result: resultRef as { current: Result },
         rerender: async (newProps?: Props) => {
             if (newProps !== undefined) {
                 currentProps = newProps;
@@ -68,4 +79,4 @@ export const renderHook = async <Result, Props>(
         },
         unmount: renderResult.unmount,
     };
-};
+}

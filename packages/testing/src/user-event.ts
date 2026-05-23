@@ -1,8 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
-import { type Object as GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
-import { tick } from "./timing.js";
+import { act } from "./timing.js";
 import { isEditable } from "./widget.js";
 
 /**
@@ -14,68 +13,61 @@ export type TabOptions = {
 };
 
 const click = async (element: Gtk.Widget): Promise<void> => {
-    element.activate();
-    await tick();
+    await act(() => {
+        element.activate();
+    });
 };
 
 const emitClickSequence = async (element: Gtk.Widget, nPress: number): Promise<void> => {
-    const controller = getOrCreateController(element, Gtk.GestureClick);
+    await act(() => {
+        const controller = getOrCreateController(element, Gtk.GestureClick);
 
-    for (let i = 1; i <= nPress; i++) {
-        const args = [
-            Value.newFromObject(controller),
-            Value.newFromInt(i),
-            Value.newFromDouble(0),
-            Value.newFromDouble(0),
-        ];
-        signalEmitv(args, getSignalId(controller, "pressed"), 0);
-        signalEmitv(args, getSignalId(controller, "released"), 0);
-    }
-
-    await tick();
+        for (let i = 1; i <= nPress; i++) {
+            controller.emit("pressed", i, 0, 0);
+            controller.emit("released", i, 0, 0);
+        }
+    });
 };
 
-const dblClick = async (element: Gtk.Widget): Promise<void> => {
-    await emitClickSequence(element, 2);
-};
+const dblClick = (element: Gtk.Widget): Promise<void> => emitClickSequence(element, 2);
 
-const tripleClick = async (element: Gtk.Widget): Promise<void> => {
-    await emitClickSequence(element, 3);
-};
+const tripleClick = (element: Gtk.Widget): Promise<void> => emitClickSequence(element, 3);
 
 const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
-    const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
-    const root = element.getRoot();
+    await act(() => {
+        const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
+        const root = element.getRoot();
 
-    if (root && root instanceof Gtk.Widget) {
-        root.childFocus(direction);
-    }
-
-    await tick();
+        if (root && root instanceof Gtk.Widget) {
+            root.childFocus(direction);
+        }
+    });
 };
 
 const type = async (element: Gtk.Widget, text: string): Promise<void> => {
-    if (!isEditable(element)) {
-        throw new Error("Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
-    }
+    await act(() => {
+        if (!isEditable(element)) {
+            throw new Error(
+                "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
+            );
+        }
 
-    const currentText = element.getText();
-    element.setText(currentText + text);
-
-    await tick();
+        const currentText = element.getText();
+        element.setText(currentText + text);
+    });
 };
 
 const clear = async (element: Gtk.Widget): Promise<void> => {
-    if (!isEditable(element)) {
-        throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
-    }
+    await act(() => {
+        if (!isEditable(element)) {
+            throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
+        }
 
-    element.setText("");
-
-    await tick();
+        element.setText("");
+    });
 };
 
-const SELECTABLE_ROLES = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
+const SELECTABLE_ROLES = new Set<Gtk.AccessibleRole>([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
     if (!widget) return false;
@@ -88,13 +80,14 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
         return;
     }
 
-    if (exclusive && positions.length === 1) {
-        selectionModel.selectItem(positions[0] as number, true);
+    const [first] = positions;
+    if (exclusive && positions.length === 1 && first !== undefined) {
+        selectionModel.selectItem(first, true);
         return;
     }
 
     const nItems = selectionModel.getNItems();
-    const selected = new Gtk.Bitset();
+    const selected = Gtk.Bitset.newEmpty();
     const mask = Gtk.Bitset.newRange(0, nItems);
 
     for (const pos of positions) {
@@ -108,79 +101,93 @@ const isListView = (widget: Gtk.Widget): widget is Gtk.ListView | Gtk.GridView |
     return widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 };
 
-const selectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
-    const valueArray = Array.isArray(values) ? values : [values];
-
-    if (isListView(element)) {
-        const selectionModel = element.getModel() as Gtk.SelectionModel;
-        const isMultiSelection = selectionModel instanceof Gtk.MultiSelection;
-        selectListViewItems(selectionModel, valueArray, !isMultiSelection);
-        await tick();
-        return;
+const selectComboBoxOption = (element: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
+    if (Array.isArray(values) && values.length > 1) {
+        throw new Error("Cannot select multiple options: ComboBox only supports single selection");
     }
+    const [selection] = valueArray;
+    if (selection === undefined) return;
+    if (element instanceof Gtk.DropDown) {
+        element.setSelected(selection);
+    } else if (element instanceof Gtk.ComboBox) {
+        element.setActive(selection);
+    }
+};
 
+const selectListBoxOptions = (element: Gtk.ListBox, valueArray: number[]): void => {
+    for (const value of valueArray) {
+        const row = element.getRowAtIndex(value);
+        if (row) {
+            element.selectRow(row);
+            row.activate();
+        }
+    }
+};
+
+const selectInListView = (element: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+    const selectionModel = element.getModel();
+    if (selectionModel === null) {
+        throw new Error("Cannot select options: list view has no selection model");
+    }
+    const isMultiSelection = selectionModel instanceof Gtk.MultiSelection;
+    selectListViewItems(selectionModel, valueArray, !isMultiSelection);
+};
+
+const selectByRole = (element: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
     if (!isSelectable(element)) {
         throw new Error("Cannot select options: expected selectable widget (COMBO_BOX or LIST)");
     }
 
     const role = element.getAccessibleRole();
-
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
-        if (Array.isArray(values) && values.length > 1) {
-            throw new Error("Cannot select multiple options: ComboBox only supports single selection");
-        }
-        if (element instanceof Gtk.DropDown) {
-            (element as Gtk.DropDown).setSelected(valueArray[0] as number);
-        } else {
-            (element as Gtk.ComboBox).setActive(valueArray[0] as number);
-        }
+        selectComboBoxOption(element, values, valueArray);
     } else if (role === Gtk.AccessibleRole.LIST) {
-        const listBox = element as Gtk.ListBox;
+        selectListBoxOptions(element as Gtk.ListBox, valueArray);
+    }
+};
 
-        for (const value of valueArray) {
-            const row = listBox.getRowAtIndex(value);
+const selectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
+    await act(() => {
+        const valueArray = Array.isArray(values) ? values : [values];
+        if (isListView(element)) {
+            selectInListView(element, valueArray);
+            return;
+        }
+        selectByRole(element, values, valueArray);
+    });
+};
 
-            if (row) {
-                listBox.selectRow(row);
-                row.activate();
-            }
+const deselectInListView = (element: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
+    const selectionModel = element.getModel();
+    if (selectionModel === null) {
+        throw new Error("Cannot deselect options: list view has no selection model");
+    }
+    for (const pos of valueArray) {
+        selectionModel.unselectItem(pos);
+    }
+};
+
+const deselectInListBox = (listBox: Gtk.ListBox, valueArray: number[]): void => {
+    for (const value of valueArray) {
+        const row = listBox.getRowAtIndex(value);
+        if (row) {
+            listBox.unselectRow(row);
         }
     }
-
-    await tick();
 };
 
 const deselectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
-    const valueArray = Array.isArray(values) ? values : [values];
-
-    if (isListView(element)) {
-        const selectionModel = element.getModel() as Gtk.SelectionModel;
-
-        for (const pos of valueArray) {
-            selectionModel.unselectItem(pos);
+    await act(() => {
+        const valueArray = Array.isArray(values) ? values : [values];
+        if (isListView(element)) {
+            deselectInListView(element, valueArray);
+            return;
         }
-
-        await tick();
-        return;
-    }
-
-    const role = element.getAccessibleRole();
-
-    if (role !== Gtk.AccessibleRole.LIST) {
-        throw new Error("Cannot deselect options: only ListBox supports deselection");
-    }
-
-    const listBox = element as Gtk.ListBox;
-
-    for (const value of valueArray) {
-        const row = listBox.getRowAtIndex(value);
-
-        if (row) {
-            listBox.unselectRow(row as Gtk.ListBoxRow);
+        if (element.getAccessibleRole() !== Gtk.AccessibleRole.LIST) {
+            throw new Error("Cannot deselect options: only ListBox supports deselection");
         }
-    }
-
-    await tick();
+        deselectInListBox(element as Gtk.ListBox, valueArray);
+    });
 };
 
 const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widget, controllerType: new () => T): T => {
@@ -188,9 +195,9 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
     const nItems = controllers.getNItems();
 
     for (let i = 0; i < nItems; i++) {
-        const controller = controllers.getObject(i);
+        const controller = controllers.getItem(i);
         if (controller instanceof controllerType) {
-            return controller as T;
+            return controller;
         }
     }
 
@@ -199,25 +206,18 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
     return controller;
 };
 
-const getSignalId = (target: Gtk.EventController, signalName: string): number => {
-    const gtype = typeFromName((target.constructor as typeof GObject).glibTypeName);
-    return signalLookup(signalName, gtype);
-};
-
 const hover = async (element: Gtk.Widget): Promise<void> => {
-    const controller = getOrCreateController(element, Gtk.EventControllerMotion);
-    signalEmitv(
-        [Value.newFromObject(controller), Value.newFromDouble(0), Value.newFromDouble(0)],
-        getSignalId(controller, "enter"),
-        0,
-    );
-    await tick();
+    await act(() => {
+        const controller = getOrCreateController(element, Gtk.EventControllerMotion);
+        controller.emit("enter", 0, 0);
+    });
 };
 
 const unhover = async (element: Gtk.Widget): Promise<void> => {
-    const controller = getOrCreateController(element, Gtk.EventControllerMotion);
-    signalEmitv([Value.newFromObject(controller)], getSignalId(controller, "leave"), 0);
-    await tick();
+    await act(() => {
+        const controller = getOrCreateController(element, Gtk.EventControllerMotion);
+        controller.emit("leave");
+    });
 };
 
 const KEY_MAP: Record<string, number> = {
@@ -241,41 +241,48 @@ const KEY_MAP: Record<string, number> = {
     Meta: Gdk.KEY_Meta_L,
 };
 
-const parseKeyboardInput = (input: string): Array<{ keyval: number; press: boolean }> => {
-    const actions: Array<{ keyval: number; press: boolean }> = [];
+type KeyAction = { keyval: number; press: boolean };
+
+const parseKeyToken = (token: string): { keyval: number; press: boolean; release: boolean } => {
+    let keyName = token;
+    let press = true;
+    let release = true;
+
+    if (keyName.startsWith("/")) {
+        keyName = keyName.slice(1);
+        press = false;
+    } else if (keyName.endsWith(">")) {
+        keyName = keyName.slice(0, -1);
+        release = false;
+    }
+
+    const keyval = KEY_MAP[keyName];
+    if (keyval === undefined) {
+        throw new Error(`Unknown key: {${keyName}}`);
+    }
+    return { keyval, press, release };
+};
+
+const parseKeyboardInput = (input: string): KeyAction[] => {
+    const actions: KeyAction[] = [];
     let i = 0;
 
     while (i < input.length) {
-        if (input[i] === "{") {
-            const endBrace = input.indexOf("}", i);
-            if (endBrace === -1) break;
-
-            let keyName = input.slice(i + 1, endBrace);
-            let press = true;
-            let release = true;
-
-            if (keyName.startsWith("/")) {
-                keyName = keyName.slice(1);
-                press = false;
-            } else if (keyName.endsWith(">")) {
-                keyName = keyName.slice(0, -1);
-                release = false;
-            }
-
-            const keyval = KEY_MAP[keyName];
-            if (keyval === undefined) {
-                throw new Error(`Unknown key: {${keyName}}`);
-            }
-            if (press) actions.push({ keyval, press: true });
-            if (release) actions.push({ keyval, press: false });
-
-            i = endBrace + 1;
-        } else {
-            const keyval = input.charCodeAt(i);
-            actions.push({ keyval, press: true });
-            actions.push({ keyval, press: false });
+        if (input[i] !== "{") {
+            const keyval = input.codePointAt(i) ?? 0;
+            actions.push({ keyval, press: true }, { keyval, press: false });
             i++;
+            continue;
         }
+
+        const endBrace = input.indexOf("}", i);
+        if (endBrace === -1) break;
+
+        const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
+        if (press) actions.push({ keyval, press: true });
+        if (release) actions.push({ keyval, press: false });
+
+        i = endBrace + 1;
     }
 
     return actions;
@@ -292,46 +299,50 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
-let gdkModifierType: number | null = null;
-
-const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
-    gdkModifierType ??= typeFromName("GdkModifierType");
-    const controller = getOrCreateController(element, Gtk.EventControllerKey);
-    const actions = parseKeyboardInput(input);
-    let modifierState = 0;
-
-    for (const action of actions) {
-        const mask = MODIFIER_KEYVAL_TO_MASK[action.keyval];
-
-        if (mask) {
-            if (action.press) {
-                modifierState |= mask;
-            } else {
-                modifierState &= ~mask;
-            }
-        }
-
-        const signalName = action.press ? "key-pressed" : "key-released";
-        const returnValue = action.press ? Value.newFromBoolean(false) : undefined;
-        signalEmitv(
-            [
-                Value.newFromObject(controller),
-                Value.newFromUint(action.keyval),
-                Value.newFromUint(0),
-                Value.newFromFlags(gdkModifierType, modifierState),
-            ],
-            getSignalId(controller, signalName),
-            0,
-            returnValue,
-        );
-
-        if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element)) {
-            await fireEvent(element, "activate");
-        }
-    }
-
-    await tick();
+type UserEventState = {
+    modifierState: number;
+    mouseLeftDown: boolean;
 };
+
+const createInitialState = (): UserEventState => ({ modifierState: 0, mouseLeftDown: false });
+
+const updateModifierState = (state: UserEventState, action: KeyAction): void => {
+    const mask = MODIFIER_KEYVAL_TO_MASK[action.keyval];
+    if (!mask) return;
+    if (action.press) {
+        state.modifierState |= mask;
+    } else {
+        state.modifierState &= ~mask;
+    }
+};
+
+const applyKeyAction = async (
+    element: Gtk.Widget,
+    controller: Gtk.EventControllerKey,
+    state: UserEventState,
+    action: KeyAction,
+): Promise<void> => {
+    updateModifierState(state, action);
+    const signalName = action.press ? "key-pressed" : "key-released";
+    controller.emit(signalName, action.keyval, 0, state.modifierState);
+    if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element)) {
+        await fireEvent(element, "activate");
+    }
+};
+
+const keyboardWith =
+    (state: UserEventState) =>
+    async (element: Gtk.Widget, input: string): Promise<void> => {
+        await act(async () => {
+            const controller = getOrCreateController(element, Gtk.EventControllerKey);
+            for (const action of parseKeyboardInput(input)) {
+                await applyKeyAction(element, controller, state, action);
+            }
+        });
+    };
+
+const keyboard = (element: Gtk.Widget, input: string): Promise<void> =>
+    keyboardWith(createInitialState())(element, input);
 
 /**
  * Pointer input actions for simulating mouse interactions.
@@ -342,32 +353,39 @@ const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
  */
 export type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft>]" | "[/MouseLeft]";
 
-const pointer = async (element: Gtk.Widget, input: PointerInput): Promise<void> => {
-    const controller = getOrCreateController(element, Gtk.GestureClick);
-    const pressedArgs = [
-        Value.newFromObject(controller),
-        Value.newFromInt(1),
-        Value.newFromDouble(0),
-        Value.newFromDouble(0),
-    ];
-    const releasedArgs = [
-        Value.newFromObject(controller),
-        Value.newFromInt(1),
-        Value.newFromDouble(0),
-        Value.newFromDouble(0),
-    ];
+const PRESS_INPUTS = new Set<PointerInput>(["[MouseLeft>]", "down"]);
+const RELEASE_INPUTS = new Set<PointerInput>(["[/MouseLeft]", "up"]);
+const CLICK_INPUTS = new Set<PointerInput>(["[MouseLeft]", "click"]);
 
-    if (input === "[MouseLeft]" || input === "click") {
-        signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0);
-        signalEmitv(releasedArgs, getSignalId(controller, "released"), 0);
-    } else if (input === "[MouseLeft>]" || input === "down") {
-        signalEmitv(pressedArgs, getSignalId(controller, "pressed"), 0);
-    } else if (input === "[/MouseLeft]" || input === "up") {
-        signalEmitv(releasedArgs, getSignalId(controller, "released"), 0);
+const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, input: PointerInput): void => {
+    if (CLICK_INPUTS.has(input)) {
+        controller.emit("pressed", 1, 0, 0);
+        controller.emit("released", 1, 0, 0);
+        state.mouseLeftDown = false;
+        return;
     }
-
-    await tick();
+    if (PRESS_INPUTS.has(input) && !state.mouseLeftDown) {
+        controller.emit("pressed", 1, 0, 0);
+        state.mouseLeftDown = true;
+        return;
+    }
+    if (RELEASE_INPUTS.has(input) && state.mouseLeftDown) {
+        controller.emit("released", 1, 0, 0);
+        state.mouseLeftDown = false;
+    }
 };
+
+const pointerWith =
+    (state: UserEventState) =>
+    async (element: Gtk.Widget, input: PointerInput): Promise<void> => {
+        await act(() => {
+            const controller = getOrCreateController(element, Gtk.GestureClick);
+            applyPointerInput(controller, state, input);
+        });
+    };
+
+const pointer = (element: Gtk.Widget, input: PointerInput): Promise<void> =>
+    pointerWith(createInitialState())(element, input);
 
 /**
  * User interaction utilities for testing.
@@ -489,4 +507,54 @@ export const userEvent = {
      * ```
      */
     pointer,
+    /**
+     * Creates an isolated user-event instance whose `keyboard` and `pointer`
+     * helpers retain modifier and pointer-down state across calls.
+     *
+     * Mirrors `@testing-library/user-event` v14's `userEvent.setup()`.
+     *
+     * @example
+     * ```tsx
+     * const user = userEvent.setup();
+     * await user.keyboard("{Shift>}"); // Shift held
+     * await user.keyboard("a");        // arrives with Shift still held
+     * await user.keyboard("{/Shift}"); // Shift released
+     * ```
+     */
+    setup: (): UserEventInstance => {
+        const state = createInitialState();
+        return {
+            click,
+            dblClick,
+            tripleClick,
+            tab,
+            type,
+            clear,
+            selectOptions,
+            deselectOptions,
+            hover,
+            unhover,
+            keyboard: keyboardWith(state),
+            pointer: pointerWith(state),
+        };
+    },
+};
+
+/**
+ * Result of {@link userEvent.setup}: the same helpers as {@link userEvent},
+ * but with persistent keyboard/pointer state across calls.
+ */
+export type UserEventInstance = {
+    click: typeof click;
+    dblClick: typeof dblClick;
+    tripleClick: typeof tripleClick;
+    tab: typeof tab;
+    type: typeof type;
+    clear: typeof clear;
+    selectOptions: typeof selectOptions;
+    deselectOptions: typeof deselectOptions;
+    hover: typeof hover;
+    unhover: typeof unhover;
+    keyboard: (element: Gtk.Widget, input: string) => Promise<void>;
+    pointer: (element: Gtk.Widget, input: PointerInput) => Promise<void>;
 };

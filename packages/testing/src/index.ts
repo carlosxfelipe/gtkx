@@ -12,6 +12,14 @@ export {
     findByName,
     findByRole,
     findByText,
+    getAllByLabelText,
+    getAllByName,
+    getAllByRole,
+    getAllByText,
+    getByLabelText,
+    getByName,
+    getByRole,
+    getByText,
     queryAllByLabelText,
     queryAllByName,
     queryAllByRole,
@@ -25,27 +33,27 @@ export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
 export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
-export { screen } from "./screen.js";
+export { logScreenshotPath, screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
-export { tick } from "./timing.js";
+export { act } from "./timing.js";
 export type { Container } from "./traversal.js";
 export type {
     BoundQueries,
     ByRoleOptions,
+    Matcher,
+    MatcherFunction,
+    MatcherOptions,
     NormalizerOptions,
     RenderHookOptions,
     RenderHookResult,
     RenderOptions,
     RenderResult,
     ScreenshotResult,
-    TextMatch,
-    TextMatchFunction,
-    TextMatchOptions,
     WaitForOptions,
     WrapperComponent,
 } from "./types.js";
-export type { PointerInput, TabOptions } from "./user-event.js";
+export type { PointerInput, TabOptions, UserEventInstance } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
 export { within } from "./within.js";

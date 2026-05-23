@@ -1,9 +1,40 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { getConfig } from "./config.js";
 import { buildTimeoutError } from "./error-builder.js";
+import { getIsReactActEnvironment, setIsReactActEnvironment } from "./timing.js";
 import type { WaitForOptions } from "./types.js";
 
 const DEFAULT_INTERVAL = 50;
+
+/**
+ * Drains the JS microtask queue by yielding one `setTimeout(0)` round.
+ *
+ * Mirrors {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`} drain step: any in-flight promises scheduled while
+ * `IS_REACT_ACT_ENVIRONMENT` was cleared get a chance to settle before the
+ * caller re-enters an act-tracked scope.
+ */
+const drainMicrotasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Runs an async callback with `IS_REACT_ACT_ENVIRONMENT` cleared, draining the
+ * microtask queue once it resolves before restoring the previous flag value.
+ *
+ * Direct port of {@link https://github.com/testing-library/react-testing-library/blob/main/src/pure.js | RTL's `asyncWrapper`}; used by every async utility in this package so
+ * that polling code does not capture React state updates as part of an
+ * accidental act scope, and so callers regain control with a clean microtask
+ * queue.
+ */
+const asyncWrapper = async <T>(callback: () => Promise<T>): Promise<T> => {
+    const previousActEnvironment = getIsReactActEnvironment();
+    setIsReactActEnvironment(false);
+    try {
+        const result = await callback();
+        await drainMicrotasks();
+        return result;
+    } finally {
+        setIsReactActEnvironment(previousActEnvironment);
+    }
+};
 
 /**
  * Waits for a callback to succeed.
@@ -24,27 +55,28 @@ const DEFAULT_INTERVAL = 50;
  * }, { timeout: 2000 });
  * ```
  */
-export const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
-    const config = getConfig();
-    const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-    const startTime = Date.now();
-    let lastError: Error | null = null;
+export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> =>
+    asyncWrapper(async () => {
+        const config = getConfig();
+        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+        const startTime = Date.now();
+        let lastError: Error | null = null;
 
-    while (Date.now() - startTime < timeout) {
-        try {
-            return await callback();
-        } catch (error) {
-            lastError = error as Error;
-            await new Promise((resolve) => setTimeout(resolve, interval));
+        while (Date.now() - startTime < timeout) {
+            try {
+                return await callback();
+            } catch (error) {
+                lastError = error as Error;
+                await new Promise((resolve) => setTimeout(resolve, interval));
+            }
         }
-    }
 
-    const timeoutError = buildTimeoutError(timeout, lastError);
-    if (onTimeout) {
-        throw onTimeout(timeoutError);
-    }
-    throw timeoutError;
-};
+        const timeoutError = buildTimeoutError(timeout, lastError);
+        if (onTimeout) {
+            throw onTimeout(timeoutError);
+        }
+        throw timeoutError;
+    });
 
 /** @internal */
 type ElementOrCallback = Gtk.Widget | (() => Gtk.Widget | null);
@@ -84,33 +116,34 @@ const isElementRemoved = (element: Gtk.Widget | null): boolean => {
  * // Loader is now gone
  * ```
  */
-export const waitForElementToBeRemoved = async (
+export const waitForElementToBeRemoved = (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
-): Promise<void> => {
-    const config = getConfig();
-    const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+): Promise<void> =>
+    asyncWrapper(async () => {
+        const config = getConfig();
+        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
 
-    const initialElement = getElement(elementOrCallback);
-    if (initialElement === null || isElementRemoved(initialElement)) {
-        throw new Error(
-            "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
-        );
-    }
-
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeout) {
-        const element = getElement(elementOrCallback);
-        if (isElementRemoved(element)) {
-            return;
+        const initialElement = getElement(elementOrCallback);
+        if (initialElement === null || isElementRemoved(initialElement)) {
+            throw new Error(
+                "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
+            );
         }
-        await new Promise((resolve) => setTimeout(resolve, interval));
-    }
 
-    const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed`);
-    if (onTimeout) {
-        throw onTimeout(timeoutError);
-    }
-    throw timeoutError;
-};
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < timeout) {
+            const element = getElement(elementOrCallback);
+            if (isElementRemoved(element)) {
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+
+        const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed`);
+        if (onTimeout) {
+            throw onTimeout(timeoutError);
+        }
+        throw timeoutError;
+    });

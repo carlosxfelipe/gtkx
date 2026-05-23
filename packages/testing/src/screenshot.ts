@@ -1,7 +1,6 @@
-import { createRef } from "@gtkx/ffi";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { tick } from "./timing.js";
+import { act } from "./timing.js";
 import type { ScreenshotResult, WaitForOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
@@ -13,7 +12,7 @@ const DEFAULT_SCREENSHOT_TIMEOUT = 100;
 const DEFAULT_SCREENSHOT_INTERVAL = 10;
 
 const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
-    const paintable = new Gtk.WidgetPaintable(widget);
+    const paintable = new Gtk.WidgetPaintable({ widget });
     const width = paintable.getIntrinsicWidth();
     const height = paintable.getIntrinsicHeight();
 
@@ -38,10 +37,9 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     renderer.realizeForDisplay(display);
 
     try {
-        const texture = renderer.renderTexture(renderNode);
+        const texture = renderer.renderTexture(renderNode, null);
         const pngBytes = texture.saveToPngBytes();
-        const sizeRef = createRef(0);
-        const data = pngBytes.getData(sizeRef);
+        const data = pngBytes.getData();
 
         if (!data) {
             throw new Error("Failed to serialize screenshot to PNG");
@@ -86,13 +84,13 @@ export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval">;
  * ```
  */
 export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-    await tick();
+    await act(() => {});
 
     return waitFor(() => captureSnapshot(widget), {
         timeout: options?.timeout ?? DEFAULT_SCREENSHOT_TIMEOUT,
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
         onTimeout: (error) => {
-            const paintable = new Gtk.WidgetPaintable(widget);
+            const paintable = new Gtk.WidgetPaintable({ widget });
             const width = paintable.getIntrinsicWidth();
             const height = paintable.getIntrinsicHeight();
 

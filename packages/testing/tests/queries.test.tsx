@@ -9,6 +9,7 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/react";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import {
     findAllByLabelText,
@@ -22,6 +23,10 @@ import {
     render,
 } from "../src/index.js";
 
+const VBox = ({ children }: { children: ReactNode }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
+);
+
 describe("findByRole", () => {
     it("finds element by accessible role", async () => {
         const { container } = await render(<GtkButton label="Test" />);
@@ -31,10 +36,10 @@ describe("findByRole", () => {
 
     it("filters by name option", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Save" />
                 <GtkButton label="Cancel" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const saveButton = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Save" });
@@ -43,10 +48,10 @@ describe("findByRole", () => {
 
     it("filters by checked state for checkboxes", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkCheckButton label="Unchecked" />
                 <GtkCheckButton label="Checked" active />
-            </GtkBox>,
+            </VBox>,
         );
 
         const checkedBox = await findByRole(container, Gtk.AccessibleRole.CHECKBOX, { checked: true });
@@ -55,10 +60,10 @@ describe("findByRole", () => {
 
     it("filters by checked state for toggle buttons", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkToggleButton label="Inactive" />
                 <GtkToggleButton label="Active" active />
-            </GtkBox>,
+            </VBox>,
         );
 
         const activeToggle = await findByRole(container, Gtk.AccessibleRole.TOGGLE_BUTTON, { checked: true });
@@ -67,24 +72,26 @@ describe("findByRole", () => {
 
     it("filters by checked state for switches", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkSwitch />
                 <GtkSwitch active />
-            </GtkBox>,
+            </VBox>,
         );
 
         const activeSwitch = await findByRole(container, Gtk.AccessibleRole.SWITCH, { checked: true });
         expect(activeSwitch).toBeDefined();
     });
+});
 
+describe("findByRole matchers", () => {
     it("finds expander by label", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkExpander label="Collapsed">Content</GtkExpander>
                 <GtkExpander label="Expanded" expanded>
                     Content
                 </GtkExpander>
-            </GtkBox>,
+            </VBox>,
         );
 
         const expandedButton = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Expanded" });
@@ -104,37 +111,37 @@ describe("findByRole", () => {
         });
         expect(button).toBeDefined();
     });
+});
 
-    describe("error handling", () => {
-        it("throws when element not found with role suggestions", async () => {
-            const { container } = await render(<GtkLabel label="Test" />);
-            await expect(
-                findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "NonexistentButton", timeout: 100 }),
-            ).rejects.toThrow(/Unable to find an element with role 'BUTTON'/);
-        });
+describe("findByRole error handling", () => {
+    it("throws when element not found with role suggestions", async () => {
+        const { container } = await render(<GtkLabel label="Test" />);
+        await expect(
+            findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "NonexistentButton", timeout: 100 }),
+        ).rejects.toThrow(/Unable to find an element with role 'BUTTON'/);
+    });
 
-        it("throws when multiple elements found", async () => {
-            const { container } = await render(
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkButton label="Same" />
-                    <GtkButton label="Same" />
-                </GtkBox>,
-            );
-            await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
-                /Found 2 elements with text 'Same'/,
-            );
-        });
+    it("throws when multiple elements found", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkButton label="Same" />
+                <GtkButton label="Same" />
+            </VBox>,
+        );
+        await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
+            /Found 2 elements with text 'Same'/,
+        );
     });
 });
 
 describe("findAllByRole", () => {
     it("finds all elements with matching role", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
                 <GtkLabel label="Text" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const buttons = await findAllByRole(container, Gtk.AccessibleRole.BUTTON, { name: /First|Second/ });
@@ -191,11 +198,11 @@ describe("findByText", () => {
 describe("findAllByText", () => {
     it("finds all elements with matching text", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Same" />
                 <GtkButton label="Same" />
                 <GtkButton label="Different" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const buttons = await findAllByText(container, "Same");
@@ -211,10 +218,10 @@ describe("findByLabelText", () => {
                 entryRef.current = el;
             };
             return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <VBox>
                     <GtkLabel label="Username" mnemonicWidget={entryRef.current} />
                     <GtkEntry ref={ref} />
-                </GtkBox>
+                </VBox>
             );
         };
 
@@ -234,11 +241,11 @@ describe("findByLabelText", () => {
 });
 
 describe("findAllByLabelText", () => {
-    it("finds all elements labelled by matching GtkLabels", async () => {
+    it("finds all elements labeled by matching GtkLabels", async () => {
         const ref1 = { current: null as Gtk.Entry | null };
         const ref2 = { current: null as Gtk.Entry | null };
         const Form = () => (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkLabel label="Field" mnemonicWidget={ref1.current} />
                 <GtkEntry
                     ref={(el) => {
@@ -251,7 +258,7 @@ describe("findAllByLabelText", () => {
                         ref2.current = el;
                     }}
                 />
-            </GtkBox>
+            </VBox>
         );
 
         const { container, rerender } = await render(<Form />);
@@ -279,13 +286,72 @@ describe("findByName", () => {
 describe("findAllByName", () => {
     it("finds all elements with matching widget name", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const entries = await findAllByName(container, "field");
         expect(entries.length).toBe(2);
+    });
+
+    it("throws a name-formatted error when no widget matches", async () => {
+        const { container } = await render(<GtkEntry name="real-name" />);
+
+        await expect(findByName(container, "missing", { timeout: 100 })).rejects.toThrow(
+            /Unable to find an element with name 'missing'/,
+        );
+    });
+
+    it("throws a regex-formatted name error when no widget matches", async () => {
+        const { container } = await render(<GtkEntry name="real-name" />);
+
+        await expect(findByName(container, /^missing/, { timeout: 100 })).rejects.toThrow(
+            /Unable to find an element with name \/\^missing\//,
+        );
+    });
+
+    it("matches a GtkLabel widget by its widget name", async () => {
+        const { container } = await render(<GtkLabel name="title-label" label="Hi" />);
+        const label = await findByName(container, "title-label");
+        expect(label).toBeInstanceOf(Gtk.Label);
+    });
+});
+
+describe("findByRole(LABEL)", () => {
+    it("matches a GtkLabel by its accessible role", async () => {
+        const { container } = await render(<GtkLabel label="visible" />);
+        const label = await findByRole(container, Gtk.AccessibleRole.LABEL, { name: "visible" });
+        expect(label).toBeInstanceOf(Gtk.Label);
+    });
+});
+
+describe("findByText joins adjacent labels with a space", () => {
+    it("inserts a space between sibling labels of the same parent", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkLabel label="Searching for:" />
+                <GtkLabel label="rocket" />
+            </VBox>,
+        );
+        const match = await findByText(container, "Searching for: rocket");
+        expect(match).toBeInstanceOf(Gtk.Widget);
+    });
+});
+
+describe("findByRole accessible name", () => {
+    it("matches a widget by its accessibleLabel JSX prop", async () => {
+        const { container } = await render(
+            <GtkButton accessibleLabel="Close dialog" iconName="window-close-symbolic" />,
+        );
+        const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Close dialog" });
+        expect(button).toBeInstanceOf(Gtk.Button);
+    });
+
+    it("prefers accessibleLabel over visible label text", async () => {
+        const { container } = await render(<GtkButton accessibleLabel="Submit form" label="OK" />);
+        const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Submit form" });
+        expect(button).toBeInstanceOf(Gtk.Button);
     });
 });

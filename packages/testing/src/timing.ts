@@ -1,17 +1,128 @@
+import { act as reactAct } from "react";
+import "./react-internals-instrumentation.js";
+
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 /**
- * Yields to the event loop, allowing pending GTK events to process.
+ * Returns the current `IS_REACT_ACT_ENVIRONMENT` flag.
  *
- * Use this after actions that trigger async widget updates.
+ * Async utilities such as {@link waitFor} call this to remember the caller's
+ * environment before clearing the flag for the duration of the poll.
+ */
+export const getIsReactActEnvironment = (): boolean | undefined => globalThis.IS_REACT_ACT_ENVIRONMENT;
+
+/**
+ * Sets the `IS_REACT_ACT_ENVIRONMENT` flag.
  *
- * @returns Promise that resolves on the next event loop tick
+ * Used by {@link act} and the async utilities to toggle React's act tracking
+ * around scopes that should — or should not — capture state updates.
+ */
+export const setIsReactActEnvironment = (value: boolean | undefined): void => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = value;
+};
+
+type ActImplementation = <T>(callback: () => T | Promise<T>) => PromiseLike<T>;
+
+const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+    value !== null && typeof value === "object" && typeof (value as { then?: unknown }).then === "function";
+
+const instrumentationOrigin = Date.now();
+let actCallCounter = 0;
+const formatActEvent = (id: number, event: string, details?: string): string => {
+    const elapsed = Date.now() - instrumentationOrigin;
+    const suffix = details ? ` ${details}` : "";
+    return `[gtkx:act#${id}] +${elapsed}ms ${event}${suffix}`;
+};
+const logActEvent = (id: number, event: string, details?: string): void => {
+    console.error(formatActEvent(id, event, details));
+};
+
+const withGlobalActEnvironment =
+    (actImplementation: ActImplementation) =>
+    <T>(callback: () => T | Promise<T>): PromiseLike<T> => {
+        const id = ++actCallCounter;
+        const startTime = Date.now();
+        logActEvent(id, "enter");
+        const previousActEnvironment = getIsReactActEnvironment();
+        setIsReactActEnvironment(true);
+        try {
+            let callbackNeedsToBeAwaited = false;
+            const actResult = actImplementation<T>(() => {
+                const callbackStart = Date.now();
+                logActEvent(id, "callback start");
+                const result = callback();
+                if (isThenable(result)) {
+                    callbackNeedsToBeAwaited = true;
+                    logActEvent(id, "callback returned thenable", `sync=${Date.now() - callbackStart}ms`);
+                } else {
+                    logActEvent(id, "callback returned sync", `dur=${Date.now() - callbackStart}ms`);
+                }
+                return result;
+            });
+            if (callbackNeedsToBeAwaited) {
+                logActEvent(id, "awaiting react act (async branch)");
+                return new Promise<T>((resolve, reject) => {
+                    actResult.then(
+                        (returnValue) => {
+                            logActEvent(id, "react act resolved", `total=${Date.now() - startTime}ms`);
+                            setIsReactActEnvironment(previousActEnvironment);
+                            logActEvent(id, "env restored");
+                            resolve(returnValue);
+                        },
+                        (error) => {
+                            logActEvent(
+                                id,
+                                "react act rejected",
+                                `total=${Date.now() - startTime}ms err=${(error as Error)?.message ?? error}`,
+                            );
+                            setIsReactActEnvironment(previousActEnvironment);
+                            reject(error);
+                        },
+                    );
+                });
+            }
+            setIsReactActEnvironment(previousActEnvironment);
+            logActEvent(id, "sync branch done", `total=${Date.now() - startTime}ms`);
+            return actResult;
+        } catch (error) {
+            logActEvent(
+                id,
+                "threw synchronously",
+                `total=${Date.now() - startTime}ms err=${(error as Error)?.message ?? error}`,
+            );
+            setIsReactActEnvironment(previousActEnvironment);
+            throw error;
+        }
+    };
+
+/**
+ * GTK-flavored mirror of `@testing-library/react`'s `act`.
+ *
+ * Sets `IS_REACT_ACT_ENVIRONMENT` for the duration of the call and runs the
+ * callback inside a single React `act` scope. Sync callbacks execute and
+ * commit synchronously; the returned thenable carries any remaining work and
+ * may be awaited if the caller needs to observe its result. Async callbacks
+ * return a thenable that resolves after React has settled and the previous
+ * environment value has been restored.
+ *
+ * Mirrors {@link https://github.com/testing-library/react-testing-library/blob/main/src/act-compat.js | RTL's act-compat} almost verbatim: it is a transparent wrapper around the React `act`
+ * implementation that only manages the act-environment flag — it does not
+ * drive the GLib runloop, schedule timers, or wait on frame-clock callbacks.
+ * Asynchronous settlement is the responsibility of {@link waitFor} and the
+ * `findBy*` queries that use it.
  *
  * @example
  * ```tsx
- * import { tick } from "@gtkx/testing";
+ * await act(() => widget.setSensitive(false));
  *
- * widget.setSensitive(false);
- * await tick(); // Wait for GTK to process the change
- * expect(widget.getSensitive()).toBe(false);
+ * await act(async () => {
+ *     widget.activate();
+ *     await screen.findByText("Done");
+ * });
  * ```
  */
-export const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+export const act = withGlobalActEnvironment(reactAct as ActImplementation);
