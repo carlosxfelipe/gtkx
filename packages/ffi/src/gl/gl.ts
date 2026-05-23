@@ -1,15 +1,114 @@
 import { createRef } from "@gtkx/native";
-import { call } from "../native.js";
+import { t } from "../native.js";
 import { INFO_LOG_LENGTH } from "./constants.js";
 
 const LIB = "libGL.so.1";
+
+const { fn } = t;
+const VOID = t.void;
+const U32 = t.uint32;
+const I32 = t.int32;
+const I64 = t.int64;
+const U64 = t.uint64;
+const F32 = t.float32;
+const F64 = t.float64;
+const BOOL = t.boolean;
+const STR = t.string("borrowed");
+const REF_I32 = t.ref(I32);
+const REF_U32 = t.ref(U32);
+const ARRAY_F32 = t.array(F32);
+const ARRAY_U16 = t.array(t.uint16);
+const ARRAY_U32 = t.array(U32);
+const ARRAY_STR = t.array(STR);
+
+const glClear = fn(LIB, "glClear", [{ type: U32 }], VOID);
+const glClearColor = fn(LIB, "glClearColor", [{ type: F32 }, { type: F32 }, { type: F32 }, { type: F32 }], VOID);
+const glViewport = fn(LIB, "glViewport", [{ type: I32 }, { type: I32 }, { type: I32 }, { type: I32 }], VOID);
+const glEnable = fn(LIB, "glEnable", [{ type: U32 }], VOID);
+const glDisable = fn(LIB, "glDisable", [{ type: U32 }], VOID);
+const glClearDepth = fn(LIB, "glClearDepth", [{ type: F64 }], VOID);
+const glDepthFunc = fn(LIB, "glDepthFunc", [{ type: U32 }], VOID);
+
+const glCreateShader = fn(LIB, "glCreateShader", [{ type: U32 }], U32);
+const glShaderSource = fn(
+    LIB,
+    "glShaderSource",
+    [{ type: U32 }, { type: I32 }, { type: ARRAY_STR }, { type: U64 }],
+    VOID,
+);
+const glCompileShader = fn(LIB, "glCompileShader", [{ type: U32 }], VOID);
+const glGetShaderiv = fn(LIB, "glGetShaderiv", [{ type: U32 }, { type: U32 }, { type: REF_I32 }], VOID);
+const glDeleteShader = fn(LIB, "glDeleteShader", [{ type: U32 }], VOID);
+
+const glCreateProgram = fn(LIB, "glCreateProgram", [], U32);
+const glAttachShader = fn(LIB, "glAttachShader", [{ type: U32 }, { type: U32 }], VOID);
+const glDetachShader = fn(LIB, "glDetachShader", [{ type: U32 }, { type: U32 }], VOID);
+const glLinkProgram = fn(LIB, "glLinkProgram", [{ type: U32 }], VOID);
+const glUseProgram = fn(LIB, "glUseProgram", [{ type: U32 }], VOID);
+const glGetProgramiv = fn(LIB, "glGetProgramiv", [{ type: U32 }, { type: U32 }, { type: REF_I32 }], VOID);
+const glDeleteProgram = fn(LIB, "glDeleteProgram", [{ type: U32 }], VOID);
+
+const glGetUniformLocation = fn(LIB, "glGetUniformLocation", [{ type: U32 }, { type: STR }], I32);
+const glGetAttribLocation = fn(LIB, "glGetAttribLocation", [{ type: U32 }, { type: STR }], I32);
+const glBindAttribLocation = fn(LIB, "glBindAttribLocation", [{ type: U32 }, { type: U32 }, { type: STR }], VOID);
+
+const glUniform1f = fn(LIB, "glUniform1f", [{ type: I32 }, { type: F32 }], VOID);
+const glUniform2f = fn(LIB, "glUniform2f", [{ type: I32 }, { type: F32 }, { type: F32 }], VOID);
+const glUniform3f = fn(LIB, "glUniform3f", [{ type: I32 }, { type: F32 }, { type: F32 }, { type: F32 }], VOID);
+const glUniform4f = fn(
+    LIB,
+    "glUniform4f",
+    [{ type: I32 }, { type: F32 }, { type: F32 }, { type: F32 }, { type: F32 }],
+    VOID,
+);
+const glUniform1i = fn(LIB, "glUniform1i", [{ type: I32 }, { type: I32 }], VOID);
+const glUniformMatrix4fv = fn(
+    LIB,
+    "glUniformMatrix4fv",
+    [{ type: I32 }, { type: I32 }, { type: BOOL }, { type: ARRAY_F32 }],
+    VOID,
+);
+
+const glGenVertexArrays = fn(LIB, "glGenVertexArrays", [{ type: I32 }, { type: REF_U32 }], VOID);
+const glBindVertexArray = fn(LIB, "glBindVertexArray", [{ type: U32 }], VOID);
+const glDeleteVertexArrays = fn(LIB, "glDeleteVertexArrays", [{ type: I32 }, { type: ARRAY_U32 }], VOID);
+
+const glGenBuffers = fn(LIB, "glGenBuffers", [{ type: I32 }, { type: REF_U32 }], VOID);
+const glBindBuffer = fn(LIB, "glBindBuffer", [{ type: U32 }, { type: U32 }], VOID);
+const glDeleteBuffers = fn(LIB, "glDeleteBuffers", [{ type: I32 }, { type: ARRAY_U32 }], VOID);
+const glBufferDataF32 = fn(
+    LIB,
+    "glBufferData",
+    [{ type: U32 }, { type: I64 }, { type: ARRAY_F32 }, { type: U32 }],
+    VOID,
+);
+const glBufferDataU16 = fn(
+    LIB,
+    "glBufferData",
+    [{ type: U32 }, { type: I64 }, { type: ARRAY_U16 }, { type: U32 }],
+    VOID,
+);
+
+const glVertexAttribPointer = fn(
+    LIB,
+    "glVertexAttribPointer",
+    [{ type: U32 }, { type: I32 }, { type: U32 }, { type: BOOL }, { type: I32 }, { type: U64 }],
+    VOID,
+);
+const glEnableVertexAttribArray = fn(LIB, "glEnableVertexAttribArray", [{ type: U32 }], VOID);
+const glDisableVertexAttribArray = fn(LIB, "glDisableVertexAttribArray", [{ type: U32 }], VOID);
+const glDrawArrays = fn(LIB, "glDrawArrays", [{ type: U32 }, { type: I32 }, { type: I32 }], VOID);
+const glDrawElements = fn(LIB, "glDrawElements", [{ type: U32 }, { type: I32 }, { type: U32 }, { type: U64 }], VOID);
+
+const glGetError = fn(LIB, "glGetError", [], U32);
+const glFlush = fn(LIB, "glFlush", [], VOID);
 
 /**
  * Clears buffers to preset values.
  * @param mask - Bitwise OR of masks indicating buffers to clear (GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT)
  */
 export function clear(mask: number): void {
-    call(LIB, "glClear", [{ type: { type: "uint32" }, value: mask }], { type: "void" });
+    glClear(mask);
 }
 
 /**
@@ -20,17 +119,7 @@ export function clear(mask: number): void {
  * @param alpha - Alpha component (0.0 to 1.0)
  */
 export function clearColor(red: number, green: number, blue: number, alpha: number): void {
-    call(
-        LIB,
-        "glClearColor",
-        [
-            { type: { type: "float32" }, value: red },
-            { type: { type: "float32" }, value: green },
-            { type: { type: "float32" }, value: blue },
-            { type: { type: "float32" }, value: alpha },
-        ],
-        { type: "void" },
-    );
+    glClearColor(red, green, blue, alpha);
 }
 
 /**
@@ -41,17 +130,7 @@ export function clearColor(red: number, green: number, blue: number, alpha: numb
  * @param height - Height of the viewport
  */
 export function viewport(x: number, y: number, width: number, height: number): void {
-    call(
-        LIB,
-        "glViewport",
-        [
-            { type: { type: "int32" }, value: x },
-            { type: { type: "int32" }, value: y },
-            { type: { type: "int32" }, value: width },
-            { type: { type: "int32" }, value: height },
-        ],
-        { type: "void" },
-    );
+    glViewport(x, y, width, height);
 }
 
 /**
@@ -59,7 +138,7 @@ export function viewport(x: number, y: number, width: number, height: number): v
  * @param cap - The capability to enable (e.g., GL_DEPTH_TEST, GL_BLEND)
  */
 export function enable(cap: number): void {
-    call(LIB, "glEnable", [{ type: { type: "uint32" }, value: cap }], { type: "void" });
+    glEnable(cap);
 }
 
 /**
@@ -67,7 +146,7 @@ export function enable(cap: number): void {
  * @param cap - The capability to disable
  */
 export function disable(cap: number): void {
-    call(LIB, "glDisable", [{ type: { type: "uint32" }, value: cap }], { type: "void" });
+    glDisable(cap);
 }
 
 /**
@@ -75,7 +154,7 @@ export function disable(cap: number): void {
  * @param depth - Depth value used when clearing (0.0 to 1.0)
  */
 export function clearDepth(depth: number): void {
-    call(LIB, "glClearDepth", [{ type: { type: "float64" }, value: depth }], { type: "void" });
+    glClearDepth(depth);
 }
 
 /**
@@ -83,7 +162,7 @@ export function clearDepth(depth: number): void {
  * @param func - The comparison function (e.g., GL_LESS, GL_LEQUAL)
  */
 export function depthFunc(func: number): void {
-    call(LIB, "glDepthFunc", [{ type: { type: "uint32" }, value: func }], { type: "void" });
+    glDepthFunc(func);
 }
 
 /**
@@ -92,9 +171,7 @@ export function depthFunc(func: number): void {
  * @returns The shader object ID
  */
 export function createShader(type: number): number {
-    return call(LIB, "glCreateShader", [{ type: { type: "uint32" }, value: type }], {
-        type: "uint32",
-    }) as number;
+    return glCreateShader(type) as number;
 }
 
 /**
@@ -103,25 +180,7 @@ export function createShader(type: number): number {
  * @param source - The GLSL source code string
  */
 export function shaderSource(shader: number, source: string): void {
-    call(
-        LIB,
-        "glShaderSource",
-        [
-            { type: { type: "uint32" }, value: shader },
-            { type: { type: "int32" }, value: 1 },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "string", ownership: "borrowed" },
-                    kind: "array",
-                    ownership: "borrowed",
-                },
-                value: [source],
-            },
-            { type: { type: "uint64" }, value: 0 },
-        ],
-        { type: "void" },
-    );
+    glShaderSource(shader, 1, [source], 0);
 }
 
 /**
@@ -129,9 +188,7 @@ export function shaderSource(shader: number, source: string): void {
  * @param shader - The shader object ID to compile
  */
 export function compileShader(shader: number): void {
-    call(LIB, "glCompileShader", [{ type: { type: "uint32" }, value: shader }], {
-        type: "void",
-    });
+    glCompileShader(shader);
 }
 
 /**
@@ -142,17 +199,20 @@ export function compileShader(shader: number): void {
  */
 export function getShaderiv(shader: number, pname: number): number {
     const params = createRef(0);
-    call(
-        LIB,
-        "glGetShaderiv",
-        [
-            { type: { type: "uint32" }, value: shader },
-            { type: { type: "uint32" }, value: pname },
-            { type: { type: "ref", innerType: { type: "int32" } }, value: params },
-        ],
-        { type: "void" },
-    );
+    glGetShaderiv(shader, pname, params);
     return params.value;
+}
+
+function readInfoLog(symbol: string, id: number, logLength: number): string {
+    const infoLogRef = createRef("");
+    const lengthRef = createRef(0);
+    fn(
+        LIB,
+        symbol,
+        [{ type: U32 }, { type: I32 }, { type: REF_I32 }, { type: t.ref(t.string("borrowed", logLength)) }],
+        VOID,
+    )(id, logLength, lengthRef, infoLogRef);
+    return infoLogRef.value;
 }
 
 /**
@@ -162,29 +222,7 @@ export function getShaderiv(shader: number, pname: number): number {
  */
 export function getShaderInfoLog(shader: number): string {
     const logLength = getShaderiv(shader, INFO_LOG_LENGTH);
-    if (logLength <= 0) {
-        return "";
-    }
-
-    const infoLogRef = createRef("");
-    const lengthRef = createRef(0);
-
-    call(
-        LIB,
-        "glGetShaderInfoLog",
-        [
-            { type: { type: "uint32" }, value: shader },
-            { type: { type: "int32" }, value: logLength },
-            { type: { type: "ref", innerType: { type: "int32" } }, value: lengthRef },
-            {
-                type: { type: "ref", innerType: { type: "string", ownership: "borrowed", length: logLength } },
-                value: infoLogRef,
-            },
-        ],
-        { type: "void" },
-    );
-
-    return infoLogRef.value;
+    return logLength <= 0 ? "" : readInfoLog("glGetShaderInfoLog", shader, logLength);
 }
 
 /**
@@ -192,9 +230,7 @@ export function getShaderInfoLog(shader: number): string {
  * @param shader - The shader object ID to delete
  */
 export function deleteShader(shader: number): void {
-    call(LIB, "glDeleteShader", [{ type: { type: "uint32" }, value: shader }], {
-        type: "void",
-    });
+    glDeleteShader(shader);
 }
 
 /**
@@ -202,7 +238,7 @@ export function deleteShader(shader: number): void {
  * @returns The program object ID
  */
 export function createProgram(): number {
-    return call(LIB, "glCreateProgram", [], { type: "uint32" }) as number;
+    return glCreateProgram() as number;
 }
 
 /**
@@ -211,27 +247,11 @@ export function createProgram(): number {
  * @param shader - The shader object ID to attach
  */
 export function attachShader(program: number, shader: number): void {
-    call(
-        LIB,
-        "glAttachShader",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "uint32" }, value: shader },
-        ],
-        { type: "void" },
-    );
+    glAttachShader(program, shader);
 }
 
 export function detachShader(program: number, shader: number): void {
-    call(
-        LIB,
-        "glDetachShader",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "uint32" }, value: shader },
-        ],
-        { type: "void" },
-    );
+    glDetachShader(program, shader);
 }
 
 /**
@@ -239,9 +259,7 @@ export function detachShader(program: number, shader: number): void {
  * @param program - The program object ID to link
  */
 export function linkProgram(program: number): void {
-    call(LIB, "glLinkProgram", [{ type: { type: "uint32" }, value: program }], {
-        type: "void",
-    });
+    glLinkProgram(program);
 }
 
 /**
@@ -249,9 +267,7 @@ export function linkProgram(program: number): void {
  * @param program - The program object ID to use (0 to uninstall)
  */
 export function useProgram(program: number): void {
-    call(LIB, "glUseProgram", [{ type: { type: "uint32" }, value: program }], {
-        type: "void",
-    });
+    glUseProgram(program);
 }
 
 /**
@@ -262,16 +278,7 @@ export function useProgram(program: number): void {
  */
 export function getProgramiv(program: number, pname: number): number {
     const params = createRef(0);
-    call(
-        LIB,
-        "glGetProgramiv",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "uint32" }, value: pname },
-            { type: { type: "ref", innerType: { type: "int32" } }, value: params },
-        ],
-        { type: "void" },
-    );
+    glGetProgramiv(program, pname, params);
     return params.value;
 }
 
@@ -282,29 +289,7 @@ export function getProgramiv(program: number, pname: number): number {
  */
 export function getProgramInfoLog(program: number): string {
     const logLength = getProgramiv(program, INFO_LOG_LENGTH);
-    if (logLength <= 0) {
-        return "";
-    }
-
-    const infoLogRef = createRef("");
-    const lengthRef = createRef(0);
-
-    call(
-        LIB,
-        "glGetProgramInfoLog",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "int32" }, value: logLength },
-            { type: { type: "ref", innerType: { type: "int32" } }, value: lengthRef },
-            {
-                type: { type: "ref", innerType: { type: "string", ownership: "borrowed", length: logLength } },
-                value: infoLogRef,
-            },
-        ],
-        { type: "void" },
-    );
-
-    return infoLogRef.value;
+    return logLength <= 0 ? "" : readInfoLog("glGetProgramInfoLog", program, logLength);
 }
 
 /**
@@ -312,9 +297,7 @@ export function getProgramInfoLog(program: number): string {
  * @param program - The program object ID to delete
  */
 export function deleteProgram(program: number): void {
-    call(LIB, "glDeleteProgram", [{ type: { type: "uint32" }, value: program }], {
-        type: "void",
-    });
+    glDeleteProgram(program);
 }
 
 /**
@@ -324,15 +307,7 @@ export function deleteProgram(program: number): void {
  * @returns The location of the uniform, or -1 if not found
  */
 export function getUniformLocation(program: number, name: string): number {
-    return call(
-        LIB,
-        "glGetUniformLocation",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "string", ownership: "borrowed" }, value: name },
-        ],
-        { type: "int32" },
-    ) as number;
+    return glGetUniformLocation(program, name) as number;
 }
 
 /**
@@ -341,15 +316,7 @@ export function getUniformLocation(program: number, name: string): number {
  * @param v0 - The float value
  */
 export function uniform1f(location: number, v0: number): void {
-    call(
-        LIB,
-        "glUniform1f",
-        [
-            { type: { type: "int32" }, value: location },
-            { type: { type: "float32" }, value: v0 },
-        ],
-        { type: "void" },
-    );
+    glUniform1f(location, v0);
 }
 
 /**
@@ -359,16 +326,7 @@ export function uniform1f(location: number, v0: number): void {
  * @param v1 - The second component
  */
 export function uniform2f(location: number, v0: number, v1: number): void {
-    call(
-        LIB,
-        "glUniform2f",
-        [
-            { type: { type: "int32" }, value: location },
-            { type: { type: "float32" }, value: v0 },
-            { type: { type: "float32" }, value: v1 },
-        ],
-        { type: "void" },
-    );
+    glUniform2f(location, v0, v1);
 }
 
 /**
@@ -379,40 +337,21 @@ export function uniform2f(location: number, v0: number, v1: number): void {
  * @param v2 - The third component
  */
 export function uniform3f(location: number, v0: number, v1: number, v2: number): void {
-    call(
-        LIB,
-        "glUniform3f",
-        [
-            { type: { type: "int32" }, value: location },
-            { type: { type: "float32" }, value: v0 },
-            { type: { type: "float32" }, value: v1 },
-            { type: { type: "float32" }, value: v2 },
-        ],
-        { type: "void" },
-    );
+    glUniform3f(location, v0, v1, v2);
 }
+
+/**
+ * Four components of a vec4 uniform value.
+ */
+export type Vec4Components = { v0: number; v1: number; v2: number; v3: number };
 
 /**
  * Sets a vec4 uniform variable.
  * @param location - The uniform location
- * @param v0 - The first component
- * @param v1 - The second component
- * @param v2 - The third component
- * @param v3 - The fourth component
+ * @param components - The four components of the vector
  */
-export function uniform4f(location: number, v0: number, v1: number, v2: number, v3: number): void {
-    call(
-        LIB,
-        "glUniform4f",
-        [
-            { type: { type: "int32" }, value: location },
-            { type: { type: "float32" }, value: v0 },
-            { type: { type: "float32" }, value: v1 },
-            { type: { type: "float32" }, value: v2 },
-            { type: { type: "float32" }, value: v3 },
-        ],
-        { type: "void" },
-    );
+export function uniform4f(location: number, components: Vec4Components): void {
+    glUniform4f(location, components.v0, components.v1, components.v2, components.v3);
 }
 
 /**
@@ -421,15 +360,7 @@ export function uniform4f(location: number, v0: number, v1: number, v2: number, 
  * @param v0 - The integer value
  */
 export function uniform1i(location: number, v0: number): void {
-    call(
-        LIB,
-        "glUniform1i",
-        [
-            { type: { type: "int32" }, value: location },
-            { type: { type: "int32" }, value: v0 },
-        ],
-        { type: "void" },
-    );
+    glUniform1i(location, v0);
 }
 
 /**
@@ -440,25 +371,7 @@ export function uniform1i(location: number, v0: number): void {
  * @param value - Array of 16 floats representing the matrix in column-major order
  */
 export function uniformMatrix4fv(location: number, count: number, transpose: boolean, value: number[]): void {
-    call(
-        LIB,
-        "glUniformMatrix4fv",
-        [
-            { type: { type: "int32" }, value: location },
-            { type: { type: "int32" }, value: count },
-            { type: { type: "boolean" }, value: transpose },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "float32" },
-                    kind: "array",
-                    ownership: "borrowed",
-                },
-                value,
-            },
-        ],
-        { type: "void" },
-    );
+    glUniformMatrix4fv(location, count, transpose, value);
 }
 
 /**
@@ -467,15 +380,7 @@ export function uniformMatrix4fv(location: number, count: number, transpose: boo
  */
 export function genVertexArray(): number {
     const array = createRef(0);
-    call(
-        LIB,
-        "glGenVertexArrays",
-        [
-            { type: { type: "int32" }, value: 1 },
-            { type: { type: "ref", innerType: { type: "uint32" } }, value: array },
-        ],
-        { type: "void" },
-    );
+    glGenVertexArrays(1, array);
     return array.value;
 }
 
@@ -484,9 +389,7 @@ export function genVertexArray(): number {
  * @param array - The VAO ID to bind (0 to unbind)
  */
 export function bindVertexArray(array: number): void {
-    call(LIB, "glBindVertexArray", [{ type: { type: "uint32" }, value: array }], {
-        type: "void",
-    });
+    glBindVertexArray(array);
 }
 
 /**
@@ -494,23 +397,7 @@ export function bindVertexArray(array: number): void {
  * @param array - The VAO ID to delete
  */
 export function deleteVertexArray(array: number): void {
-    call(
-        LIB,
-        "glDeleteVertexArrays",
-        [
-            { type: { type: "int32" }, value: 1 },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "uint32" },
-                    kind: "array",
-                    ownership: "borrowed",
-                },
-                value: [array],
-            },
-        ],
-        { type: "void" },
-    );
+    glDeleteVertexArrays(1, [array]);
 }
 
 /**
@@ -519,15 +406,7 @@ export function deleteVertexArray(array: number): void {
  */
 export function genBuffer(): number {
     const buffer = createRef(0);
-    call(
-        LIB,
-        "glGenBuffers",
-        [
-            { type: { type: "int32" }, value: 1 },
-            { type: { type: "ref", innerType: { type: "uint32" } }, value: buffer },
-        ],
-        { type: "void" },
-    );
+    glGenBuffers(1, buffer);
     return buffer.value;
 }
 
@@ -537,15 +416,7 @@ export function genBuffer(): number {
  * @param buffer - The buffer object ID to bind (0 to unbind)
  */
 export function bindBuffer(target: number, buffer: number): void {
-    call(
-        LIB,
-        "glBindBuffer",
-        [
-            { type: { type: "uint32" }, value: target },
-            { type: { type: "uint32" }, value: buffer },
-        ],
-        { type: "void" },
-    );
+    glBindBuffer(target, buffer);
 }
 
 /**
@@ -553,23 +424,7 @@ export function bindBuffer(target: number, buffer: number): void {
  * @param buffer - The buffer object ID to delete
  */
 export function deleteBuffer(buffer: number): void {
-    call(
-        LIB,
-        "glDeleteBuffers",
-        [
-            { type: { type: "int32" }, value: 1 },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "uint32" },
-                    kind: "array",
-                    ownership: "borrowed",
-                },
-                value: [buffer],
-            },
-        ],
-        { type: "void" },
-    );
+    glDeleteBuffers(1, [buffer]);
 }
 
 /**
@@ -579,59 +434,32 @@ export function deleteBuffer(buffer: number): void {
  * @param usage - Usage pattern hint (e.g., GL_STATIC_DRAW, GL_DYNAMIC_DRAW)
  */
 export function bufferData(target: number, data: number[], usage: number): void {
-    const size = data.length * 4;
-
-    call(
-        LIB,
-        "glBufferData",
-        [
-            { type: { type: "uint32" }, value: target },
-            { type: { type: "int64" }, value: size },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "float32" },
-                    kind: "array",
-                    ownership: "borrowed",
-                },
-                value: data,
-            },
-            { type: { type: "uint32" }, value: usage },
-        ],
-        { type: "void" },
-    );
+    glBufferDataF32(target, data.length * 4, data, usage);
 }
+
+/**
+ * Layout descriptor for a generic vertex attribute pointer.
+ */
+export type VertexAttribLayout = {
+    /** Number of components per attribute (1, 2, 3, or 4). */
+    size: number;
+    /** Data type of each component (e.g., GL_FLOAT). */
+    type: number;
+    /** Whether to normalize fixed-point data. */
+    normalized: boolean;
+    /** Byte offset between consecutive attributes. */
+    stride: number;
+    /** Byte offset to the first attribute in the buffer. */
+    offset: number;
+};
 
 /**
  * Defines an array of generic vertex attribute data.
  * @param index - The attribute index
- * @param size - Number of components per attribute (1, 2, 3, or 4)
- * @param type - Data type of each component (e.g., GL_FLOAT)
- * @param normalized - Whether to normalize fixed-point data
- * @param stride - Byte offset between consecutive attributes
- * @param offset - Byte offset to the first attribute in the buffer
+ * @param layout - Layout describing component count, type, normalization, stride, and offset
  */
-export function vertexAttribPointer(
-    index: number,
-    size: number,
-    type: number,
-    normalized: boolean,
-    stride: number,
-    offset: number,
-): void {
-    call(
-        LIB,
-        "glVertexAttribPointer",
-        [
-            { type: { type: "uint32" }, value: index },
-            { type: { type: "int32" }, value: size },
-            { type: { type: "uint32" }, value: type },
-            { type: { type: "boolean" }, value: normalized },
-            { type: { type: "int32" }, value: stride },
-            { type: { type: "uint64" }, value: offset },
-        ],
-        { type: "void" },
-    );
+export function vertexAttribPointer(index: number, layout: VertexAttribLayout): void {
+    glVertexAttribPointer(index, layout.size, layout.type, layout.normalized, layout.stride, layout.offset);
 }
 
 /**
@@ -639,9 +467,7 @@ export function vertexAttribPointer(
  * @param index - The attribute index to enable
  */
 export function enableVertexAttribArray(index: number): void {
-    call(LIB, "glEnableVertexAttribArray", [{ type: { type: "uint32" }, value: index }], {
-        type: "void",
-    });
+    glEnableVertexAttribArray(index);
 }
 
 /**
@@ -649,9 +475,7 @@ export function enableVertexAttribArray(index: number): void {
  * @param index - The attribute index to disable
  */
 export function disableVertexAttribArray(index: number): void {
-    call(LIB, "glDisableVertexAttribArray", [{ type: { type: "uint32" }, value: index }], {
-        type: "void",
-    });
+    glDisableVertexAttribArray(index);
 }
 
 /**
@@ -661,16 +485,7 @@ export function disableVertexAttribArray(index: number): void {
  * @param count - Number of indices to render
  */
 export function drawArrays(mode: number, first: number, count: number): void {
-    call(
-        LIB,
-        "glDrawArrays",
-        [
-            { type: { type: "uint32" }, value: mode },
-            { type: { type: "int32" }, value: first },
-            { type: { type: "int32" }, value: count },
-        ],
-        { type: "void" },
-    );
+    glDrawArrays(mode, first, count);
 }
 
 /**
@@ -680,27 +495,7 @@ export function drawArrays(mode: number, first: number, count: number): void {
  * @param usage - Usage pattern hint (e.g., GL_STATIC_DRAW, GL_DYNAMIC_DRAW)
  */
 export function bufferDataUshort(target: number, data: number[], usage: number): void {
-    const size = data.length * 2;
-
-    call(
-        LIB,
-        "glBufferData",
-        [
-            { type: { type: "uint32" }, value: target },
-            { type: { type: "int64" }, value: size },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "uint16" },
-                    kind: "array",
-                    ownership: "borrowed",
-                },
-                value: data,
-            },
-            { type: { type: "uint32" }, value: usage },
-        ],
-        { type: "void" },
-    );
+    glBufferDataU16(target, data.length * 2, data, usage);
 }
 
 /**
@@ -711,17 +506,7 @@ export function bufferDataUshort(target: number, data: number[], usage: number):
  * @param offset - Byte offset into the element array buffer
  */
 export function drawElements(mode: number, count: number, type: number, offset: number): void {
-    call(
-        LIB,
-        "glDrawElements",
-        [
-            { type: { type: "uint32" }, value: mode },
-            { type: { type: "int32" }, value: count },
-            { type: { type: "uint32" }, value: type },
-            { type: { type: "uint64" }, value: offset },
-        ],
-        { type: "void" },
-    );
+    glDrawElements(mode, count, type, offset);
 }
 
 /**
@@ -731,15 +516,7 @@ export function drawElements(mode: number, count: number, type: number, offset: 
  * @returns The location of the attribute, or -1 if not found
  */
 export function getAttribLocation(program: number, name: string): number {
-    return call(
-        LIB,
-        "glGetAttribLocation",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "string", ownership: "borrowed" }, value: name },
-        ],
-        { type: "int32" },
-    ) as number;
+    return glGetAttribLocation(program, name) as number;
 }
 
 /**
@@ -749,16 +526,7 @@ export function getAttribLocation(program: number, name: string): number {
  * @param name - The name of the attribute variable
  */
 export function bindAttribLocation(program: number, index: number, name: string): void {
-    call(
-        LIB,
-        "glBindAttribLocation",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "uint32" }, value: index },
-            { type: { type: "string", ownership: "borrowed" }, value: name },
-        ],
-        { type: "void" },
-    );
+    glBindAttribLocation(program, index, name);
 }
 
 /**
@@ -766,9 +534,9 @@ export function bindAttribLocation(program: number, index: number, name: string)
  * @returns The error code (GL_NO_ERROR if no error)
  */
 export function getError(): number {
-    return call(LIB, "glGetError", [], { type: "uint32" }) as number;
+    return glGetError() as number;
 }
 
 export function flush(): void {
-    call(LIB, "glFlush", [], { type: "void" });
+    glFlush();
 }

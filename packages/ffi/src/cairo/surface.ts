@@ -1,402 +1,315 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import { Device } from "../generated/cairo/device.js";
-import type { Content, Format, Status, SurfaceType } from "../generated/cairo/enums.js";
-import type { RectangleInt } from "../generated/cairo/rectangle-int.js";
-import { Surface } from "../generated/cairo/surface.js";
-import { alloc, call, read, write } from "../native.js";
-import { getNativeObject } from "../registry.js";
-import { DEVICE_T, DOUBLE_TYPE, INT_TYPE, LIB, RECT_INT_T, SURFACE_T, SURFACE_T_NONE, ULONG_TYPE } from "./common.js";
+import type { Content, Format, RectangleInt, Status, SurfaceType } from "../generated/cairo/cairo.js";
+import { Surface } from "../generated/cairo/cairo.js";
+import { getHandle, setHandle } from "../handles.js";
+import { t } from "../native.js";
+import { wrapHandle } from "../registry.js";
+import {
+    DOUBLE_REF,
+    DOUBLE_TYPE,
+    FONT_OPTIONS_T,
+    INT_TYPE,
+    LIB,
+    RECT_INT_T,
+    STRING_FULL,
+    SURFACE_T,
+    SURFACE_T_NONE,
+} from "./common.js";
+import { FontOptions } from "./font-options.js";
 import { ImageSurface } from "./image-surface.js";
 
-declare module "../generated/cairo/surface.js" {
+const { fn } = t;
+const DEVICE_T_NONE = t.boxed("CairoDevice", "borrowed", LIB);
+
+declare module "../generated/cairo/cairo.js" {
     interface Surface {
-        finish(): void;
-        createSimilar(content: "COLOR" | "ALPHA" | "COLOR_ALPHA", width: number, height: number): Surface;
-        flush(): void;
-        markDirty(): void;
-        writeToPng(filename: string): void;
-        getType(): SurfaceType;
-        getContent(): Content;
-    }
-}
-
-Surface.prototype.finish = function (): void {
-    call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
-};
-
-const CONTENT_MAP = {
-    COLOR: 0x1000,
-    ALPHA: 0x2000,
-    COLOR_ALPHA: 0x3000,
-} as const;
-
-Surface.prototype.createSimilar = function (
-    content: "COLOR" | "ALPHA" | "COLOR_ALPHA",
-    width: number,
-    height: number,
-): Surface {
-    const ptr = call(
-        LIB,
-        "cairo_surface_create_similar",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: INT_TYPE, value: CONTENT_MAP[content] },
-            { type: INT_TYPE, value: width },
-            { type: INT_TYPE, value: height },
-        ],
-        SURFACE_T,
-    ) as NativeHandle;
-    return getNativeObject(ptr, Surface) as Surface;
-};
-
-Surface.prototype.flush = function (): void {
-    call(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
-};
-
-Surface.prototype.markDirty = function (): void {
-    call(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
-};
-
-Surface.prototype.writeToPng = function (filename: string): void {
-    call(
-        LIB,
-        "cairo_surface_write_to_png",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: filename },
-        ],
-        INT_TYPE,
-    );
-};
-
-Surface.prototype.getType = function (): SurfaceType {
-    return call(LIB, "cairo_surface_get_type", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as SurfaceType;
-};
-
-Surface.prototype.getContent = function (): Content {
-    return call(LIB, "cairo_surface_get_content", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as Content;
-};
-
-declare module "../generated/cairo/surface.js" {
-    interface Surface {
+        writeToPng(filename: string): Status;
         status(): Status;
-        createSimilarImage(format: Format, width: number, height: number): ImageSurface;
-        createForRectangle(x: number, y: number, width: number, height: number): Surface;
-        setDeviceOffset(xOffset: number, yOffset: number): void;
-        getDeviceOffset(): { x: number; y: number };
-        setDeviceScale(xScale: number, yScale: number): void;
-        getDeviceScale(): { x: number; y: number };
-        setFallbackResolution(xPpi: number, yPpi: number): void;
-        getFallbackResolution(): { x: number; y: number };
+        finish(): void;
+        flush(): void;
+        getDevice(): NativeHandle | null;
+        getFontOptions(): FontOptions;
+        getContent(): Content;
+        markDirty(): void;
         markDirtyRectangle(x: number, y: number, width: number, height: number): void;
+        setDeviceOffset(xOffset: number, yOffset: number): void;
+        getDeviceOffset(): { xOffset: number; yOffset: number };
+        getDeviceScale(): { xScale: number; yScale: number };
+        setDeviceScale(xScale: number, yScale: number): void;
+        setFallbackResolution(xPixelsPerInch: number, yPixelsPerInch: number): void;
+        getFallbackResolution(): { xPixelsPerInch: number; yPixelsPerInch: number };
+        getType(): SurfaceType;
+        getReferenceCount(): number;
         copyPage(): void;
         showPage(): void;
         hasShowTextGlyphs(): boolean;
-    }
-}
-
-Surface.prototype.status = function (): Status {
-    return call(LIB, "cairo_surface_status", [{ type: SURFACE_T_NONE, value: this.handle }], INT_TYPE) as Status;
-};
-
-Surface.prototype.createSimilarImage = function (format: Format, width: number, height: number): ImageSurface {
-    const ptr = call(
-        LIB,
-        "cairo_surface_create_similar_image",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: INT_TYPE, value: format },
-            { type: INT_TYPE, value: width },
-            { type: INT_TYPE, value: height },
-        ],
-        SURFACE_T,
-    ) as NativeHandle;
-    const surface = Object.create(ImageSurface.prototype) as ImageSurface;
-    surface.handle = ptr;
-    return surface;
-};
-
-Surface.prototype.createForRectangle = function (x: number, y: number, width: number, height: number): Surface {
-    const ptr = call(
-        LIB,
-        "cairo_surface_create_for_rectangle",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: DOUBLE_TYPE, value: x },
-            { type: DOUBLE_TYPE, value: y },
-            { type: DOUBLE_TYPE, value: width },
-            { type: DOUBLE_TYPE, value: height },
-        ],
-        SURFACE_T,
-    ) as NativeHandle;
-    return getNativeObject(ptr, Surface) as Surface;
-};
-
-Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number): void {
-    call(
-        LIB,
-        "cairo_surface_set_device_offset",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: DOUBLE_TYPE, value: xOffset },
-            { type: DOUBLE_TYPE, value: yOffset },
-        ],
-        { type: "void" },
-    );
-};
-
-Surface.prototype.getDeviceOffset = function (): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
-    call(
-        LIB,
-        "cairo_surface_get_device_offset",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-        ],
-        { type: "void" },
-    );
-    return { x: xRef.value, y: yRef.value };
-};
-
-Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): void {
-    call(
-        LIB,
-        "cairo_surface_set_device_scale",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: DOUBLE_TYPE, value: xScale },
-            { type: DOUBLE_TYPE, value: yScale },
-        ],
-        { type: "void" },
-    );
-};
-
-Surface.prototype.getDeviceScale = function (): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
-    call(
-        LIB,
-        "cairo_surface_get_device_scale",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-        ],
-        { type: "void" },
-    );
-    return { x: xRef.value, y: yRef.value };
-};
-
-Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number): void {
-    call(
-        LIB,
-        "cairo_surface_set_fallback_resolution",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: DOUBLE_TYPE, value: xPpi },
-            { type: DOUBLE_TYPE, value: yPpi },
-        ],
-        { type: "void" },
-    );
-};
-
-Surface.prototype.getFallbackResolution = function (): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
-    call(
-        LIB,
-        "cairo_surface_get_fallback_resolution",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-        ],
-        { type: "void" },
-    );
-    return { x: xRef.value, y: yRef.value };
-};
-
-Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: number, height: number): void {
-    call(
-        LIB,
-        "cairo_surface_mark_dirty_rectangle",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: INT_TYPE, value: x },
-            { type: INT_TYPE, value: y },
-            { type: INT_TYPE, value: width },
-            { type: INT_TYPE, value: height },
-        ],
-        { type: "void" },
-    );
-};
-
-Surface.prototype.copyPage = function (): void {
-    call(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
-};
-
-Surface.prototype.showPage = function (): void {
-    call(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "void" });
-};
-
-Surface.prototype.hasShowTextGlyphs = function (): boolean {
-    return call(LIB, "cairo_surface_has_show_text_glyphs", [{ type: SURFACE_T_NONE, value: this.handle }], {
-        type: "boolean",
-    }) as boolean;
-};
-
-declare module "../generated/cairo/surface.js" {
-    interface Surface {
-        setMimeData(mimeType: string, data: Uint8Array): void;
-        getMimeData(mimeType: string): Uint8Array | null;
         supportsMimeType(mimeType: string): boolean;
-        mapToImage(extents?: RectangleInt): ImageSurface;
-        unmapImage(image: ImageSurface): void;
-        getDevice(): Device | null;
+        mapToImage(extents: RectangleInt): Surface;
+        unmapImage(image: Surface): void;
+    }
+
+    namespace Surface {
+        function createSimilar(other: Surface, content: Content, width: number, height: number): Surface;
+        function createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface;
+        function createForRectangle(target: Surface, rectangle: SubSurfaceRectangle): Surface;
     }
 }
 
-Surface.prototype.setMimeData = function (mimeType: string, data: Uint8Array): void {
-    const buf = alloc(data.length, "mime_data", LIB);
-    for (let i = 0; i < data.length; i++) {
-        write(buf, { type: "uint8" }, i, data[i]);
-    }
-    call(
-        LIB,
-        "cairo_surface_set_mime_data",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: mimeType },
-            {
-                type: { type: "boxed", innerType: "mime_data", library: LIB, ownership: "borrowed" },
-                value: buf,
-            },
-            { type: ULONG_TYPE, value: data.length },
-            { type: { type: "uint64" }, value: 0 },
-            { type: { type: "uint64" }, value: 0 },
-        ],
-        INT_TYPE,
+/**
+ * Offset and size in user-space units used by {@link Surface.createForRectangle}.
+ */
+export type SubSurfaceRectangle = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+type SurfaceStatic = {
+    createSimilar(other: Surface, content: Content, width: number, height: number): Surface;
+    createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface;
+    createForRectangle(target: Surface, rectangle: SubSurfaceRectangle): Surface;
+};
+
+const SurfaceWithStatics = Surface as typeof Surface & SurfaceStatic;
+
+const cairo_surface_create_similar = fn(
+    LIB,
+    "cairo_surface_create_similar",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }, { type: INT_TYPE }],
+    SURFACE_T,
+);
+SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
+    return wrapHandle(Surface, cairo_surface_create_similar(getHandle(other), content, width, height) as NativeHandle);
+};
+
+const cairo_surface_create_similar_image = fn(
+    LIB,
+    "cairo_surface_create_similar_image",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }, { type: INT_TYPE }],
+    SURFACE_T,
+);
+SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
+    return wrapHandle(
+        Surface,
+        cairo_surface_create_similar_image(getHandle(other), format, width, height) as NativeHandle,
     );
 };
 
-Surface.prototype.getMimeData = function (mimeType: string): Uint8Array | null {
-    const dataRef = createRef(null);
-    const lengthRef = createRef(0);
-    call(
-        LIB,
-        "cairo_surface_get_mime_data",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: mimeType },
-            {
-                type: {
-                    type: "ref",
-                    innerType: { type: "boxed", innerType: "guint8*", library: LIB, ownership: "borrowed" },
-                },
-                value: dataRef,
-            },
-            { type: { type: "ref", innerType: ULONG_TYPE }, value: lengthRef },
-        ],
-        { type: "void" },
+const cairo_surface_create_for_rectangle = fn(
+    LIB,
+    "cairo_surface_create_for_rectangle",
+    [
+        { type: SURFACE_T_NONE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+        { type: DOUBLE_TYPE },
+    ],
+    SURFACE_T,
+);
+SurfaceWithStatics.createForRectangle = (target: Surface, { x, y, width, height }: SubSurfaceRectangle): Surface => {
+    return wrapHandle(
+        Surface,
+        cairo_surface_create_for_rectangle(getHandle(target), x, y, width, height) as NativeHandle,
     );
-    const length = lengthRef.value;
-    if (length === 0 || dataRef.value === null) return null;
-    const result = new Uint8Array(length as number);
-    for (let i = 0; i < (length as number); i++) {
-        result[i] = read(dataRef.value, { type: "uint8" }, i) as number;
-    }
-    return result;
 };
 
+const cairo_surface_write_to_png = fn(
+    LIB,
+    "cairo_surface_write_to_png",
+    [{ type: SURFACE_T_NONE }, { type: STRING_FULL }],
+    INT_TYPE,
+);
+Surface.prototype.writeToPng = function (filename: string): Status {
+    return cairo_surface_write_to_png(getHandle(this), filename) as Status;
+};
+
+const cairo_surface_status = fn(LIB, "cairo_surface_status", [{ type: SURFACE_T_NONE }], INT_TYPE);
+Surface.prototype.status = function (): Status {
+    return cairo_surface_status(getHandle(this)) as Status;
+};
+
+const cairo_surface_finish = fn(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE }], t.void);
+Surface.prototype.finish = function (): void {
+    cairo_surface_finish(getHandle(this));
+};
+
+const cairo_surface_flush = fn(LIB, "cairo_surface_flush", [{ type: SURFACE_T_NONE }], t.void);
+Surface.prototype.flush = function (): void {
+    cairo_surface_flush(getHandle(this));
+};
+
+const cairo_surface_get_device = fn(LIB, "cairo_surface_get_device", [{ type: SURFACE_T_NONE }], DEVICE_T_NONE);
+Surface.prototype.getDevice = function (): NativeHandle | null {
+    return cairo_surface_get_device(getHandle(this)) as NativeHandle | null;
+};
+
+const cairo_surface_get_font_options = fn(
+    LIB,
+    "cairo_surface_get_font_options",
+    [{ type: SURFACE_T_NONE }, { type: FONT_OPTIONS_T }],
+    t.void,
+);
+Surface.prototype.getFontOptions = function (): FontOptions {
+    const options = FontOptions.create();
+    cairo_surface_get_font_options(getHandle(this), getHandle(options));
+    return options;
+};
+
+const cairo_surface_get_content = fn(LIB, "cairo_surface_get_content", [{ type: SURFACE_T_NONE }], INT_TYPE);
+Surface.prototype.getContent = function (): Content {
+    return cairo_surface_get_content(getHandle(this)) as Content;
+};
+
+const cairo_surface_mark_dirty = fn(LIB, "cairo_surface_mark_dirty", [{ type: SURFACE_T_NONE }], t.void);
+Surface.prototype.markDirty = function (): void {
+    cairo_surface_mark_dirty(getHandle(this));
+};
+
+const cairo_surface_mark_dirty_rectangle = fn(
+    LIB,
+    "cairo_surface_mark_dirty_rectangle",
+    [{ type: SURFACE_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }, { type: INT_TYPE }, { type: INT_TYPE }],
+    t.void,
+);
+Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: number, height: number): void {
+    cairo_surface_mark_dirty_rectangle(getHandle(this), x, y, width, height);
+};
+
+const cairo_surface_set_device_offset = fn(
+    LIB,
+    "cairo_surface_set_device_offset",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
+Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number): void {
+    cairo_surface_set_device_offset(getHandle(this), xOffset, yOffset);
+};
+
+const cairo_surface_get_device_offset = fn(
+    LIB,
+    "cairo_surface_get_device_offset",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    t.void,
+);
+Surface.prototype.getDeviceOffset = function (): { xOffset: number; yOffset: number } {
+    const xRef = createRef(0);
+    const yRef = createRef(0);
+    cairo_surface_get_device_offset(getHandle(this), xRef, yRef);
+    return { xOffset: xRef.value, yOffset: yRef.value };
+};
+
+const cairo_surface_get_device_scale = fn(
+    LIB,
+    "cairo_surface_get_device_scale",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    t.void,
+);
+Surface.prototype.getDeviceScale = function (): { xScale: number; yScale: number } {
+    const xRef = createRef(0);
+    const yRef = createRef(0);
+    cairo_surface_get_device_scale(getHandle(this), xRef, yRef);
+    return { xScale: xRef.value, yScale: yRef.value };
+};
+
+const cairo_surface_set_device_scale = fn(
+    LIB,
+    "cairo_surface_set_device_scale",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
+Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): void {
+    cairo_surface_set_device_scale(getHandle(this), xScale, yScale);
+};
+
+const cairo_surface_set_fallback_resolution = fn(
+    LIB,
+    "cairo_surface_set_fallback_resolution",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_TYPE }, { type: DOUBLE_TYPE }],
+    t.void,
+);
+Surface.prototype.setFallbackResolution = function (xPixelsPerInch: number, yPixelsPerInch: number): void {
+    cairo_surface_set_fallback_resolution(getHandle(this), xPixelsPerInch, yPixelsPerInch);
+};
+
+const cairo_surface_get_fallback_resolution = fn(
+    LIB,
+    "cairo_surface_get_fallback_resolution",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    t.void,
+);
+Surface.prototype.getFallbackResolution = function (): { xPixelsPerInch: number; yPixelsPerInch: number } {
+    const xRef = createRef(0);
+    const yRef = createRef(0);
+    cairo_surface_get_fallback_resolution(getHandle(this), xRef, yRef);
+    return { xPixelsPerInch: xRef.value, yPixelsPerInch: yRef.value };
+};
+
+const cairo_surface_get_type = fn(LIB, "cairo_surface_get_type", [{ type: SURFACE_T_NONE }], INT_TYPE);
+Surface.prototype.getType = function (): SurfaceType {
+    return cairo_surface_get_type(getHandle(this)) as SurfaceType;
+};
+
+const cairo_surface_get_reference_count = fn(
+    LIB,
+    "cairo_surface_get_reference_count",
+    [{ type: SURFACE_T_NONE }],
+    INT_TYPE,
+);
+Surface.prototype.getReferenceCount = function (): number {
+    return cairo_surface_get_reference_count(getHandle(this)) as number;
+};
+
+const cairo_surface_copy_page = fn(LIB, "cairo_surface_copy_page", [{ type: SURFACE_T_NONE }], t.void);
+Surface.prototype.copyPage = function (): void {
+    cairo_surface_copy_page(getHandle(this));
+};
+
+const cairo_surface_show_page = fn(LIB, "cairo_surface_show_page", [{ type: SURFACE_T_NONE }], t.void);
+Surface.prototype.showPage = function (): void {
+    cairo_surface_show_page(getHandle(this));
+};
+
+const cairo_surface_has_show_text_glyphs = fn(
+    LIB,
+    "cairo_surface_has_show_text_glyphs",
+    [{ type: SURFACE_T_NONE }],
+    t.boolean,
+);
+Surface.prototype.hasShowTextGlyphs = function (): boolean {
+    return cairo_surface_has_show_text_glyphs(getHandle(this)) as boolean;
+};
+
+const cairo_surface_supports_mime_type = fn(
+    LIB,
+    "cairo_surface_supports_mime_type",
+    [{ type: SURFACE_T_NONE }, { type: STRING_FULL }],
+    t.boolean,
+);
 Surface.prototype.supportsMimeType = function (mimeType: string): boolean {
-    return call(
-        LIB,
-        "cairo_surface_supports_mime_type",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "string", ownership: "full" }, value: mimeType },
-        ],
-        { type: "boolean" },
-    ) as boolean;
+    return cairo_surface_supports_mime_type(getHandle(this), mimeType) as boolean;
 };
 
-Surface.prototype.mapToImage = function (extents?: RectangleInt): ImageSurface {
-    const ptr = extents
-        ? call(
-              LIB,
-              "cairo_surface_map_to_image",
-              [
-                  { type: SURFACE_T_NONE, value: this.handle },
-                  { type: RECT_INT_T, value: extents.handle },
-              ],
-              SURFACE_T_NONE,
-          )
-        : call(
-              LIB,
-              "cairo_surface_map_to_image",
-              [
-                  { type: SURFACE_T_NONE, value: this.handle },
-                  { type: { type: "uint64" } as const, value: 0 },
-              ],
-              SURFACE_T_NONE,
-          );
+const cairo_surface_map_to_image = fn(
+    LIB,
+    "cairo_surface_map_to_image",
+    [{ type: SURFACE_T_NONE }, { type: RECT_INT_T }],
+    SURFACE_T_NONE,
+);
+Surface.prototype.mapToImage = function (extents: RectangleInt): Surface {
+    const ptr = cairo_surface_map_to_image(getHandle(this), getHandle(extents)) as NativeHandle;
     const surface = Object.create(ImageSurface.prototype) as ImageSurface;
-    surface.handle = ptr as NativeHandle;
+    setHandle(surface, ptr);
     return surface;
 };
 
-Surface.prototype.unmapImage = function (image: ImageSurface): void {
-    call(
-        LIB,
-        "cairo_surface_unmap_image",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: SURFACE_T_NONE, value: image.handle },
-        ],
-        { type: "void" },
-    );
-};
-
-Surface.prototype.getDevice = function (): Device | null {
-    const ptr = call(
-        LIB,
-        "cairo_surface_get_device",
-        [{ type: SURFACE_T_NONE, value: this.handle }],
-        DEVICE_T,
-    ) as NativeHandle | null;
-    if (ptr === null) return null;
-    return getNativeObject(ptr, Device) as Device;
-};
-
-export const imageCreateForData = (
-    data: Uint8Array,
-    format: Format,
-    width: number,
-    height: number,
-    stride: number,
-): ImageSurface => {
-    const surface = new ImageSurface(format, width, height);
-    surface.flush();
-    const actualStride = surface.getStride();
-    const ptr = call(LIB, "cairo_image_surface_get_data", [{ type: SURFACE_T_NONE, value: surface.handle }], {
-        type: "struct",
-        innerType: "guint8*",
-        ownership: "borrowed",
-    }) as NativeHandle;
-    const rowBytes = Math.min(stride, actualStride);
-    const byteType = { type: "uint8" } as const;
-    for (let row = 0; row < height; row++) {
-        const srcOffset = row * stride;
-        const dstOffset = row * actualStride;
-        for (let col = 0; col < rowBytes; col++) {
-            if (srcOffset + col < data.length) {
-                write(ptr, byteType, dstOffset + col, data[srcOffset + col] as number);
-            }
-        }
-    }
-    surface.markDirty();
-    return surface;
+const cairo_surface_unmap_image = fn(
+    LIB,
+    "cairo_surface_unmap_image",
+    [{ type: SURFACE_T_NONE }, { type: SURFACE_T_NONE }],
+    t.void,
+);
+Surface.prototype.unmapImage = function (image: Surface): void {
+    cairo_surface_unmap_image(getHandle(this), getHandle(image));
 };

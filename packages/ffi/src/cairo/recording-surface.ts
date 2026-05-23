@@ -1,87 +1,84 @@
 import { createRef, type NativeHandle } from "@gtkx/native";
-import type { Content } from "../generated/cairo/enums.js";
-import { Surface } from "../generated/cairo/surface.js";
-import { alloc, call, read, write } from "../native.js";
-import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
+import type { Content } from "../generated/cairo/cairo.js";
+import { Surface } from "../generated/cairo/cairo.js";
+import { getHandle } from "../handles.js";
+import { alloc, read, t, write } from "../native.js";
+import { wrapHandle } from "../registry.js";
+import { DOUBLE_REF, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
 
+const { fn } = t;
+const RECT_T = t.boxed("cairo_rectangle_t", "borrowed", LIB);
+
+const cairo_recording_surface_create_extents = fn(
+    LIB,
+    "cairo_recording_surface_create",
+    [{ type: INT_TYPE }, { type: RECT_T }],
+    SURFACE_T,
+);
+const cairo_recording_surface_create_unbounded = fn(
+    LIB,
+    "cairo_recording_surface_create",
+    [{ type: INT_TYPE }, { type: t.uint64 }],
+    SURFACE_T,
+);
+const cairo_recording_surface_ink_extents = fn(
+    LIB,
+    "cairo_recording_surface_ink_extents",
+    [{ type: SURFACE_T_NONE }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }, { type: DOUBLE_REF }],
+    t.void,
+);
+const cairo_recording_surface_get_extents = fn(
+    LIB,
+    "cairo_recording_surface_get_extents",
+    [{ type: SURFACE_T_NONE }, { type: RECT_T }],
+    t.boolean,
+);
+
+/**
+ * Cairo recording surface, which captures drawing operations for later replay.
+ */
 export class RecordingSurface extends Surface {
-    static override readonly glibTypeName: string = "CairoSurface";
-
-    constructor(content: Content, extents?: { x: number; y: number; width: number; height: number }) {
+    /**
+     * Allocates a recording surface for the given content type, optionally
+     * bounded by `extents`.
+     */
+    static create(
+        content: Content,
+        extents?: { x: number; y: number; width: number; height: number },
+    ): RecordingSurface {
+        let handle: NativeHandle;
         if (extents) {
             const rect = alloc(32, "cairo_rectangle_t", LIB);
             write(rect, DOUBLE_TYPE, 0, extents.x);
             write(rect, DOUBLE_TYPE, 8, extents.y);
             write(rect, DOUBLE_TYPE, 16, extents.width);
             write(rect, DOUBLE_TYPE, 24, extents.height);
-            super(
-                call(
-                    LIB,
-                    "cairo_recording_surface_create",
-                    [
-                        { type: INT_TYPE, value: content },
-                        {
-                            type: {
-                                type: "boxed",
-                                innerType: "cairo_rectangle_t",
-                                library: LIB,
-                                ownership: "borrowed",
-                            },
-                            value: rect,
-                        },
-                    ],
-                    SURFACE_T,
-                ) as NativeHandle,
-            );
+            handle = cairo_recording_surface_create_extents(content, rect) as NativeHandle;
         } else {
-            super(
-                call(
-                    LIB,
-                    "cairo_recording_surface_create",
-                    [
-                        { type: INT_TYPE, value: content },
-                        { type: { type: "uint64" }, value: 0 },
-                    ],
-                    SURFACE_T,
-                ) as NativeHandle,
-            );
+            handle = cairo_recording_surface_create_unbounded(content, 0) as NativeHandle;
         }
+        return wrapHandle(RecordingSurface, handle);
     }
 
-    inkExtents(): { x: number; y: number; width: number; height: number } {
-        const xRef = createRef(0.0);
-        const yRef = createRef(0.0);
-        const wRef = createRef(0.0);
-        const hRef = createRef(0.0);
-        call(
-            LIB,
-            "cairo_recording_surface_ink_extents",
-            [
-                { type: SURFACE_T_NONE, value: this.handle },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: wRef },
-                { type: { type: "ref", innerType: DOUBLE_TYPE }, value: hRef },
-            ],
-            { type: "void" },
-        );
-        return { x: xRef.value, y: yRef.value, width: wRef.value, height: hRef.value };
+    /**
+     * Measures the extents of the operations recorded into the surface.
+     */
+    inkExtents(): { x0: number; y0: number; width: number; height: number } {
+        const x0Ref = createRef(0);
+        const y0Ref = createRef(0);
+        const widthRef = createRef(0);
+        const heightRef = createRef(0);
+        cairo_recording_surface_ink_extents(getHandle(this), x0Ref, y0Ref, widthRef, heightRef);
+        return { x0: x0Ref.value, y0: y0Ref.value, width: widthRef.value, height: heightRef.value };
     }
 
+    /**
+     * Returns the bounding rectangle the surface was created with, or `null`
+     * when the surface is unbounded.
+     */
     getExtents(): { x: number; y: number; width: number; height: number } | null {
         const rect = alloc(32, "cairo_rectangle_t", LIB);
-        const result = call(
-            LIB,
-            "cairo_recording_surface_get_extents",
-            [
-                { type: SURFACE_T_NONE, value: this.handle },
-                {
-                    type: { type: "boxed", innerType: "cairo_rectangle_t", library: LIB, ownership: "borrowed" },
-                    value: rect,
-                },
-            ],
-            { type: "boolean" },
-        ) as boolean;
+        const result = cairo_recording_surface_get_extents(getHandle(this), rect) as boolean;
         if (!result) return null;
         return {
             x: read(rect, DOUBLE_TYPE, 0) as number,

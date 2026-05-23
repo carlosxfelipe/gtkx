@@ -24,6 +24,7 @@
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
+    "sideEffects": true,
     "exports": {
         "./package.json": "./package.json",
         ".": {
@@ -38,23 +39,45 @@
             "types": "./dist/cairo/index.d.ts",
             "default": "./dist/cairo/index.js"
         },
+        "./gdk": {
+            "types": "./dist/gdk/index.d.ts",
+            "default": "./dist/gdk/index.js"
+        },
         "./gobject": {
             "types": "./dist/gobject/index.d.ts",
             "default": "./dist/gobject/index.js"
         },
+        "./graphene": {
+            "types": "./dist/graphene/index.d.ts",
+            "default": "./dist/graphene/index.js"
+        },
+        "./gtk": {
+            "types": "./dist/gtk/index.d.ts",
+            "default": "./dist/gtk/index.js"
+        },
         "./*": {
-            "types": "./dist/generated/*/index.d.ts",
-            "default": "./dist/generated/*/index.js"
+            "types": "./dist/generated/*/*.d.ts",
+            "default": "./dist/generated/*/*.js"
         }
     },
     "files": [
         "dist",
-        "src"
+        "src",
+        "scripts",
+        "!dist/generated",
+        "!src/generated",
+        "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md .",
+        "build": "tsc -b && pnpm run copy-generated-dts",
+        "copy-generated-dts": "node scripts/copy-generated-dts.ts",
+        "postinstall": "node scripts/postinstall.ts",
         "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "coverage": "vitest run --coverage",
+        "typecheck": "tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
+    },
+    "engines": {
+        "node": ">=24"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*"

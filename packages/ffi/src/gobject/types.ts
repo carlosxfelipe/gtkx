@@ -1,129 +1,69 @@
-import { typeFromName } from "../generated/gobject/functions.js";
+import type { GType } from "../generated/gobject/gobject.js";
+import { typeFromName } from "../generated/gobject/gobject.js";
 
-let invalidType: number | undefined;
-let noneType: number | undefined;
-let interfaceType: number | undefined;
-let charType: number | undefined;
-let ucharType: number | undefined;
-let booleanType: number | undefined;
-let intType: number | undefined;
-let uintType: number | undefined;
-let longType: number | undefined;
-let ulongType: number | undefined;
-let int64Type: number | undefined;
-let uint64Type: number | undefined;
-let enumType: number | undefined;
-let flagsType: number | undefined;
-let floatType: number | undefined;
-let doubleType: number | undefined;
-let stringType: number | undefined;
-let pointerType: number | undefined;
-let boxedType: number | undefined;
-let paramType: number | undefined;
-let objectType: number | undefined;
-let variantType: number | undefined;
+const FUNDAMENTAL_TYPE_NAMES = {
+    INVALID: "void",
+    NONE: "void",
+    INTERFACE: "GInterface",
+    CHAR: "gchar",
+    UCHAR: "guchar",
+    BOOLEAN: "gboolean",
+    INT: "gint",
+    UINT: "guint",
+    LONG: "glong",
+    ULONG: "gulong",
+    INT64: "gint64",
+    UINT64: "guint64",
+    ENUM: "GEnum",
+    FLAGS: "GFlags",
+    FLOAT: "gfloat",
+    DOUBLE: "gdouble",
+    STRING: "gchararray",
+    POINTER: "gpointer",
+    BOXED: "GBoxed",
+    PARAM: "GParam",
+    OBJECT: "GObject",
+    VARIANT: "GVariant",
+} as const;
+
+type FundamentalTypeName = keyof typeof FUNDAMENTAL_TYPE_NAMES;
+
+const resolvedTypes = new Map<string, GType>();
+
+const resolveType = (glibName: string): GType => {
+    let gtype = resolvedTypes.get(glibName);
+    if (gtype === undefined) {
+        gtype = typeFromName(glibName);
+        resolvedTypes.set(glibName, gtype);
+    }
+    return gtype;
+};
+
+const typeDescriptors: PropertyDescriptorMap = {};
+for (const [name, glibName] of Object.entries(FUNDAMENTAL_TYPE_NAMES)) {
+    typeDescriptors[name] = { enumerable: true, get: (): GType => resolveType(glibName) };
+}
 
 /**
  * Fundamental GLib type constants.
  *
  * Provides lazy-loaded GType identifiers for primitive and object types.
- * Use with {@link Value} factory methods that require explicit type specification.
+ * Each member resolves its `g_type_from_name` lookup on first access and
+ * memoizes it by GLib type name, so `INVALID` and `NONE` (both `void`)
+ * share a single resolution.
+ *
+ * Use with the `@gtkx/ffi/value-marshal` factory functions that require
+ * explicit type specification.
  *
  * @example
  * ```ts
- * import { Type, Value } from "@gtkx/ffi/gobject";
+ * import { Type } from "@gtkx/ffi/gobject";
+ * import { valueFromEnum } from "@gtkx/ffi/value-marshal";
  *
- * const enumValue = Value.newFromEnum(myEnumGType, 0);
+ * const enumValue = valueFromEnum(myEnumGType, 0);
  * console.log(Type.STRING); // GType for gchararray
  * ```
  */
-export const Type = {
-    get INVALID(): number {
-        invalidType ??= typeFromName("void");
-        return invalidType;
-    },
-    get NONE(): number {
-        noneType ??= typeFromName("void");
-        return noneType;
-    },
-    get INTERFACE(): number {
-        interfaceType ??= typeFromName("GInterface");
-        return interfaceType;
-    },
-    get CHAR(): number {
-        charType ??= typeFromName("gchar");
-        return charType;
-    },
-    get UCHAR(): number {
-        ucharType ??= typeFromName("guchar");
-        return ucharType;
-    },
-    get BOOLEAN(): number {
-        booleanType ??= typeFromName("gboolean");
-        return booleanType;
-    },
-    get INT(): number {
-        intType ??= typeFromName("gint");
-        return intType;
-    },
-    get UINT(): number {
-        uintType ??= typeFromName("guint");
-        return uintType;
-    },
-    get LONG(): number {
-        longType ??= typeFromName("glong");
-        return longType;
-    },
-    get ULONG(): number {
-        ulongType ??= typeFromName("gulong");
-        return ulongType;
-    },
-    get INT64(): number {
-        int64Type ??= typeFromName("gint64");
-        return int64Type;
-    },
-    get UINT64(): number {
-        uint64Type ??= typeFromName("guint64");
-        return uint64Type;
-    },
-    get ENUM(): number {
-        enumType ??= typeFromName("GEnum");
-        return enumType;
-    },
-    get FLAGS(): number {
-        flagsType ??= typeFromName("GFlags");
-        return flagsType;
-    },
-    get FLOAT(): number {
-        floatType ??= typeFromName("gfloat");
-        return floatType;
-    },
-    get DOUBLE(): number {
-        doubleType ??= typeFromName("gdouble");
-        return doubleType;
-    },
-    get STRING(): number {
-        stringType ??= typeFromName("gchararray");
-        return stringType;
-    },
-    get POINTER(): number {
-        pointerType ??= typeFromName("gpointer");
-        return pointerType;
-    },
-    get BOXED(): number {
-        boxedType ??= typeFromName("GBoxed");
-        return boxedType;
-    },
-    get PARAM(): number {
-        paramType ??= typeFromName("GParam");
-        return paramType;
-    },
-    get OBJECT(): number {
-        objectType ??= typeFromName("GObject");
-        return objectType;
-    },
-    get VARIANT(): number {
-        variantType ??= typeFromName("GVariant");
-        return variantType;
-    },
-};
+export const Type: Readonly<Record<FundamentalTypeName, GType>> = Object.freeze(
+    Object.defineProperties({} as Record<FundamentalTypeName, GType>, typeDescriptors),
+);

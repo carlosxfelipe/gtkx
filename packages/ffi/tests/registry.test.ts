@@ -1,133 +1,159 @@
 import { describe, expect, it } from "vitest";
-import * as Gdk from "../src/generated/gdk/index.js";
-import * as Gtk from "../src/generated/gtk/index.js";
+import * as Gdk from "../src/generated/gdk/gdk.js";
+import type { GType } from "../src/generated/gobject/gobject.js";
+import { typeFromName } from "../src/generated/gobject/gobject.js";
+import * as Gtk from "../src/generated/gtk/gtk.js";
+import { getHandle, type NativeClass, NativeObject } from "../src/handles.js";
 import {
     findNativeClass,
     getNativeClass,
     getNativeObject,
-    type NativeClass,
-    NativeObject,
+    getNativeObjectAsInterface,
     registerNativeClass,
-} from "../src/index.js";
+} from "../src/registry.js";
+
+const INVALID_GTYPE = 0 as unknown as GType;
 
 describe("registerNativeClass", () => {
-    it("registers a class with glibTypeName and objectType", () => {
-        class TestClass extends NativeObject {
-            static glibTypeName = "TestType";
-            static objectType = "gobject" as const;
-        }
-        registerNativeClass(TestClass as NativeClass);
+    it("registers a class by GType", () => {
+        class TestClass extends NativeObject {}
+        const fakeGtype = 123456789 as unknown as GType;
+        registerNativeClass(TestClass as NativeClass, fakeGtype);
+        expect(findNativeClass(fakeGtype)).toBe(TestClass);
     });
 
     it("allows getNativeObject to find registered types", () => {
-        const label = new Gtk.Label("Test");
-        const wrapped = getNativeObject(label.handle);
+        const label = new Gtk.Label({ label: "Test" });
+        const wrapped = getNativeObject(getHandle(label));
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
 });
 
 describe("getNativeClass", () => {
-    it("returns a registered class by GLib type name", () => {
-        const cls = getNativeClass("GtkLabel");
+    it("returns a registered class by GType", () => {
+        const cls = getNativeClass(typeFromName("GtkLabel"));
         expect(cls).toBe(Gtk.Label);
     });
 
-    it("returns null for an unregistered type name", () => {
-        const cls = getNativeClass("NonExistentType");
+    it("returns null for an unregistered GType", () => {
+        const cls = getNativeClass(INVALID_GTYPE);
         expect(cls).toBeNull();
     });
 });
 
 describe("findNativeClass", () => {
     it("returns exact match when type is registered", () => {
-        const cls = findNativeClass("GtkButton");
+        const cls = findNativeClass(typeFromName("GtkButton"));
         expect(cls).toBe(Gtk.Button);
     });
 
     it("walks hierarchy to find a registered parent class", () => {
-        const cls = findNativeClass("GtkButton", true);
+        const cls = findNativeClass(typeFromName("GtkButton"), true);
         expect(cls).not.toBeNull();
     });
 
     it("returns null when walkHierarchy is false and type is not registered", () => {
-        const cls = findNativeClass("NonExistentType", false);
+        const cls = findNativeClass(INVALID_GTYPE, false);
         expect(cls).toBeNull();
     });
 });
 
-describe("getNativeObject", () => {
+describe("getNativeObject — wrapping", () => {
     it("wraps a native pointer in a class instance", () => {
-        const label = new Gtk.Label("Test");
-        const wrapped = getNativeObject(label.handle);
+        const label = new Gtk.Label({ label: "Test" });
+        const wrapped = getNativeObject(getHandle(label));
         expect(wrapped).toBeInstanceOf(Gtk.Label);
     });
 
     it("determines correct runtime type via GLib type system", () => {
         const button = new Gtk.Button();
-        const wrapped = getNativeObject(button.handle);
+        const wrapped = getNativeObject(getHandle(button));
         expect(wrapped).toBeInstanceOf(Gtk.Button);
     });
 
     it("wraps with specific type when targetType is provided", () => {
         const box = new Gtk.Box();
-        const wrapped = getNativeObject(box.handle, Gtk.Box);
+        const wrapped = getNativeObject(getHandle(box), Gtk.Box);
         expect(wrapped).toBeInstanceOf(Gtk.Box);
     });
+});
 
-    describe("null handling", () => {
-        it("returns null when id is null", () => {
-            const result = getNativeObject(null);
-            expect(result).toBeNull();
-        });
-
-        it("returns null when id is undefined", () => {
-            const result = getNativeObject(undefined);
-            expect(result).toBeNull();
-        });
+describe("getNativeObject — null handling", () => {
+    it("returns null when id is null", () => {
+        const result = getNativeObject(null);
+        expect(result).toBeNull();
     });
 
-    describe("boxed types", () => {
-        it("wraps a native boxed type pointer in a class instance", () => {
-            const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
-            const wrapped = getNativeObject(rgba.handle, Gdk.RGBA);
-            expect(wrapped).not.toBeNull();
-            expect(wrapped?.red).toBeCloseTo(1.0);
-            expect(wrapped?.green).toBeCloseTo(0.5);
-            expect(wrapped?.blue).toBeCloseTo(0.0);
-            expect(wrapped?.alpha).toBeCloseTo(1.0);
-        });
+    it("returns null when id is undefined", () => {
+        const result = getNativeObject(undefined);
+        expect(result).toBeNull();
+    });
+});
 
-        it("sets the correct prototype chain", () => {
-            const rgba = new Gdk.RGBA({ red: 0.5 });
-            const wrapped = getNativeObject(rgba.handle, Gdk.RGBA);
-            expect(wrapped).not.toBeNull();
-            expect(typeof wrapped?.toString).toBe("function");
-            expect(typeof wrapped?.copy).toBe("function");
-        });
-
-        it("returns null when id is null for boxed types", () => {
-            const result = getNativeObject(null, Gdk.RGBA);
-            expect(result).toBeNull();
-        });
-
-        it("returns null when id is undefined for boxed types", () => {
-            const result = getNativeObject(undefined, Gdk.RGBA);
-            expect(result).toBeNull();
-        });
+describe("getNativeObject — boxed types", () => {
+    it("wraps a native boxed type pointer in a class instance", () => {
+        const rgba = new Gdk.RGBA();
+        rgba.red = 1.0;
+        rgba.green = 0.5;
+        rgba.blue = 0.0;
+        rgba.alpha = 1.0;
+        const wrapped = getNativeObject(getHandle(rgba), Gdk.RGBA);
+        expect(wrapped).not.toBeNull();
+        expect(wrapped?.red).toBeCloseTo(1.0);
+        expect(wrapped?.green).toBeCloseTo(0.5);
+        expect(wrapped?.blue).toBeCloseTo(0.0);
+        expect(wrapped?.alpha).toBeCloseTo(1.0);
     });
 
-    describe("interfaces", () => {
-        it("returns interface instance when object implements it", () => {
-            const box = new Gtk.Box();
-            const orientable = getNativeObject(box.handle, Gtk.Orientable);
-            expect(orientable).not.toBeNull();
-        });
+    it("sets the correct prototype chain", () => {
+        const rgba = new Gdk.RGBA();
+        rgba.red = 0.5;
+        const wrapped = getNativeObject(getHandle(rgba), Gdk.RGBA);
+        expect(wrapped).not.toBeNull();
+        expect(typeof wrapped?.toString).toBe("function");
+        expect(typeof wrapped?.copy).toBe("function");
+    });
 
-        it("allows calling interface methods on returned instance", () => {
-            const box = new Gtk.Box();
-            const orientable = getNativeObject(box.handle, Gtk.Orientable);
-            expect(orientable).not.toBeNull();
-            expect(typeof orientable?.setOrientation).toBe("function");
-        });
+    it("returns null when id is null for boxed types", () => {
+        const result = getNativeObject(null, Gdk.RGBA);
+        expect(result).toBeNull();
+    });
+
+    it("returns null when id is undefined for boxed types", () => {
+        const result = getNativeObject(undefined, Gdk.RGBA);
+        expect(result).toBeNull();
+    });
+});
+
+describe("getNativeObject — interfaces", () => {
+    it("returns interface instance when object implements it", () => {
+        const box = new Gtk.Box();
+        const orientable = getNativeObjectAsInterface(getHandle(box), Gtk.Orientable);
+        expect(orientable).not.toBeNull();
+    });
+
+    it("allows calling interface methods on returned instance", () => {
+        const box = new Gtk.Box();
+        const orientable = getNativeObjectAsInterface(getHandle(box), Gtk.Orientable);
+        expect(orientable).not.toBeNull();
+        expect(typeof orientable?.setOrientation).toBe("function");
+    });
+
+    it("returns null for null/undefined handle", () => {
+        expect(getNativeObjectAsInterface(null, Gtk.Orientable)).toBeNull();
+        expect(getNativeObjectAsInterface(undefined, Gtk.Orientable)).toBeNull();
+    });
+
+    it("instantiates concrete registered class when handle is unseen", () => {
+        const searchEntry = new Gtk.SearchEntry();
+        const child = searchEntry.getFirstAccessibleChild();
+        expect(child).not.toBeNull();
+    });
+
+    it("registers wrapper so subsequent lookups return the same instance", () => {
+        const searchEntry = new Gtk.SearchEntry();
+        const first = searchEntry.getFirstAccessibleChild();
+        const second = searchEntry.getFirstAccessibleChild();
+        expect(first).toBe(second);
     });
 });

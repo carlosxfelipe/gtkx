@@ -1,61 +1,47 @@
-import {
-    type Arg,
-    type FfiValue,
-    type NativeHandle,
-    alloc as nativeAlloc,
-    call as nativeCall,
-    freeze as nativeFreeze,
-    read as nativeRead,
-    unfreeze as nativeUnfreeze,
-    write as nativeWrite,
-    type Type,
-} from "@gtkx/native";
-import type { GError } from "./generated/glib/error.js";
-import { typeCheckInstanceIsA, typeFromName } from "./generated/gobject/functions.js";
-import { TypeInstance } from "./generated/gobject/type-instance.js";
-import type { NativeClass, NativeObject } from "./object.js";
+/**
+ * Native error handling and the consolidated FFI helper re-export.
+ *
+ * Re-exports the `@gtkx/native` primitives and the `t` binding/type helpers
+ * from `./helpers.js` under a single specifier hand-written bindings import
+ * from, and defines the `NativeError` class and error-domain machinery that
+ * generated throwing callables use to surface `GError` failures as
+ * `instanceof`-discriminable JavaScript errors.
+ */
 
-export type { NativeHandle } from "./object.js";
-export { type NativeClass, NativeObject } from "./object.js";
+export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
+export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
+
+import type { NativeHandle, Ref } from "@gtkx/native";
+import type { Error as GError } from "./generated/glib/glib.js";
+import type { NativeClass } from "./handles.js";
+import { getNativeObject } from "./registry.js";
+
+export type { NativeHandle, Type } from "@gtkx/native";
+export { findObjectProperty, getInstanceGType } from "@gtkx/native";
+export type { NativeClass } from "./handles.js";
 
 /**
- * Error class wrapping GLib GError structures.
+ * Error thrown by generated bindings when a throwing GTK/GLib callable fails.
  *
- * Provides access to the error domain, code, and message from
- * native GTK/GLib errors.
- *
- * @example
- * ```tsx
- * try {
- *   file.loadContents();
- * } catch (error) {
- *   if (error instanceof NativeError) {
- *     console.log(`GLib error ${error.domain}:${error.code}: ${error.message}`);
- *   }
- * }
- * ```
+ * Carries the failing `GError`'s domain quark and code. Discriminate it at the
+ * catch site with `instanceof` against a generated error-domain enum rather
+ * than referencing this class directly.
  */
 export class NativeError extends Error {
-    readonly gerror: GError;
-
-    getDomain(): number {
-        return this.gerror.domain;
-    }
-
-    getCode(): number {
-        return this.gerror.code;
-    }
+    /** Quark of the GLib error domain the failure belongs to. */
+    readonly domain: number;
+    /** Domain-specific error code. */
+    readonly code: number;
 
     /**
-     * Creates a NativeError from a GError instance.
-     *
-     * @param gerror - GError wrapper instance
+     * @param gerror - The populated `GError` wrapper from a throwing callable.
      */
     constructor(gerror: GError) {
         super(gerror.message ?? "Unknown error");
 
-        this.gerror = gerror;
         this.name = "NativeError";
+        this.domain = gerror.domain;
+        this.code = gerror.code;
 
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, NativeError);
@@ -64,117 +50,75 @@ export class NativeError extends Error {
 }
 
 /**
- * Gets a native object as a specific interface type if it implements that interface.
+ * Throws a {@link NativeError} when a `GError` out-parameter holds an error.
  *
- * Uses GLib's type system to check if the object implements the specified
- * interface, and returns a wrapped instance if it does.
+ * Generated bindings for throwing callables pass the populated error ref and
+ * the GLib `Error` wrapper class. A no-op when the ref is empty.
  *
- * @typeParam T - The interface type
- * @param obj - The native object to check
- * @param iface - The interface class (must have a glibTypeName property)
- * @returns The wrapped interface instance, or null if not implemented
- *
- * @example
- * ```tsx
- * const editable = getNativeInterface(widget, Gtk.Editable);
- * if (editable) {
- *     const text = editable.getText();
- * }
- * ```
+ * @param error - Out-parameter ref populated by the FFI call
+ * @param errorClass - The GLib `Error` wrapper class
  */
-export function getNativeInterface<T extends NativeObject>(obj: NativeObject, iface: NativeClass<T>): T | null {
-    if (!obj.handle) return null;
-
-    const glibTypeName = iface.glibTypeName;
-    if (!glibTypeName) return null;
-
-    const gtype = typeFromName(glibTypeName);
-    if (gtype === 0) return null;
-
-    const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
-    typeInstance.handle = obj.handle;
-
-    if (!typeCheckInstanceIsA(typeInstance, gtype)) {
-        return null;
+export function checkError(error: Ref<NativeHandle | null>, errorClass: NativeClass<GError>): void {
+    if (error.value !== null) {
+        throw new NativeError(getNativeObject(error.value, errorClass));
     }
-
-    const instance = Object.create(iface.prototype) as T;
-    instance.handle = obj.handle;
-    return instance;
 }
 
 /**
- * Invokes a native function through FFI.
+ * An error-domain enum: a frozen member map that also acts as the right-hand
+ * side of an `instanceof` check.
  *
- * @param library - Library name (e.g., "gtk", "adw")
- * @param symbol - Function symbol name
- * @param args - Arguments with type information for marshaling
- * @param returnType - Expected return type descriptor
- * @returns The unmarshaled return value
- * @throws If runtime not started or undefined required argument
+ * `error instanceof SomeErrorDomain` is true when `error` was thrown from the
+ * matching GLib error domain, letting callers discriminate failures without
+ * referencing the internal error class.
+ *
+ * @typeParam T - The enum's member-name to numeric-value map.
  */
-export const call = (library: string, symbol: string, args: Arg[], returnType: Type): FfiValue => {
-    return nativeCall(library, symbol, args, returnType);
+export type ErrorDomain<T extends Record<string, number>> = Readonly<T> & {
+    readonly [Symbol.hasInstance]: (
+        value: unknown,
+    ) => value is Error & { readonly domain: number; readonly code: number };
 };
 
 /**
- * Allocates native memory for a structure or buffer.
+ * Builds an error-domain enum whose `instanceof` checks match errors thrown
+ * from the given GLib error domain.
  *
- * @param size - Number of bytes to allocate
- * @param typeName - Optional type name for debugging
- * @param library - Optional library name for debugging
- * @returns Handle to the allocated memory
- * @throws If runtime not started
+ * The domain quark is resolved lazily on first `instanceof` check, since the
+ * generated `quark_from_string` binding may be declared after the enum in its
+ * module.
+ *
+ * @param resolveDomain - Resolves the quark of the GLib error domain.
+ * @param members - The enum's member-name to numeric-value map.
+ * @returns A frozen enum object usable as an `instanceof` right-hand side.
  */
-export const alloc = (size: number, typeName?: string, library?: string): NativeHandle => {
-    return nativeAlloc(size, typeName, library);
-};
+export function makeErrorDomain<const T extends Record<string, number>>(
+    resolveDomain: () => number,
+    members: T,
+): ErrorDomain<T> {
+    let domain: number | undefined;
+    const hasInstance = (value: unknown): boolean => {
+        domain ??= resolveDomain();
+        return value instanceof NativeError && value.domain === domain;
+    };
+    const enumObject: Record<string, unknown> = { ...members };
+    Object.defineProperty(enumObject, Symbol.hasInstance, { value: hasInstance });
+    return Object.freeze(enumObject) as ErrorDomain<T>;
+}
 
 /**
- * Reads a value from native memory.
+ * Throws an `Error` reporting that a callable cannot be marshalled through the
+ * `@gtkx/ffi` runtime.
  *
- * @param handle - Handle to the memory region
- * @param type - Type descriptor for unmarshaling
- * @param offset - Byte offset within the memory region
- * @returns The unmarshaled value
- * @throws If runtime not started
- */
-export const read = (handle: NativeHandle, type: Type, offset: number): FfiValue => {
-    return nativeRead(handle, type, offset);
-};
-
-/**
- * Writes a value to native memory.
+ * Generated bindings expose every method and function the contract declares,
+ * including ones whose signature the FFI layer cannot marshal. Those members
+ * delegate to this helper so a call surfaces a descriptive error instead of a
+ * silent `undefined`. The `never` return type lets a delegating method body
+ * (`return throwUnsupported(...)`) be inferred as `never`.
  *
- * @param handle - Handle to the memory region
- * @param type - Type descriptor for marshaling
- * @param offset - Byte offset within the memory region
- * @param value - Value to write
- * @throws If runtime not started
+ * @param message - Description of the unsupported callable.
+ * @returns Never returns; always throws.
  */
-export const write = (handle: NativeHandle, type: Type, offset: number, value: unknown): void => {
-    nativeWrite(handle, type, offset, value);
-};
-
-/**
- * Freezes the GLib main loop, preventing it from processing events.
- *
- * While frozen, GTK property changes and signal emissions are batched
- * and deferred until {@link unfreeze} is called. This is used internally
- * by the reconciler to group multiple mutations into a single
- * main-loop iteration, avoiding intermediate redraws.
- */
-export const freeze = (): void => {
-    nativeFreeze();
-};
-
-/**
- * Unfreezes the GLib main loop, flushing all batched mutations.
- *
- * Must be paired with a preceding {@link freeze} call. Once unfrozen,
- * all deferred property changes and signal emissions are dispatched
- * in a single main-loop iteration.
- */
-export const unfreeze = (): void => {
-    nativeUnfreeze();
-};
+export function throwUnsupported(message: string): never {
+    throw new Error(message);
+}

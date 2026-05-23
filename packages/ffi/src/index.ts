@@ -1,14 +1,6 @@
-export {
-    Arg,
-    createRef,
-    type FfiValue,
-    getNativeId,
-    type NativeHandle,
-    Ref,
-    Type,
-} from "@gtkx/native";
-export * from "./lifecycle.js";
-export * from "./native.js";
-export * from "./registry.js";
-import "./cairo/index.js";
-import "./gobject/value.js";
+export type { NativeClass } from "./handles.js";
+export { freeze, unfreeze } from "./helpers.js";
+export { stop, whenStopped } from "./lifecycle.js";
+export { getInstanceGType } from "./native.js";
+export { type RegisterClassOptions, registerClass } from "./register-class.js";
+export { getNativeClassByName } from "./registry.js";

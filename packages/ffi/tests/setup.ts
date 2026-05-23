@@ -1,9 +1,14 @@
 import { beforeAll } from "vitest";
-import * as Gio from "../src/generated/gio/index.js";
-import * as Gtk from "../src/generated/gtk/index.js";
-import { registerNativeClass, start } from "../src/index.js";
 
-beforeAll(() => {
-    registerNativeClass(Gtk.Application);
-    start("com.gtkx.ffi", Gio.ApplicationFlags.NON_UNIQUE);
+/**
+ * Eagerly loads the GTKX runtime once the worker display is available.
+ *
+ * Importing `@gtkx/ffi` runs `gtk_init()` at module-evaluation time, which
+ * requires an X display. Performing that import inside `beforeAll` — rather
+ * than at this setup file's top level — guarantees it runs after every setup
+ * file body, including the `@gtkx/vitest` worker setup that spawns Xvfb and
+ * exports `DISPLAY`.
+ */
+beforeAll(async () => {
+    await import("../src/index.js");
 });
