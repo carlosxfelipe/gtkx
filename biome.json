@@ -1,11 +1,23 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+    "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
     "assist": {
         "enabled": true
     },
     "css": {
         "parser": {
             "cssModules": true
+        }
+    },
+    "linter": {
+        "rules": {
+            "complexity": {
+                "noExcessiveCognitiveComplexity": "error",
+                "noExcessiveLinesPerFunction": "error",
+                "useMaxParams": "error"
+            },
+            "style": {
+                "noNonNullAssertion": "error"
+            }
         }
     },
     "formatter": {

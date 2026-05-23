@@ -1,9 +1,20 @@
 .turbo
 *.log
 *.tsbuildinfo
+coverage
 dist
 generated
+generated.lock
+generated.state
+gschemas.compiled
 node_modules
 out-tsc
 packages/**/README.md
 .pnpm-store
+.claude/
+
+# Local secrets
+.env
+
+# Scratch / working notes
+.tmp/

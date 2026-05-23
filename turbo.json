@@ -1,36 +1,49 @@
 {
     "$schema": "https://turborepo.com/schema.json",
-    "globalDependencies": ["tsconfig.base.json", "biome.json"],
+    "globalDependencies": [
+        "tsconfig.base.json",
+        "tsconfig.lib.json",
+        "tsconfig.test.json",
+        "biome.json",
+        "vitest.config.ts"
+    ],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
-    "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM"],
-    "cacheDir": ".turbo",
+    "globalPassThroughEnv": [
+        "TURBO_TOKEN",
+        "TURBO_TEAM",
+        "DISPLAY",
+        "WAYLAND_DISPLAY",
+        "XDG_RUNTIME_DIR",
+        "XAUTHORITY",
+        "DBUS_SESSION_BUS_ADDRESS",
+        "GDK_BACKEND",
+        "GDK_DISABLE",
+        "GSK_RENDERER",
+        "LIBGL_ALWAYS_SOFTWARE"
+    ],
     "tasks": {
+        // Knip resolves cross-package imports through each package's `exports`
+        // field (which points into `dist/`); without these build dependencies,
+        // knip reports false-positive "unused dependency" findings for any
+        // workspace consumer that imports from a sibling package. New packages
+        // must be added here, or they silently drop out of the build chain.
         "//#lint:all": {
-            "inputs": ["**/*.ts", "**/*.tsx", "**/*.json", "biome.json"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "//#codegen:run": {
-            "dependsOn": ["@gtkx/codegen#build"],
-            "inputs": [
-                "$TURBO_ROOT$/girs/**",
-                "$TURBO_ROOT$/packages/gir/src/**",
-                "$TURBO_ROOT$/packages/codegen/src/**"
+            "dependsOn": [
+                "@gtkx/cli#build",
+                "@gtkx/codegen#build",
+                "@gtkx/css#build",
+                "@gtkx/ffi#build",
+                "@gtkx/mcp#build",
+                "@gtkx/native#build",
+                "@gtkx/react#build",
+                "@gtkx/testing#build",
+                "@gtkx/vitest#build"
             ],
-            "outputs": ["packages/ffi/src/generated/**", "packages/react/src/generated/**"],
+            "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json"],
             "outputLogs": "new-only"
         },
         "lint": {
-            "inputs": [
-                "*.ts",
-                "src/**/*.ts",
-                "src/**/*.tsx",
-                "tests/**/*.ts",
-                "tests/**/*.tsx",
-                "scripts/**/*.ts",
-                "src/**/*.rs",
-                "tests/**/*.rs"
-            ],
+            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs", "tests/**/*.rs"],
             "outputs": [],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
@@ -38,7 +51,6 @@
         "build": {
             "dependsOn": ["^build", "native-build"],
             "inputs": [
-                "$TURBO_ROOT$/README.md",
                 "package.json",
                 "*.ts",
                 "bin/**",
@@ -49,15 +61,17 @@
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "native-build": {
-            "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
+            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs"],
             "outputs": [
-                "index.node",
-                "$TURBO_ROOT$/packages/native-linux-arm64/index.node",
-                "$TURBO_ROOT$/packages/native-linux-x64/index.node"
+                "*.node",
+                "native-binding.cjs",
+                "native-binding.d.cts",
+                "npm/linux-arm64-gnu/*.node",
+                "npm/linux-x64-gnu/*.node"
             ],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
@@ -81,7 +95,14 @@
         },
         "typecheck": {
             "dependsOn": ["^build"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "inputs": [
+                "src/**/*.ts",
+                "src/**/*.tsx",
+                "tsconfig.json",
+                "tsconfig.app.json",
+                "tsconfig.lib.json",
+                "tsconfig.test.json"
+            ],
             "outputs": [],
             "outputLogs": "new-only"
         },
@@ -90,32 +111,22 @@
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
-        "@gtkx/ffi#test": {
-            "dependsOn": ["^build", "native-test", "//#codegen:run"],
+        "coverage": {
+            "dependsOn": ["^build", "native-coverage"],
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+            "outputs": ["coverage/**"],
             "outputLogs": "new-only"
         },
-        "@gtkx/ffi#build": {
-            "dependsOn": ["^build", "//#codegen:run"],
-            "inputs": ["package.json", "src/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
-            "outputLogs": "new-only"
+        "native-coverage": {
+            "dependsOn": ["native-build"],
+            "inputs": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+            "outputs": ["coverage/**"],
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
-        "@gtkx/react#build": {
-            "dependsOn": ["^build", "//#codegen:run"],
-            "inputs": ["package.json", "src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/ffi#typecheck": {
-            "dependsOn": ["^build", "//#codegen:run"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/react#typecheck": {
-            "dependsOn": ["^build", "//#codegen:run"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+        "@gtkx/native#typecheck": {
+            "dependsOn": ["^build", "native-build"],
+            "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },

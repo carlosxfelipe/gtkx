@@ -1,6 +1,4 @@
-FROM fedora:43
-
-RUN echo "keepcache=1" >> /etc/dnf/dnf.conf
+FROM fedora:44
 
 RUN dnf install -y \
     gcc \
@@ -24,22 +22,32 @@ RUN dnf install -y \
     appstream-devel \
     mesa-libGLES \
     xorg-x11-server-Xvfb \
+    ImageMagick \
+    dbus-daemon \
     git \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
 
-RUN curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+RUN curl -fsSL https://rpm.nodesource.com/setup_26.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g corepack && corepack enable && corepack prepare pnpm@latest --activate
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --default-toolchain stable \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy,llvm-tools-preview --default-toolchain stable \
     && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
+
+RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --component llvm-tools-preview \
+    && chmod -R a+rwX $RUSTUP_HOME $CARGO_HOME
+
+RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
+    && chmod -R a+rwX $CARGO_HOME
+
+RUN find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete
 
 ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0

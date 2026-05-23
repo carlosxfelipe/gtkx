@@ -1,11 +1,19 @@
 packages:
   - .
   - packages/*
+  - packages/native/npm/*
   - examples/*
   - website
+
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
 
 onlyBuiltDependencies:
   - "@swc/core"
   - core-js
   - core-js-pure
   - esbuild
+
+overrides:
+  fast-xml-parser@^4: 4.3.6

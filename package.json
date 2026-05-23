@@ -7,30 +7,38 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "scripts": {
-        "build": "turbo build --filter=!website --filter=!gtkx",
+        "build": "turbo build --filter=!website --filter=!gtkx && node scripts/copy-readme.ts",
         "changeset": "changeset",
-        "codegen": "turbo codegen:run",
-        "codegen:sync": "gtkx-codegen sync",
-        "codegen:run": "gtkx-codegen run",
+        "codegen": "node --conditions=source --import tsx packages/cli/src/cli.ts codegen",
+        "coverage": "vitest run --coverage",
+        "depcruise": "depcruise packages",
         "docs": "turbo build --filter=website",
+        "knip": "knip",
+        "knip:production": "knip --production",
         "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
-        "lint:all": "biome check .",
+        "lint:all": "biome check . && knip && knip --production && pnpm depcruise",
         "release": "pnpm build && changeset publish",
-        "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1",
+        "test": "turbo test --filter=!website --filter=!gtkx",
+        "test:all": "vitest run",
         "typecheck": "turbo typecheck --filter=!website --filter=!gtkx",
         "version-packages": "changeset version"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.9",
+        "@biomejs/biome": "^2.4.15",
         "@changesets/cli": "^2.27.10",
-        "@gtkx/codegen": "workspace:*",
-        "@types/node": "^25.5.0",
-        "@types/react": "^19.2.14",
-        "react": "^19.2.4",
-        "tsx": "^4.21.0",
-        "turbo": "^2.8.20",
-        "typescript": "^6.0.2",
-        "vitest": "^4.1.2"
+        "@types/node": "^25.9.1",
+        "@types/react": "^19.2.15",
+        "@vitest/coverage-v8": "^4.1.7",
+        "dependency-cruiser": "^17.4.0",
+        "knip": "^6.14.1",
+        "react": "^19.2.6",
+        "tsx": "^4.22.3",
+        "turbo": "^2.9.14",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.7"
     },
-    "packageManager": "pnpm@10.32.1"
+    "engines": {
+        "node": ">=24"
+    },
+    "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499"
 }
