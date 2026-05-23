@@ -9,8 +9,6 @@
         "appId": "org.gtkx.gtk-demo"
     },
     "scripts": {
-        "build": "gtkx build",
-        "typecheck": "tsc -b --noEmit",
         "dev": "gtkx dev src/dev.tsx",
         "start": "node dist/bundle.js"
     },

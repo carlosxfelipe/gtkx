@@ -23,22 +23,9 @@ export type VfuncSkipReason =
     | "unmappable-return";
 
 /**
- * Human-readable label for each {@link VfuncSkipReason}. Kept exhaustive via
- * the `Record` type so adding a new reason without a label is a compile error.
- */
-export const VFUNC_SKIP_REASON_LABEL: Record<VfuncSkipReason, string> = {
-    "no-callback": "field has no inline callback",
-    "not-introspectable": 'marked introspectable="0"',
-    "variadic-parameter": "variadic parameter",
-    "out-param-no-caller-allocates": "out/inout parameter without caller-allocates",
-    "unmappable-parameter": "parameter type cannot be mapped to FFI",
-    "unmappable-return": "return type cannot be mapped to FFI",
-};
-
-/**
  * Result of evaluating a single class-struct field for vtable registry
- * inclusion. Eligible fields carry no extra payload; skipped fields carry
- * a structured reason for diagnostic logging.
+ * inclusion. Eligible fields carry the resolved callback; skipped fields
+ * carry a structured reason so callers and tests can branch on it.
  */
 export type VfuncFilterResult =
     | { readonly eligible: true; readonly callback: GirCallback }

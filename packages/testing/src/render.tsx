@@ -15,29 +15,14 @@ let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
 
-const renderInstrumentationOrigin = Date.now();
-let updateCallCounter = 0;
-const logRenderEvent = (id: number, event: string, details?: string): void => {
-    const elapsed = Date.now() - renderInstrumentationOrigin;
-    const suffix = details ? ` ${details}` : "";
-    console.error(`[gtkx:render#${id}] +${elapsed}ms ${event}${suffix}`);
-};
-
 const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
-    const id = ++updateCallCounter;
-    const startTime = Date.now();
-    logRenderEvent(id, "update enter", `element=${element === null ? "null" : "node"}`);
     await act(() => {
-        logRenderEvent(id, "calling reconciler.updateContainer");
         reconciler.updateContainer(element, fiberRoot, null, () => {});
-        logRenderEvent(id, "reconciler.updateContainer returned");
     });
-    logRenderEvent(id, "act resolved", `total=${Date.now() - startTime}ms`);
 
     if (lastRenderError) {
         const captured = lastRenderError;
         lastRenderError = null;
-        logRenderEvent(id, "throwing captured render error", captured.message);
         throw captured;
     }
 };

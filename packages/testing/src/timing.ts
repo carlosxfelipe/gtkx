@@ -1,5 +1,4 @@
 import { act as reactAct } from "react";
-import "./react-internals-instrumentation.js";
 
 declare global {
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -30,55 +29,26 @@ type ActImplementation = <T>(callback: () => T | Promise<T>) => PromiseLike<T>;
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
     value !== null && typeof value === "object" && typeof (value as { then?: unknown }).then === "function";
 
-const instrumentationOrigin = Date.now();
-let actCallCounter = 0;
-const formatActEvent = (id: number, event: string, details?: string): string => {
-    const elapsed = Date.now() - instrumentationOrigin;
-    const suffix = details ? ` ${details}` : "";
-    return `[gtkx:act#${id}] +${elapsed}ms ${event}${suffix}`;
-};
-const logActEvent = (id: number, event: string, details?: string): void => {
-    console.error(formatActEvent(id, event, details));
-};
-
 const withGlobalActEnvironment =
     (actImplementation: ActImplementation) =>
     <T>(callback: () => T | Promise<T>): PromiseLike<T> => {
-        const id = ++actCallCounter;
-        const startTime = Date.now();
-        logActEvent(id, "enter");
         const previousActEnvironment = getIsReactActEnvironment();
         setIsReactActEnvironment(true);
         try {
             let callbackNeedsToBeAwaited = false;
             const actResult = actImplementation<T>(() => {
-                const callbackStart = Date.now();
-                logActEvent(id, "callback start");
                 const result = callback();
-                if (isThenable(result)) {
-                    callbackNeedsToBeAwaited = true;
-                    logActEvent(id, "callback returned thenable", `sync=${Date.now() - callbackStart}ms`);
-                } else {
-                    logActEvent(id, "callback returned sync", `dur=${Date.now() - callbackStart}ms`);
-                }
+                if (isThenable(result)) callbackNeedsToBeAwaited = true;
                 return result;
             });
             if (callbackNeedsToBeAwaited) {
-                logActEvent(id, "awaiting react act (async branch)");
                 return new Promise<T>((resolve, reject) => {
                     actResult.then(
                         (returnValue) => {
-                            logActEvent(id, "react act resolved", `total=${Date.now() - startTime}ms`);
                             setIsReactActEnvironment(previousActEnvironment);
-                            logActEvent(id, "env restored");
                             resolve(returnValue);
                         },
                         (error) => {
-                            logActEvent(
-                                id,
-                                "react act rejected",
-                                `total=${Date.now() - startTime}ms err=${(error as Error)?.message ?? error}`,
-                            );
                             setIsReactActEnvironment(previousActEnvironment);
                             reject(error);
                         },
@@ -86,14 +56,8 @@ const withGlobalActEnvironment =
                 });
             }
             setIsReactActEnvironment(previousActEnvironment);
-            logActEvent(id, "sync branch done", `total=${Date.now() - startTime}ms`);
             return actResult;
         } catch (error) {
-            logActEvent(
-                id,
-                "threw synchronously",
-                `total=${Date.now() - startTime}ms err=${(error as Error)?.message ?? error}`,
-            );
             setIsReactActEnvironment(previousActEnvironment);
             throw error;
         }

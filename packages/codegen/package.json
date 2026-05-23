@@ -39,7 +39,6 @@
         "@ts-for-gir/lib": "3.3.0"
     },
     "devDependencies": {
-        "@clack/prompts": "^1.4.0",
         "@gtkx/native": "workspace:*"
     }
 }

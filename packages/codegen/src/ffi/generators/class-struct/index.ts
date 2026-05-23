@@ -11,9 +11,8 @@
  * `kind` discriminator is `"class"` when `isGtypeStructFor` resolves to a
  * GIR class, `"interface"` when it resolves to an interface, gating which
  * `RegisterClassOptions` slot the descriptor can flow into. Vfuncs whose
- * signatures cannot be cleanly mapped to FFI descriptors are skipped, and
- * the skip is reported through the codegen logger so registry omissions
- * remain auditable.
+ * signatures cannot be cleanly mapped to FFI descriptors are silently
+ * omitted from the registry.
  */
 
 import type { FileBuilder } from "../../../builders/file-builder.js";
@@ -24,19 +23,8 @@ import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
 import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../utils/naming.js";
-import { log } from "../../../utils/progress.js";
 import { FieldBuilder } from "../record/field-builder.js";
-import { classifyVfunc, VFUNC_SKIP_REASON_LABEL } from "./vfunc-filter.js";
-
-/**
- * Logger surface used by {@link ClassStructGenerator} for skip diagnostics.
- *
- * Kept narrow on purpose so tests can pass a no-op without importing the
- * full progress module.
- */
-export type VtableLogger = {
-    warning: (message: string) => void;
-};
+import { classifyVfunc } from "./vfunc-filter.js";
 
 type VtableKind = "class" | "interface";
 
@@ -47,13 +35,6 @@ type VfuncEntry = {
 };
 
 /**
- * Generates the vtable slot registry for a single class struct record.
- *
- * Instances are short-lived: one is constructed per record, `generate()`
- * is called once, and the resulting `FileBuilder` content is stringified
- * by the caller.
- */
-/**
  * Options for {@link ClassStructGenerator}.
  */
 export type ClassStructGeneratorOptions = {
@@ -61,22 +42,26 @@ export type ClassStructGeneratorOptions = {
     file: FileBuilder;
     options: FfiGeneratorOptions;
     repo: GirRepository;
-    logger?: VtableLogger;
 };
 
+/**
+ * Generates the vtable slot registry for a single class struct record.
+ *
+ * Instances are short-lived: one is constructed per record, `generate()`
+ * is called once, and the resulting `FileBuilder` content is stringified
+ * by the caller.
+ */
 export class ClassStructGenerator {
     private readonly fieldBuilder: FieldBuilder;
     private readonly ffiMapper: FfiMapper;
     private readonly file: FileBuilder;
     private readonly repo: GirRepository;
-    private readonly logger: VtableLogger;
 
     constructor(opts: ClassStructGeneratorOptions) {
-        const { ffiMapper, file, options, repo, logger = log } = opts;
+        const { ffiMapper, file, options, repo } = opts;
         this.ffiMapper = ffiMapper;
         this.file = file;
         this.repo = repo;
-        this.logger = logger;
         this.fieldBuilder = new FieldBuilder(ffiMapper, file, repo, options.namespace);
     }
 
@@ -88,32 +73,18 @@ export class ClassStructGenerator {
      * caller should avoid writing an empty file.
      */
     generate(record: GirRecord): boolean {
-        if (!record.cType) {
-            this.logger.warning(`[class-struct] skipping ${record.qualifiedName}: missing c:type`);
-            return false;
-        }
+        if (!record.cType) return false;
         const exportSymbol = normalizeClassName(record.name);
 
         const kind = this.resolveVtableKind(record);
-        if (!kind) {
-            this.logger.warning(
-                `[class-struct] skipping ${exportSymbol}: cannot determine whether it's a class or interface struct`,
-            );
-            return false;
-        }
+        if (!kind) return false;
 
         const layout = this.fieldBuilder.calculateLayout(record.fields, true);
         const entries: VfuncEntry[] = [];
 
         for (const { field, offset } of layout) {
             const result = classifyVfunc(field, this.ffiMapper);
-            if (!result.eligible) {
-                if (result.reason === "no-callback") continue;
-                this.logger.warning(
-                    `[class-struct] skipping ${exportSymbol}.${field.name}: ${VFUNC_SKIP_REASON_LABEL[result.reason]}`,
-                );
-                continue;
-            }
+            if (!result.eligible) continue;
             entries.push({
                 key: toValidMemberName(toCamelCase(field.name)),
                 field,

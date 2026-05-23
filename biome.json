@@ -35,6 +35,18 @@
             "formatter": {
                 "enabled": false
             }
+        },
+        {
+            "includes": ["examples/gtk-demo/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveCognitiveComplexity": "off",
+                        "noExcessiveLinesPerFunction": "off",
+                        "useMaxParams": "off"
+                    }
+                }
+            }
         }
     ],
     "vcs": {

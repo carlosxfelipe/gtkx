@@ -24,16 +24,13 @@ function createTestSetup() {
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
     const file = fileBuilder();
-    const skipMessages: string[] = [];
-    const logger = { warning: (msg: string) => skipMessages.push(msg) };
     const generator = new ClassStructGenerator({
         ffiMapper,
         file,
         options: buildGeneratorOptions("GObject"),
         repo: repo as ClassStructGeneratorOptions["repo"],
-        logger,
     });
-    return { generator, file, repo, skipMessages };
+    return { generator, file, repo };
 }
 
 function gpointerField(name: string): ReturnType<typeof createNormalizedField> {
@@ -152,8 +149,8 @@ describe("ClassStructGenerator (2)", () => {
 });
 
 describe("ClassStructGenerator (3)", () => {
-    it("skips non-introspectable vfuncs and reports the skip via the logger", () => {
-        const { generator, file, skipMessages } = createTestSetup();
+    it("omits non-introspectable vfuncs from the registry", () => {
+        const { generator, file } = createTestSetup();
         const record = makeVtableRecord({
             name: "ObjectClass",
             cType: "GObjectClass",
@@ -164,15 +161,13 @@ describe("ClassStructGenerator (3)", () => {
         const output = stringify(file);
         expect(output).toContain("const ObjectClass");
         expect(output).not.toContain('vfuncName: "constructor"');
-        expect(skipMessages).toHaveLength(1);
-        expect(skipMessages[0]).toContain("ObjectClass.constructor");
-        expect(skipMessages[0]).toContain('introspectable="0"');
+        expect(output).toContain('vfuncName: "finalize"');
     });
 });
 
 describe("ClassStructGenerator (4)", () => {
-    it("skips vfuncs with non-caller-allocated out parameters", () => {
-        const { generator, skipMessages } = createTestSetup();
+    it("omits vfuncs with non-caller-allocated out parameters", () => {
+        const { generator, file } = createTestSetup();
         const record = makeVtableRecord({
             name: "WidgetClass",
             cType: "TestWidgetClass",
@@ -192,7 +187,7 @@ describe("ClassStructGenerator (4)", () => {
             ],
         });
         generator.generate(record);
-        expect(skipMessages.some((m) => m.includes("get_size"))).toBe(true);
+        expect(stringify(file)).not.toContain('vfuncName: "get_size"');
     });
 });
 
@@ -211,7 +206,7 @@ describe("ClassStructGenerator (5)", () => {
     });
 
     it("skips records that have no c:type (class struct without an exported C name)", () => {
-        const { generator, file, skipMessages } = createTestSetup();
+        const { generator, file } = createTestSetup();
         const record = makeVtableRecord({
             name: "AnonymousClass",
             cType: "",
@@ -220,13 +215,12 @@ describe("ClassStructGenerator (5)", () => {
         });
         expect(generator.generate(record)).toBe(false);
         expect(stringify(file)).toBe("");
-        expect(skipMessages.some((m) => m.includes("missing c:type"))).toBe(true);
     });
 });
 
 describe("ClassStructGenerator (6)", () => {
     it("skips records whose vtable kind cannot be inferred from owner or name", () => {
-        const { generator, file, skipMessages } = createTestSetup();
+        const { generator, file } = createTestSetup();
         const record = makeVtableRecord({
             name: "MysteryVTable",
             cType: "GMysteryVTable",
@@ -234,7 +228,6 @@ describe("ClassStructGenerator (6)", () => {
         });
         expect(generator.generate(record)).toBe(false);
         expect(stringify(file)).toBe("");
-        expect(skipMessages.some((m) => m.includes("cannot determine"))).toBe(true);
     });
 
     it("treats records ending in Iface as interface vtables", () => {

@@ -19,10 +19,5 @@
     "access": "public",
     "baseBranch": "main",
     "updateInternalDependencies": "patch",
-    "ignore": [
-        "@gtkx/codegen",
-        "@gtkx/e2e",
-        "@gtkx/native-linux-arm64",
-        "@gtkx/native-linux-x64"
-    ]
+    "ignore": ["@gtkx/codegen", "@gtkx/e2e", "@gtkx/native-linux-arm64", "@gtkx/native-linux-x64"]
 }
