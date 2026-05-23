@@ -1,9 +1,7 @@
-#!/usr/bin/env node
-
 import { createRequire } from "node:module";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
@@ -12,11 +10,16 @@ import { SocketServer } from "./socket-server.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-const AppIdSchema = z.object({
-    appId: z.string().optional().describe("App ID to query. If not specified, uses the first connected app."),
-});
+const APP_ID_DESCRIPTION = "App ID to query. If not specified, uses the first connected app.";
+const WIDGET_ID_DESCRIPTION = "Widget ID";
 
-const ListAppsInputSchema = z.object({
+const appIdField = z.string().optional().describe(APP_ID_DESCRIPTION);
+const widgetIdField = z.string().describe(WIDGET_ID_DESCRIPTION);
+
+const appIdShape = { appId: appIdField };
+const widgetIdShape = { ...appIdShape, widgetId: widgetIdField };
+
+const listAppsShape = {
     waitForApps: z
         .boolean()
         .optional()
@@ -24,11 +27,10 @@ const ListAppsInputSchema = z.object({
             "If true, wait for at least one app to register before returning. Useful when app is still starting.",
         ),
     timeout: z.number().optional().describe("Timeout in milliseconds when waitForApps is true (default: 10000)"),
-});
+};
 
-const GetWidgetTreeInputSchema = AppIdSchema;
-
-const QueryWidgetsInputSchema = AppIdSchema.extend({
+const queryWidgetsShape = {
+    ...appIdShape,
     by: z.enum(["role", "text", "name", "labelText"]).describe("Query type"),
     value: z.union([z.string(), z.number()]).describe("Value to search for"),
     options: z
@@ -39,208 +41,281 @@ const QueryWidgetsInputSchema = AppIdSchema.extend({
         })
         .optional()
         .describe("Additional query options"),
-});
+};
 
-const WidgetIdSchema = AppIdSchema.extend({
-    widgetId: z.string().describe("Widget ID"),
-});
-
-const GetWidgetPropsInputSchema = WidgetIdSchema;
-
-const ClickInputSchema = WidgetIdSchema;
-
-const TypeInputSchema = WidgetIdSchema.extend({
+const typeShape = {
+    ...widgetIdShape,
     text: z.string().describe("Text to type"),
     clear: z.boolean().optional().describe("Clear existing text before typing"),
-});
+};
 
-const FireEventInputSchema = WidgetIdSchema.extend({
+const fireEventShape = {
+    ...widgetIdShape,
     signal: z.string().describe("GTK signal name to emit"),
     args: z.array(z.unknown()).optional().describe("Arguments to pass to the signal"),
-});
+};
 
-const TakeScreenshotInputSchema = AppIdSchema.extend({
+const screenshotShape = {
+    ...appIdShape,
     windowId: z.string().optional().describe("Window ID to capture. If not specified, captures the first window."),
+};
+
+const textContent = (text: string): CallToolResult => ({ content: [{ type: "text", text }] });
+
+const textError = (text: string): CallToolResult => ({
+    content: [{ type: "text", text }],
+    isError: true,
 });
 
-const tools = [
-    {
-        name: "gtkx_list_apps",
-        description: "List all connected GTKX applications",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                waitForApps: {
-                    type: "boolean",
-                    description:
-                        "If true, wait for at least one app to register before returning. Useful when app is still starting.",
-                },
-                timeout: {
-                    type: "number",
-                    description: "Timeout in milliseconds when waitForApps is true (default: 10000)",
-                },
-            },
-            required: [],
-        },
-    },
-    {
-        name: "gtkx_get_widget_tree",
-        description:
-            "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-            },
-            required: [],
-        },
-    },
-    {
-        name: "gtkx_query_widgets",
-        description:
-            "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-                by: {
-                    type: "string",
-                    enum: ["role", "text", "name", "labelText"],
-                    description: "Query type",
-                },
-                value: {
-                    oneOf: [{ type: "string" }, { type: "number" }],
-                    description: "Value to search for",
-                },
-                options: {
-                    type: "object",
-                    properties: {
-                        name: { type: "string" },
-                        exact: { type: "boolean" },
-                        timeout: { type: "number" },
-                    },
-                    description: "Additional query options",
-                },
-            },
-            required: ["by", "value"],
-        },
-    },
-    {
-        name: "gtkx_get_widget_props",
-        description: "Get all properties of a specific widget by its ID",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-                widgetId: {
-                    type: "string",
-                    description: "Widget ID to get properties for",
-                },
-            },
-            required: ["widgetId"],
-        },
-    },
-    {
-        name: "gtkx_click",
-        description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-                widgetId: {
-                    type: "string",
-                    description: "Widget ID to click",
-                },
-            },
-            required: ["widgetId"],
-        },
-    },
-    {
-        name: "gtkx_type",
-        description: "Type text into an editable widget like Entry or TextView",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-                widgetId: {
-                    type: "string",
-                    description: "Widget ID to type into",
-                },
-                text: {
-                    type: "string",
-                    description: "Text to type",
-                },
-                clear: {
-                    type: "boolean",
-                    description: "Clear existing text before typing",
-                },
-            },
-            required: ["widgetId", "text"],
-        },
-    },
-    {
-        name: "gtkx_fire_event",
-        description: "Emit a GTK signal on a widget. Use this for custom interactions.",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-                widgetId: {
-                    type: "string",
-                    description: "Widget ID to emit event on",
-                },
-                signal: {
-                    type: "string",
-                    description: "GTK signal name to emit",
-                },
-                args: {
-                    type: "array",
-                    items: {},
-                    description: "Arguments to pass to the signal",
-                },
-            },
-            required: ["widgetId", "signal"],
-        },
-    },
-    {
-        name: "gtkx_take_screenshot",
-        description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
-        inputSchema: {
-            type: "object" as const,
-            properties: {
-                appId: {
-                    type: "string",
-                    description: "App ID to query. If not specified, uses the first connected app.",
-                },
-                windowId: {
-                    type: "string",
-                    description: "Window ID to capture. If not specified, captures the first window.",
-                },
-            },
-            required: [],
-        },
-    },
-];
+const imageContent = (data: string, mimeType: string): CallToolResult => ({
+    content: [{ type: "image", data, mimeType }],
+});
 
-async function main() {
+/**
+ * Narrow view of {@link ConnectionManager} consumed by the tool handlers. Each
+ * tool needs only app discovery (`getApps`, `hasConnectedApps`, `waitForApp`)
+ * and request forwarding (`sendToApp`).
+ */
+export type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
+
+/**
+ * Result envelope every tool handler returns to the MCP SDK. Aliased to the
+ * SDK's `CallToolResult` so any drift between local handlers and the SDK's
+ * structural contract is caught at compile time.
+ */
+type ToolHandlerResult = CallToolResult;
+
+/**
+ * The argument record received by a typed tool handler — mirrors the SDK's
+ * `ShapeOutput<Shape>` (which is not part of the SDK's published exports) so
+ * the resolved shape matches what the MCP server actually delivers.
+ *
+ * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
+ */
+type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
+
+/**
+ * Internal, per-tool typed view used while a tool is being constructed: the
+ * `Shape` parameter ties `inputSchema` to the `handler`'s argument record so
+ * the SDK's structural contract is enforced inside {@link defineTool}.
+ *
+ * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
+ */
+type TypedTool<Shape extends Record<string, z.ZodType>> = {
+    name: string;
+    config: { description: string; inputSchema: Shape };
+    handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
+};
+
+/**
+ * A registered MCP tool as exposed to consumers (tests and the registration
+ * loop in {@link main}). The per-tool `Shape` parameter is hidden behind the
+ * `register` closure so heterogeneous tools can be stored in a single array
+ * without type-erasing casts; the closure preserves the typed link between
+ * `inputSchema` and `handler` at the point where it actually matters — the
+ * call to {@link McpServer.registerTool}.
+ */
+export type ToolDefinition = {
+    name: string;
+    config: { description: string; inputSchema: z.ZodRawShape };
+    handler: (args: never) => Promise<ToolHandlerResult>;
+    register: (server: McpServer) => void;
+};
+
+/**
+ * Builds a {@link ToolDefinition} from a typed tool spec. The SDK's
+ * `registerTool` is called inside the returned closure with the original
+ * `Shape` in scope; the only cast is a localized assertion to the SDK's
+ * `ToolCallback<Shape>` (made necessary by the SDK's optional
+ * `inputSchema?: InputArgs` widening to `undefined` during inference) that
+ * still names the SDK type so renames in `ToolCallback` itself fail
+ * compilation.
+ *
+ * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
+ * @param tool - The typed tool spec (without `register`; it is added here).
+ * @returns A shape-erased {@link ToolDefinition}.
+ */
+const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Shape>): ToolDefinition => ({
+    name: tool.name,
+    config: tool.config,
+    handler: tool.handler,
+    register: (server) => {
+        const callback = tool.handler as unknown as ToolCallback<Shape>;
+        server.registerTool(tool.name, tool.config, callback);
+    },
+});
+
+type ForwardSpec<Shape extends Record<string, z.ZodType>> = {
+    name: string;
+    description: string;
+    inputSchema: Shape;
+    cm: AppQueryClient;
+    method: string;
+    params?: (args: ToolArgs<Shape>) => unknown;
+};
+
+const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
+    args: ToolArgs<Shape>,
+    custom: ForwardSpec<Shape>["params"],
+): { appId: string | undefined; params: unknown } => {
+    const { appId, ...rest } = args as ToolArgs<Shape> & { appId?: string };
+    return { appId, params: custom ? custom(args) : rest };
+};
+
+const forwardJson = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
+    defineTool<Shape>({
+        name: spec.name,
+        config: { description: spec.description, inputSchema: spec.inputSchema },
+        handler: async (args) => {
+            const { appId, params } = buildForwardParams(args, spec.params);
+            const result = await spec.cm.sendToApp(appId, spec.method, params);
+            return textContent(JSON.stringify(result, null, 2));
+        },
+    });
+
+const forwardAck = <Shape extends Record<string, z.ZodType>>(
+    spec: ForwardSpec<Shape> & { ack: string },
+): ToolDefinition =>
+    defineTool<Shape>({
+        name: spec.name,
+        config: { description: spec.description, inputSchema: spec.inputSchema },
+        handler: async (args) => {
+            const { appId, params } = buildForwardParams(args, spec.params);
+            await spec.cm.sendToApp(appId, spec.method, params);
+            return textContent(spec.ack);
+        },
+    });
+
+const forwardImage = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
+    defineTool<Shape>({
+        name: spec.name,
+        config: { description: spec.description, inputSchema: spec.inputSchema },
+        handler: async (args) => {
+            const { appId, params } = buildForwardParams(args, spec.params);
+            const result = await spec.cm.sendToApp<{ data: string; mimeType: string }>(appId, spec.method, params);
+            return imageContent(result.data, result.mimeType);
+        },
+    });
+
+const listAppsTool = (cm: AppQueryClient) =>
+    defineTool({
+        name: "gtkx_list_apps",
+        config: {
+            description: "List all connected GTKX applications",
+            inputSchema: listAppsShape,
+        },
+        handler: async ({ waitForApps, timeout }) => {
+            if (waitForApps && !cm.hasConnectedApps()) {
+                try {
+                    await cm.waitForApp(timeout);
+                } catch (error) {
+                    return textError(error instanceof Error ? error.message : "Timeout waiting for app");
+                }
+            }
+
+            const apps = cm.getApps();
+            const appsWithWindows = await Promise.all(
+                apps.map(async (app) => {
+                    try {
+                        const result = await cm.sendToApp<{
+                            windows: Array<{ id: string; title: string | null }>;
+                        }>(app.appId, "app.getWindows", {});
+                        return { ...app, windows: result.windows };
+                    } catch {
+                        return app;
+                    }
+                }),
+            );
+            return textContent(JSON.stringify(appsWithWindows, null, 2));
+        },
+    });
+
+const getWidgetTreeTool = (cm: AppQueryClient) =>
+    defineTool({
+        name: "gtkx_get_widget_tree",
+        config: {
+            description:
+                "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
+            inputSchema: appIdShape,
+        },
+        handler: async ({ appId }) => {
+            const result = await cm.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
+            return textContent(result.tree);
+        },
+    });
+
+/**
+ * Builds the GTKX MCP tool definitions, ready to be registered on a server.
+ *
+ * Exposed so tests can drive each tool handler against a fake
+ * {@link ConnectionManager} without spinning up a real socket server.
+ *
+ * @param cm - Connection manager that proxies tool requests to the connected
+ *   GTKX application.
+ * @returns Array of tool definitions in registration order.
+ */
+export function buildTools(cm: AppQueryClient): ToolDefinition[] {
+    return [
+        listAppsTool(cm),
+        getWidgetTreeTool(cm),
+        forwardJson({
+            name: "gtkx_query_widgets",
+            description:
+                "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
+            inputSchema: queryWidgetsShape,
+            cm,
+            method: "widget.query",
+            params: ({ by, value, options }) => ({ queryType: by, value, options }),
+        }),
+        forwardJson({
+            name: "gtkx_get_widget_props",
+            description: "Get all properties of a specific widget by its ID",
+            inputSchema: widgetIdShape,
+            cm,
+            method: "widget.getProps",
+        }),
+        forwardAck({
+            name: "gtkx_click",
+            description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
+            inputSchema: widgetIdShape,
+            cm,
+            method: "widget.click",
+            ack: "Click successful",
+        }),
+        forwardAck({
+            name: "gtkx_type",
+            description: "Type text into an editable widget like Entry or TextView",
+            inputSchema: typeShape,
+            cm,
+            method: "widget.type",
+            ack: "Type successful",
+        }),
+        forwardAck({
+            name: "gtkx_fire_event",
+            description: "Emit a GTK signal on a widget. Use this for custom interactions.",
+            inputSchema: fireEventShape,
+            cm,
+            method: "widget.fireEvent",
+            ack: "Event fired successfully",
+        }),
+        forwardImage({
+            name: "gtkx_take_screenshot",
+            description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
+            inputSchema: screenshotShape,
+            cm,
+            method: "widget.screenshot",
+        }),
+    ];
+}
+
+/**
+ * Bootstraps the GTKX MCP server.
+ *
+ * Starts the Unix-domain socket server, wires the connection manager and the
+ * MCP SDK server, registers every tool returned by {@link buildTools}, and
+ * installs SIGINT/SIGTERM handlers for graceful shutdown.
+ */
+export async function main() {
     const socketServer = new SocketServer(DEFAULT_SOCKET_PATH);
     const connectionManager = new ConnectionManager(socketServer);
 
@@ -262,169 +337,17 @@ async function main() {
         console.error(`[gtkx] App unregistered: ${appId}`);
     });
 
-    const server = new Server(
-        {
-            name: "gtkx-mcp",
-            version,
-        },
-        {
-            capabilities: {
-                tools: {},
-            },
-        },
-    );
-
-    server.setRequestHandler(ListToolsRequestSchema, async () => {
-        return { tools };
+    const mcpServer = new McpServer({
+        name: "gtkx-mcp",
+        version,
     });
 
-    server.setRequestHandler(CallToolRequestSchema, async (request) => {
-        const { name, arguments: args } = request.params;
-
-        try {
-            switch (name) {
-                case "gtkx_list_apps": {
-                    const input = ListAppsInputSchema.parse(args);
-
-                    if (input.waitForApps && !connectionManager.hasConnectedApps()) {
-                        try {
-                            await connectionManager.waitForApp(input.timeout);
-                        } catch (error) {
-                            return {
-                                content: [
-                                    {
-                                        type: "text",
-                                        text: error instanceof Error ? error.message : "Timeout waiting for app",
-                                    },
-                                ],
-                                isError: true,
-                            };
-                        }
-                    }
-
-                    const apps = connectionManager.getApps();
-                    const appsWithWindows = await Promise.all(
-                        apps.map(async (app) => {
-                            try {
-                                const result = await connectionManager.sendToApp<{
-                                    windows: Array<{ id: string; title: string | null }>;
-                                }>(app.appId, "app.getWindows", {});
-                                return { ...app, windows: result.windows };
-                            } catch {
-                                return app;
-                            }
-                        }),
-                    );
-                    return {
-                        content: [{ type: "text", text: JSON.stringify(appsWithWindows, null, 2) }],
-                    };
-                }
-
-                case "gtkx_get_widget_tree": {
-                    const input = GetWidgetTreeInputSchema.parse(args);
-                    const result = await connectionManager.sendToApp<{ tree: string }>(
-                        input.appId,
-                        "widget.getTree",
-                        {},
-                    );
-                    return {
-                        content: [{ type: "text", text: result.tree }],
-                    };
-                }
-
-                case "gtkx_query_widgets": {
-                    const input = QueryWidgetsInputSchema.parse(args);
-                    const result = await connectionManager.sendToApp(input.appId, "widget.query", {
-                        queryType: input.by,
-                        value: input.value,
-                        options: input.options,
-                    });
-                    return {
-                        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-                    };
-                }
-
-                case "gtkx_get_widget_props": {
-                    const input = GetWidgetPropsInputSchema.parse(args);
-                    const result = await connectionManager.sendToApp(input.appId, "widget.getProps", {
-                        widgetId: input.widgetId,
-                    });
-                    return {
-                        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-                    };
-                }
-
-                case "gtkx_click": {
-                    const input = ClickInputSchema.parse(args);
-                    await connectionManager.sendToApp(input.appId, "widget.click", {
-                        widgetId: input.widgetId,
-                    });
-                    return {
-                        content: [{ type: "text", text: "Click successful" }],
-                    };
-                }
-
-                case "gtkx_type": {
-                    const input = TypeInputSchema.parse(args);
-                    await connectionManager.sendToApp(input.appId, "widget.type", {
-                        widgetId: input.widgetId,
-                        text: input.text,
-                        clear: input.clear,
-                    });
-                    return {
-                        content: [{ type: "text", text: "Type successful" }],
-                    };
-                }
-
-                case "gtkx_fire_event": {
-                    const input = FireEventInputSchema.parse(args);
-                    await connectionManager.sendToApp(input.appId, "widget.fireEvent", {
-                        widgetId: input.widgetId,
-                        signal: input.signal,
-                        args: input.args,
-                    });
-                    return {
-                        content: [{ type: "text", text: "Event fired successfully" }],
-                    };
-                }
-
-                case "gtkx_take_screenshot": {
-                    const input = TakeScreenshotInputSchema.parse(args);
-                    const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
-                        input.appId,
-                        "widget.screenshot",
-                        {
-                            windowId: input.windowId,
-                        },
-                    );
-                    return {
-                        content: [
-                            {
-                                type: "image",
-                                data: result.data,
-                                mimeType: result.mimeType,
-                            },
-                        ],
-                    };
-                }
-
-                default:
-                    return {
-                        content: [{ type: "text", text: `Unknown tool: ${name}` }],
-                        isError: true,
-                    };
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            return {
-                content: [{ type: "text", text: message }],
-                isError: true,
-            };
-        }
-    });
+    for (const tool of buildTools(connectionManager)) {
+        tool.register(mcpServer);
+    }
 
     const transport = new StdioServerTransport();
-    await server.connect(transport);
+    await mcpServer.connect(transport);
 
     let isShuttingDown = false;
     const shutdown = async () => {
@@ -433,7 +356,7 @@ async function main() {
         try {
             connectionManager.cleanup();
             await socketServer.stop();
-            await server.close();
+            await mcpServer.close();
         } finally {
             process.exit(0);
         }
@@ -442,8 +365,3 @@ async function main() {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
 }
-
-main().catch((error) => {
-    console.error("[gtkx] Fatal error:", error);
-    process.exit(1);
-});

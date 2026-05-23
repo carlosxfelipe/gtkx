@@ -1,8 +1,8 @@
 import { type InlineConfig, build as viteBuild } from "vite";
-import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
-import { gtkxBuiltUrl } from "./vite-plugin-gtkx-built-url.js";
-import { gtkxGSettings } from "./vite-plugin-gtkx-gsettings.js";
-import { gtkxNative } from "./vite-plugin-gtkx-native.js";
+import { gtkxAssets } from "./vite-plugins/assets.js";
+import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
+import { gtkxGSettings } from "./vite-plugins/gsettings.js";
+import { gtkxNative } from "./vite-plugins/native.js";
 
 /**
  * Options for building a GTKX application for production.
@@ -44,6 +44,10 @@ export type BuildOptions = {
  * output directory as `gtkx.node`, making the bundle fully self-contained
  * with no `node_modules` dependency at runtime.
  *
+ * The user entry is the bundle's only entry point: it is expected to call
+ * `render(<App />, app)` at top level, mirroring the
+ * `createRoot().render()` pattern used in `react-dom`.
+ *
  * @param options - Build configuration including entry point and Vite options
  *
  * @example
@@ -79,10 +83,10 @@ export const build = async (options: BuildOptions): Promise<void> => {
             outDir: viteConfig?.build?.outDir ?? "dist",
             minify: true,
             cssMinify: false,
-            rollupOptions: {
-                ...viteConfig?.build?.rollupOptions,
+            rolldownOptions: {
+                ...viteConfig?.build?.rolldownOptions,
                 output: {
-                    ...((viteConfig?.build?.rollupOptions?.output ?? {}) as Record<string, unknown>),
+                    ...((viteConfig?.build?.rolldownOptions?.output ?? {}) as Record<string, unknown>),
                     entryFileNames: "bundle.js",
                 },
             },

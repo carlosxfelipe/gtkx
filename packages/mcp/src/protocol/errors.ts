@@ -10,18 +10,10 @@ export enum McpErrorCode {
     APP_NOT_FOUND = 1002,
     /** Widget with specified ID was not found */
     WIDGET_NOT_FOUND = 1003,
-    /** Widget cannot be interacted with */
-    WIDGET_NOT_INTERACTABLE = 1004,
-    /** Query timed out waiting for widget */
-    QUERY_TIMEOUT = 1005,
-    /** Widget is not the expected type */
-    INVALID_WIDGET_TYPE = 1006,
-    /** Screenshot capture failed */
-    SCREENSHOT_FAILED = 1007,
+    /** Connection write failed (socket not writable) */
+    CONNECTION_WRITE_FAILED = 1004,
     /** IPC request timed out */
     IPC_TIMEOUT = 1008,
-    /** Failed to serialize data */
-    SERIALIZATION_ERROR = 1009,
     /** Request format is invalid */
     INVALID_REQUEST = 1010,
     /** Requested method does not exist */
@@ -44,10 +36,6 @@ export class McpError extends Error {
         this.code = code;
         this.data = data;
         this.name = "McpError";
-
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, McpError);
-        }
     }
 
     /**
@@ -73,7 +61,7 @@ export function noAppConnectedError(): McpError {
     return new McpError(
         McpErrorCode.NO_APP_CONNECTED,
         "No GTKX application connected: start an app with 'gtkx dev' to connect",
-        { hint: "Run 'gtkx dev src/app.tsx' in your project directory" },
+        { hint: "Run 'gtkx dev' in your project directory" },
     );
 }
 
@@ -85,6 +73,22 @@ export function noAppConnectedError(): McpError {
  */
 export function appNotFoundError(appId: string): McpError {
     return new McpError(McpErrorCode.APP_NOT_FOUND, `Application '${appId}' not found`, { appId });
+}
+
+/**
+ * Creates an error for when the underlying socket for a registered app
+ * is not writable (typically because the app disconnected between routing
+ * the request and writing the frame).
+ *
+ * @param appId - The application ID whose connection failed.
+ * @returns McpError with CONNECTION_WRITE_FAILED code.
+ */
+export function connectionWriteFailedError(appId: string): McpError {
+    return new McpError(
+        McpErrorCode.CONNECTION_WRITE_FAILED,
+        `Connection to application '${appId}' is no longer writable`,
+        { appId },
+    );
 }
 
 /**

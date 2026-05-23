@@ -1,24 +1,16 @@
 import EventEmitter from "node:events";
 import {
     appNotFoundError,
+    connectionWriteFailedError,
     invalidRequestError,
-    ipcTimeoutError,
-    McpError,
-    type McpErrorCode,
     noAppConnectedError,
 } from "./protocol/errors.js";
 import { type AppInfo, type IpcRequest, type IpcResponse, RegisterParamsSchema } from "./protocol/types.js";
-import type { AppConnection, SocketServer } from "./socket-server.js";
+import { type AppConnection, type AppTransport, TransportClosedError } from "./transport.js";
 
 type ConnectionManagerEventMap = {
     appRegistered: [AppInfo];
     appUnregistered: [string];
-};
-
-type PendingRequest = {
-    resolve: (result: unknown) => void;
-    reject: (error: Error) => void;
-    timeout: NodeJS.Timeout;
 };
 
 type RegisteredApp = {
@@ -29,42 +21,35 @@ type RegisteredApp = {
 /**
  * Manages connections between the MCP server and GTKX applications.
  *
- * Handles app registration, request routing, and connection lifecycle.
+ * Handles app registration, request routing, and connection lifecycle. Wire
+ * framing and pending-request correlation live on each connection's
+ * {@link import("./transport.js").JsonStreamTransport}.
  */
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private static readonly DEFAULT_WAIT_TIMEOUT = 10000;
 
-    private apps: Map<string, RegisteredApp> = new Map();
-    private connectionToApp: Map<string, string> = new Map();
-    private pendingRequests: Map<string, PendingRequest> = new Map();
-    private requestTimeout: number;
+    private readonly apps: Map<string, RegisteredApp> = new Map();
+    private readonly connectionToApp: Map<string, string> = new Map();
+    private readonly requestTimeout: number;
 
     constructor(
-        private socketServer: SocketServer,
+        private readonly transport: AppTransport,
         options: { requestTimeout?: number } = {},
     ) {
         super();
         this.requestTimeout = options.requestTimeout ?? 30000;
 
-        this.socketServer.on("request", (connection, request) => {
+        this.transport.on("request", (connection, request) => {
             this.handleRequest(connection, request);
         });
 
-        this.socketServer.on("response", (_connection, response) => {
-            this.handleResponse(response);
-        });
-
-        this.socketServer.on("disconnection", (connection) => {
-            this.handleDisconnection(connection);
+        this.transport.on("disconnection", (connection) => {
+            this.removeApp(connection);
         });
     }
 
     getApps(): AppInfo[] {
         return Array.from(this.apps.values()).map((app) => app.info);
-    }
-
-    getApp(appId: string): AppInfo | undefined {
-        return this.apps.get(appId)?.info;
     }
 
     hasConnectedApps(): boolean {
@@ -79,9 +64,9 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     /**
      * Waits for at least one app to connect and register.
      *
-     * @param timeout - Maximum time to wait in milliseconds (default: 10000)
-     * @returns Promise that resolves with the first registered app info
-     * @throws Error if timeout is reached before any app registers
+     * @param timeout - Maximum time to wait in milliseconds (default: 10000).
+     * @returns Promise that resolves with the first registered app info.
+     * @throws Error if timeout is reached before any app registers.
      */
     waitForApp(timeout: number = ConnectionManager.DEFAULT_WAIT_TIMEOUT): Promise<AppInfo> {
         const defaultApp = this.getDefaultApp();
@@ -120,80 +105,38 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
             throw noAppConnectedError();
         }
 
-        const requestId = crypto.randomUUID();
-        const request: IpcRequest = {
-            id: requestId,
-            method,
-            params,
-        };
-
-        return new Promise<T>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                this.pendingRequests.delete(requestId);
-                reject(ipcTimeoutError(this.requestTimeout));
-            }, this.requestTimeout);
-
-            this.pendingRequests.set(requestId, {
-                resolve: resolve as (result: unknown) => void,
-                reject,
-                timeout,
-            });
-
-            const sent = this.socketServer.send(app.connection.id, request);
-            if (!sent) {
-                clearTimeout(timeout);
-                this.pendingRequests.delete(requestId);
-                reject(appNotFoundError(app.info.appId));
-                return;
+        try {
+            return await app.connection.transport.sendRequest<T>(method, params, this.requestTimeout);
+        } catch (error) {
+            if (error instanceof TransportClosedError) {
+                this.removeApp(app.connection);
+                throw connectionWriteFailedError(app.info.appId);
             }
-        });
+            throw error;
+        }
     }
 
     cleanup(): void {
-        for (const pending of this.pendingRequests.values()) {
-            clearTimeout(pending.timeout);
-            pending.reject(new Error("Connection manager shutting down"));
+        for (const app of this.apps.values()) {
+            app.connection.transport.rejectPending(new Error("Connection manager shutting down"));
         }
-        this.pendingRequests.clear();
     }
 
     private handleRequest(connection: AppConnection, request: IpcRequest): void {
         if (request.method === "app.register") {
             this.handleRegister(connection, request);
-            return;
-        }
-
-        if (request.method === "app.unregister") {
+        } else if (request.method === "app.unregister") {
             this.handleUnregister(connection, request);
-            return;
-        }
-    }
-
-    private handleResponse(response: IpcResponse): void {
-        const pending = this.pendingRequests.get(response.id);
-        if (!pending) {
-            return;
-        }
-
-        clearTimeout(pending.timeout);
-        this.pendingRequests.delete(response.id);
-
-        if (response.error) {
-            const err = response.error;
-            pending.reject(new McpError(err.code as McpErrorCode, err.message, err.data));
-        } else {
-            pending.resolve(response.result);
         }
     }
 
     private handleRegister(connection: AppConnection, request: IpcRequest): void {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
         if (!parseResult.success) {
-            const response: IpcResponse = {
+            this.transport.send(connection.id, {
                 id: request.id,
                 error: invalidRequestError(parseResult.error.message).toIpcError(),
-            };
-            this.socketServer.send(connection.id, response);
+            });
             return;
         }
 
@@ -204,44 +147,32 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
             windows: [],
         };
 
-        const registeredApp: RegisteredApp = {
-            info: appInfo,
-            connection,
-        };
-
-        this.apps.set(params.appId, registeredApp);
+        this.apps.set(params.appId, { info: appInfo, connection });
         this.connectionToApp.set(connection.id, params.appId);
 
-        const response: IpcResponse = {
-            id: request.id,
-            result: { success: true },
-        };
-        this.socketServer.send(connection.id, response);
+        this.acknowledge(connection, request);
 
         this.emit("appRegistered", appInfo);
     }
 
     private handleUnregister(connection: AppConnection, request: IpcRequest): void {
-        const appId = this.connectionToApp.get(connection.id);
-        if (appId) {
-            this.apps.delete(appId);
-            this.connectionToApp.delete(connection.id);
-            this.emit("appUnregistered", appId);
-        }
+        this.removeApp(connection);
+        this.acknowledge(connection, request);
+    }
 
+    private acknowledge(connection: AppConnection, request: IpcRequest): void {
         const response: IpcResponse = {
             id: request.id,
             result: { success: true },
         };
-        this.socketServer.send(connection.id, response);
+        this.transport.send(connection.id, response);
     }
 
-    private handleDisconnection(connection: AppConnection): void {
+    private removeApp(connection: AppConnection): void {
         const appId = this.connectionToApp.get(connection.id);
-        if (appId) {
-            this.apps.delete(appId);
-            this.connectionToApp.delete(connection.id);
-            this.emit("appUnregistered", appId);
-        }
+        if (!appId) return;
+        this.apps.delete(appId);
+        this.connectionToApp.delete(connection.id);
+        this.emit("appUnregistered", appId);
     }
 }
