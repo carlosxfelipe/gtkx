@@ -1,15 +1,11 @@
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
-use crate::ffi;
+use super::prelude::*;
 use crate::trampoline::{TrampolineData, TrampolineState};
-use crate::types::{
-    FfiDecoder, FfiEncoder, GlibValueCodec, NeonContextExt as _, RawPtrCodec, Type,
-};
-use crate::value;
+use crate::types::Type;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
@@ -26,13 +22,12 @@ impl std::str::FromStr for TrampolineScope {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "call" => Ok(TrampolineScope::Call),
-            "notified" => Ok(TrampolineScope::Notified),
-            "async" => Ok(TrampolineScope::Async),
-            "forever" => Ok(TrampolineScope::Forever),
+            "call" => Ok(Self::Call),
+            "notified" => Ok(Self::Notified),
+            "async" => Ok(Self::Async),
+            "forever" => Ok(Self::Forever),
             other => Err(format!(
-                "'scope' must be 'call', 'notified', 'async', or 'forever'; got '{}'",
-                other
+                "'scope' must be 'call', 'notified', 'async', or 'forever'; got '{other}'"
             )),
         }
     }
@@ -48,38 +43,32 @@ pub struct TrampolineType {
 }
 
 impl TrampolineType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let (arg_types, return_type) =
+            super::parse_callback_arg_and_return_types(env, obj, "trampoline")?;
 
-        let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
-        let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
-            cx.throw_type_error("'argTypes' property is required for trampoline types")
-        })?;
-        let arg_types_vec = arg_types_arr.to_vec(cx)?;
-        let mut arg_types = Vec::with_capacity(arg_types_vec.len());
-        for item in arg_types_vec {
-            arg_types.push(Type::from_js_value(cx, item)?);
-        }
+        let has_destroy = obj
+            .get_named_property::<Option<bool>>("hasDestroy")
+            .ok()
+            .flatten()
+            .unwrap_or(false);
 
-        let return_type_prop: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
-        let return_type = Box::new(Type::from_js_value(cx, return_type_prop).or_else(|_| {
-            cx.throw_type_error("'returnType' property is required for trampoline types")
-        })?);
+        let user_data_index = obj
+            .get_named_property::<Option<f64>>("userDataIndex")
+            .ok()
+            .flatten()
+            .map(|v| v as usize);
 
-        let has_destroy: Option<Handle<JsBoolean>> = obj.get_opt(cx, "hasDestroy")?;
-        let has_destroy = has_destroy.is_some_and(|v| v.value(cx));
+        let scope_prop: Option<String> = obj
+            .get_named_property::<Option<String>>("scope")
+            .ok()
+            .flatten();
 
-        let user_data_index: Option<Handle<JsNumber>> = obj.get_opt(cx, "userDataIndex")?;
-        let user_data_index = user_data_index.map(|v| v.value(cx) as usize);
-
-        let scope_prop: Option<Handle<JsString>> = obj.get_opt(cx, "scope")?;
         let scope = match scope_prop {
-            Some(s) => {
-                let scope_str = s.value(cx);
-                scope_str
-                    .parse()
-                    .map_err(|e: String| cx.throw_str_error(e))?
-            }
+            Some(s) => s
+                .parse()
+                .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))?,
             None => {
                 if has_destroy {
                     TrampolineScope::Notified
@@ -89,7 +78,7 @@ impl TrampolineType {
             }
         };
 
-        Ok(TrampolineType {
+        Ok(Self {
             arg_types,
             return_type,
             has_destroy,
@@ -100,14 +89,7 @@ impl TrampolineType {
 }
 
 impl FfiEncoder for TrampolineType {
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        anyhow::bail!("Trampolines cannot be return types")
-    }
+    arg_only_call_cif!("Trampolines");
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());
@@ -117,6 +99,7 @@ impl FfiEncoder for TrampolineType {
         }
     }
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
@@ -125,13 +108,12 @@ impl FfiEncoder for TrampolineType {
             value::Value::Null | value::Value::Undefined if optional => {
                 return Ok(self.build_null_ffi_value());
             }
-            _ => bail!("Expected a Callback for trampoline type, got {:?}", val),
+            _ => bail!("Expected a Callback for trampoline type, got {val:?}"),
         };
 
         let is_oneshot = self.scope == TrampolineScope::Async;
 
         let data = TrampolineData {
-            channel: callback.channel.clone(),
             js_func: callback.js_func.clone(),
             arg_types: self.arg_types.clone(),
             return_type: (*self.return_type).clone(),

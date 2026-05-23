@@ -1,20 +1,16 @@
 //! Fundamental type handling for FFI.
 //!
-//! GLib fundamental types are custom reference-counted types that don't
-//! derive from GObject. Examples include `GParamSpec` and Pango layout types.
+//! `GLib` fundamental types are custom reference-counted types that don't
+//! derive from `GObject`. Examples include `GParamSpec` and Pango layout types.
 //! They have custom ref/unref functions rather than using `g_object_ref/unref`.
-
-use std::ffi::c_void;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::ToGlibPtr as _, translate::ToGlibPtrMut as _};
-use neon::object::Object as _;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
+use super::prelude::*;
 use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
 use crate::state::GtkThreadState;
-use crate::{ffi, value};
 
 #[derive(Debug, Clone)]
 pub struct FundamentalType {
@@ -26,21 +22,24 @@ pub struct FundamentalType {
 }
 
 impl FundamentalType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "fundamental")?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "fundamental")?;
 
-        let library: Handle<JsString> = obj.get(cx, "library")?;
-        let ref_func: Handle<JsString> = obj.get(cx, "refFn")?;
-        let unref_func: Handle<JsString> = obj.get(cx, "unrefFn")?;
-        let type_name: Option<Handle<JsString>> = obj.get_opt(cx, "typeName")?;
+        let library: String = obj.get_named_property("library")?;
+        let ref_func: String = obj.get_named_property("refFn")?;
+        let unref_func: String = obj.get_named_property("unrefFn")?;
+        let type_name: Option<String> = obj
+            .get_named_property::<Option<String>>("typeName")
+            .ok()
+            .flatten();
 
         Ok(Self {
             ownership,
-            library: library.value(cx),
-            ref_func: ref_func.value(cx),
-            unref_func: unref_func.value(cx),
-            type_name: type_name.map(|s| s.value(cx)),
+            library,
+            ref_func,
+            unref_func,
+            type_name,
         })
     }
 
@@ -77,6 +76,21 @@ impl FundamentalType {
         }
         Ok(value)
     }
+
+    /// Wraps a non-null fundamental `ptr` into a [`value::Value`], honoring
+    /// `ownership`: a full transfer adopts the pointer while a borrowed one
+    /// takes a fresh reference.
+    fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        let fundamental = if self.ownership.is_full() {
+            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
+        } else {
+            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
+        };
+        Ok(value::Value::Object(
+            NativeValue::Fundamental(fundamental).into(),
+        ))
+    }
 }
 
 impl FfiEncoder for FundamentalType {
@@ -110,65 +124,42 @@ impl FfiDecoder for FundamentalType {
         let Some(ptr) = ffi_value.as_non_null_ptr("Fundamental")? else {
             return Ok(value::Value::Null);
         };
-
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = if self.ownership.is_full() {
-            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
-        } else {
-            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
-        };
-
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
+        self.wrap_ptr(ptr)
     }
 }
 
 impl RawPtrCodec for FundamentalType {
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
-    }
-
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
+        null_guarded(ptr, |ptr| {
+            let (ref_fn, unref_fn) = self.lookup_fns()?;
+            let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
+            Ok(value::Value::Object(
+                NativeValue::Fundamental(fundamental).into(),
+            ))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        let ptr = if !ptr.is_null() {
-            match self.lookup_fns() {
-                Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
-                _ => ptr,
-            }
-        } else {
-            ptr
-        };
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        write_return_object_ptr(ret, value, |ptr| match self.lookup_fns() {
+            Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
+            _ => ptr,
+        });
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("Fundamental field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "Fundamental field write")
     }
 }
 
 impl GlibValueCodec for FundamentalType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
         let ptr = match val {
-            value::Value::Object(handle) => handle.get_ptr(),
+            value::Value::Object(handle) => handle.ptr(),
             _ => return Ok(None),
         };
-        let Some(ptr) = ptr else { return Ok(None) };
+        if ptr.is_null() {
+            return Ok(None);
+        }
         self.ptr_to_glib_value(ptr).map(Some)
     }
 
@@ -185,19 +176,11 @@ impl GlibValueCodec for FundamentalType {
                     .cast::<c_void>()
             }
         } else {
-            bail!("Unsupported fundamental type in GValue: {:?}", gvalue_type)
+            bail!("Unsupported fundamental type in GValue: {gvalue_type:?}")
         };
         if ptr.is_null() {
             return Ok(value::Value::Null);
         }
-        let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = if self.ownership.is_full() {
-            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
-        } else {
-            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
-        };
-        Ok(value::Value::Object(
-            NativeValue::Fundamental(fundamental).into(),
-        ))
+        self.wrap_ptr(ptr)
     }
 }

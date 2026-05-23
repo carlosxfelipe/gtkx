@@ -1,4 +1,5 @@
 import { call, createRef, type NativeHandle, read } from "../../index.js";
+import type { Type } from "../../types.js";
 
 export { createRef };
 
@@ -111,6 +112,15 @@ export function startMemoryMeasurement(): MemoryMeasurement {
 }
 
 export function connectSignal(obj: unknown, signalName: string, callback: (...args: unknown[]) => void): number {
+    return connectSignalReturning(obj, signalName, callback, UINT64) as number;
+}
+
+export function connectSignalReturning(
+    obj: unknown,
+    signalName: string,
+    callback: (...args: unknown[]) => void,
+    returnType: Type,
+): unknown {
     return call(
         GOBJECT_LIB,
         "g_signal_connect_data",
@@ -123,6 +133,38 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
             },
             { type: POINTER, value: 0 },
             { type: POINTER, value: 0 },
+            { type: INT32, value: 0 },
+        ],
+        returnType,
+    );
+}
+
+export function connectSignalTrampoline(
+    obj: unknown,
+    signalName: string,
+    callback: (...args: unknown[]) => void,
+    options: { argTypes: Type[]; userDataIndex: number; hasDestroy?: boolean } = {
+        argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
+        userDataIndex: 1,
+        hasDestroy: true,
+    },
+): number {
+    return call(
+        GOBJECT_LIB,
+        "g_signal_connect_data",
+        [
+            { type: GOBJECT_BORROWED, value: obj },
+            { type: STRING, value: signalName },
+            {
+                type: {
+                    type: "trampoline",
+                    argTypes: options.argTypes,
+                    returnType: { type: "void" },
+                    hasDestroy: options.hasDestroy ?? true,
+                    userDataIndex: options.userDataIndex,
+                },
+                value: callback,
+            },
             { type: INT32, value: 0 },
         ],
         UINT64,
@@ -139,4 +181,105 @@ export function disconnectSignal(obj: unknown, handlerId: number): void {
         ],
         VOID,
     );
+}
+
+export function boxAppend(box: unknown, child: unknown): void {
+    call(
+        GTK_LIB,
+        "gtk_box_append",
+        [
+            { type: GOBJECT_BORROWED, value: box },
+            { type: GOBJECT_BORROWED, value: child },
+        ],
+        VOID,
+    );
+}
+
+export function boxRemove(box: unknown, child: unknown): void {
+    call(
+        GTK_LIB,
+        "gtk_box_remove",
+        [
+            { type: GOBJECT_BORROWED, value: box },
+            { type: GOBJECT_BORROWED, value: child },
+        ],
+        VOID,
+    );
+}
+
+export function getFirstChild(widget: unknown): unknown {
+    return call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+}
+
+export function getNextSibling(widget: unknown): unknown {
+    return call(GTK_LIB, "gtk_widget_get_next_sibling", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+}
+
+export function getParent(widget: unknown): unknown {
+    return call(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+}
+
+const INT32_REF = { type: "ref" as const, innerType: INT32 };
+
+function measureSlot(
+    ref: ReturnType<typeof createRef> | null,
+): { type: typeof INT32_REF; value: ReturnType<typeof createRef> } | { type: typeof POINTER; value: 0 } {
+    if (ref === null) return { type: POINTER, value: 0 };
+    return { type: INT32_REF, value: ref };
+}
+
+export interface MeasureWidgetOptions {
+    widget: unknown;
+    orientation: number;
+    forSize: number;
+    minRef?: ReturnType<typeof createRef> | null;
+    naturalRef?: ReturnType<typeof createRef> | null;
+    minBaselineRef?: ReturnType<typeof createRef> | null;
+    naturalBaselineRef?: ReturnType<typeof createRef> | null;
+}
+
+export function measureWidget(options: MeasureWidgetOptions): void {
+    call(
+        GTK_LIB,
+        "gtk_widget_measure",
+        [
+            { type: GOBJECT_BORROWED, value: options.widget },
+            { type: INT32, value: options.orientation },
+            { type: INT32, value: options.forSize },
+            measureSlot(options.minRef ?? null),
+            measureSlot(options.naturalRef ?? null),
+            measureSlot(options.minBaselineRef ?? null),
+            measureSlot(options.naturalBaselineRef ?? null),
+        ],
+        VOID,
+    );
+}
+
+export function measureWidgetAllNull(widget: unknown): unknown {
+    return call(
+        GTK_LIB,
+        "gtk_widget_measure",
+        [
+            { type: GOBJECT_BORROWED, value: widget },
+            { type: INT32, value: 0 },
+            { type: INT32, value: -1 },
+            { type: POINTER, value: 0 },
+            { type: POINTER, value: 0 },
+            { type: POINTER, value: 0 },
+            { type: POINTER, value: 0 },
+        ],
+        VOID,
+    );
+}
+
+export function isSignalHandlerConnected(obj: unknown, handlerId: number): boolean {
+    return call(
+        GOBJECT_LIB,
+        "g_signal_handler_is_connected",
+        [
+            { type: GOBJECT_BORROWED, value: obj },
+            { type: UINT64, value: handlerId },
+        ],
+        BOOLEAN,
+    ) as boolean;
 }

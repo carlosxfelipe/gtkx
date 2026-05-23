@@ -1,81 +1,123 @@
+//! Request/response plumbing shared by the napi export handlers.
+//!
+//! [`ModuleRequest::dispatch`] and the [`ModuleResponse`] conversions all
+//! require a live [`napi::Env`], so the module is excluded from coverage
+//! instrumentation. The per-request `execute` logic lives in the sibling
+//! modules and is exercised directly by tests.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use std::sync::Arc;
 
-use neon::handle::Root;
-use neon::prelude::*;
-use neon::types::JsObject;
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
-use crate::gtk_dispatch;
+use crate::dispatch;
 use crate::managed::NativeHandle;
-use crate::value::Value;
+use crate::value::{JsRef, Value};
 
-pub(crate) trait ModuleRequest: Sized + Send + 'static {
+#[cfg_attr(test, allow(dead_code))]
+pub trait ModuleRequest: Sized + Send + 'static {
     type Output: ModuleResponse + Send + 'static;
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self>;
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
-}
 
-pub(crate) trait ModuleResponse {
-    fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue>;
-}
-
-pub(crate) trait JsThreadCommand: Sized {
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self>;
-    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue>;
-}
-
-pub(crate) fn dispatch_request<'a, R: ModuleRequest>(
-    cx: &mut FunctionContext<'a>,
-) -> JsResult<'a, JsValue> {
-    let dispatcher = gtk_dispatch::GtkDispatcher::global();
-
-    if !dispatcher.is_started() {
-        return cx.throw_error("GTK application has not been started. Call start() first.");
+    /// Dispatches the request onto the `GLib` thread, blocks the JS thread
+    /// until it completes, and converts the outcome into a JavaScript value.
+    fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        let result = dispatch::Mailbox::global()
+            .dispatch_to_glib_and_wait(*env, move || self.execute())
+            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?
+            .map_err(|e| {
+                napi::Error::new(
+                    napi::Status::GenericFailure,
+                    format!("Error during {}: {e}", Self::error_context()),
+                )
+            })?;
+        result.to_js_response(env)
     }
-
-    let request = R::from_js(cx)?;
-    let result = dispatcher
-        .dispatch_and_wait(cx, || request.execute())
-        .or_else(|err| cx.throw_error(err.to_string()))?
-        .or_else(|err| cx.throw_error(format!("Error during {}: {err}", R::error_context())))?;
-    result.to_js_response(cx)
 }
 
-pub(crate) fn execute_js_command<'a, C: JsThreadCommand>(
-    cx: &mut FunctionContext<'a>,
-) -> JsResult<'a, JsValue> {
-    let command = C::from_js(cx)?;
-    command.execute(cx)
+#[cfg_attr(test, allow(dead_code))]
+pub trait ModuleResponse: Sized {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>>;
 }
 
 impl ModuleResponse for Value {
-    fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        self.to_js_value(cx)
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        self.to_js_value(env)
     }
 }
 
 impl ModuleResponse for NativeHandle {
-    fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        Ok(cx.boxed(self).upcast())
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let external = External::new(self);
+            let raw = External::<Self>::to_napi_value(env.raw(), external)?;
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
+    }
+}
+
+impl ModuleResponse for Option<NativeHandle> {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        self.map_or_else(
+            || ().to_js_response(env),
+            |handle| handle.to_js_response(env),
+        )
+    }
+}
+
+impl ModuleResponse for Option<String> {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = match self {
+                Some(value) => String::to_napi_value(env.raw(), value)?,
+                None => Undefined::to_napi_value(env.raw(), ())?,
+            };
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
+    }
+}
+
+impl ModuleResponse for bool {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = Self::to_napi_value(env.raw(), self)?;
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
+    }
+}
+
+impl ModuleResponse for u64 {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = f64::to_napi_value(env.raw(), self as f64)?;
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
     }
 }
 
 impl ModuleResponse for () {
-    fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        Ok(cx.undefined().upcast())
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        unsafe {
+            let raw = Undefined::to_napi_value(env.raw(), ())?;
+            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
+        }
     }
 }
 
-type RefUpdate = (Arc<Root<JsObject>>, Value);
+#[cfg_attr(test, allow(dead_code))]
+pub type RefUpdate = (Arc<JsRef<JsObject>>, Value);
 
 impl ModuleResponse for (Value, Vec<RefUpdate>) {
-    fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
+    fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let (value, ref_updates) = self;
-        for (js_obj, new_value) in ref_updates {
-            let js_obj = js_obj.to_inner(cx);
-            let new_js_value = new_value.to_js_value(cx)?;
-            js_obj.prop(cx, "value").set(new_js_value)?;
+        for (js_obj_ref, new_value) in ref_updates {
+            let mut js_obj = js_obj_ref.get_value(env)?;
+            let new_js_value = new_value.to_js_value(env)?;
+            js_obj.set_named_property("value", new_js_value)?;
         }
-        value.to_js_value(cx)
+        value.to_js_value(env)
     }
 }

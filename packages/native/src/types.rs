@@ -1,4 +1,4 @@
-//! FFI type system for describing GTK and GLib types.
+//! FFI type system for describing GTK and `GLib` types.
 //!
 //! This module defines the [`Type`] enum and associated types that describe
 //! all values that can flow through the FFI boundary. Types are parsed from
@@ -37,23 +37,39 @@ use anyhow::bail;
 use enum_dispatch::enum_dispatch;
 use gtk4::glib;
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
 use crate::{ffi, value};
 
-mod sealed {
-    pub trait Sealed {}
-    impl Sealed for neon::prelude::FunctionContext<'_> {}
-}
-
-pub(crate) trait NeonContextExt: sealed::Sealed {
-    fn throw_str_error(&mut self, msg: String) -> neon::result::Throw;
-}
-
-impl NeonContextExt for FunctionContext<'_> {
-    fn throw_str_error(&mut self, msg: String) -> neon::result::Throw {
-        self.throw_type_error::<_, ()>(msg).unwrap_err()
+/// Shared parser for the `argTypes` and `returnType` properties used by both
+/// `CallbackType` and `TrampolineType`. Returns the parsed argument types and
+/// return type or returns a JS type error referencing `kind` (e.g. `"callback"`).
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub(crate) fn parse_callback_arg_and_return_types(
+    env: &Env,
+    obj: &JsObject,
+    kind: &str,
+) -> napi::Result<(Vec<Type>, Box<Type>)> {
+    let arg_types_prop: Unknown<'_> = obj.get_named_property("argTypes")?;
+    if !arg_types_prop.is_array()? {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("'argTypes' property is required for {kind} types"),
+        ));
     }
+    let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
+    let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_js_value)?;
+
+    let return_type_prop: Unknown<'_> = obj.get_named_property("returnType")?;
+    let return_type = Box::new(Type::from_js_value(env, return_type_prop).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("'returnType' property is required for {kind} types"),
+        )
+    })?);
+
+    Ok((arg_types, return_type))
 }
 
 mod array;
@@ -64,6 +80,8 @@ mod fundamental;
 mod gobject;
 mod hashtable;
 mod numeric;
+mod prelude;
+mod raw_ptr;
 mod ref_type;
 mod string;
 mod trampoline;
@@ -78,10 +96,10 @@ pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
-pub use numeric::{EnumType, FlagsType, FloatKind, IntegerKind, TaggedType};
+pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
-pub use trampoline::TrampolineType;
+pub use trampoline::{TrampolineScope, TrampolineType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
 
@@ -97,43 +115,42 @@ impl Ownership {
     #[inline]
     #[must_use]
     pub fn is_full(self) -> bool {
-        matches!(self, Ownership::Full)
+        matches!(self, Self::Full)
     }
 
     #[inline]
     #[must_use]
     pub fn is_borrowed(self) -> bool {
-        matches!(self, Ownership::Borrowed)
+        matches!(self, Self::Borrowed)
     }
 }
 
 impl Ownership {
-    pub fn from_js_value(
-        cx: &mut FunctionContext,
-        obj: Handle<JsObject>,
-        type_name: &str,
-    ) -> NeonResult<Self> {
-        let ownership_prop: Handle<'_, JsValue> = obj.prop(cx, "ownership").get()?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(obj: &JsObject, type_name: &str) -> napi::Result<Self> {
+        let missing = || {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'ownership' property is required for {type_name} types"),
+            )
+        };
 
-        let ownership = ownership_prop
-            .downcast::<JsString, _>(cx)
-            .or_else(|_| {
-                cx.throw_type_error(format!(
-                    "'ownership' property is required for {} types",
-                    type_name
-                ))
-            })?
-            .value(cx);
+        let ownership = obj
+            .get_named_property::<Option<String>>("ownership")
+            .map_err(|_| missing())?
+            .ok_or_else(missing)?;
 
-        ownership.parse().map_err(|e: String| cx.throw_str_error(e))
+        ownership
+            .parse()
+            .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))
     }
 }
 
 impl std::fmt::Display for Ownership {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Ownership::Borrowed => write!(f, "borrowed"),
-            Ownership::Full => write!(f, "full"),
+            Self::Borrowed => write!(f, "borrowed"),
+            Self::Full => write!(f, "full"),
         }
     }
 }
@@ -141,20 +158,18 @@ impl std::fmt::Display for Ownership {
 impl std::str::FromStr for Ownership {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "full" => Ok(Ownership::Full),
-            "borrowed" => Ok(Ownership::Borrowed),
+            "full" => Ok(Self::Full),
+            "borrowed" => Ok(Self::Borrowed),
             other => Err(format!(
-                "'ownership' must be 'full' or 'borrowed', got '{}'",
-                other
+                "'ownership' must be 'full' or 'borrowed', got '{other}'"
             )),
         }
     }
 }
 
 #[enum_dispatch]
-#[allow(clippy::wrong_self_convention)]
 pub trait FfiEncoder {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
 
@@ -201,12 +216,20 @@ pub trait FfiDecoder {
 
 #[enum_dispatch]
 pub trait RawPtrCodec {
+    /// Reads a value from a `*const T**` (a pointer-to-pointer location), by
+    /// dereferencing once and delegating to [`ptr_to_value`]. Pointer-typed
+    /// codecs (string/gobject/boxed/struct/fundamental) inherit this default;
+    /// scalar codecs override with a direct read.
     fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let _ = (ptr, context);
-        bail!("This type cannot be read from a raw pointer")
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+    fn write_return_to_raw_ptr(
+        &self,
+        ret: *mut c_void,
+        value: &std::result::Result<value::Value, ()>,
+    ) {
         let _ = value;
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
@@ -245,8 +268,7 @@ impl<T: FfiEncoder + FfiDecoder + RawPtrCodec + GlibValueCodec> FfiCodec for T {
 pub enum Type {
     Integer(IntegerKind),
     Float(FloatKind),
-    Enum(EnumType),
-    Flags(FlagsType),
+    Tagged(TaggedType),
     String(StringType),
     Void(VoidType),
     Boolean(BooleanType),
@@ -265,66 +287,127 @@ pub enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Integer(kind) => write!(f, "Integer({:?})", kind),
-            Type::Float(kind) => write!(f, "Float({:?})", kind),
-            Type::Enum(t) => write!(f, "Enum({})", t.tagged.get_type_fn),
-            Type::Flags(t) => write!(f, "Flags({})", t.tagged.get_type_fn),
-            Type::String(_) => write!(f, "String"),
-            Type::Void(_) => write!(f, "Void"),
-            Type::Boolean(_) => write!(f, "Boolean"),
-            Type::GObject(_) => write!(f, "GObject"),
-            Type::Boxed(t) => write!(f, "Boxed({})", t.type_name),
-            Type::Struct(t) => write!(f, "Struct({})", t.type_name),
-            Type::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
-            Type::Array(_) => write!(f, "Array"),
-            Type::HashTable(_) => write!(f, "HashTable"),
-            Type::Callback(_) => write!(f, "Callback"),
-            Type::Trampoline(_) => write!(f, "Trampoline"),
-            Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
-            Type::Unichar(_) => write!(f, "Unichar"),
+            Self::Integer(kind) => write!(f, "Integer({kind:?})"),
+            Self::Float(kind) => write!(f, "Float({kind:?})"),
+            Self::Tagged(t) => match t.kind {
+                TaggedKind::Enum => write!(f, "Enum({})", t.get_type_fn),
+                TaggedKind::Flags => write!(f, "Flags({})", t.get_type_fn),
+            },
+            Self::String(_) => write!(f, "String"),
+            Self::Void(_) => write!(f, "Void"),
+            Self::Boolean(_) => write!(f, "Boolean"),
+            Self::GObject(_) => write!(f, "GObject"),
+            Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
+            Self::Struct(t) => write!(f, "Struct({})", t.type_name),
+            Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
+            Self::Array(_) => write!(f, "Array"),
+            Self::HashTable(_) => write!(f, "HashTable"),
+            Self::Callback(_) => write!(f, "Callback"),
+            Self::Trampoline(_) => write!(f, "Trampoline"),
+            Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
+            Self::Unichar(_) => write!(f, "Unichar"),
         }
     }
 }
 
 impl Type {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let type_value: Handle<'_, JsValue> = obj.prop(cx, "type").get()?;
-
-        let ty = type_value
-            .downcast::<JsString, _>(cx)
-            .or_throw(cx)?
-            .value(cx);
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        let obj: JsObject = unsafe { JsObject::from_napi_value(env.raw(), value.raw())? };
+        let ty: String = obj.get_named_property("type")?;
 
         match ty.as_str() {
-            "int8" => Ok(Type::Integer(IntegerKind::I8)),
-            "uint8" => Ok(Type::Integer(IntegerKind::U8)),
-            "int16" => Ok(Type::Integer(IntegerKind::I16)),
-            "uint16" => Ok(Type::Integer(IntegerKind::U16)),
-            "int32" => Ok(Type::Integer(IntegerKind::I32)),
-            "uint32" => Ok(Type::Integer(IntegerKind::U32)),
-            "int64" => Ok(Type::Integer(IntegerKind::I64)),
-            "uint64" => Ok(Type::Integer(IntegerKind::U64)),
-            "float32" => Ok(Type::Float(FloatKind::F32)),
-            "float64" => Ok(Type::Float(FloatKind::F64)),
-            "enum" => Ok(Type::Enum(EnumType::from_js_value(cx, value)?)),
-            "flags" => Ok(Type::Flags(FlagsType::from_js_value(cx, value)?)),
-            "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
-            "boolean" => Ok(Type::Boolean(BooleanType)),
-            "void" => Ok(Type::Void(VoidType)),
-            "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
-            "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
-            "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
-            "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
-            "hashtable" => Ok(Type::HashTable(HashTableType::from_js_value(cx, value)?)),
-            "callback" => Ok(Type::Callback(CallbackType::from_js_value(cx, value)?)),
-            "trampoline" => Ok(Type::Trampoline(TrampolineType::from_js_value(cx, value)?)),
-            "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
-            "unichar" => Ok(Type::Unichar(UnicharType)),
-            "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
-                cx, value,
+            "int8" => Ok(Self::Integer(IntegerKind::I8)),
+            "uint8" => Ok(Self::Integer(IntegerKind::U8)),
+            "int16" => Ok(Self::Integer(IntegerKind::I16)),
+            "uint16" => Ok(Self::Integer(IntegerKind::U16)),
+            "int32" => Ok(Self::Integer(IntegerKind::I32)),
+            "uint32" => Ok(Self::Integer(IntegerKind::U32)),
+            "int64" => Ok(Self::Integer(IntegerKind::I64)),
+            "uint64" => Ok(Self::Integer(IntegerKind::U64)),
+            "float32" => Ok(Self::Float(FloatKind::F32)),
+            "float64" => Ok(Self::Float(FloatKind::F64)),
+            "enum" => Ok(Self::Tagged(TaggedType::from_js_value(
+                env,
+                &obj,
+                TaggedKind::Enum,
             )?)),
-            _ => cx.throw_type_error(format!("Unknown type: {}", ty)),
+            "flags" => Ok(Self::Tagged(TaggedType::from_js_value(
+                env,
+                &obj,
+                TaggedKind::Flags,
+            )?)),
+            "string" => Ok(Self::String(StringType::from_js_value(env, &obj)?)),
+            "boolean" => Ok(Self::Boolean(BooleanType)),
+            "void" => Ok(Self::Void(VoidType)),
+            "gobject" => Ok(Self::GObject(GObjectType::from_js_value(env, &obj)?)),
+            "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(env, &obj)?)),
+            "struct" => Ok(Self::Struct(StructType::from_js_value(env, &obj)?)),
+            "array" => Ok(Self::Array(ArrayType::from_js_value(env, &obj)?)),
+            "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(env, &obj)?)),
+            "callback" => Ok(Self::Callback(CallbackType::from_js_value(env, &obj)?)),
+            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(env, &obj)?)),
+            "ref" => Ok(Self::Ref(RefType::from_js_value(env, &obj)?)),
+            "unichar" => Ok(Self::Unichar(UnicharType)),
+            "fundamental" => Ok(Self::Fundamental(FundamentalType::from_js_value(
+                env, &obj,
+            )?)),
+            other => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unknown type: {other}"),
+            )),
         }
+    }
+
+    /// Whether this type may occupy a function's return slot.
+    ///
+    /// `Callback`, `Trampoline`, and `Ref` describe argument-only shapes — a
+    /// callback handler or an out-parameter — and have no return-slot codec
+    /// (their [`FfiEncoder::call_cif`] implementations bail). Callers consult
+    /// this at the descriptor-parsing boundary to reject a malformed return
+    /// type with a precise `InvalidArg` error.
+    #[must_use]
+    pub fn can_be_return_type(&self) -> bool {
+        !matches!(self, Self::Callback(_) | Self::Trampoline(_) | Self::Ref(_))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::trampoline::TrampolineScope;
+    use super::*;
+
+    #[test]
+    fn scalar_and_pointer_types_can_be_return_types() {
+        assert!(Type::Void(VoidType).can_be_return_type());
+        assert!(Type::Integer(IntegerKind::I32).can_be_return_type());
+        assert!(Type::Boolean(BooleanType).can_be_return_type());
+    }
+
+    #[test]
+    fn callback_cannot_be_return_type() {
+        let callback = CallbackType {
+            arg_types: Vec::new(),
+            return_type: Box::new(Type::Void(VoidType)),
+        };
+        assert!(!Type::Callback(callback).can_be_return_type());
+    }
+
+    #[test]
+    fn trampoline_cannot_be_return_type() {
+        let trampoline = TrampolineType {
+            arg_types: Vec::new(),
+            return_type: Box::new(Type::Void(VoidType)),
+            has_destroy: false,
+            user_data_index: None,
+            scope: TrampolineScope::Call,
+        };
+        assert!(!Type::Trampoline(trampoline).can_be_return_type());
+    }
+
+    #[test]
+    fn ref_cannot_be_return_type() {
+        let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
+        assert!(!Type::Ref(ref_type).can_be_return_type());
     }
 }

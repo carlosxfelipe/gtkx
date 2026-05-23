@@ -10,6 +10,19 @@ use native::types::{
 };
 use native::value;
 
+macro_rules! expect_variant {
+    ($arg:expr, $variant:ident) => {{
+        match FfiValue::try_from($arg).expect("conversion should succeed") {
+            FfiValue::$variant(v) => v,
+            other => panic!(
+                "Expected FfiValue::{}, got {:?}",
+                stringify!($variant),
+                other
+            ),
+        }
+    }};
+}
+
 #[test]
 fn owned_ptr_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
@@ -75,58 +88,38 @@ fn owned_ptr_drops_value_when_dropped() {
 fn try_from_integer_i8() {
     let arg = Arg::new(Type::Integer(IntegerKind::I8), value::Value::Number(-42.0));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::I8(v) = result.unwrap() {
-        assert_eq!(v, -42);
-    } else {
-        panic!("Expected FfiValue::I8");
-    }
+    let v = expect_variant!(arg, I8);
+    assert_eq!(v, -42);
 }
 
 #[test]
 fn try_from_integer_u8() {
     let arg = Arg::new(Type::Integer(IntegerKind::U8), value::Value::Number(200.0));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::U8(v) = result.unwrap() {
-        assert_eq!(v, 200);
-    } else {
-        panic!("Expected FfiValue::U8");
-    }
+    let v = expect_variant!(arg, U8);
+    assert_eq!(v, 200);
 }
 
 #[test]
 fn try_from_integer_i32() {
     let arg = Arg::new(
         Type::Integer(IntegerKind::I32),
-        value::Value::Number(-123456.0),
+        value::Value::Number(-123_456.0),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::I32(v) = result.unwrap() {
-        assert_eq!(v, -123456);
-    } else {
-        panic!("Expected FfiValue::I32");
-    }
+    let v = expect_variant!(arg, I32);
+    assert_eq!(v, -123_456);
 }
 
 #[test]
 fn try_from_integer_u64() {
     let arg = Arg::new(
         Type::Integer(IntegerKind::U64),
-        value::Value::Number(9999999999.0),
+        value::Value::Number(9_999_999_999.0),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::U64(v) = result.unwrap() {
-        assert_eq!(v, 9999999999);
-    } else {
-        panic!("Expected FfiValue::U64");
-    }
+    let v = expect_variant!(arg, U64);
+    assert_eq!(v, 9_999_999_999);
 }
 
 #[test]
@@ -137,39 +130,24 @@ fn try_from_integer_optional_null() {
         optional: true,
     };
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::I32(v) = result.unwrap() {
-        assert_eq!(v, 0);
-    } else {
-        panic!("Expected FfiValue::I32");
-    }
+    let v = expect_variant!(arg, I32);
+    assert_eq!(v, 0);
 }
 
 #[test]
 fn try_from_float_f32() {
     let arg = Arg::new(Type::Float(FloatKind::F32), value::Value::Number(3.125));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::F32(v) = result.unwrap() {
-        assert!((v - 3.125).abs() < 0.001);
-    } else {
-        panic!("Expected FfiValue::F32");
-    }
+    let v = expect_variant!(arg, F32);
+    assert!((v - 3.125).abs() < 0.001);
 }
 
 #[test]
 fn try_from_float_f64() {
     let arg = Arg::new(Type::Float(FloatKind::F64), value::Value::Number(2.625));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::F64(v) = result.unwrap() {
-        assert!((v - 2.625).abs() < 0.0000001);
-    } else {
-        panic!("Expected FfiValue::F64");
-    }
+    let v = expect_variant!(arg, F64);
+    assert!((v - 2.625).abs() < 0.000_000_1);
 }
 
 #[test]
@@ -182,16 +160,11 @@ fn try_from_string_full() {
         value::Value::String("hello world".to_string()),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Ptr(ptr) = result.unwrap() {
-        unsafe {
-            let s = std::ffi::CStr::from_ptr(ptr as *const i8);
-            assert_eq!(s.to_str().unwrap(), "hello world");
-            gtk4::glib::ffi::g_free(ptr);
-        }
-    } else {
-        panic!("Expected FfiValue::Ptr for full ownership string");
+    let ptr = expect_variant!(arg, Ptr);
+    unsafe {
+        let s = std::ffi::CStr::from_ptr(ptr as *const i8);
+        assert_eq!(s.to_str().unwrap(), "hello world");
+        gtk4::glib::ffi::g_free(ptr);
     }
 }
 
@@ -205,15 +178,10 @@ fn try_from_string_borrowed() {
         value::Value::String("hello world".to_string()),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Storage(owned) = result.unwrap() {
-        unsafe {
-            let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
-            assert_eq!(s.to_str().unwrap(), "hello world");
-        }
-    } else {
-        panic!("Expected FfiValue::Storage for borrowed string");
+    let owned = expect_variant!(arg, Storage);
+    unsafe {
+        let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
+        assert_eq!(s.to_str().unwrap(), "hello world");
     }
 }
 
@@ -227,65 +195,40 @@ fn try_from_string_null() {
         value::Value::Null,
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Ptr(ptr) = result.unwrap() {
-        assert!(ptr.is_null());
-    } else {
-        panic!("Expected FfiValue::Ptr");
-    }
+    let ptr = expect_variant!(arg, Ptr);
+    assert!(ptr.is_null());
 }
 
 #[test]
 fn try_from_boolean_true() {
     let arg = Arg::new(Type::Boolean(BooleanType), value::Value::Boolean(true));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::I32(v) = result.unwrap() {
-        assert_eq!(v, 1);
-    } else {
-        panic!("Expected FfiValue::I32");
-    }
+    let v = expect_variant!(arg, I32);
+    assert_eq!(v, 1);
 }
 
 #[test]
 fn try_from_boolean_false() {
     let arg = Arg::new(Type::Boolean(BooleanType), value::Value::Boolean(false));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::I32(v) = result.unwrap() {
-        assert_eq!(v, 0);
-    } else {
-        panic!("Expected FfiValue::I32");
-    }
+    let v = expect_variant!(arg, I32);
+    assert_eq!(v, 0);
 }
 
 #[test]
 fn try_from_null() {
     let arg = Arg::new(Type::Void(VoidType), value::Value::Null);
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Ptr(ptr) = result.unwrap() {
-        assert!(ptr.is_null());
-    } else {
-        panic!("Expected FfiValue::Ptr");
-    }
+    let ptr = expect_variant!(arg, Ptr);
+    assert!(ptr.is_null());
 }
 
 #[test]
 fn try_from_undefined() {
     let arg = Arg::new(Type::Void(VoidType), value::Value::Undefined);
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Ptr(ptr) = result.unwrap() {
-        assert!(ptr.is_null());
-    } else {
-        panic!("Expected FfiValue::Ptr");
-    }
+    let ptr = expect_variant!(arg, Ptr);
+    assert!(ptr.is_null());
 }
 
 #[test]
@@ -304,15 +247,10 @@ fn try_from_array_u8() {
         ]),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Storage(owned) = result.unwrap() {
-        unsafe {
-            let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
-            assert_eq!(slice, &[1, 2, 3]);
-        }
-    } else {
-        panic!("Expected FfiValue::Storage");
+    let owned = expect_variant!(arg, Storage);
+    unsafe {
+        let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
+        assert_eq!(slice, &[1, 2, 3]);
     }
 }
 
@@ -332,15 +270,10 @@ fn try_from_array_i32() {
         ]),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Storage(owned) = result.unwrap() {
-        unsafe {
-            let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
-            assert_eq!(slice, &[-10, 0, 10]);
-        }
-    } else {
-        panic!("Expected FfiValue::Storage");
+    let owned = expect_variant!(arg, Storage);
+    unsafe {
+        let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
+        assert_eq!(slice, &[-10, 0, 10]);
     }
 }
 
@@ -356,16 +289,11 @@ fn try_from_array_f64() {
         value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Storage(owned) = result.unwrap() {
-        unsafe {
-            let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
-            assert!((slice[0] - 1.1).abs() < 0.001);
-            assert!((slice[1] - 2.2).abs() < 0.001);
-        }
-    } else {
-        panic!("Expected FfiValue::Storage");
+    let owned = expect_variant!(arg, Storage);
+    unsafe {
+        let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
+        assert!((slice[0] - 1.1).abs() < 0.001);
+        assert!((slice[1] - 2.2).abs() < 0.001);
     }
 }
 
@@ -387,19 +315,14 @@ fn try_from_array_string() {
         ]),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Storage(owned) = result.unwrap() {
-        unsafe {
-            let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
-            let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
-            let s1 = std::ffi::CStr::from_ptr(ptrs[1]);
-            assert_eq!(s0.to_str().unwrap(), "foo");
-            assert_eq!(s1.to_str().unwrap(), "bar");
-            assert!(ptrs[2].is_null());
-        }
-    } else {
-        panic!("Expected FfiValue::Storage");
+    let owned = expect_variant!(arg, Storage);
+    unsafe {
+        let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
+        let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
+        let s1 = std::ffi::CStr::from_ptr(ptrs[1]);
+        assert_eq!(s0.to_str().unwrap(), "foo");
+        assert_eq!(s1.to_str().unwrap(), "bar");
+        assert!(ptrs[2].is_null());
     }
 }
 
@@ -419,27 +342,18 @@ fn try_from_array_boolean() {
         ]),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Storage(owned) = result.unwrap() {
-        unsafe {
-            let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
-            assert_eq!(slice, &[1, 0, 1]);
-        }
-    } else {
-        panic!("Expected FfiValue::Storage");
+    let owned = expect_variant!(arg, Storage);
+    unsafe {
+        let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
+        assert_eq!(slice, &[1, 0, 1]);
     }
 }
 
 #[test]
 fn value_as_ptr_integer_types_fail() {
-    let v_u8 = FfiValue::U8(42);
-    let v_i32 = FfiValue::I32(-100);
-    let v_u64 = FfiValue::U64(999);
-
-    assert!(v_u8.as_ptr("test").is_err());
-    assert!(v_i32.as_ptr("test").is_err());
-    assert!(v_u64.as_ptr("test").is_err());
+    assert!(FfiValue::U8(42).as_ptr("test").is_err());
+    assert!(FfiValue::I32(-100).as_ptr("test").is_err());
+    assert!(FfiValue::U64(999).as_ptr("test").is_err());
 }
 
 #[test]
@@ -497,13 +411,8 @@ fn try_from_struct_null() {
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Null);
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Ptr(ptr) = result.unwrap() {
-        assert!(ptr.is_null());
-    } else {
-        panic!("Expected FfiValue::Ptr for null struct");
-    }
+    let ptr = expect_variant!(arg, Ptr);
+    assert!(ptr.is_null());
 }
 
 #[test]
@@ -515,13 +424,8 @@ fn try_from_struct_undefined() {
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Undefined);
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_ok());
-    if let FfiValue::Ptr(ptr) = result.unwrap() {
-        assert!(ptr.is_null());
-    } else {
-        panic!("Expected FfiValue::Ptr for undefined struct");
-    }
+    let ptr = expect_variant!(arg, Ptr);
+    assert!(ptr.is_null());
 }
 
 #[test]
@@ -536,8 +440,7 @@ fn try_from_struct_invalid_type() {
         value::Value::String("invalid".to_string()),
     );
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_err());
+    assert!(FfiValue::try_from(arg).is_err());
 }
 
 #[test]
@@ -549,8 +452,7 @@ fn try_from_struct_invalid_number() {
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Number(42.0));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_err());
+    assert!(FfiValue::try_from(arg).is_err());
 }
 
 #[test]
@@ -562,8 +464,57 @@ fn try_from_struct_invalid_boolean() {
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Boolean(true));
 
-    let result = FfiValue::try_from(arg);
-    assert!(result.is_err());
+    assert!(FfiValue::try_from(arg).is_err());
+}
+
+#[test]
+fn try_from_array_optional_null_yields_null_ptr() {
+    let arg = Arg {
+        ty: Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value: value::Value::Null,
+        optional: true,
+    };
+
+    match FfiValue::try_from(arg).unwrap() {
+        FfiValue::Ptr(ptr) => assert!(ptr.is_null()),
+        other => panic!("Expected null FfiValue::Ptr, got {other:?}"),
+    }
+}
+
+#[test]
+fn try_from_array_propagates_encode_error() {
+    let arg = Arg::new(
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value::Value::Number(1.0),
+    );
+
+    assert!(FfiValue::try_from(arg).is_err());
+}
+
+#[test]
+fn try_from_array_f32_storage_converts_to_libffi_arg() {
+    let arg = Arg::new(
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Float(FloatKind::F32)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value::Value::Array(vec![value::Value::Number(0.5)]),
+    );
+
+    let ffi_value = FfiValue::try_from(arg).unwrap();
+    let _arg: libffi::middle::Arg = (&ffi_value).into();
 }
 
 #[test]

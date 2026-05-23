@@ -1,15 +1,14 @@
-use std::ffi::c_void;
-
 use anyhow::bail;
+#[cfg(debug_assertions)]
+use gtk4::glib::translate::IntoGlib as _;
 use gtk4::glib::{
     self,
-    translate::{IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
+    translate::{ToGlibPtr as _, ToGlibPtrMut as _},
 };
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec};
-use crate::{ffi, value};
+use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
@@ -99,6 +98,107 @@ macro_rules! impl_integer_kind_dispatch {
 }
 with_integer_kinds!(impl_integer_kind_dispatch);
 
+/// Generates the four FFI codec trait impls (`FfiEncoder`, `FfiDecoder`,
+/// `RawPtrCodec`, `GlibValueCodec`) for a numeric kind enum.
+///
+/// Every numeric kind marshals identically across the codec boundary — a JS
+/// `Number` to and from an `f64` — so the trait surface is uniform. The
+/// genuinely type-specific behavior (range checking, the per-variant
+/// `g_value_*` calls, pointer interpretation) lives in inherent methods
+/// (`checked_to_ffi_value`, `number_to_glib_value`, `number_from_glib_value`,
+/// `ptr_to_value_raw`, `ffi_type`, `read_ptr`, `write_ptr`, `call_cif_raw`)
+/// that the generated impls delegate to. `$label` names the kind in error
+/// messages.
+macro_rules! impl_numeric_codecs {
+    ($kind:ty, $label:literal) => {
+        impl FfiEncoder for $kind {
+            fn encode(
+                &self,
+                value: &value::Value,
+                optional: bool,
+            ) -> anyhow::Result<ffi::FfiValue> {
+                let number = match value {
+                    value::Value::Number(n) => *n,
+                    value::Value::Object(handle) => handle.ptr_as_usize() as f64,
+                    value::Value::Null | value::Value::Undefined if optional => 0.0,
+                    _ => bail!("Expected a Number for {} type, got {value:?}", $label),
+                };
+                self.checked_to_ffi_value(number)
+            }
+
+            fn libffi_type(&self) -> libffi::Type {
+                self.ffi_type()
+            }
+
+            fn call_cif(
+                &self,
+                cif: &libffi::Cif,
+                ptr: libffi::CodePtr,
+                args: &[libffi::Arg],
+            ) -> anyhow::Result<ffi::FfiValue> {
+                Ok(unsafe { Self::call_cif_raw(*self, cif, ptr, args) })
+            }
+        }
+
+        impl FfiDecoder for $kind {
+            fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+                Ok(value::Value::Number(ffi_value.to_number()?))
+            }
+        }
+
+        impl RawPtrCodec for $kind {
+            fn ptr_to_value(
+                &self,
+                ptr: *mut c_void,
+                _context: &str,
+            ) -> anyhow::Result<value::Value> {
+                Ok(self.ptr_to_value_raw(ptr))
+            }
+
+            fn read_from_raw_ptr(
+                &self,
+                ptr: *const c_void,
+                _context: &str,
+            ) -> anyhow::Result<value::Value> {
+                Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
+            }
+
+            fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+                let n = match value {
+                    Ok(value::Value::Number(n)) => *n,
+                    _ => 0.0,
+                };
+                self.write_ptr(ret as *mut u8, n);
+            }
+
+            fn write_value_to_raw_ptr(
+                &self,
+                ptr: *mut c_void,
+                value: &value::Value,
+            ) -> anyhow::Result<()> {
+                let value::Value::Number(n) = value else {
+                    bail!(
+                        "Expected a Number for {} field write, got {value:?}",
+                        $label
+                    );
+                };
+                self.write_ptr(ptr as *mut u8, *n);
+                Ok(())
+            }
+        }
+
+        impl GlibValueCodec for $kind {
+            fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+                Ok(val.as_number().map(|n| self.number_to_glib_value(n)))
+            }
+
+            fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+                Ok(value::Value::Number(self.number_from_glib_value(gvalue)?))
+            }
+        }
+    };
+}
+
 const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
 
 impl IntegerKind {
@@ -129,13 +229,7 @@ impl IntegerKind {
             Self::U64 => (0.0, MAX_SAFE_INTEGER, "u64"),
         };
         if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
-            bail!(
-                "Value {} is out of range for {} [{}, {}]",
-                value,
-                name,
-                min,
-                max
-            );
+            bail!("Value {value} is out of range for {name} [{min}, {max}]");
         }
         Ok(())
     }
@@ -148,7 +242,7 @@ impl IntegerKind {
     pub fn checked_to_ffi_storage(self, values: &[f64]) -> anyhow::Result<ffi::FfiStorage> {
         for (i, &v) in values.iter().enumerate() {
             if let Err(e) = self.checked_to_ffi_value(v) {
-                bail!("Array element {}: {}", i, e);
+                bail!("Array element {i}: {e}");
             }
         }
         Ok(self.to_ffi_storage(values))
@@ -160,161 +254,73 @@ impl IntegerKind {
 
     pub fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
         let number = match self {
-            IntegerKind::I8 | IntegerKind::I16 => ptr as isize as f64,
-            IntegerKind::U8 | IntegerKind::U16 => ptr as usize as f64,
-            IntegerKind::I32 => ptr as i32 as f64,
-            IntegerKind::U32 => ptr as u32 as f64,
-            IntegerKind::I64 => ptr as i64 as f64,
-            IntegerKind::U64 => ptr as u64 as f64,
+            Self::I8 | Self::I16 => ptr as isize as f64,
+            Self::U8 | Self::U16 => ptr as usize as f64,
+            Self::I32 => ptr as i32 as f64,
+            Self::U32 => ptr as u32 as f64,
+            Self::I64 => ptr as i64 as f64,
+            Self::U64 => ptr as u64 as f64,
         };
         value::Value::Number(number)
     }
-}
 
-impl FfiEncoder for IntegerKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let number = match value {
-            value::Value::Number(n) => *n,
-            value::Value::Object(handle) => handle
-                .get_ptr_as_usize()
-                .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?
-                as f64,
-            value::Value::Null | value::Value::Undefined if optional => 0.0,
-            _ => bail!("Expected a Number for integer type, got {:?}", value),
-        };
-        self.checked_to_ffi_value(number)
+    fn number_to_glib_value(self, n: f64) -> glib::Value {
+        match self {
+            Self::I8 => (n as i8).into(),
+            Self::U8 => (n as u8).into(),
+            Self::I16 => (n as i16 as i32).into(),
+            Self::U16 => (n as u16 as u32).into(),
+            Self::I32 => (n as i32).into(),
+            Self::U32 => (n as u32).into(),
+            Self::I64 => (n as i64).into(),
+            Self::U64 => (n as u64).into(),
+        }
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        self.ffi_type()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(unsafe { IntegerKind::call_cif_raw(*self, cif, ptr, args) })
-    }
-}
-
-impl FfiDecoder for IntegerKind {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(ffi_value.to_number()?))
-    }
-}
-
-impl RawPtrCodec for IntegerKind {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(IntegerKind::ptr_to_value_raw(*self, ptr))
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let n = match value {
-            Ok(value::Value::Number(n)) => *n,
-            _ => 0.0,
-        };
-        self.write_ptr(ret as *mut u8, n);
-    }
-
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let value::Value::Number(n) = value else {
-            bail!("Expected a Number for integer field write, got {:?}", value);
-        };
-        self.write_ptr(ptr as *mut u8, *n);
-        Ok(())
-    }
-}
-
-impl GlibValueCodec for IntegerKind {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Number(n) = val else {
-            return Ok(None);
-        };
-        let gvalue = match self {
-            IntegerKind::I8 => (*n as i8).into(),
-            IntegerKind::U8 => (*n as u8).into(),
-            IntegerKind::I16 => (*n as i16 as i32).into(),
-            IntegerKind::U16 => (*n as u16 as u32).into(),
-            IntegerKind::I32 => (*n as i32).into(),
-            IntegerKind::U32 => (*n as u32).into(),
-            IntegerKind::I64 => (*n as i64).into(),
-            IntegerKind::U64 => (*n as u64).into(),
-        };
-        Ok(Some(gvalue))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+    fn number_from_glib_value(self, gvalue: &glib::Value) -> anyhow::Result<f64> {
         let number = match self {
-            IntegerKind::I8 => gvalue
+            Self::I8 => gvalue
                 .get::<i8>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {e}"))?
                 as f64,
-            IntegerKind::U8 => gvalue
+            Self::U8 => gvalue
                 .get::<u8>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {e}"))?
                 as f64,
-            IntegerKind::I16 => gvalue
+            Self::I16 => gvalue
                 .get::<i32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {e}"))?
                 as i16 as f64,
-            IntegerKind::U16 => gvalue
+            Self::U16 => gvalue
                 .get::<u32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {e}"))?
                 as u16 as f64,
-            IntegerKind::I32 => gvalue
+            Self::I32 => gvalue
                 .get::<i32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {e}"))?
                 as f64,
-            IntegerKind::U32 => gvalue
+            Self::U32 => gvalue
                 .get::<u32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {e}"))?
                 as f64,
-            IntegerKind::I64 => gvalue
+            Self::I64 => gvalue
                 .get::<i64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {e}"))?
                 as f64,
-            IntegerKind::U64 => gvalue
+            Self::U64 => gvalue
                 .get::<u64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {e}"))?
                 as f64,
         };
-        Ok(value::Value::Number(number))
+        Ok(number)
     }
 }
+
+impl_numeric_codecs!(IntegerKind, "integer");
 
 impl From<IntegerKind> for libffi::Type {
     fn from(kind: IntegerKind) -> Self {
         kind.ffi_type()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TaggedType {
-    pub library: String,
-    pub get_type_fn: String,
-}
-
-impl TaggedType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-
-        let library: Handle<JsString> = obj.prop(cx, "library").get()?;
-        let get_type_fn: Handle<JsString> = obj.prop(cx, "getTypeFn").get()?;
-
-        Ok(TaggedType {
-            library: library.value(cx),
-            get_type_fn: get_type_fn.value(cx),
-        })
     }
 }
 
@@ -357,7 +363,7 @@ impl FloatKind {
         match self {
             Self::F32 => {
                 if value.is_finite() && (value > f32::MAX as f64 || value < -(f32::MAX as f64)) {
-                    bail!("Value {} is out of range for f32", value);
+                    bail!("Value {value} is out of range for f32");
                 }
                 Ok(ffi::FfiValue::F32(value as f32))
             }
@@ -393,100 +399,37 @@ impl FloatKind {
             }
         }
     }
-}
 
-impl FfiEncoder for FloatKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let number = match value {
-            value::Value::Number(n) => *n,
-            value::Value::Null | value::Value::Undefined if optional => 0.0,
-            _ => bail!("Expected a Number for float type, got {:?}", value),
-        };
-        self.checked_to_ffi_value(number)
-    }
-
-    fn libffi_type(&self) -> libffi::Type {
-        self.ffi_type()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(unsafe { FloatKind::call_cif_raw(*self, cif, ptr, args) })
-    }
-}
-
-impl FfiDecoder for FloatKind {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(ffi_value.to_number()?))
-    }
-}
-
-impl RawPtrCodec for FloatKind {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+    #[must_use]
+    pub fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
         if ptr.is_null() {
-            return Ok(value::Value::Number(0.0));
+            return value::Value::Number(0.0);
         }
-        let val = match self {
-            FloatKind::F32 => (unsafe { *(ptr as *const f32) }) as f64,
-            FloatKind::F64 => unsafe { *(ptr as *const f64) },
-        };
-        Ok(value::Value::Number(val))
+        value::Value::Number(self.read_ptr(ptr as *const u8))
     }
 
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
+    fn number_to_glib_value(self, n: f64) -> glib::Value {
+        match self {
+            Self::F32 => (n as f32).into(),
+            Self::F64 => n.into(),
+        }
     }
 
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let n = match value {
-            Ok(value::Value::Number(n)) => *n,
-            _ => 0.0,
-        };
-        self.write_ptr(ret as *mut u8, n);
-    }
-
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let value::Value::Number(n) = value else {
-            bail!("Expected a Number for float field write, got {:?}", value);
-        };
-        self.write_ptr(ptr as *mut u8, *n);
-        Ok(())
-    }
-}
-
-impl GlibValueCodec for FloatKind {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Number(n) = val else {
-            return Ok(None);
-        };
-        let gvalue = match self {
-            FloatKind::F32 => (*n as f32).into(),
-            FloatKind::F64 => (*n).into(),
-        };
-        Ok(Some(gvalue))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+    fn number_from_glib_value(self, gvalue: &glib::Value) -> anyhow::Result<f64> {
         let number = match self {
-            FloatKind::F32 => gvalue
+            Self::F32 => gvalue
                 .get::<f32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {e}"))?
                 as f64,
-            FloatKind::F64 => gvalue
+            Self::F64 => gvalue
                 .get::<f64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {}", e))?,
+                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {e}"))?,
         };
-        Ok(value::Value::Number(number))
+        Ok(number)
     }
 }
+
+impl_numeric_codecs!(FloatKind, "float");
 
 impl From<FloatKind> for libffi::Type {
     fn from(kind: FloatKind) -> Self {
@@ -494,54 +437,86 @@ impl From<FloatKind> for libffi::Type {
     }
 }
 
+/// Distinguishes a `GLib` enumeration from a flags (bitfield) type.
+///
+/// The two share an identical FFI representation and differ only in how they
+/// convert to and from a `GValue`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TaggedKind {
+    Enum,
+    Flags,
+}
+
+/// A `GLib`-registered enumeration or flags type.
+///
+/// Marshaled across the FFI boundary as its underlying integer `storage`, and
+/// converted to a `GValue` of the `GType` resolved from `library` and
+/// `get_type_fn`.
 #[derive(Debug, Clone)]
-pub struct EnumType {
-    pub tagged: TaggedType,
+pub struct TaggedType {
+    pub kind: TaggedKind,
+    pub library: String,
+    pub get_type_fn: String,
     pub storage: IntegerKind,
 }
 
-impl EnumType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let tagged = TaggedType::from_js_value(cx, value)?;
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let signed: Handle<JsBoolean> = obj.prop(cx, "signed").get()?;
-        let storage = if signed.value(cx) {
+impl TaggedType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(_env: &Env, obj: &JsObject, kind: TaggedKind) -> napi::Result<Self> {
+        let library: String = obj.get_named_property("library")?;
+        let get_type_fn: String = obj.get_named_property("getTypeFn")?;
+        let signed: bool = obj.get_named_property("signed")?;
+        let storage = if signed {
             IntegerKind::I32
         } else {
             IntegerKind::U32
         };
-        Ok(EnumType { tagged, storage })
-    }
-}
 
-impl EnumType {
+        Ok(Self {
+            kind,
+            library,
+            get_type_fn,
+            storage,
+        })
+    }
+
+    fn resolve_gtype(&self) -> anyhow::Result<glib::Type> {
+        crate::state::GtkThreadState::with(|state| {
+            state.gtype_from_lib(&self.library, &self.get_type_fn)
+        })
+    }
+
+    #[cfg(debug_assertions)]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn validate_enum_value(&self, value: i32) {
-        if let Ok(gtype) = crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
-        }) {
-            unsafe {
-                let enum_class = glib::gobject_ffi::g_type_class_ref(gtype.into_glib())
-                    as *mut glib::gobject_ffi::GEnumClass;
-                if !enum_class.is_null() {
-                    let enum_value = glib::gobject_ffi::g_enum_get_value(enum_class, value);
-                    if enum_value.is_null() {
-                        crate::error_reporter::NativeErrorReporter::global().report_str(&format!(
-                            "Enum value {} is not a valid member of {} (GType {})",
-                            value, self.tagged.get_type_fn, gtype
-                        ));
-                    }
-                    glib::gobject_ffi::g_type_class_unref(enum_class as *mut _);
-                }
+        let Ok(gtype) = self.resolve_gtype() else {
+            return;
+        };
+        unsafe {
+            let enum_class = glib::gobject_ffi::g_type_class_ref(gtype.into_glib())
+                as *mut glib::gobject_ffi::GEnumClass;
+            if enum_class.is_null() {
+                return;
             }
+            if glib::gobject_ffi::g_enum_get_value(enum_class, value).is_null() {
+                crate::error_reporter::NativeErrorReporter::global().report_str(&format!(
+                    "Enum value {value} is not a valid member of {} (GType {gtype})",
+                    self.get_type_fn
+                ));
+            }
+            glib::gobject_ffi::g_type_class_unref(enum_class as *mut _);
         }
     }
 }
 
-impl FfiEncoder for EnumType {
+impl FfiEncoder for TaggedType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let result = FfiEncoder::encode(&self.storage, value, optional)?;
         #[cfg(debug_assertions)]
-        if let value::Value::Number(n) = value {
+        if self.kind == TaggedKind::Enum
+            && let value::Value::Number(n) = value
+        {
             self.validate_enum_value(*n as i32);
         }
         Ok(result)
@@ -561,13 +536,13 @@ impl FfiEncoder for EnumType {
     }
 }
 
-impl FfiDecoder for EnumType {
+impl FfiDecoder for TaggedType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         FfiDecoder::decode(&self.storage, ffi_value)
     }
 }
 
-impl RawPtrCodec for EnumType {
+impl RawPtrCodec for TaggedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         Ok(self.storage.ptr_to_value_raw(ptr))
     }
@@ -591,114 +566,36 @@ impl RawPtrCodec for EnumType {
     }
 }
 
-impl GlibValueCodec for EnumType {
+impl GlibValueCodec for TaggedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Number(n) = val else {
+        let Some(n) = val.as_number() else {
             return Ok(None);
         };
-        let gtype = crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
-        })?;
-        let mut gvalue = glib::Value::from_type(gtype);
+        let mut gvalue = glib::Value::from_type(self.resolve_gtype()?);
         unsafe {
-            glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, *n as i32);
+            match self.kind {
+                TaggedKind::Enum => {
+                    glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, n as i32);
+                }
+                TaggedKind::Flags => {
+                    glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, n as u32);
+                }
+            }
         }
         Ok(Some(gvalue))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let v = unsafe { glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) };
-        Ok(value::Value::Number(v as f64))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FlagsType {
-    pub tagged: TaggedType,
-    pub storage: IntegerKind,
-}
-
-impl FlagsType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let tagged = TaggedType::from_js_value(cx, value)?;
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let signed: Handle<JsBoolean> = obj.prop(cx, "signed").get()?;
-        let storage = if signed.value(cx) {
-            IntegerKind::I32
-        } else {
-            IntegerKind::U32
+        let number = unsafe {
+            match self.kind {
+                TaggedKind::Enum => {
+                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) as f64
+                }
+                TaggedKind::Flags => {
+                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) as f64
+                }
+            }
         };
-        Ok(FlagsType { tagged, storage })
-    }
-}
-
-impl FfiEncoder for FlagsType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FfiEncoder::encode(&self.storage, value, optional)
-    }
-
-    fn libffi_type(&self) -> libffi::Type {
-        self.storage.ffi_type()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        FfiEncoder::call_cif(&self.storage, cif, ptr, args)
-    }
-}
-
-impl FfiDecoder for FlagsType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiDecoder::decode(&self.storage, ffi_value)
-    }
-}
-
-impl RawPtrCodec for FlagsType {
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(self.storage.ptr_to_value_raw(ptr))
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(
-            self.storage.read_ptr(ptr as *const u8),
-        ))
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        RawPtrCodec::write_return_to_raw_ptr(&self.storage, ret, value);
-    }
-
-    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value)
-    }
-}
-
-impl GlibValueCodec for FlagsType {
-    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let value::Value::Number(n) = val else {
-            return Ok(None);
-        };
-        let gtype = crate::state::GtkThreadState::with(|state| {
-            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
-        })?;
-        let mut gvalue = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, *n as u32);
-        }
-        Ok(Some(gvalue))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let v =
-            unsafe { glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) };
-        Ok(value::Value::Number(v as f64))
+        Ok(value::Value::Number(number))
     }
 }

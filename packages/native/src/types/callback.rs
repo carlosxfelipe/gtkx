@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
@@ -6,28 +5,26 @@ use gtk4::glib::{
     self, gobject_ffi,
     translate::{FromGlibPtrFull as _, ToGlibPtr as _},
 };
-use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::{Env, JsFunction, JsObject};
 
+use super::prelude::*;
 use crate::callback::ClosureGuard;
+use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::ffi::{self, FfiStorage};
-use crate::js_dispatch;
+use crate::ffi::FfiStorage;
 use crate::managed::{Boxed, NativeValue};
-use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
-use crate::value;
-use crate::value::Callback;
+use crate::types::Type;
+use crate::value::{Callback, JsRef};
 
 struct ClosureContext {
-    channel: neon::event::Channel,
-    js_func: Arc<neon::handle::Root<neon::types::JsFunction>>,
+    js_func: Arc<JsRef<JsFunction>>,
     arg_types: Vec<Type>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl ClosureContext {
     fn from_callback(callback: &Callback, callback_type: &CallbackType) -> Self {
         Self {
-            channel: callback.channel.clone(),
             js_func: callback.js_func.clone(),
             arg_types: callback_type.arg_types.clone(),
         }
@@ -70,38 +67,34 @@ impl ClosureContext {
                 })
                 .collect();
 
-            js_dispatch::JsDispatcher::global().invoke_and_wait(
-                &self.channel,
-                &self.js_func,
-                args_values,
-                true,
-                |result| match result {
-                    Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
-                        for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
-                            if let Some(val) = arr.get(i + 1)
-                                && !(*ptr).is_null()
-                                && !matches!(val, value::Value::Null | value::Value::Undefined)
-                                && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
-                            {
-                                NativeErrorReporter::global()
-                                    .report(&e.context("closure: failed to write ref value"));
-                            }
+            let result = Mailbox::global().invoke_node_and_wait(&self.js_func, args_values, true);
+
+            match result {
+                Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
+                    for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
+                        if let Some(val) = arr.get(i + 1)
+                            && !(*ptr).is_null()
+                            && !matches!(val, value::Value::Null | value::Value::Undefined)
+                            && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
+                        {
+                            NativeErrorReporter::global()
+                                .report(&e.context("closure: failed to write ref value"));
                         }
-                        let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
-                        value::Value::into_glib_value_with_default(return_val, return_type_ref)
                     }
-                    Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
-                    Err(ref e) => {
-                        NativeErrorReporter::global().report(&anyhow::anyhow!(
-                            "closure callback: JS callback error: {e:#}"
-                        ));
-                        value::Value::into_glib_value_with_default(
-                            value::Value::Undefined,
-                            return_type_ref,
-                        )
-                    }
-                },
-            )
+                    let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
+                    value::Value::into_glib_value_with_default(return_val, return_type_ref)
+                }
+                Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
+                Err(ref e) => {
+                    NativeErrorReporter::global().report(&anyhow::anyhow!(
+                        "closure callback: JS callback error: {e:#}"
+                    ));
+                    value::Value::into_glib_value_with_default(
+                        value::Value::Undefined,
+                        return_type_ref,
+                    )
+                }
+            }
         });
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
@@ -149,31 +142,18 @@ pub struct CallbackType {
 }
 
 impl CallbackType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-
-        let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
-        let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
-            cx.throw_type_error("'argTypes' property is required for callback types")
-        })?;
-        let arg_types_vec = arg_types_arr.to_vec(cx)?;
-        let mut arg_types = Vec::with_capacity(arg_types_vec.len());
-        for item in arg_types_vec {
-            arg_types.push(Type::from_js_value(cx, item)?);
-        }
-
-        let return_type_prop: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
-        let return_type = Box::new(Type::from_js_value(cx, return_type_prop).or_else(|_| {
-            cx.throw_type_error("'returnType' property is required for callback types")
-        })?);
-
-        Ok(CallbackType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let (arg_types, return_type) =
+            super::parse_callback_arg_and_return_types(env, obj, "callback")?;
+        Ok(Self {
             arg_types,
             return_type,
         })
     }
 
     #[must_use]
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn build_ffi_value(&self, callback: &Callback) -> ffi::FfiValue {
         let ctx = ClosureContext::from_callback(callback, self);
         let closure = ctx.build_closure_with_guard(self.return_type.clone());
@@ -181,7 +161,7 @@ impl CallbackType {
         ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
     }
 
-    fn build_null_ffi_value(&self) -> ffi::FfiValue {
+    fn build_null_ffi_value() -> ffi::FfiValue {
         ffi::FfiValue::Storage(FfiStorage::new(
             std::ptr::null_mut(),
             ffi::FfiStorageKind::Unit,
@@ -190,28 +170,22 @@ impl CallbackType {
 }
 
 impl FfiEncoder for CallbackType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
         let callback = match val {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined if optional => {
-                return Ok(self.build_null_ffi_value());
+                return Ok(Self::build_null_ffi_value());
             }
-            _ => bail!("Expected a Callback for callback type, got {:?}", val),
+            _ => bail!("Expected a Callback for callback type, got {val:?}"),
         };
 
         Ok(self.build_ffi_value(callback))
     }
 
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        anyhow::bail!("Callbacks cannot be return types")
-    }
+    arg_only_call_cif!("Callbacks");
 }
 
 impl FfiDecoder for CallbackType {}

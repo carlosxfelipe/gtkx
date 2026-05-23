@@ -1,16 +1,20 @@
-import { start as nativeStart, stop as nativeStop } from "../../index.js";
+import { call, stop as nativeStop } from "../../index.js";
 
-const G_FLAGS_NON_UNIQUE = 1 << 5;
+const KEEP_ALIVE_INTERVAL = 2147483647;
 
-let application: unknown = null;
+let started = false;
+let stopped = false;
+let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let exitHandlersRegistered = false;
 
+const keepAlive = (): void => {
+    keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
+};
+
 const teardown = (): void => {
-    if (application) {
-        try {
-            nativeStop();
-        } catch {}
-    }
+    try {
+        nativeStop();
+    } catch {}
 };
 
 const handleSigint = (): void => {
@@ -61,24 +65,30 @@ const unregisterExitHandlers = (): void => {
     process.off("unhandledRejection", handleRejection);
 };
 
-export const start = (): unknown => {
-    if (application) {
-        return application;
+export const start = (): void => {
+    if (started) {
+        return;
     }
+    started = true;
 
-    application = nativeStart("com.gtkx.native", G_FLAGS_NON_UNIQUE);
+    keepAlive();
+    call("libgtk-4.so.1", "gtk_init", [], { type: "void" });
     registerExitHandlers();
-    return application;
 };
 
 export const stop = (): void => {
-    if (!application) {
+    if (stopped) {
         return;
     }
+    stopped = true;
 
     unregisterExitHandlers();
     nativeStop();
-    application = null;
+
+    if (keepAliveTimeout) {
+        clearTimeout(keepAliveTimeout);
+        keepAliveTimeout = null;
+    }
 };
 
 export const suppressUnhandledRejections = async (fn: () => void): Promise<void> => {

@@ -1,60 +1,50 @@
-//! Graceful GTK application shutdown.
+//! Graceful `GLib` main loop shutdown.
 //!
-//! The [`stop`] function releases the application hold guard, marks the
-//! dispatch queue as stopped, and joins the GTK thread.
+//! The [`stop`] function tears the runtime down in a single GLib-thread task
+//! that runs while the main loop is still iterating, so any pending finalizer
+//! work scheduled by [`crate::managed::NativeHandle`]'s drop runs before the
+//! loop exits.
 //!
 //! ## Shutdown Sequence
 //!
-//! 1. Schedule a task on the GTK thread to release the application hold guard
-//! 2. Wait for the task using the standard waiting pattern (processing callbacks)
-//! 3. Mark stopped to reject any further scheduled tasks
-//! 4. Join the GTK thread, waiting for it to fully terminate
+//! 1. Mark the mailbox stopped, fencing further JS-side cleanup schedules.
+//!    Subsequent JS-thread drops of [`crate::managed::NativeHandle`] hit the
+//!    [`std::mem::forget`] branch instead of queuing onto a dying main loop.
+//! 2. Drain all pending sources on the default main context, running queued
+//!    cleanup callbacks while the `GLib` main loop is still alive.
+//! 3. Quit the main loop, allowing `main_loop.run()` on the spawned thread to
+//!    return.
 //!
-//! Note: The handle map is intentionally NOT cleared during stop. Handles are
-//! stored in thread-local storage and will be dropped when the GTK thread exits.
-//! Clearing them earlier could cause use-after-free if signal closures are still
-//! being processed by the GTK main loop.
+//! JS handles that GC after the mark-stopped fence are intentionally leaked
+//! via [`std::mem::forget`] — running `GLib` finalizers after the main loop
+//! has exited can crash on libraries like `WebKit` that depend on the loop
+//! for their own cleanup.
+//!
+//! [`stop`] is a napi export that dispatches through a live [`napi::Env`], so
+//! the module is excluded from coverage instrumentation.
 
-use neon::prelude::*;
+#![cfg_attr(coverage_nightly, coverage(off))]
 
-use super::handler::{JsThreadCommand, execute_js_command};
-use crate::{
-    gtk_dispatch,
-    state::{GtkThread, GtkThreadState},
-};
+use gtk4::glib;
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 
-struct StopCommand;
+use crate::dispatch::Mailbox;
 
-impl JsThreadCommand for StopCommand {
-    fn from_js(_cx: &mut FunctionContext) -> NeonResult<Self> {
-        Ok(Self)
-    }
+#[napi]
+#[cfg_attr(test, allow(dead_code))]
+pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
+    let main_loop = (**main_loop).clone();
 
-    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        let dispatcher = gtk_dispatch::GtkDispatcher::global();
+    Mailbox::global()
+        .dispatch_to_glib_and_wait(env, move || {
+            Mailbox::global().mark_stopped();
+            let context = glib::MainContext::default();
+            while context.iteration(false) {}
+            main_loop.quit();
+        })
+        .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))?;
 
-        dispatcher.enter_js_wait();
-
-        let rx = dispatcher.run_on_gtk_thread(|| {
-            GtkThreadState::with(|state| {
-                state.app_hold_guard.take();
-            });
-        });
-
-        dispatcher
-            .wait_for_gtk_result(cx, &rx)
-            .or_else(|err| cx.throw_error(err.to_string()))?;
-
-        dispatcher.mark_stopped();
-
-        if let Some(panic_msg) = GtkThread::global().join() {
-            return cx.throw_error(format!("GTK thread panicked: {panic_msg}"));
-        }
-
-        Ok(cx.undefined().upcast())
-    }
-}
-
-pub fn stop(mut cx: FunctionContext) -> JsResult<JsValue> {
-    execute_js_command::<StopCommand>(&mut cx)
+    Ok(())
 }

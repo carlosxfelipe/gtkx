@@ -173,65 +173,102 @@ impl FfiStorage {
     }
 }
 
+/// Frees a `GList`/`GSList` of duplicated string elements, dispatching to the
+/// `_free_full` or plain `_free` variant based on whether the elements were
+/// duplicated on the way in.
+///
+/// `is_null` and the two closures carry the list-type-specific bindings the
+/// caller already has in hand; this helper only owns the branching.
+fn free_string_list<F, G>(
+    should_free: bool,
+    is_null: bool,
+    elements_duped: bool,
+    free_full: F,
+    free_simple: G,
+) where
+    F: FnOnce(),
+    G: FnOnce(),
+{
+    if !should_free || is_null {
+        return;
+    }
+    if elements_duped {
+        free_full();
+    } else {
+        free_simple();
+    }
+}
+
+impl FfiStorage {
+    fn drop_gclosure(&self) {
+        if !self.ptr.is_null() {
+            unsafe {
+                glib::gobject_ffi::g_closure_unref(self.ptr as *mut glib::gobject_ffi::GClosure);
+            };
+        }
+    }
+
+    fn drop_string_glist(data: &StringGListData) {
+        free_string_list(
+            data.should_free,
+            data.list_ptr.is_null(),
+            data.elements_duped,
+            || unsafe { glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free)) },
+            || unsafe { glib::ffi::g_list_free(data.list_ptr) },
+        );
+    }
+
+    fn drop_string_gslist(data: &StringGSListData) {
+        free_string_list(
+            data.should_free,
+            data.list_ptr.is_null(),
+            data.elements_duped,
+            || unsafe { glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free)) },
+            || unsafe { glib::ffi::g_slist_free(data.list_ptr) },
+        );
+    }
+    fn drop_hash_table(data: &HashTableData) {
+        if data.should_free && !data.handle.is_null() {
+            unsafe { glib::ffi::g_hash_table_unref(data.handle) };
+        }
+    }
+
+    fn drop_glist(data: &GListData) {
+        if data.should_free && !data.list_ptr.is_null() {
+            unsafe { glib::ffi::g_list_free(data.list_ptr) };
+        }
+    }
+
+    fn drop_gslist(data: &GSListData) {
+        if data.should_free && !data.list_ptr.is_null() {
+            unsafe { glib::ffi::g_slist_free(data.list_ptr) };
+        }
+    }
+
+    fn drop_garray(data: &GArrayData) {
+        if data.should_free && !data.array_ptr.is_null() {
+            unsafe { glib::ffi::g_array_unref(data.array_ptr) };
+        }
+    }
+
+    fn drop_gbyte_array(data: &GByteArrayData) {
+        if data.should_free && !data.array_ptr.is_null() {
+            unsafe { glib::ffi::g_byte_array_unref(data.array_ptr) };
+        }
+    }
+}
+
 impl Drop for FfiStorage {
     fn drop(&mut self) {
         match &self.kind {
-            FfiStorageKind::GClosure => {
-                if !self.ptr.is_null() {
-                    unsafe {
-                        glib::gobject_ffi::g_closure_unref(
-                            self.ptr as *mut glib::gobject_ffi::GClosure,
-                        );
-                    };
-                }
-            }
-            FfiStorageKind::HashTable(data) => {
-                if data.should_free && !data.handle.is_null() {
-                    unsafe { glib::ffi::g_hash_table_unref(data.handle) };
-                }
-            }
-            FfiStorageKind::GList(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
-                    unsafe { glib::ffi::g_list_free(data.list_ptr) };
-                }
-            }
-            FfiStorageKind::GSList(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
-                    unsafe { glib::ffi::g_slist_free(data.list_ptr) };
-                }
-            }
-            FfiStorageKind::GArray(data) => {
-                if data.should_free && !data.array_ptr.is_null() {
-                    unsafe { glib::ffi::g_array_unref(data.array_ptr) };
-                }
-            }
-            FfiStorageKind::GByteArray(data) => {
-                if data.should_free && !data.array_ptr.is_null() {
-                    unsafe { glib::ffi::g_byte_array_unref(data.array_ptr) };
-                }
-            }
-            FfiStorageKind::StringGList(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
-                    if data.elements_duped {
-                        unsafe {
-                            glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free));
-                        }
-                    } else {
-                        unsafe { glib::ffi::g_list_free(data.list_ptr) };
-                    }
-                }
-            }
-            FfiStorageKind::StringGSList(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
-                    if data.elements_duped {
-                        unsafe {
-                            glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free));
-                        }
-                    } else {
-                        unsafe { glib::ffi::g_slist_free(data.list_ptr) };
-                    }
-                }
-            }
+            FfiStorageKind::GClosure => self.drop_gclosure(),
+            FfiStorageKind::HashTable(data) => Self::drop_hash_table(data),
+            FfiStorageKind::GList(data) => Self::drop_glist(data),
+            FfiStorageKind::GSList(data) => Self::drop_gslist(data),
+            FfiStorageKind::GArray(data) => Self::drop_garray(data),
+            FfiStorageKind::GByteArray(data) => Self::drop_gbyte_array(data),
+            FfiStorageKind::StringGList(data) => Self::drop_string_glist(data),
+            FfiStorageKind::StringGSList(data) => Self::drop_string_gslist(data),
             FfiStorageKind::Unit
             | FfiStorageKind::U8Vec(_)
             | FfiStorageKind::I8Vec(_)

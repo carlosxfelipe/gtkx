@@ -1,3 +1,15 @@
+//! libffi closures that route native callbacks into JavaScript.
+//!
+//! A [`TrampolineState`] owns a libffi closure whose handler reads the native
+//! arguments, invokes the captured JS function through [`Mailbox`], and writes
+//! the JS return value back into the native result slot.
+//!
+//! Every type here holds a [`JsRef`] to a JavaScript function and dispatches
+//! into the JavaScript runtime, so the module is excluded from coverage
+//! instrumentation — a `cargo test` process has no runtime to invoke.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use std::ffi::c_void;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -5,18 +17,15 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
-use neon::event::Channel;
-use neon::handle::Root;
-use neon::types::JsFunction;
+use napi::JsFunction;
 
+use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::js_dispatch::JsDispatcher;
 use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type};
-use crate::value::Value;
+use crate::value::{JsRef, Value};
 
 pub struct TrampolineData {
-    pub channel: Channel,
-    pub js_func: Arc<Root<JsFunction>>,
+    pub js_func: Arc<JsRef<JsFunction>>,
     pub arg_types: Vec<Type>,
     pub return_type: Type,
     pub user_data_index: Option<usize>,
@@ -31,12 +40,12 @@ impl std::fmt::Debug for TrampolineData {
             .field("return_type", &self.return_type)
             .field("user_data_index", &self.user_data_index)
             .field("is_oneshot", &self.is_oneshot)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 pub struct TrampolineState {
-    _closure: ManuallyDrop<libffi::Closure<'static>>,
+    closure: ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
     data: ManuallyDrop<Box<TrampolineData>>,
 }
@@ -45,18 +54,16 @@ impl std::fmt::Debug for TrampolineState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TrampolineState")
             .field("code_ptr", &self.code_ptr)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 impl Drop for TrampolineState {
     fn drop(&mut self) {
-        unsafe { ManuallyDrop::drop(&mut self._closure) };
+        unsafe { ManuallyDrop::drop(&mut self.closure) };
         unsafe { ManuallyDrop::drop(&mut self.data) };
     }
 }
-
-unsafe impl Send for TrampolineState {}
 
 impl TrampolineState {
     #[must_use]
@@ -80,8 +87,8 @@ impl TrampolineState {
         let closure = libffi::Closure::new(cif, trampoline_handler, data_ref);
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
-        TrampolineState {
-            _closure: ManuallyDrop::new(closure),
+        Self {
+            closure: ManuallyDrop::new(closure),
             code_ptr,
             data,
         }
@@ -94,7 +101,7 @@ impl TrampolineState {
     /// or null.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         if !user_data.is_null() {
-            drop(unsafe { Box::from_raw(user_data as *mut TrampolineState) });
+            drop(unsafe { Box::from_raw(user_data as *mut Self) });
         }
     }
 }
@@ -137,13 +144,8 @@ impl TrampolineData {
             None
         };
 
-        let js_result = JsDispatcher::global().invoke_and_wait(
-            &self.channel,
-            &self.js_func,
-            values,
-            capture_result,
-            |result| result,
-        );
+        let js_result =
+            Mailbox::global().invoke_node_and_wait(&self.js_func, values, capture_result);
 
         if let Err(ref e) = js_result {
             NativeErrorReporter::global().report(&anyhow::anyhow!(

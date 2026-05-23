@@ -1,67 +1,47 @@
+//! Tick-callback freezing during a React commit.
+//!
+//! [`freeze`] and [`unfreeze`] are napi exports driven by a live [`napi::Env`],
+//! so the module is excluded from coverage instrumentation. The underlying
+//! [`crate::dispatch::Mailbox`] freeze logic is exercised directly by tests.
+
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use std::sync::mpsc;
 
-use neon::prelude::*;
+use napi::Env;
+use napi_derive::napi;
 
-use super::handler::{JsThreadCommand, execute_js_command};
+use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::gtk_dispatch;
 
-struct FreezeCommand;
+#[napi]
+#[cfg_attr(test, allow(dead_code))]
+pub fn freeze(env: Env) -> napi::Result<()> {
+    let mailbox = Mailbox::global();
+    let is_outermost = mailbox.freeze();
 
-impl JsThreadCommand for FreezeCommand {
-    fn from_js(_cx: &mut FunctionContext) -> NeonResult<Self> {
-        Ok(Self)
+    if is_outermost {
+        let (tx, rx) = mpsc::channel::<()>();
+
+        mailbox.schedule_glib(Box::new(move || {
+            if tx.send(()).is_err() {
+                NativeErrorReporter::global().report_str("Freeze ready signal channel was closed");
+            }
+            let m = Mailbox::global();
+            m.notify_js();
+            m.run_freeze_loop();
+        }));
+
+        mailbox
+            .wait_for_glib_result(env, &rx)
+            .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))?;
     }
 
-    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        let dispatcher = gtk_dispatch::GtkDispatcher::global();
-
-        if !dispatcher.is_started() {
-            return cx.throw_error("GTK application has not been started. Call start() first.");
-        }
-
-        let is_outermost = dispatcher.freeze();
-
-        if is_outermost {
-            let (tx, rx) = mpsc::channel::<()>();
-
-            dispatcher.enter_js_wait();
-            dispatcher.schedule(move || {
-                if tx.send(()).is_err() {
-                    NativeErrorReporter::global()
-                        .report_str("Freeze ready signal channel was closed");
-                }
-                let d = gtk_dispatch::GtkDispatcher::global();
-                d.wake.notify();
-                d.run_freeze_loop();
-            });
-
-            dispatcher
-                .wait_for_gtk_result(cx, &rx)
-                .or_else(|err| cx.throw_error(err.to_string()))?;
-        }
-
-        Ok(cx.undefined().upcast())
-    }
+    Ok(())
 }
 
-struct UnfreezeCommand;
-
-impl JsThreadCommand for UnfreezeCommand {
-    fn from_js(_cx: &mut FunctionContext) -> NeonResult<Self> {
-        Ok(Self)
-    }
-
-    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
-        gtk_dispatch::GtkDispatcher::global().unfreeze();
-        Ok(cx.undefined().upcast())
-    }
-}
-
-pub fn freeze(mut cx: FunctionContext) -> JsResult<JsValue> {
-    execute_js_command::<FreezeCommand>(&mut cx)
-}
-
-pub fn unfreeze(mut cx: FunctionContext) -> JsResult<JsValue> {
-    execute_js_command::<UnfreezeCommand>(&mut cx)
+#[napi]
+#[cfg_attr(test, allow(dead_code))]
+pub fn unfreeze() {
+    Mailbox::global().unfreeze();
 }

@@ -1,6 +1,12 @@
-use std::ffi::CStr;
+//! Routes `GLib` log messages to the JavaScript error reporter.
+//!
+//! The installed handler forwards through [`NativeErrorReporter`], whose
+//! threadsafe function targets the Node.js event loop, so this module is
+//! excluded from coverage instrumentation.
 
-use gtk4::glib;
+#![cfg_attr(coverage_nightly, coverage(off))]
+
+use gtk4::glib::{self, LogLevel};
 
 use crate::error_reporter::NativeErrorReporter;
 
@@ -9,53 +15,16 @@ pub struct GlibLogHandler;
 
 impl GlibLogHandler {
     pub fn install() {
-        unsafe {
-            glib::ffi::g_log_set_default_handler(Some(log_handler), std::ptr::null_mut());
-        }
-    }
-}
-
-unsafe extern "C" fn log_handler(
-    domain: *const std::ffi::c_char,
-    level: glib::ffi::GLogLevelFlags,
-    message: *const std::ffi::c_char,
-    user_data: glib::ffi::gpointer,
-) {
-    if (level & glib::ffi::G_LOG_FLAG_RECURSION) != 0 {
-        unsafe {
-            glib::ffi::g_log_default_handler(domain, level, message, user_data);
-        }
-        return;
+        glib::log_set_default_handler(Self::handle_log);
     }
 
-    let is_critical_or_error = (level & glib::ffi::G_LOG_LEVEL_CRITICAL) != 0
-        || (level & glib::ffi::G_LOG_LEVEL_ERROR) != 0;
-
-    if !is_critical_or_error {
-        return;
+    fn handle_log(domain: Option<&str>, level: LogLevel, message: &str) {
+        let level_str = match level {
+            LogLevel::Error => "ERROR",
+            LogLevel::Critical => "CRITICAL",
+            LogLevel::Warning | LogLevel::Message | LogLevel::Info | LogLevel::Debug => return,
+        };
+        let domain_str = domain.unwrap_or("unknown");
+        NativeErrorReporter::global().report_str(&format!("{domain_str}-{level_str}: {message}"));
     }
-
-    let domain_str = if domain.is_null() {
-        "unknown"
-    } else {
-        unsafe { CStr::from_ptr(domain) }
-            .to_str()
-            .unwrap_or("unknown")
-    };
-
-    let message_str = if message.is_null() {
-        "no message"
-    } else {
-        unsafe { CStr::from_ptr(message) }
-            .to_str()
-            .unwrap_or("invalid UTF-8 message")
-    };
-
-    let level_str = if (level & glib::ffi::G_LOG_LEVEL_ERROR) != 0 {
-        "ERROR"
-    } else {
-        "CRITICAL"
-    };
-
-    NativeErrorReporter::global().report_str(&format!("{domain_str}-{level_str}: {message_str}"));
 }

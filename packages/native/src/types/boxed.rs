@@ -1,25 +1,21 @@
 //! Boxed and struct type handling for FFI.
 //!
-//! GLib boxed types are heap-allocated structures with reference counting
-//! managed by GLib. Struct types are similar but may be stack-allocated
+//! `GLib` boxed types are heap-allocated structures with reference counting
+//! managed by `GLib`. Struct types are similar but may be stack-allocated
 //! or have fixed sizes. This module provides [`BoxedType`] and [`StructType`]
 //! descriptors that handle encoding/decoding these types for FFI calls.
-
-use std::ffi::c_void;
 
 use anyhow::bail;
 use gtk4::glib::{
     self,
     translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
 };
-use neon::object::Object as _;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
+use super::prelude::*;
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
-use crate::{ffi, value};
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {
@@ -30,27 +26,21 @@ pub struct BoxedType {
 }
 
 impl BoxedType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "boxed")?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "boxed")?;
 
-        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let type_name = type_prop
-            .downcast::<JsString, _>(cx)
-            .or_throw(cx)?
-            .value(cx);
+        let type_name: String = obj.get_named_property("innerType")?;
 
-        let lib_prop: Handle<'_, JsValue> = obj.prop(cx, "library").get()?;
-        let library = lib_prop
-            .downcast::<JsString, _>(cx)
-            .map(|s: Handle<'_, JsString>| s.value(cx))
-            .ok();
+        let library: Option<String> = obj
+            .get_named_property::<Option<String>>("library")
+            .ok()
+            .flatten();
 
-        let get_type_fn_prop: Handle<'_, JsValue> = obj.prop(cx, "getTypeFn").get()?;
-        let get_type_fn = get_type_fn_prop
-            .downcast::<JsString, _>(cx)
-            .map(|s: Handle<'_, JsString>| s.value(cx))
-            .ok();
+        let get_type_fn: Option<String> = obj
+            .get_named_property::<Option<String>>("getTypeFn")
+            .ok()
+            .flatten();
 
         Ok(Self {
             ownership,
@@ -113,7 +103,6 @@ impl FfiEncoder for BoxedType {
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if self.ownership.is_full()
             && !ptr.is_null()
@@ -151,49 +140,35 @@ impl FfiDecoder for BoxedType {
 
 impl RawPtrCodec for BoxedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let gtype = self.gtype();
-        let boxed = Boxed::from_glib_none(gtype, ptr)?;
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
+        null_guarded(ptr, |ptr| {
+            let gtype = self.gtype();
+            let boxed = Boxed::from_glib_none(gtype, ptr)?;
+            Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        let ptr = if !ptr.is_null() {
-            match self.gtype() {
-                Some(gtype) => unsafe {
-                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
-                },
-                None => ptr,
-            }
-        } else {
-            ptr
-        };
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        write_return_object_ptr(ret, value, |ptr| {
+            self.gtype().map_or(ptr, |gtype| unsafe {
+                glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
+            })
+        });
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("Boxed field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "Boxed field write")
     }
 }
 
 impl GlibValueCodec for BoxedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let ptr = match val {
-            value::Value::Object(handle) => handle.get_ptr(),
-            value::Value::Null | value::Value::Undefined => return Ok(None),
-            _ => return Ok(None),
+        let value::Value::Object(handle) = val else {
+            return Ok(None);
         };
-        let Some(ptr) = ptr else { return Ok(None) };
+        let ptr = handle.ptr();
+        if ptr.is_null() {
+            return Ok(None);
+        }
         let Some(gtype) = self.gtype() else {
             return Ok(None);
         };
@@ -210,7 +185,7 @@ impl GlibValueCodec for BoxedType {
         if gvalue_type == glib::Type::STRING {
             let string: String = gvalue
                 .get()
-                .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {e}"))?;
             return Ok(value::Value::String(string));
         }
 
@@ -246,21 +221,17 @@ pub struct StructType {
 }
 
 impl StructType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "struct")?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "struct")?;
 
-        let type_prop: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let type_name = type_prop
-            .downcast::<JsString, _>(cx)
-            .or_throw(cx)?
-            .value(cx);
+        let type_name: String = obj.get_named_property("innerType")?;
 
-        let size_prop: Handle<'_, JsValue> = obj.prop(cx, "size").get()?;
-        let size = size_prop
-            .downcast::<JsNumber, _>(cx)
-            .map(|n: Handle<'_, JsNumber>| n.value(cx) as usize)
-            .ok();
+        let size: Option<usize> = obj
+            .get_named_property::<Option<f64>>("size")
+            .ok()
+            .flatten()
+            .map(|n| n as usize);
 
         Ok(Self {
             ownership,
@@ -292,7 +263,8 @@ impl FfiDecoder for StructType {
                     struct_ptr,
                     self.size,
                     Some(&self.type_name),
-                )?,
+                )
+                .expect("struct decode with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(struct_ptr),
             }
         };
@@ -303,27 +275,19 @@ impl FfiDecoder for StructType {
 
 impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let boxed = Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
+        null_guarded(ptr, |ptr| {
+            let boxed =
+                Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
+            Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = value::Value::result_to_ptr(value);
-        unsafe { *(ret as *mut *mut c_void) = ptr };
+        write_return_object_ptr(ret, value, std::convert::identity);
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        let obj_ptr = value.object_ptr("Struct field write")?;
-        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
-        Ok(())
+        write_object_ptr(ptr, value, "Struct field write")
     }
 }
 

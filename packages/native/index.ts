@@ -1,32 +1,60 @@
-import { createRequire } from "node:module";
-import { arch, platform } from "node:os";
-import type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type } from "./types.js";
+import * as native from "./native-binding.cjs";
+import type {
+    Arg,
+    ArrayType,
+    CallbackType,
+    FfiValue,
+    HashTableType,
+    Ref,
+    RefType,
+    TrampolineType,
+    Type,
+} from "./types.js";
 
-const require = createRequire(import.meta.url);
+type NativeVfuncDefinition = {
+    readonly byteOffset: number;
+    readonly argTypes: readonly Type[];
+    readonly returnType: Type;
+    readonly fn: (...args: unknown[]) => unknown;
+};
 
-function loadNativeBinding() {
-    const currentPlatform = platform();
-    const currentArch = arch();
+type NativeInterfaceVfuncsDefinition = {
+    readonly gtype: number;
+    readonly vfuncs: readonly NativeVfuncDefinition[];
+};
 
-    if (currentPlatform !== "linux") {
-        throw new Error(`Unsupported platform: ${currentPlatform}, only Linux is supported`);
-    }
+type NativeRegisterClassOptions = {
+    readonly vfuncs?: readonly NativeVfuncDefinition[];
+    readonly interfaceVfuncs?: readonly NativeInterfaceVfuncsDefinition[];
+};
 
-    if (currentArch !== "x64" && currentArch !== "arm64") {
-        throw new Error(`Unsupported architecture: ${currentArch}, only x64 and arm64 are supported`);
-    }
+type ExternalHandle = Parameters<typeof native.getNativeId>[0];
 
-    const packageName = `@gtkx/native-linux-${currentArch}`;
+declare const __nativeHandleBrand: unique symbol;
 
-    try {
-        return require(packageName);
-    } catch (error) {
-        const originalError = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to load native binding for ${currentPlatform}-${currentArch}: ${originalError}`);
-    }
+/**
+ * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or
+ * GLib main-loop handle).
+ *
+ * Values of this type are produced exclusively by the functions in this
+ * module ({@link alloc}, {@link call}, etc.) and must never be constructed
+ * by user code. The underlying value is a raw
+ * native external pointer; the brand ensures TypeScript treats it opaquely.
+ */
+export type NativeHandle = { readonly [__nativeHandleBrand]: never };
+
+/**
+ * Returns the numeric pointer identity for a native handle.
+ *
+ * Two handles referring to the same underlying instance return the same
+ * value, making the result suitable as a key in identity-tracking
+ * collections.
+ *
+ * @param handle - A handle produced by this module
+ */
+export function getNativeId(handle: NativeHandle): number {
+    return native.getNativeId(handle as unknown as ExternalHandle);
 }
-
-const native = loadNativeBinding();
 
 /**
  * Creates a mutable reference wrapper.
@@ -51,6 +79,82 @@ export function createRef<T>(value: T): Ref<T> {
     return { value } as Ref<T>;
 }
 
+function isHandleType(type: Type): boolean {
+    return type.type === "gobject" || type.type === "boxed" || type.type === "struct" || type.type === "fundamental";
+}
+
+function unwrapValue(value: unknown, type: Type): unknown {
+    if (value === null || value === undefined) return value;
+
+    if (isHandleType(type)) return value;
+
+    switch (type.type) {
+        case "array":
+            return unwrapArray(value, type);
+        case "hashtable":
+            return unwrapHashTable(value, type);
+        case "ref":
+            return unwrapRefArg(value as Ref<unknown>, type);
+        case "callback":
+        case "trampoline":
+            return wrapUserCallback(value, type);
+        default:
+            return value;
+    }
+}
+
+function unwrapArray(value: unknown, type: ArrayType): unknown {
+    if (!Array.isArray(value)) return value;
+    return value.map((item) => unwrapValue(item, type.itemType));
+}
+
+function unwrapHashTable(value: unknown, type: HashTableType): unknown {
+    if (!Array.isArray(value)) return value;
+    return value.map((entry) => {
+        if (!Array.isArray(entry) || entry.length !== 2) return entry;
+        return [unwrapValue(entry[0], type.keyType), unwrapValue(entry[1], type.valueType)];
+    });
+}
+
+function unwrapRefArg(ref: Ref<unknown>, type: RefType): Ref<unknown> {
+    ref.value = unwrapValue(ref.value, type.innerType);
+    return ref;
+}
+
+function wrapUserCallback(value: unknown, type: CallbackType | TrampolineType): unknown {
+    if (typeof value !== "function") return value;
+    const userCb = value as (...args: unknown[]) => unknown;
+    const { argTypes, returnType } = type;
+    return (...args: unknown[]) => {
+        const wrappedArgs = args.map((arg, i) => wrapValue(arg, argTypes[i] ?? { type: "void" }));
+        const result = userCb(...wrappedArgs);
+        return unwrapValue(result, returnType);
+    };
+}
+
+function wrapValue(value: unknown, type: Type): unknown {
+    if (value === null || value === undefined) return value;
+
+    if (isHandleType(type)) return value;
+
+    switch (type.type) {
+        case "array":
+            return Array.isArray(value) ? value.map((item) => wrapValue(item, type.itemType)) : value;
+        case "hashtable":
+            if (!Array.isArray(value)) return value;
+            return value.map((entry) => {
+                if (!Array.isArray(entry) || entry.length !== 2) return entry;
+                return [wrapValue(entry[0], type.keyType), wrapValue(entry[1], type.valueType)];
+            });
+        default:
+            return value;
+    }
+}
+
+function rewrapRefArg(ref: Ref<unknown>, type: RefType): void {
+    ref.value = wrapValue(ref.value, type.innerType);
+}
+
 /**
  * Makes a low-level FFI call to a native library.
  *
@@ -64,29 +168,40 @@ export function createRef<T>(value: T): Ref<T> {
  * @returns The function return value
  */
 export function call(library: string, symbol: string, args: Arg[], returnType: Type): FfiValue {
-    return native.call(library, symbol, args, returnType) as FfiValue;
+    const unwrapped = args.map((arg) => ({
+        ...arg,
+        value: unwrapValue(arg.value, arg.type),
+    }));
+
+    const result = native.call(library, symbol, unwrapped, returnType);
+
+    for (const arg of args) {
+        if (arg.type.type === "ref") {
+            rewrapRefArg(arg.value as Ref<unknown>, arg.type);
+        }
+    }
+
+    return wrapValue(result, returnType) as FfiValue;
 }
 
 /**
- * Starts the GTK runtime and creates an application.
- *
- * @param appId - Application ID in reverse domain notation
- * @param flags - Optional GIO application flags
- * @returns Native application pointer
- *
- * @internal Use `@gtkx/ffi` start() instead
+ * Handle to the `GLib` main loop spawned automatically when this module is
+ * first loaded. Stored so {@link stop} can quit the loop without callers
+ * having to thread the handle through.
  */
-export function start(appId: string, flags?: number): NativeHandle {
-    return native.start(appId, flags) as NativeHandle;
-}
+let mainLoopHandle: NativeHandle | null = native.init() as unknown as NativeHandle;
 
 /**
- * Stops the GTK runtime.
+ * Quits the `GLib` main loop spawned at module load.
  *
- * @internal Use `@gtkx/ffi` stop() instead
+ * Drains all pending finalizers before quitting so the spawned GLib thread
+ * terminates cleanly. Subsequent calls are no-ops. Most code should rely on
+ * `@gtkx/ffi`'s lifecycle wrapper instead of calling this directly.
  */
 export function stop(): void {
-    native.stop();
+    if (!mainLoopHandle) return;
+    native.stop(mainLoopHandle as unknown as Parameters<typeof native.stop>[0]);
+    mainLoopHandle = null;
 }
 
 /**
@@ -98,7 +213,8 @@ export function stop(): void {
  * @returns The read value
  */
 export function read(handle: NativeHandle, type: Type, offset: number): FfiValue {
-    return native.read(handle, type, offset) as FfiValue;
+    const result = native.read(handle as unknown as ExternalHandle, type, offset);
+    return wrapValue(result, type) as FfiValue;
 }
 
 /**
@@ -110,7 +226,7 @@ export function read(handle: NativeHandle, type: Type, offset: number): FfiValue
  * @param value - Value to write
  */
 export function write(handle: NativeHandle, type: Type, offset: number, value: unknown): void {
-    native.write(handle, type, offset, value);
+    native.write(handle as unknown as ExternalHandle, type, offset, unwrapValue(value, type));
 }
 
 /**
@@ -119,34 +235,144 @@ export function write(handle: NativeHandle, type: Type, offset: number, value: u
  * @param size - Size in bytes to allocate
  * @param glibTypeName - GLib type name for boxed types (optional for plain structs)
  * @param lib - Optional library containing the type
- * @returns Native pointer to allocated memory
+ * @returns Native handle to allocated memory
  */
 export function alloc(size: number, glibTypeName?: string, lib?: string): NativeHandle {
-    return native.alloc(size, glibTypeName, lib) as NativeHandle;
+    return native.alloc(size, glibTypeName, lib) as unknown as NativeHandle;
 }
 
 /**
- * Gets the internal handle ID for a native pointer.
+ * Looks up a property descriptor on a `GObject` instance by property name.
  *
- * Used for comparing object identity.
+ * Walks the `GTypeInstance` → `GObjectClass` → `g_object_class_find_property`
+ * chain entirely on the GLib thread, returning a borrowed `GParamSpec` handle
+ * (or `null` if the property is unknown). The returned handle's pointer is
+ * owned by the class vtable and remains valid for the lifetime of the type
+ * registration.
  *
- * @param handle - Native handle
- * @returns Internal handle ID
+ * @param handle - Handle to a live `GObject` instance
+ * @param propertyName - Property name in dashed form (e.g. `"label"`, `"halign"`)
+ * @returns Borrowed `GParamSpec` handle, or `null` when no such property exists
  */
-export function getNativeId(handle: NativeHandle): number {
-    return native.getNativeId(handle);
+export function findObjectProperty(handle: NativeHandle, propertyName: string): NativeHandle | null {
+    const result = native.findObjectProperty(handle as unknown as ExternalHandle, propertyName);
+    return result == null ? null : (result as NativeHandle);
 }
 
-export function isNativeHandle(value: unknown): value is NativeHandle {
-    return native.isNativeHandle(value);
+/**
+ * Returns the runtime GType of a `GTypeInstance`-compatible handle.
+ *
+ * Reads the `g_class->g_type` field on the GLib thread. Returns `0`
+ * (`G_TYPE_INVALID`) when the handle is null or the class pointer is unset.
+ *
+ * @param handle - Handle to a live GObject-compatible instance
+ */
+export function getInstanceGType(handle: NativeHandle): number {
+    return native.getInstanceGtype(handle as unknown as ExternalHandle) as number;
 }
 
+/**
+ * Virtual function override installed into a registered class's vtable.
+ *
+ * `byteOffset` is the offset (in bytes) of the function pointer slot inside
+ * the class struct relative to the class struct base; the JavaScript function
+ * is wrapped in a libffi trampoline whose generated C function pointer is
+ * written at that offset during class initialization.
+ */
+export type RegisterClassVfuncDefinition = {
+    /** Byte offset of the vfunc slot within the class struct. */
+    readonly byteOffset: number;
+    /** FFI argument types matching the vfunc signature. */
+    readonly argTypes: readonly Type[];
+    /** FFI return type matching the vfunc signature. */
+    readonly returnType: Type;
+    /** Implementation invoked on each vfunc call. */
+    readonly fn: (...args: unknown[]) => unknown;
+};
+
+/**
+ * Vfunc overrides targeting one interface that the registered class inherits
+ * from its parent.
+ *
+ * `gtype` is the GType of the inherited interface. `vfuncs` are the overrides,
+ * with `byteOffset` relative to the interface struct base (not the class
+ * struct). Each vfunc is wrapped in a libffi trampoline whose function pointer
+ * is written into the new class's own copy of the inherited interface vtable.
+ */
+export type RegisterClassInterfaceVfuncsDefinition = {
+    /** GType of the inherited interface whose vfuncs are overridden. */
+    readonly gtype: number;
+    /** Vfunc overrides relative to the interface struct base. */
+    readonly vfuncs: readonly RegisterClassVfuncDefinition[];
+};
+
+/**
+ * Optional payload for {@link registerClass} carrying class vfunc overrides and
+ * inherited-interface vfunc overrides.
+ */
+export type RegisterClassNativeOptions = {
+    readonly vfuncs?: readonly RegisterClassVfuncDefinition[];
+    readonly interfaceVfuncs?: readonly RegisterClassInterfaceVfuncsDefinition[];
+};
+
+/**
+ * Registers a new `GType` derived from `parentGtype` under `name`.
+ *
+ * Wraps `g_type_register_static`, sizing the new class so it matches the
+ * parent's class and instance struct sizes. Class vfunc overrides are installed
+ * inside `class_init`; inherited-interface vfunc overrides are written into the
+ * new class's interface vtables once the class is initialized. Higher-level
+ * orchestration (resolving the parent class, walking JS prototypes, updating
+ * the JS class registry) lives in `@gtkx/ffi`'s `registerClass`.
+ *
+ * @param name - Globally-unique GType name (must not already be registered)
+ * @param parentGtype - Numeric GType of the parent class
+ * @param options - Optional class and inherited-interface vfunc overrides
+ * @returns Numeric GType of the newly registered subclass
+ */
+export function registerClass(name: string, parentGtype: number, options?: RegisterClassNativeOptions): number {
+    const nativeOptions = options ? buildNativeOptions(options) : undefined;
+    return native.registerClass(name, parentGtype, nativeOptions) as number;
+}
+
+function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegisterClassOptions {
+    return {
+        vfuncs: options.vfuncs?.map(toNativeVfunc),
+        interfaceVfuncs: options.interfaceVfuncs?.map((iface) => ({
+            gtype: iface.gtype,
+            vfuncs: iface.vfuncs.map(toNativeVfunc),
+        })),
+    };
+}
+
+function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefinition {
+    return {
+        byteOffset: vfunc.byteOffset,
+        argTypes: [...vfunc.argTypes],
+        returnType: vfunc.returnType,
+        fn: vfunc.fn,
+    };
+}
+
+/**
+ * Suspends GTK frame-clock dispatch while a batch of mutations is applied.
+ *
+ * Bracketed by [[unfreeze]] to release the GLib main loop. Calls nest: only
+ * the outermost `freeze` / `unfreeze` pair starts and stops the freeze loop.
+ *
+ * @internal Used by `@gtkx/react` around React commits.
+ */
 export function freeze(): void {
     native.freeze();
 }
 
+/**
+ * Resumes normal GTK frame-clock dispatch after a [[freeze]] block.
+ *
+ * @internal Used by `@gtkx/react` around React commits.
+ */
 export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type };
+export type { Arg, CallbackType, FfiValue, Ref, Type } from "./types.js";

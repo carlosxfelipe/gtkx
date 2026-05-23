@@ -5,8 +5,8 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
+use glib::translate::ToGlibPtr as _;
 use gtk4::glib;
-
 use native::callback::ClosureGuard;
 
 fn create_test_closure_with_flag(
@@ -18,8 +18,6 @@ fn create_test_closure_with_flag(
         flag.store(true, Ordering::SeqCst);
         None::<glib::Value>
     });
-
-    use glib::translate::ToGlibPtr as _;
     let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
     std::mem::forget(closure);
     std::ptr::NonNull::new(ptr).expect("closure pointer should not be null")
@@ -30,7 +28,7 @@ fn closure_guard_refs_closure() {
     let closure_ptr = create_test_closure_with_flag(Arc::new(AtomicBool::new(false)));
     let initial_ref = common::get_closure_refcount(closure_ptr.as_ptr());
 
-    let _guard = ClosureGuard::new(closure_ptr);
+    let _guard = ClosureGuard::from_ptr(closure_ptr.as_ptr()).expect("closure ptr is non-null");
 
     let ref_after = common::get_closure_refcount(closure_ptr.as_ptr());
     assert_eq!(ref_after, initial_ref + 1);
@@ -46,7 +44,7 @@ fn closure_guard_unrefs_on_drop() {
     let ref_with_extra = common::get_closure_refcount(closure_ptr.as_ptr());
 
     {
-        let _guard = ClosureGuard::new(closure_ptr);
+        let _guard = ClosureGuard::from_ptr(closure_ptr.as_ptr()).expect("closure ptr is non-null");
         assert_eq!(
             common::get_closure_refcount(closure_ptr.as_ptr()),
             ref_with_extra + 1

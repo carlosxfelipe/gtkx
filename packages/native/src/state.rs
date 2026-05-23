@@ -3,23 +3,20 @@
 //! This module manages the thread-local state for the GTK thread, composed of
 //! focused single-responsibility types:
 //!
-//! - [`HandleMap`]: Maps handle IDs to managed [`NativeValue`] instances
 //! - [`LibraryCache`]: Caches dynamically loaded native libraries
 //! - [`FundamentalFnCache`]: Caches ref/unref function pointers for fundamental types
 //! - [`GtkThreadState`]: Thin coordinator composing the above, accessed via [`GtkThreadState::with`]
 //! - [`GtkThread`]: Singleton for GTK thread lifecycle management
 
 use std::cell::RefCell;
-use std::collections::{HashMap, hash_map::Entry};
-use std::ffi::c_void;
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
 
-use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
-use crate::managed::{NativeValue, RefFn, UnrefFn};
+use crate::managed::{RefFn, UnrefFn};
 
 thread_local! {
     static GTK_THREAD_STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
@@ -34,7 +31,7 @@ static GTK_THREAD: OnceLock<GtkThread> = OnceLock::new();
 
 impl GtkThread {
     pub fn global() -> &'static Self {
-        GTK_THREAD.get_or_init(|| GtkThread {
+        GTK_THREAD.get_or_init(|| Self {
             handle: Mutex::new(None),
         })
     }
@@ -67,69 +64,9 @@ impl GtkThread {
     }
 }
 
-pub struct HandleMap {
-    /// Wrapped in ManuallyDrop because dropping GLib objects after GTK cleanup
-    /// can crash — e.g., WebKit objects have complex cleanup that depends on
-    /// the main loop. Objects are reclaimed at process exit.
-    map: ManuallyDrop<HashMap<usize, NativeValue>>,
-    next_id: usize,
-}
-
-impl std::fmt::Debug for HandleMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HandleMap")
-            .field("len", &self.map.len())
-            .finish()
-    }
-}
-
-impl HandleMap {
-    fn new() -> Self {
-        Self {
-            map: ManuallyDrop::new(HashMap::new()),
-            next_id: 1,
-        }
-    }
-
-    pub fn insert(&mut self, value: NativeValue) -> usize {
-        let key = self.next_id;
-        self.next_id = self.next_id.wrapping_add(1);
-        self.map.insert(key, value);
-        key
-    }
-
-    pub fn remove(&mut self, id: usize) -> Option<NativeValue> {
-        self.map.remove(&id)
-    }
-
-    #[must_use]
-    pub fn get(&self, id: usize) -> Option<&NativeValue> {
-        self.map.get(&id)
-    }
-
-    #[must_use]
-    pub fn get_ptr(&self, id: usize) -> Option<*mut c_void> {
-        self.get(id).map(|object| match object {
-            NativeValue::GObject(obj) => gtk4::glib::object::ObjectType::as_ptr(obj) as *mut c_void,
-            NativeValue::Boxed(boxed) => boxed.as_ptr(),
-            NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
-        })
-    }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
-    }
-}
-
 pub struct LibraryCache {
-    /// Wrapped in ManuallyDrop because libraries like WebKit spawn threads with
-    /// TLS destructors — calling dlclose() while those threads exist causes
+    /// Wrapped in `ManuallyDrop` because libraries like `WebKit` spawn threads with
+    /// TLS destructors — calling `dlclose()` while those threads exist causes
     /// segfaults. Libraries are reclaimed at process exit.
     libraries: ManuallyDrop<HashMap<String, Library>>,
 }
@@ -150,33 +87,27 @@ impl LibraryCache {
     }
 
     pub fn get_or_load(&mut self, name: &str) -> anyhow::Result<&Library> {
-        match self.libraries.entry(name.to_string()) {
-            Entry::Occupied(entry) => Ok(entry.into_mut()),
-            Entry::Vacant(entry) => {
-                let lib_names: Vec<&str> = name.split(',').collect();
-                let mut last_error = None;
+        if !self.libraries.contains_key(name) {
+            let library = Self::load(name)?;
+            self.libraries.insert(name.to_owned(), library);
+        }
+        Ok(&self.libraries[name])
+    }
 
-                for lib_name in &lib_names {
-                    // SAFETY: Loading a shared library with RTLD_NOW | RTLD_GLOBAL
-                    // is safe as long as the library path is valid
-                    match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
-                        Ok(lib) => {
-                            return Ok(entry.insert(lib));
-                        }
-                        Err(err) => {
-                            last_error = Some(err);
-                        }
-                    }
-                }
+    fn load(name: &str) -> anyhow::Result<Library> {
+        let mut last_error = None;
 
-                match last_error {
-                    Some(err) => anyhow::bail!("Failed to load library '{}': {}", name, err),
-                    None => {
-                        anyhow::bail!("Failed to load library '{}': no libraries specified", name)
-                    }
-                }
+        for lib_name in name.split(',') {
+            // SAFETY: Loading a shared library with RTLD_NOW | RTLD_GLOBAL
+            // is safe as long as the library path is valid.
+            match unsafe { Library::open(Some(lib_name), RTLD_NOW | RTLD_GLOBAL) } {
+                Ok(lib) => return Ok(lib),
+                Err(err) => last_error = Some(err),
             }
         }
+
+        let err = last_error.expect("str::split always yields at least one candidate");
+        anyhow::bail!("Failed to load library '{name}': {err}")
     }
 
     pub fn resolve_gtype(
@@ -186,15 +117,13 @@ impl LibraryCache {
     ) -> anyhow::Result<gtk4::glib::Type> {
         use gtk4::glib::translate::FromGlib as _;
 
-        let lib = self.get_or_load(lib_name)?;
-
         type GetTypeFn = unsafe extern "C" fn() -> gtk4::glib::ffi::GType;
+
+        let lib = self.get_or_load(lib_name)?;
 
         let func = unsafe {
             lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
-                .map_err(|e| {
-                    anyhow::anyhow!("Failed to find symbol '{}': {}", get_type_fn_name, e)
-                })?
+                .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
         };
 
         let gtype_raw = unsafe { func() };
@@ -212,14 +141,17 @@ impl LibraryCache {
     }
 }
 
+type FundamentalFns = (Option<RefFn>, Option<UnrefFn>);
+
 pub struct FundamentalFnCache {
-    cache: HashMap<(String, String), (Option<RefFn>, Option<UnrefFn>)>,
+    cache: HashMap<String, HashMap<String, FundamentalFns>>,
 }
 
 impl std::fmt::Debug for FundamentalFnCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let len: usize = self.cache.values().map(HashMap::len).sum();
         f.debug_struct("FundamentalFnCache")
-            .field("len", &self.cache.len())
+            .field("len", &len)
             .finish()
     }
 }
@@ -237,9 +169,12 @@ impl FundamentalFnCache {
         library_name: &str,
         ref_func: &str,
         unref_func: &str,
-    ) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
-        let key = (ref_func.to_owned(), unref_func.to_owned());
-        if let Some(cached) = self.cache.get(&key) {
+    ) -> anyhow::Result<FundamentalFns> {
+        if let Some(cached) = self
+            .cache
+            .get(ref_func)
+            .and_then(|by_unref| by_unref.get(unref_func))
+        {
             return Ok(*cached);
         }
 
@@ -266,14 +201,15 @@ impl FundamentalFnCache {
         };
 
         let result = (ref_fn, unref_fn);
-        self.cache.insert(key, result);
+        self.cache
+            .entry(ref_func.to_owned())
+            .or_default()
+            .insert(unref_func.to_owned(), result);
         Ok(result)
     }
 }
 
 pub struct GtkThreadState {
-    pub app_hold_guard: Option<ApplicationHoldGuard>,
-    pub handles: HandleMap,
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
 }
@@ -281,8 +217,6 @@ pub struct GtkThreadState {
 impl Default for GtkThreadState {
     fn default() -> Self {
         Self {
-            app_hold_guard: None,
-            handles: HandleMap::new(),
             libs: LibraryCache::new(),
             fundamental_fns: FundamentalFnCache::new(),
         }
@@ -292,16 +226,15 @@ impl Default for GtkThreadState {
 impl std::fmt::Debug for GtkThreadState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GtkThreadState")
-            .field("handles_len", &self.handles.len())
             .field("libraries_len", &self.libs.len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 impl GtkThreadState {
     pub fn with<F, R>(f: F) -> R
     where
-        F: FnOnce(&mut GtkThreadState) -> R,
+        F: FnOnce(&mut Self) -> R,
     {
         GTK_THREAD_STATE.with_borrow_mut(f)
     }

@@ -1,11 +1,10 @@
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::ffi::{CStr, CString, c_char};
 
 use anyhow::bail;
 use gtk4::glib;
-use neon::prelude::*;
+use napi::{Env, JsObject};
 
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
-use crate::{ffi, value};
+use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct StringType {
@@ -14,17 +13,17 @@ pub struct StringType {
 }
 
 impl StringType {
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let ownership = Ownership::from_js_value(cx, obj, "string")?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "string")?;
 
-        let length_prop: Handle<'_, JsValue> = obj.prop(cx, "length").get()?;
-        let length = length_prop
-            .downcast::<JsNumber, _>(cx)
-            .map(|n| n.value(cx) as usize)
-            .ok();
+        let length: Option<usize> = obj
+            .get_named_property::<Option<f64>>("length")
+            .ok()
+            .flatten()
+            .map(|n| n as usize);
 
-        Ok(StringType { ownership, length })
+        Ok(Self { ownership, length })
     }
 }
 
@@ -47,7 +46,7 @@ impl FfiEncoder for StringType {
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()))
             }
-            _ => bail!("Expected a String for string type, got {:?}", value),
+            _ => bail!("Expected a String for string type, got {value:?}"),
         }
     }
 }
@@ -71,24 +70,19 @@ impl FfiDecoder for StringType {
 
 impl RawPtrCodec for StringType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
-        Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
-    }
-
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
+        null_guarded(ptr, |ptr| {
+            let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
+            Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
+        })
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = match value {
             Ok(value::Value::String(s)) => CString::new(s.as_bytes())
                 .ok()
-                .map(|cs| unsafe { glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void })
-                .unwrap_or(std::ptr::null_mut()),
+                .map_or(std::ptr::null_mut(), |cs| unsafe {
+                    glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void
+                }),
             _ => std::ptr::null_mut(),
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
@@ -104,7 +98,7 @@ impl RawPtrCodec for StringType {
             value::Value::Null | value::Value::Undefined => unsafe {
                 (ptr as *mut *const c_char).write_unaligned(std::ptr::null());
             },
-            _ => bail!("Expected a String for string field write, got {:?}", value),
+            _ => bail!("Expected a String for string field write, got {value:?}"),
         }
         Ok(())
     }
@@ -122,7 +116,7 @@ impl GlibValueCodec for StringType {
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let string: String = gvalue
             .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {e}"))?;
         Ok(value::Value::String(string))
     }
 }

@@ -20,46 +20,51 @@
 //! - `Integer` (all sizes and signs)
 //! - `Float` (f32, f64)
 //! - `Boolean`
-//! - `String` (copies via g_strdup)
+//! - `String` (copies via `g_strdup`)
 //! - `GObject` / `Boxed` / `Struct` / `Fundamental` (writes pointer value)
 
 use std::ffi::c_void;
 
-use neon::prelude::*;
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
-use crate::{
-    managed::NativeHandle,
-    types::{RawPtrCodec as _, Type},
-    value::Value,
-};
+use super::handler::ModuleRequest;
+use crate::managed::NativeHandle;
+use crate::types::{RawPtrCodec as _, Type};
+use crate::value::Value;
 
-struct ReadRequest {
-    handle: NativeHandle,
-    field_type: Type,
+/// The address of a field inside a boxed/structured native value: the base
+/// pointer of the owning allocation plus a byte `offset`.
+#[cfg_attr(test, allow(dead_code))]
+struct FieldLocation {
+    base_addr: usize,
     offset: usize,
+}
+
+impl FieldLocation {
+    /// Resolves the field's address, failing when the owning handle holds a
+    /// null pointer.
+    #[cfg_attr(test, allow(dead_code))]
+    fn resolve(&self) -> anyhow::Result<*mut c_void> {
+        if self.base_addr == 0 {
+            anyhow::bail!("NativeHandle has a null pointer");
+        }
+        Ok(unsafe { (self.base_addr as *mut u8).add(self.offset) as *mut c_void })
+    }
+}
+
+#[cfg_attr(test, allow(dead_code))]
+struct ReadRequest {
+    location: FieldLocation,
+    field_type: Type,
 }
 
 impl ModuleRequest for ReadRequest {
     type Output = Value;
 
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
-        let js_type = cx.argument::<JsObject>(1)?;
-        let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
-        let field_type = Type::from_js_value(cx, js_type.upcast())?;
-        let handle = *handle.as_inner();
-
-        Ok(Self {
-            handle,
-            field_type,
-            offset,
-        })
-    }
-
     fn execute(self) -> anyhow::Result<Value> {
-        let base_ptr = self.handle.require_non_null_ptr()?;
-        let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) as *const c_void };
+        let field_ptr = self.location.resolve()?.cast_const();
         self.field_type.read_from_raw_ptr(field_ptr, "field read")
     }
 
@@ -68,40 +73,18 @@ impl ModuleRequest for ReadRequest {
     }
 }
 
-pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
-    dispatch_request::<ReadRequest>(&mut cx)
-}
-
+#[cfg_attr(test, allow(dead_code))]
 struct WriteRequest {
-    handle: NativeHandle,
+    location: FieldLocation,
     field_type: Type,
-    offset: usize,
     value: Value,
 }
 
 impl ModuleRequest for WriteRequest {
     type Output = ();
 
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
-        let js_type = cx.argument::<JsObject>(1)?;
-        let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
-        let js_value = cx.argument::<JsValue>(3)?;
-        let field_type = Type::from_js_value(cx, js_type.upcast())?;
-        let value = Value::from_js_value(cx, js_value)?;
-        let handle = *handle.as_inner();
-
-        Ok(Self {
-            handle,
-            field_type,
-            offset,
-            value,
-        })
-    }
-
     fn execute(self) -> anyhow::Result<()> {
-        let base_ptr = self.handle.require_non_null_ptr()?;
-        let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) as *mut c_void };
+        let field_ptr = self.location.resolve()?;
         self.field_type
             .write_value_to_raw_ptr(field_ptr, &self.value)
     }
@@ -111,7 +94,142 @@ impl ModuleRequest for WriteRequest {
     }
 }
 
-pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    dispatch_request::<WriteRequest>(&mut cx)?;
-    Ok(cx.undefined())
+/// napi export shims for field access. Excluded from coverage instrumentation:
+/// both parse JS values through a live [`napi::Env`]. The [`ReadRequest`] and
+/// [`WriteRequest`] `execute` logic they dispatch is exercised directly by
+/// tests.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[allow(clippy::wildcard_imports)]
+mod napi_export {
+    use super::*;
+
+    #[napi]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn read<'env>(
+        env: &'env Env,
+        handle: &External<NativeHandle>,
+        js_type: Unknown<'_>,
+        offset: f64,
+    ) -> napi::Result<Unknown<'env>> {
+        let field_type = Type::from_js_value(env, js_type)?;
+        let request = ReadRequest {
+            location: FieldLocation {
+                base_addr: handle.ptr_as_usize(),
+                offset: offset as usize,
+            },
+            field_type,
+        };
+        request.dispatch(env)
+    }
+
+    #[napi]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn write<'env>(
+        env: &'env Env,
+        handle: &External<NativeHandle>,
+        js_type: Unknown<'_>,
+        offset: f64,
+        value: Unknown<'_>,
+    ) -> napi::Result<Unknown<'env>> {
+        let field_type = Type::from_js_value(env, js_type)?;
+        let parsed_value = Value::from_js_value(env, value)?;
+        let request = WriteRequest {
+            location: FieldLocation {
+                base_addr: handle.ptr_as_usize(),
+                offset: offset as usize,
+            },
+            field_type,
+            value: parsed_value,
+        };
+        request.dispatch(env)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::IntegerKind;
+
+    use super::*;
+
+    #[test]
+    fn resolve_returns_offset_address() {
+        let mut buffer = [0u8; 32];
+        let base_addr = buffer.as_mut_ptr() as usize;
+        let location = FieldLocation {
+            base_addr,
+            offset: 8,
+        };
+        let resolved = location.resolve().expect("resolve should succeed");
+        assert_eq!(resolved as usize, base_addr + 8);
+    }
+
+    #[test]
+    fn resolve_rejects_null_base() {
+        let location = FieldLocation {
+            base_addr: 0,
+            offset: 0,
+        };
+        let err = location.resolve().expect_err("null base should fail");
+        assert!(err.to_string().contains("null pointer"));
+    }
+
+    #[test]
+    fn write_then_read_round_trips_an_integer() {
+        let mut buffer = [0u8; 32];
+        let base_addr = buffer.as_mut_ptr() as usize;
+
+        let write = WriteRequest {
+            location: FieldLocation {
+                base_addr,
+                offset: 8,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+            value: Value::Number(1234.0),
+        };
+        write.execute().expect("write should succeed");
+
+        let read = ReadRequest {
+            location: FieldLocation {
+                base_addr,
+                offset: 8,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+        };
+        let value = read.execute().expect("read should succeed");
+        let n = value.as_number().expect("read result should be a number");
+        assert!((n - 1234.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn read_rejects_null_base() {
+        let read = ReadRequest {
+            location: FieldLocation {
+                base_addr: 0,
+                offset: 0,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+        };
+        let err = read.execute().expect_err("null base read should fail");
+        assert!(err.to_string().contains("null pointer"));
+    }
+
+    #[test]
+    fn write_rejects_null_base() {
+        let write = WriteRequest {
+            location: FieldLocation {
+                base_addr: 0,
+                offset: 0,
+            },
+            field_type: Type::Integer(IntegerKind::I32),
+            value: Value::Number(0.0),
+        };
+        let err = write.execute().expect_err("null base write should fail");
+        assert!(err.to_string().contains("null pointer"));
+    }
+
+    #[test]
+    fn error_contexts_are_stable() {
+        assert_eq!(ReadRequest::error_context(), "field read");
+        assert_eq!(WriteRequest::error_context(), "field write");
+    }
 }

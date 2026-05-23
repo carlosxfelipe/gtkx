@@ -1,22 +1,14 @@
-use std::ffi::{CStr, c_char, c_void};
+use std::ffi::{CStr, c_char};
 
 use anyhow::bail;
-use gtk4::glib::{
-    self,
-    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
-};
-use libffi::middle as libffi;
-use neon::object::Object as _;
-use neon::prelude::*;
+use gtk4::glib::{self, translate::ToGlibPtr as _};
+use napi::bindgen_prelude::*;
+use napi::{Env, JsObject};
 
+use super::prelude::*;
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
-use crate::managed::{Boxed, Fundamental, NativeValue};
-use crate::{
-    ffi,
-    types::{ArrayKind, FfiDecoder, FfiEncoder, GlibValueCodec, IntegerKind, RawPtrCodec, Type},
-    value,
-};
+use crate::types::{ArrayKind, Type};
 
 #[derive(Debug, Clone)]
 pub struct RefType {
@@ -26,41 +18,35 @@ pub struct RefType {
 impl RefType {
     #[must_use]
     pub fn new(inner_type: Type) -> Self {
-        RefType {
+        Self {
             inner_type: Box::new(inner_type),
         }
     }
 
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-        let inner_type_value: Handle<'_, JsValue> = obj.prop(cx, "innerType").get()?;
-        let inner_type = Type::from_js_value(cx, inner_type_value)?;
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let inner_type_value: Unknown<'_> = obj.get_named_property("innerType")?;
+        let inner_type = Type::from_js_value(env, inner_type_value)?;
 
         Ok(Self::new(inner_type))
     }
 }
 
 impl FfiEncoder for RefType {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
             value::Value::Ref(r) => r,
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected a Ref for ref type, got {:?}", val),
+            _ => bail!("Expected a Ref for ref type, got {val:?}"),
         };
 
         match &*self.inner_type {
             Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::Fundamental(_) => {
                 match &*ref_val.value {
-                    value::Value::Null | value::Value::Undefined => {
-                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            ptr,
-                            FfiStorageKind::PtrStorage(ptr_storage),
-                        )))
-                    }
+                    value::Value::Null | value::Value::Undefined => Ok(Self::null_ptr_storage()),
                     _ => bail!(
                         "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}",
                         ref_val.value
@@ -76,12 +62,7 @@ impl FfiEncoder for RefType {
                     }
                 }
                 value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
-                    let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-                    let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-                    Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                        ptr,
-                        FfiStorageKind::PtrStorage(ptr_storage),
-                    )))
+                    Ok(Self::null_ptr_storage())
                 }
                 _ => bail!(
                     "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
@@ -94,12 +75,7 @@ impl FfiEncoder for RefType {
                     (Some(len), value::Value::Null | value::Value::Undefined) => (*len, None),
                     (None, value::Value::String(s)) => (s.len() + 1, Some(s.as_bytes())),
                     (None, value::Value::Null | value::Value::Undefined) => {
-                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-                        return Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            ptr,
-                            FfiStorageKind::PtrStorage(ptr_storage),
-                        )));
+                        return Ok(Self::null_ptr_storage());
                     }
                     _ => bail!(
                         "Expected a String, Null, or length for Ref<String>, got {:?}",
@@ -133,110 +109,49 @@ impl FfiEncoder for RefType {
         }
     }
 
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        bail!("Ref types cannot be return types")
+    arg_only_call_cif!("Ref types");
+}
+
+/// Extracts the [`FfiStorage`] backing a `Ref` decode.
+///
+/// Returns `None` for the null-pointer fast path so the caller can short
+/// circuit to [`value::Value::Null`]. `kind` (e.g. `"Ref"` or `"Ref<Array>"`)
+/// names the expected shape in the bail message when the variant is unexpected.
+fn ref_storage_or_null<'a>(
+    ffi_value: &'a ffi::FfiValue,
+    kind: &str,
+) -> anyhow::Result<Option<&'a FfiStorage>> {
+    match ffi_value {
+        ffi::FfiValue::Storage(s) => Ok(Some(s)),
+        ffi::FfiValue::Ptr(ptr) if ptr.is_null() => Ok(None),
+        _ => bail!("Expected a Storage ffi::FfiValue for {kind}, got {ffi_value:?}"),
     }
 }
 
 impl FfiDecoder for RefType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let storage = match ffi_value {
-            ffi::FfiValue::Storage(s) => s,
-            ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
-            _ => bail!(
-                "Expected a Storage ffi::FfiValue for Ref, got {:?}",
-                ffi_value
-            ),
+        let Some(storage) = ref_storage_or_null(ffi_value, "Ref")? else {
+            return Ok(value::Value::Null);
         };
 
         match &*self.inner_type {
-            Type::GObject(gobject_type) => {
+            Type::GObject(_) | Type::Boxed(_) | Type::Fundamental(_) | Type::Struct(_) => {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let object = if gobject_type.ownership.is_full() {
-                    unsafe {
-                        glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject)
-                    }
-                } else {
-                    unsafe {
-                        glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject)
-                    }
-                };
-                Ok(value::Value::Object(NativeValue::GObject(object).into()))
-            }
-            Type::Boxed(boxed_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let gtype = boxed_type.gtype();
-                let boxed = if boxed_type.ownership.is_full() {
-                    Boxed::from_glib_full(gtype, actual_ptr)
-                } else {
-                    Boxed::from_glib_none(gtype, actual_ptr)?
-                };
-                Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-            }
-            Type::Fundamental(fundamental_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-
-                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
-                let fundamental = if fundamental_type.ownership.is_full() {
-                    Fundamental::from_glib_full(actual_ptr, ref_fn, unref_fn)
-                } else {
-                    unsafe { Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn) }
-                };
-                Ok(value::Value::Object(
-                    NativeValue::Fundamental(fundamental).into(),
-                ))
-            }
-            Type::Struct(struct_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let boxed = if struct_type.ownership.is_full() {
-                    Boxed::from_glib_full(None, actual_ptr)
-                } else {
-                    match struct_type.size {
-                        Some(_) => Boxed::from_glib_none_with_size(
-                            None,
-                            actual_ptr,
-                            struct_type.size,
-                            Some(&struct_type.type_name),
-                        )?,
-                        None => Boxed::from_ptr_unowned(actual_ptr),
-                    }
-                };
-                Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+                self.inner_type.decode(&ffi::FfiValue::Ptr(actual_ptr))
             }
             Type::Integer(int_type) => {
                 let number = int_type.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
-            Type::Enum(_) => {
-                let number = IntegerKind::I32.read_ptr(storage.ptr() as *const u8);
-                Ok(value::Value::Number(number))
-            }
-            Type::Flags(_) => {
-                let number = IntegerKind::U32.read_ptr(storage.ptr() as *const u8);
+            Type::Tagged(tagged) => {
+                let number = tagged.storage.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {
                 let number = float_kind.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
-            Type::String(string_type) => self.decode_ref_string(storage, string_type),
+            Type::String(string_type) => Ok(Self::decode_ref_string(storage, string_type)),
             Type::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
@@ -253,7 +168,7 @@ impl FfiDecoder for RefType {
         ffi_args: &[ffi::FfiValue],
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
-        RefType::decode_with_context(self, ffi_value, ffi_args, args)
+        Self::decode_with_context(self, ffi_value, ffi_args, args)
     }
 }
 
@@ -287,12 +202,8 @@ impl GlibValueCodec for RefType {
                 let val = int_kind.read_ptr(ptr as *const u8);
                 Ok(value::Value::Number(val))
             }
-            Type::Enum(_) => {
-                let val = IntegerKind::I32.read_ptr(ptr as *const u8);
-                Ok(value::Value::Number(val))
-            }
-            Type::Flags(_) => {
-                let val = IntegerKind::U32.read_ptr(ptr as *const u8);
+            Type::Tagged(tagged) => {
+                let val = tagged.storage.read_ptr(ptr as *const u8);
                 Ok(value::Value::Number(val))
             }
             Type::Boolean(_) => {
@@ -315,13 +226,8 @@ impl RefType {
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
         if let Type::Array(array_type) = &*self.inner_type {
-            let storage = match ffi_value {
-                ffi::FfiValue::Storage(s) => s,
-                ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
-                _ => bail!(
-                    "Expected a Storage ffi::FfiValue for Ref<Array>, got {:?}",
-                    ffi_value
-                ),
+            let Some(storage) = ref_storage_or_null(ffi_value, "Ref<Array>")? else {
+                return Ok(value::Value::Null);
             };
 
             let actual_ptr = match storage.kind() {
@@ -355,36 +261,41 @@ impl RefType {
         self.decode(ffi_value)
     }
 
-    fn decode_ref_string(
-        &self,
-        storage: &FfiStorage,
-        string_type: &super::StringType,
-    ) -> anyhow::Result<value::Value> {
+    /// Builds an [`ffi::FfiValue::Storage`] holding a heap-allocated null
+    /// pointer, the out-parameter slot a native callee writes a result pointer
+    /// into.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn null_ptr_storage() -> ffi::FfiValue {
+        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+        ffi::FfiValue::Storage(FfiStorage::new(
+            ptr,
+            FfiStorageKind::PtrStorage(ptr_storage),
+        ))
+    }
+
+    fn decode_ref_string(storage: &FfiStorage, string_type: &super::StringType) -> value::Value {
         if storage.ptr().is_null() {
-            return Ok(value::Value::Null);
+            return value::Value::Null;
         }
 
-        match storage.kind() {
-            FfiStorageKind::Buffer(_) => {
-                let c_str = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
-                let string = c_str.to_string_lossy().into_owned();
-                Ok(value::Value::String(string))
+        if let FfiStorageKind::Buffer(_) = storage.kind() {
+            let c_str = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
+            let string = c_str.to_string_lossy().into_owned();
+            value::Value::String(string)
+        } else {
+            let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
+            if str_ptr.is_null() {
+                return value::Value::Null;
             }
-            _ => {
-                let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
-                if str_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                let string = c_str.to_string_lossy().into_owned();
+            let c_str = unsafe { CStr::from_ptr(str_ptr) };
+            let string = c_str.to_string_lossy().into_owned();
 
-                if string_type.ownership.is_full() {
-                    // SAFETY: str_ptr was allocated by GLib and we have owned ownership
-                    unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
-                }
-
-                Ok(value::Value::String(string))
+            if string_type.ownership.is_full() {
+                unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
+
+            value::Value::String(string)
         }
     }
 }

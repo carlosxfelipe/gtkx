@@ -1,7 +1,7 @@
 //! FFI function call execution.
 //!
 //! This module implements [`call`], which executes native function calls via
-//! libffi. This is the core mechanism for invoking GTK and GLib functions from
+//! libffi. This is the core mechanism for invoking GTK and `GLib` functions from
 //! JavaScript.
 //!
 //! ## Call Flow
@@ -16,17 +16,19 @@
 //!
 //! ## Callbacks
 //!
-//! Special handling is required for callback arguments (AsyncReady, Destroy,
-//! DrawFunc). These expand to multiple FFI arguments: the callback function
+//! Special handling is required for callback arguments (`AsyncReady`, Destroy,
+//! `DrawFunc`). These expand to multiple FFI arguments: the callback function
 //! pointer, user data, and optionally a destroy notify.
 
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
 use libffi::middle as libffi;
-use neon::prelude::*;
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 
-use super::handler::{ModuleRequest, dispatch_request};
+use super::handler::{ModuleRequest, RefUpdate};
 use crate::{
     arg::Arg,
     ffi,
@@ -35,8 +37,7 @@ use crate::{
     value::Value,
 };
 
-type RefUpdate = (Arc<Root<JsObject>>, Value);
-
+#[cfg_attr(test, allow(dead_code))]
 struct CallRequest {
     library_name: String,
     symbol_name: String,
@@ -46,22 +47,6 @@ struct CallRequest {
 
 impl ModuleRequest for CallRequest {
     type Output = (Value, Vec<RefUpdate>);
-
-    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let library_name = cx.argument::<JsString>(0)?.value(cx);
-        let symbol_name = cx.argument::<JsString>(1)?.value(cx);
-        let js_args = cx.argument::<JsArray>(2)?;
-        let js_result_type = cx.argument::<JsObject>(3)?;
-        let args = Arg::from_js_array(cx, js_args)?;
-        let result_type = Type::from_js_value(cx, js_result_type.upcast())?;
-
-        Ok(Self {
-            library_name,
-            symbol_name,
-            args,
-            result_type,
-        })
-    }
 
     fn execute(self) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
         let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(self.args.len() + 1);
@@ -90,15 +75,13 @@ impl ModuleRequest for CallRequest {
             ffi_value.append_libffi_args(&mut ffi_args);
         }
 
-        // SAFETY: We're loading a symbol from a dynamic library and calling it via libffi.
-        // The library/symbol names come from the FFI binding definitions which are trusted.
         let symbol_ptr = unsafe {
             GtkThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;
                 let symbol =
                     library.get::<unsafe extern "C" fn() -> ()>(self.symbol_name.as_bytes())?;
 
-                let ptr = *symbol.deref() as *mut c_void;
+                let ptr = *symbol as *mut c_void;
                 Ok(libffi::CodePtr(ptr))
             })?
         };
@@ -108,19 +91,7 @@ impl ModuleRequest for CallRequest {
             .call_cif(&cif, symbol_ptr, &ffi_args)
             .with_context(|| format!("calling {}", self.symbol_name))?;
 
-        let mut ref_updates = Vec::new();
-
-        for (i, arg) in self.args.iter().enumerate() {
-            if let Value::Ref(ref_val) = &arg.value {
-                let new_value = Value::from_ffi_value_with_args(
-                    &ffi_values[i],
-                    &arg.ty,
-                    &ffi_values,
-                    &self.args,
-                )?;
-                ref_updates.push((ref_val.js_obj.clone(), new_value));
-            }
-        }
+        let ref_updates = self.collect_ref_updates(&ffi_values)?;
 
         let return_value =
             Value::from_ffi_value_with_args(&result, &self.result_type, &ffi_values, &self.args)
@@ -133,6 +104,161 @@ impl ModuleRequest for CallRequest {
     }
 }
 
-pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
-    dispatch_request::<CallRequest>(&mut cx)
+impl CallRequest {
+    /// Collects the out-parameter write-backs for `Ref`-typed arguments.
+    ///
+    /// Excluded from coverage instrumentation: a `Value::Ref` carries an
+    /// `Arc<JsRef<JsObject>>`, which only exists when a live JavaScript runtime
+    /// produced it, so this path cannot run under `cargo test`.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn collect_ref_updates(&self, ffi_values: &[ffi::FfiValue]) -> anyhow::Result<Vec<RefUpdate>> {
+        let mut ref_updates = Vec::new();
+        for (i, arg) in self.args.iter().enumerate() {
+            if let Value::Ref(ref_val) = &arg.value {
+                let new_value = Value::from_ffi_value_with_args(
+                    &ffi_values[i],
+                    &arg.ty,
+                    ffi_values,
+                    &self.args,
+                )?;
+                ref_updates.push((Arc::clone(&ref_val.js_obj), new_value));
+            }
+        }
+        Ok(ref_updates)
+    }
+}
+
+/// napi export shim. Excluded from coverage instrumentation: it parses JS
+/// arguments through a live [`napi::Env`]. The [`CallRequest::execute`] logic
+/// it dispatches is exercised directly by tests.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[allow(clippy::wildcard_imports)]
+mod napi_export {
+    use super::*;
+
+    #[napi]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn call<'env>(
+        env: &'env Env,
+        library: String,
+        symbol: String,
+        args: Array,
+        return_type: Unknown<'_>,
+    ) -> napi::Result<Unknown<'env>> {
+        let parsed_args = Arg::from_js_array(env, &args)?;
+        let result_type = Type::from_js_value(env, return_type)?;
+        if !result_type.can_be_return_type() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'{result_type}' cannot be used as a function return type"),
+            ));
+        }
+        let request = CallRequest {
+            library_name: library,
+            symbol_name: symbol,
+            args: parsed_args,
+            result_type,
+        };
+        request.dispatch(env)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::{ArrayKind, ArrayType, IntegerKind, Ownership, RefType, StringType};
+
+    use super::*;
+
+    fn int_arg(value: f64) -> Arg {
+        Arg::new(Type::Integer(IntegerKind::I32), Value::Number(value))
+    }
+
+    #[test]
+    fn execute_runs_a_real_ffi_call() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_random_int_range".into(),
+            args: vec![int_arg(10.0), int_arg(20.0)],
+            result_type: Type::Integer(IntegerKind::I32),
+        };
+        let (value, ref_updates) = request.execute().expect("FFI call should succeed");
+        assert!(ref_updates.is_empty());
+        let n = value.as_number().expect("result should be a number");
+        assert!((10.0..20.0).contains(&n));
+    }
+
+    #[test]
+    fn execute_fails_for_unknown_symbol() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_no_such_symbol_12345".into(),
+            args: vec![],
+            result_type: Type::Integer(IntegerKind::I32),
+        };
+        assert!(request.execute().is_err());
+    }
+
+    #[test]
+    fn execute_fails_when_an_argument_cannot_be_encoded() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_random_int_range".into(),
+            args: vec![Arg::new(
+                Type::Integer(IntegerKind::I32),
+                Value::String("not a number".into()),
+            )],
+            result_type: Type::Integer(IntegerKind::I32),
+        };
+        let err = request
+            .execute()
+            .expect_err("encoding a string as an integer should fail");
+        assert!(err.to_string().contains("encoding arg 0"));
+    }
+
+    #[test]
+    fn execute_fails_when_result_type_cannot_occupy_return_slot() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_random_int".into(),
+            args: vec![],
+            result_type: Type::Ref(RefType::new(Type::Integer(IntegerKind::I32))),
+        };
+        let err = request
+            .execute()
+            .expect_err("a ref return type should fail the call");
+        assert!(err.to_string().contains("calling g_random_int"));
+    }
+
+    #[test]
+    fn execute_fails_when_return_value_cannot_be_decoded() {
+        let request = CallRequest {
+            library_name: "libglib-2.0.so.0".into(),
+            symbol_name: "g_strdup".into(),
+            args: vec![Arg::new(
+                Type::String(StringType {
+                    ownership: Ownership::Borrowed,
+                    length: None,
+                }),
+                Value::Null,
+            )],
+            result_type: Type::Array(ArrayType {
+                item_type: Box::new(Type::Integer(IntegerKind::U8)),
+                kind: ArrayKind::Sized { size_index: 9 },
+                ownership: Ownership::Borrowed,
+                element_size: None,
+            }),
+        };
+        let err = request
+            .execute()
+            .expect_err("decoding with an out-of-bounds size index should fail");
+        assert!(
+            err.to_string()
+                .contains("decoding return value of g_strdup")
+        );
+    }
+
+    #[test]
+    fn error_context_is_ffi_call() {
+        assert_eq!(CallRequest::error_context(), "FFI call");
+    }
 }
