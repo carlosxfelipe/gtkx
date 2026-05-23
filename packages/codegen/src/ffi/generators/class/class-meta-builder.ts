@@ -5,20 +5,18 @@
  * This metadata is consumed by React generators - nothing is written to output files.
  */
 
-import type { GirClass, GirRepository } from "@gtkx/gir";
-import type { PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import { getContainerMethodNames, getHiddenPropNames } from "../../../core/config/index.js";
-import { normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
-import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
-import { isWidgetType } from "../../../core/utils/widget-detection.js";
+import type { PropertyAnalyzer, SignalAnalyzer } from "../../../analyzers/index.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
+import { getContainerMethodNames, getHiddenPropNames } from "../../../config/index.js";
+import type { GirClass, GirRepository } from "../../../gir/index.js";
+import { normalizeClassName, toKebabCase } from "../../../utils/naming.js";
+import { splitQualifiedName } from "../../../utils/qualified-name.js";
+import { isWidgetType } from "../../../utils/widget-detection.js";
 
 export type ClassMetaAnalyzers = {
     readonly property: PropertyAnalyzer;
     readonly signal: SignalAnalyzer;
 };
-
-const SKIP_CONTROLLERS = new Set<string>();
 
 export class ClassMetaBuilder {
     private readonly widgetQualifiedName = "Gtk.Widget";
@@ -36,11 +34,7 @@ export class ClassMetaBuilder {
     }
 
     isEventController(): boolean {
-        if (SKIP_CONTROLLERS.has(this.cls.name)) return false;
-
-        const isBaseEventController = this.cls.qualifiedName === this.eventControllerQualifiedName;
-        if (isBaseEventController) return true;
-
+        if (this.cls.qualifiedName === this.eventControllerQualifiedName) return true;
         return this.cls.isSubclassOf(this.eventControllerQualifiedName);
     }
 

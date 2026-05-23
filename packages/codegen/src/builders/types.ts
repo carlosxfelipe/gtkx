@@ -1,4 +1,4 @@
-import type { Writer } from "./writer.js";
+import type { Writer } from "./text-writer.js";
 
 /**
  * Core interface for all code generation builders. Implementors emit
@@ -19,4 +19,26 @@ export function writeWritable(writer: Writer, value: Writable): void {
     } else {
         value.write(writer);
     }
+}
+
+/**
+ * Base for builders that emit different output in TypeScript (`.d.ts`) and
+ * JavaScript modes. Subclasses implement {@link writeJs} and {@link writeTs};
+ * the dispatch in {@link write} routes by {@link Writer.getMode}.
+ */
+export abstract class DualModeBuilder implements Builder {
+    /** @inheritdoc */
+    write(writer: Writer): void {
+        if (writer.getMode() === "js") {
+            this.writeJs(writer);
+            return;
+        }
+        this.writeTs(writer);
+    }
+
+    /** Emits the JavaScript-mode output. */
+    protected abstract writeJs(writer: Writer): void;
+
+    /** Emits the TypeScript-mode output. */
+    protected abstract writeTs(writer: Writer): void;
 }

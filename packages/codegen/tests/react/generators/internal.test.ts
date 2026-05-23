@@ -5,7 +5,6 @@ import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import {
     createButtonMeta,
     createCodegenWidgetMeta,
-    createPropertyAnalysis,
     createSignalAnalysis,
     createWidgetMeta,
 } from "../../fixtures/metadata-fixtures.js";
@@ -18,209 +17,134 @@ function generateCode(metas = [createWidgetMeta(), createButtonMeta()]): string 
     return stringify(file);
 }
 
-describe("InternalGenerator", () => {
-    describe("constructor", () => {
-        it("creates generator with reader and controllers", () => {
-            const reader = new MetadataReader([createWidgetMeta()]);
-            const generator = new InternalGenerator(reader, []);
-            expect(generator).toBeInstanceOf(InternalGenerator);
-        });
+describe("InternalGenerator / constructor", () => {
+    it("creates generator with reader and controllers", () => {
+        const reader = new MetadataReader([createWidgetMeta()]);
+        const generator = new InternalGenerator(reader, []);
+        expect(generator).toBeInstanceOf(InternalGenerator);
+    });
+});
+
+describe("InternalGenerator / generate", () => {
+    it("produces non-empty output", () => {
+        const code = generateCode();
+        expect(code.length).toBeGreaterThan(0);
     });
 
-    describe("generate", () => {
-        it("produces non-empty output", () => {
-            const code = generateCode();
-            expect(code.length).toBeGreaterThan(0);
-        });
+    it("adds file comment about internal metadata", () => {
+        const code = generateCode();
+        expect(code).toContain("Internal metadata for the reconciler");
+    });
+});
 
-        it("adds file comment about internal metadata", () => {
-            const code = generateCode();
-            expect(code).toContain("Internal metadata for the reconciler");
-        });
+describe("InternalGenerator / FFI namespace imports", () => {
+    it("side-effect-imports every namespace that contributes a reconcilable element", () => {
+        const adwMeta = createCodegenWidgetMeta({ className: "Bin", jsxName: "AdwBin", namespace: "Adw" });
+        const code = generateCode([createWidgetMeta(), adwMeta]);
+        expect(code).toContain('import "@gtkx/ffi/adw";');
+        expect(code).toContain('import "@gtkx/ffi/gtk";');
+        expect(code).not.toContain("import * as Adw");
+        expect(code).not.toContain("import * as Gtk");
+    });
+});
+
+describe("InternalGenerator / low-level FFI imports", () => {
+    it("does not import the FFI descriptor builder or Type", () => {
+        const code = generateCode();
+        expect(code).not.toContain('import { t } from "@gtkx/ffi"');
+        expect(code).not.toContain("import type { Type }");
     });
 
-    describe("CONSTRUCTION_META", () => {
-        it("generates CONSTRUCTION_META constant", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: true,
-                        ffiType: { type: "string", ownership: "borrowed" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("CONSTRUCTION_META");
-        });
+    it("does not emit a CONSTRUCTION_META map", () => {
+        const code = generateCode();
+        expect(code).not.toContain("CONSTRUCTION_META");
+    });
+});
 
-        it("includes writable props with ffiType", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: true,
-                        ffiType: { type: "string", ownership: "borrowed" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("GtkButton");
-            expect(code).toContain('"label"');
-            expect(code).toContain("girName");
-            expect(code).toContain("ffiType");
-        });
-
-        it("marks construct-only props with constructOnly flag", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "orientation",
-                        camelName: "orientation",
-                        isWritable: true,
-                        isConstructOnly: true,
-                        ffiType: { type: "int32" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("constructOnly: true");
-        });
-
-        it("excludes non-writable props", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: false,
-                        ffiType: { type: "string", ownership: "borrowed" },
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            const metaStart = code.indexOf("CONSTRUCTION_META");
-            const nextExport = code.indexOf("export const", metaStart + 1);
-            const metaSection = code.slice(metaStart, nextExport);
-            expect(metaSection).not.toContain("GtkButton");
-        });
-
-        it("excludes props without ffiType", () => {
-            const buttonMeta = createButtonMeta({
-                properties: [
-                    createPropertyAnalysis({
-                        name: "label",
-                        camelName: "label",
-                        isWritable: true,
-                    }),
-                ],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            const metaStart = code.indexOf("CONSTRUCTION_META");
-            const nextExport = code.indexOf("export const", metaStart + 1);
-            const metaSection = code.slice(metaStart, nextExport);
-            expect(metaSection).not.toContain("GtkButton");
-        });
-
-        it("has correct type annotation", () => {
-            const code = generateCode();
-            expect(code).toContain(
-                "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
-            );
-        });
+describe("InternalGenerator / PROPS map", () => {
+    it("generates PROPS constant", () => {
+        const code = generateCode();
+        expect(code).toContain("PROPS");
     });
 
-    describe("PROPS map", () => {
-        it("generates PROPS constant", () => {
-            const code = generateCode();
-            expect(code).toContain("PROPS");
-        });
+    it("has correct type annotation for PROPS", () => {
+        const code = generateCode();
+        expect(code).toContain("Record<string, Record<string, string>>");
+    });
+});
 
-        it("has correct type annotation for PROPS", () => {
-            const code = generateCode();
-            expect(code).toContain("Record<string, Record<string, string>>");
-        });
+describe("InternalGenerator / SIGNALS map", () => {
+    it("generates SIGNALS constant", () => {
+        const code = generateCode();
+        expect(code).toContain("SIGNALS");
     });
 
-    describe("SIGNALS map", () => {
-        it("generates SIGNALS constant", () => {
-            const code = generateCode();
-            expect(code).toContain("SIGNALS");
+    it("includes signal names for widgets with signals", () => {
+        const buttonMeta = createButtonMeta({
+            signalNames: ["clicked", "activate"],
         });
-
-        it("includes signal names for widgets with signals", () => {
-            const buttonMeta = createButtonMeta({
-                signalNames: ["clicked", "activate"],
-            });
-            const code = generateCode([createWidgetMeta(), buttonMeta]);
-            expect(code).toContain("clicked");
-            expect(code).toContain("activate");
-        });
-
-        it("excludes widgets without signals from SIGNALS map", () => {
-            const labelMeta = createCodegenWidgetMeta({
-                className: "Label",
-                jsxName: "GtkLabel",
-                signalNames: [],
-                signals: [],
-            });
-            const widgetMeta = createWidgetMeta();
-            const code = generateCode([widgetMeta, labelMeta]);
-            const signalsStart = code.indexOf("SIGNALS");
-            const signalsSection = code.slice(signalsStart);
-            expect(signalsSection).toContain("GtkWidget");
-            expect(signalsSection).not.toContain("GtkLabel");
-        });
-
-        it("has Record<string, Record<string, string>> type annotation", () => {
-            const code = generateCode();
-            expect(code).toContain("Record<string, Record<string, string>>");
-        });
+        const code = generateCode([createWidgetMeta(), buttonMeta]);
+        expect(code).toContain("clicked");
+        expect(code).toContain("activate");
     });
 
-    describe("widget sorting", () => {
-        it("sorts Widget first within SIGNALS map", () => {
-            const labelMeta = createCodegenWidgetMeta({
-                className: "Label",
-                jsxName: "GtkLabel",
-                signalNames: ["activate"],
-                signals: [createSignalAnalysis({ name: "activate", camelName: "activate", handlerName: "onActivate" })],
-            });
-            const buttonMeta = createButtonMeta();
-            const widgetMeta = createWidgetMeta();
-            const code = generateCode([labelMeta, buttonMeta, widgetMeta]);
-
-            const signalsIndex = code.indexOf("SIGNALS");
-            const signalsSection = code.slice(signalsIndex);
-
-            const widgetIndex = signalsSection.indexOf("GtkWidget");
-            const buttonIndex = signalsSection.indexOf("GtkButton");
-            const labelIndex = signalsSection.indexOf("GtkLabel");
-
-            expect(widgetIndex).not.toBe(-1);
-            expect(buttonIndex).not.toBe(-1);
-            expect(labelIndex).not.toBe(-1);
-            expect(widgetIndex).toBeLessThan(buttonIndex);
-            expect(widgetIndex).toBeLessThan(labelIndex);
+    it("excludes widgets without signals from SIGNALS map", () => {
+        const labelMeta = createCodegenWidgetMeta({
+            className: "Label",
+            jsxName: "GtkLabel",
+            signalNames: [],
+            signals: [],
         });
+        const widgetMeta = createWidgetMeta();
+        const code = generateCode([widgetMeta, labelMeta]);
+        const signalsStart = code.indexOf("SIGNALS");
+        const signalsEnd = code.indexOf("CONSTRUCT_ONLY", signalsStart);
+        const signalsSection = code.slice(signalsStart, signalsEnd);
+        expect(signalsSection).toContain("GtkWidget");
+        expect(signalsSection).not.toContain("GtkLabel");
     });
 
-    describe("export statements", () => {
-        it("exports CONSTRUCTION_META", () => {
-            const code = generateCode();
-            expect(code).toContain("export const CONSTRUCTION_META");
-        });
+    it("has Record<string, Record<string, string>> type annotation", () => {
+        const code = generateCode();
+        expect(code).toContain("Record<string, Record<string, string>>");
+    });
+});
 
-        it("exports PROPS", () => {
-            const code = generateCode();
-            expect(code).toContain("export const PROPS");
+describe("InternalGenerator / widget sorting", () => {
+    it("sorts Widget first within SIGNALS map", () => {
+        const labelMeta = createCodegenWidgetMeta({
+            className: "Label",
+            jsxName: "GtkLabel",
+            signalNames: ["activate"],
+            signals: [createSignalAnalysis({ name: "activate", camelName: "activate", handlerName: "onActivate" })],
         });
+        const buttonMeta = createButtonMeta();
+        const widgetMeta = createWidgetMeta();
+        const code = generateCode([labelMeta, buttonMeta, widgetMeta]);
 
-        it("exports SIGNALS", () => {
-            const code = generateCode();
-            expect(code).toContain("export const SIGNALS");
-        });
+        const signalsIndex = code.indexOf("SIGNALS");
+        const signalsSection = code.slice(signalsIndex);
+
+        const widgetIndex = signalsSection.indexOf("GtkWidget");
+        const buttonIndex = signalsSection.indexOf("GtkButton");
+        const labelIndex = signalsSection.indexOf("GtkLabel");
+
+        expect(widgetIndex).not.toBe(-1);
+        expect(buttonIndex).not.toBe(-1);
+        expect(labelIndex).not.toBe(-1);
+        expect(widgetIndex).toBeLessThan(buttonIndex);
+        expect(widgetIndex).toBeLessThan(labelIndex);
+    });
+});
+
+describe("InternalGenerator / export statements", () => {
+    it("exports PROPS", () => {
+        const code = generateCode();
+        expect(code).toContain("export const PROPS");
+    });
+
+    it("exports SIGNALS", () => {
+        const code = generateCode();
+        expect(code).toContain("export const SIGNALS");
     });
 });

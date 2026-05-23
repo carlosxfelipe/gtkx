@@ -5,26 +5,41 @@
  * Handles struct memory layout calculations, including nested structs.
  */
 
-import type { GirField, GirRecord, GirRepository } from "@gtkx/gir";
-import type { Writer } from "../../../builders/writer.js";
-import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import {
-    getPrimitiveTypeSize,
-    isMemoryWritableType,
-    isPrimitiveFieldType,
-} from "../../../core/type-system/ffi-types.js";
-import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
-import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
+import type { Writer } from "../../../builders/text-writer.js";
+import { writeFfiTypeExpression } from "../../../ffi-emitters/ffi-type-expression.js";
+import { addTypeImports, type ImportCollector } from "../../../ffi-emitters/index.js";
+import type { GirField, GirRecord, GirRepository } from "../../../gir/index.js";
+import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
+import { getPrimitiveTypeSize, isMemoryWritableType, isPrimitiveFieldType } from "../../../type-system/ffi-types.js";
+import { toCamelCase, toValidMemberName } from "../../../utils/naming.js";
+import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../utils/record-filter.js";
 
 /**
  * Field layout information.
+ *
+ * For C bitfield members, `offset` is the byte offset of the shared storage
+ * unit, `bitOffset` is the field's bit position within that unit, and
+ * `bitWidth` is its width in bits. Non-bitfield members leave both undefined.
  */
-type FieldLayout = {
+export type FieldLayout = {
     field: GirField;
     offset: number;
     size: number;
     alignment: number;
+    bitOffset?: number;
+    bitWidth?: number;
+};
+
+/**
+ * The shared storage unit a run of consecutive C bitfield members is packed
+ * into: its byte offset, the bits consumed so far, the unit's total bit
+ * capacity, and the GIR type name that fixed that capacity.
+ */
+type BitUnit = {
+    offset: number;
+    bitsUsed: number;
+    capacityBits: number;
+    typeName: string;
 };
 
 /**
@@ -32,36 +47,51 @@ type FieldLayout = {
  */
 export class FieldBuilder {
     private readonly sizeCache = new Map<string, number>();
-    private readonly ffiTypeWriter: FfiTypeWriter;
 
     constructor(
         private readonly ffiMapper: FfiMapper,
         private readonly imports: ImportCollector,
-        sharedLibrary: string,
-        glibLibrary?: string,
         private readonly repo?: GirRepository,
         private readonly currentNamespace?: string,
-    ) {
-        this.ffiTypeWriter = new FfiTypeWriter({
-            currentSharedLibrary: sharedLibrary,
-            glibLibrary,
-        });
-    }
+    ) {}
 
     /**
-     * Calculates struct memory layout for fields.
-     * By default excludes private fields (for accessors).
-     * Use includePrivate=true for allocation size calculation.
+     * Calculates the memory layout of a record's fields.
+     *
+     * By default excludes private fields (for accessors); pass
+     * `includePrivate=true` for allocation size calculation. When `isUnion`
+     * is set every field is overlaid at offset 0.
      */
-    calculateLayout(fields: readonly GirField[], includePrivate = false): FieldLayout[] {
+    calculateLayout(fields: readonly GirField[], includePrivate = false, isUnion = false): FieldLayout[] {
         const layout: FieldLayout[] = [];
         let currentOffset = 0;
+        let bitUnit: BitUnit | null = null;
 
         for (const field of fields) {
             if (field.private && !includePrivate) continue;
 
-            const size = this.getFieldSize(field.type);
-            const alignment = this.getFieldAlignment(field.type);
+            const size = this.getMemberSize(field);
+            const alignment = this.getMemberAlignment(field);
+
+            if (field.bits !== undefined && field.bits > 0) {
+                ({ currentOffset, bitUnit } = this.appendBitfieldLayout({
+                    field,
+                    size,
+                    alignment,
+                    isUnion,
+                    layout,
+                    currentOffset,
+                    bitUnit,
+                }));
+                continue;
+            }
+
+            bitUnit = null;
+
+            if (isUnion) {
+                layout.push({ field, offset: 0, size, alignment });
+                continue;
+            }
 
             currentOffset = Math.ceil(currentOffset / alignment) * alignment;
 
@@ -79,16 +109,73 @@ export class FieldBuilder {
     }
 
     /**
-     * Calculates total struct size with final alignment padding.
-     * Includes private fields since they're needed for memory allocation.
+     * Places one bitfield member into the layout, packing it into the open
+     * bit-storage unit when it still fits or opening a fresh unit otherwise.
+     *
+     * @returns The running offset and open bit-storage unit after placement.
      */
-    calculateStructSize(fields: readonly GirField[]): number {
-        const layout = this.calculateLayout(fields, true);
+    private appendBitfieldLayout(opts: {
+        field: GirField;
+        size: number;
+        alignment: number;
+        isUnion: boolean;
+        layout: FieldLayout[];
+        currentOffset: number;
+        bitUnit: BitUnit | null;
+    }): { currentOffset: number; bitUnit: BitUnit | null } {
+        const { field, size, alignment, isUnion, layout, currentOffset, bitUnit } = opts;
+        const bits = field.bits ?? 0;
+
+        if (isUnion) {
+            layout.push({ field, offset: 0, size, alignment, bitOffset: 0, bitWidth: bits });
+            return { currentOffset, bitUnit };
+        }
+
+        const typeName = String(field.type.name);
+        let nextOffset = currentOffset;
+        let activeUnit: BitUnit;
+        if (this.bitUnitFits(bitUnit, typeName, bits)) {
+            activeUnit = bitUnit;
+        } else {
+            nextOffset = Math.ceil(currentOffset / alignment) * alignment;
+            activeUnit = { offset: nextOffset, bitsUsed: 0, capacityBits: size * 8, typeName };
+            nextOffset += size;
+        }
+
+        layout.push({
+            field,
+            offset: activeUnit.offset,
+            size,
+            alignment,
+            bitOffset: activeUnit.bitsUsed,
+            bitWidth: bits,
+        });
+        activeUnit.bitsUsed += bits;
+        return { currentOffset: nextOffset, bitUnit: activeUnit };
+    }
+
+    /**
+     * Reports whether an open bit-storage unit can still hold a bitfield member
+     * of the given GIR type and width: the unit must exist, share that type,
+     * and have enough unused bits left.
+     */
+    private bitUnitFits(bitUnit: BitUnit | null, typeName: string, bits: number): bitUnit is BitUnit {
+        return bitUnit?.typeName === typeName && bitUnit.bitsUsed + bits <= bitUnit.capacityBits;
+    }
+
+    /**
+     * Calculates the total size of a record with final alignment padding.
+     *
+     * Includes private fields since they are needed for memory allocation.
+     * For a union the size is the largest member rounded up to the widest
+     * member alignment.
+     */
+    calculateStructSize(fields: readonly GirField[], isUnion = false): number {
+        const layout = this.calculateLayout(fields, true, isUnion);
         if (layout.length === 0) return 0;
 
-        const lastField = layout[layout.length - 1];
-        const rawSize = lastField ? lastField.offset + lastField.size : 0;
-        const maxAlignment = Math.max(...layout.map((l) => l.alignment), 1);
+        const rawSize = Math.max(...layout.map((item) => item.offset + item.size));
+        const maxAlignment = Math.max(...layout.map((item) => item.alignment), 1);
 
         return Math.ceil(rawSize / maxAlignment) * maxAlignment;
     }
@@ -97,8 +184,7 @@ export class FieldBuilder {
      * Writes field initialization statements.
      */
     writeFieldWrites(fields: readonly GirField[]): (writer: Writer) => void {
-        const layout = this.calculateLayout(fields);
-        const initializableFields = layout.filter(
+        const initializableFields = this.calculateLayout(fields).filter(
             ({ field }) =>
                 !field.private &&
                 field.writable !== false &&
@@ -108,45 +194,68 @@ export class FieldBuilder {
 
         return (writer) => {
             for (const { field, offset } of initializableFields) {
-                let fieldName = toValidMemberName(toCamelCase(field.name));
-                if (fieldName === "id") fieldName = "id_";
-
+                const fieldName = this.resolveFieldVarName(field);
                 if (this.isInlineNestedStruct(field)) {
-                    const typeName = String(field.type.name);
-                    const nestedLayout = this.getNestedStructLayout(typeName);
-                    if (!nestedLayout) continue;
-
-                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.addFieldTypeImports(typeMapping.imports);
-
-                    writer.writeLine(`if (init.${fieldName} !== undefined) {`);
-                    writer.withIndent(() => {
-                        for (const nestedItem of nestedLayout) {
-                            if (!this.isWritableType(nestedItem.field.type)) continue;
-                            const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
-                            const nestedOffset = offset + nestedItem.offset;
-                            const nestedTypeMapping = this.ffiMapper.mapType(
-                                nestedItem.field.type,
-                                false,
-                                nestedItem.field.type.transferOwnership,
-                            );
-
-                            writer.write(`write(this.handle, `);
-                            writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                            writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
-                        }
-                    });
-                    writer.writeLine("}");
+                    this.writeNestedStructInit(writer, field, fieldName, offset);
                 } else {
-                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.addFieldTypeImports(typeMapping.imports);
-
-                    writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
-                    writer.write(JSON.stringify(typeMapping.ffi));
-                    writer.writeLine(`, ${offset}, init.${fieldName});`);
+                    this.writeScalarFieldInit(writer, field, fieldName, offset);
                 }
             }
         };
+    }
+
+    private resolveFieldVarName(field: GirField): string {
+        const name = toValidMemberName(toCamelCase(field.name));
+        return name === "id" ? "id_" : name;
+    }
+
+    private writeNestedStructInit(writer: Writer, field: GirField, fieldName: string, offset: number): void {
+        const typeName = String(field.type.name);
+        const nestedLayout = this.getNestedStructLayout(typeName);
+        if (!nestedLayout) return;
+
+        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (typeMapping.unsafe) return;
+        this.addFieldTypeImports(typeMapping.imports);
+
+        writer.writeLine(`if (init.${fieldName} !== undefined) {`);
+        writer.withIndent(() => {
+            for (const nestedItem of nestedLayout) {
+                this.writeNestedFieldAssignment(writer, nestedItem, fieldName, offset);
+            }
+        });
+        writer.writeLine("}");
+    }
+
+    private writeNestedFieldAssignment(
+        writer: Writer,
+        nestedItem: FieldLayout,
+        fieldName: string,
+        baseOffset: number,
+    ): void {
+        if (!this.isWritableType(nestedItem.field.type)) return;
+        const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
+        const nestedOffset = baseOffset + nestedItem.offset;
+        const nestedTypeMapping = this.ffiMapper.mapType(
+            nestedItem.field.type,
+            false,
+            nestedItem.field.type.transferOwnership,
+        );
+        if (nestedTypeMapping.unsafe) return;
+
+        writer.write(`write(getHandle(this),`);
+        writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
+        writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
+    }
+
+    private writeScalarFieldInit(writer: Writer, field: GirField, fieldName: string, offset: number): void {
+        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (typeMapping.unsafe) return;
+        this.addFieldTypeImports(typeMapping.imports);
+
+        writer.write(`if (init.${fieldName} !== undefined) write(getHandle(this),`);
+        writeFfiTypeExpression(writer, typeMapping.ffi);
+        writer.writeLine(`, ${offset}, init.${fieldName});`);
     }
 
     getWritableFields(fields: readonly GirField[]): GirField[] {
@@ -172,8 +281,8 @@ export class FieldBuilder {
     /**
      * Checks if a type can be written to memory.
      */
-    isWritableType(type: { name: string | unknown; cType?: string }): boolean {
-        return isMemoryWritableType(String(type.name));
+    isWritableType(type: { name: unknown; cType?: string }): boolean {
+        return isMemoryWritableType(typeof type.name === "string" ? type.name : "");
     }
 
     /**
@@ -202,10 +311,23 @@ export class FieldBuilder {
         return hasWritableFields;
     }
 
+    /**
+     * Checks if a type resolves to a record (struct or boxed) whose memory
+     * layout can be read field-by-field, so a fixed or counted array of it
+     * can be exposed as an array of plain objects.
+     */
+    hasReadableStructLayout(typeName: string): boolean {
+        if (isPrimitiveFieldType(typeName)) return false;
+        const record = this.resolveRecord(typeName);
+        if (!record || record.opaque || record.disguised) return false;
+        const layout = this.getNestedStructLayout(typeName);
+        return layout !== null && layout.length > 0;
+    }
+
     getNestedStructLayout(typeName: string): FieldLayout[] | null {
         const record = this.resolveRecord(typeName);
         if (!record) return null;
-        return this.calculateLayout(record.fields);
+        return this.calculateLayout(record.fields, false, record.isUnion);
     }
 
     /**
@@ -216,26 +338,10 @@ export class FieldBuilder {
     }
 
     isGeneratableFieldType(typeName: string, visited: Set<string> = new Set()): boolean {
-        if (isPrimitiveFieldType(typeName)) return true;
-
-        if (visited.has(typeName)) return false;
-        visited.add(typeName);
-
-        const resolved = this.resolveRecord(typeName);
-        if (!resolved) return false;
-
-        if (resolved.glibTypeName) return true;
-
-        if (resolved.opaque || resolved.disguised) return false;
-
-        const publicFields = resolved.getPublicFields();
-        if (publicFields.length === 0) return false;
-
-        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string, visited));
-    }
-
-    getFfiTypeWriter(): FfiTypeWriter {
-        return this.ffiTypeWriter;
+        if (!this.repo || !this.currentNamespace) {
+            return isPrimitiveFieldType(typeName);
+        }
+        return isGeneratableFieldTypeUtil(typeName, this.repo, this.currentNamespace, visited);
     }
 
     private addFieldTypeImports(imports: Parameters<typeof addTypeImports>[1]): void {
@@ -255,10 +361,10 @@ export class FieldBuilder {
     }
 
     private getFieldSize(type: {
-        name: string | unknown;
+        name: unknown;
         cType?: string;
         isArray?: boolean;
-        elementType?: { name: string | unknown; cType?: string } | null;
+        elementType?: { name: unknown; cType?: string } | null;
         fixedSize?: number;
     }): number {
         if (type.cType?.includes("*")) {
@@ -270,7 +376,7 @@ export class FieldBuilder {
             return elementSize * type.fixedSize;
         }
 
-        const typeName = String(type.name);
+        const typeName = typeof type.name === "string" ? type.name : "";
 
         if (isPrimitiveFieldType(typeName)) {
             return getPrimitiveTypeSize(typeName);
@@ -284,7 +390,7 @@ export class FieldBuilder {
         const record = this.resolveRecord(typeName);
         if (record && !record.opaque && !record.disguised) {
             this.sizeCache.set(typeName, 0);
-            const size = this.calculateStructSize(record.fields);
+            const size = this.calculateStructSize(record.fields, record.isUnion);
             this.sizeCache.set(typeName, size);
             return size;
         }
@@ -294,10 +400,10 @@ export class FieldBuilder {
 
     private getFieldAlignment(
         type: {
-            name: string | unknown;
+            name: unknown;
             cType?: string;
             isArray?: boolean;
-            elementType?: { name: string | unknown; cType?: string } | null;
+            elementType?: { name: unknown; cType?: string } | null;
             fixedSize?: number;
         },
         visited = new Set<string>(),
@@ -310,7 +416,7 @@ export class FieldBuilder {
             return this.getFieldAlignment(type.elementType, visited);
         }
 
-        const typeName = String(type.name);
+        const typeName = typeof type.name === "string" ? type.name : "";
 
         if (isPrimitiveFieldType(typeName)) {
             return getPrimitiveTypeSize(typeName);
@@ -325,9 +431,37 @@ export class FieldBuilder {
         if (record && !record.opaque && !record.disguised) {
             const fields = record.getPublicFields();
             if (fields.length === 0) return 8;
-            return Math.max(...fields.map((f) => this.getFieldAlignment(f.type, visited)));
+            return Math.max(...fields.map((field) => this.getFieldAlignment(field.type, visited)));
         }
 
         return 8;
+    }
+
+    /**
+     * Returns the byte size of a record member. Inline composite members
+     * carry their own nested layout rather than a resolvable type.
+     */
+    private getMemberSize(field: GirField): number {
+        const composite = field.inlineComposite;
+        if (composite) {
+            return this.calculateStructSize(composite.fields, composite.isUnion);
+        }
+        return this.getFieldSize(field.type);
+    }
+
+    /**
+     * Returns the alignment of a record member. The alignment of an inline
+     * composite is the widest alignment among its members.
+     */
+    private getMemberAlignment(field: GirField, visited = new Set<string>()): number {
+        const composite = field.inlineComposite;
+        if (composite) {
+            let alignment = 1;
+            for (const inner of composite.fields) {
+                alignment = Math.max(alignment, this.getMemberAlignment(inner, visited));
+            }
+            return alignment;
+        }
+        return this.getFieldAlignment(field.type, visited);
     }
 }

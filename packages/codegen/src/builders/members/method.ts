@@ -1,6 +1,7 @@
-import type { Builder, Writable } from "../types.js";
-import { writeWritable } from "../types.js";
-import type { Writer } from "../writer.js";
+import type { Writer } from "../text-writer.js";
+import type { Writable } from "../types.js";
+import { DualModeBuilder, writeWritable } from "../types.js";
+import { type BodyContent, writeBody } from "./body.js";
 import { writeJsDoc } from "./doc.js";
 import type { ParameterBuilder } from "./parameter.js";
 
@@ -14,7 +15,7 @@ export type OverloadSignature = {
 export type MethodOptions = {
     params?: ParameterBuilder[];
     returnType?: Writable;
-    body?: string[] | ((writer: Writer) => void);
+    body?: BodyContent;
     isStatic?: boolean;
     override?: boolean;
     abstract?: boolean;
@@ -23,20 +24,38 @@ export type MethodOptions = {
 };
 
 /**
- * Builder that emits a class method declaration with modifiers, parameters,
- * return type, optional body, and optional overload signatures.
+ * Builder that emits a class method declaration.
+ *
+ * In JS mode, overload signatures and return-type annotations are dropped
+ * because the contract lives in the companion `.d.ts`. Methods without a
+ * body emit an empty `{}` block.
  */
-export class MethodBuilder implements Builder {
+export class MethodBuilder extends DualModeBuilder {
     constructor(
         readonly name: string,
         private readonly opts: MethodOptions,
-    ) {}
+    ) {
+        super();
+    }
 
-    /** @inheritdoc */
-    write(writer: Writer): void {
+    protected writeJs(writer: Writer): void {
+        writeJsDoc(writer, this.opts.doc);
+        if (this.opts.isStatic) writer.write("static ");
+
+        writer.write(`${this.name}(`);
+        if (this.opts.params && this.opts.params.length > 0) {
+            writer.writeJoined(", ", this.opts.params);
+        }
+        writer.write(") ");
+
+        writeBody(writer, this.opts.body);
+        writer.newLine();
+    }
+
+    protected writeTs(writer: Writer): void {
         if (this.opts.overloads) {
             for (const overload of this.opts.overloads) {
-                this.writeSignature(writer, this.name, overload.params, overload.returnType, false);
+                this.writeSignature(writer, this.name, overload.params, overload.returnType);
                 writer.writeLine(";");
             }
         }
@@ -55,6 +74,8 @@ export class MethodBuilder implements Builder {
         if (this.opts.returnType) {
             writer.write(": ");
             writeWritable(writer, this.opts.returnType);
+        } else if (this.opts.body && !this.opts.abstract) {
+            writer.write(": void");
         }
 
         if (this.opts.abstract || (!this.opts.body && !this.opts.overloads)) {
@@ -63,15 +84,7 @@ export class MethodBuilder implements Builder {
         }
 
         writer.write(" ");
-        writer.writeBlock(() => {
-            if (typeof this.opts.body === "function") {
-                this.opts.body(writer);
-            } else if (this.opts.body) {
-                for (const line of this.opts.body) {
-                    writer.writeLine(line);
-                }
-            }
-        });
+        writeBody(writer, this.opts.body);
         writer.newLine();
     }
 
@@ -80,7 +93,6 @@ export class MethodBuilder implements Builder {
         name: string,
         params: ParameterBuilder[],
         returnType: Writable | undefined,
-        _withBody: boolean,
     ): void {
         if (this.opts.isStatic) writer.write("static ");
         writer.write(`${name}(`);

@@ -1,8 +1,8 @@
 import { writeJsDoc } from "../members/doc.js";
 import type { ParameterBuilder } from "../members/parameter.js";
+import type { Writer } from "../text-writer.js";
 import type { Builder, Writable } from "../types.js";
 import { writeWritable } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** A property signature within an interface declaration. */
 export type InterfacePropertySignature = {
@@ -28,24 +28,19 @@ export type InterfaceOptions = {
     doc?: string;
 };
 
-/** Builder that emits a TypeScript interface declaration with properties and methods. */
+/**
+ * Builder that emits a TypeScript interface declaration with properties and
+ * methods. In JS mode the declaration is omitted because interfaces have
+ * no runtime presence.
+ */
 export class InterfaceDeclarationBuilder implements Builder {
     private readonly properties: InterfacePropertySignature[] = [];
     private readonly methods: InterfaceMethodSignature[] = [];
-    private exported: boolean;
 
     constructor(
         readonly name: string,
         private readonly opts: InterfaceOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this interface as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** Add a property signature to the interface body. */
     addProperty(sig: InterfacePropertySignature): this {
@@ -61,38 +56,47 @@ export class InterfaceDeclarationBuilder implements Builder {
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") return;
+        this.writeHeader(writer);
+        writer.writeBlock(() => {
+            for (const prop of this.properties) this.writeProperty(writer, prop);
+            for (const m of this.methods) this.writeMethod(writer, m);
+        });
+        writer.newLine();
+    }
+
+    private writeHeader(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         writer.write(`interface ${this.name}`);
         if (this.opts.extends && this.opts.extends.length > 0) {
             writer.write(` extends ${this.opts.extends.join(", ")}`);
         }
         writer.write(" ");
-        writer.writeBlock(() => {
-            for (const prop of this.properties) {
-                writeJsDoc(writer, prop.doc);
-                if (prop.readonly) writer.write("readonly ");
-                writer.write(prop.name);
-                if (prop.optional) writer.write("?");
-                writer.write(": ");
-                writeWritable(writer, prop.type);
-                writer.writeLine(";");
-            }
-            for (const m of this.methods) {
-                writeJsDoc(writer, m.doc);
-                writer.write(`${m.name}(`);
-                if (m.params && m.params.length > 0) {
-                    writer.writeJoined(", ", m.params);
-                }
-                writer.write(")");
-                if (m.returnType) {
-                    writer.write(": ");
-                    writeWritable(writer, m.returnType);
-                }
-                writer.writeLine(";");
-            }
-        });
-        writer.newLine();
+    }
+
+    private writeProperty(writer: Writer, prop: InterfacePropertySignature): void {
+        writeJsDoc(writer, prop.doc);
+        if (prop.readonly) writer.write("readonly ");
+        writer.write(prop.name);
+        if (prop.optional) writer.write("?");
+        writer.write(": ");
+        writeWritable(writer, prop.type);
+        writer.writeLine(";");
+    }
+
+    private writeMethod(writer: Writer, m: InterfaceMethodSignature): void {
+        writeJsDoc(writer, m.doc);
+        writer.write(`${m.name}(`);
+        if (m.params && m.params.length > 0) {
+            writer.writeJoined(", ", m.params);
+        }
+        writer.write(")");
+        if (m.returnType) {
+            writer.write(": ");
+            writeWritable(writer, m.returnType);
+        }
+        writer.writeLine(";");
     }
 }
 

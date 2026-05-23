@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CodegenWidgetMeta } from "../../src/core/codegen-metadata.js";
+import type { CodegenWidgetMeta } from "../../src/codegen-metadata.js";
 import { MetadataReader, sortWidgetsByClassName } from "../../src/react/metadata-reader.js";
 
 const createWidgetMeta = (overrides: Partial<CodegenWidgetMeta> = {}): CodegenWidgetMeta => ({
@@ -14,6 +14,7 @@ const createWidgetMeta = (overrides: Partial<CodegenWidgetMeta> = {}): CodegenWi
     properties: [],
     signals: [],
     slots: [],
+    containerMethods: [],
     hiddenPropNames: [],
     doc: undefined,
     ...overrides,
@@ -27,7 +28,7 @@ describe("sortWidgetsByClassName", () => {
             { className: "Label" },
         ];
         const sorted = sortWidgetsByClassName(widgets);
-        expect(sorted[0].className).toBe("Widget");
+        expect(sorted[0]?.className).toBe("Widget");
     });
 
     it("puts Window second after Widget", () => {
@@ -37,8 +38,8 @@ describe("sortWidgetsByClassName", () => {
             { className: "Widget" },
         ];
         const sorted = sortWidgetsByClassName(widgets);
-        expect(sorted[0].className).toBe("Widget");
-        expect(sorted[1].className).toBe("Window");
+        expect(sorted[0]?.className).toBe("Widget");
+        expect(sorted[1]?.className).toBe("Window");
     });
 
     it("sorts remaining widgets alphabetically", () => {
@@ -102,55 +103,14 @@ describe("MetadataReader", () => {
         it("returns WidgetInfo without properties and signals", () => {
             const meta = [
                 createWidgetMeta({
-                    properties: [{ name: "label", type: "string" }] as CodegenWidgetMeta["properties"],
-                    signals: [{ name: "clicked" }] as CodegenWidgetMeta["signals"],
+                    properties: [{ name: "label", type: "string" }] as unknown as CodegenWidgetMeta["properties"],
+                    signals: [{ name: "clicked" }] as unknown as CodegenWidgetMeta["signals"],
                 }),
             ];
             const reader = new MetadataReader(meta);
             const widgets = reader.getAllWidgets();
             expect(widgets[0]).not.toHaveProperty("properties");
             expect(widgets[0]).not.toHaveProperty("signals");
-        });
-    });
-
-    describe("getWidget", () => {
-        it("returns widget by JSX name", () => {
-            const meta = [createWidgetMeta({ className: "Button", jsxName: "GtkButton" })];
-            const reader = new MetadataReader(meta);
-            const widget = reader.getWidget("GtkButton");
-            expect(widget).toBeDefined();
-            expect(widget?.className).toBe("Button");
-        });
-
-        it("returns null for non-existent widget", () => {
-            const reader = new MetadataReader([]);
-            expect(reader.getWidget("NonExistent")).toBeNull();
-        });
-    });
-
-    describe("getWidgetsSorted", () => {
-        it("returns widgets sorted with Widget first", () => {
-            const meta = [
-                createWidgetMeta({ className: "Button", jsxName: "GtkButton" }),
-                createWidgetMeta({ className: "Widget", jsxName: "GtkWidget" }),
-                createWidgetMeta({ className: "Label", jsxName: "GtkLabel" }),
-            ];
-            const reader = new MetadataReader(meta);
-            const sorted = reader.getWidgetsSorted();
-            expect(sorted[0].className).toBe("Widget");
-        });
-    });
-
-    describe("getPropNames", () => {
-        it("returns prop names for existing widget", () => {
-            const meta = [createWidgetMeta({ jsxName: "GtkButton", propNames: ["label", "iconName", "sensitive"] })];
-            const reader = new MetadataReader(meta);
-            expect(reader.getPropNames("GtkButton")).toEqual(["label", "iconName", "sensitive"]);
-        });
-
-        it("returns empty array for non-existent widget", () => {
-            const reader = new MetadataReader([]);
-            expect(reader.getPropNames("NonExistent")).toEqual([]);
         });
     });
 

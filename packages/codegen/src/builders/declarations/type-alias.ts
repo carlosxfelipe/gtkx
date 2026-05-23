@@ -1,7 +1,7 @@
 import { writeJsDoc } from "../members/doc.js";
+import type { Writer } from "../text-writer.js";
 import type { Builder, Writable } from "../types.js";
 import { writeWritable } from "../types.js";
-import type { Writer } from "../writer.js";
 
 /** Configuration options for a type alias declaration. */
 export type TypeAliasOptions = {
@@ -9,28 +9,22 @@ export type TypeAliasOptions = {
     doc?: string;
 };
 
-/** Builder that emits a `type Name = ...` type alias declaration. */
+/**
+ * Builder that emits a `type Name = ...` type alias declaration. In JS mode
+ * the declaration is omitted because type aliases have no runtime presence.
+ */
 export class TypeDeclarationBuilder implements Builder {
-    private exported: boolean;
-
     constructor(
         readonly name: string,
         private readonly type: Writable,
         private readonly opts: TypeAliasOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this type alias as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** @inheritdoc */
     write(writer: Writer): void {
+        if (writer.getMode() === "js") return;
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         writer.write(`type ${this.name} = `);
         writeWritable(writer, this.type);
         writer.writeLine(";");

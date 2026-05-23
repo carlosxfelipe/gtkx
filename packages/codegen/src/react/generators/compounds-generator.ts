@@ -10,15 +10,15 @@
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw } from "../../builders/index.js";
-import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../codegen-metadata.js";
 import {
     type CompoundChildrenConfig,
     getCompoundChildren,
     getContainerMethodNames,
     getRenderableSlotNames,
-} from "../../core/config/index.js";
-import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { toCamelCase, toPascalCase } from "../../core/utils/naming.js";
+} from "../../config/index.js";
+import { formatJsDoc } from "../../utils/doc-formatter.js";
+import { toCamelCase, toPascalCase } from "../../utils/naming.js";
 import type { MetadataReader } from "../metadata-reader.js";
 
 const LIST_WIDGET_NAMES = new Set(["GtkListView", "GtkGridView", "GtkColumnView", "GtkDropDown", "AdwComboRow"]);
@@ -70,11 +70,16 @@ export class CompoundsGenerator {
     private collectCompounds(): void {
         if (this.compounds.length > 0) return;
 
+        const metaByClass = new Map<string, CodegenWidgetMeta>();
+        for (const meta of this.reader.getAllCodegenMeta()) {
+            metaByClass.set(`${meta.namespace}:${meta.className}`, meta);
+        }
+
         for (const meta of this.reader.getAllCodegenMeta()) {
             if (!this.namespaceNames.includes(meta.namespace)) continue;
             if (LIST_WIDGET_NAMES.has(meta.jsxName)) continue;
 
-            const renderableSlots = [...getRenderableSlotNames(meta.jsxName)];
+            const renderableSlots = this.collectRenderableSlots(meta, metaByClass);
             const containerMethods = [...getContainerMethodNames(meta.jsxName)];
             const children = getCompoundChildren(meta.jsxName);
 
@@ -110,54 +115,86 @@ export class CompoundsGenerator {
         this.compounds.sort((a, b) => a.jsxName.localeCompare(b.jsxName));
     }
 
-    private addImports(file: FileBuilder): void {
-        file.addTypeImport("react", ["ReactNode"]);
-        file.addImport("../components/slot-widget.js", ["createSlotWidget"]);
+    /**
+     * Collects renderable slot names for a widget, walking its class hierarchy
+     * so subclasses inherit the renderable slots declared on their ancestors.
+     */
+    private collectRenderableSlots(
+        meta: CodegenWidgetMeta,
+        metaByClass: ReadonlyMap<string, CodegenWidgetMeta>,
+    ): string[] {
+        const slots = new Set<string>();
 
+        let current: CodegenWidgetMeta | undefined = meta;
+        while (current) {
+            for (const slot of getRenderableSlotNames(current.jsxName)) {
+                slots.add(slot);
+            }
+            current =
+                current.parentClassName && current.parentNamespace
+                    ? metaByClass.get(`${current.parentNamespace}:${current.parentClassName}`)
+                    : undefined;
+        }
+
+        return [...slots];
+    }
+
+    private addCompoundImports(file: FileBuilder): void {
         const needsContainerSlot = this.compounds.some((c) => c.containerMethods.length > 0);
-        const needsVirtualChild = this.compounds.some((c) => c.children?.virtualChildren);
-        const needsMenuChild = this.compounds.some((c) => c.children?.menuHost);
+        const needsVirtualChild = this.compounds.some((c) => c.children?.virtualChildren || c.children?.menuHost);
         const needsNavPage = this.compounds.some((c) => c.children?.navigationPages);
 
         const compoundImports: string[] = [];
         if (needsContainerSlot) compoundImports.push("createContainerSlotChild");
         if (needsVirtualChild) compoundImports.push("createVirtualChild");
-        if (needsMenuChild) compoundImports.push("createMenuChild");
         if (needsNavPage) compoundImports.push("createNavigationPageChild");
 
         if (compoundImports.length > 0) {
             file.addImport("../components/compound.js", compoundImports);
         }
+    }
 
-        const generatedPropsTypes: string[] = [];
+    private collectManualPropsTypes(): Set<string> {
+        const manualPropsTypes = new Set<string>();
         for (const compound of this.compounds) {
-            generatedPropsTypes.push(`${compound.jsxName}Props`);
+            this.collectCompoundPropsTypes(compound, manualPropsTypes);
         }
+        return manualPropsTypes;
+    }
+
+    private collectCompoundPropsTypes(compound: CompoundEntry, target: Set<string>): void {
+        const children = compound.children;
+        if (!children) return;
+        for (const vc of children.virtualChildren ?? []) {
+            target.add(vc.props);
+        }
+        if (children.menuHost) {
+            for (const mc of MENU_SUB_COMPONENTS) {
+                target.add(mc.props);
+            }
+        }
+        for (const np of children.navigationPages ?? []) {
+            target.add(np.props);
+        }
+    }
+
+    private addImports(file: FileBuilder): void {
+        file.addTypeImport("react", ["ReactNode"]);
+        file.addImport("../components/slot-widget.js", ["createSlotWidget"]);
+
+        this.addCompoundImports(file);
+
+        const generatedPropsTypes = this.compounds.map((compound) => `${compound.jsxName}Props`);
         if (generatedPropsTypes.length > 0) {
             file.addTypeImport("./jsx.js", generatedPropsTypes);
         }
 
-        const manualPropsTypes = new Set<string>();
-        for (const compound of this.compounds) {
-            if (compound.children?.virtualChildren) {
-                for (const vc of compound.children.virtualChildren) {
-                    manualPropsTypes.add(vc.props);
-                }
-            }
-            if (compound.children?.menuHost) {
-                for (const mc of MENU_SUB_COMPONENTS) {
-                    manualPropsTypes.add(mc.props);
-                }
-            }
-            if (compound.children?.navigationPages) {
-                for (const np of compound.children.navigationPages) {
-                    manualPropsTypes.add(np.props);
-                }
-            }
-        }
-
+        const manualPropsTypes = this.collectManualPropsTypes();
         if (manualPropsTypes.size > 0) {
-            file.addTypeImport("../jsx.js", [...manualPropsTypes].sort());
+            file.addTypeImport(
+                "../jsx.js",
+                [...manualPropsTypes].sort((a, b) => a.localeCompare(b)),
+            );
         }
     }
 
@@ -226,7 +263,7 @@ export class CompoundsGenerator {
                 subs.push({
                     name: mc.sub,
                     propsType: mc.props,
-                    factory: `createMenuChild<${mc.props}>("${mc.sub}")`,
+                    factory: `createVirtualChild<${mc.props}>("${mc.sub}")`,
                 });
             }
         }

@@ -7,9 +7,9 @@
  */
 
 import type { FileBuilder } from "../../../builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
-import { getRenderableSlotNames } from "../../../core/config/index.js";
-import { toCamelCase } from "../../../core/utils/naming.js";
+import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
+import { getRenderableSlotNames } from "../../../config/index.js";
+import { toCamelCase } from "../../../utils/naming.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { ControllerPropsBuilder } from "./controller-props-builder.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
@@ -109,7 +109,7 @@ export class JsxTypesGenerator {
             usedNamespaces.add(ns);
         }
 
-        const sorted = [...usedNamespaces].sort();
+        const sorted = [...usedNamespaces].sort((a, b) => a.localeCompare(b));
         for (const ns of sorted) {
             file.addTypeNamespaceImport(`@gtkx/ffi/${ns.toLowerCase()}`, ns);
         }
@@ -123,7 +123,6 @@ export class JsxTypesGenerator {
             "Gtk",
             widgetMeta.meta.properties,
             widgetMeta.meta.signals,
-            undefined,
         );
 
         file.add(iface);

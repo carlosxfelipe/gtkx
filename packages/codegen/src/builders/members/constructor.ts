@@ -1,22 +1,26 @@
+import type { Writer } from "../text-writer.js";
 import type { Builder } from "../types.js";
-import type { Writer } from "../writer.js";
+import { type BodyContent, writeBody } from "./body.js";
 import type { OverloadSignature } from "./method.js";
 import type { ParameterBuilder } from "./parameter.js";
 
 /** Configuration options for a class constructor declaration. */
 export type ConstructorOptions = {
     params?: ParameterBuilder[];
-    body?: string[] | ((writer: Writer) => void);
+    body?: BodyContent;
     overloads?: OverloadSignature[];
 };
 
-/** Builder that emits a class constructor with parameters, body, and optional overload signatures. */
+/**
+ * Builder that emits a class constructor. In TS mode, overload signatures
+ * precede the implementation; in JS mode they are dropped.
+ */
 export class ConstructorBuilder implements Builder {
     constructor(private readonly opts: ConstructorOptions) {}
 
     /** @inheritdoc */
     write(writer: Writer): void {
-        if (this.opts.overloads) {
+        if (writer.getMode() !== "js" && this.opts.overloads) {
             for (const overload of this.opts.overloads) {
                 writer.write("constructor(");
                 if (overload.params.length > 0) {
@@ -32,15 +36,7 @@ export class ConstructorBuilder implements Builder {
             writer.writeJoined(", ", this.opts.params);
         }
         writer.write(") ");
-        writer.writeBlock(() => {
-            if (typeof this.opts.body === "function") {
-                this.opts.body(writer);
-            } else if (this.opts.body) {
-                for (const line of this.opts.body) {
-                    writer.writeLine(line);
-                }
-            }
-        });
+        writeBody(writer, this.opts.body);
         writer.newLine();
     }
 }

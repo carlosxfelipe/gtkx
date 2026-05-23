@@ -16,7 +16,7 @@ import {
     GirSignal,
     GirType,
     type RepositoryLike,
-} from "@gtkx/gir";
+} from "../../src/gir/index.js";
 
 function qualifiedName(ns: string, name: string): string {
     return `${ns}.${name}`;
@@ -29,6 +29,14 @@ export const NULL_REPO: RepositoryLike = {
     resolveInterface: () => null,
     findClasses: () => [],
 };
+
+export function singleClassRepo(cls: GirClass | null): RepositoryLike {
+    return {
+        resolveClass: () => cls,
+        resolveInterface: () => null,
+        findClasses: () => [],
+    };
+}
 
 type NormalizedTypeData = ConstructorParameters<typeof GirType>[0];
 type NormalizedParameterData = ConstructorParameters<typeof GirParameter>[0];
@@ -150,6 +158,9 @@ export function createNormalizedClass(
             staticFunctions: [],
             properties: [],
             signals: [],
+            fieldNames: [],
+            fields: [],
+            virtualMethodNames: [],
             ...overrides,
         },
         repo,
@@ -170,8 +181,11 @@ export function createNormalizedInterface(
             cType: `${namespace}${name}`,
             prerequisites: [],
             methods: [],
+            staticFunctions: [],
             properties: [],
             signals: [],
+            fieldNames: [],
+            virtualMethodNames: [],
             ...overrides,
         },
         repo,
@@ -199,6 +213,7 @@ export function createNormalizedRecord(overrides: Partial<NormalizedRecordData> 
         cType: `${namespace}${name}`,
         opaque: false,
         disguised: false,
+        isUnion: false,
         fields: [],
         methods: [],
         constructors: [],
@@ -278,8 +293,17 @@ export function createNormalizedNamespace(overrides: Partial<NormalizedNamespace
         callbacks: new Map(),
         functions: new Map(),
         constants: new Map(),
+        aliases: new Map(),
         ...overrides,
     });
+}
+
+export function gtkNamespaceWith(cls: GirClass): Map<string, GirNamespace> {
+    const ns = createNormalizedNamespace({
+        name: "Gtk",
+        classes: new Map([[cls.name, cls]]),
+    });
+    return new Map([["Gtk", ns]]);
 }
 
 export function createWidgetClass(
@@ -357,4 +381,27 @@ export function createButtonClass(
         },
         repo,
     );
+}
+
+/**
+ * The canonical `Button.new` / `Button.new_with_label` constructor pair used by
+ * the class-generator and constructor-builder test suites. Each constructor's
+ * return type is the `Gtk.Button` qualified name; `new_with_label` takes a
+ * `utf8` `label` parameter.
+ */
+export function gtkButtonNewConstructors(): GirConstructor[] {
+    return [
+        createNormalizedConstructor({
+            name: "new",
+            cIdentifier: "gtk_button_new",
+            returnType: createNormalizedType({ name: "Gtk.Button" }),
+            parameters: [],
+        }),
+        createNormalizedConstructor({
+            name: "new_with_label",
+            cIdentifier: "gtk_button_new_with_label",
+            returnType: createNormalizedType({ name: "Gtk.Button" }),
+            parameters: [createNormalizedParameter({ name: "label", type: createNormalizedType({ name: "utf8" }) })],
+        }),
+    ];
 }

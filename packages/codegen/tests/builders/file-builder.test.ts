@@ -2,21 +2,19 @@ import { describe, expect, it } from "vitest";
 import { classDecl } from "../../src/builders/declarations/class.js";
 import { enumDecl } from "../../src/builders/declarations/enum.js";
 import { fileBuilder } from "../../src/builders/file-builder.js";
-import { property } from "../../src/builders/members/property.js";
+import { method } from "../../src/builders/members/method.js";
 import { stringify } from "../../src/builders/stringify.js";
 
-describe("FileBuilder", () => {
+describe("FileBuilder (1)", () => {
     it("renders a file with imports and a class", () => {
         const file = fileBuilder()
             .addImport("../../object.js", ["NativeObject", "NativeHandle"])
             .addImport("@gtkx/native", ["call"])
             .add(
-                classDecl("Button", { exported: true, extends: "NativeObject" }).addProperty(
-                    property("glibTypeName", {
-                        isStatic: true,
-                        readonly: true,
-                        type: "string",
-                        initializer: '"GtkButton"',
+                classDecl("Button", { exported: true, extends: "NativeObject" }).addMethod(
+                    method("getLabel", {
+                        returnType: "string",
+                        body: ['return "GtkButton";'],
                     }),
                 ),
             );
@@ -52,7 +50,9 @@ describe("FileBuilder", () => {
         const output = stringify(file);
         expect(output).toContain('import { type Type } from "./types.js";');
     });
+});
 
+describe("FileBuilder (2)", () => {
     it("adds blank line between imports and declarations", () => {
         const file = fileBuilder()
             .addImport("./foo.js", ["Foo"])
@@ -78,5 +78,37 @@ describe("FileBuilder", () => {
         const output = stringify(file);
         expect(output).not.toContain("import");
         expect(output).toContain("export enum Foo");
+    });
+});
+
+describe("FileBuilder (3)", () => {
+    describe("setMode", () => {
+        it("drops type-only imports and intra-namespace paths in JS mode", () => {
+            const file = fileBuilder()
+                .setMode("js")
+                .addTypeImport("./types.js", ["Type"])
+                .addImport("./other.js", ["other"])
+                .addImport("external-lib", ["call"]);
+
+            const output = stringify(file);
+            expect(output).not.toContain("Type");
+            expect(output).not.toContain("./other.js");
+            expect(output).toContain('import { call } from "external-lib";');
+        });
+
+        it("emits enums as frozen consts in JS mode", () => {
+            const file = fileBuilder()
+                .setMode("js")
+                .add(
+                    enumDecl("Status", { exported: true })
+                        .addMember({ name: "OK", value: 0 })
+                        .addMember({ name: "ERROR", value: 1 }),
+                );
+
+            const output = stringify(file);
+            expect(output).toContain("export const Status = globalThis.Object.freeze(");
+            expect(output).toContain("OK: 0");
+            expect(output).toContain("ERROR: 1");
+        });
     });
 });

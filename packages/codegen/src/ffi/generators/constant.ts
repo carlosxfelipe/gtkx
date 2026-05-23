@@ -4,10 +4,11 @@
  * Generates constant definitions using the builder library.
  */
 
-import type { GirConstant } from "@gtkx/gir";
 import { type FileBuilder, variableStatement } from "../../builders/index.js";
-import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
-import { formatJsDoc } from "../../core/utils/doc-formatter.js";
+import type { SimpleGeneratorOptions } from "../../generator-types.js";
+import type { GirConstant } from "../../gir/index.js";
+import { UNSAFE_PRIMITIVE_NAMES } from "../../type-system/ffi-types.js";
+import { formatJsDoc } from "../../utils/doc-formatter.js";
 
 /**
  * Generates constant declarations into a FileBuilder.
@@ -39,6 +40,7 @@ export class ConstantGenerator {
         const constName = constant.name;
 
         if (this.seen.has(constName)) return;
+        if (UNSAFE_PRIMITIVE_NAMES.has(constant.type.name)) return;
         this.seen.add(constName);
 
         const isStringType = constant.type.name === "utf8" || constant.type.name === "filename";

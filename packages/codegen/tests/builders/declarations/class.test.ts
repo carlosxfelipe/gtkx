@@ -1,33 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { classDecl } from "../../../src/builders/declarations/class.js";
+import { accessor } from "../../../src/builders/members/accessor.js";
 import { constructorDecl } from "../../../src/builders/members/constructor.js";
 import { method } from "../../../src/builders/members/method.js";
 import { param } from "../../../src/builders/members/parameter.js";
-import { property } from "../../../src/builders/members/property.js";
 import { stringify } from "../../../src/builders/stringify.js";
 
-describe("ClassDeclarationBuilder", () => {
+describe("ClassDeclarationBuilder (1)", () => {
     it("generates a simple class", () => {
         const cls = classDecl("Button", { exported: true, extends: "Widget" });
         expect(stringify(cls)).toBe("export class Button extends Widget {\n}\n");
     });
 
-    it("generates class with static property", () => {
-        const cls = classDecl("Button", { exported: true, extends: "Widget" }).addProperty(
-            property("glibTypeName", {
-                isStatic: true,
-                readonly: true,
+    it("generates class with a typed accessor pair", () => {
+        const cls = classDecl("Button", { exported: true, extends: "Widget" }).addAccessor(
+            accessor("label", {
                 type: "string",
-                initializer: '"GtkButton"',
+                getBody: ['return this.getProperty("label");'],
+                setBody: ['this.setProperty("label", value);'],
             }),
         );
 
-        expect(stringify(cls)).toBe(
-            'export class Button extends Widget {\n    static readonly glibTypeName: string = "GtkButton";\n}\n',
-        );
+        const output = stringify(cls);
+        expect(output).toContain("export class Button extends Widget {");
+        expect(output).toContain("get label(): string {");
+        expect(output).toContain('return this.getProperty("label");');
+        expect(output).toContain("set label(value: string) {");
+        expect(output).toContain('this.setProperty("label", value);');
     });
 
-    it("generates class with constructor overloads", () => {
+    it("generates class with constructor overloads in TS mode", () => {
         const cls = classDecl("Button", { exported: true, extends: "Widget" }).setConstructor(
             constructorDecl({
                 params: [param("labelOrHandle", "string | NativeHandle")],
@@ -45,8 +47,10 @@ describe("ClassDeclarationBuilder", () => {
         expect(output).toContain("constructor(labelOrHandle: string | NativeHandle)");
         expect(output).toContain("super(labelOrHandle as NativeHandle);");
     });
+});
 
-    it("generates class with methods", () => {
+describe("ClassDeclarationBuilder (2)", () => {
+    it("generates class with typed methods in TS mode", () => {
         const cls = classDecl("Button", { exported: true })
             .addMethod(
                 method("getLabel", {
@@ -69,31 +73,19 @@ describe("ClassDeclarationBuilder", () => {
         expect(output).toContain("this._label = label;");
     });
 
-    it("generates class with doc", () => {
+    it("emits a doc comment on the class", () => {
         const cls = classDecl("Widget", { exported: true, doc: "Base widget class." });
         expect(stringify(cls)).toContain("/** Base widget class. */");
     });
 
-    it("generates abstract class", () => {
+    it("emits the abstract keyword in TS mode", () => {
         const cls = classDecl("BaseType", { exported: true, abstract: true });
         expect(stringify(cls)).toBe("export abstract class BaseType {\n}\n");
     });
+});
 
-    it("generates class with override property", () => {
-        const cls = classDecl("Button", { exported: true, extends: "Widget" }).addProperty(
-            property("glibTypeName", {
-                isStatic: true,
-                readonly: true,
-                override: true,
-                type: "string",
-                initializer: '"GtkButton"',
-            }),
-        );
-
-        expect(stringify(cls)).toContain("static override readonly glibTypeName");
-    });
-
-    it("generates class with writer callback body", () => {
+describe("ClassDeclarationBuilder (3)", () => {
+    it("emits a writer-callback method body", () => {
         const cls = classDecl("Button", { exported: true }).addMethod(
             method("doStuff", {
                 returnType: "void",
@@ -111,5 +103,19 @@ describe("ClassDeclarationBuilder", () => {
         expect(output).toContain("if (true) {");
         expect(output).toContain("        doSomething();");
         expect(output).toContain("    }");
+    });
+
+    it("drops type annotations and abstract in JS mode", () => {
+        const cls = classDecl("Button", { exported: true, abstract: true }).addMethod(
+            method("getLabel", {
+                returnType: "string",
+                body: ['return "hello";'],
+            }),
+        );
+
+        const output = stringify(cls, "js");
+        expect(output).not.toContain("abstract");
+        expect(output).not.toContain(": string");
+        expect(output).toContain("getLabel()");
     });
 });
