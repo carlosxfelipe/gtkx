@@ -13,6 +13,7 @@ RUN dnf install -y \
     vte291-gtk4-devel \
     gstreamer1-devel \
     gstreamer1-plugins-base-devel \
+    gvfs \
     gtk4-layer-shell-devel \
     libsoup3-devel \
     json-glib-devel \
