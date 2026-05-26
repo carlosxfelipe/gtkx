@@ -429,6 +429,70 @@ fn write_value_to_raw_ptr_writes_boxed() {
 }
 
 #[test]
+fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
+    common::run(|| {
+        let target: u64 = 0xAA55;
+        let handle = NativeHandle::borrowed(&target as *const u64 as *mut c_void);
+
+        let mut slot: *mut c_void = std::ptr::null_mut();
+        let unknown = BoxedType {
+            ownership: Ownership::Borrowed,
+            type_name: "GtypeUnknownBoxed".to_owned(),
+            library: None,
+            get_type_fn: None,
+            free_fn: None,
+        };
+
+        unknown
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(handle),
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+        assert_eq!(slot, &target as *const u64 as *mut c_void);
+    });
+}
+
+#[test]
+fn write_value_to_raw_ptr_writes_null_when_src_is_null() {
+    common::run(|| {
+        let mut slot: *mut c_void = std::ptr::null_mut();
+        boxed(Ownership::Borrowed)
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(std::ptr::null_mut())),
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+        assert!(slot.is_null());
+    });
+}
+
+#[test]
+fn write_value_to_raw_ptr_frees_previous_pointer_in_slot() {
+    common::run(|| {
+        let gtype = gdk::RGBA::static_type();
+        let original = common::allocate_test_boxed(gtype);
+        let previous = common::allocate_test_boxed(gtype);
+
+        let mut slot: *mut c_void = previous;
+        boxed(Ownership::Borrowed)
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(original)),
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+        assert!(!slot.is_null());
+        assert_ne!(slot, original);
+        assert_ne!(slot, previous);
+
+        unsafe {
+            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), slot);
+            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
+        }
+    });
+}
+
+#[test]
 fn to_glib_value_wraps_boxed() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
@@ -745,6 +809,57 @@ fn struct_write_value_to_raw_ptr_writes_pointer() {
         assert_eq!(slot, original);
 
         unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+    });
+}
+
+#[test]
+fn struct_write_value_to_raw_ptr_with_size_copies_into_dst() {
+    common::run(|| {
+        let src: u64 = 0xDEAD_BEEF_DEAD_BEEF;
+        let mut dst: u64 = 0;
+        let mut slot: *mut c_void = &mut dst as *mut u64 as *mut c_void;
+
+        struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(&src as *const u64 as *mut c_void)),
+            )
+            .expect("struct write_value_to_raw_ptr should succeed");
+
+        assert_eq!(dst, src);
+        assert_eq!(slot, &mut dst as *mut u64 as *mut c_void);
+    });
+}
+
+#[test]
+fn struct_write_value_to_raw_ptr_with_size_writes_null_for_null_src() {
+    common::run(|| {
+        let mut slot: *mut c_void = 7 as *mut c_void;
+
+        struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(std::ptr::null_mut())),
+            )
+            .expect("struct write_value_to_raw_ptr should succeed");
+
+        assert!(slot.is_null());
+    });
+}
+
+#[test]
+fn struct_write_value_to_raw_ptr_with_size_bails_for_null_dst() {
+    common::run(|| {
+        let src: u64 = 1;
+        let mut slot: *mut c_void = std::ptr::null_mut();
+
+        let err = struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(&src as *const u64 as *mut c_void)),
+            );
+
+        assert!(err.is_err());
     });
 }
 
