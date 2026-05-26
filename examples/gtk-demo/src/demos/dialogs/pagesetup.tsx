@@ -1,4 +1,3 @@
-import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useEffect } from "react";
 import type { Demo, DemoProps } from "../types.js";
@@ -9,18 +8,10 @@ const PageSetupDemo = ({ window, onClose }: DemoProps) => {
         const parent = window.current;
         if (!parent) return;
 
-        const dialog = Gtk.PrintDialog.new();
-        dialog.setTitle("Page Setup");
-        const cancellable = new Gio.Cancellable();
-
-        dialog
-            .setup(parent, cancellable)
-            .catch(() => undefined)
-            .finally(() => onClose?.());
-
-        return () => {
-            cancellable.cancel();
-        };
+        const settings = new Gtk.PrintSettings();
+        Gtk.printRunPageSetupDialogAsync(parent, null, settings, () => {
+            onClose?.();
+        });
     }, [window, onClose]);
 
     return null;

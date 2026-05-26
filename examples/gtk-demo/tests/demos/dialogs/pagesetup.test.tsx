@@ -1,4 +1,3 @@
-import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -19,43 +18,18 @@ describe("pageSetupDemo metadata", () => {
 });
 
 describe("pageSetupDemo component lifecycle", () => {
-    it("invokes the demo's print dialog and runs onClose when the dialog resolves", async () => {
-        const setupSpy = vi.spyOn(Gtk.PrintDialog.prototype, "setup");
-        setupSpy.mockResolvedValue(new Gtk.PageSetup() as unknown as Gtk.PrintSetup);
+    it("invokes the page setup dialog and runs onClose when the user completes the dialog", async () => {
+        const dialogSpy = vi.spyOn(Gtk, "printRunPageSetupDialogAsync");
+        dialogSpy.mockImplementation((_parent, _pageSetup, _settings, doneCb) => {
+            doneCb(new Gtk.PageSetup());
+        });
         const onClose = vi.fn();
         try {
             await renderDemo(pageSetupDemo, { onClose });
-            await waitFor(() => expect(setupSpy).toHaveBeenCalled());
+            await waitFor(() => expect(dialogSpy).toHaveBeenCalled());
             await waitFor(() => expect(onClose).toHaveBeenCalled());
         } finally {
-            setupSpy.mockRestore();
-        }
-    });
-
-    it("swallows dialog rejections and still runs onClose", async () => {
-        const setupSpy = vi.spyOn(Gtk.PrintDialog.prototype, "setup");
-        setupSpy.mockRejectedValue(new Error("dismissed"));
-        const onClose = vi.fn();
-        try {
-            await renderDemo(pageSetupDemo, { onClose });
-            await waitFor(() => expect(onClose).toHaveBeenCalled());
-        } finally {
-            setupSpy.mockRestore();
-        }
-    });
-
-    it("cancels the in-flight Gio.Cancellable when the demo unmounts", async () => {
-        const cancelSpy = vi.spyOn(Gio.Cancellable.prototype, "cancel");
-        const setupSpy = vi.spyOn(Gtk.PrintDialog.prototype, "setup");
-        setupSpy.mockImplementation(() => new Promise(() => {}));
-        try {
-            const result = await renderDemo(pageSetupDemo);
-            await waitFor(() => expect(setupSpy).toHaveBeenCalled());
-            await result.unmount();
-            expect(cancelSpy).toHaveBeenCalled();
-        } finally {
-            setupSpy.mockRestore();
-            cancelSpy.mockRestore();
+            dialogSpy.mockRestore();
         }
     });
 });

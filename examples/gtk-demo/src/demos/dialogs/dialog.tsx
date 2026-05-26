@@ -37,7 +37,7 @@ const DialogEntryRow = ({
     onOpenInteractive,
 }: DialogEntryRowProps) => (
     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-        <GtkButton label="_Interactive Dialog" useUnderline onClicked={onOpenInteractive} />
+        <GtkButton label="_Interactive Dialog" useUnderline valign={Gtk.Align.START} onClicked={onOpenInteractive} />
         <GtkGrid rowSpacing={4} columnSpacing={4}>
             <GtkGrid.Child column={0} row={0}>
                 <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={entry1Widget} />

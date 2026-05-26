@@ -396,16 +396,37 @@ function useColorsSortMode(models: ColorsModels, mode: SortMode): void {
 const FILL_BATCH_DIVISOR = 4096;
 const FILL_BATCH_MAX = 4096;
 
-function useColorsFill(
+function fillSynchronously(models: ColorsModels, colorLimit: ColorLimit, sortMode: SortMode): void {
+    models.baseStore.removeAll();
+    models.liveRefs.length = 0;
+    const batch: ColorObject[] = new Array(colorLimit);
+    for (let i = 0; i < colorLimit; i++) batch[i] = createColorObject(i);
+    for (const obj of batch) models.liveRefs.push(obj);
+    models.baseStore.splice(0, 0, batch);
+    reorderStore(models, sortMode);
+}
+
+function useColorsInitialFill(
+    models: ColorsModels,
+    colorLimit: ColorLimit,
+    sortModeRef: React.RefObject<SortMode>,
+): void {
+    const filledRef = useRef(false);
+    if (!filledRef.current) {
+        filledRef.current = true;
+        fillSynchronously(models, colorLimit, sortModeRef.current);
+    }
+}
+
+function useColorsRefill(
     models: ColorsModels,
     gridView: Gtk.GridView | null,
     colorLimit: ColorLimit,
     sortModeRef: React.RefObject<SortMode>,
     refillToken: number,
 ): void {
-    // biome-ignore lint/correctness/useExhaustiveDependencies: refillToken is a re-trigger signal
     useEffect(() => {
-        if (!gridView) return;
+        if (!gridView || refillToken === 0) return;
         models.baseStore.removeAll();
         models.liveRefs.length = 0;
         const increment = Math.min(FILL_BATCH_MAX, Math.max(1, Math.floor(colorLimit / FILL_BATCH_DIVISOR)));
@@ -430,13 +451,29 @@ function useColorsFill(
     }, [models, gridView, colorLimit, sortModeRef, refillToken]);
 }
 
+function useColorsLimitFill(
+    models: ColorsModels,
+    colorLimit: ColorLimit,
+    sortModeRef: React.RefObject<SortMode>,
+): void {
+    const previousLimitRef = useRef(colorLimit);
+    useEffect(() => {
+        if (previousLimitRef.current === colorLimit) return;
+        previousLimitRef.current = colorLimit;
+        fillSynchronously(models, colorLimit, sortModeRef.current);
+    }, [models, colorLimit, sortModeRef]);
+}
+
 interface ColorsProgress {
     itemCount: number;
     isFilling: boolean;
 }
 
 function useColorsProgress(baseStore: Gio.ListStore, colorLimit: ColorLimit): ColorsProgress {
-    const [progress, setProgress] = useState<ColorsProgress>(() => ({ itemCount: 0, isFilling: true }));
+    const [progress, setProgress] = useState<ColorsProgress>(() => {
+        const itemCount = baseStore.getNItems();
+        return { itemCount, isFilling: itemCount < colorLimit };
+    });
 
     useEffect(() => {
         const update = () => {
@@ -625,7 +662,9 @@ const ColorsGridOverlay = () => {
     const { state, models, computed } = useColorsContext();
     const [gridView, setGridView] = useState<Gtk.GridView | null>(null);
     const sortModeRef = useLatest(state.sortMode);
-    useColorsFill(models, gridView, state.colorLimit, sortModeRef, state.refillToken);
+    useColorsInitialFill(models, state.colorLimit, sortModeRef);
+    useColorsLimitFill(models, state.colorLimit, sortModeRef);
+    useColorsRefill(models, gridView, state.colorLimit, sortModeRef, state.refillToken);
 
     const overlayFraction = computed.progress.itemCount / state.colorLimit;
     const showProgress = computed.progress.isFilling;

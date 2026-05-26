@@ -713,7 +713,7 @@ const GearsDemo = () => {
             </GtkBox>
             <GtkOverlay.Child>
                 <GtkLabel
-                    label={state.fps >= 0 ? `FPS: ${state.fps.toFixed(1)}` : ""}
+                    label={state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.START}
                     marginStart={12}

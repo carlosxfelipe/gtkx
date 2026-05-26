@@ -109,7 +109,7 @@ function createBlendCss(blendMode: string) {
     `;
 }
 
-const BlendStack = ({ stackRef }: { stackRef: (s: Gtk.Stack | null) => void }) => (
+const BlendStack = ({ stackRef, visible }: { stackRef: (s: Gtk.Stack | null) => void; visible: boolean }) => (
     <GtkStack
         name="blend-stack"
         ref={stackRef}
@@ -118,6 +118,7 @@ const BlendStack = ({ stackRef }: { stackRef: (s: Gtk.Stack | null) => void }) =
         hhomogeneous={false}
         vhomogeneous={false}
         transitionType={Gtk.StackTransitionType.CROSSFADE}
+        visible={visible}
     >
         <GtkStack.Page id="page0" title="Ducky">
             <DuckyPage />
@@ -249,11 +250,11 @@ const CssBlendmodesDemo = () => {
             </GtkGrid.Child>
 
             <GtkGrid.Child column={1} row={0}>
-                <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} hexpand />
+                <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} hexpand visible={stack !== null} />
             </GtkGrid.Child>
 
             <GtkGrid.Child column={1} row={1}>
-                <BlendStack stackRef={setStack} />
+                <BlendStack stackRef={setStack} visible={stack !== null} />
             </GtkGrid.Child>
         </GtkGrid>
     );

@@ -24,7 +24,7 @@ import { makeValue } from "../../gvalue.js";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 import floppyBuddyPath from "./floppybuddy.gif";
-import demo4SymbolicPath from "./org.gtk.Demo4-symbolic.svg";
+import demo4LogoPath from "./org.gtk.Demo4.svg";
 import portlandRosePath from "./portland-rose.jpg";
 
 const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void => clipboard.set(value);
@@ -105,8 +105,8 @@ type ClipboardState = ReturnType<typeof useClipboardState>;
 function useClipboardTextures() {
     const portlandRoseTexture = useMemo(() => Gdk.Texture.newFromFilename(portlandRosePath), []);
     const floppyBuddyTexture = useMemo(() => Gdk.Texture.newFromFilename(floppyBuddyPath), []);
-    const demo4SymbolicTexture = useMemo(() => Gdk.Texture.newFromFilename(demo4SymbolicPath), []);
-    return { portlandRoseTexture, floppyBuddyTexture, demo4SymbolicTexture };
+    const demo4LogoTexture = useMemo(() => Gdk.Texture.newFromFilename(demo4LogoPath), []);
+    return { portlandRoseTexture, floppyBuddyTexture, demo4LogoTexture };
 }
 
 const getClipboard = () => Gdk.Display.getDefault()?.getClipboard() ?? null;
@@ -164,7 +164,7 @@ function useDragProviders(state: ClipboardState) {
 }
 
 const imagePathForIndex = (index: number) => {
-    const paths = [portlandRosePath, floppyBuddyPath, demo4SymbolicPath];
+    const paths = [portlandRosePath, floppyBuddyPath, demo4LogoPath];
     return paths[index] ?? portlandRosePath;
 };
 
@@ -479,7 +479,7 @@ const SourcePageImage = ({ state, textures, createImageDragProvider }: SourcePag
                 imageLabel="gtk-demo logo"
                 index={2}
                 state={state}
-                paintable={textures.demo4SymbolicTexture}
+                paintable={textures.demo4LogoTexture}
                 createProvider={createImageDragProvider}
             />
         </GtkBox>

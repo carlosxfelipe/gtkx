@@ -258,14 +258,14 @@ function useDndState() {
 
 type DndState = ReturnType<typeof useDndState>;
 
-const INITIAL_ITEM_COUNT = 3;
+const INITIAL_ITEM_COUNT = 4;
 let nextItemNumber = INITIAL_ITEM_COUNT + 1;
 
 const createInitialItems = (): CanvasItem[] => {
     const style = initialItemStyle();
     const items: CanvasItem[] = [];
-    let x = 150;
-    let y = 100;
+    let x = 40;
+    let y = 40;
     for (let i = 1; i <= INITIAL_ITEM_COUNT; i++) {
         items.push({ id: String(i), label: `Item ${i}`, style, x, y, angle: 0, angleDelta: 0 });
         x += 150;
@@ -409,20 +409,12 @@ function useItemDragHandlers(args: DndHandlerArgs) {
     );
 
     const setDragIcon = useCallback(
-        (itemId: string) => {
+        (itemId: string, source: Gtk.DragSource) => {
             const button = refs.buttonRefs.current.get(itemId);
             if (!button) return;
-            const controllers = button.observeControllers();
-            const count = controllers.getNItems();
-            for (let i = 0; i < count; i++) {
-                const controller = controllers.getItem(i);
-                if (controller instanceof Gtk.DragSource) {
-                    const paintable = Gtk.WidgetPaintable.new(button);
-                    const { x, y } = refs.dragHotspotRef.current;
-                    controller.setIcon(paintable, x, y);
-                    break;
-                }
-            }
+            const paintable = Gtk.WidgetPaintable.new(button);
+            const { x, y } = refs.dragHotspotRef.current;
+            source.setIcon(paintable, x, y);
         },
         [refs],
     );
@@ -556,8 +548,8 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                         refs.dragHotspotRef.current = { x, y };
                         return handlers.createContentProvider(item.id);
                     }}
-                    onDragBegin={() => {
-                        handlers.setDragIcon(item.id);
+                    onDragBegin={(_drag, source) => {
+                        handlers.setDragIcon(item.id, source);
                         handlers.bringToFront(item.id);
                         refs.buttonRefs.current.get(item.id)?.setOpacity(0.3);
                         trashVisibility.show();

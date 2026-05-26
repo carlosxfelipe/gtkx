@@ -120,36 +120,49 @@ const ImagesDemo = ({ window }: DemoProps) => {
             marginBottom={16}
         >
             <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
-                <ImagesPanel title="Image from a resource">
-                    <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
-                </ImagesPanel>
-                <ImagesPanel title="Animation from a resource">
-                    <GtkPicture
-                        name="gif-picture"
-                        paintable={gifPaintable}
-                        canShrink
-                        widthRequest={150}
-                        heightRequest={150}
-                    />
-                </ImagesPanel>
-                <ImagesPanel title="Symbolic themed icon">
-                    <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
-                </ImagesPanel>
-                <StatefulIconPanel />
-                <PathAnimationPanel />
-                <ImagesPanel title="Displaying video">
-                    <GtkVideo name="logo-video" autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
-                </ImagesPanel>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
-                    <GtkPicture
-                        name="widget-paintable-picture"
-                        paintable={widgetPaintable}
-                        widthRequest={100}
-                        heightRequest={100}
-                        canShrink
-                        valign={Gtk.Align.START}
-                    />
+                    <ImagesPanel title="Image from a resource">
+                        <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
+                    </ImagesPanel>
+                    <ImagesPanel title="Animation from a resource">
+                        <GtkPicture
+                            name="gif-picture"
+                            paintable={gifPaintable}
+                            canShrink
+                            widthRequest={150}
+                            heightRequest={150}
+                        />
+                    </ImagesPanel>
+                    <ImagesPanel title="Symbolic themed icon">
+                        <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
+                    </ImagesPanel>
+                </GtkBox>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <StatefulIconPanel />
+                    <PathAnimationPanel />
+                </GtkBox>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <ImagesPanel title="Displaying video">
+                        <GtkVideo
+                            name="logo-video"
+                            autoplay
+                            loop
+                            widthRequest={200}
+                            heightRequest={150}
+                            file={videoFile}
+                        />
+                    </ImagesPanel>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                        <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
+                        <GtkPicture
+                            name="widget-paintable-picture"
+                            paintable={widgetPaintable}
+                            widthRequest={100}
+                            heightRequest={100}
+                            canShrink
+                            valign={Gtk.Align.START}
+                        />
+                    </GtkBox>
                 </GtkBox>
             </GtkBox>
 

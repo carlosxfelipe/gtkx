@@ -238,7 +238,7 @@ describe("dndDemo context menu", () => {
     it("opens an inline edit entry via the context menu's Edit button when right-clicking on an item", async () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
-        await triggerContextMenu(canvas, 155, 105);
+        await triggerContextMenu(canvas, 45, 45);
         const editButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Edit" })) as Gtk.Button;
         await waitFor(() => expect(editButton.getSensitive()).toBe(true));
         await userEvent.click(editButton);
@@ -251,7 +251,7 @@ describe("dndDemo context menu", () => {
     it("deletes the targeted item via the context menu's Delete button", async () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
-        await triggerContextMenu(canvas, 155, 105);
+        await triggerContextMenu(canvas, 45, 45);
         const deleteButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" })) as Gtk.Button;
         await waitFor(() => expect(deleteButton.getSensitive()).toBe(true));
         await userEvent.click(deleteButton);

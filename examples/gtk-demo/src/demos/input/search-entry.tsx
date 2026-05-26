@@ -92,4 +92,5 @@ export const searchEntryDemo: Demo = {
     sourceCode,
     windowTitle: "Type to Search",
     resizable: false,
+    defaultWidth: 200,
 };

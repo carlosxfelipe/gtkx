@@ -116,20 +116,16 @@ function getCursorTexture(info: CursorInfo): Gdk.Texture {
     return texture;
 }
 
-const gtkLogoTextureCallback: Gdk.CursorGetTextureCallback = (_cursor, _cursorSize, _scale, _data) => {
-    return getCursorTexture({ name: "gtk-logo", image: gtkLogoPath, hotX: 18, hotY: 2 });
-};
-
 const buildCursorVariants = (info: CursorInfo) => {
     const texture = getCursorTexture(info);
     const named = Gdk.Cursor.newFromName(info.name, null);
     const image = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null);
 
     if (info.name === "gtk-logo") {
-        const fallback = Gdk.Cursor.newFromName("default", null);
-        const callback = Gdk.Cursor.newFromCallback(gtkLogoTextureCallback, fallback);
-        const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, fallback);
-        return [named, image, callback, imageWithFallback] as const;
+        const defaultFallback = Gdk.Cursor.newFromName("default", null);
+        const imageWithDefaultFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, defaultFallback);
+        const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, defaultFallback);
+        return [named, image, imageWithDefaultFallback, imageWithFallback] as const;
     }
 
     const namedWithFallback = Gdk.Cursor.newFromName(
@@ -150,8 +146,8 @@ const buildCursorTooltips = (info: CursorInfo): readonly [string, string, string
         ? [
               `The "gtk-logo" named cursor`,
               "An image cursor for the GTK logo",
-              "A callback cursor for the GTK logo",
-              `An image cursor falling back to the "gtk-logo" cursor`,
+              `An image cursor falling back to the "default" cursor`,
+              `An image cursor falling back to the "default" cursor`,
           ]
         : [
               `The "${info.name}" named cursor`,

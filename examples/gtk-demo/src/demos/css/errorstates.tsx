@@ -1,5 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwDialog, GtkEntry, GtkGrid, GtkLabel, GtkScale, GtkShortcutController, GtkSwitch } from "@gtkx/react";
+import {
+    AdwDialog,
+    AdwHeaderBar,
+    AdwToolbarView,
+    GtkEntry,
+    GtkGrid,
+    GtkLabel,
+    GtkScale,
+    GtkShortcutController,
+    GtkSwitch,
+} from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
@@ -233,32 +243,37 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
 
     return (
         <AdwDialog title="Error States" canClose followsContentSize onClosed={() => onClose?.()}>
-            <GtkGrid
-                rowSpacing={10}
-                columnSpacing={10}
-                marginStart={20}
-                marginEnd={20}
-                marginTop={20}
-                marginBottom={20}
-            >
-                <DetailsEntryRow
-                    detailsEntry={state.detailsEntry}
-                    setDetailsEntry={state.setDetailsEntry}
-                    onChange={handlers.handleDetailsChange}
-                />
-                <MoreDetailsEntryRow
-                    moreDetailsEntry={state.moreDetailsEntry}
-                    setMoreDetailsEntry={state.setMoreDetailsEntry}
-                    moreDetailsError={state.moreDetailsError}
-                    onChange={handlers.handleMoreDetailsChange}
-                />
-                <LevelScaleRow
-                    levelScale={state.levelScale}
-                    setLevelScale={state.setLevelScale}
-                    onValueChanged={handlers.handleLevelChange}
-                />
-                <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
-            </GtkGrid>
+            <AdwToolbarView>
+                <AdwToolbarView.AddTopBar>
+                    <AdwHeaderBar />
+                </AdwToolbarView.AddTopBar>
+                <GtkGrid
+                    rowSpacing={10}
+                    columnSpacing={10}
+                    marginStart={20}
+                    marginEnd={20}
+                    marginTop={20}
+                    marginBottom={20}
+                >
+                    <DetailsEntryRow
+                        detailsEntry={state.detailsEntry}
+                        setDetailsEntry={state.setDetailsEntry}
+                        onChange={handlers.handleDetailsChange}
+                    />
+                    <MoreDetailsEntryRow
+                        moreDetailsEntry={state.moreDetailsEntry}
+                        setMoreDetailsEntry={state.setMoreDetailsEntry}
+                        moreDetailsError={state.moreDetailsError}
+                        onChange={handlers.handleMoreDetailsChange}
+                    />
+                    <LevelScaleRow
+                        levelScale={state.levelScale}
+                        setLevelScale={state.setLevelScale}
+                        onValueChanged={handlers.handleLevelChange}
+                    />
+                    <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
+                </GtkGrid>
+            </AdwToolbarView>
         </AdwDialog>
     );
 };

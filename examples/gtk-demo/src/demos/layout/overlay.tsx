@@ -55,20 +55,15 @@ const OverlayDemo = () => {
                 </GtkBox>
             </GtkOverlay.Child>
             <GtkOverlay.Child>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
+                <GtkEntry
+                    text={value}
+                    placeholderText="Your Lucky Number"
                     halign={Gtk.Align.CENTER}
                     valign={Gtk.Align.CENTER}
-                    spacing={10}
-                >
-                    <GtkEntry
-                        text={value}
-                        placeholderText="Your Lucky Number"
-                        marginTop={8}
-                        marginBottom={8}
-                        onChanged={handleEntryChanged}
-                    />
-                </GtkBox>
+                    marginTop={8}
+                    marginBottom={8}
+                    onChanged={handleEntryChanged}
+                />
             </GtkOverlay.Child>
         </GtkOverlay>
     );
