@@ -249,7 +249,7 @@ const paintSmallSurface = ({
 function useFontRenderingState() {
     const [mode, setMode] = useState<Mode>("text");
     const [text, setText] = useState(DEFAULT_TEXT);
-    const [fontDesc, setFontDesc] = useState(() => Pango.FontDescription.fromString("Sans 24"));
+    const [fontDesc, setFontDesc] = useState(() => Pango.FontDescription.fromString("Sans 12"));
     const [hintStyle, setHintStyle] = useState<HintStyle>(HintStyle.NONE);
     const [antialias, setAntialias] = useState(true);
     const [hintMetrics, setHintMetrics] = useState(false);
