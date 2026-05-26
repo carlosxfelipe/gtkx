@@ -366,9 +366,14 @@ impl RawPtrCodec for StructType {
             }
             let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
             if dst_ptr.is_null() {
-                bail!("Struct field write into null pointer slot for type '{}'", self.type_name)
+                bail!(
+                    "Struct field write into null pointer slot for type '{}'",
+                    self.type_name
+                )
             }
-            unsafe { std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size) };
+            unsafe {
+                std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size);
+            }
             return Ok(());
         }
         write_object_ptr(ptr, value, "Struct field write")

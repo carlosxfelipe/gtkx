@@ -39,6 +39,15 @@ fn struct_type(ownership: Ownership, size: Option<usize>) -> StructType {
     }
 }
 
+fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, gtype: glib::Type) {
+    assert!(!slot.is_null());
+    assert_ne!(slot, original);
+    unsafe {
+        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), slot);
+        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
+    }
+}
+
 #[test]
 fn gtype_resolves_from_registered_name() {
     common::run(|| {
@@ -387,13 +396,7 @@ fn write_return_to_raw_ptr_copies_boxed() {
         boxed(Ownership::Borrowed)
             .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
 
-        assert!(!slot.is_null());
-        assert_ne!(slot, original);
-
-        unsafe {
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), slot);
-            glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
-        }
+        assert_slot_holds_copy_then_free(slot, original, gtype);
     });
 }
 
@@ -421,9 +424,7 @@ fn write_value_to_raw_ptr_writes_boxed() {
                 &Value::Object(NativeHandle::borrowed(original)),
             )
             .expect("write_value_to_raw_ptr should succeed");
-        assert_eq!(slot, original);
-
-        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+        assert_slot_holds_copy_then_free(slot, original, gtype);
     });
 }
 
