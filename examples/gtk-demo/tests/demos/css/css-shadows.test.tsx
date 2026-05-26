@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { act, screen, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { cssShadowsDemo } from "../../../src/demos/css/css-shadows.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssShadowsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -40,24 +41,43 @@ describe("cssShadowsDemo rendering", () => {
 });
 
 describe("cssShadowsDemo behavior", () => {
-    it("adds both demo and background css classes to the host window", async () => {
-        const { window, unmount } = await renderDemo(cssShadowsDemo);
-        const win = window.current;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("demo")).toBe(true);
-        expect(win.hasCssClass("background")).toBe(true);
-        await unmount();
-        expect(win.hasCssClass("demo")).toBe(false);
-        expect(win.hasCssClass("background")).toBe(false);
+    it("declares both demo and background css classes on the host window", async () => {
+        expect(cssShadowsDemo.windowCssClasses).toEqual(["demo", "background"]);
+        await renderDemo(cssShadowsDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.hasCssClass("demo")).toBe(true);
+        expect(window.hasCssClass("background")).toBe(true);
     });
 
-    it("propagates user edits in the buffer back through getText", async () => {
-        await renderDemo(cssShadowsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        buffer.setText("button { box-shadow: 0 0 10px red; }", -1);
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toBe("button { box-shadow: 0 0 10px red; }");
+    it("loads the default CSS into a CssProvider when the editor mounts", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssShadowsDemo);
+            const defaultLoad = loadSpy.mock.calls.find(
+                ([css]) => typeof css === "string" && css.includes("text-shadow"),
+            );
+            expect(defaultLoad, "expected the default shadows CSS to be loaded via loadFromString").toBeDefined();
+        } finally {
+            loadSpy.mockRestore();
+        }
+    });
+
+    it("re-applies the CssProvider when the user edits the buffer", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssShadowsDemo);
+            const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+            const buffer = textView.getBuffer();
+            loadSpy.mockClear();
+            await act(() => buffer.setText("button { box-shadow: 0 0 10px red; }", -1));
+            await waitFor(() => {
+                const userLoad = loadSpy.mock.calls.find(
+                    ([css]) => typeof css === "string" && css.includes("box-shadow: 0 0 10px red"),
+                );
+                expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
+            });
+        } finally {
+            loadSpy.mockRestore();
+        }
     });
 });

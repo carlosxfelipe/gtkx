@@ -4,16 +4,12 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkDrawingArea } from "@gtkx/react";
-import { useCallback, useLayoutEffect, useRef } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { useCallback, useRef } from "react";
+import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
 
-const TextmaskDemo = ({ window }: DemoProps) => {
+const TextmaskDemo = () => {
     const drawingAreaRef = useRef<Gtk.DrawingArea>(null);
-
-    useLayoutEffect(() => {
-        window.current?.setSizeRequest(400, 240);
-    }, [window]);
 
     const drawFunc = useCallback((cr: Context, width: number, height: number) => {
         cr.save();
@@ -49,7 +45,7 @@ const TextmaskDemo = ({ window }: DemoProps) => {
         cr.restore();
     }, []);
 
-    return <GtkDrawingArea ref={drawingAreaRef} render={drawFunc} />;
+    return <GtkDrawingArea name="textmask-area" ref={drawingAreaRef} render={drawFunc} />;
 };
 
 export const textmaskDemo: Demo = {
@@ -59,4 +55,6 @@ export const textmaskDemo: Demo = {
     keywords: [],
     component: TextmaskDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 240,
 };

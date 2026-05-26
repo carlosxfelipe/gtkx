@@ -13,10 +13,11 @@ type BufferCallbackProps = Pick<
     "onBufferChanged" | "onTextInserted" | "onTextDeleted" | "onCanUndoChanged" | "onCanRedoChanged"
 >;
 
-type BufferProps = Pick<GtkTextViewProps, "enableUndo"> & BufferCallbackProps;
+type BufferProps = Pick<GtkTextViewProps, "enableUndo" | "buffer"> & BufferCallbackProps;
 
 export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffer> {
     private buffer: TBuffer | null = null;
+    private externallyManaged = false;
     private readonly textChildren: TextContentChild[] = [];
     private initialMount = true;
     private irreversibleStarted = false;
@@ -43,6 +44,18 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         return this.buffer;
     }
 
+    setExternalBuffer(buffer: Gtk.TextBuffer | null | undefined): void {
+        if (buffer) {
+            if (this.buffer === (buffer as TBuffer) && this.externallyManaged) return;
+            this.buffer = buffer as TBuffer;
+            this.externallyManaged = true;
+            this.container.setBuffer(buffer);
+        } else if (this.externallyManaged) {
+            this.buffer = null;
+            this.externallyManaged = false;
+        }
+    }
+
     finalizeInitialMount(): void {
         if (this.irreversibleStarted) {
             this.buffer?.endIrreversibleAction();
@@ -52,7 +65,12 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
     }
 
     applyOwnProps(oldProps: BufferProps | null, newProps: BufferProps): void {
+        if (hasChanged(oldProps, newProps, "buffer")) {
+            this.setExternalBuffer(newProps.buffer);
+        }
+
         const hasBufferProps =
+            newProps.buffer !== undefined ||
             newProps.enableUndo !== undefined ||
             newProps.onBufferChanged !== undefined ||
             newProps.onTextInserted !== undefined ||
@@ -352,21 +370,16 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
     onChildTextChanged(child: TextSegmentNode, oldLength: number, _newLength: number): void {
         if (!this.buffer) return;
 
-        this.owner.signalStore.blockAll();
-        try {
-            const offset = child.getBufferOffset();
+        const offset = child.getBufferOffset();
 
-            this.deleteTextAtRange(offset, offset + oldLength);
-            this.insertTextAtOffset(child.getText(), offset);
+        this.deleteTextAtRange(offset, offset + oldLength);
+        this.insertTextAtOffset(child.getText(), offset);
 
-            const containingIndex = this.findDirectChildContaining(offset);
-            if (containingIndex !== -1) {
-                this.updateChildOffsets(containingIndex + 1);
-            }
-
-            this.reapplyTagsFromOffset(offset);
-        } finally {
-            this.owner.signalStore.unblockAll();
+        const containingIndex = this.findDirectChildContaining(offset);
+        if (containingIndex !== -1) {
+            this.updateChildOffsets(containingIndex + 1);
         }
+
+        this.reapplyTagsFromOffset(offset);
     }
 }

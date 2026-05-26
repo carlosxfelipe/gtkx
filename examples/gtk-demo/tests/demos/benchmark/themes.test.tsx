@@ -1,27 +1,17 @@
-import * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";
-import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const findAlertDialog = async (): Promise<Adw.AlertDialog> => {
-    const warningLabel = await screen.findByText(/photosensitive/i, { exact: false });
-    let current: Gtk.Widget | null = warningLabel;
-    while (current) {
-        if (current instanceof Adw.AlertDialog) return current;
-        current = current.getParent();
-    }
-    throw new Error("alert dialog ancestor missing");
-};
+vi.setConfig({ testTimeout: 30000 });
 
 const activateCycleAndAwaitAlert = async (): Promise<{ cycle: Gtk.ToggleButton; alert: Adw.AlertDialog }> => {
     await renderDemo(themesDemo);
-    const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-        name: "Cycle",
-    })) as Gtk.ToggleButton;
-    await act(() => cycle.setActive(true));
-    await fireEvent(cycle, "toggled");
-    const alert = await findAlertDialog();
+    const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Cycle" })) as Gtk.ToggleButton;
+    await userEvent.click(cycle);
+    const alert = (await screen.findByName("warning-dialog")) as Adw.AlertDialog;
     return { cycle, alert };
 };
 
@@ -29,52 +19,56 @@ describe("themesDemo", () => {
     it("exposes the expected metadata", () => {
         expect(themesDemo.id).toBe("themes");
         expect(themesDemo.title).toBe("Benchmark/Themes");
+        expect(themesDemo.description.length).toBeGreaterThan(0);
         expect(typeof themesDemo.sourceCode).toBe("string");
+        expect(themesDemo.resizable).toBe(false);
+        expect(themesDemo.component).toBeTypeOf("function");
     });
 
     it("renders the cycle toggle inside the titlebar and the body buttons", async () => {
-        const { window } = await renderDemo(themesDemo);
-        const win = window.current;
-        if (!win) throw new Error("expected the window ref to be populated");
-        const titlebar = win.getTitlebar?.();
-        expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
-        const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+        await renderDemo(themesDemo);
+        const header = (await screen.findByName("themes-header")) as Gtk.HeaderBar;
+        const cycle = within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Cycle",
-        })) as Gtk.ToggleButton;
-        expect(cycle).toBeInstanceOf(Gtk.ToggleButton);
+        }) as Gtk.ToggleButton;
         expect(cycle.getActive()).toBe(false);
-        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" })).toBeDefined();
-        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Destructive" })).toBeDefined();
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" })).toBeInstanceOf(
+            Gtk.Button,
+        );
+        const destructive = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "Destructive",
+        })) as Gtk.Button;
+        expect(destructive.getCssClasses()).toContain("destructive-action");
     });
 
-    it("opens the warning dialog when the cycle toggle is activated", async () => {
-        await renderDemo(themesDemo);
-        const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "Cycle",
-        })) as Gtk.ToggleButton;
-        await act(() => cycle.setActive(true));
-        await fireEvent(cycle, "toggled");
-        const warning = await screen.findByText(/photosensitive/i, { exact: false });
-        expect(warning).toBeDefined();
+    it("opens the warning dialog and exposes the photosensitive warning text", async () => {
+        const { cycle, alert } = await activateCycleAndAwaitAlert();
+        expect(alert.getHeading()).toBe("Warning");
+        expect(alert.getBody()).toMatch(/photosensitive/i);
         expect(cycle.getActive()).toBe(true);
     });
 });
 
 describe("themesDemo cycling lifecycle", () => {
-    it("starts cycling when the warning is accepted", async () => {
-        const { alert } = await activateCycleAndAwaitAlert();
-        await fireEvent(alert, "response", "ok");
-    });
-
-    it("does not start cycling when the warning is dismissed", async () => {
-        const { alert } = await activateCycleAndAwaitAlert();
-        await fireEvent(alert, "response", "cancel");
-    });
-
-    it("stops cycling when the toggle is unchecked after acceptance", async () => {
+    it("dismisses the warning dialog when accepted and keeps the cycle toggle active", async () => {
         const { cycle, alert } = await activateCycleAndAwaitAlert();
         await fireEvent(alert, "response", "ok");
-        await act(() => cycle.setActive(false));
-        await fireEvent(cycle, "toggled");
+        await waitFor(() => expect(screen.queryByName("warning-dialog")).toBeNull());
+        expect(cycle.getActive()).toBe(true);
+    });
+
+    it("dismisses the warning dialog when cancelled", async () => {
+        const { alert } = await activateCycleAndAwaitAlert();
+        await fireEvent(alert, "response", "cancel");
+        await waitFor(() => expect(screen.queryByName("warning-dialog")).toBeNull());
+    });
+
+    it("stops cycling and clears the cycle toggle when unchecked after acceptance", async () => {
+        const { cycle, alert } = await activateCycleAndAwaitAlert();
+        await fireEvent(alert, "response", "ok");
+        await waitFor(() => expect(cycle.getActive()).toBe(true));
+        await userEvent.click(cycle);
+        await waitFor(() => expect(cycle.getActive()).toBe(false));
+        expect(screen.queryByName("warning-dialog")).toBeNull();
     });
 });

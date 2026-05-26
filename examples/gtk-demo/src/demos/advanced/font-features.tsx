@@ -1,6 +1,5 @@
 import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import {
@@ -298,10 +297,12 @@ function useFontFeaturesState() {
     const [lineHeight, setLineHeight] = useState(1);
     const [viewMode, setViewMode] = useState<ViewMode>("plain");
     const [previewText, setPreviewText] = useState(INITIAL_PREVIEW_TEXT);
+    const [previewSelection, setPreviewSelection] = useState<{ start: number; end: number } | null>(null);
     const sampleCounterRef = useRef(0);
     const savedTextRef = useRef("");
     const previewLabelRef = useRef<Gtk.Label | null>(null);
     const editTextViewRef = useRef<Gtk.TextView | null>(null);
+    const editScrolledWindowRef = useRef<Gtk.ScrolledWindow | null>(null);
     const containerRef = useRef<Gtk.Box | null>(null);
 
     return {
@@ -325,10 +326,13 @@ function useFontFeaturesState() {
         setViewMode,
         previewText,
         setPreviewText,
+        previewSelection,
+        setPreviewSelection,
         sampleCounterRef,
         savedTextRef,
         previewLabelRef,
         editTextViewRef,
+        editScrolledWindowRef,
         containerRef,
     };
 }
@@ -622,50 +626,43 @@ function useFontFeaturesHandlers(state: ReturnType<typeof useFontFeaturesState>)
     };
 }
 
-function useFontFeaturesAttributes(
+function usePreviewSelectionTracking(
     previewLabelRef: React.RefObject<Gtk.Label | null>,
-    pangoFontFeaturesString: string | null,
+    setPreviewSelection: (selection: { start: number; end: number } | null) => void,
 ) {
-    const applySelectionAttributes = useCallback(() => {
-        const label = previewLabelRef.current;
-        if (!label) return;
-
-        if (!pangoFontFeaturesString) {
-            label.setAttributes(null);
-            return;
-        }
-
-        const attrList = Pango.AttrList.new();
-
-        const [hasSelection, selStart, selEnd] = label.getSelectionBounds();
-
-        const startIndex = hasSelection ? selStart : 0;
-        const endIndex = hasSelection ? selEnd : 0xffffffff;
-
-        const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
-        attr.startIndex = startIndex;
-        attr.endIndex = endIndex;
-        attrList.insert(attr);
-
-        label.setAttributes(attrList);
-    }, [pangoFontFeaturesString, previewLabelRef]);
-
-    useLayoutEffect(() => {
-        applySelectionAttributes();
-    }, [applySelectionAttributes]);
-
     useEffect(() => {
         const label = previewLabelRef.current;
         if (!label) return;
 
-        const cursorId = label.connect("notify::cursor-position", () => applySelectionAttributes());
-        const selectionId = label.connect("notify::selection-bound", () => applySelectionAttributes());
+        const sync = () => {
+            const [hasSelection, selStart, selEnd] = label.getSelectionBounds();
+            setPreviewSelection(hasSelection ? { start: selStart, end: selEnd } : null);
+        };
+
+        sync();
+        label.on("notify::cursor-position", sync);
+        label.on("notify::selection-bound", sync);
 
         return () => {
-            GObject.signalHandlerDisconnect(label, cursorId);
-            GObject.signalHandlerDisconnect(label, selectionId);
+            label.off("notify::cursor-position", sync);
+            label.off("notify::selection-bound", sync);
         };
-    }, [applySelectionAttributes, previewLabelRef]);
+    }, [previewLabelRef, setPreviewSelection]);
+}
+
+function usePreviewAttributes(
+    pangoFontFeaturesString: string | null,
+    previewSelection: { start: number; end: number } | null,
+): Pango.AttrList | null {
+    return useMemo(() => {
+        if (!pangoFontFeaturesString) return null;
+        const attrList = Pango.AttrList.new();
+        const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
+        attr.startIndex = previewSelection?.start ?? 0;
+        attr.endIndex = previewSelection?.end ?? 0xffffffff;
+        attrList.insert(attr);
+        return attrList;
+    }, [pangoFontFeaturesString, previewSelection]);
 }
 
 const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
@@ -757,6 +754,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
 
             <GtkGrid.Child column={2} row={3} rowSpan={2}>
                 <GtkButton
+                    name="swap-colors"
                     iconName="object-flip-vertical-symbolic"
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
@@ -834,6 +832,7 @@ const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; h
     const { checkStates, radioStates } = state;
     return (
         <GtkExpander
+            name="features-expander"
             labelWidget={
                 <GtkLabel
                     label="OpenType Features"
@@ -930,18 +929,26 @@ interface FontFeaturesPreviewProps {
     styles: FontFeaturesStyles;
     handlers: FontFeaturesHandlers;
     stackPage: string;
+    previewAttributes: Pango.AttrList | null;
 }
 
-const FontFeaturesPreviewLabel = ({ state, styles }: { state: FontFeaturesState; styles: FontFeaturesStyles }) => {
+interface FontFeaturesPreviewLabelProps {
+    state: FontFeaturesState;
+    styles: FontFeaturesStyles;
+    attributes: Pango.AttrList | null;
+}
+
+const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPreviewLabelProps) => {
     const { previewText, previewLabelRef, viewMode } = state;
     const { previewStyle, createWaterfallStyle } = styles;
 
     if (viewMode === "waterfall") {
         return (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            <GtkBox name="waterfall-box" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                 {WATERFALL_SIZES.map((wfSize) => (
                     <GtkLabel
                         key={wfSize}
+                        name="waterfall-label"
                         label={previewText}
                         cssClasses={[createWaterfallStyle(wfSize)]}
                         wrap
@@ -957,8 +964,10 @@ const FontFeaturesPreviewLabel = ({ state, styles }: { state: FontFeaturesState;
 
     return (
         <GtkLabel
+            name="preview-label"
             ref={previewLabelRef}
             label={previewText}
+            attributes={attributes}
             cssClasses={[previewStyle]}
             wrap
             xalign={0}
@@ -1079,7 +1088,7 @@ const FontFeaturesPreviewControlsRow = ({
     );
 };
 
-const FontFeaturesPreview = ({ state, styles, handlers, stackPage }: FontFeaturesPreviewProps) => (
+const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttributes }: FontFeaturesPreviewProps) => (
     <GtkBox
         orientation={Gtk.Orientation.VERTICAL}
         hexpand
@@ -1090,10 +1099,15 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage }: FontFeature
         marginBottom={20}
         spacing={20}
     >
-        <GtkScrolledWindow vexpand propagateNaturalHeight cssClasses={[styles.bgStyle]}>
+        <GtkScrolledWindow
+            ref={state.editScrolledWindowRef}
+            vexpand
+            propagateNaturalHeight
+            cssClasses={[styles.bgStyle]}
+        >
             <GtkStack name="stack" page={stackPage}>
                 <GtkStack.Page id="label">
-                    <FontFeaturesPreviewLabel state={state} styles={styles} />
+                    <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
                 </GtkStack.Page>
                 <GtkStack.Page id="entry">
                     <GtkTextView
@@ -1136,7 +1150,7 @@ const FontFeaturesProvider = ({ children }: DemoProviderProps) => {
 const FontFeaturesTitlebar = () => {
     const { handlers } = useFontFeatures();
     return (
-        <GtkHeaderBar>
+        <GtkHeaderBar name="font-features-header">
             <GtkHeaderBar.PackStart>
                 <GtkButton
                     name="reset"
@@ -1152,7 +1166,8 @@ const FontFeaturesTitlebar = () => {
 const FontFeaturesDemo = () => {
     const { state, styles, handlers } = useFontFeatures();
 
-    useFontFeaturesAttributes(state.previewLabelRef, styles.pangoFontFeaturesString);
+    usePreviewSelectionTracking(state.previewLabelRef, state.setPreviewSelection);
+    const previewAttributes = usePreviewAttributes(styles.pangoFontFeaturesString, state.previewSelection);
 
     const stackPage = state.viewMode === "edit" ? "entry" : "label";
 
@@ -1160,15 +1175,9 @@ const FontFeaturesDemo = () => {
         if (state.viewMode !== "edit") return;
         const tv = state.editTextViewRef.current;
         if (!tv) return;
-        let ancestor: Gtk.Widget | null = tv.getParent();
-        while (ancestor && !(ancestor instanceof Gtk.ScrolledWindow)) {
-            ancestor = ancestor.getParent();
-        }
-        if (ancestor instanceof Gtk.ScrolledWindow) {
-            ancestor.getVadjustment()?.setValue(0);
-        }
+        state.editScrolledWindowRef.current?.getVadjustment()?.setValue(0);
         tv.grabFocus();
-    }, [state.viewMode, state.editTextViewRef]);
+    }, [state.viewMode, state.editTextViewRef, state.editScrolledWindowRef]);
 
     return (
         <>
@@ -1194,7 +1203,13 @@ const FontFeaturesDemo = () => {
                     </GtkViewport>
                 </GtkScrolledWindow>
 
-                <FontFeaturesPreview state={state} styles={styles} handlers={handlers} stackPage={stackPage} />
+                <FontFeaturesPreview
+                    state={state}
+                    styles={styles}
+                    handlers={handlers}
+                    stackPage={stackPage}
+                    previewAttributes={previewAttributes}
+                />
             </GtkBox>
         </>
     );
@@ -1210,4 +1225,6 @@ export const fontFeaturesDemo: Demo = {
     titlebar: FontFeaturesTitlebar,
     provider: FontFeaturesProvider,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 500,
 };

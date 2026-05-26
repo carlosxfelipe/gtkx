@@ -1,12 +1,11 @@
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const findOpenButton = async (): Promise<Gtk.Button> =>
-    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-
-describe("paintableSvgDemo", () => {
+describe("paintableSvgDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(paintableSvgDemo.id).toBe("paintable-svg");
         expect(paintableSvgDemo.title).toBe("Paintable/SVG");
@@ -19,10 +18,12 @@ describe("paintableSvgDemo", () => {
         expect(paintableSvgDemo.defaultHeight).toBe(330);
         expect(paintableSvgDemo.component).toBeTypeOf("function");
     });
+});
 
+describe("paintableSvgDemo rendering", () => {
     it("renders the Open button in the header bar", async () => {
         await renderDemo(paintableSvgDemo);
-        const openButton = await findOpenButton();
+        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
         expect(openButton).toBeInstanceOf(Gtk.Button);
         expect(openButton.getUseUnderline()).toBe(true);
     });
@@ -36,29 +37,82 @@ describe("paintableSvgDemo", () => {
         expect(height).toBe(16);
     });
 
-    it("renders a header bar containing the Open button", async () => {
-        const { window } = await renderDemo(paintableSvgDemo);
-        const win = window.current;
-        if (!win) throw new Error("window not found");
-        expect(win.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
-    });
-
-    it("wires the open button as a useUnderline-enabled action button", async () => {
-        const { window } = await renderDemo(paintableSvgDemo);
-        const openButton = await findOpenButton();
+    it("packs the open button into a HeaderBar titlebar", async () => {
+        await renderDemo(paintableSvgDemo);
+        const headerBar = (await screen.findByName("paintable-svg-header")) as Gtk.HeaderBar;
+        expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
+        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" }) as Gtk.Button;
         expect(openButton).toBeInstanceOf(Gtk.Button);
         expect(openButton.getUseUnderline()).toBe(true);
-        const win = window.current;
-        const headerBar = win?.getTitlebar();
-        let parent: Gtk.Widget | null = openButton;
-        let foundHeaderBar = false;
-        while (parent) {
-            if (parent === headerBar) {
-                foundHeaderBar = true;
-                break;
-            }
-            parent = parent.getParent();
+    });
+
+    it("loads the bundled SVG and attaches it to the picture", async () => {
+        await renderDemo(paintableSvgDemo);
+        const picture = (await screen.findByName("picture")) as Gtk.Picture;
+        await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+    });
+});
+
+describe("paintableSvgDemo open dialog", () => {
+    it("invokes the file picker and replaces the picture's paintable when a new file is chosen", async () => {
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
+        openSpy.mockResolvedValue(
+            Gio.fileNewForPath(
+                new URL("../../../src/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg", import.meta.url).pathname,
+            ),
+        );
+        try {
+            await renderDemo(paintableSvgDemo);
+            const picture = (await screen.findByName("picture")) as Gtk.Picture;
+            await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+            const initial = picture.getPaintable();
+            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+            await userEvent.click(openButton);
+            await waitFor(() => expect(openSpy).toHaveBeenCalled());
+            await waitFor(() => expect(picture.getPaintable()).not.toBe(initial));
+        } finally {
+            openSpy.mockRestore();
         }
-        expect(foundHeaderBar).toBe(true);
+    });
+
+    it("logs an error and leaves the picture unchanged when the file picker is dismissed", async () => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
+        openSpy.mockRejectedValue(new Error("dismissed"));
+        try {
+            await renderDemo(paintableSvgDemo);
+            const picture = (await screen.findByName("picture")) as Gtk.Picture;
+            await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+            const initial = picture.getPaintable();
+            const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+            await userEvent.click(openButton);
+            await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("dismissed"));
+            expect(picture.getPaintable()).toBe(initial);
+        } finally {
+            openSpy.mockRestore();
+            errorSpy.mockRestore();
+        }
+    });
+});
+
+describe("paintableSvgDemo gesture", () => {
+    it("cycles the SVG state when the picture is pressed", async () => {
+        await renderDemo(paintableSvgDemo);
+        const picture = (await screen.findByName("picture")) as Gtk.Picture;
+        await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+        const svg = picture.getPaintable() as Gtk.Svg;
+        const initialState = svg.getState();
+        await userEvent.pointer(picture, "[MouseLeft]");
+        await waitFor(() => expect(svg.getState()).not.toBe(initialState));
+    });
+
+    it("wraps the SVG state from 63 back to 0 when the picture is pressed at the upper bound", async () => {
+        await renderDemo(paintableSvgDemo);
+        const picture = (await screen.findByName("picture")) as Gtk.Picture;
+        await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+        const svg = picture.getPaintable() as Gtk.Svg;
+        svg.setState(63);
+        await userEvent.pointer(picture, "[MouseLeft]");
+        await waitFor(() => expect(svg.getState()).toBe(0));
     });
 });

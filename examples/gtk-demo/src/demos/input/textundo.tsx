@@ -9,7 +9,11 @@ Use Control+z to undo and Control+Shift+z or Control+y to redo previously undone
 
 const TextUndoDemo = () => {
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+        <GtkScrolledWindow
+            name="scrolled"
+            hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        >
             <GtkTextView
                 wrapMode={Gtk.WrapMode.WORD}
                 pixelsBelowLines={10}
@@ -35,4 +39,5 @@ export const textundoDemo: Demo = {
     sourceCode,
     defaultWidth: 330,
     defaultHeight: 330,
+    resizable: false,
 };

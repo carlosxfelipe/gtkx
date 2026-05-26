@@ -1,4 +1,5 @@
-import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import type { Demo, TreeItem } from "../demos/types.js";
 
 interface DemoContextValue {
@@ -9,6 +10,10 @@ interface DemoContextValue {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     filteredTreeItems: TreeItem[];
+    windowTitle: string | null;
+    setWindowTitle: (title: string | null) => void;
+    defaultWidget: Gtk.Widget | null;
+    setDefaultWidget: (widget: Gtk.Widget | null) => void;
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
@@ -129,8 +134,16 @@ export const DemoProvider = ({ demos, children }: DemoProviderProps) => {
 
     const firstDemo = useMemo(() => findFirstDemo(treeItems), [treeItems]);
 
-    const [currentDemo, setCurrentDemo] = useState<Demo | null>(firstDemo);
+    const [currentDemo, setCurrentDemoState] = useState<Demo | null>(firstDemo);
     const [searchQuery, setSearchQuery] = useState("");
+    const [windowTitle, setWindowTitle] = useState<string | null>(null);
+    const [defaultWidget, setDefaultWidget] = useState<Gtk.Widget | null>(null);
+
+    const setCurrentDemo = useCallback((demo: Demo | null) => {
+        setCurrentDemoState(demo);
+        setWindowTitle(null);
+        setDefaultWidget(null);
+    }, []);
 
     const filteredTreeItems = useMemo(
         () => (searchQuery.trim() ? filterTree(treeItems, searchQuery) : treeItems),
@@ -146,8 +159,12 @@ export const DemoProvider = ({ demos, children }: DemoProviderProps) => {
             searchQuery,
             setSearchQuery,
             filteredTreeItems,
+            windowTitle,
+            setWindowTitle,
+            defaultWidget,
+            setDefaultWidget,
         }),
-        [demos, treeItems, currentDemo, searchQuery, filteredTreeItems],
+        [demos, treeItems, currentDemo, searchQuery, filteredTreeItems, windowTitle, defaultWidget, setCurrentDemo],
     );
 
     return <DemoContext.Provider value={contextValue}>{children}</DemoContext.Provider>;

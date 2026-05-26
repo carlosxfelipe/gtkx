@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssMultiplebgsDemo } from "../../../src/demos/css/css-multiplebgs.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssMultiplebgsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -44,13 +45,10 @@ describe("cssMultiplebgsDemo", () => {
         expect(text).toContain("transition-property");
     });
 
-    it("adds the demo window class on mount and removes it on unmount", async () => {
-        const { window, unmount } = await renderDemo(cssMultiplebgsDemo);
-        const win = window.current;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("demo")).toBe(true);
-        await unmount();
-        expect(win.hasCssClass("demo")).toBe(false);
+    it("declares the demo window class on the host window", async () => {
+        expect(cssMultiplebgsDemo.windowCssClasses).toEqual(["demo"]);
+        await renderDemo(cssMultiplebgsDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.hasCssClass("demo")).toBe(true);
     });
 });

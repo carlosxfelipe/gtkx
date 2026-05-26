@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { cssAccordionDemo } from "../../../src/demos/css/css-accordion.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssAccordionDemo", () => {
     it("exposes the expected metadata", () => {
@@ -29,19 +30,46 @@ describe("cssAccordionDemo", () => {
         await renderDemo(cssAccordionDemo);
         const frame = (await screen.findByName("frame")) as Gtk.Frame;
         expect(frame).toBeInstanceOf(Gtk.Frame);
-        const classes = frame.getCssClasses();
-        expect(classes.length).toBeGreaterThan(0);
-        expect(classes.some((c) => c.length > 0)).toBe(true);
+        expect(frame.getCssClasses()).toContain("accordion");
     });
 
     it("centers the horizontal button box without spacing", async () => {
         await renderDemo(cssAccordionDemo);
-        const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
-        const box = button.getParent() as Gtk.Box;
+        const box = (await screen.findByName("button-box")) as Gtk.Box;
         expect(box).toBeInstanceOf(Gtk.Box);
         expect(box.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
         expect(box.getHalign()).toBe(Gtk.Align.CENTER);
         expect(box.getValign()).toBe(Gtk.Align.CENTER);
         expect(box.getSpacing()).toBe(0);
+    });
+
+    it("registers a CssProvider on the default display at application priority", async () => {
+        const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
+        try {
+            await renderDemo(cssAccordionDemo);
+            const applicationCalls = addSpy.mock.calls.filter(
+                ([, , priority]) => priority === Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+            expect(
+                applicationCalls.length,
+                "expected the accordion demo to add a provider at STYLE_PROVIDER_PRIORITY_APPLICATION",
+            ).toBeGreaterThan(0);
+            expect(applicationCalls.every(([, provider]) => provider instanceof Gtk.CssProvider)).toBe(true);
+        } finally {
+            addSpy.mockRestore();
+        }
+    });
+
+    it("fires the clicked signal when an accordion button is activated", async () => {
+        await renderDemo(cssAccordionDemo);
+        const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
+        const clickHandler = vi.fn();
+        const handlerId = button.connect("clicked", clickHandler);
+        try {
+            await userEvent.click(button);
+            await waitFor(() => expect(clickHandler).toHaveBeenCalled());
+        } finally {
+            button.disconnect(handlerId);
+        }
     });
 });

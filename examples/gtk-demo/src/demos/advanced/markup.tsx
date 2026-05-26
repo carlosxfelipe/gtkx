@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkTextView } from "@gtkx/react";
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
 import markupContent from "./markup.txt?raw";
@@ -34,10 +34,17 @@ interface MarkupStackProps {
     showSource: boolean;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
+    onFormattedRealized: (self: Gtk.Widget) => void;
 }
 
-const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStackProps) => (
-    <GtkStack page={showSource ? "source" : "formatted"} vexpand hexpand transitionType={Gtk.StackTransitionType.NONE}>
+const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
+    <GtkStack
+        name="markup-stack"
+        page={showSource ? "source" : "formatted"}
+        vexpand
+        hexpand
+        transitionType={Gtk.StackTransitionType.NONE}
+    >
         <GtkStack.Page id="formatted" title="Formatted">
             <GtkScrolledWindow
                 vexpand
@@ -46,11 +53,13 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStac
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
                 <GtkTextView
+                    name="formatted-view"
                     ref={formattedViewRef}
                     editable={false}
                     wrapMode={Gtk.WrapMode.WORD_CHAR}
                     leftMargin={10}
                     rightMargin={10}
+                    onRealize={onFormattedRealized}
                 />
             </GtkScrolledWindow>
         </GtkStack.Page>
@@ -61,7 +70,15 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStac
                 hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
-                <GtkTextView ref={sourceViewRef} wrapMode={Gtk.WrapMode.WORD} leftMargin={10} rightMargin={10} />
+                <GtkTextView
+                    name="source-view"
+                    ref={sourceViewRef}
+                    wrapMode={Gtk.WrapMode.WORD}
+                    leftMargin={10}
+                    rightMargin={10}
+                >
+                    {SAMPLE_MARKUP}
+                </GtkTextView>
             </GtkScrolledWindow>
         </GtkStack.Page>
     </GtkStack>
@@ -73,6 +90,7 @@ interface MarkupContextValue {
     applyMarkup: () => void;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
+    markupRef: React.RefObject<string>;
 }
 
 const MarkupContext = createContext<MarkupContextValue | null>(null);
@@ -105,7 +123,7 @@ const MarkupProvider = ({ children }: DemoProviderProps) => {
     );
 
     const value = useMemo<MarkupContextValue>(
-        () => ({ showSource, handleSourceToggle, applyMarkup, formattedViewRef, sourceViewRef }),
+        () => ({ showSource, handleSourceToggle, applyMarkup, formattedViewRef, sourceViewRef, markupRef }),
         [showSource, handleSourceToggle, applyMarkup],
     );
 
@@ -129,20 +147,16 @@ const MarkupTitlebar = () => {
 };
 
 const MarkupDemo = () => {
-    const { showSource, formattedViewRef, sourceViewRef, applyMarkup } = useMarkupContext();
-
-    useLayoutEffect(() => {
-        const sourceView = sourceViewRef.current;
-        if (sourceView) {
-            const buffer = sourceView.getBuffer();
-            if (buffer) {
-                buffer.setText(SAMPLE_MARKUP, -1);
-            }
-        }
-        applyMarkup();
-    }, [applyMarkup, sourceViewRef]);
-
-    return <MarkupStack showSource={showSource} formattedViewRef={formattedViewRef} sourceViewRef={sourceViewRef} />;
+    const { showSource, formattedViewRef, sourceViewRef, markupRef } = useMarkupContext();
+    const onFormattedRealized = (self: Gtk.Widget) => applyMarkupToView(self as Gtk.TextView, markupRef.current);
+    return (
+        <MarkupStack
+            showSource={showSource}
+            formattedViewRef={formattedViewRef}
+            sourceViewRef={sourceViewRef}
+            onFormattedRealized={onFormattedRealized}
+        />
+    );
 };
 
 export const markupDemo: Demo = {

@@ -1577,6 +1577,7 @@ const ShadertoyGLAreaPanel = ({
     <GtkAspectFrame xalign={0.5} yalign={0.5} ratio={1.77777} obeyChild={false} hexpand vexpand>
         <GtkGraphicsOffload enabled={Gtk.GraphicsOffloadEnabled.ENABLED}>
             <GtkGLArea
+                name="shadertoy-gl-area"
                 ref={handleGLAreaRef}
                 useEs
                 onRender={handleRender}
@@ -1637,12 +1638,14 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
                 <GtkButton
                     iconName="view-refresh-symbolic"
                     tooltipText="Restart the demo"
+                    accessibleLabel="Restart the demo"
                     valign={Gtk.Align.CENTER}
                     onClicked={onRun}
                 />
                 <GtkButton
                     iconName="edit-clear-all-symbolic"
                     tooltipText="Clear the text view"
+                    accessibleLabel="Clear the text view"
                     valign={Gtk.Align.CENTER}
                     onClicked={onClear}
                 />
@@ -1651,7 +1654,12 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
         endWidget={
             <GtkBox spacing={6}>
                 {SHADER_PRESETS.map((preset) => (
-                    <GtkButton key={preset.name} tooltipText={preset.name} onClicked={() => onLoadPreset(preset.code)}>
+                    <GtkButton
+                        key={preset.name}
+                        tooltipText={preset.name}
+                        accessibleLabel={preset.name}
+                        onClicked={() => onLoadPreset(preset.code)}
+                    >
                         <ShaderPreview shaderCode={preset.code} />
                     </GtkButton>
                 ))}

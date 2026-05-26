@@ -16,7 +16,11 @@ const TabsDemo = () => {
     }, []);
 
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+        <GtkScrolledWindow
+            name="scrolled"
+            hscrollbarPolicy={Gtk.PolicyType.NEVER}
+            vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        >
             <GtkTextView
                 wrapMode={Gtk.WrapMode.WORD}
                 topMargin={20}
@@ -41,4 +45,5 @@ export const tabsDemo: Demo = {
     sourceCode,
     defaultWidth: 330,
     defaultHeight: 130,
+    resizable: false,
 };

@@ -1,6 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
@@ -14,7 +13,7 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Select a video");
 
-    const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__gtype__);
 
     const allFilter = new Gtk.FileFilter();
     allFilter.setName("All Files");
@@ -119,7 +118,7 @@ const VideoPlayerTitlebar = () => {
                     <GtkImage paintable={logoPaintable} pixelSize={24} />
                 </GtkButton>
                 <GtkButton name="bbb-button" accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
-                    <GtkImage paintable={bbbPaintable} pixelSize={24} />
+                    <GtkImage name="bbb-image" paintable={bbbPaintable} pixelSize={24} />
                 </GtkButton>
             </GtkHeaderBar.PackStart>
             <GtkHeaderBar.PackEnd>

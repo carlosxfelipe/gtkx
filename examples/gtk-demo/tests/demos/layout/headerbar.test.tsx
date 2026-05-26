@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("headerbarDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -16,12 +17,13 @@ describe("headerbarDemo metadata", () => {
         expect(headerbarDemo.component).toBeTypeOf("function");
     });
 
-    it("installs the GtkHeaderBar inside the window titlebar slot", async () => {
-        const { window } = await renderDemo(headerbarDemo);
-        const win = window.current;
-        if (!win) throw new Error("expected window ref to be populated");
-        const titlebar = win.getTitlebar();
-        expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
+    it("installs the named GtkHeaderBar and packs the nav/check-out buttons into it", async () => {
+        await renderDemo(headerbarDemo);
+        const headerbar = (await screen.findByName("headerbar-titlebar")) as Gtk.HeaderBar;
+        expect(headerbar).toBeInstanceOf(Gtk.HeaderBar);
+        expect(within(headerbar).getByName("nav-box")).toBeInstanceOf(Gtk.Box);
+        expect(within(headerbar).getByName("check-out-button")).toBeInstanceOf(Gtk.Button);
+        expect(within(headerbar).getByRole(Gtk.AccessibleRole.SWITCH)).toBeInstanceOf(Gtk.Switch);
     });
 });
 
@@ -55,5 +57,20 @@ describe("headerbarDemo header content", () => {
     it("renders a GtkTextView in the window body", async () => {
         await renderDemo(headerbarDemo);
         expect(await screen.findByName("text-view")).toBeInstanceOf(Gtk.TextView);
+    });
+});
+
+describe("headerbarDemo interactions", () => {
+    it("toggles the header-bar switch on activation", async () => {
+        await renderDemo(headerbarDemo);
+        const switchEl = (await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
+            name: "Change something",
+            checked: false,
+        })) as Gtk.Switch;
+
+        await userEvent.click(switchEl);
+
+        await waitFor(() => expect(switchEl.getActive()).toBe(true));
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: true });
     });
 });

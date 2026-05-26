@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { render, renderHook, screen } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { Sidebar } from "../../src/components/sidebar.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
 import type { Demo } from "../../src/demos/types.js";
-import { render, screen } from "../test-utils.js";
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
 const buttonDemo: Demo = {
@@ -27,24 +28,18 @@ const standaloneDemo: Demo = {
     component: () => null,
 };
 
-const QueryPublisher = ({ onContext }: { onContext: (ctx: ReturnType<typeof useDemo>) => void }) => {
-    const ctx = useDemo();
-    useEffect(() => {
-        onContext(ctx);
-    });
-    return null;
-};
-
 const noop = () => {};
 
 describe("Sidebar", () => {
-    it("renders category labels", async () => {
+    it("renders the Buttons category node grouping its two child demos", async () => {
         await render(
             <DemoProvider demos={[intro, buttonDemo, expanderDemo, standaloneDemo]}>
                 <Sidebar searchMode={false} onSearchChanged={noop} />
             </DemoProvider>,
         );
-        expect(await screen.findByText("Buttons")).toBeDefined();
+        await screen.findByText("Buttons");
+        await screen.findByText("Button");
+        await screen.findByText("Expander");
     });
 
     it("renders top-level demos by their display title", async () => {
@@ -53,28 +48,29 @@ describe("Sidebar", () => {
                 <Sidebar searchMode={false} onSearchChanged={noop} />
             </DemoProvider>,
         );
-        expect(await screen.findByText("Standalone")).toBeDefined();
+        await screen.findByText("Standalone");
+        await screen.findByText("GTK Demo");
     });
 
-    it("renders with search mode enabled", async () => {
+    it("opens the sidebar search bar when search mode is enabled", async () => {
         await render(
             <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
                 <Sidebar searchMode={true} onSearchChanged={noop} />
             </DemoProvider>,
         );
-        expect(await screen.findByText("Buttons")).toBeDefined();
+        const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
+        expect(searchBar.getSearchMode()).toBe(true);
+        await screen.findByText("Buttons");
     });
 
     it("exposes the current demo via the context", async () => {
-        let snapshot: ReturnType<typeof useDemo> | null = null;
-        await render(
+        const Wrapper = ({ children }: { children: ReactNode }) => (
             <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
                 <Sidebar searchMode={false} onSearchChanged={noop} />
-                <QueryPublisher onContext={(ctx) => (snapshot = ctx)} />
-            </DemoProvider>,
+                {children}
+            </DemoProvider>
         );
-        if (!snapshot) throw new Error("expected snapshot");
-        const ctx = snapshot as ReturnType<typeof useDemo>;
-        expect(ctx.currentDemo?.id).toBe("intro");
+        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
+        expect(result.current.currentDemo?.id).toBe("intro");
     });
 });

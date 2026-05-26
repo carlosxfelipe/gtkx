@@ -1,17 +1,15 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry } from "@gtkx/react";
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useDemo } from "../../context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./password-entry.tsx?raw";
 
 interface PasswordEntryContextValue {
-    buttonRef: React.RefObject<Gtk.Button | null>;
-    passwordRef: React.RefObject<Gtk.PasswordEntry | null>;
-    confirmRef: React.RefObject<Gtk.PasswordEntry | null>;
     passwordsMatch: boolean;
-    handlePasswordNotify: (pspec: GObject.ParamSpec) => void;
-    handleConfirmNotify: (pspec: GObject.ParamSpec) => void;
+    handlePasswordNotify: (pspec: GObject.ParamSpec, self: Gtk.Widget) => void;
+    handleConfirmNotify: (pspec: GObject.ParamSpec, self: Gtk.Widget) => void;
 }
 
 const PasswordEntryContext = createContext<PasswordEntryContextValue | null>(null);
@@ -26,29 +24,18 @@ const PasswordEntryProvider = ({ children }: DemoProviderProps) => {
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
 
-    const buttonRef = useRef<Gtk.Button | null>(null);
-    const passwordRef = useRef<Gtk.PasswordEntry | null>(null);
-    const confirmRef = useRef<Gtk.PasswordEntry | null>(null);
-
     const passwordsMatch = password.length > 0 && password === confirm;
 
-    const handlePasswordNotify = useCallback((pspec: GObject.ParamSpec) => {
-        if (pspec.getName() === "text") setPassword(passwordRef.current?.getText() ?? "");
+    const handlePasswordNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
+        if (pspec.getName() === "text") setPassword((self as Gtk.PasswordEntry).getText() ?? "");
     }, []);
 
-    const handleConfirmNotify = useCallback((pspec: GObject.ParamSpec) => {
-        if (pspec.getName() === "text") setConfirm(confirmRef.current?.getText() ?? "");
+    const handleConfirmNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
+        if (pspec.getName() === "text") setConfirm((self as Gtk.PasswordEntry).getText() ?? "");
     }, []);
 
     const value = useMemo<PasswordEntryContextValue>(
-        () => ({
-            buttonRef,
-            passwordRef,
-            confirmRef,
-            passwordsMatch,
-            handlePasswordNotify,
-            handleConfirmNotify,
-        }),
+        () => ({ passwordsMatch, handlePasswordNotify, handleConfirmNotify }),
         [passwordsMatch, handlePasswordNotify, handleConfirmNotify],
     );
 
@@ -56,12 +43,13 @@ const PasswordEntryProvider = ({ children }: DemoProviderProps) => {
 };
 
 const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
-    const { buttonRef, passwordsMatch } = usePasswordEntryContext();
+    const { passwordsMatch } = usePasswordEntryContext();
+    const { setDefaultWidget } = useDemo();
     return (
-        <GtkHeaderBar showTitleButtons={false}>
+        <GtkHeaderBar name="password-entry-header" showTitleButtons={false}>
             <GtkHeaderBar.PackEnd>
                 <GtkButton
-                    ref={buttonRef}
+                    ref={setDefaultWidget}
                     label="_Done"
                     useUnderline
                     cssClasses={["suggested-action"]}
@@ -73,17 +61,8 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
     );
 };
 
-const PasswordEntryDemo = ({ window }: DemoProps) => {
-    const { buttonRef, passwordRef, confirmRef, handlePasswordNotify, handleConfirmNotify } = usePasswordEntryContext();
-
-    useLayoutEffect(() => {
-        const btn = buttonRef.current;
-        const win = window.current;
-        if (btn && win) {
-            win.setDefaultWidget(btn);
-            win.setDeletable(false);
-        }
-    }, [window, buttonRef]);
+const PasswordEntryDemo = () => {
+    const { handlePasswordNotify, handleConfirmNotify } = usePasswordEntryContext();
 
     return (
         <GtkBox
@@ -95,7 +74,7 @@ const PasswordEntryDemo = ({ window }: DemoProps) => {
             marginBottom={18}
         >
             <GtkPasswordEntry
-                ref={passwordRef}
+                name="password-entry"
                 showPeekIcon
                 placeholderText="Password"
                 accessibleLabel="Password"
@@ -103,7 +82,7 @@ const PasswordEntryDemo = ({ window }: DemoProps) => {
                 onNotify={handlePasswordNotify}
             />
             <GtkPasswordEntry
-                ref={confirmRef}
+                name="confirm-entry"
                 showPeekIcon
                 placeholderText="Confirm"
                 accessibleLabel="Confirm"
@@ -124,4 +103,7 @@ export const passwordEntryDemo: Demo = {
     titlebar: PasswordEntryTitlebar,
     provider: PasswordEntryProvider,
     sourceCode,
+    windowTitle: "Choose a Password",
+    resizable: false,
+    deletable: false,
 };

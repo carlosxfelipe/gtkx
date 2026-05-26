@@ -1,19 +1,25 @@
+import * as path from "node:path";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/app.js";
-import { act, fireEvent, render, screen, waitFor } from "./test-utils.js";
+import logoPath from "../src/icons/org.gtk.Demo4.svg";
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
     const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
-    const model = sidebar.getModel();
-    if (!model) throw new Error("sidebar has no model");
-    for (let i = 0; i < model.getNItems(); i++) {
-        await act(() => model.selectItem(i, true));
-        await fireEvent(sidebar, "activate", i);
+    const selectionModel = sidebar.getModel() as Gtk.SelectionModel;
+    expect(selectionModel).not.toBeNull();
+    let selectedIndex: number | null = null;
+    for (let i = 0; i < selectionModel.getNItems(); i++) {
+        await userEvent.selectOptions(sidebar, i);
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-        if (run.getSensitive()) return;
+        if (run.getSensitive()) {
+            selectedIndex = i;
+            break;
+        }
     }
-    throw new Error("no demo with a component found in the sidebar");
+    expect(selectedIndex, "no demo with a runnable component found in the sidebar").not.toBeNull();
 };
 
 describe("App search toggle", () => {
@@ -22,8 +28,7 @@ describe("App search toggle", () => {
         const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
-        await act(() => toggle.setActive(true));
-        await fireEvent(toggle, "toggled");
+        await userEvent.click(toggle);
         await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
     });
 });
@@ -41,7 +46,7 @@ describe("App run button", () => {
         await selectFirstDemoWithComponent();
         const beforeCount = (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).length;
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-        await fireEvent(run, "clicked");
+        await userEvent.click(run);
         await waitFor(async () => {
             const after = (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).length;
             expect(after).toBeGreaterThan(beforeCount);
@@ -59,6 +64,15 @@ describe("App about menu", () => {
             expect(dialogs.length).toBeGreaterThan(0);
         });
     });
+
+    it("registers the application icon so the icon theme can resolve it", async () => {
+        await render(<App />, { wrapper: false });
+        const display = Gdk.Display.getDefault();
+        expect(display, "no default display available").not.toBeNull();
+        const iconTheme = Gtk.IconTheme.getForDisplay(display as Gdk.Display);
+        const iconName = path.basename(logoPath, path.extname(logoPath));
+        await waitFor(() => expect(iconTheme.hasIcon(iconName)).toBe(true));
+    });
 });
 
 describe("App notebook", () => {
@@ -74,5 +88,86 @@ describe("App notebook", () => {
         expect(notebook.getCurrentPage()).toBe(0);
         await act(() => notebook.setCurrentPage(1));
         await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
+    });
+});
+
+describe("App keyboard shortcuts dialog", () => {
+    it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
+        await render(<App />, { wrapper: false });
+        const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
+        await act(() => menuButton.activateAction("app.shortcuts", null));
+        await waitFor(async () => {
+            const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
+            expect(dialogs.length).toBeGreaterThan(0);
+        });
+    });
+});
+
+describe("App inspector activation", () => {
+    it("invokes Gtk.Window.setInteractiveDebugging when the inspector menu entry is activated", async () => {
+        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
+        try {
+            await render(<App />, { wrapper: false });
+            const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
+            await act(() => menuButton.activateAction("app.inspector", null));
+            await waitFor(() => expect(debugSpy).toHaveBeenCalled());
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
+});
+
+describe("App global shortcuts", () => {
+    it("toggles the search bar when Ctrl+F is pressed", async () => {
+        await render(<App />, { wrapper: false });
+        const body = await screen.findByName("main-window-body");
+        const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
+        expect(searchBar.getSearchMode()).toBe(false);
+        await userEvent.keyboard(body, "{Control>}f{/Control}");
+        await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
+    });
+
+    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
+        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
+        try {
+            await render(<App />, { wrapper: false });
+            const body = await screen.findByName("main-window-body");
+            await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
+            await waitFor(() => expect(debugSpy).toHaveBeenCalledWith(true));
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
+
+    it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {
+        await render(<App />, { wrapper: false });
+        const body = await screen.findByName("main-window-body");
+        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
+        expect(notebook.getCurrentPage()).toBe(0);
+        await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
+        await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
+    });
+
+    it("returns to the previous notebook page when Ctrl+Page_Up is pressed", async () => {
+        await render(<App />, { wrapper: false });
+        const body = await screen.findByName("main-window-body");
+        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
+        await act(() => notebook.setCurrentPage(1));
+        await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
+        await userEvent.keyboard(body, "{Control>}{PageUp}{/Control}");
+        await waitFor(() => expect(notebook.getCurrentPage()).toBe(0));
+    });
+});
+
+describe("App opens demos with custom titlebars and dialog-only demos", () => {
+    it("renders Run-enabled demo entries from the sidebar (covers DemoWindow titlebar/provider paths)", async () => {
+        await render(<App />, { wrapper: false });
+        await selectFirstDemoWithComponent();
+        const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
+        await userEvent.click(run);
+        await waitFor(async () => {
+            const windows = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
+            expect(windows.length).toBeGreaterThan(1);
+        });
     });
 });

@@ -1,6 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
-import type { GType } from "@gtkx/ffi/gobject";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -16,11 +15,7 @@ import { useCallback, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
-let gFileTypeCache: GType | null = null;
-const getGFileType = (): GType => {
-    gFileTypeCache ??= GObject.typeFromName("GFile");
-    return gFileTypeCache;
-};
+const gFileType = Gio.File.prototype.__gtype__;
 
 const DIALOG_TIMEOUT_SECONDS = 20;
 
@@ -66,6 +61,7 @@ function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, stat
 
     const handleFileDrop = useCallback(
         (value: GObject.Value) => {
+            if (!GObject.typeCheckValueHolds(value, gFileType)) return false;
             const file = value.getObject();
             if (file && file instanceof Gio.File) {
                 setFile(file);
@@ -219,17 +215,14 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     accessibleHasPopup
                     onClicked={() => void handlers.handleOpenFile()}
                 >
-                    <GtkDropTarget
-                        types={[getGFileType()]}
-                        actions={Gdk.DragAction.COPY}
-                        onDrop={handlers.handleFileDrop}
-                    />
+                    <GtkDropTarget types={[gFileType]} actions={Gdk.DragAction.COPY} onDrop={handlers.handleFileDrop} />
                 </GtkButton>
                 <GtkButton
                     name="open-file-button"
                     iconName="system-run-symbolic"
                     accessibleLabel="Open File"
                     accessibleHasPopup
+                    halign={Gtk.Align.END}
                     sensitive={fileState.selectedFile !== null}
                     onClicked={() => void handlers.handleLaunchApp()}
                 />
@@ -238,6 +231,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     iconName="folder-symbolic"
                     accessibleLabel="Open in Folder"
                     accessibleHasPopup
+                    halign={Gtk.Align.END}
                     sensitive={fileState.selectedFile !== null}
                     onClicked={() => void handlers.handleOpenFolder()}
                 />

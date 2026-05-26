@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { createElement, Fragment, type ReactNode, type Ref, useState, useSyncExternalStore } from "react";
+import { createElement, Fragment, type ReactNode, type Ref, useReducer, useRef } from "react";
 import type {
     AdwComboRowProps,
     GtkColumnViewProps,
@@ -10,41 +10,60 @@ import type {
 } from "../generated/jsx.js";
 import type {
     ColumnViewColumnProps,
+    ColumnViewProps,
     DropDownProps,
     GridViewProps,
-    ListItem,
     ListViewProps,
     MenuItemProps,
     MenuSectionProps,
     MenuSubmenuProps,
 } from "../jsx.js";
+import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
-import { BoundItemsStore } from "./bound-items-store.js";
 import { createVirtualChild } from "./compound.js";
 
-type GenericListViewProps<T, S> = Omit<GtkListViewProps, keyof ListViewProps> & ListViewProps<T, S>;
-type GenericGridViewProps<T> = Omit<GtkGridViewProps, keyof GridViewProps> & GridViewProps<T>;
-type GenericDropDownProps<T, S> = Omit<GtkDropDownProps, keyof DropDownProps> & DropDownProps<T, S>;
-type GenericComboRowProps<T, S> = Omit<AdwComboRowProps, keyof DropDownProps> & DropDownProps<T, S>;
-type GenericColumnViewProps<T, S> = Omit<GtkColumnViewProps, "items" | "renderHeader"> & {
-    items?: ListItem<T, S>[];
-    renderHeader?: ((item: S) => ReactNode) | null;
-};
+type ListViewOwnKeys =
+    | "items"
+    | "model"
+    | "renderItem"
+    | "renderHeader"
+    | "autoexpand"
+    | "selected"
+    | "onSelectionChanged"
+    | "selectionMode"
+    | "estimatedItemHeight"
+    | "estimatedItemWidth";
+type DropDownOwnKeys =
+    | "items"
+    | "model"
+    | "renderItem"
+    | "renderListItem"
+    | "renderHeader"
+    | "selectedId"
+    | "onSelectionChanged";
+type ColumnViewOwnKeys = "items" | "model" | "renderHeader" | "selected" | "onSelectionChanged" | "selectionMode";
+
+type GenericListViewProps<T, S> = Omit<GtkListViewProps, ListViewOwnKeys> & ListViewProps<T, S>;
+type GenericGridViewProps<T> = Omit<GtkGridViewProps, ListViewOwnKeys> & GridViewProps<T>;
+type GenericDropDownProps<T, S> = Omit<GtkDropDownProps, DropDownOwnKeys> & DropDownProps<T, S>;
+type GenericComboRowProps<T, S> = Omit<AdwComboRowProps, DropDownOwnKeys> & DropDownProps<T, S>;
+type GenericColumnViewProps<T, S> = Omit<GtkColumnViewProps, ColumnViewOwnKeys> & ColumnViewProps<T, S>;
 
 function useListHandle() {
-    const [store] = useState(() => new BoundItemsStore());
-    const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
-    return { store, snapshot };
+    const [, rerender] = useReducer((x: number) => x + 1, 0);
+    const boundItemsRef = useRef<BoundItem[]>([]);
+    const headerBoundItemsRef = useRef<BoundItem[]>([]);
+    return { rerender, boundItemsRef, headerBoundItemsRef };
 }
 
 function renderListElement(intrinsicName: string, handle: ReturnType<typeof useListHandle>, props: object): ReactNode {
-    const { store, snapshot } = handle;
+    const { rerender, boundItemsRef, headerBoundItemsRef } = handle;
 
     const portals: ReactNode[] = [];
-    for (const [content, container, key] of snapshot.boundItems) {
+    for (const [content, container, key] of boundItemsRef.current) {
         portals.push(createPortal(content, container, key));
     }
-    for (const [content, container, key] of snapshot.headerBoundItems) {
+    for (const [content, container, key] of headerBoundItemsRef.current) {
         portals.push(createPortal(content, container, key));
     }
 
@@ -53,7 +72,9 @@ function renderListElement(intrinsicName: string, handle: ReturnType<typeof useL
         null,
         createElement(intrinsicName, {
             ...(props as Record<string, unknown>),
-            __boundItemsStore: store,
+            __boundItemsRef: boundItemsRef,
+            __rerender: rerender,
+            __headerBoundItemsRef: headerBoundItemsRef,
         }),
         ...portals,
     );

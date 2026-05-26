@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { act, screen, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssPixbufsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -35,22 +36,42 @@ describe("cssPixbufsDemo", () => {
         expect(text).toContain("animation: move-the-image");
     });
 
-    it("adds the demo window class on mount and removes it on unmount", async () => {
-        const { window, unmount } = await renderDemo(cssPixbufsDemo);
-        const win = window.current;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("demo")).toBe(true);
-        await unmount();
-        expect(win.hasCssClass("demo")).toBe(false);
+    it("declares the demo window class on the host window", async () => {
+        expect(cssPixbufsDemo.windowCssClasses).toEqual(["demo"]);
+        await renderDemo(cssPixbufsDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.hasCssClass("demo")).toBe(true);
     });
 
-    it("propagates new buffer text through onBufferChanged", async () => {
-        await renderDemo(cssPixbufsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        buffer.setText("window { background-color: cyan; }", -1);
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toBe("window { background-color: cyan; }");
+    it("loads the default keyframe CSS into a CssProvider when the editor mounts", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssPixbufsDemo);
+            const defaultLoad = loadSpy.mock.calls.find(
+                ([css]) => typeof css === "string" && css.includes("@keyframes move-the-image"),
+            );
+            expect(defaultLoad, "expected the default pixbufs CSS to be loaded via loadFromString").toBeDefined();
+        } finally {
+            loadSpy.mockRestore();
+        }
+    });
+
+    it("re-applies the CssProvider when the user edits the buffer", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssPixbufsDemo);
+            const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+            const buffer = textView.getBuffer();
+            loadSpy.mockClear();
+            await act(() => buffer.setText("window { background-color: cyan; }", -1));
+            await waitFor(() => {
+                const userLoad = loadSpy.mock.calls.find(
+                    ([css]) => typeof css === "string" && css.includes("background-color: cyan"),
+                );
+                expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
+            });
+        } finally {
+            loadSpy.mockRestore();
+        }
     });
 });

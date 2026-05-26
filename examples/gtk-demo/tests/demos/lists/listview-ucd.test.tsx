@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
-import { fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 vi.setConfig({ testTimeout: 30000 });
 
@@ -45,17 +46,18 @@ describe("listviewUcdDemo column view", () => {
         await renderDemo(listviewUcdDemo);
         const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
         const model = cv.getModel();
-        expect(model?.getNItems() ?? 0).toBeGreaterThan(0);
+        expect(model).not.toBeNull();
+        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
     });
 });
 
 describe("listviewUcdDemo selection", () => {
-    it("activating a row does not throw", async () => {
+    it("updates the selected-character preview label when a row is activated", async () => {
         await renderDemo(listviewUcdDemo);
         const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
-        const model = cv.getModel();
-        const nItems = model?.getNItems() ?? 0;
-        expect(nItems).toBeGreaterThan(0);
+        const preview = (await screen.findByName("selected-char")) as Gtk.Label;
+        expect(preview.getLabel()).toBe("");
         await fireEvent(cv, "activate", 0);
+        await waitFor(() => expect(preview.getLabel().length).toBeGreaterThan(0));
     });
 });

@@ -1,4 +1,6 @@
+import * as path from "node:path";
 import * as Adw from "@gtkx/ffi/adw";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwAboutDialog,
@@ -18,11 +20,26 @@ import {
     useApplication,
     useProperty,
 } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
+import logoPath from "./icons/org.gtk.Demo4.svg";
+import { useLatest } from "./use-latest.js";
+
+const applicationIconName = path.basename(logoPath, path.extname(logoPath));
+const iconSearchPath = path.dirname(logoPath);
+const displaysWithIconPath = new WeakSet<Gdk.Display>();
+
+const useApplicationIcon = (): void => {
+    useEffect(() => {
+        const display = Gdk.Display.getDefault();
+        if (!display || displaysWithIconPath.has(display)) return;
+        Gtk.IconTheme.getForDisplay(display).addSearchPath(iconSearchPath);
+        displaysWithIconPath.add(display);
+    }, []);
+};
 
 const InfoTab = () => {
     const { currentDemo } = useDemo();
@@ -62,12 +79,11 @@ interface DemoWindowProps {
 }
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
-    const { currentDemo } = useDemo();
+    const { currentDemo, windowTitle, defaultWidget } = useDemo();
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
-    const activeWindowRef = useRef<Gtk.Window | null>(null);
-    activeWindowRef.current = activeWindow ?? null;
+    const activeWindowRef = useLatest<Gtk.Window | null>(activeWindow ?? null);
 
     if (!currentDemo?.component || !activeWindow) return null;
 
@@ -90,10 +106,13 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
         <DemoStateProvider window={windowRef} onClose={onClose}>
             <GtkWindow
                 ref={windowRef}
-                title={currentDemo.windowTitle ?? displayTitle}
+                title={windowTitle ?? currentDemo.windowTitle ?? displayTitle}
                 defaultWidth={currentDemo.defaultWidth ?? -1}
                 defaultHeight={currentDemo.defaultHeight ?? -1}
                 resizable={currentDemo.resizable ?? true}
+                deletable={currentDemo.deletable ?? true}
+                cssClasses={currentDemo.windowCssClasses}
+                defaultWidget={defaultWidget}
                 titlebar={titlebar}
                 onClose={onClose}
             >
@@ -245,7 +264,7 @@ const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) =>
     createPortal(
         <AdwAboutDialog
             applicationName="GTK Demo"
-            applicationIcon="application-x-executable"
+            applicationIcon={applicationIconName}
             version="0.14.0"
             copyright="© 2026 The GTKX Team"
             website="https://gtkx.dev"
@@ -291,7 +310,7 @@ const MainWindowBody = ({
     onNotebookPageChange,
     onSearchChanged,
 }: MainWindowBodyProps) => (
-    <GtkBox vexpand hexpand>
+    <GtkBox name="main-window-body" vexpand hexpand>
         <AppShortcuts
             onSearchToggle={onSearchToggle}
             onKeyboardShortcuts={onKeyboardShortcuts}
@@ -361,8 +380,12 @@ const MainWindow = () => {
     );
 };
 
-export const App = () => (
-    <DemoProvider demos={demos}>
-        <MainWindow />
-    </DemoProvider>
-);
+export const App = () => {
+    useApplicationIcon();
+
+    return (
+        <DemoProvider demos={demos}>
+            <MainWindow />
+        </DemoProvider>
+    );
+};
