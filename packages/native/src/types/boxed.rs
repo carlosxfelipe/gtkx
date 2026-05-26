@@ -208,7 +208,21 @@ impl RawPtrCodec for BoxedType {
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        write_object_ptr(ptr, value, "Boxed field write")
+        let Some(gtype) = self.gtype() else {
+            return write_object_ptr(ptr, value, "Boxed field write");
+        };
+        let src_ptr = value.object_ptr("Boxed field write")?;
+        let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+        let new_ptr = if src_ptr.is_null() {
+            std::ptr::null_mut()
+        } else {
+            unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), src_ptr as *const _) }
+        };
+        unsafe { (ptr as *mut *mut c_void).write_unaligned(new_ptr) };
+        if !old_ptr.is_null() {
+            unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), old_ptr) };
+        }
+        Ok(())
     }
 }
 
@@ -344,6 +358,19 @@ impl RawPtrCodec for StructType {
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        if let Some(size) = self.size {
+            let src_ptr = value.object_ptr("Struct field write")?;
+            if src_ptr.is_null() {
+                unsafe { (ptr as *mut *mut c_void).write_unaligned(std::ptr::null_mut()) };
+                return Ok(());
+            }
+            let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+            if dst_ptr.is_null() {
+                bail!("Struct field write into null pointer slot for type '{}'", self.type_name)
+            }
+            unsafe { std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size) };
+            return Ok(());
+        }
         write_object_ptr(ptr, value, "Struct field write")
     }
 }
