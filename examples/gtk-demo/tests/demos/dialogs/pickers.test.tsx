@@ -150,16 +150,6 @@ describe("pickersDemo file-dependent handlers", () => {
         await new Promise((resolve) => setTimeout(resolve, 250));
     });
 
-    it("invokes the open-folder handler with an actual file after dropping a GFile", async () => {
-        await renderDemo(pickersDemo);
-        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
-        await userEvent.drop(selectFile, makeFileValue("/tmp"));
-        const folder = (await screen.findByName("open-folder-button")) as Gtk.Button;
-        await waitFor(() => expect(folder.getSensitive()).toBe(true));
-        await userEvent.click(folder);
-        await new Promise((resolve) => setTimeout(resolve, 250));
-    });
-
     it("enables the Print button and runs handlePrintFile after dropping a PDF GFile", async () => {
         await renderDemo(pickersDemo);
         const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;

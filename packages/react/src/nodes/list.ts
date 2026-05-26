@@ -1028,7 +1028,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (isInCommit()) {
             scheduleAfterCommit(this.flushBoundItemsUpdate);
         } else {
-            queueMicrotask(this.flushBoundItemsUpdate);
+            setImmediate(this.flushBoundItemsUpdate);
         }
     }
 

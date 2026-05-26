@@ -33,6 +33,7 @@ describe("shadertoyDemo", () => {
     it("renders the main GtkGLArea panel configured with an ES context", async () => {
         await renderDemo(shadertoyDemo);
         const glArea = (await screen.findByName("shadertoy-gl-area")) as Gtk.GLArea;
+        await waitFor(() => expect(glArea.getAllocatedWidth()).toBeGreaterThan(0));
         expect(glArea).toBeInstanceOf(Gtk.GLArea);
         expect(glArea.getUseEs()).toBe(true);
         expect(glArea.getHexpand()).toBe(true);

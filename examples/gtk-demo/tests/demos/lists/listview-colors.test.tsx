@@ -101,7 +101,7 @@ describe("listviewColorsDemo header actions", () => {
         await renderDemo(listviewColorsDemo);
         const displayDropdown = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
         await userEvent.selectOptions(displayDropdown, 1);
-        expect(displayDropdown.getSelected()).toBe(1);
+        await waitFor(() => expect(displayDropdown.getSelected()).toBe(1));
     });
 
     it("changes the color limit when the limit dropdown selection changes", async () => {

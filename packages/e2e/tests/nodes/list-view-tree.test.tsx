@@ -940,7 +940,7 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
             minContentHeight: 600,
         });
 
-        expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]);
+        await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]));
     });
 });
 

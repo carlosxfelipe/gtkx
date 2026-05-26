@@ -80,14 +80,14 @@ describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
         setIsReactActEnvironment(before);
     });
 
-    it("restores the flag after a sync throw", async () => {
+    it("restores the flag after a sync throw", () => {
         const before = getIsReactActEnvironment();
         setIsReactActEnvironment(false);
-        await expect(
+        expect(() =>
             act(() => {
                 throw new Error("boom");
             }),
-        ).rejects.toThrow("boom");
+        ).toThrow("boom");
         expect(getIsReactActEnvironment()).toBe(false);
         setIsReactActEnvironment(before);
     });
