@@ -33,6 +33,7 @@ import { SlotNode } from "./nodes/slot.js";
 import { SourceViewNode } from "./nodes/source-view.js";
 import { SpinRowNode } from "./nodes/spin-row.js";
 import { StackNode } from "./nodes/stack.js";
+import { StackNavigationNode } from "./nodes/stack-navigation.js";
 import { StackPageNode } from "./nodes/stack-page.js";
 import { SwitchRowNode } from "./nodes/switch-row.js";
 import { TextAnchorNode } from "./nodes/text-anchor.js";
@@ -117,6 +118,12 @@ export const NODE_REGISTRY: ReadonlyMap<string, NodeClass> = new Map<string, Nod
     ["GtkNotebook", NotebookNode],
     ["GtkStack", StackNode],
     ["AdwViewStack", StackNode],
+    ["GtkStackSidebar", StackNavigationNode],
+    ["GtkStackSwitcher", StackNavigationNode],
+    ["AdwViewSwitcher", StackNavigationNode],
+    ["AdwViewSwitcherBar", StackNavigationNode],
+    ["AdwViewSwitcherTitle", StackNavigationNode],
+    ["AdwViewSwitcherSidebar", StackNavigationNode],
     ["GtkListView", ListNode],
     ["GtkColumnView", ListNode],
     ["GtkGridView", ListNode],

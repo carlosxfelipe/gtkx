@@ -1,7 +1,7 @@
 import { stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
+import { ApplicationContext, GtkApplicationWindow, reconciler, setReconcilerErrorHandler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
@@ -27,8 +27,8 @@ const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Prom
     }
 };
 
-const handleError = (error: Error): void => {
-    lastRenderError = error;
+const handleError = (error: unknown): void => {
+    lastRenderError = error instanceof Error ? error : new Error(String(error));
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
@@ -43,6 +43,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     }
 
     if (!container) {
+        setReconcilerErrorHandler(handleError);
         container = reconciler.createContainer(
             application,
             1,

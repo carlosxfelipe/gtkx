@@ -8,6 +8,7 @@ import { createNode, resolveContainerClass } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
 import { beginCommit, drainAfterCommit, endCommit } from "./post-commit-queue.js";
+import { reportReconcilerError } from "./reconciler-error-sink.js";
 import type { Container, Props } from "./types.js";
 
 declare global {
@@ -221,12 +222,16 @@ const createCommitConfig = (): CommitConfig => ({
         return null;
     },
     resetAfterCommit: () => {
+        let drainError: unknown = null;
         try {
             drainAfterCommit();
+        } catch (error) {
+            drainError = error;
         } finally {
             endCommit();
             unfreeze();
         }
+        if (drainError !== null) reportReconcilerError(drainError);
     },
 });
 

@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackSwitcher } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import demoIconPath from "../../icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
@@ -11,18 +11,12 @@ import sourceCode from "./stack.tsx?raw";
  * Shows a stack with three pages and a GtkStackSwitcher.
  */
 const StackDemo = () => {
-    const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const demoIcon = useMemo<Gio.Icon>(() => Gio.FileIcon.new(Gio.fileNewForPath(demoIconPath)), []);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} visible={stack !== null} />
-            <GtkStack
-                name="stack"
-                ref={setStack}
-                transitionType={Gtk.StackTransitionType.CROSSFADE}
-                visible={stack !== null}
-            >
+            <GtkStackSwitcher halign={Gtk.Align.CENTER} />
+            <GtkStack name="stack" transitionType={Gtk.StackTransitionType.CROSSFADE}>
                 <GtkStack.Page id="page1" title="Page 1">
                     <GtkImage gicon={demoIcon} pixelSize={100} marginTop={20} marginBottom={20} />
                 </GtkStack.Page>

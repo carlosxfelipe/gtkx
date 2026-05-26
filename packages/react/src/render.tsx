@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
+import { setReconcilerErrorHandler } from "./reconciler-error-sink.js";
 
 /**
  * React Context providing access to the GTK Application instance.
@@ -88,6 +89,17 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
     app.on("activate", () => {});
     app.activate();
 
+    const onUncaughtError = (error: unknown): void => {
+        getSignalStore(app).forceUnblockAll();
+        throw error;
+    };
+    const onCaughtError = (error: unknown): void => {
+        getSignalStore(app).forceUnblockAll();
+        console.error(error);
+    };
+
+    setReconcilerErrorHandler(onUncaughtError);
+
     container = reconciler.createContainer(
         app,
         1,
@@ -95,14 +107,8 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
         false,
         null,
         "",
-        (error: unknown) => {
-            getSignalStore(app).forceUnblockAll();
-            throw error;
-        },
-        (error: unknown) => {
-            getSignalStore(app).forceUnblockAll();
-            console.error(error);
-        },
+        onUncaughtError,
+        onCaughtError,
         () => {},
         () => {},
     );
