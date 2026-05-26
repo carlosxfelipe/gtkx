@@ -16,7 +16,7 @@ fn struct_type() -> StructType {
     StructType {
         ownership: Ownership::Borrowed,
         type_name: "TestStruct".to_owned(),
-        size: Some(std::mem::size_of::<u64>()),
+        size: None,
     }
 }
 

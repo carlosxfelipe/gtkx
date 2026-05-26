@@ -229,8 +229,6 @@ describe("render - StackNavigation invariants", () => {
         }
 
         const { rerender } = await render(<App stackKeys={["a"]} />);
-        await expect(rerender(<App stackKeys={["b", "c"]} />)).rejects.toThrow(
-            /GtkStackSwitcher.*2 sibling.*GtkStack/,
-        );
+        await expect(rerender(<App stackKeys={["b", "c"]} />)).rejects.toThrow(/GtkStackSwitcher.*2 sibling.*GtkStack/);
     });
 });
