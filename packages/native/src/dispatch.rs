@@ -42,6 +42,7 @@
 mod js_bridge;
 
 use std::collections::VecDeque;
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
@@ -49,6 +50,8 @@ use gtk4::glib;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi::{JsFunction, Status};
 
+use crate::error_reporter::NativeErrorReporter;
+use crate::panic_handler::format_panic_payload;
 use crate::value::{JsRef, Value};
 use crate::wait_signal::WaitSignal;
 
@@ -259,7 +262,12 @@ impl Mailbox {
 
             match task {
                 Some((_, task)) => {
-                    task();
+                    if let Err(payload) = panic::catch_unwind(AssertUnwindSafe(task)) {
+                        NativeErrorReporter::global().report_str(&format!(
+                            "panic in GLib-thread task: {}",
+                            format_panic_payload(&*payload)
+                        ));
+                    }
                     dispatched = true;
                 }
                 None => break,

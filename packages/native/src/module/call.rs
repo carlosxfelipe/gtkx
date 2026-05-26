@@ -136,7 +136,7 @@ impl CallRequest {
 mod napi_export {
     use super::*;
 
-    #[napi]
+    #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn call<'env>(
         env: &'env Env,

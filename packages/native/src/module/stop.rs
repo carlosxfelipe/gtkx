@@ -31,8 +31,10 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::dispatch::Mailbox;
+use crate::error_reporter::NativeErrorReporter;
+use crate::state::GtkThread;
 
-#[napi]
+#[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> {
     let main_loop = (**main_loop).clone();
@@ -45,6 +47,10 @@ pub fn stop(env: Env, main_loop: &External<glib::MainLoop>) -> napi::Result<()> 
             main_loop.quit();
         })
         .map_err(|err| napi::Error::new(napi::Status::GenericFailure, err.to_string()))?;
+
+    if let Some(msg) = GtkThread::global().join() {
+        NativeErrorReporter::global().report_str(&format!("GLib thread exited with panic: {msg}"));
+    }
 
     Ok(())
 }

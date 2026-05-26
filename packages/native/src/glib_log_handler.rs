@@ -32,9 +32,13 @@ impl GlibLogHandler {
         let domain_str = domain.unwrap_or("unknown");
         let formatted = format!("{domain_str}-{level_str}: {message}");
 
-        eprintln!("[gtkx] {formatted}");
+        let is_fatal = matches!(level, LogLevel::Error | LogLevel::Critical);
 
-        if matches!(level, LogLevel::Error | LogLevel::Critical) {
+        if is_fatal || !glib::log_writer_default_would_drop(level, domain) {
+            eprintln!("[gtkx] {formatted}");
+        }
+
+        if is_fatal {
             NativeErrorReporter::global().report_str(&formatted);
         }
     }

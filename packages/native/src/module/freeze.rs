@@ -14,7 +14,7 @@ use napi_derive::napi;
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
 
-#[napi]
+#[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn freeze(env: Env) -> napi::Result<()> {
     let mailbox = Mailbox::global();
@@ -40,8 +40,10 @@ pub fn freeze(env: Env) -> napi::Result<()> {
     Ok(())
 }
 
-#[napi]
+#[napi(catch_unwind)]
+#[allow(clippy::unnecessary_wraps)]
 #[cfg_attr(test, allow(dead_code))]
-pub fn unfreeze() {
+pub fn unfreeze() -> napi::Result<()> {
     Mailbox::global().unfreeze();
+    Ok(())
 }

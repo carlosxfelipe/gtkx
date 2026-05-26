@@ -282,6 +282,32 @@ fn dispatch_pending_from_depth_runs_nested_tasks() {
 }
 
 #[test]
+fn dispatch_pending_recovers_from_panicking_task_and_continues() {
+    common::run(|| {
+        drain_pending();
+        let mailbox = Mailbox::global();
+        let after = Arc::new(AtomicUsize::new(0));
+
+        mailbox.schedule_glib(Box::new(|| {
+            panic!("deliberate panic inside dispatched task");
+        }));
+
+        let after_for_task = after.clone();
+        mailbox.schedule_glib(Box::new(move || {
+            after_for_task.fetch_add(1, Ordering::SeqCst);
+        }));
+
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let dispatched = mailbox.dispatch_pending();
+        std::panic::set_hook(previous_hook);
+
+        assert!(dispatched);
+        assert_eq!(after.load(Ordering::SeqCst), 1);
+    });
+}
+
+#[test]
 fn dispatch_pending_from_depth_runs_deeper_task_before_shallower_one() {
     common::run(|| {
         drain_pending();

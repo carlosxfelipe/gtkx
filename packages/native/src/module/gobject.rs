@@ -85,7 +85,7 @@ impl ModuleRequest for GetInstanceGtypeRequest {
 mod napi_export {
     use super::*;
 
-    #[napi]
+    #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn find_object_property<'env>(
         env: &'env Env,
@@ -101,7 +101,7 @@ mod napi_export {
         .dispatch(env)
     }
 
-    #[napi]
+    #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn get_instance_gtype<'env>(
         env: &'env Env,

@@ -465,7 +465,7 @@ fn parse_register_options(
 mod napi_export {
     use super::*;
 
-    #[napi]
+    #[napi(catch_unwind)]
     #[allow(clippy::needless_pass_by_value)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn register_class(

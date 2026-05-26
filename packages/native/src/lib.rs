@@ -60,6 +60,7 @@ pub mod ffi;
 pub mod glib_log_handler;
 pub mod managed;
 pub mod module;
+pub mod panic_handler;
 pub mod state;
 pub mod trampoline;
 pub mod types;

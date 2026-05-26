@@ -21,6 +21,7 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::Arc;
 use std::sync::mpsc;
 
@@ -33,8 +34,10 @@ use napi_derive::napi;
 use crate::dispatch::{Mailbox, WakeJsTsfn};
 use crate::error_reporter::{ErrorReporterTsfn, NativeErrorReporter};
 use crate::glib_log_handler::GlibLogHandler;
+use crate::panic_handler::{format_panic_payload, install_panic_hook};
+use crate::state::GtkThread;
 
-#[napi]
+#[napi(catch_unwind)]
 #[cfg_attr(test, allow(dead_code))]
 pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
@@ -64,24 +67,44 @@ pub fn init(env: Env) -> napi::Result<External<glib::MainLoop>> {
         .build()?;
 
     NativeErrorReporter::global().initialize(Arc::new(error_tsfn));
+    install_panic_hook();
 
     let (tx, rx) = mpsc::channel::<glib::MainLoop>();
 
-    std::thread::spawn(move || {
-        GlibLogHandler::install();
+    let handle = std::thread::Builder::new()
+        .name("gtkx-glib".to_owned())
+        .spawn(move || {
+            let result = panic::catch_unwind(AssertUnwindSafe(|| {
+                GlibLogHandler::install();
 
-        let main_loop = glib::MainLoop::new(None, false);
-        let main_loop_for_js = main_loop.clone();
+                let main_loop = glib::MainLoop::new(None, false);
+                let main_loop_for_js = main_loop.clone();
 
-        glib::idle_add_once(move || {
-            if tx.send(main_loop_for_js).is_err() {
-                NativeErrorReporter::global()
-                    .report_str("GLib main loop ready but startup channel was closed");
+                glib::idle_add_once(move || {
+                    if tx.send(main_loop_for_js).is_err() {
+                        NativeErrorReporter::global()
+                            .report_str("GLib main loop ready but startup channel was closed");
+                    }
+                });
+
+                main_loop.run();
+            }));
+
+            if let Err(payload) = result {
+                NativeErrorReporter::global().report_str(&format!(
+                    "GLib thread panicked: {}",
+                    format_panic_payload(&*payload)
+                ));
             }
-        });
+        })
+        .map_err(|err| {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Error spawning GLib thread: {err}"),
+            )
+        })?;
 
-        main_loop.run();
-    });
+    GtkThread::global().set_handle(handle);
 
     let main_loop = rx.recv().map_err(|err| {
         napi::Error::new(

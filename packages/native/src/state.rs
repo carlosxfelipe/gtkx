@@ -17,6 +17,7 @@ use std::thread::JoinHandle;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::managed::{RefFn, UnrefFn};
+use crate::panic_handler::format_panic_payload;
 
 thread_local! {
     static GTK_THREAD_STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
@@ -53,12 +54,7 @@ impl GtkThread {
         if let Some(handle) = handle
             && let Err(payload) = handle.join()
         {
-            let msg = payload
-                .downcast_ref::<&str>()
-                .copied()
-                .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
-                .unwrap_or("unknown panic");
-            return Some(msg.to_owned());
+            return Some(format_panic_payload(&*payload));
         }
         None
     }

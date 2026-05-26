@@ -15,8 +15,9 @@ use napi_derive::napi;
 
 use crate::managed::NativeHandle;
 
-#[napi]
+#[napi(catch_unwind)]
+#[allow(clippy::unnecessary_wraps)]
 #[cfg_attr(test, allow(dead_code))]
-pub fn get_native_id(handle: &External<NativeHandle>) -> f64 {
-    handle.ptr_as_usize() as f64
+pub fn get_native_id(handle: &External<NativeHandle>) -> napi::Result<f64> {
+    Ok(handle.ptr_as_usize() as f64)
 }

@@ -103,7 +103,7 @@ impl ModuleRequest for WriteRequest {
 mod napi_export {
     use super::*;
 
-    #[napi]
+    #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn read<'env>(
         env: &'env Env,
@@ -122,7 +122,7 @@ mod napi_export {
         request.dispatch(env)
     }
 
-    #[napi]
+    #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
     pub fn write<'env>(
         env: &'env Env,
