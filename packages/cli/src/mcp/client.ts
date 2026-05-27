@@ -2,6 +2,7 @@ import * as net from "node:net";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
+import { errorMessage } from "@gtkx/utils";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
@@ -34,6 +35,7 @@ export class McpClient {
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
+    private pendingConnectReject: ((error: Error) => void) | null = null;
     private readonly registry = new WidgetRegistry();
 
     constructor(options: McpClientOptions) {
@@ -47,16 +49,32 @@ export class McpClient {
      * built-in reconnect timer.
      */
     async connect(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.attemptConnect(resolve, reject);
+        return new Promise<void>((resolve, reject) => {
+            this.pendingConnectReject = reject;
+            this.attemptConnect(
+                () => {
+                    this.pendingConnectReject = null;
+                    resolve();
+                },
+                (error) => {
+                    this.pendingConnectReject = null;
+                    reject(error);
+                },
+            );
         });
     }
 
     /**
-     * Tears down the socket and cancels any pending reconnect timer.
+     * Tears down the socket and cancels any pending reconnect timer. Rejects
+     * an in-flight {@link connect} call with a disconnect error so callers
+     * waiting on registration do not hang past teardown.
      */
     disconnect(): void {
         this.isStopping = true;
+        if (this.pendingConnectReject) {
+            this.pendingConnectReject(new Error("Client disconnected before connection registered"));
+            this.pendingConnectReject = null;
+        }
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
@@ -94,7 +112,28 @@ export class McpClient {
                 });
         });
 
-        const transport = new JsonStreamTransport(socket);
+        const transport = JsonStreamTransport.fromSocket(socket, {
+            onClose: () => {
+                if (this.hasConnected) {
+                    console.log("[gtkx] Disconnected from MCP server");
+                    this.hasConnected = false;
+                }
+                this.socket = null;
+                this.transport = null;
+                this.scheduleReconnect();
+            },
+            onError: (error) => {
+                const code = (error as NodeJS.ErrnoException).code;
+                const isDisconnectError =
+                    code === "ENOENT" || code === "ECONNREFUSED" || code === "EPIPE" || code === "ECONNRESET";
+                if (isDisconnectError) {
+                    this.scheduleReconnect();
+                } else {
+                    console.error("[gtkx] Socket error:", error.message);
+                }
+                settle(onError, error);
+            },
+        });
         transport.on("request", (request) => {
             this.handleRequest(request).catch((error) => {
                 console.error("[gtkx] Error handling request:", error);
@@ -106,31 +145,6 @@ export class McpClient {
 
         this.socket = socket;
         this.transport = transport;
-
-        socket.on("data", (data: Buffer) => transport.feed(data));
-
-        socket.on("close", () => {
-            if (this.hasConnected) {
-                console.log("[gtkx] Disconnected from MCP server");
-                this.hasConnected = false;
-            }
-            this.socket = null;
-            transport.rejectPending(new Error("Connection closed"));
-            this.transport = null;
-            this.scheduleReconnect();
-        });
-
-        socket.on("error", (error) => {
-            const code = (error as NodeJS.ErrnoException).code;
-            const isDisconnectError =
-                code === "ENOENT" || code === "ECONNREFUSED" || code === "EPIPE" || code === "ECONNRESET";
-            if (isDisconnectError) {
-                this.scheduleReconnect();
-            } else {
-                console.error("[gtkx] Socket error:", error.message);
-            }
-            settle(onError, error);
-        });
     }
 
     private scheduleReconnect(): void {
@@ -168,12 +182,11 @@ export class McpClient {
             if (error instanceof McpError) {
                 transport.send({ id, error: error.toIpcError() });
             } else {
-                const message = error instanceof Error ? error.message : String(error);
                 transport.send({
                     id,
                     error: {
                         code: McpErrorCode.INTERNAL_ERROR,
-                        message,
+                        message: errorMessage(error),
                     },
                 });
             }

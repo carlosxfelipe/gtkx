@@ -1,5 +1,5 @@
 import { type ChildProcess, type StdioOptions, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
@@ -48,34 +48,6 @@ process.env.GSK_RENDERER = "cairo";
 process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 process.env.GSETTINGS_BACKEND = "memory";
-
-const killChildren = (): void => {
-    if (xvfb.pid !== undefined) {
-        try {
-            process.kill(xvfb.pid, "SIGTERM");
-        } catch {}
-    }
-    if (dbus.pid !== undefined) {
-        try {
-            process.kill(dbus.pid, "SIGTERM");
-        } catch {}
-    }
-    try {
-        rmSync(busDir, { recursive: true, force: true });
-    } catch {}
-};
-
-process.on("exit", killChildren);
-
-process.on("SIGTERM", () => {
-    killChildren();
-    process.exit(143);
-});
-
-process.on("SIGINT", () => {
-    killChildren();
-    process.exit(130);
-});
 
 const waitForFile = async (path: string, label: string, timeout = 15000): Promise<void> => {
     const start = Date.now();

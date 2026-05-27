@@ -1,9 +1,4 @@
-export {
-    McpError,
-    McpErrorCode,
-    methodNotFoundError,
-    widgetNotFoundError,
-} from "./protocol/errors.js";
+export { McpError, McpErrorCode, methodNotFoundError, widgetNotFoundError } from "./protocol/errors.js";
 export {
     DEFAULT_SOCKET_PATH,
     type IpcMethod,

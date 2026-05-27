@@ -1,9 +1,11 @@
 import { createRequire } from "node:module";
+import { installGracefulShutdown } from "@gtkx/utils";
 import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
+import { ConnectionRegistry } from "./connection-registry.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
@@ -309,25 +311,52 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
 }
 
 /**
- * Bootstraps the GTKX MCP server.
- *
- * Starts the Unix-domain socket server, wires the connection manager and the
- * MCP SDK server, registers every tool returned by {@link buildTools}, and
- * installs SIGINT/SIGTERM handlers for graceful shutdown.
+ * Configuration for {@link buildMcpServer}.
  */
-export async function main() {
-    const socketServer = new SocketServer(DEFAULT_SOCKET_PATH);
-    const connectionManager = new ConnectionManager(socketServer);
+export type BuildMcpServerOptions = {
+    /** Unix-domain socket path the server listens on. */
+    socketPath?: string;
+    /** Version reported to MCP clients. */
+    version: string;
+};
 
-    socketServer.on("error", (error) => {
+/**
+ * Runtime handle returned by {@link buildMcpServer}.
+ */
+export type McpServerInstance = {
+    /** Starts the socket server and connects the MCP stdio transport. */
+    start(): Promise<void>;
+    /**
+     * Tears down the connection manager, socket server, and MCP SDK server.
+     * Idempotent.
+     */
+    stop(): Promise<void>;
+};
+
+/**
+ * Builds a configured GTKX MCP server, wiring the socket listener, the
+ * connection registry, the connection manager, and the MCP SDK server.
+ * Returns lifecycle hooks the caller invokes to start and stop the server.
+ *
+ * The shape is intentionally testable: `buildMcpServer` is what tests drive,
+ * `main` is the thin shell that adds signal handling on top.
+ *
+ * @param options - Server configuration.
+ * @returns A handle exposing `start` and `stop`.
+ */
+export const buildMcpServer = (options: BuildMcpServerOptions): McpServerInstance => {
+    const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
+
+    const registry = new ConnectionRegistry();
+    const socketServer = new SocketServer(registry, socketPath);
+    const connectionManager = new ConnectionManager(registry);
+
+    registry.on("error", (error) => {
         const code = (error as NodeJS.ErrnoException).code;
         if (code !== "EPIPE" && code !== "ECONNRESET") {
             console.error("[gtkx] Socket error:", error.message);
         }
     });
-
-    await socketServer.start();
-    console.error(`[gtkx] Socket server listening on ${DEFAULT_SOCKET_PATH}`);
 
     connectionManager.on("appRegistered", (appInfo) => {
         console.error(`[gtkx] App registered: ${appInfo.appId} (PID: ${appInfo.pid})`);
@@ -337,31 +366,39 @@ export async function main() {
         console.error(`[gtkx] App unregistered: ${appId}`);
     });
 
-    const mcpServer = new McpServer({
-        name: "gtkx-mcp",
-        version,
-    });
+    const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
 
     for (const tool of buildTools(connectionManager)) {
         tool.register(mcpServer);
     }
 
-    const transport = new StdioServerTransport();
-    await mcpServer.connect(transport);
+    let stopped = false;
 
-    let isShuttingDown = false;
-    const shutdown = async () => {
-        if (isShuttingDown) return;
-        isShuttingDown = true;
-        try {
+    return {
+        async start() {
+            await socketServer.start();
+            console.error(`[gtkx] Socket server listening on ${socketPath}`);
+            const transport = new StdioServerTransport();
+            await mcpServer.connect(transport);
+        },
+        async stop() {
+            if (stopped) return;
+            stopped = true;
             connectionManager.cleanup();
             await socketServer.stop();
             await mcpServer.close();
-        } finally {
-            process.exit(0);
-        }
+        },
     };
+};
 
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
+/**
+ * Bootstraps the GTKX MCP server: builds it, installs the shared graceful
+ * shutdown helper, and awaits the listening socket.
+ */
+export async function main() {
+    const server = buildMcpServer({ version });
+    installGracefulShutdown({
+        onSignal: () => server.stop(),
+    });
+    await server.start();
 }
