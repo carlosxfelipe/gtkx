@@ -101,8 +101,8 @@ const boxedT = (
     return result;
 };
 
-const structT = (innerType: string, ownership: Ownership = "borrowed", size?: number): Type => {
-    const result: Type = { type: "struct", ownership, innerType };
+const structT = (ownership: Ownership = "borrowed", size?: number): Type => {
+    const result: Type = { type: "struct", ownership };
     if (size !== undefined) result.size = size;
     return result;
 };
@@ -189,13 +189,6 @@ const sizedArray = (
 const fixedArray = (itemType: Type, fixedSize: number, ownership: Ownership = "borrowed", elementSize?: number): Type =>
     arrayT(itemType, "fixed", ownership, { fixedSize, elementSize });
 
-const callbackT = (argTypes: Type[], returnType: Type): Type => ({
-    type: "callback",
-    kind: "closure",
-    argTypes,
-    returnType,
-});
-
 /** Optional configuration for a trampoline FFI descriptor. */
 export type TrampolineOptions = {
     /** Whether the call has a paired destroy-notify parameter. */
@@ -263,6 +256,5 @@ export const t = {
     byteArray,
     sizedArray,
     fixedArray,
-    callback: callbackT,
     trampoline: trampolineT,
 } as const;

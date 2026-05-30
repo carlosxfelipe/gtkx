@@ -53,13 +53,13 @@
 mod macros;
 
 pub mod arg;
-pub mod callback;
 pub mod dispatch;
 pub mod error_reporter;
 pub mod ffi;
 pub mod glib_log_handler;
 pub mod managed;
 pub mod module;
+pub mod object_finalize;
 pub mod panic_handler;
 pub mod state;
 pub mod trampoline;

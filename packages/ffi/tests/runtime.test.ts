@@ -4,10 +4,7 @@ import * as runtime from "../src/runtime.js";
 const EXPECTED_RUNTIME_EXPORTS = [
     "createRef",
     "promisify",
-    "registerConstructionMeta",
-    "getClassStruct",
     "getHandle",
-    "setClassStruct",
     "setHandle",
     "tryGetHandle",
     "alloc",
@@ -18,19 +15,13 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "t",
     "unfreeze",
     "write",
-    "resolveClassStructPointer",
     "checkError",
     "makeErrorDomain",
-    "NativeError",
-    "throwUnsupported",
-    "registerInterfaceClassStruct",
+    "registerNativeClass",
     "getNativeObject",
     "getNativeObjectAsInterface",
-    "registerNativeClass",
-    "registerNativeInterface",
     "connectSignal",
     "emitSignal",
-    "registerSignalMeta",
 ] as const;
 
 describe("runtime barrel", () => {

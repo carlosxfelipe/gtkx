@@ -3,11 +3,11 @@ import {
     type RegisterClassNativeOptions,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
-import { CONSTRUCTION_META, registerConstructionMeta } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { getClassStruct, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
-import { getClassGType, getNativeObject, registerNativeClass } from "./registry.js";
+import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
+import { markStatefulClass } from "./instance-state.js";
+import { getClassGType, getNativeObject, setClassGType } from "./registry.js";
 
 /**
  * Generated descriptor of a class vfunc slot. Codegen emits one per vfunc
@@ -111,48 +111,16 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
-    registerNativeClass(klass, newGtype);
-    inheritConstructionMeta(klass, newGtype);
+    setClassGType(klass, newGtype);
+    markStatefulClass(klass);
 
     return klass;
 }
 
-/**
- * Mirrors the parent's GObject construction metadata onto the new subclass
- * with the freshly registered GType. Without this entry, calling
- * `new MySubclass(props)` would throw because `constructNativeObject` looks
- * up `CONSTRUCTION_META` keyed by the runtime constructor. The subclass
- * itself contributes no new GObject properties — those are auto-discovered
- * via the prototype chain by `walkPropsForGObject` — so an empty `props`
- * map is enough; only `gtype` needs to be rebound to the new GType.
- */
-function inheritConstructionMeta(klass: NativeClass, newGtype: GType): void {
-    const parentMeta = findGObjectConstructionMeta(getParentClass(klass));
-    if (!parentMeta) return;
-    const gtypeNumber = Number(newGtype);
-    registerConstructionMeta(klass, {
-        kind: "gobject",
-        gtype: () => gtypeNumber,
-        props: {},
-    });
-}
-
-function findGObjectConstructionMeta(
-    klass: NativeClass | null,
-): Extract<ReturnType<NonNullable<typeof CONSTRUCTION_META.get>>, { kind: "gobject" }> | null {
-    let current = klass;
-    while (current) {
-        const meta = CONSTRUCTION_META.get(current);
-        if (meta?.kind === "gobject") return meta;
-        current = getParentClass(current);
-    }
-    return null;
-}
-
 function hasRegisteredAncestor(klass: NativeClass): boolean {
-    let current: NativeClass | null = klass;
+    let current: NativeClass | null = getParentClass(klass);
     while (current) {
-        if (CONSTRUCTION_META.has(current)) return true;
+        if (getClassGType(current) !== G_TYPE_INVALID) return true;
         current = getParentClass(current);
     }
     return false;
@@ -243,7 +211,7 @@ function discoverInterfaceVfuncs(
     interfaceGType: GType,
     claimedMethodNames: ReadonlySet<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const struct = findInterfaceClassStruct(interfaceGType);
+    const struct = findInterfaceVFuncMeta(interfaceGType);
     if (!struct) return [];
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredInterfaceVfunc[] = [];
@@ -266,7 +234,7 @@ function discoverInterfaceVfuncs(
 function findClassVfuncDescriptor(klass: NativeClass, methodName: string): RegisterClassVfuncDescriptor | null {
     let current = getParentClass(klass);
     while (current) {
-        const struct = getClassStruct(current);
+        const struct = getClassVFuncMeta(current);
         if (struct) {
             const entry = struct[methodName];
             if (entry && (entry as { kind?: string }).kind === "class") {
@@ -278,21 +246,21 @@ function findClassVfuncDescriptor(klass: NativeClass, methodName: string): Regis
     return null;
 }
 
-const interfaceClassStructByGType = new Map<GType, Readonly<Record<string, unknown>>>();
+const interfaceVFuncMetaByGType = new Map<GType, Readonly<Record<string, unknown>>>();
 
-function findInterfaceClassStruct(gtype: GType): Readonly<Record<string, unknown>> | null {
-    return interfaceClassStructByGType.get(gtype) ?? null;
+function findInterfaceVFuncMeta(gtype: GType): Readonly<Record<string, unknown>> | null {
+    return interfaceVFuncMetaByGType.get(gtype) ?? null;
 }
 
 /**
  * Registers a runtime mapping from an interface `GType` to its generated
- * class-struct descriptor map so that {@link registerClass} can auto-discover
+ * vtable vfunc descriptor map so that {@link registerClass} can auto-discover
  * interface vfunc overrides on a subclass. Codegen calls this once per
  * interface at module load.
  */
-export function registerInterfaceClassStruct(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
+export function registerInterfaceVFuncMeta(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
     if (gtype === G_TYPE_INVALID) return;
-    interfaceClassStructByGType.set(gtype, struct);
+    interfaceVFuncMetaByGType.set(gtype, struct);
 }
 
 function toNativeOptions(

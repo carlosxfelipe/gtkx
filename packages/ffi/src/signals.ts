@@ -3,10 +3,8 @@
  *
  * Generated classes register a per-class signal table via
  * {@link registerSignalMeta} and delegate their `connect` and `emit` methods
- * to {@link connectSignal} and {@link emitSignal}. This replaces the
- * per-class `switch`-case machinery — handler wrapping, trampoline
- * connection, and `GValue` marshalling — that codegen previously inlined
- * into every signal-bearing class.
+ * to {@link connectSignal} and {@link emitSignal}, which centralize handler
+ * wrapping, trampoline connection, and `GValue` marshalling.
  */
 
 import type { Type } from "@gtkx/native";
@@ -28,7 +26,11 @@ export type SignalDescriptor = {
      * returns the value handed back to native code.
      *
      * The raw `args` carry the emitting instance first and the trampoline
-     * user-data last; the closure selects and wraps the signal parameters.
+     * user-data last; the closure selects and wraps the in-parameters. A
+     * signal with `direction="out"` parameters omits them from the handler call
+     * and instead expects the handler to return them in a `[primary, ...outs]`
+     * tuple, which the native trampoline writes back through each out
+     * parameter's pointer — the same convention method out-parameters use.
      */
     readonly invoke: (handler: SignalHandler, args: readonly unknown[]) => unknown;
     /** FFI type of each emit-side `GValue`, in signal-parameter order. */
@@ -51,7 +53,7 @@ export type SignalGObject = {
 
 type SignalMeta = {
     readonly signals: ReadonlyMap<string, SignalDescriptor>;
-    readonly getType: () => unknown;
+    readonly gtype: unknown;
     readonly gobject: SignalGObject;
 };
 
@@ -64,36 +66,26 @@ const signalMetaByClass = new WeakMap<NativeClass, SignalMeta>();
  *
  * @param cls - The generated wrapper class
  * @param signals - Map of signal name to its connect/emit descriptor
- * @param getType - Resolves the class's runtime `GType`
+ * @param gtype - The class's runtime `GType`, resolved at registration
  * @param gobject - The `GObject` namespace used for emit-side marshalling
  */
 export function registerSignalMeta(
     cls: NativeClass,
     signals: ReadonlyMap<string, SignalDescriptor>,
-    getType: () => unknown,
+    gtype: unknown,
     gobject: SignalGObject,
 ): void {
-    signalMetaByClass.set(cls, { signals, getType, gobject });
+    signalMetaByClass.set(cls, { signals, gtype, gobject });
 }
 
-const connectClosureFallback = (
-    instance: object,
-    signal: string,
-    handler: SignalHandler,
-    after: boolean | undefined,
-): number => {
-    const wrappedHandler = (...args: unknown[]): unknown => handler(...args.slice(1));
-    return call(
-        LIBGOBJECT,
-        "g_signal_connect_closure",
-        [
-            { type: t.object("borrowed"), value: getHandle(instance) },
-            { type: t.string("borrowed"), value: signal },
-            { type: t.callback([t.object("borrowed")], t.void), value: wrappedHandler },
-            { type: t.boolean, value: after ?? false },
-        ],
-        t.uint64,
-    ) as number;
+/**
+ * Strips a `::detail` suffix from a signal name, yielding the bare signal the
+ * per-class table is keyed by. `"notify::active"` resolves to `"notify"`; a
+ * name without a detail is returned unchanged.
+ */
+const signalBaseName = (signal: string): string => {
+    const detailIndex = signal.indexOf("::");
+    return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
 /**
@@ -119,14 +111,15 @@ export type ConnectSignalOptions = {
 /**
  * Runtime implementation of a generated class's `connect` method.
  *
- * Resolves the signal's {@link SignalDescriptor}, wraps the handler in a
- * trampoline, and dispatches `g_signal_connect_data`. Signals absent from the
- * class table fall through to `parentConnect`; when no parent is supplied
- * (the root `GObject.Object`), a generic closure connection is used so
- * arbitrary signal names still work.
+ * Resolves the signal's {@link SignalDescriptor} by its bare name (so a
+ * `::detail` suffix such as `notify::active` reuses the base signal's typed
+ * trampoline), wraps the handler, and dispatches `g_signal_connect_data` with
+ * the full detailed name. Signals absent from the class table fall through to
+ * `parentConnect`; when no parent is supplied (the root `GObject.Object`),
+ * an unknown signal throws.
  *
  * @param target - The emitting object and the class whose signal table to consult
- * @param signal - The signal name
+ * @param signal - The signal name, optionally carrying a `::detail` suffix
  * @param handler - The user handler
  * @param options - Optional `after` flag and inherited `connect` fallback
  * @returns The handler connection id
@@ -139,11 +132,10 @@ export function connectSignal(
 ): number {
     const { instance, cls } = target;
     const { after, parentConnect } = options;
-    const descriptor = signalMetaByClass.get(cls)?.signals.get(signal);
+    const descriptor = signalMetaByClass.get(cls)?.signals.get(signalBaseName(signal));
     if (!descriptor) {
-        return parentConnect
-            ? parentConnect(signal, handler, after)
-            : connectClosureFallback(instance, signal, handler, after);
+        if (parentConnect) return parentConnect(signal, handler, after);
+        throw new Error(`Unknown signal '${signal}'`);
     }
 
     const wrappedHandler = (...args: unknown[]): unknown => descriptor.invoke(handler, args);
@@ -199,7 +191,7 @@ export function emitSignal(
         }
     }
 
-    const signalId = gobject.signalLookup(sigName, meta.getType());
+    const signalId = gobject.signalLookup(sigName, meta.gtype);
     if (descriptor.returnGType === null) {
         gobject.signalEmitv(values, signalId, 0);
     } else {

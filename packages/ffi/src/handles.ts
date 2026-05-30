@@ -16,10 +16,10 @@ export interface GTypeStamped {
 
 /**
  * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
- * the cairo `Matrix`. Generated wrapper classes do not extend it — they emit
- * their own constructor that delegates to `constructNativeObject`. Also the
- * wrapper type threaded through the identity registry. Not exported from the
- * public `@gtkx/ffi` surface.
+ * the cairo `Matrix`. Generated wrapper classes do not extend it — GObject
+ * roots delegate to `constructGObjectInstance` and boxed records allocate
+ * inline in their own constructor. Also the wrapper type threaded through the
+ * identity registry. Not exported from the public `@gtkx/ffi` surface.
  */
 export abstract class NativeObject implements GTypeStamped {
     /** Runtime GType of the underlying GObject or boxed instance. */
@@ -27,9 +27,9 @@ export abstract class NativeObject implements GTypeStamped {
 }
 
 /**
- * Constructor type for a generated native wrapper class. Used as the key type
- * of the construction-metadata registry and accepted by the wrapper-resolution
- * helpers (`getNativeObject`, `registerNativeClass`).
+ * Constructor type for a generated native wrapper class. Accepted by the
+ * wrapper-resolution helpers (`getNativeObject`, `registerNativeClass`) and
+ * used as the key type of the GType identity registries.
  */
 export type NativeClass<T extends object = object> = (abstract new (
     ...args: never[]
@@ -84,28 +84,28 @@ export function setHandle(obj: object, handle: NativeHandle): void {
 }
 
 /**
- * Registry of generated class-struct vtable descriptors, keyed by the JS class
- * they belong to. Populated by codegen at module load via {@link setClassStruct}
+ * Registry of generated vtable vfunc descriptors, keyed by the JS class they
+ * belong to. Populated by codegen at module load via {@link registerClassVFuncMeta}
  * and consulted by `registerClass` to auto-discover vfunc overrides supplied
  * as plain methods on user subclasses.
  */
-type ClassStructDescriptors = Readonly<Record<string, unknown>>;
+export type ClassVFuncMeta = Readonly<Record<string, unknown>>;
 
-const classStructMap = new WeakMap<object, ClassStructDescriptors>();
+const classVFuncMetaMap = new WeakMap<object, ClassVFuncMeta>();
 
 /**
- * Associates a class-struct vfunc registry with a generated class so that
+ * Associates a vtable vfunc descriptor registry with a generated class so that
  * `registerClass` can resolve vfunc overrides by method name on subclasses.
  *
  */
-export function setClassStruct(cls: object, descriptors: ClassStructDescriptors): void {
-    classStructMap.set(cls, descriptors);
+export function registerClassVFuncMeta(cls: object, meta: ClassVFuncMeta): void {
+    classVFuncMetaMap.set(cls, meta);
 }
 
 /**
- * Resolves the class-struct vfunc descriptor map associated with `cls`, or
+ * Resolves the vtable vfunc descriptor map associated with `cls`, or
  * `undefined` when no descriptors have been registered for it.
  */
-export function getClassStruct(cls: object): ClassStructDescriptors | undefined {
-    return classStructMap.get(cls);
+export function getClassVFuncMeta(cls: object): ClassVFuncMeta | undefined {
+    return classVFuncMetaMap.get(cls);
 }

@@ -1,15 +1,5 @@
 import * as native from "./native-binding.cjs";
-import type {
-    Arg,
-    ArrayType,
-    CallbackType,
-    FfiValue,
-    HashTableType,
-    Ref,
-    RefType,
-    TrampolineType,
-    Type,
-} from "./types.js";
+import type { Arg, ArrayType, FfiValue, HashTableType, Ref, RefType, TrampolineType, Type } from "./types.js";
 
 type NativeVfuncDefinition = {
     readonly byteOffset: number;
@@ -95,7 +85,6 @@ function unwrapValue(value: unknown, type: Type): unknown {
             return unwrapHashTable(value, type);
         case "ref":
             return unwrapRefArg(value as Ref<unknown>, type);
-        case "callback":
         case "trampoline":
             return wrapUserCallback(value, type);
         default:
@@ -121,7 +110,7 @@ function unwrapRefArg(ref: Ref<unknown>, type: RefType): Ref<unknown> {
     return ref;
 }
 
-function wrapUserCallback(value: unknown, type: CallbackType | TrampolineType): unknown {
+function wrapUserCallback(value: unknown, type: TrampolineType): unknown {
     if (typeof value !== "function") return value;
     const userCb = value as (...args: unknown[]) => unknown;
     const { argTypes, returnType } = type;
@@ -355,6 +344,32 @@ function toNativeVfunc(vfunc: RegisterClassVfuncDefinition): NativeVfuncDefiniti
 }
 
 /**
+ * Registers the callback invoked, on the JavaScript thread, with the pointer
+ * id of each watched native object when it is finalized.
+ *
+ * Installed once at startup by `@gtkx/ffi` to evict per-instance state keyed by
+ * pointer id. The pointer id matches the value returned by {@link getNativeId}.
+ *
+ * @param callback - Receives the finalized object's pointer id
+ */
+export function onObjectFinalized(callback: (pointerId: number) => void): void {
+    native.setObjectFinalizedCallback(callback);
+}
+
+/**
+ * Arms a one-shot finalize watch on `handle`'s native object, so
+ * {@link onObjectFinalized} fires with its pointer id when it is destroyed.
+ *
+ * The object must be live when this is called. Repeated calls for the same
+ * object are no-ops.
+ *
+ * @param handle - A handle produced by this module
+ */
+export function watchObjectFinalize(handle: NativeHandle): void {
+    native.watchObjectFinalize(handle as unknown as ExternalHandle);
+}
+
+/**
  * Suspends GTK frame-clock dispatch while a batch of mutations is applied.
  *
  * Bracketed by [[unfreeze]] to release the GLib main loop. Calls nest: only
@@ -375,4 +390,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, CallbackType, FfiValue, Ref, Type } from "./types.js";
+export type { Arg, FfiValue, Ref, Type } from "./types.js";

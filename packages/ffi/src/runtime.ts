@@ -9,7 +9,7 @@
  * import header compact and decouples generated code from the internal
  * module layout of `@gtkx/ffi`.
  *
- * `constructNativeObject` is deliberately *not* re-exported here. It lives
+ * `constructGObjectInstance` is deliberately *not* re-exported here. It lives
  * in `./object.js`, which transitively imports back into this barrel via
  * `./gobject/gvalue.js`. Re-exporting it would close an import cycle through
  * the barrel and impose a load-order constraint on every export below.
@@ -19,21 +19,13 @@
 
 export { createRef } from "@gtkx/native";
 export { promisify } from "./async.js";
-export type { ClassStructTarget } from "./class-struct-pointer.js";
-export { resolveClassStructPointer } from "./class-struct-pointer.js";
-export type { BoxedFieldMeta, ConstructionMeta, GObjectPropMeta } from "./construction-meta.js";
-export { registerConstructionMeta } from "./construction-meta.js";
-export type { NativeClass, NativeHandle } from "./handles.js";
-export { getClassStruct, getHandle, setClassStruct, setHandle, tryGetHandle } from "./handles.js";
+export type { ClassVFuncMeta, NativeClass, NativeHandle } from "./handles.js";
+export { getHandle, setHandle, tryGetHandle } from "./handles.js";
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
-export { checkError, makeErrorDomain, NativeError, throwUnsupported } from "./native.js";
-export { registerInterfaceClassStruct } from "./register-class.js";
-export {
-    getNativeObject,
-    getNativeObjectAsInterface,
-    registerNativeClass,
-    registerNativeInterface,
-} from "./registry.js";
+export { checkError, makeErrorDomain } from "./native.js";
+export type { NativeClassDescriptor, NativeClassRole, NativeSignalRegistration } from "./register-native-class.js";
+export { registerNativeClass } from "./register-native-class.js";
+export { getNativeObject, getNativeObjectAsInterface } from "./registry.js";
 export type { SignalDescriptor, SignalGObject, SignalGValue, SignalHandler } from "./signals.js";
-export { connectSignal, emitSignal, registerSignalMeta } from "./signals.js";
+export { connectSignal, emitSignal } from "./signals.js";

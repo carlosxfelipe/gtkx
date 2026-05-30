@@ -32,11 +32,7 @@ fn boxed(ownership: Ownership) -> BoxedType {
 }
 
 fn struct_type(ownership: Ownership, size: Option<usize>) -> StructType {
-    StructType {
-        ownership,
-        type_name: "PlainStruct".to_owned(),
-        size,
-    }
+    StructType { ownership, size }
 }
 
 fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, gtype: glib::Type) {

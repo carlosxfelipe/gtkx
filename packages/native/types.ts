@@ -40,7 +40,7 @@ type BoxedType = {
     freeFn?: string;
 };
 
-type StructType = { type: "struct"; ownership: Ownership; innerType: string; size?: number };
+type StructType = { type: "struct"; ownership: Ownership; size?: number };
 
 type FundamentalType = {
     type: "fundamental";
@@ -73,13 +73,6 @@ export type RefType = { type: "ref"; innerType: Type };
 type UnicharType = { type: "unichar" };
 
 type VoidType = { type: "void" };
-
-export type CallbackType = {
-    type: "callback";
-    kind: "closure";
-    argTypes: Type[];
-    returnType: Type;
-};
 
 export type TrampolineType = {
     type: "trampoline";
@@ -117,7 +110,6 @@ export type Type =
     | ArrayType
     | HashTableType
     | RefType
-    | CallbackType
     | TrampolineType
     | UnicharType
     | VoidType;

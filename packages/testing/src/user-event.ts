@@ -65,6 +65,10 @@ export type TabOptions = {
 };
 
 const click = async (element: Gtk.Widget): Promise<void> => {
+    if (element instanceof Gtk.Button) {
+        await emitClickSequence(element, 1);
+        return;
+    }
     await act(() => {
         element.activate();
     });
@@ -421,7 +425,7 @@ const activateMatchingShortcut = (
         if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) continue;
         const action = shortcut.getAction();
         if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") continue;
-        if (action?.activate(0, widget, null)) return true;
+        if (action?.activate(0 as Gtk.ShortcutActionFlags, widget, null)) return true;
     }
     return false;
 };
@@ -656,6 +660,12 @@ export const userEvent = {
      *
      * Uses GTK's native `Gtk.Widget.activate()` to trigger the widget's
      * default action — clicking buttons, toggling checkboxes/switches, etc.
+     *
+     * `Gtk.Button` (and subclasses) are special-cased to a synchronous
+     * `pressed`/`released` click-gesture sequence instead, so the `clicked`
+     * signal fires immediately rather than behind GtkButton's unconditional
+     * 250ms keyboard-activation timeout, which races test wait windows under
+     * load.
      */
     click,
     /**
