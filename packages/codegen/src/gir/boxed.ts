@@ -1,6 +1,6 @@
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, childrenOf, type RawNode } from "./parse.js";
+import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 
 /**
  * Discriminator for the different shapes a `<record>` (or `<glib:boxed>`)
@@ -73,7 +73,7 @@ export const boxedFromNode = (node: RawNode, flavor: BoxedFlavor, isUnion: boole
     introspectable: attr(node, "introspectable") !== "0",
     fields: childrenOf(node, "field").map(fieldFromNode),
     methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method")),
-    constructors: childrenOf(node, "constructor").map((ctor) => functionFromNode(ctor, "constructor")),
+    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor")),
     functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
     isUnion,
 });

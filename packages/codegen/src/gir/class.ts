@@ -1,6 +1,6 @@
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, childrenOf, type RawNode } from "./parse.js";
+import { attr, attrBool, childrenOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 import { type GirSignal, signalFromNode } from "./signal.js";
 
@@ -70,7 +70,7 @@ export const classFromNode = (node: RawNode, isInterface: boolean): GirClass => 
         .map((prerequisite) => attr(prerequisite, "name"))
         .filter((name): name is string => name !== undefined),
     methods: childrenOf(node, "method").map((method) => functionFromNode(method, "method")),
-    constructors: childrenOf(node, "constructor").map((ctor) => functionFromNode(ctor, "constructor")),
+    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, "constructor")),
     functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, "function")),
     virtualMethods: childrenOf(node, "virtual-method").map((vmethod) => functionFromNode(vmethod, "virtual-method")),
     properties: childrenOf(node, "property").map(propertyFromNode),

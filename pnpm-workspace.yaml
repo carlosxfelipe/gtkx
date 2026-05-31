@@ -17,5 +17,10 @@ onlyBuiltDependencies:
   - core-js-pure
   - esbuild
 
+patchedDependencies:
+  typescript@6.0.3: patches/typescript@6.0.3.patch
+
 overrides:
-  fast-xml-parser@^4: 4.3.6
+  '@docsearch/css': ^3.9.0
+  '@docsearch/js': ^3.9.0
+  '@docsearch/react': ^3.9.0

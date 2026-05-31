@@ -51,13 +51,39 @@ const MULTI_TAGS: ReadonlySet<string> = new Set([
     "attribute",
 ]);
 
+/**
+ * The tag name codegen reads GIR constructors under.
+ *
+ * GIR spells constructors `<constructor>`, but `fast-xml-parser` rejects the
+ * literal names `constructor`, `prototype`, and `__proto__` to guard against
+ * prototype pollution, with no opt-out. {@link parseGirFile} rewrites the tag
+ * to this token via `transformTagName` before that guard runs, so every
+ * downstream lookup of a constructor child must use this constant rather than
+ * the raw GIR name.
+ */
+export const GIR_CONSTRUCTOR_TAG = "gir-constructor";
+
+const RESERVED_TAG_RENAMES: ReadonlyMap<string, string> = new Map([["constructor", GIR_CONSTRUCTOR_TAG]]);
+
+/**
+ * Maps a GIR tag name to the token the parser exposes it under, rewriting the
+ * names {@link RESERVED_TAG_RENAMES} covers and passing every other tag
+ * through unchanged.
+ *
+ * @param tag - The raw GIR tag name
+ */
+const renameReservedTag = (tag: string): string => RESERVED_TAG_RENAMES.get(tag) ?? tag;
+
+const RENAMED_MULTI_TAGS: ReadonlySet<string> = new Set([...MULTI_TAGS].map(renameReservedTag));
+
 const PARSER = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
     parseAttributeValue: false,
     parseTagValue: false,
     trimValues: true,
-    isArray: (name) => MULTI_TAGS.has(name),
+    transformTagName: renameReservedTag,
+    isArray: (name) => RENAMED_MULTI_TAGS.has(name),
 });
 
 /**
