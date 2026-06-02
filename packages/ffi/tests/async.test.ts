@@ -1,7 +1,6 @@
+import { getHandle, promisify, setHandle } from "@gtkx/ffi";
 import type { NativeHandle } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
-import { promisify } from "../src/async.js";
-import { getHandle, setHandle } from "../src/handles.js";
 
 const handle = (id: number): NativeHandle => ({ id }) as unknown as NativeHandle;
 
@@ -45,9 +44,11 @@ describe("promisify", () => {
             (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), rawResult);
         };
 
-        return promisify(asyncFn, (result) => getHandle(result), undefined, { leading: [] }).then((resolvedHandle) => {
-            expect(resolvedHandle).toBe(rawResult);
-        });
+        return promisify(asyncFn, (result: object) => getHandle(result), undefined, { leading: [] }).then(
+            (resolvedHandle) => {
+                expect(resolvedHandle).toBe(rawResult);
+            },
+        );
     });
 
     it("rejects with the error thrown by the finish callable", () => {

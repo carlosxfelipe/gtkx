@@ -9,13 +9,13 @@ const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(() => null as unknown),
 }));
 
-vi.mock("@gtkx/ffi/gtk", () => ({
+vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: {} as Record<string, number>,
     Window: { listToplevels: hoisted.listToplevels },
     Application: class {},
 }));
 
-vi.mock("@gtkx/ffi/gio", () => ({
+vi.mock("@gtkx/gi/gio", () => ({
     Application: { getDefault: hoisted.getDefault },
 }));
 
@@ -74,7 +74,7 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000): Promise<void
     }
 };
 
-const parseLines = (lines: string[]): Array<Record<string, unknown>> =>
+const parseLines = (lines: string[]): Record<string, unknown>[] =>
     lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 
 type PendingRegistration = {
@@ -84,7 +84,7 @@ type PendingRegistration = {
 };
 
 const beginRegistration = async (ctx: ServerContext): Promise<PendingRegistration> => {
-    const client = new McpClient({ socketPath: ctx.socketPath, appId: "com.test.app" });
+    const client = new McpClient({ socketPath: ctx.socketPath, applicationId: "com.test.app" });
     const connectPromise = client.connect();
     await waitFor(() => ctx.received[0]?.length === 1);
     const [registerLine] = parseLines(ctx.received[0] ?? []);
@@ -114,7 +114,7 @@ describe("McpClient.connect", () => {
         const { client, connectPromise, registerLine } = await beginRegistration(ctx);
 
         expect(registerLine?.method).toBe("app.register");
-        expect((registerLine?.params as { appId: string }).appId).toBe("com.test.app");
+        expect((registerLine?.params as { applicationId: string }).applicationId).toBe("com.test.app");
 
         ctx.sockets[0]?.write(`${JSON.stringify({ id: registerLine?.id, result: {} })}\n`);
         await connectPromise;
@@ -179,7 +179,7 @@ describe("McpClient.disconnect", () => {
     });
 
     it("rejects an in-flight connect() promise when disconnect is called first", async () => {
-        const client = new McpClient({ socketPath: ctx.socketPath, appId: "com.test.app" });
+        const client = new McpClient({ socketPath: ctx.socketPath, applicationId: "com.test.app" });
 
         const connectPromise = client.connect();
         client.disconnect();

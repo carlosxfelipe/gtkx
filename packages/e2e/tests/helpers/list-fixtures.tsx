@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkGridView, GtkLabel, GtkListView, type ListItem } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
@@ -23,7 +23,7 @@ const toListItems = <T,>(items: FixtureInput<T>): ListItem<T>[] =>
 const renderNamed = (item: unknown): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
 
 /** Options shared by the list-view and grid-view fixtures. */
-export interface ListViewFixtureOptions<T> {
+type ListViewFixtureOptions<T> = {
     /** Renders a single item; defaults to a `GtkLabel` bound to `value.name`. */
     renderItem?: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
     /** Selected item ids. */
@@ -40,19 +40,19 @@ export interface ListViewFixtureOptions<T> {
     maxContentHeight?: number;
     /** Minimum scroll-content width in pixels (default 200). */
     minContentWidth?: number;
-}
+};
 
 /** Options accepted by {@link renderListView}, adding tree-mode expansion. */
-export interface RenderListViewOptions<T> extends ListViewFixtureOptions<T> {
+export type RenderListViewOptions<T> = ListViewFixtureOptions<T> & {
     /** Whether tree rows expand automatically. */
     autoexpand?: boolean;
-}
+};
 
 /** Options accepted by {@link renderGridView}. */
-export interface RenderGridViewOptions<T> extends ListViewFixtureOptions<T> {
+export type RenderGridViewOptions<T> = ListViewFixtureOptions<T> & {
     /** Whether a single click activates an item. */
     singleClickActivate?: boolean;
-}
+};
 
 /** Handle returned by {@link renderListView}. */
 export interface ListViewFixture<T> {
@@ -167,7 +167,7 @@ export interface ColumnDef<T> {
 }
 
 /** Options accepted by {@link renderColumnView}. */
-export interface RenderColumnViewOptions<T> {
+export type RenderColumnViewOptions<T> = {
     /** Column definitions; defaults to a single expanding "Name" column. */
     columns?: ColumnDef<T>[];
     /** Selected row ids. */
@@ -186,7 +186,7 @@ export interface RenderColumnViewOptions<T> {
     minContentHeight?: number;
     /** Minimum scroll-content width in pixels (default 200). */
     minContentWidth?: number;
-}
+};
 
 /** Handle returned by {@link renderColumnView}. */
 export interface ColumnViewFixture<T> {

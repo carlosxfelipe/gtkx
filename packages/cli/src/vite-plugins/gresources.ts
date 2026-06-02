@@ -21,7 +21,7 @@ const MANIFEST_PREFIX = "/";
  * the pipeline still emits a deterministic, registerable path for projects
  * that have not yet declared an `applicationId` in `gtkx.config.ts`.
  */
-export const deriveResourcePrefix = (applicationId?: string): string => {
+const deriveResourcePrefix = (applicationId?: string): string => {
     if (!applicationId) return DEFAULT_RESOURCE_PREFIX;
     return `/${applicationId.replaceAll(".", "/")}`;
 };
@@ -144,7 +144,7 @@ const buildInitModuleSource = (): string =>
     [
         `import { dirname, join } from "node:path";`,
         `import { fileURLToPath } from "node:url";`,
-        `import { resourceLoad, resourcesRegister } from "@gtkx/ffi/gio";`,
+        `import { resourceLoad, resourcesRegister } from "@gtkx/gi/gio";`,
         ``,
         `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
         `const resource = resourceLoad(join(bundleDir, ${JSON.stringify(BUNDLE_FILENAME)}));`,
@@ -158,7 +158,7 @@ const devInitModuleSource = (bundlePath: string): string => {
     const bundlePathLiteral = JSON.stringify(bundlePath);
     return [
         `import { statSync } from "node:fs";`,
-        `import { resourceLoad, resourcesRegister, resourcesUnregister } from "@gtkx/ffi/gio";`,
+        `import { resourceLoad, resourcesRegister, resourcesUnregister } from "@gtkx/gi/gio";`,
         ``,
         `let current = null;`,
         `let lastSig = "";`,
@@ -268,7 +268,7 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
 /**
  * Loads `applicationId` from `gtkx.config.ts`, fixes the plugin's resource
  * prefix from it, and returns the partial Vite config: the asset matcher and
- * the single `import.meta.env.GTKX_APP_ID` define.
+ * the single `import.meta.env.GTKX_APPLICATION_ID` define.
  */
 const resolveResourceConfig = async (state: PluginState, config: UserConfig) => {
     const applicationId = await loadApplicationId(config.root ?? process.cwd());
@@ -276,7 +276,7 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig) => 
     return {
         assetsInclude: [ASSET_RE],
         define: {
-            "import.meta.env.GTKX_APP_ID": JSON.stringify(applicationId ?? ""),
+            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify(applicationId ?? ""),
         },
     };
 };
@@ -312,8 +312,9 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
  *
  * **Path layout:** By default an asset resolves to
  * `resource:///<prefix>/<path-relative-to-vite-root>`, where `<prefix>` is
- * derived by {@link deriveResourcePrefix} from the `applicationId` declared
- * in `gtkx.config.ts` (loaded during the `config` hook). The exact value is
+ * derived from the `applicationId` declared in `gtkx.config.ts` (loaded
+ * during the `config` hook) — `org.gtk.Demo4` yields `/org/gtk/Demo4`, and a
+ * missing id falls back to `/gtkx/app`. The exact value is
  * incidental — callers use the import's returned `path`/URI rather than
  * depending on it.
  *

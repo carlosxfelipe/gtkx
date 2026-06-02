@@ -1,89 +1,89 @@
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { Props } from "../../types.js";
 import { deleteAccessibleMetadata, setAccessibleMetadata } from "../../widget-metadata.js";
 
 type CreateValue = (jsValue: unknown) => GObject.Value;
 
-type PropertyDef = {
+type AccessiblePropertyDescriptor = {
     kind: "property";
     enumValue: Gtk.AccessibleProperty;
     createValue: CreateValue;
 };
 
-type StateDef = {
+type AccessibleStateDescriptor = {
     kind: "state";
     enumValue: Gtk.AccessibleState;
     createValue: CreateValue;
 };
 
-type RelationDef = {
+type AccessibleRelationDescriptor = {
     kind: "relation";
     enumValue: Gtk.AccessibleRelation;
     createValue: CreateValue;
 };
 
-type AccessiblePropDef = PropertyDef | StateDef | RelationDef;
+type AccessibleDescriptor = AccessiblePropertyDescriptor | AccessibleStateDescriptor | AccessibleRelationDescriptor;
 
-const makeValue = (gtype: GObject.GType, populate: (value: GObject.Value) => void): GObject.Value => {
+const createGValue = (gtype: GObject.GType, populate: (value: GObject.Value) => void): GObject.Value => {
     const value = new GObject.Value();
     value.init(gtype);
     populate(value);
     return value;
 };
 
-const fromString: CreateValue = (val) => makeValue(GObject.TYPE_STRING, (v) => v.setString(val as string));
-const fromBoolean: CreateValue = (val) => makeValue(GObject.TYPE_BOOLEAN, (v) => v.setBoolean(val as boolean));
-const fromInt: CreateValue = (val) => makeValue(GObject.TYPE_INT, (v) => v.setInt(val as number));
-const fromDouble: CreateValue = (val) => makeValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(val as number));
+const fromString: CreateValue = (val) => createGValue(GObject.TYPE_STRING, (v) => v.setString(val as string));
+const fromBoolean: CreateValue = (val) => createGValue(GObject.TYPE_BOOLEAN, (v) => v.setBoolean(val as boolean));
+const fromInt: CreateValue = (val) => createGValue(GObject.TYPE_INT, (v) => v.setInt(val as number));
+const fromDouble: CreateValue = (val) => createGValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(val as number));
 const fromObject: CreateValue = (val) =>
-    makeValue(GObject.TYPE_OBJECT, (v) => v.setObject((val as GObject.Object) ?? null));
+    createGValue(GObject.TYPE_OBJECT, (v) => v.setObject((val as GObject.Object) ?? null));
 
 const fromRefList: CreateValue = (val) => {
     const widgets = val as Gtk.Accessible[];
     const list = Gtk.AccessibleList.newFromList(widgets);
-    return makeValue(Gtk.AccessibleList.prototype.__gtype__, (v) => v.setBoxed(list));
+    return createGValue(Gtk.AccessibleList.prototype.__gtype__, (v) => v.setBoxed(list));
 };
 
-const prop = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): PropertyDef => ({
+const property = (enumValue: Gtk.AccessibleProperty, createValue: CreateValue): AccessiblePropertyDescriptor => ({
     kind: "property",
     enumValue,
     createValue,
 });
 
-const state = (enumValue: Gtk.AccessibleState, createValue: CreateValue): StateDef => ({
+const state = (enumValue: Gtk.AccessibleState, createValue: CreateValue): AccessibleStateDescriptor => ({
     kind: "state",
     enumValue,
     createValue,
 });
 
-const relation = (enumValue: Gtk.AccessibleRelation, createValue: CreateValue): RelationDef => ({
+const relation = (enumValue: Gtk.AccessibleRelation, createValue: CreateValue): AccessibleRelationDescriptor => ({
     kind: "relation",
     enumValue,
     createValue,
 });
 
-const ACCESSIBLE_PROP_MAP: Record<string, AccessiblePropDef> = {
-    accessibleAutocomplete: prop(Gtk.AccessibleProperty.AUTOCOMPLETE, fromInt),
-    accessibleDescription: prop(Gtk.AccessibleProperty.DESCRIPTION, fromString),
-    accessibleHasPopup: prop(Gtk.AccessibleProperty.HAS_POPUP, fromBoolean),
-    accessibleKeyShortcuts: prop(Gtk.AccessibleProperty.KEY_SHORTCUTS, fromString),
-    accessibleLabel: prop(Gtk.AccessibleProperty.LABEL, fromString),
-    accessibleLevel: prop(Gtk.AccessibleProperty.LEVEL, fromInt),
-    accessibleModal: prop(Gtk.AccessibleProperty.MODAL, fromBoolean),
-    accessibleMultiLine: prop(Gtk.AccessibleProperty.MULTI_LINE, fromBoolean),
-    accessibleMultiSelectable: prop(Gtk.AccessibleProperty.MULTI_SELECTABLE, fromBoolean),
-    accessibleOrientation: prop(Gtk.AccessibleProperty.ORIENTATION, fromInt),
-    accessiblePlaceholder: prop(Gtk.AccessibleProperty.PLACEHOLDER, fromString),
-    accessibleReadOnly: prop(Gtk.AccessibleProperty.READ_ONLY, fromBoolean),
-    accessibleRequired: prop(Gtk.AccessibleProperty.REQUIRED, fromBoolean),
-    accessibleRoleDescription: prop(Gtk.AccessibleProperty.ROLE_DESCRIPTION, fromString),
-    accessibleSort: prop(Gtk.AccessibleProperty.SORT, fromInt),
-    accessibleValueMax: prop(Gtk.AccessibleProperty.VALUE_MAX, fromDouble),
-    accessibleValueMin: prop(Gtk.AccessibleProperty.VALUE_MIN, fromDouble),
-    accessibleValueNow: prop(Gtk.AccessibleProperty.VALUE_NOW, fromDouble),
-    accessibleValueText: prop(Gtk.AccessibleProperty.VALUE_TEXT, fromString),
-    accessibleHelpText: prop(Gtk.AccessibleProperty.HELP_TEXT, fromString),
+const ACCESSIBLE_PROP_MAP: Record<string, AccessibleDescriptor> = {
+    accessibleAutocomplete: property(Gtk.AccessibleProperty.AUTOCOMPLETE, fromInt),
+    accessibleDescription: property(Gtk.AccessibleProperty.DESCRIPTION, fromString),
+    accessibleHasPopup: property(Gtk.AccessibleProperty.HAS_POPUP, fromBoolean),
+    accessibleKeyShortcuts: property(Gtk.AccessibleProperty.KEY_SHORTCUTS, fromString),
+    accessibleLabel: property(Gtk.AccessibleProperty.LABEL, fromString),
+    accessibleLevel: property(Gtk.AccessibleProperty.LEVEL, fromInt),
+    accessibleModal: property(Gtk.AccessibleProperty.MODAL, fromBoolean),
+    accessibleMultiLine: property(Gtk.AccessibleProperty.MULTI_LINE, fromBoolean),
+    accessibleMultiSelectable: property(Gtk.AccessibleProperty.MULTI_SELECTABLE, fromBoolean),
+    accessibleOrientation: property(Gtk.AccessibleProperty.ORIENTATION, fromInt),
+    accessiblePlaceholder: property(Gtk.AccessibleProperty.PLACEHOLDER, fromString),
+    accessibleReadOnly: property(Gtk.AccessibleProperty.READ_ONLY, fromBoolean),
+    accessibleRequired: property(Gtk.AccessibleProperty.REQUIRED, fromBoolean),
+    accessibleRoleDescription: property(Gtk.AccessibleProperty.ROLE_DESCRIPTION, fromString),
+    accessibleSort: property(Gtk.AccessibleProperty.SORT, fromInt),
+    accessibleValueMax: property(Gtk.AccessibleProperty.VALUE_MAX, fromDouble),
+    accessibleValueMin: property(Gtk.AccessibleProperty.VALUE_MIN, fromDouble),
+    accessibleValueNow: property(Gtk.AccessibleProperty.VALUE_NOW, fromDouble),
+    accessibleValueText: property(Gtk.AccessibleProperty.VALUE_TEXT, fromString),
+    accessibleHelpText: property(Gtk.AccessibleProperty.HELP_TEXT, fromString),
 
     accessibleBusy: state(Gtk.AccessibleState.BUSY, fromBoolean),
     accessibleChecked: state(Gtk.AccessibleState.CHECKED, fromInt),
@@ -117,32 +117,32 @@ const ACCESSIBLE_PROP_MAP: Record<string, AccessiblePropDef> = {
 
 export const isAccessibleProp = (name: string): boolean => name in ACCESSIBLE_PROP_MAP;
 
-function applyDef(widget: Gtk.Widget, def: AccessiblePropDef, newValue: unknown): void {
-    const gvalue = def.createValue(newValue);
+function applyDescriptor(widget: Gtk.Widget, descriptor: AccessibleDescriptor, newValue: unknown): void {
+    const gvalue = descriptor.createValue(newValue);
 
-    switch (def.kind) {
+    switch (descriptor.kind) {
         case "property":
-            widget.updateProperty([def.enumValue], [gvalue]);
+            widget.updateProperty([descriptor.enumValue], [gvalue]);
             break;
         case "state":
-            widget.updateState([def.enumValue], [gvalue]);
+            widget.updateState([descriptor.enumValue], [gvalue]);
             break;
         case "relation":
-            widget.updateRelation([def.enumValue], [gvalue]);
+            widget.updateRelation([descriptor.enumValue], [gvalue]);
             break;
     }
 }
 
-function resetDef(widget: Gtk.Widget, def: AccessiblePropDef): void {
-    switch (def.kind) {
+function resetDescriptor(widget: Gtk.Widget, descriptor: AccessibleDescriptor): void {
+    switch (descriptor.kind) {
         case "property":
-            widget.resetProperty(def.enumValue);
+            widget.resetProperty(descriptor.enumValue);
             break;
         case "state":
-            widget.resetState(def.enumValue);
+            widget.resetState(descriptor.enumValue);
             break;
         case "relation":
-            widget.resetRelation(def.enumValue);
+            widget.resetRelation(descriptor.enumValue);
             break;
     }
 }
@@ -154,18 +154,18 @@ const applyChangedAccessibleProps = (
     seen: Set<string>,
 ): void => {
     for (const name in newProps) {
-        const def = ACCESSIBLE_PROP_MAP[name];
-        if (!def) continue;
+        const descriptor = ACCESSIBLE_PROP_MAP[name];
+        if (!descriptor) continue;
         seen.add(name);
 
         const newValue = newProps[name];
         if (oldProps?.[name] === newValue) continue;
 
         if (newValue === undefined) {
-            resetDef(widget, def);
+            resetDescriptor(widget, descriptor);
             deleteAccessibleMetadata(widget, name);
         } else {
-            applyDef(widget, def, newValue);
+            applyDescriptor(widget, descriptor, newValue);
             setAccessibleMetadata(widget, name, newValue);
         }
     }
@@ -174,10 +174,10 @@ const applyChangedAccessibleProps = (
 const resetRemovedAccessibleProps = (widget: Gtk.Widget, oldProps: Props, seen: Set<string>): void => {
     for (const name in oldProps) {
         if (seen.has(name)) continue;
-        const def = ACCESSIBLE_PROP_MAP[name];
-        if (!def) continue;
+        const descriptor = ACCESSIBLE_PROP_MAP[name];
+        if (!descriptor) continue;
         if (oldProps[name] !== undefined) {
-            resetDef(widget, def);
+            resetDescriptor(widget, descriptor);
             deleteAccessibleMetadata(widget, name);
         }
     }

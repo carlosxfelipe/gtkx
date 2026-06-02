@@ -10,7 +10,17 @@ vi.mock("@gtkx/codegen", () => ({
             return Promise.resolve({ namespaces: 1, widgets: 0, duration: 1 });
         }
     },
+    computeFingerprint: () => "test-fingerprint",
+    FINGERPRINT_FILENAME: ".codegen-fingerprint.json",
 }));
+
+/** Writes a fingerprint sentinel whose recomputed value matches the mock. */
+const writeFingerprint = (cwd: string, libraries: readonly string[] = ["Gtk-4.0"]) => {
+    writeFileSync(
+        join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
+        JSON.stringify({ value: "test-fingerprint", girFiles: [], libraries }),
+    );
+};
 
 const installPackage = (cwd: string, name: string) => {
     const dir = join(cwd, "node_modules", "@gtkx", name);
@@ -20,26 +30,46 @@ const installPackage = (cwd: string, name: string) => {
         JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0", main: "./index.js" }),
     );
     writeFileSync(join(dir, "index.js"), "");
-    const generatedDir = join(dir, "dist", "generated");
-    mkdirSync(generatedDir, { recursive: true });
-    return generatedDir;
 };
 
 const installFfiPackage = (cwd: string) => installPackage(cwd, "ffi");
+
+/**
+ * Installs `@gtkx/react` plus the bare `react` runtime so the jsx codegen path
+ * is active — `isCodegenNeeded` only considers the jsx unit when both resolve.
+ */
+const installReactStack = (cwd: string) => {
+    installPackage(cwd, "react");
+    const dir = join(cwd, "node_modules", "react");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "react", version: "19.0.0", main: "./index.js" }));
+    writeFileSync(join(dir, "index.js"), "");
+};
 
 const writeConfig = (cwd: string, body = `export default { libraries: ["Gtk-4.0"], girPath: ["${cwd}"] };`) => {
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
 };
 
-const writeNamespaceModule = (generatedDir: string, namespace: string) => {
-    mkdirSync(join(generatedDir, namespace), { recursive: true });
-    writeFileSync(join(generatedDir, namespace, `${namespace}.js`), "");
+/** Materializes the gi store barrel for `namespace`, its visible alias, and the bundled store links. */
+const writeGiBarrel = (cwd: string, namespace: string) => {
+    mkdirSync(join(cwd, "node_modules", ".gtkx", "gi", namespace), { recursive: true });
+    writeFileSync(join(cwd, "node_modules", ".gtkx", "gi", namespace, "index.js"), "");
+    mkdirSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true });
+    for (const pkg of ["ffi", "gi"]) {
+        const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", pkg);
+        mkdirSync(linkDir, { recursive: true });
+        writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: `@gtkx/${pkg}`, version: "0.0.0" }));
+    }
 };
 
-const writeReactModules = (generatedDir: string) => {
+/** Materializes the jsx unit modules plus its visible alias. */
+const writeJsxStore = (cwd: string) => {
+    const dir = join(cwd, "node_modules", ".gtkx", "jsx");
+    mkdirSync(dir, { recursive: true });
     for (const module of ["compounds.js", "internal.js", "jsx.js"]) {
-        writeFileSync(join(generatedDir, module), "");
+        writeFileSync(join(dir, module), "");
     }
+    mkdirSync(join(cwd, "node_modules", "@gtkx", "react-jsx"), { recursive: true });
 };
 
 const preflightLogs = async (cwd: string): Promise<string> => {
@@ -78,19 +108,16 @@ describe("runCodegen", () => {
         }
     });
 
-    it("with clean, removes the FFI and React output dirs before regenerating", async () => {
-        const ffiGenerated = installFfiPackage(cwd);
-        const reactGenerated = installPackage(cwd, "react");
+    it("with force, removes the gi store before regenerating", async () => {
+        installFfiPackage(cwd);
         writeConfig(cwd);
-        const ffiStale = join(ffiGenerated, "stale.js");
-        const reactStale = join(reactGenerated, "stale.js");
-        writeFileSync(ffiStale, "");
-        writeFileSync(reactStale, "");
+        writeGiBarrel(cwd, "gtk");
+        const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
+        writeFileSync(giStale, "");
 
-        const result = await runCodegen({ cwd, clean: true });
+        const result = await runCodegen({ cwd, force: true });
 
-        expect(existsSync(ffiStale)).toBe(false);
-        expect(existsSync(reactStale)).toBe(false);
+        expect(existsSync(giStale)).toBe(false);
         expect(result.namespaces).toBe(1);
     });
 });
@@ -131,12 +158,7 @@ describe("preflightCodegen", () => {
         await expect(preflightCodegen(cwd)).rejects.toThrow();
     });
 
-    it("returns silently when the FFI is workspace-linked (real cwd outside node_modules)", async () => {
-        delete process.env.GTKX_DISABLE_PREFLIGHT;
-        await expect(preflightCodegen(cwd)).resolves.toBeUndefined();
-    });
-
-    it("runs codegen when a configured namespace module is missing", async () => {
+    it("runs codegen when the gi store is missing", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         writeConfig(cwd);
@@ -144,11 +166,14 @@ describe("preflightCodegen", () => {
         expect(await preflightLogs(cwd)).toContain("running codegen");
     });
 
-    it("skips codegen when every configured namespace module exists", async () => {
+    it("skips codegen when the gi and jsx stores are present", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
-        writeNamespaceModule(installFfiPackage(cwd), "gtk");
-        writeReactModules(installPackage(cwd, "react"));
+        installFfiPackage(cwd);
+        installReactStack(cwd);
         writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeJsxStore(cwd);
+        writeFingerprint(cwd);
 
         expect(await preflightLogs(cwd)).toBe("");
     });
@@ -165,18 +190,32 @@ describe("ensureGenerated", () => {
         rmSync(cwd, { recursive: true, force: true });
     });
 
-    it("regenerates when a React generated module is missing", async () => {
-        writeNamespaceModule(installFfiPackage(cwd), "gtk");
-        installPackage(cwd, "react");
+    it("regenerates when the jsx unit is missing", async () => {
+        installFfiPackage(cwd);
+        installReactStack(cwd);
         writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
 
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 
-    it("does nothing when every FFI and React module exists", async () => {
-        writeNamespaceModule(installFfiPackage(cwd), "gtk");
-        writeReactModules(installPackage(cwd, "react"));
+    it("does nothing when the gi and jsx stores are present", async () => {
+        installFfiPackage(cwd);
+        installReactStack(cwd);
         writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeJsxStore(cwd);
+        writeFingerprint(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(false);
+    });
+
+    it("does not wedge on a missing jsx unit when the react runtime is absent", async () => {
+        installFfiPackage(cwd);
+        installPackage(cwd, "react");
+        writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeFingerprint(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(false);
     });
@@ -192,5 +231,81 @@ describe("ensureGenerated", () => {
         writeConfig(cwd, `export default { libraries: [] };`);
 
         await expect(ensureGenerated(cwd)).rejects.toThrow();
+    });
+});
+
+describe("ensureGenerated — store links", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-links-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("regenerates when the bundled gi store links are pruned", async () => {
+        installFfiPackage(cwd);
+        installReactStack(cwd);
+        writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeJsxStore(cwd);
+        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "ffi"), {
+            recursive: true,
+            force: true,
+        });
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+});
+
+describe("ensureGenerated — fingerprint", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-fp-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    const installPresentStore = () => {
+        installFfiPackage(cwd);
+        installReactStack(cwd);
+        writeConfig(cwd);
+        writeGiBarrel(cwd, "gtk");
+        writeJsxStore(cwd);
+    };
+
+    it("regenerates when the fingerprint sentinel is absent", async () => {
+        installPresentStore();
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("regenerates when the fingerprint value no longer matches", async () => {
+        installPresentStore();
+        writeFileSync(
+            join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
+            JSON.stringify({ value: "stale", girFiles: [], libraries: ["Gtk-4.0"] }),
+        );
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("regenerates when the resolved library set changed", async () => {
+        installPresentStore();
+        writeFingerprint(cwd, ["Gtk-4.0", "Adw-1"]);
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("skips when the fingerprint matches", async () => {
+        installPresentStore();
+        writeFingerprint(cwd);
+
+        expect(await ensureGenerated(cwd)).toBe(false);
     });
 });

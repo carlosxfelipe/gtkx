@@ -1,9 +1,9 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
 import { hasChanged } from "./internal/props.js";
-import { attachChild, unparentWidget } from "./internal/widget.js";
+import { attachChild } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
 /**
@@ -20,7 +20,7 @@ export class GridChildNode extends AttachOnParentVirtualNode<GridChildProps, Wid
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container.getLayoutManager() instanceof Gtk.GridLayout;
+        return parent instanceof WidgetNode && parent.backingInstance.getLayoutManager() instanceof Gtk.GridLayout;
     }
 
     public override commitUpdate(oldProps: GridChildProps | null, newProps: GridChildProps): void {
@@ -34,17 +34,13 @@ export class GridChildNode extends AttachOnParentVirtualNode<GridChildProps, Wid
             hasChanged(oldProps, newProps, "columnSpan") ||
             hasChanged(oldProps, newProps, "rowSpan")
         ) {
-            this.applyGridChildProps(this.parent.container, this.children[0].container);
+            this.applyGridChildProps(this.parent.backingInstance, this.children[0].backingInstance);
         }
     }
 
     protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
         attachChild(child, parent);
         this.applyGridChildProps(parent, child);
-    }
-
-    protected override detachFromParent(_parent: Gtk.Widget, child: Gtk.Widget): void {
-        unparentWidget(child);
     }
 
     private applyGridChildProps(parent: Gtk.Widget, child: Gtk.Widget): void {

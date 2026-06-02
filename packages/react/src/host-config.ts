@@ -1,6 +1,6 @@
-import { freeze, unfreeze } from "@gtkx/ffi";
-import { typeName } from "@gtkx/ffi/gobject";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import { freezeDispatch, unfreezeDispatch } from "@gtkx/ffi";
+import { typeName } from "@gtkx/gi/gobject";
+import type * as Gtk from "@gtkx/gi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
@@ -9,13 +9,13 @@ import type { Node } from "./node.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
 import { beginCommit, drainAfterCommit, endCommit } from "./post-commit-queue.js";
 import { reportReconcilerError } from "./reconciler-error-sink.js";
-import type { Container, Props } from "./types.js";
+import type { BackingInstance, Props } from "./types.js";
 
 declare global {
-    var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<Container, Node> | undefined;
+    var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<BackingInstance, Node> | undefined;
 }
 
-globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<Container, Node>();
+globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<BackingInstance, Node>();
 
 const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__;
 
@@ -27,7 +27,7 @@ type HostContext = {
 type HostConfig = ReactReconciler.HostConfig<
     string,
     Props,
-    Container,
+    BackingInstance,
     Node,
     Node,
     never,
@@ -41,9 +41,9 @@ type HostConfig = ReactReconciler.HostConfig<
     number
 >;
 
-export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Node, never, never, PublicInstance>;
+export type ReconcilerInstance = ReactReconciler.Reconciler<BackingInstance, Node, Node, never, never, PublicInstance>;
 
-const getOrCreateContainerNode = (container: Container): Node => {
+const getOrCreateContainerNode = (container: BackingInstance): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
@@ -155,11 +155,11 @@ const createInstanceConfig = (): InstanceConfig => ({
         return node;
     },
     appendInitialChild: (parent, child) => {
-        parent.appendInitialChild(child);
+        parent.appendChild(child);
     },
     finalizeInitialChildren: (instance, _type, props) =>
         withSignalsBlocked(instance, () => instance.finalizeInitialChildren(props)),
-    getPublicInstance: (instance) => instance.container as PublicInstance,
+    getPublicInstance: (instance) => instance.backingInstance as PublicInstance,
 });
 
 type MutationConfig = Pick<
@@ -218,7 +218,7 @@ const createCommitConfig = (): CommitConfig => ({
     },
     prepareForCommit: () => {
         beginCommit();
-        freeze();
+        freezeDispatch();
         return null;
     },
     resetAfterCommit: () => {
@@ -229,7 +229,7 @@ const createCommitConfig = (): CommitConfig => ({
             drainError = error;
         } finally {
             endCommit();
-            unfreeze();
+            unfreezeDispatch();
         }
         if (drainError !== null) reportReconcilerError(drainError);
     },

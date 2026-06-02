@@ -1,5 +1,6 @@
 import type { NativeHandle } from "@gtkx/native";
-import type { GType } from "./generated/gobject/gobject.js";
+import type { AnyClass } from "@gtkx/utils";
+import type { GType } from "./gtype.js";
 
 export type { NativeHandle } from "@gtkx/native";
 
@@ -9,33 +10,10 @@ export type { NativeHandle } from "@gtkx/native";
  * boxed wrapper produced by `@gtkx/ffi` satisfies this interface; consumers
  * that need the runtime `GType` of an instance read it through this type.
  */
-export interface GTypeStamped {
+export interface GTyped {
     /** Runtime GType of the underlying GObject or boxed instance. */
     __gtype__: GType;
 }
-
-/**
- * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
- * the cairo `Matrix`. Generated wrapper classes do not extend it — GObject
- * roots delegate to `constructGObjectInstance` and boxed records allocate
- * inline in their own constructor. Also the wrapper type threaded through the
- * identity registry. Not exported from the public `@gtkx/ffi` surface.
- */
-export abstract class NativeObject implements GTypeStamped {
-    /** Runtime GType of the underlying GObject or boxed instance. */
-    declare __gtype__: GType;
-}
-
-/**
- * Constructor type for a generated native wrapper class. Accepted by the
- * wrapper-resolution helpers (`getNativeObject`, `registerNativeClass`) and
- * used as the key type of the GType identity registries.
- */
-export type NativeClass<T extends object = object> = (abstract new (
-    ...args: never[]
-) => T) & {
-    readonly prototype: T;
-};
 
 /**
  * Returns the superclass of a native wrapper class, or `null` when `cls` is a
@@ -44,68 +22,68 @@ export type NativeClass<T extends object = object> = (abstract new (
  * walk over generated classes meets the untyped function root, so callers can
  * iterate ancestry without comparing against `Function.prototype` themselves.
  */
-export function getParentClass(cls: NativeClass): NativeClass | null {
+export function getParentClass(cls: AnyClass): AnyClass | null {
     const parent: unknown = Object.getPrototypeOf(cls);
-    return typeof parent === "function" && parent !== Function.prototype ? (parent as NativeClass) : null;
+    return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
 }
 
 const handleMap = new WeakMap<object, NativeHandle>();
 
 /**
- * Returns the native handle associated with `obj`. Throws when the object
+ * Returns the native handle associated with `instance`. Throws when the object
  * has not been linked to a handle.
  *
  */
-export function getHandle(obj: object): NativeHandle {
-    const handle = handleMap.get(obj);
+export function getHandle(instance: object): NativeHandle {
+    const handle = handleMap.get(instance);
     if (handle === undefined) {
-        const name = (obj as { constructor?: { name?: string } }).constructor?.name ?? "object";
+        const name = (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
         throw new Error(`No native handle associated with ${name}`);
     }
     return handle;
 }
 
 /**
- * Returns the native handle associated with `obj`, or `undefined` when the
+ * Returns the native handle associated with `instance`, or `undefined` when the
  * object is nullish or has not been linked to a handle. Use this when a
  * caller cannot guarantee that the object has been fully constructed.
  *
  */
-export function tryGetHandle(obj: object | null | undefined): NativeHandle | undefined {
-    return obj == null ? undefined : handleMap.get(obj);
+export function tryGetHandle(instance: object | null | undefined): NativeHandle | undefined {
+    return instance == null ? undefined : handleMap.get(instance);
 }
 
 /**
- * Associates a native handle with `obj`.
+ * Associates a native handle with `instance`.
  *
  */
-export function setHandle(obj: object, handle: NativeHandle): void {
-    handleMap.set(obj, handle);
+export function setHandle(instance: object, handle: NativeHandle): void {
+    handleMap.set(instance, handle);
 }
 
 /**
  * Registry of generated vtable vfunc descriptors, keyed by the JS class they
- * belong to. Populated by codegen at module load via {@link registerClassVFuncMeta}
+ * belong to. Populated by codegen at module load via {@link registerVfuncRegistry}
  * and consulted by `registerClass` to auto-discover vfunc overrides supplied
  * as plain methods on user subclasses.
  */
-export type ClassVFuncMeta = Readonly<Record<string, unknown>>;
+export type VfuncRegistry = Readonly<Record<string, unknown>>;
 
-const classVFuncMetaMap = new WeakMap<object, ClassVFuncMeta>();
+const vfuncRegistryByClass = new WeakMap<object, VfuncRegistry>();
 
 /**
  * Associates a vtable vfunc descriptor registry with a generated class so that
  * `registerClass` can resolve vfunc overrides by method name on subclasses.
  *
  */
-export function registerClassVFuncMeta(cls: object, meta: ClassVFuncMeta): void {
-    classVFuncMetaMap.set(cls, meta);
+export function registerVfuncRegistry(cls: object, registry: VfuncRegistry): void {
+    vfuncRegistryByClass.set(cls, registry);
 }
 
 /**
  * Resolves the vtable vfunc descriptor map associated with `cls`, or
  * `undefined` when no descriptors have been registered for it.
  */
-export function getClassVFuncMeta(cls: object): ClassVFuncMeta | undefined {
-    return classVFuncMetaMap.get(cls);
+export function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
+    return vfuncRegistryByClass.get(cls);
 }

@@ -1,11 +1,11 @@
-import * as Graphene from "@gtkx/ffi/graphene";
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
 import { hasChanged } from "./internal/props.js";
-import { attachChild, unparentWidget } from "./internal/widget.js";
+import { attachChild } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
 /**
@@ -22,7 +22,7 @@ export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, W
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container.getLayoutManager() instanceof Gtk.FixedLayout;
+        return parent instanceof WidgetNode && parent.backingInstance.getLayoutManager() instanceof Gtk.FixedLayout;
     }
 
     public override commitUpdate(oldProps: FixedChildProps | null, newProps: FixedChildProps): void {
@@ -46,17 +46,13 @@ export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, W
         this.applyLayoutTransform();
     }
 
-    protected override detachFromParent(_parent: Gtk.Widget, child: Gtk.Widget): void {
-        unparentWidget(child);
-    }
-
     private applyLayoutTransform(): void {
         if (!this.parent || !this.children[0]) return;
 
-        const layoutManager = this.parent.container.getLayoutManager();
+        const layoutManager = this.parent.backingInstance.getLayoutManager();
         if (!(layoutManager instanceof Gtk.FixedLayout)) return;
 
-        const layoutChild = layoutManager.getLayoutChild(this.children[0].container) as Gtk.FixedLayoutChild;
+        const layoutChild = layoutManager.getLayoutChild(this.children[0].backingInstance) as Gtk.FixedLayoutChild;
 
         const x = this.props.x ?? 0;
         const y = this.props.y ?? 0;

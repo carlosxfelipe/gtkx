@@ -1,5 +1,5 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { AdwViewStackProps, GtkStackProps } from "../jsx.js";
 import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
@@ -7,7 +7,7 @@ import { WidgetNode } from "./widget.js";
 /** Widgets the {@link StackNode} reconciler node specializes. */
 export type StackWidget = Gtk.Stack | Adw.ViewStack;
 
-type StackProps = Omit<Pick<GtkStackProps | AdwViewStackProps, "page" | "onPageChanged">, "onPageChanged"> & {
+type StackProps = Pick<GtkStackProps | AdwViewStackProps, "page"> & {
     onPageChanged?: ((page: string | null) => void) | null;
 };
 
@@ -18,14 +18,18 @@ export class StackNode extends WidgetNode<StackWidget, StackProps> {
             page: imperative(
                 () => {
                     const { page } = this.props;
-                    if (page && this.container.getVisibleChildName() !== page && this.container.getChildByName(page)) {
-                        this.container.setVisibleChildName(page);
+                    if (
+                        page &&
+                        this.backingInstance.getVisibleChildName() !== page &&
+                        this.backingInstance.getChildByName(page)
+                    ) {
+                        this.backingInstance.setVisibleChildName(page);
                     }
                 },
                 { always: true },
             ),
             onPageChanged: signal("notify::visible-child-name", {
-                getArgs: () => [this.container.getVisibleChildName()],
+                getArgs: () => [this.backingInstance.getVisibleChildName()],
             }),
         };
     }

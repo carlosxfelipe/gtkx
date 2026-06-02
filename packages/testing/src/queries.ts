@@ -1,5 +1,5 @@
-import * as Gtk from "@gtkx/ffi/gtk";
-import { buildMultipleFoundError, buildNotFoundError } from "./error-builder.js";
+import * as Gtk from "@gtkx/gi/gtk";
+import { multipleFoundError, notFoundError } from "./errors.js";
 import { buildQueries } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";
 import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
@@ -91,15 +91,15 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
  * @returns Array of matching widgets (empty if none found)
  */
 export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
-    findAll(container, (node) => {
-        if (node.getAccessibleRole() !== role) return false;
-        return matchByRoleOptions(node, options);
+    findAll(container, (widget) => {
+        if (widget.getAccessibleRole() !== role) return false;
+        return matchByRoleOptions(widget, options);
     });
 
 const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
     queryAllByRole,
-    (container, count, role, options) => buildMultipleFoundError(container, "role", { role, options }, count),
-    (container, role, options) => buildNotFoundError(container, "role", { role, options }),
+    (container, count, role, options) => multipleFoundError(container, "role", { role, options }, count),
+    (container, role, options) => notFoundError(container, "role", { role, options }),
 );
 
 /**
@@ -116,14 +116,14 @@ const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOpt
 export const queryAllByLabelText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] => {
     const results: Gtk.Widget[] = [];
 
-    for (const node of traverse(container)) {
-        if (!(node instanceof Gtk.Label)) continue;
+    for (const widget of traverse(container)) {
+        if (!(widget instanceof Gtk.Label)) continue;
 
-        const labelText = node.getLabel();
+        const labelText = widget.getLabel();
         if (!labelText) continue;
-        if (!matchText(labelText, text, node, options)) continue;
+        if (!matchText(labelText, text, widget, options)) continue;
 
-        const target = node.getMnemonicWidget();
+        const target = widget.getMnemonicWidget();
         if (target) {
             results.push(target);
         }
@@ -134,8 +134,8 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
 
 const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByLabelText,
-    (container, count, text, options) => buildMultipleFoundError(container, "labelText", { text, options }, count),
-    (container, text, options) => buildNotFoundError(container, "labelText", { text, options }),
+    (container, count, text, options) => multipleFoundError(container, "labelText", { text, options }, count),
+    (container, text, options) => notFoundError(container, "labelText", { text, options }),
 );
 
 /**
@@ -147,12 +147,12 @@ const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]
  * @returns Array of matching widgets (empty if none found)
  */
 export const queryAllByText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
-    findAll(container, (node) => matchText(getWidgetText(node), text, node, options));
+    findAll(container, (widget) => matchText(getWidgetText(widget), text, widget, options));
 
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByText,
-    (container, count, text, options) => buildMultipleFoundError(container, "text", { text, options }, count),
-    (container, text, options) => buildNotFoundError(container, "text", { text, options }),
+    (container, count, text, options) => multipleFoundError(container, "text", { text, options }, count),
+    (container, text, options) => notFoundError(container, "text", { text, options }),
 );
 
 /**
@@ -164,12 +164,12 @@ const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
  * @returns Array of matching widgets (empty if none found)
  */
 export const queryAllByName = (container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
-    findAll(container, (node) => matchText(getWidgetName(node), name, node, options));
+    findAll(container, (widget) => matchText(getWidgetName(widget), name, widget, options));
 
 const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     queryAllByName,
-    (container, count, name, options) => buildMultipleFoundError(container, "name", { name, options }, count),
-    (container, name, options) => buildNotFoundError(container, "name", { name, options }),
+    (container, count, name, options) => multipleFoundError(container, "name", { name, options }, count),
+    (container, name, options) => notFoundError(container, "name", { name, options }),
 );
 
 /** Finds a single element matching a role without throwing. Returns `null` if not found; throws if multiple match. */

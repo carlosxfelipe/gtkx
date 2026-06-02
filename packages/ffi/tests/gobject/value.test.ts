@@ -1,14 +1,21 @@
+import { Type } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
+import type { GType } from "@gtkx/gi/gobject";
+import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import * as Gdk from "../../src/generated/gdk/gdk.js";
-import type { GType } from "../../src/generated/gobject/gobject.js";
-import { typeFromName, Value } from "../../src/generated/gobject/gobject.js";
-import * as Gtk from "../../src/generated/gtk/gtk.js";
-import { Type } from "../../src/gobject/types.js";
-import "../../src/gobject/value.js";
-import { call } from "../../src/native.js";
-import { valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "../../src/value-marshal.js";
+import "@gtkx/gi/gobject";
+import { t, valueFromFfi, valueFromJS, valueFromObject, valueGetType, valueToJS } from "@gtkx/ffi";
+import { call } from "@gtkx/native";
 
-const callGetType = (lib: string, fn: string): GType => call(lib, fn, [], { type: "uint64" }) as unknown as GType;
+const callGetType = (lib: string, fn: string): GType => {
+    const result = call(lib, fn, [], { type: "uint64" });
+    if (typeof result !== "number") {
+        throw new TypeError(`${fn} did not return a GType`);
+    }
+    return result;
+};
 const gdkRgbaGType = (): GType => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
@@ -29,7 +36,10 @@ describe("Value boxed accessors", () => {
     });
 
     it("getBoxed returns null for a value that does not hold a boxed type", () => {
-        expect(valueFromJS(Type.STRING, "text").getBoxed()).toBeNull();
+        const value = new Value();
+        value.init(Type.STRING);
+        value.setString("text");
+        expect(value.getBoxed()).toBeNull();
     });
 
     it("getBoxed returns null when setBoxed was given null", () => {
@@ -175,6 +185,21 @@ describe("valueToJS extra coverage", () => {
     });
 });
 
+describe("valueFromJS / valueToJS round-trips — variant and param", () => {
+    it("round-trips a GLib.Variant preserving its payload", () => {
+        const variant = GLib.Variant.newString("payload");
+        const result = valueToJS(valueFromJS(Type.VARIANT, variant));
+        expect(result).toBeInstanceOf(GLib.Variant);
+        const [text] = (result as GLib.Variant).getString();
+        expect(text).toBe("payload");
+    });
+
+    it("round-trips a ParamSpec returning the same wrapper", () => {
+        const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
+        expect(valueToJS(valueFromJS(Type.PARAM, spec))).toBe(spec);
+    });
+});
+
 describe("valueFromFfi — primitives", () => {
     it("builds a boolean value", () => {
         expect(valueFromFfi({ type: "boolean" }, true).getBoolean()).toBe(true);
@@ -262,6 +287,23 @@ describe("valueFromFfi — objects and boxed", () => {
         expect(() =>
             valueFromFfi({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
         ).toThrow(/Cannot resolve gtype/);
+    });
+});
+
+describe("valueFromFfi — variant fundamental", () => {
+    it("round-trips a GVariant through a fundamental descriptor keyed by typeName", () => {
+        const variant = GLib.Variant.newString("payload");
+        const descriptor = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+            ownership: "borrowed",
+            typeName: "GVariant",
+        });
+
+        const value = valueFromFfi(descriptor, variant);
+        expect(valueGetType(value)).toBe(Type.VARIANT);
+
+        const result = valueToJS(value);
+        expect(result).toBeInstanceOf(GLib.Variant);
+        expect((result as GLib.Variant).getString()[0]).toBe("payload");
     });
 });
 

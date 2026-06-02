@@ -1,7 +1,8 @@
 import { call, type NativeHandle } from "@gtkx/native";
-import { Value } from "./generated/gobject/gobject.js";
+import type { AnyClass } from "@gtkx/utils";
+import { GValue } from "./gobject/gvalue-native.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { getHandle, type NativeClass, type NativeObject, setHandle, tryGetHandle } from "./handles.js";
+import { type GTyped, getHandle, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
 import { linkInstanceState } from "./instance-state.js";
 import { setPendingConstruction } from "./pending-construction.js";
@@ -12,7 +13,7 @@ import { getClassGType, registerNativeObject } from "./registry.js";
  *
  * The generated `GObject.Object` constructor delegates here, threading the
  * fully-translated property record that each subclass constructor assembled
- * up the `super(...)` chain. Every value that is a {@link Value} is forwarded
+ * up the `super(...)` chain. Every value that is a {@link GValue} is forwarded
  * to `g_object_new_with_properties` keyed by its GIR name; any other entry
  * (e.g. signal handlers, children, or refs a caller mixed into the props bag)
  * is ignored. This is the single home for the four-element descriptor layout
@@ -32,13 +33,13 @@ export function constructGObjectInstance(instance: object, props: Record<string,
     const values: NativeHandle[] = [];
     for (const key in props) {
         const value = props[key];
-        if (value instanceof Value) {
+        if (value instanceof GValue) {
             names.push(key);
             values.push(getHandle(value));
         }
     }
 
-    const gtype = getClassGType(instance.constructor as NativeClass);
+    const gtype = getClassGType(instance.constructor as AnyClass);
     const previous = setPendingConstruction(instance);
     let handle: NativeHandle;
     try {
@@ -59,7 +60,7 @@ export function constructGObjectInstance(instance: object, props: Record<string,
 
     if (tryGetHandle(instance) === undefined) {
         setHandle(instance, handle);
-        registerNativeObject(instance as NativeObject);
+        registerNativeObject(instance as GTyped);
     }
     const linked = tryGetHandle(instance);
     if (linked !== undefined) linkInstanceState(linked, instance);

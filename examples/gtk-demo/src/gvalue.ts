@@ -1,4 +1,4 @@
-import * as GObject from "@gtkx/ffi/gobject";
+import * as GObject from "@gtkx/gi/gobject";
 
 /**
  * Builds a `GObject.Value` of the given `GType`, runs `populate` to set its
@@ -11,7 +11,7 @@ import * as GObject from "@gtkx/ffi/gobject";
  * @param populate - Callback that sets the value's payload via `setString`,
  *   `setBoxed`, `setObject`, etc.
  */
-export const makeValue = (gtype: GObject.GType, populate: (value: GObject.Value) => void): GObject.Value => {
+export const buildValue = (gtype: GObject.GType, populate: (value: GObject.Value) => void): GObject.Value => {
     const value = new GObject.Value();
     value.init(gtype);
     populate(value);

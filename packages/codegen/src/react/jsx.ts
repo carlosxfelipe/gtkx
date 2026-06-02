@@ -6,8 +6,6 @@ import { containerSlotsFor } from "./compounds-meta.js";
 import { buildWidgetPropsEntries } from "./props.js";
 import { isReactNodeClass, iterateClassesWithGlibName, type WidgetCandidate } from "./widgets.js";
 
-type WidgetEntry = WidgetCandidate;
-
 /**
  * Generates `jsx.ts` source — one `export const Name = "Name"` per JSX
  * intrinsic element (every GtkWidget descendant plus event controllers
@@ -46,7 +44,7 @@ export const generateJsx = (
     const namespaceImports = new Map<string, string>();
     const propBlocks: string[] = ["export interface WidgetProps {\n    name?: string;\n}"];
     for (const entry of widgets) {
-        const block = buildPropBlock(repository, entry, {
+        const block = renderPropBlock(repository, entry, {
             slotPropMap,
             isWidgetAncestor,
             widgetByGlibName,
@@ -55,7 +53,7 @@ export const generateJsx = (
         propBlocks.push(block);
     }
 
-    const importLines = buildImportLines(namespaceImports);
+    const importLines = renderImportLines(namespaceImports);
     const slotEntries = widgets.map((entry) => `    readonly ${quote(entry.glibName)}: string`);
     const slotNamesLine = `export type WidgetSlotNames = {\n${slotEntries.join(";\n")};\n};`;
     const intrinsicEntries = widgets.map((entry) => `        ${entry.glibName}: ${entry.glibName}Props;`);
@@ -82,23 +80,27 @@ export const generateJsx = (
     return `${body}\n`;
 };
 
-type BuildPropBlockContext = {
+type RenderPropBlockContext = {
     readonly slotPropMap: Readonly<Record<string, readonly string[]>>;
     readonly isWidgetAncestor: (candidate: GirClass) => boolean;
-    readonly widgetByGlibName: ReadonlyMap<string, WidgetEntry>;
+    readonly widgetByGlibName: ReadonlyMap<string, WidgetCandidate>;
     readonly namespaceImports: Map<string, string>;
 };
 
-const buildPropBlock = (repository: GirRepository, entry: WidgetEntry, ctx: BuildPropBlockContext): string => {
-    const slotPropNames = new Set(ctx.slotPropMap[entry.glibName] ?? []);
+const renderPropBlock = (
+    repository: GirRepository,
+    entry: WidgetCandidate,
+    context: RenderPropBlockContext,
+): string => {
+    const slotPropNames = new Set(context.slotPropMap[entry.glibName] ?? []);
     const { propLines, imports } = buildWidgetPropsEntries({
         repository,
         klass: entry.klass,
         slotPropNames,
-        isWidgetAncestor: ctx.isWidgetAncestor,
+        isWidgetAncestor: context.isWidgetAncestor,
     });
-    for (const [namespace, alias] of imports) ctx.namespaceImports.set(namespace, alias);
-    ctx.namespaceImports.set(entry.namespace.name, entry.namespace.name);
+    for (const [namespace, alias] of imports) context.namespaceImports.set(namespace, alias);
+    context.namespaceImports.set(entry.namespace.name, entry.namespace.name);
     const widgetTypeRef = `${entry.namespace.name}.${entry.klass.name} | null`;
     const ownerLines = [
         "    children?: ReactNode;",
@@ -106,11 +108,11 @@ const buildPropBlock = (repository: GirRepository, entry: WidgetEntry, ctx: Buil
         ...propLines.map((line) => `    ${line}`),
         ...containerSlotsFor(entry.glibName).map((method) => `    ${method}?: ReactNode | null;`),
     ];
-    const parentExtends = resolveParentPropsExtension(repository, entry, ctx.widgetByGlibName);
+    const parentExtends = resolveParentPropsExtension(repository, entry, context.widgetByGlibName);
     return `export interface ${entry.glibName}Props extends ${parentExtends} {\n${ownerLines.join("\n")}\n}`;
 };
 
-const buildImportLines = (namespaceImports: ReadonlyMap<string, string>): readonly string[] => {
+const renderImportLines = (namespaceImports: ReadonlyMap<string, string>): readonly string[] => {
     const lines = ['import type { ReactNode, Ref } from "react";'];
     for (const [namespaceName, alias] of namespaceImports) {
         if (namespaceName === "") continue;
@@ -120,8 +122,8 @@ const buildImportLines = (namespaceImports: ReadonlyMap<string, string>): readon
     return lines;
 };
 
-const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
-    const entries: WidgetEntry[] = [];
+const collectWidgets = (repository: GirRepository): readonly WidgetCandidate[] => {
+    const entries: WidgetCandidate[] = [];
     const seen = new Set<string>();
     for (const candidate of iterateClassesWithGlibName(repository)) {
         const { glibName, klass, namespace } = candidate;
@@ -133,12 +135,12 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
     return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
 };
 
-const ffiImportPath = (directory: string): string => `@gtkx/ffi/${directory}`;
+const ffiImportPath = (directory: string): string => `@gtkx/gi/${directory}`;
 
 const resolveParentPropsExtension = (
     repository: GirRepository,
-    entry: WidgetEntry,
-    widgetByGlibName: ReadonlyMap<string, WidgetEntry>,
+    entry: WidgetCandidate,
+    widgetByGlibName: ReadonlyMap<string, WidgetCandidate>,
 ): string => {
     const parent = entry.klass.parent;
     if (parent === undefined) return "WidgetProps";

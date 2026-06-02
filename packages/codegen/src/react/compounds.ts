@@ -56,8 +56,8 @@ export const generateCompounds = (
     }
 
     const sections = [
-        buildImportLines(accumulator).join("\n"),
-        buildElementConsts(accumulator),
+        renderImportLines(accumulator).join("\n"),
+        renderElementConsts(accumulator),
         exportLines.join("\n\n"),
     ];
     const source = `${sections.filter((section) => section.length > 0).join("\n\n")}\n`;
@@ -150,13 +150,13 @@ const renderVirtualSubcomponent = (
     };
 };
 
-const buildElementConsts = (accumulator: CompoundAccumulator): string =>
+const renderElementConsts = (accumulator: CompoundAccumulator): string =>
     [...accumulator.elementNames]
         .sort((a, b) => a.localeCompare(b))
         .map((name) => `const ${name}Element = ${quote(name)} as const;`)
         .join("\n");
 
-const buildImportLines = (accumulator: CompoundAccumulator): readonly string[] => {
+const renderImportLines = (accumulator: CompoundAccumulator): readonly string[] => {
     const lines = ['import type { ReactNode } from "react";'];
     const compoundPropTypes = [...accumulator.compoundPropTypes].sort((a, b) => a.localeCompare(b));
     if (compoundPropTypes.length > 0) {
@@ -164,7 +164,7 @@ const buildImportLines = (accumulator: CompoundAccumulator): readonly string[] =
     }
     const virtualPropTypes = [...accumulator.virtualPropTypes].sort((a, b) => a.localeCompare(b));
     if (virtualPropTypes.length > 0) {
-        lines.push(`import type { ${virtualPropTypes.join(", ")} } from "../jsx.js";`);
+        lines.push(`import type { ${virtualPropTypes.join(", ")} } from "@gtkx/react";`);
     }
     return lines;
 };

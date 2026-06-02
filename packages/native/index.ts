@@ -265,7 +265,7 @@ export type RegisterClassVfuncDefinition = {
  * struct). Each vfunc is wrapped in a libffi trampoline whose function pointer
  * is written into the new class's own copy of the inherited interface vtable.
  */
-export type RegisterClassInterfaceVfuncsDefinition = {
+type RegisterClassInterfaceVfuncsDefinition = {
     /** GType of the inherited interface whose vfuncs are overridden. */
     readonly gtype: number;
     /** Vfunc overrides relative to the interface struct base. */
@@ -276,13 +276,13 @@ export type RegisterClassInterfaceVfuncsDefinition = {
  * Optional payload for {@link registerClass} carrying class vfunc overrides and
  * inherited-interface vfunc overrides.
  */
-export type RegisterClassNativeOptions = {
+export type RegisterClassVfuncOptions = {
     readonly vfuncs?: readonly RegisterClassVfuncDefinition[];
     readonly interfaceVfuncs?: readonly RegisterClassInterfaceVfuncsDefinition[];
 };
 
 /**
- * Registers a new `GType` derived from `parentGtype` under `name`.
+ * Registers a new `GType` derived from `parentGType` under `name`.
  *
  * Wraps `g_type_register_static`, sizing the new class so it matches the
  * parent's class and instance struct sizes. Class vfunc overrides are installed
@@ -292,16 +292,16 @@ export type RegisterClassNativeOptions = {
  * the JS class registry) lives in `@gtkx/ffi`'s `registerClass`.
  *
  * @param name - Globally-unique GType name (must not already be registered)
- * @param parentGtype - Numeric GType of the parent class
+ * @param parentGType - Numeric GType of the parent class
  * @param options - Optional class and inherited-interface vfunc overrides
  * @returns Numeric GType of the newly registered subclass
  */
-export function registerClass(name: string, parentGtype: number, options?: RegisterClassNativeOptions): number {
+export function registerClass(name: string, parentGType: number, options?: RegisterClassVfuncOptions): number {
     const nativeOptions = options ? buildNativeOptions(options) : undefined;
-    return native.registerClass(name, parentGtype, nativeOptions) as number;
+    return native.registerClass(name, parentGType, nativeOptions) as number;
 }
 
-function buildNativeOptions(options: RegisterClassNativeOptions): NativeRegisterClassOptions {
+function buildNativeOptions(options: RegisterClassVfuncOptions): NativeRegisterClassOptions {
     return {
         vfuncs: options.vfuncs?.map(toNativeVfunc),
         interfaceVfuncs: options.interfaceVfuncs?.map((iface) => ({
@@ -352,7 +352,7 @@ export function watchObjectFinalize(handle: NativeHandle): void {
  * Bracketed by [[unfreeze]] to release the GLib main loop. Calls nest: only
  * the outermost `freeze` / `unfreeze` pair starts and stops the freeze loop.
  *
- * @internal Used by `@gtkx/react` around React commits.
+ * @internal Wrapped by `@gtkx/ffi`'s commit-bracket facade.
  */
 export function freeze(): void {
     native.freeze();
@@ -361,7 +361,7 @@ export function freeze(): void {
 /**
  * Resumes normal GTK frame-clock dispatch after a [[freeze]] block.
  *
- * @internal Used by `@gtkx/react` around React commits.
+ * @internal Wrapped by `@gtkx/ffi`'s commit-bracket facade.
  */
 export function unfreeze(): void {
     native.unfreeze();

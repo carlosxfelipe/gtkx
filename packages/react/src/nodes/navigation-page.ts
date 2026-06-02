@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { toCamelCase } from "@gtkx/utils";
 import type { NavigationPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -56,14 +56,13 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const parentWidget = this.getParentWidget();
         const title = this.props.title ?? "";
-        const childWidget = this.children[0]?.container ?? null;
+        const childWidget = this.children[0]?.backingInstance ?? null;
 
         if (childWidget) {
-            const wrappedChild = this.props.id
+            this.wrappedPage = this.props.id
                 ? Adw.NavigationPage.newWithTag(childWidget, title, this.props.id)
                 : Adw.NavigationPage.new(childWidget, title);
 
-            this.wrappedPage = wrappedChild;
             this.applyOwnProps(null, this.props);
 
             if (parentWidget instanceof Adw.NavigationView) {
@@ -71,7 +70,7 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
                     parentWidget.remove(oldChild);
                 }
 
-                parentWidget.add(wrappedChild);
+                parentWidget.add(this.wrappedPage);
             } else {
                 this.applySlotChild(parentWidget, oldChild);
             }
@@ -104,6 +103,6 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
         if (!this.parent) {
             throw new Error("Expected parent widget to be set on NavigationPageNode");
         }
-        return this.parent.container;
+        return this.parent.backingInstance;
     }
 }

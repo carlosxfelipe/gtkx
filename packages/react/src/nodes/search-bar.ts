@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { GtkSearchBarProps } from "../jsx.js";
 import { type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
@@ -10,7 +10,7 @@ export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
         return {
             ...super.ownPropDescriptors(),
             onSearchModeChanged: signal("notify::search-mode-enabled", {
-                getArgs: () => [this.container.getSearchMode()],
+                getArgs: () => [this.backingInstance.getSearchMode()],
             }),
         };
     }

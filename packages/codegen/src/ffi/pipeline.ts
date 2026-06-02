@@ -4,8 +4,9 @@ import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
 import { emitAlias } from "../writers/alias.js";
 import { emitBoxed } from "../writers/boxed.js";
+import { emitCallback } from "../writers/callback.js";
 import { emitClass } from "../writers/class.js";
-import { emitConstant } from "../writers/constants.js";
+import { emitConstant } from "../writers/constant.js";
 import { emitEnum } from "../writers/enum.js";
 import { emitNamespaceBootstrap, emitNamespaceFunction } from "../writers/function.js";
 import { emitInterface } from "../writers/interface.js";
@@ -13,11 +14,10 @@ import { emitInterface } from "../writers/interface.js";
 /**
  * Generates the TypeScript source for one FFI namespace module.
  *
- * Walks the namespace's declared classes, interfaces, boxeds, enums,
- * functions, and constants in GIR order, dispatching to the per-construct
- * writers in `writers/`. The order matches what the existing generated
- * output uses today: bindings first, declarations second, registrations
- * trailing.
+ * Walks the namespace's declared enums, boxeds, classes, interfaces,
+ * callbacks, functions, constants, and aliases, dispatching to the
+ * per-construct writers in `writers/`: bindings first, declarations second,
+ * registrations trailing.
  *
  * @param namespace - The namespace to emit
  * @param repository - The full repository (for cross-namespace lookups)
@@ -27,36 +27,39 @@ export const generateNamespaceModule = (
     namespace: GirNamespace,
     repository: GirRepository,
 ): { readonly path: string; readonly source: string } => {
-    const ctx = new ModuleContext(namespace, repository);
-    ctx.addGObjectBootstrapImports();
+    const context = new ModuleContext(namespace, repository);
+    context.addGObjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {
-        emitEnum(ctx, enumeration);
+        emitEnum(context, enumeration);
     }
     for (const boxed of namespace.boxeds) {
-        emitBoxed(ctx, boxed);
+        emitBoxed(context, boxed);
     }
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
-        emitClass(ctx, klass);
+        emitClass(context, klass);
     }
     for (const iface of namespace.interfaces) {
-        emitInterface(ctx, iface);
+        emitInterface(context, iface);
+    }
+    for (const callback of namespace.callbacks) {
+        emitCallback(context, callback);
     }
     for (const fn of namespace.functions) {
-        emitNamespaceFunction(ctx, fn);
+        emitNamespaceFunction(context, fn);
     }
-    emitNamespaceBootstrap(ctx, namespace);
+    emitNamespaceBootstrap(context, namespace);
     for (const constant of namespace.constants) {
-        emitConstant(ctx, constant);
+        emitConstant(context, constant);
     }
     for (const alias of namespace.aliases) {
-        emitAlias(ctx, alias);
+        emitAlias(context, alias);
     }
 
     const directory = namespace.name.toLowerCase();
     return {
         path: `${directory}/${directory}.ts`,
-        source: ctx.module.emit(),
+        source: context.module.toSource(),
     };
 };
 

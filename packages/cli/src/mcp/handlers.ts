@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { type IpcMethod, methodNotFoundError, widgetNotFoundError } from "@gtkx/mcp";
 import { loadTestingModule } from "./testing-loader.js";
 import type { WidgetRegistry } from "./widget-registry.js";
@@ -15,7 +15,7 @@ export type HandlerContext = {
 /**
  * Function signature implemented by every entry in {@link HANDLERS}.
  */
-export type Handler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
+type Handler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
 
 const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): Gtk.Widget => {
     if (widgetId === undefined) {

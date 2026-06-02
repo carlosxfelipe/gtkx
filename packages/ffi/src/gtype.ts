@@ -10,8 +10,16 @@
  * runtime self-contained.
  */
 
-import type { GType } from "./generated/gobject/gobject.js";
 import { t } from "./helpers.js";
+
+/**
+ * A GLib type identifier — the `GType` integer the GObject type system
+ * assigns to every registered class, interface, boxed, and fundamental type.
+ *
+ * Hand-declared here rather than imported from the generated bindings so the
+ * runtime type layer stays independent of generated code.
+ */
+export type GType = number;
 
 /**
  * Shared-object name of libgobject, home of every `g_type_*`, `g_value_*`,
@@ -37,19 +45,6 @@ export const GVALUE_BORROWED = t.boxed("GValue", "borrowed", LIBGOBJECT, "g_valu
 export const G_TYPE_INVALID: GType = 0;
 
 /**
- * Whether `gtype` is the {@link G_TYPE_INVALID} sentinel.
- *
- * The branded `GType` cannot be compared to a bare numeric literal at the
- * type level, so callers that need to detect "no type" should use this
- * predicate instead of an unchecked numeric comparison.
- *
- * @param gtype - The GType to test.
- */
-export function isInvalidGType(gtype: GType): boolean {
-    return gtype === G_TYPE_INVALID;
-}
-
-/**
  * Narrows a marshaled FFI result to a `GType`.
  *
  * A `g_*_get_type` FFI call yields its numeric `gsize` as an untyped
@@ -60,7 +55,7 @@ export function isInvalidGType(gtype: GType): boolean {
  * @param value - The marshaled FFI result of a type-resolution call.
  * @returns The result as a `GType`.
  */
-export const gtypeFromFfi: (value: unknown) => GType = Number;
+export const gTypeFromFfi: (value: unknown) => GType = Number;
 
 const g_type_from_name = t.fn(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
 
@@ -74,6 +69,10 @@ const g_type_interfaces = t.fn(
     [{ type: t.uint64 }, { type: t.ref(t.uint32) }],
     t.sizedArray(t.uint64, 1, "full"),
 );
+
+const g_type_fundamental = t.fn(LIBGOBJECT, "g_type_fundamental", [{ type: t.uint64 }], t.uint64);
+
+const g_type_name = t.fn(LIBGOBJECT, "g_type_name", [{ type: t.uint64 }], t.string("borrowed"));
 
 /**
  * Tests whether `type` is a descendant of `isAType`, or — when `isAType` is
@@ -115,4 +114,25 @@ export function typeInterfaces(type: GType): GType[] {
  */
 export function typeFromName(name: string): GType {
     return g_type_from_name(name) as GType;
+}
+
+/**
+ * Returns the fundamental `GType` that `type` derives from — the
+ * `G_TYPE_FUNDAMENTAL` C macro. Boxed, enum, flags, object, and the like all
+ * collapse onto their shared fundamental, which the value marshaller keys on.
+ *
+ * @param type - The GType whose fundamental to resolve
+ */
+export function typeFundamental(type: GType): GType {
+    return g_type_fundamental(type) as GType;
+}
+
+/**
+ * Returns the GLib type name registered for `type`, or `null` when `type` has
+ * no registered name — equivalent to the `g_type_name` C function.
+ *
+ * @param type - The GType whose name to resolve
+ */
+export function typeName(type: GType): string | null {
+    return (g_type_name(type) as string | null) ?? null;
 }

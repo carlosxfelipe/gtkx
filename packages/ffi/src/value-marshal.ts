@@ -1,40 +1,37 @@
 /**
  * Internal `GValue` marshalling surface.
  *
- * Converting a JavaScript value into a `GObject.Value` — and back out — is a
- * gtkx runtime concern with no node-gtk counterpart. These functions back the
+ * Converting a JavaScript value into a `GValue` — and back out — is a gtkx
+ * runtime concern with no node-gtk counterpart. These functions back the
  * signal-emission and property-access paths; they are consumed only by other
  * `packages/ffi` modules (and the generated bindings) and are not part of any
- * public `@gtkx/ffi/<namespace>` surface.
+ * public namespace surface. They build on the hand-written {@link GValue}
+ * wrapper, keeping the runtime independent of generated code.
+ *
+ * The forward builders ({@link valueFromFfi}, {@link valueFromJS},
+ * {@link valueFromObject}) live in `./gobject/gvalue.js` and are re-exported
+ * here so the whole marshalling vocabulary reads under one `value<Source>`
+ * stem; this module adds the omitted-prop guard {@link valueFromFfiOptional}
+ * and the reverse direction {@link valueToJS}.
  */
 
 import type { Type as FfiType, NativeHandle } from "@gtkx/native";
-import type { Object as GObject, GType, Value } from "./generated/gobject/gobject.js";
-import { typeFundamental, typeName } from "./generated/gobject/gobject.js";
 import {
-    fromJS,
+    type GValueReader,
+    getBoxed,
     getFundamentalMarshallers,
     getStrvGType,
-    newFrom,
-    newFromObject,
-    readBoxed,
+    valueFromFfi,
+    valueGetType,
 } from "./gobject/gvalue.js";
+import type { GValue } from "./gobject/gvalue-native.js";
 import { Type } from "./gobject/types.js";
-import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "./gtype.js";
+import { type GType, GVALUE_BORROWED, LIBGOBJECT, typeFundamental, typeName } from "./gtype.js";
 import { getHandle } from "./handles.js";
 import { read, t } from "./native.js";
 
-/**
- * Creates a `GValue` from an FFI type descriptor and a JavaScript value.
- *
- * Dispatches to the appropriate constructor based on the descriptor's type.
- *
- * @param ffiType - The FFI type descriptor.
- * @param value - The JS value to convert.
- */
-export function valueFromFfi(ffiType: FfiType, value: unknown): Value {
-    return newFrom(ffiType, value);
-}
+export { valueFromJS, valueFromObject } from "./gobject/gvalue.js";
+export { valueFromFfi };
 
 /**
  * Like {@link valueFromFfi}, but returns `undefined` when `value` is
@@ -42,41 +39,14 @@ export function valueFromFfi(ffiType: FfiType, value: unknown): Value {
  *
  * Generated GObject constructors call this for each prop they translate, then
  * spread the results into the record handed up the `super(...)` chain. The
- * canonical constructor keeps only the entries that produced a `Value`, so an
+ * canonical constructor keeps only the entries that produced a `GValue`, so an
  * omitted prop is naturally dropped while an explicit `null` still marshals.
  *
  * @param ffiType - The FFI type descriptor.
  * @param value - The JS value to convert, or `undefined` to skip.
  */
-export function valueFromFfiOptional(ffiType: FfiType, value: unknown): Value | undefined {
-    return value === undefined ? undefined : newFrom(ffiType, value);
-}
-
-/**
- * Creates a `GValue` typed as `gtype` and marshals `value` into it.
- *
- * The runtime counterpart to {@link valueFromFfi}: where `valueFromFfi`
- * consumes a codegen-time FFI type descriptor, this consumes a runtime `GType`
- * integer (typically derived from a `GParamSpec` via
- * `valueGetType(pspec.getDefaultValue())`).
- *
- * @param gtype - The concrete `GType` (not necessarily the fundamental).
- * @param value - The JS value to marshal.
- * @throws on `G_TYPE_POINTER` with a non-null value, or unsupported `GType`s.
- */
-export function valueFromJS(gtype: GType, value: unknown): Value {
-    return fromJS(gtype, value);
-}
-
-/**
- * Creates a `GValue` initialized with a `GObject` instance.
- *
- * The `GType` is derived from the object's runtime class.
- *
- * @param value - The `GObject` instance, or `null`.
- */
-export function valueFromObject(value: GObject | null): Value {
-    return newFromObject(value);
+export function valueFromFfiOptional(ffiType: FfiType, value: unknown): GValue | undefined {
+    return value === undefined ? undefined : valueFromFfi(ffiType, value);
 }
 
 const g_value_get_boxed_strv = t.fn(
@@ -86,26 +56,14 @@ const g_value_get_boxed_strv = t.fn(
     t.array(t.string("borrowed")),
 );
 
-/**
- * Gets the `GType` of the value stored in a `GValue`.
- *
- * Equivalent to the C macro `G_VALUE_TYPE(value)`.
- *
- * @param value - The `GValue` to inspect.
- * @returns The `GType` identifier.
- */
-export function valueGetType(value: Value): GType {
-    return gtypeFromFfi(read(getHandle(value), t.uint64, 0));
-}
+const valueGetStrv = (value: object): string[] => (g_value_get_boxed_strv(getHandle(value)) as string[] | null) ?? [];
 
-const valueGetStrv = (value: Value): string[] => (g_value_get_boxed_strv(getHandle(value)) as string[] | null) ?? [];
-
-const valueFromFundamental = (value: Value, fundamental: GType): unknown => {
+const valueFromFundamental = (value: GValueReader, fundamental: GType): unknown => {
     const marshaller = getFundamentalMarshallers().get(fundamental);
     return marshaller ? marshaller.from(value) : undefined;
 };
 
-const readPointerValue = (handle: NativeHandle): null => {
+const getPointerValue = (handle: NativeHandle): null => {
     const ptr = read(handle, t.uint64, 8) as number;
     if (ptr !== 0) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
@@ -128,10 +86,11 @@ const readPointerValue = (handle: NativeHandle): null => {
  *   and returns the wrapped instance; throws if no class is registered.
  * - POINTER returns `null` for a null pointer; throws otherwise.
  *
- * @param value - The `GValue` to unmarshal.
+ * @param value - The `GValue` to unmarshal (the hand-written wrapper or the
+ *   public generated `GObject.Value`).
  * @throws if the GValue holds an unsupported or unregistered type.
  */
-export function valueToJS(value: Value): unknown {
+export function valueToJS(value: GValueReader): unknown {
     const gtype = valueGetType(value);
 
     if (gtype === getStrvGType()) return valueGetStrv(value);
@@ -140,8 +99,8 @@ export function valueToJS(value: Value): unknown {
     const fundamentalValue = valueFromFundamental(value, fundamental);
     if (fundamentalValue !== undefined) return fundamentalValue;
 
-    if (fundamental === Type.POINTER) return readPointerValue(getHandle(value));
-    if (fundamental === Type.BOXED) return readBoxed(value);
+    if (fundamental === Type.POINTER) return getPointerValue(getHandle(value));
+    if (fundamental === Type.BOXED) return getBoxed(value);
 
     throw new Error(`Unsupported GType for valueToJS: ${typeName(gtype) ?? String(gtype)}`);
 }

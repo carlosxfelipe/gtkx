@@ -1,6 +1,6 @@
-import type * as GObject from "@gtkx/ffi/gobject";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { widgetIdOf } from "./widget-id.js";
+import type * as GObject from "@gtkx/gi/gobject";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { stableIdOf } from "./stable-id.js";
 
 export const UNBOUND_POSITION = -1;
 
@@ -16,37 +16,37 @@ export type ListLifecycleItem = Gtk.ListItem | Gtk.ListHeader;
  */
 export const asLifecycleItem = <T extends ListLifecycleItem>(obj: GObject.Object): T => obj as T;
 
-export interface ListFactoryOptions<T extends ListLifecycleItem> {
+export type ListFactoryOptions<T extends ListLifecycleItem> = {
     containers: Map<T, number>;
     containerKeys: Map<T, string>;
     getPosition: (item: T) => number;
     onBoundItemsChanged: () => void;
     onSetup?: (item: T) => void;
-    isDisposed?: () => boolean;
-}
+    isDetached?: () => boolean;
+};
 
 export function connectFactoryLifecycle<T extends ListLifecycleItem>(
     factory: Gtk.SignalListItemFactory,
     options: ListFactoryOptions<T>,
 ): void {
-    const { containers, containerKeys, getPosition, onBoundItemsChanged, onSetup, isDisposed } = options;
+    const { containers, containerKeys, getPosition, onBoundItemsChanged, onSetup, isDetached } = options;
 
     factory.connect("setup", (obj: GObject.Object) => {
         const item = asLifecycleItem<T>(obj);
         containers.set(item, UNBOUND_POSITION);
-        containerKeys.set(item, widgetIdOf(item));
+        containerKeys.set(item, stableIdOf(item));
         onSetup?.(item);
     });
 
     factory.connect("bind", (obj: GObject.Object) => {
-        if (isDisposed?.()) return;
+        if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
         containers.set(item, getPosition(item));
         onBoundItemsChanged();
     });
 
     factory.connect("unbind", (obj: GObject.Object) => {
-        if (isDisposed?.()) return;
+        if (isDetached?.()) return;
         const item = asLifecycleItem<T>(obj);
         containers.set(item, UNBOUND_POSITION);
         onBoundItemsChanged();

@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 
 import { isAddable, isAppendable, isContentWidget, isRemovable, isSingleChild } from "./predicates.js";
 
@@ -42,15 +42,6 @@ export function unparentWidget(widget: Gtk.Widget): void {
     const currentParent = widget.getParent();
     if (currentParent === null) return;
     detachChild(widget, currentParent);
-}
-
-export function removeChildFromParent(
-    parent: Gtk.Widget & { remove: (child: Gtk.Widget) => void },
-    child: Gtk.Widget,
-): void {
-    if (child.getParent() === parent) {
-        parent.remove(child);
-    }
 }
 
 export function getFocusWidget(widget: Gtk.Widget): Gtk.Widget | null {

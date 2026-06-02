@@ -1,4 +1,30 @@
-import { stop as nativeStop } from "@gtkx/native";
+import { freeze as nativeFreeze, stop as nativeStop, unfreeze as nativeUnfreeze } from "@gtkx/native";
+import { type GracefulShutdownHandle, installGracefulShutdown } from "@gtkx/utils";
+
+/**
+ * Suspends GLib-thread dispatch for the span of a reconciler commit.
+ *
+ * The React reconciler brackets a batch of mutations with {@link freezeDispatch}
+ * and {@link unfreezeDispatch} so the GLib frame clock cannot fire between
+ * individual mutations and observe a half-applied tree. Nested pairs are
+ * reference-counted by the native mailbox; only the outermost pair starts and
+ * stops the freeze loop. This is the sanctioned commit-bracket helper, so the
+ * reconciler never names a `@gtkx/native` primitive directly.
+ *
+ * @see {@link unfreezeDispatch}
+ */
+export const freezeDispatch = (): void => {
+    nativeFreeze();
+};
+
+/**
+ * Resumes GLib-thread dispatch suspended by {@link freezeDispatch}.
+ *
+ * @see {@link freezeDispatch}
+ */
+export const unfreezeDispatch = (): void => {
+    nativeUnfreeze();
+};
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
@@ -56,5 +82,28 @@ export const stop = async (): Promise<void> => {
         keepAliveTimeout = null;
     }
 };
+
+/**
+ * Installs `SIGINT`/`SIGTERM`/`SIGHUP` handlers that shut the runtime down by
+ * routing the signal through {@link stop}.
+ *
+ * The GLib main loop runs on a dedicated thread, so the Node.js event loop
+ * stays responsive and these handlers fire on the JS thread. A plain
+ * (non-React) CLI app therefore quits its loop cleanly on Ctrl+C, provided it
+ * drives the application through `activate` rather than blocking the JS thread
+ * in `Gio.Application.run`. The first signal drains finalizers and quits the
+ * loop before the process exits with the signal's conventional code; a second
+ * `SIGINT` forces an immediate exit.
+ *
+ * Called automatically when this module loads unless
+ * `GTKX_DISABLE_SHUTDOWN_HANDLERS` is set to `"1"`.
+ *
+ * @see {@link stop}
+ */
+const installShutdownHandlers = (): GracefulShutdownHandle => installGracefulShutdown({ onSignal: () => stop() });
+
+if (process.env.GTKX_DISABLE_SHUTDOWN_HANDLERS !== "1") {
+    installShutdownHandlers();
+}
 
 keepAlive();

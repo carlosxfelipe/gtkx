@@ -1,4 +1,4 @@
-import { quote, toCamelCase, toPascalCase } from "@gtkx/utils";
+import { quote, toCamelCase } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import type { GirClass } from "../gir/class.js";
@@ -8,8 +8,9 @@ import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { isHandlePassing, planTrampolineArgs, renderTupleWriteback } from "./method.js";
-import { isCellInout, writeFfiType } from "./value.js";
+import { planTrampolineArgs, renderTupleWriteback } from "./method.js";
+import { isHandlePassing } from "./param-classify.js";
+import { isCellInout, renderFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -24,76 +25,162 @@ type CollectedSignal = {
     readonly namespaceName: string;
 };
 
+/** The generated marshalling references a class's inline `emit` switch uses. */
+type GObjectRefs = {
+    readonly Value: string;
+    readonly signalEmitv: string;
+    readonly signalLookup: string;
+};
+
 /**
  * Renders the `connect` and `emit` instance methods for a class that owns or
  * inherits-by-interface at least one signal.
  *
- * Both delegate to the runtime signal dispatcher (`connectSignal` /
- * `emitSignal`) and route unknown-signal lookups up the class chain via
- * `super.connect` / `super.emit`. The root `GObject.Object` emits the same
- * shapes without a parent fallback because it bottoms out the hierarchy.
+ * Each method is a `switch` over the type's own signals. `connect` resolves the
+ * per-signal trampoline, wraps the handler, and hands it to the thin
+ * `connectSignal` wrapper around the non-introspectable `g_signal_connect_data`.
+ * `emit` marshals the arguments into `GValue`s with `valueFromFfi` and calls the
+ * generated `signalLookup` / `signalEmitv` directly. Unknown signals route up
+ * the class chain via `super.connect` / `super.emit`; the root `GObject.Object`
+ * throws because it bottoms out the hierarchy.
  *
  * Returns an empty array when the class contributes no signals of its own.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class whose signal methods to render
  */
-export const renderSignalMembers = (ctx: ModuleContext, klass: GirClass): readonly string[] => {
+export const renderSignalMembers = (context: ModuleContext, klass: GirClass): readonly string[] => {
     if (klass.glibGetType === undefined) return [];
-    if (collectClassSignals(ctx, klass).length === 0) return [];
-    ctx.addRuntimeImport("connectSignal");
-    ctx.addRuntimeImport("emitSignal");
-    const className = toPascalCase(klass.name);
-    const isRootObject = ctx.namespace.name === "GObject" && klass.name === "Object";
-    const connectBody = isRootObject
-        ? `return connectSignal({ instance: this, cls: ${className} }, signal, handler, { after });`
-        : `return connectSignal({ instance: this, cls: ${className} }, signal, handler, { after, parentConnect: (s, h, a) => super.connect(s, h, a) });`;
-    const emitBody = isRootObject
-        ? `emitSignal({ instance: this, cls: ${className} }, sigName, args);`
-        : `emitSignal({ instance: this, cls: ${className} }, sigName, args, (s, ...a) => super.emit(s, ...a));`;
+    const signals = collectClassSignals(context, klass);
+    if (signals.length === 0) return [];
+    const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
+
+    context.addRuntimeImport("connectSignal");
+    context.addRuntimeImport("signalBaseName");
+    context.addRuntimeImport("t");
+
+    const connectCases = signals.map((collected) => renderConnectCase(context, collected));
+    const emitCases = signals.map((collected) => renderEmitCase(context, collected));
+    const connectDefault = isRootObject
+        ? `default:\n    throw new globalThis.Error("Unknown signal '" + signal + "'");`
+        : "default:\n    return super.connect(signal, handler, after);";
+    const emitDefault = isRootObject
+        ? `default:\n    throw new globalThis.Error("Unknown signal '" + sigName + "'");`
+        : "default:\n    super.emit(sigName, ...args);";
+
+    const connectSwitch = `switch (signalBaseName(signal)) {\n${indent([...connectCases, connectDefault].join("\n"), 1)}\n}`;
+    const emitSwitch = `switch (sigName) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
+
     return [
-        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number {\n    ${connectBody}\n}`,
-        `emit(sigName: string, ...args: unknown[]): void {\n    ${emitBody}\n}`,
+        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number {\n${indent(connectSwitch, 1)}\n}`,
+        `emit(sigName: string, ...args: unknown[]): void {\n${indent(emitSwitch, 1)}\n}`,
     ];
 };
 
 /**
- * Renders the `{ table: new Map([...]), gobject: { … } }` signal-registration
- * fragment for a class or interface descriptor's `signals` field, or
- * `undefined` when the type exposes no signals of its own.
- *
- * Each table entry carries the trampoline FFI descriptor used to connect a
- * handler, an `invoke` closure that marshals trampoline arguments into the user
- * handler, the per-parameter emit types, and the return-value `GType` resolver.
- * The `gobject` field supplies the `GObject` marshalling surface the runtime
- * emit path needs; the class's shared GType comes from the descriptor.
- *
- * @param ctx - The module context
- * @param klass - The class whose signals to bind
+ * Renders one `connect` switch case: it resolves the signal's typed trampoline,
+ * wraps the user handler with the per-signal in-parameter marshalling closure,
+ * and dispatches `g_signal_connect_data` through {@link connectSignal} with the
+ * full detailed signal name.
  */
-export const renderSignalRegistration = (ctx: ModuleContext, klass: GirClass): string | undefined => {
-    if (klass.glibGetType === undefined) return undefined;
-    const signals = collectClassSignals(ctx, klass);
-    if (signals.length === 0) return undefined;
-    const entries = signals.map((collected) => renderSignalEntry(ctx, collected));
-    const map = entries.length === 0 ? "[]" : `[\n${indent(entries.join(",\n"), 1)},\n]`;
-    const gobject = renderGObjectSurface(ctx);
-    const body = `table: new globalThis.Map(${map}),\ngobject: ${gobject},`;
-    return `{\n${indent(body, 1)}\n}`;
+const renderConnectCase = (context: ModuleContext, collected: CollectedSignal): string => {
+    const { signal } = collected;
+    const { trampoline, invoke } = renderTrampolineAndInvoke(context, collected);
+    const body = [
+        `const invoke = ${invoke};`,
+        "const handlerWrapper = (...args: unknown[]): unknown => invoke(handler, args);",
+        `return connectSignal(this, signal, ${trampoline}, handlerWrapper, after ?? false);`,
+    ].join("\n");
+    return `case ${quote(signal.name)}: {\n${indent(body, 1)}\n}`;
 };
 
-const collectClassSignals = (ctx: ModuleContext, klass: GirClass): readonly CollectedSignal[] => {
-    const inheritedNames = collectInheritedSignalNames(ctx, klass);
+/**
+ * Renders one `emit` switch case: it marshals the emitting instance and each
+ * signal parameter into a `GValue` with `valueFromFfi`, resolves the signal id
+ * from the instance's runtime `GType`, and dispatches `g_signal_emitv`. Signals
+ * with a non-void return supply an initialized return `GValue`.
+ */
+const renderEmitCase = (context: ModuleContext, collected: CollectedSignal): string => {
+    const { signal, namespaceName } = collected;
+    const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
+    const paramFfi = params.map((parameter) =>
+        renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
+    );
+    context.addValueFromFfiImport();
+    const refs = gobjectRefs(context);
+    const valueArgs = [
+        'valueFromFfi(t.object("full"), this)',
+        ...paramFfi.map((ffi, index) => `valueFromFfi(${ffi}, args[${index}])`),
+    ];
+    const values = `[${valueArgs.join(", ")}]`;
+    const lookup = `${refs.signalLookup}(${quote(signal.name)}, this.__gtype__)`;
+    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
+    const emitStatements =
+        returnRef === undefined || isVoidRef(returnRef)
+            ? `${refs.signalEmitv}(${values}, ${lookup}, 0);`
+            : [
+                  `const returnValue = new ${refs.Value}();`,
+                  `returnValue.init(${renderReturnGType(context, returnRef)});`,
+                  `${refs.signalEmitv}(${values}, ${lookup}, 0, returnValue);`,
+              ].join("\n");
+    return `case ${quote(signal.name)}: {\n${indent(`${emitStatements}\nreturn;`, 1)}\n}`;
+};
+
+/**
+ * Resolves the `GObject` marshalling references the inline `emit` switch needs.
+ * Within the `GObject` namespace the generated `Value`, `signalEmitv`, and
+ * `signalLookup` are local; elsewhere they are reached through the cross-
+ * namespace `GObject` alias.
+ */
+const gobjectRefs = (context: ModuleContext): GObjectRefs => {
+    if (context.namespace.name === "GObject") {
+        return { Value: "Value", signalEmitv: "signalEmitv", signalLookup: "signalLookup" };
+    }
+    const alias = context.addCrossNamespaceImport("GObject");
+    return { Value: `${alias}.Value`, signalEmitv: `${alias}.signalEmitv`, signalLookup: `${alias}.signalLookup` };
+};
+
+/**
+ * Renders the trampoline FFI descriptor used to connect a handler and the
+ * `invoke` closure that marshals the trampoline arguments into the user handler.
+ *
+ * Out-parameter cells are wrapped in `t.ref(...)` so the native trampoline can
+ * write them back; the `invoke` closure mirrors the out-parameter tuple
+ * convention used by method out-parameters.
+ */
+const renderTrampolineAndInvoke = (
+    context: ModuleContext,
+    collected: CollectedSignal,
+): { readonly trampoline: string; readonly invoke: string } => {
+    const { signal, namespaceName } = collected;
+    const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
+    const paramFfi = params.map((parameter) =>
+        renderFfiType(context, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
+    );
+    const trampolineParamFfi = params.map((parameter, index) =>
+        isOutParameter(parameter) || isCellInout(context, parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
+    );
+    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
+    const isVoid = isVoidRef(returnRef);
+    const returnFfi = isVoid ? "t.void" : renderFfiType(context, returnRef, signal.returnValue.transferOwnership);
+    const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
+    const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
+    const invoke = renderInvokeClosure(context, collected, params, isVoid ? undefined : returnRef);
+    return { trampoline, invoke };
+};
+
+const collectClassSignals = (context: ModuleContext, klass: GirClass): readonly CollectedSignal[] => {
+    const inheritedNames = collectInheritedSignalNames(context, klass);
     const seen = new Set<string>();
     const result: CollectedSignal[] = [];
     for (const signal of klass.signals) {
         const name = toCamelCase(signal.name);
         if (inheritedNames.has(name) || seen.has(name)) continue;
         seen.add(name);
-        result.push({ signal, namespaceName: ctx.namespace.name });
+        result.push({ signal, namespaceName: context.namespace.name });
     }
     for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(ctx, implementName);
+        const iface = resolveImplementedInterface(context, implementName);
         if (iface === undefined) continue;
         for (const signal of iface.klass.signals) {
             const name = toCamelCase(signal.name);
@@ -105,12 +192,12 @@ const collectClassSignals = (ctx: ModuleContext, klass: GirClass): readonly Coll
     return result;
 };
 
-const collectInheritedSignalNames = (ctx: ModuleContext, klass: GirClass): ReadonlySet<string> => {
+const collectInheritedSignalNames = (context: ModuleContext, klass: GirClass): ReadonlySet<string> => {
     const names = new Set<string>();
-    forEachAncestor(ctx, klass, (ancestor) => {
+    forEachAncestor(context, klass, (ancestor) => {
         for (const signal of ancestor.klass.signals) names.add(toCamelCase(signal.name));
         for (const implementName of ancestor.klass.implements) {
-            const iface = resolveImplementedInterface(ctx, implementName, ancestor.namespaceName);
+            const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
             if (iface === undefined) continue;
             for (const signal of iface.klass.signals) names.add(toCamelCase(signal.name));
         }
@@ -118,54 +205,28 @@ const collectInheritedSignalNames = (ctx: ModuleContext, klass: GirClass): Reado
     return names;
 };
 
-const renderSignalEntry = (ctx: ModuleContext, collected: CollectedSignal): string => {
-    const { signal, namespaceName } = collected;
-    const params = signal.parameters.filter((parameter) => !parameter.isVarargs);
-    const paramFfi = params.map((parameter) =>
-        writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
-    );
-    const trampolineParamFfi = params.map((parameter, index) =>
-        isOutParameter(parameter) || isCellInout(ctx, parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
-    );
-    const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
-    const isVoid = isVoidRef(returnRef);
-    const returnFfi = isVoid ? "t.void" : writeFfiType(ctx, returnRef, signal.returnValue.transferOwnership);
-    const trampolineArgs = ['t.object("borrowed")', ...trampolineParamFfi, "t.void"].join(", ");
-    const trampoline = `t.trampoline([${trampolineArgs}], ${returnFfi}, { hasDestroy: true, userDataIndex: ${params.length + 1} })`;
-    const invoke = renderInvokeClosure(ctx, collected, params, isVoid ? undefined : returnRef);
-    const emitTypes = `[${paramFfi.join(", ")}]`;
-    const returnGType = isVoid || returnRef === undefined ? "null" : `() => ${renderReturnGType(ctx, returnRef)}`;
-    const body = [
-        `trampoline: ${trampoline},`,
-        `invoke: ${invoke},`,
-        `emitTypes: ${emitTypes},`,
-        `returnGType: ${returnGType},`,
-    ].join("\n");
-    return `[${quote(signal.name)}, {\n${indent(body, 1)}\n}]`;
-};
-
 const renderInvokeClosure = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     collected: CollectedSignal,
     params: readonly GirParameter[],
     returnRef: GirTypeRef | undefined,
 ): string => {
     const { namespaceName } = collected;
-    const { callArgs, outArgIndices } = planTrampolineArgs(ctx, params, namespaceName, 1);
+    const { callArgs, outArgIndices } = planTrampolineArgs(context, params, namespaceName, 1);
     if (outArgIndices.length === 0) {
-        if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
-            ctx.addRuntimeImport("tryGetHandle");
+        if (returnRef !== undefined && isHandlePassing(context, returnRef)) {
+            context.addRuntimeImport("tryGetHandle");
             return `(handler, args) => {\n    const _result = handler(${callArgs});\n    return tryGetHandle(_result);\n}`;
         }
         return `(handler, args) => handler(${callArgs})`;
     }
-    return renderOutParamInvoke(ctx, callArgs, outArgIndices, returnRef);
+    return renderOutParamInvoke(context, callArgs, outArgIndices, returnRef);
 };
 
 /**
  * Renders the invoke closure for a signal with out-parameters.
  *
- * The handler returns its results as the tuple {@link writeMethodReturnType}
+ * The handler returns its results as the tuple {@link renderMethodReturnType}
  * describes (`[primary, ...outs]` when both exist, the scalar out alone for a
  * void return with a single out, or an out-only tuple otherwise). The shared
  * {@link renderTupleWriteback} destructures that tuple and writes each out
@@ -173,31 +234,31 @@ const renderInvokeClosure = (
  * those cells through the matching C out-pointers, so the tuple convention
  * stays entirely in generated code.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param callArgs - The rendered in-parameter call arguments
  * @param outArgIndices - Trampoline-arg indices of the out-parameter cells
  * @param returnRef - The signal's return type, or `undefined` for void
  */
 const renderOutParamInvoke = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     callArgs: string,
     outArgIndices: readonly number[],
     returnRef: GirTypeRef | undefined,
 ): string => {
-    const body = renderTupleWriteback(ctx, `handler(${callArgs})`, outArgIndices, returnRef);
+    const body = renderTupleWriteback(context, `handler(${callArgs})`, outArgIndices, returnRef);
     return `(handler, args) => {\n    ${body}\n}`;
 };
 
-const renderReturnGType = (ctx: ModuleContext, ref: GirTypeRef): string => {
+const renderReturnGType = (context: ModuleContext, ref: GirTypeRef): string => {
     if (ref.kind === "primitive") {
-        return `${typeFromNameReference(ctx)}(${quote(primitiveGTypeName(ref.category))})`;
+        return `${typeFromNameReference(context)}(${quote(primitiveGTypeName(ref.category))})`;
     }
     if (ref.kind === "named") {
-        const owner = ref.namespaceName ?? ctx.namespace.name;
-        const resolved = ctx.repository.resolveNamed(owner, ref.typeName);
+        const owner = ref.namespaceName ?? context.namespace.name;
+        const resolved = context.repository.resolveNamed(owner, ref.typeName);
         if (resolved !== undefined && resolved.kind === "enum") {
-            ctx.addRuntimeImport("call");
-            ctx.addRuntimeImport("t");
+            context.addNativeImport("call");
+            context.addRuntimeImport("t");
             const lib = resolved.namespace.sharedLibrary ?? "";
             const getter = resolved.value.glibGetType ?? "";
             return `call(${quote(lib)}, ${quote(getter)}, [], t.uint64)`;
@@ -207,10 +268,10 @@ const renderReturnGType = (ctx: ModuleContext, ref: GirTypeRef): string => {
             (resolved.kind === "class" || resolved.kind === "interface" || resolved.kind === "boxed")
         ) {
             const glibTypeName = glibTypeNameOf(resolved.value) ?? ref.typeName;
-            return `${typeFromNameReference(ctx)}(${quote(glibTypeName)})`;
+            return `${typeFromNameReference(context)}(${quote(glibTypeName)})`;
         }
     }
-    return `${typeFromNameReference(ctx)}("GObject")`;
+    return `${typeFromNameReference(context)}("GObject")`;
 };
 
 const isVoidRef = (ref: GirTypeRef | undefined): boolean =>
@@ -221,19 +282,10 @@ const glibTypeNameOf = (value: {
     readonly cType?: string | undefined;
 }): string | undefined => value.glibTypeName ?? value.cType;
 
-const typeFromNameReference = (ctx: ModuleContext): string => {
-    if (ctx.namespace.name === "GObject") return "typeFromName";
-    const alias = ctx.addCrossNamespaceImport("GObject");
+const typeFromNameReference = (context: ModuleContext): string => {
+    if (context.namespace.name === "GObject") return "typeFromName";
+    const alias = context.addCrossNamespaceImport("GObject");
     return `${alias}.typeFromName`;
-};
-
-const renderGObjectSurface = (ctx: ModuleContext): string => {
-    ctx.addValueFromFfiImport();
-    if (ctx.namespace.name === "GObject") {
-        return "{ Value, valueFromFfi, signalEmitv, signalLookup }";
-    }
-    const alias = ctx.addCrossNamespaceImport("GObject");
-    return `{ Value: ${alias}.Value, valueFromFfi, signalEmitv: ${alias}.signalEmitv, signalLookup: ${alias}.signalLookup }`;
 };
 
 const primitiveGTypeName = (category: PrimitiveTypeRef["category"]): string => {

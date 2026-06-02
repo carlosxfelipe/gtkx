@@ -2,13 +2,13 @@ import { toCamelCase, toIdentifier, toPascalCase } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
-import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirProperty } from "../gir/property.js";
 import { resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
-import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import type { GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { renderBaseTypeFor, type TsTypeTarget } from "../writers/ts-type.js";
 import { isScalarRef } from "../writers/value.js";
 import { signalHandlerName } from "./widgets.js";
 
@@ -78,7 +78,7 @@ export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetProp
             return;
         }
         const qualified = qualifyTypeRef(property.type, owningNamespace);
-        const tsType = renderTsType(repository, qualified, true, imports);
+        const tsType = renderReactPropType(repository, qualified, true, imports);
         propEntries.push(`${jsName}?: ${tsType} | null;`);
     };
 
@@ -222,7 +222,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
         .map((parameter, index) => {
             const name = parameter.name.length === 0 ? `arg${index + 1}` : toIdentifier(toCamelCase(parameter.name));
             const qualified = qualifyTypeRef(parameter.type, owningNamespace);
-            const baseType = renderTsType(repository, qualified, false, imports);
+            const baseType = renderReactPropType(repository, qualified, false, imports);
             return `${name}: ${baseType}`;
         });
     params.push(`self: ${selfType}`);
@@ -234,7 +234,7 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
  *
  * Pure out-parameters (`direction="out"`, not caller-allocated) are surfaced
  * through the return value as a tuple `[primary, ...outs]`, mirroring the
- * convention {@link writeMethodReturnType} produces for methods: a value return
+ * convention {@link renderMethodReturnType} produces for methods: a value return
  * with no outs stays scalar (with `| void` so handlers may opt out); a void
  * return with a single out unwraps to that out's type; otherwise the primary
  * (when present) leads a tuple of the out types.
@@ -245,14 +245,16 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
 const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly GirParameter[]): string => {
     const { repository, signal, imports, owningNamespace } = options;
     const qualifiedReturn = qualifyTypeRef(signal.returnValue.type, owningNamespace);
-    const baseReturn = renderTsType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
+    const baseReturn = renderReactPropType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
     const outTypes = visible
         .filter(
             (parameter) =>
                 isOutParameter(parameter) ||
                 (isInoutParameter(parameter) && isScalarRef(repository, owningNamespace, parameter.type)),
         )
-        .map((parameter) => renderTsType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports));
+        .map((parameter) =>
+            renderReactPropType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports),
+        );
     if (outTypes.length === 0) {
         return baseReturn === "void" ? "void" : `${baseReturn} | void`;
     }
@@ -264,53 +266,32 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly 
     return `[${outTypes.join(", ")}]`;
 };
 
-const renderTsType = (
+const reactTarget = (repository: GirRepository, imports: Map<string, string>): TsTypeTarget => ({
+    containerStyle: "record",
+    callbackType: "(...args: unknown[]) => unknown",
+    byteArrayAsNumber: false,
+    renderNamed: (ref) => namedTsType(repository, ref, imports),
+});
+
+const renderReactPropType = (
     repository: GirRepository,
     ref: GirTypeRef | undefined,
-    nullableHint: boolean,
+    isNullable: boolean,
     imports: Map<string, string>,
 ): string => {
-    const base = renderBaseType(repository, ref, imports);
-    return nullableHint ? `${base} | null` : base;
+    const base = renderBaseTypeFor(reactTarget(repository, imports), ref);
+    return isNullable ? `${base} | null` : base;
 };
-
-const renderBaseType = (
-    repository: GirRepository,
-    ref: GirTypeRef | undefined,
-    imports: Map<string, string>,
-): string => {
-    if (ref === undefined) return "void";
-    switch (ref.kind) {
-        case "primitive":
-            return primitiveTsType(ref);
-        case "varargs":
-            return "unknown[]";
-        case "callback":
-            return "(...args: unknown[]) => unknown";
-        case "named":
-            return namedTsType(repository, ref, imports);
-        case "array":
-        case "list":
-            return `${renderTsType(repository, ref.element, false, imports)}[]`;
-        case "hashtable": {
-            const key = renderTsType(repository, ref.key, false, imports);
-            const value = renderTsType(repository, ref.value, false, imports);
-            return `Record<${key}, ${value}>`;
-        }
-    }
-};
-
-const primitiveTsType = (ref: PrimitiveTypeRef): string => PRIMITIVE_TS_TYPE[ref.category];
 
 const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<string, string>): string => {
     const namespaceName = ref.namespaceName;
     if (namespaceName === undefined) {
-        return toPascalCase(ref.typeName);
+        return ref.typeName;
     }
     const resolved = repository.resolveNamed(namespaceName, ref.typeName);
     if (resolved === undefined) {
         imports.set(namespaceName, namespaceName);
-        return `${namespaceName}.${toPascalCase(ref.typeName)}`;
+        return `${namespaceName}.${ref.typeName}`;
     }
     if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
     if (resolved.kind === "alias") {
@@ -322,5 +303,5 @@ const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<
         );
     }
     imports.set(namespaceName, namespaceName);
-    return `${namespaceName}.${toPascalCase(ref.typeName)}`;
+    return `${namespaceName}.${ref.typeName}`;
 };

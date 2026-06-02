@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { isShallowEqual } from "@gtkx/utils";
 import type { GtkCalendarProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -19,12 +19,11 @@ export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps, Calend
     protected override ownPropDescriptors(): PropDescriptorTable {
         return {
             ...super.ownPropDescriptors(),
-            markedDays: arraySync<number, number>({
+            markedDays: arraySync<number, void>({
                 equal: isShallowEqual,
-                clearAll: () => this.container.clearMarks(),
+                clearAll: () => this.backingInstance.clearMarks(),
                 add: (day) => {
-                    this.container.markDay(day);
-                    return day;
+                    this.backingInstance.markDay(day);
                 },
             }),
         };

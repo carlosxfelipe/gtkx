@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { ContainerSlotNode } from "./container-slot.js";
@@ -22,11 +22,11 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook, Props, NotebookChild>
     public override insertBefore(child: NotebookChild, before: NotebookChild): void {
         if (child instanceof NotebookPageNode && before instanceof NotebookPageNode) {
             const isMove = this.children.includes(child);
-            const beforePosition = this.container.pageNum(before.getChildWidget());
+            const beforePosition = this.backingInstance.pageNum(before.getChildWidget());
             child.setPosition(beforePosition);
 
             if (isMove) {
-                this.container.reorderChild(child.getChildWidget(), beforePosition);
+                this.backingInstance.reorderChild(child.getChildWidget(), beforePosition);
             }
         }
 

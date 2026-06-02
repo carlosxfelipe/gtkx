@@ -11,7 +11,7 @@ import {
     VIRTUAL_INIT,
     VIRTUAL_PREFIX,
 } from "../../src/vite-plugins/gresource-protocol.js";
-import { deriveResourcePrefix, gtkxResources } from "../../src/vite-plugins/gresources.js";
+import { gtkxResources } from "../../src/vite-plugins/gresources.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./_vite-plugin-fixture.js";
 
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
@@ -66,21 +66,6 @@ const setupTmpDir = (): void => {
     });
 };
 
-describe("deriveResourcePrefix", () => {
-    it("converts a dotted app id into a slash path", () => {
-        expect(deriveResourcePrefix("org.gtk.Demo4")).toBe("/org/gtk/Demo4");
-    });
-
-    it("falls back to /gtkx/app when no id is supplied", () => {
-        expect(deriveResourcePrefix(undefined)).toBe("/gtkx/app");
-        expect(deriveResourcePrefix("")).toBe("/gtkx/app");
-    });
-
-    it("preserves hyphens in segments", () => {
-        expect(deriveResourcePrefix("org.gtkx.gtk-demo")).toBe("/org/gtkx/gtk-demo");
-    });
-});
-
 describe("gtkxResources (plugin shape)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxResources();
@@ -104,20 +89,20 @@ describe("gtkxResources (plugin shape)", () => {
 describe("gtkxResources (define)", () => {
     setupTmpDir();
 
-    it("exposes the configured applicationId as import.meta.env.GTKX_APP_ID", async () => {
+    it("exposes the configured applicationId as import.meta.env.GTKX_APPLICATION_ID", async () => {
         writeAppConfig(tmpDir, "org.gtk.Demo4");
         const plugin = gtkxResources();
         const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
         expect(result.define).toEqual({
-            "import.meta.env.GTKX_APP_ID": JSON.stringify("org.gtk.Demo4"),
+            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify("org.gtk.Demo4"),
         });
     });
 
-    it("defaults GTKX_APP_ID to the empty string when no config is present", async () => {
+    it("defaults GTKX_APPLICATION_ID to the empty string when no config is present", async () => {
         const plugin = gtkxResources();
         const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
         expect(result.define).toEqual({
-            "import.meta.env.GTKX_APP_ID": JSON.stringify(""),
+            "import.meta.env.GTKX_APPLICATION_ID": JSON.stringify(""),
         });
     });
 });
@@ -210,6 +195,20 @@ describe("gtkxResources (init module)", () => {
         expect(out).toContain("ensureRegistered");
         expect(out).toContain("__refresh");
         expect(out).toContain("gtkx-gresources-dev-");
+    });
+});
+
+describe("gtkxResources (default prefix)", () => {
+    setupTmpDir();
+
+    it("falls back to the default /gtkx/app prefix when no applicationId is configured", async () => {
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", tmpDir);
+
+        const assetPath = join(tmpDir, "icons/foo.svg");
+        const out = (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`) as string;
+
+        expect(out).toContain(`export const path = "/gtkx/app/icons/foo.svg";`);
     });
 });
 

@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
@@ -16,7 +16,7 @@ export class OverlayChildNode extends AttachOnParentVirtualNode<
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Gtk.Overlay;
+        return parent instanceof WidgetNode && parent.backingInstance instanceof Gtk.Overlay;
     }
 
     public override commitUpdate(oldProps: OverlayChildProps | null, newProps: OverlayChildProps): void {
@@ -30,13 +30,13 @@ export class OverlayChildNode extends AttachOnParentVirtualNode<
         const clipOverlayChanged = hasChanged(oldProps, newProps, "clipOverlay");
 
         if (measureChanged || clipOverlayChanged) {
-            const parent = this.parent.container;
+            const parent = this.parent.backingInstance;
             for (const child of this.children) {
                 if (measureChanged) {
-                    parent.setMeasureOverlay(child.container, newProps.measure ?? false);
+                    parent.setMeasureOverlay(child.backingInstance, newProps.measure ?? false);
                 }
                 if (clipOverlayChanged) {
-                    parent.setClipOverlay(child.container, newProps.clipOverlay ?? false);
+                    parent.setClipOverlay(child.backingInstance, newProps.clipOverlay ?? false);
                 }
             }
         }

@@ -28,6 +28,7 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }
@@ -43,7 +44,6 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },

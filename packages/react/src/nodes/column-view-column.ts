@@ -1,8 +1,8 @@
-import * as Gio from "@gtkx/ffi/gio";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { Container } from "../types.js";
+import type { BackingInstance } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
 import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { MenuChildController } from "./internal/menu-child.js";
@@ -12,10 +12,15 @@ import { MenuModel } from "./models/menu.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-interface ParentBoundItemsUpdater {
+/**
+ * The subset of a parent list node that a bound column drives to refresh its
+ * cells. Matched structurally so the column does not depend on the concrete
+ * list node, which would close a reconciler import cycle.
+ */
+type ParentBoundItemsUpdater = {
     scheduleBoundItemsUpdate(): void;
     queueBoundItemsUpdate(): void;
-}
+};
 
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
     private column: Gtk.ColumnViewColumn | null = null;
@@ -25,7 +30,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     private readonly menuController: MenuChildController;
     private readonly actionGroup: Gio.SimpleActionGroup;
 
-    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: BackingInstance) {
         super(typeName, props, container, rootContainer);
         this.actionGroup = new Gio.SimpleActionGroup();
         const menu = new MenuModel({ type: "root", props: {}, rootContainer, actionMap: this.actionGroup });
@@ -38,7 +43,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Gtk.ColumnView;
+        return parent instanceof WidgetNode && parent.backingInstance instanceof Gtk.ColumnView;
     }
 
     public override finalizeInitialChildren(props: ColumnViewColumnProps): boolean {
@@ -108,7 +113,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
             containers: this.containers,
             containerKeys: this.containerKeys,
             getPosition: (item) => item.getPosition(),
-            onBoundItemsChanged: () => this.queueParentUpdate(),
+            onBoundItemsChanged: () => this.boundItemsParent?.queueBoundItemsUpdate(),
             onSetup: (item) => {
                 const placeholder = new Gtk.Box();
                 const { width, height } = this.getParentEstimatedItemSize();
@@ -140,7 +145,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         if (hasChanged(oldProps, newProps, "sortable")) {
             this.column.setSorter(newProps.sortable ? new Gtk.CustomSorter() : null);
         }
-        if (hasChanged(oldProps, newProps, "renderCell")) this.scheduleParentUpdate();
+        if (hasChanged(oldProps, newProps, "renderCell")) this.boundItemsParent?.scheduleBoundItemsUpdate();
     }
 
     private updateHeaderMenu(): void {
@@ -158,22 +163,11 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         return { width: -1, height: -1 };
     }
 
-    private scheduleParentUpdate(): void {
-        const parent = this.parentBoundItemsUpdater();
-        if (parent) parent.scheduleBoundItemsUpdate();
-    }
-
-    private queueParentUpdate(): void {
-        const parent = this.parentBoundItemsUpdater();
-        if (parent) parent.queueBoundItemsUpdate();
-    }
-
-    private parentBoundItemsUpdater(): ParentBoundItemsUpdater | null {
+    private get boundItemsParent(): ParentBoundItemsUpdater | null {
         const candidate = this.parent as Partial<ParentBoundItemsUpdater> | null | undefined;
         if (
-            candidate &&
-            typeof candidate.scheduleBoundItemsUpdate === "function" &&
-            typeof candidate.queueBoundItemsUpdate === "function"
+            typeof candidate?.scheduleBoundItemsUpdate === "function" &&
+            typeof candidate?.queueBoundItemsUpdate === "function"
         ) {
             return candidate as ParentBoundItemsUpdater;
         }

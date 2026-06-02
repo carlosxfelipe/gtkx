@@ -29,6 +29,7 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }
@@ -46,7 +47,6 @@
     "dependencies": {
         "@emotion/cache": "^11.14.0",
         "@emotion/serialize": "^1.3.3",
-        "@gtkx/ffi": "workspace:*",
         "stylis": "^4.4.0"
     },
     "devDependencies": {

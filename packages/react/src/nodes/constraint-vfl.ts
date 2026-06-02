@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ConstraintVflProps } from "../jsx.js";
 import type { ConstraintLayoutNode } from "./constraint-layout.js";
 import { ConstraintLayoutChildNode } from "./internal/constraint-layout-child.js";
@@ -17,10 +17,10 @@ export class ConstraintVflNode extends ConstraintLayoutChildNode<ConstraintVflPr
     protected override applyToLayout(parent: ConstraintLayoutNode): void {
         this.removeFromLayout(parent);
 
-        const views = new Map<string, Gtk.ConstraintTarget>(parent.getTargetRegistry());
+        const views = parent.snapshotTargets();
 
         try {
-            this.appliedConstraints = parent.container.addConstraintsFromDescription(
+            this.appliedConstraints = parent.backingInstance.addConstraintsFromDescription(
                 this.props.lines,
                 this.props.hspacing ?? 0,
                 this.props.vspacing ?? 0,
@@ -34,7 +34,7 @@ export class ConstraintVflNode extends ConstraintLayoutChildNode<ConstraintVflPr
 
     protected override removeFromLayout(parent: ConstraintLayoutNode): void {
         for (const constraint of this.appliedConstraints) {
-            parent.container.removeConstraint(constraint);
+            parent.backingInstance.removeConstraint(constraint);
         }
         this.appliedConstraints = [];
     }

@@ -23,7 +23,7 @@ export type IpcRequest = z.infer<typeof IpcRequestSchema>;
 /**
  * Zod schema for validating IPC errors.
  */
-export const IpcErrorSchema = z.object({
+const IpcErrorSchema = z.object({
     code: z.number(),
     message: z.string(),
     data: z.unknown().optional(),
@@ -81,7 +81,7 @@ export type SerializedWidget = {
  */
 export type AppInfo = {
     /** Application ID (e.g., "com.example.myapp") */
-    appId: string;
+    applicationId: string;
     /** Process ID */
     pid: number;
     /** Open windows */
@@ -93,7 +93,7 @@ export type AppInfo = {
 
 /** Zod schema for app registration parameters. */
 export const RegisterParamsSchema = z.object({
-    appId: z.string(),
+    applicationId: z.string(),
     pid: z.number(),
 });
 
@@ -122,7 +122,7 @@ export type IpcMessage = IpcRequest | IpcResponse;
  *
  * @returns Path to the runtime directory
  */
-export const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
+const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
 
 /**
  * Default path for the MCP socket file.

@@ -1,6 +1,5 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
-    "tags": ["-public"],
     "ignoreExportsUsedInFile": true,
     "workspaces": {
         ".": {
@@ -12,35 +11,41 @@
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
+            "includeEntryExports": true,
             "project": ["src/**/*.ts!"]
         },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/e2e": {
+            "includeEntryExports": true,
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "entry": ["src/generated/*/*.js!", "src/*/index.ts!"],
-            "project": ["src/**/*.{ts,js}!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "includeEntryExports": true,
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
+            "entry": ["src/server.ts!"],
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/utils": {
+            "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {
+            "includeEntryExports": true,
             "entry": ["types.ts!"],
             "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/react": {
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
+            "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/testing": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {
+            "includeEntryExports": true,
             "entry": ["src/setup.ts!"],
             "project": ["src/**/*.ts!"]
         },
@@ -50,7 +55,7 @@
         },
         "examples/gtk-demo": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"]
+            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "examples/hello-world": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
@@ -63,6 +68,12 @@
         "website": {
             "entry": ["screenshots/**/*.test.{ts,tsx}"],
             "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"]
+        },
+        ".gtkx/gi": {
+            "entry": ["**/*.{js,d.ts}!"]
+        },
+        ".gtkx/jsx": {
+            "entry": ["**/*.js"]
         }
     }
 }

@@ -1,12 +1,12 @@
-//! GTK thread-local state and native library management.
+//! `GLib` thread-local state and native library management.
 //!
-//! This module manages the thread-local state for the GTK thread, composed of
+//! This module manages the thread-local state for the `GLib` thread, composed of
 //! focused single-responsibility types:
 //!
 //! - [`LibraryCache`]: Caches dynamically loaded native libraries
 //! - [`FundamentalFnCache`]: Caches ref/unref function pointers for fundamental types
-//! - [`GtkThreadState`]: Thin coordinator composing the above, accessed via [`GtkThreadState::with`]
-//! - [`GtkThread`]: Singleton for GTK thread lifecycle management
+//! - [`GlibThreadState`]: Thin coordinator composing the above, accessed via [`GlibThreadState::with`]
+//! - [`GlibThread`]: Singleton for `GLib` thread lifecycle management
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -20,19 +20,19 @@ use crate::managed::{RefFn, UnrefFn};
 use crate::panic_handler::format_panic_payload;
 
 thread_local! {
-    static GTK_THREAD_STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
+    static GLIB_THREAD_STATE: RefCell<GlibThreadState> = RefCell::new(GlibThreadState::default());
 }
 
 #[derive(Debug)]
-pub struct GtkThread {
+pub struct GlibThread {
     handle: Mutex<Option<JoinHandle<()>>>,
 }
 
-static GTK_THREAD: OnceLock<GtkThread> = OnceLock::new();
+static GLIB_THREAD: OnceLock<GlibThread> = OnceLock::new();
 
-impl GtkThread {
+impl GlibThread {
     pub fn global() -> &'static Self {
-        GTK_THREAD.get_or_init(|| Self {
+        GLIB_THREAD.get_or_init(|| Self {
             handle: Mutex::new(None),
         })
     }
@@ -196,6 +196,12 @@ impl FundamentalFnCache {
             })
         };
 
+        if ref_fn.is_none() && unref_fn.is_some() {
+            anyhow::bail!(
+                "Fundamental type declares unref '{unref_func}' without a ref function; a wrapper built from it would release a reference it never took"
+            );
+        }
+
         let result = (ref_fn, unref_fn);
         self.cache
             .entry(ref_func.to_owned())
@@ -205,12 +211,12 @@ impl FundamentalFnCache {
     }
 }
 
-pub struct GtkThreadState {
+pub struct GlibThreadState {
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
 }
 
-impl Default for GtkThreadState {
+impl Default for GlibThreadState {
     fn default() -> Self {
         Self {
             libs: LibraryCache::new(),
@@ -219,20 +225,20 @@ impl Default for GtkThreadState {
     }
 }
 
-impl std::fmt::Debug for GtkThreadState {
+impl std::fmt::Debug for GlibThreadState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GtkThreadState")
+        f.debug_struct("GlibThreadState")
             .field("libraries_len", &self.libs.len())
             .finish_non_exhaustive()
     }
 }
 
-impl GtkThreadState {
+impl GlibThreadState {
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        GTK_THREAD_STATE.with_borrow_mut(f)
+        GLIB_THREAD_STATE.with_borrow_mut(f)
     }
 
     pub fn lookup_fundamental_fns(
@@ -245,7 +251,7 @@ impl GtkThreadState {
             .lookup(&mut self.libs, library_name, ref_func, unref_func)
     }
 
-    pub fn gtype_from_lib(
+    pub fn resolve_gtype(
         &mut self,
         lib_name: &str,
         get_type_fn_name: &str,

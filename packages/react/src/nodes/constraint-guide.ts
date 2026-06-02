@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { ConstraintGuideProps } from "../jsx.js";
 import type { ConstraintLayoutNode } from "./constraint-layout.js";
 import { ConstraintLayoutChildNode } from "./internal/constraint-layout-child.js";
@@ -18,7 +18,7 @@ export class ConstraintGuideNode extends ConstraintLayoutChildNode<ConstraintGui
     protected override applyToLayout(parent: ConstraintLayoutNode): void {
         if (!this.guide) {
             this.guide = new Gtk.ConstraintGuide();
-            parent.container.addGuide(this.guide);
+            parent.backingInstance.addGuide(this.guide);
         }
 
         this.applyId(parent, this.guide);
@@ -27,7 +27,7 @@ export class ConstraintGuideNode extends ConstraintLayoutChildNode<ConstraintGui
 
     protected override removeFromLayout(parent: ConstraintLayoutNode): void {
         if (this.guide) {
-            parent.container.removeGuide(this.guide);
+            parent.backingInstance.removeGuide(this.guide);
         }
         if (this.registeredId !== null) {
             parent.unregisterTarget(this.registeredId);
@@ -51,7 +51,7 @@ export class ConstraintGuideNode extends ConstraintLayoutChildNode<ConstraintGui
         guide.setNatSize(this.props.natWidth ?? 0, this.props.natHeight ?? 0);
         guide.setMaxSize(this.props.maxWidth ?? 0, this.props.maxHeight ?? 0);
         if (this.props.strength !== undefined) {
-            guide.setStrength(this.props.strength as Gtk.ConstraintStrength);
+            guide.setStrength(this.props.strength);
         }
     }
 }

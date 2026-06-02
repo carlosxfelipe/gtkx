@@ -52,7 +52,7 @@ const resolveParentClass = (
 };
 
 /** A resolved interface qualified by the namespace that declares it. */
-export type ResolvedInterface = { readonly klass: GirClass; readonly namespace: GirNamespace };
+export type ResolvedQualifiedInterface = { readonly klass: GirClass; readonly namespace: GirNamespace };
 
 /**
  * Resolves every interface a class implements, including the transitive
@@ -74,8 +74,8 @@ export const implementedInterfaces = (
     klass: GirClass,
     namespace: GirNamespace,
     repository: GirRepository,
-): readonly ResolvedInterface[] => {
-    const result: ResolvedInterface[] = [];
+): readonly ResolvedQualifiedInterface[] => {
+    const result: ResolvedQualifiedInterface[] = [];
     const visited = new Set<string>();
     const visit = (names: readonly string[], fromNamespace: GirNamespace): void => {
         for (const name of names) {
@@ -169,7 +169,7 @@ const AUXILIARY_BASE_TYPES: ReadonlySet<string> = new Set(["GtkEventController",
  * @param namespace - The namespace the class lives in
  * @param repository - The repository for cross-namespace parent lookups
  */
-export const isAuxiliaryReactType = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
+const isAuxiliaryReactType = (klass: GirClass, namespace: GirNamespace, repository: GirRepository): boolean =>
     descendsFrom(klass, namespace, repository, (glibName) => AUXILIARY_BASE_TYPES.has(glibName));
 
 /**

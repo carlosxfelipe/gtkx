@@ -8,17 +8,30 @@
  * thrown values.
  */
 
-export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
-export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
+export { alloc, call, read, t } from "./helpers.js";
 
 import type { NativeHandle } from "@gtkx/native";
-import type { Error as GError } from "./generated/glib/glib.js";
-import type { NativeClass } from "./handles.js";
+import type { AnyClass } from "@gtkx/utils";
 import { getNativeObject } from "./registry.js";
 
 export type { NativeHandle, Type } from "@gtkx/native";
-export { findObjectProperty, getInstanceGType } from "@gtkx/native";
-export type { NativeClass } from "./handles.js";
+export { getInstanceGType } from "@gtkx/native";
+
+/**
+ * Structural shape of a thrown GLib `GError` boxed wrapper.
+ *
+ * The runtime only ever reads an error's `domain`, `code`, and `message`, so a
+ * hand-written structural type keeps `@gtkx/ffi` independent of the generated
+ * `GLib.Error` class; any generated error wrapper satisfies it.
+ */
+export interface GError {
+    /** The error domain quark. */
+    readonly domain: number;
+    /** The domain-specific error code. */
+    readonly code: number;
+    /** The human-readable error message. */
+    readonly message: string;
+}
 
 /**
  * Throws the failing `GError` when a `GError` out-parameter holds an error.
@@ -34,7 +47,7 @@ export type { NativeClass } from "./handles.js";
  * @param error - Out-parameter ref populated by the FFI call
  * @param errorClass - The GLib `Error` wrapper class
  */
-export function checkError(error: { value: NativeHandle | null }, errorClass: NativeClass<GError>): void {
+export function checkError(error: { value: NativeHandle | null }, errorClass: AnyClass<GError>): void {
     if (error.value !== null) {
         const gerror = getNativeObject(error.value, errorClass);
         const carrier = new Error(gerror.message);
@@ -77,7 +90,7 @@ export type ErrorDomain<T extends Record<string, number>> = Readonly<T> & {
  * @param members - The enum's member-name to numeric-value map.
  * @returns A frozen enum object usable as an `instanceof` right-hand side.
  */
-export function makeErrorDomain<const T extends Record<string, number>>(
+export function createErrorDomain<const T extends Record<string, number>>(
     resolveDomain: () => number,
     members: T,
 ): ErrorDomain<T> {

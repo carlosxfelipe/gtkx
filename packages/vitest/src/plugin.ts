@@ -11,6 +11,16 @@ import type { Plugin } from "vitest/config";
  * projects use the combined `gtkx()` from `@gtkx/cli/vitest`, which layers the
  * GResource/asset plugins on top of this one.
  *
+ * Two settings keep the GObject identity registries on a single `@gtkx/ffi`
+ * instance. `server.deps.inline` transforms every `@gtkx/*` runtime package and
+ * the codegen-injected `@gtkx/gi`/`@gtkx/react-jsx` so their `@gtkx/ffi` imports
+ * resolve to the one source-built runtime; a second copy from `dist` would split
+ * the registries. `ssr.resolve.conditions` prefers each package's `source`
+ * export so every bare `@gtkx/*` import (including `@gtkx/ffi`, reached only
+ * through bare specifiers) loads its TypeScript source under one module
+ * identity, which also lets V8 attribute coverage to `src` rather than the
+ * unmappable `dist` build.
+ *
  * @returns Vitest plugin configuration
  *
  * @example
@@ -35,7 +45,19 @@ const gtkx = (): Plugin => {
             return {
                 test: {
                     setupFiles: [workerSetupPath, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
+                    testTimeout: 20000,
+                    hookTimeout: 20000,
                     pool: "forks",
+                    server: {
+                        deps: {
+                            inline: [/@gtkx\/(ffi|gi|react|react-jsx|testing|css)/, /[/\\]\.gtkx[/\\]/],
+                        },
+                    },
+                },
+                ssr: {
+                    resolve: {
+                        conditions: ["source", "module", "node", "development|production"],
+                    },
                 },
             };
         },

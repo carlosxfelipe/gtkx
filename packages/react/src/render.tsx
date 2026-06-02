@@ -1,5 +1,5 @@
 import { stop } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
@@ -87,8 +87,8 @@ export type RenderHandle = {
  *
  * @example
  * ```tsx
- * import * as Gio from "@gtkx/ffi/gio";
- * import * as Gtk from "@gtkx/ffi/gtk";
+ * import * as Gio from "@gtkx/gi/gio";
+ * import * as Gtk from "@gtkx/gi/gtk";
  * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
@@ -187,13 +187,13 @@ export const quit = (): void => {
     }
 
     let remaining = roots.length;
-    const onRootUnmounted = (): void => {
+    const handleRootUnmounted = (): void => {
         remaining -= 1;
         if (remaining === 0) finalize();
     };
 
     for (const root of roots) {
         setReconcilerErrorHandler(root.priorHandler);
-        reconciler.updateContainer(null, root.container, null, onRootUnmounted);
+        reconciler.updateContainer(null, root.container, null, handleRootUnmounted);
     }
 };

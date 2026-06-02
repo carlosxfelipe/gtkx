@@ -1,7 +1,7 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset.js";
 import { unparentWidget } from "./internal/widget.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
 import { isTextContentParent } from "./text-segment.js";
@@ -47,17 +47,17 @@ export class TextAnchorNode extends BufferOffsetNode<TextAnchorProps, Node & Tex
         }
 
         const widgetChild = this.children[0];
-        if (widgetChild?.container && this.anchor) {
-            this.textView.addChildAtAnchor(widgetChild.container, this.anchor);
+        if (widgetChild?.backingInstance && this.anchor) {
+            this.textView.addChildAtAnchor(widgetChild.backingInstance, this.anchor);
         }
     }
 
     public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
 
-        if (this.textView && this.anchor && child.container) {
-            unparentWidget(child.container);
-            this.textView.addChildAtAnchor(child.container, this.anchor);
+        if (this.textView && this.anchor && child.backingInstance) {
+            unparentWidget(child.backingInstance);
+            this.textView.addChildAtAnchor(child.backingInstance, this.anchor);
         }
     }
 

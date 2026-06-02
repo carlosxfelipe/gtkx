@@ -1,15 +1,15 @@
-import type * as Adw from "@gtkx/ffi/adw";
-import type * as cairo from "@gtkx/ffi/cairo";
-import type * as Gdk from "@gtkx/ffi/gdk";
-import type * as Gio from "@gtkx/ffi/gio";
-import type * as GObject from "@gtkx/ffi/gobject";
-import type { GType } from "@gtkx/ffi/gobject";
-import type * as Gsk from "@gtkx/ffi/gsk";
-import type * as Gtk from "@gtkx/ffi/gtk";
-import type * as GtkSource from "@gtkx/ffi/gtksource";
-import type * as Pango from "@gtkx/ffi/pango";
+import type * as Adw from "@gtkx/gi/adw";
+import type * as cairo from "@gtkx/gi/cairo";
+import type * as Gdk from "@gtkx/gi/gdk";
+import type * as Gio from "@gtkx/gi/gio";
+import type * as GObject from "@gtkx/gi/gobject";
+import type { GType } from "@gtkx/gi/gobject";
+import type * as Gsk from "@gtkx/gi/gsk";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type * as GtkSource from "@gtkx/gi/gtksource";
+import type * as Pango from "@gtkx/gi/pango";
+import type { WidgetSlotNames } from "@gtkx/react-jsx/jsx";
 import type { ReactNode } from "react";
-import type { WidgetSlotNames } from "./generated/jsx.js";
 
 /**
  * CSS properties that can be animated on a widget.
@@ -861,10 +861,10 @@ export type AdjustableProps = {
     onValueChanged?: ((value: number) => void) | null;
 };
 
-interface StackProps {
+type StackProps = {
     /** ID of the currently visible page */
     page?: string | null;
-}
+};
 
 /**
  * Props for the `<GtkSizeGroup>` declarative wrapper.
@@ -874,7 +874,7 @@ interface StackProps {
  * children of its parent. Widgets opt into the group by being wrapped in
  * `<GtkSizeGroup.Widget>` anywhere within the subtree.
  */
-export type GtkSizeGroupProps = {
+export type SizeGroupProps = {
     /** Dimensions along which grouped widgets request the same size */
     mode?: Gtk.SizeGroupMode;
     /** Subtree containing widgets to group (must include `<GtkSizeGroup.Widget>` markers) */
@@ -945,7 +945,7 @@ export type ConstraintGuideProps = {
     /** Maximum height in pixels */
     maxHeight?: number;
     /** Strength of the natural-size constraint (default `MEDIUM`) */
-    strength?: number;
+    strength?: Gtk.ConstraintStrength;
 };
 
 /**
@@ -1001,7 +1001,7 @@ declare global {
                 NotebookPage: NotebookPageProps;
                 NotebookPageTab: NotebookPageTabProps;
                 OverlayChild: OverlayChildProps;
-                GtkSizeGroup: GtkSizeGroupProps;
+                GtkSizeGroup: SizeGroupProps;
                 SizeGroupWidget: SizeGroupWidgetProps;
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
@@ -1074,7 +1074,7 @@ export type AccessibleProps = {
     accessibleSetSize?: number;
 };
 
-declare module "./generated/jsx.js" {
+declare module "@gtkx/react-jsx/jsx" {
     interface WidgetProps extends AccessibleProps {}
 
     interface GtkRangeProps extends Omit<AdjustableProps, "onValueChanged"> {
@@ -1114,7 +1114,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkLevelBarProps {
         /** Named offset thresholds that change the bar's appearance */
-        offsets?: Array<{ id: string; value: number }> | null;
+        offsets?: LevelBarOffset[] | null;
     }
 
     interface GtkTextViewProps extends TextBufferProps {}
@@ -1227,14 +1227,14 @@ declare module "./generated/jsx.js" {
     }
 }
 
+export * from "@gtkx/react-jsx/compounds";
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
 export { AdwNavigationSplitView, AdwNavigationView } from "./components/navigation.js";
 export { GtkSizeGroup } from "./components/size-group.js";
-export * from "./generated/compounds.js";
 
 /** JSX intrinsic element name for timed (duration-based) Adwaita animations. */
 export const AdwTimedAnimation = "AdwTimedAnimation" as const;
 /** JSX intrinsic element name for spring-physics-based Adwaita animations. */
 export const AdwSpringAnimation = "AdwSpringAnimation" as const;
 
-export * from "./generated/jsx.js";
+export * from "@gtkx/react-jsx/jsx";

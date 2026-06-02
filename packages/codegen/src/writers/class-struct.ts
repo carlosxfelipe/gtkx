@@ -6,7 +6,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
-import { writeFfiType } from "./value.js";
+import { renderFfiType } from "./value.js";
 
 type VtableKind = "class" | "interface";
 
@@ -25,32 +25,34 @@ type VtableKind = "class" | "interface";
  * lets the runtime register an interface vfunc mapping in addition to the class
  * one when the descriptor's role is `"interface"`.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class or interface
  */
-export const renderVFuncMeta = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
     const structName = toPascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
-    const entries = vtableEntries(ctx, structName, kind, klass.glibTypeStruct);
+    const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
     if (entries.length === 0) return undefined;
     return `{\n${entries.map((entry) => indent(entry, 1)).join("\n")}\n}`;
 };
 
-const vtableEntries = (ctx: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
-    const resolved = ctx.repository.resolveNamed(ctx.namespace.name, typeStruct);
+const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
+    const resolved = context.repository.resolveNamed(context.namespace.name, typeStruct);
     if (resolved === undefined || resolved.kind !== "boxed") return [];
-    const { slots } = computeBoxedFieldSlots(ctx, resolved.value.fields, resolved.value.isUnion);
+    const { slots } = computeBoxedFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
-    const claimed = new Set<string>();
+    const claimedNames = new Set<string>();
     for (const { field, slot } of slots) {
         if (field.callback === undefined) continue;
         const key = toIdentifier(toCamelCase(field.name));
-        if (key === "constructor" || claimed.has(key)) continue;
+        if (key === "constructor" || claimedNames.has(key)) continue;
         const callback = callbackFromNode(field.callback);
         if (!isVtableSlotEligible(callback)) continue;
-        claimed.add(key);
-        entries.push(renderDescriptor(ctx, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }));
+        claimedNames.add(key);
+        entries.push(
+            renderDescriptor(context, { key, structName, kind, field, callback, byteOffset: slot.byteOffset }),
+        );
     }
     return entries;
 };
@@ -67,7 +69,7 @@ const isVtableSlotEligible = (callback: GirCallback): boolean => {
 
 const isCallbackRef = (ref: GirTypeRef | undefined): boolean => ref?.kind === "callback";
 
-type DescriptorInput = {
+type RenderDescriptorOptions = {
     readonly key: string;
     readonly structName: string;
     readonly kind: VtableKind;
@@ -76,12 +78,12 @@ type DescriptorInput = {
     readonly byteOffset: number;
 };
 
-const renderDescriptor = (ctx: ModuleContext, input: DescriptorInput): string => {
-    const { key, structName, kind, field, callback, byteOffset } = input;
+const renderDescriptor = (context: ModuleContext, options: RenderDescriptorOptions): string => {
+    const { key, structName, kind, field, callback, byteOffset } = options;
     const argTypes = callback.parameters
-        .map((param) => writeFfiType(ctx, param.type, param.transferOwnership))
+        .map((param) => renderFfiType(context, param.type, param.transferOwnership))
         .join(", ");
-    const returnType = writeFfiType(ctx, callback.returnValue.type, callback.returnValue.transferOwnership);
+    const returnType = renderFfiType(context, callback.returnValue.type, callback.returnValue.transferOwnership);
     const lines = [
         `kind: ${quote(kind)},`,
         `className: ${quote(structName)},`,

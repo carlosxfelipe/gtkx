@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineCommand, runMain } from "citty";
-import { buildCmd } from "./commands/build.js";
+import { build } from "./commands/build.js";
 import { codegen } from "./commands/codegen.js";
 import { create } from "./commands/create.js";
 import { dev } from "./commands/dev.js";
@@ -15,10 +15,10 @@ const { version } = require("../package.json") as { version: string };
  * `src/commands/`.
  *
  * The CLI has two execution edges: the shipped `bin/gtkx.js` (which imports
- * from the compiled `dist/`) and `@gtkx/ffi`'s monorepo `postinstall` script
- * (which imports this file directly via tsx, before any build has run). The
- * entry-point check below makes the second path work; the bin handles the
- * first.
+ * from the compiled `dist/`) and the monorepo's source runner — the root
+ * `codegen` script and the `@gtkx/cli#codegen` turbo task both invoke this file
+ * directly via tsx, before any build has run. The entry-point check below makes
+ * the second path work; the bin handles the first.
  */
 export const main = defineCommand({
     meta: {
@@ -28,7 +28,7 @@ export const main = defineCommand({
     },
     subCommands: {
         dev,
-        build: buildCmd,
+        build,
         codegen,
         create,
     },

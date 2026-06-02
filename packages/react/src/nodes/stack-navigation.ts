@@ -25,10 +25,10 @@
  * which routes the throw through React's commit-phase error pipeline.
  */
 
-import type * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
-import { scheduleAfterCommit } from "../post-commit-queue.js";
+import { createAfterCommitDebounce } from "../post-commit-queue.js";
 import type { Props } from "../types.js";
 import { hasChanged } from "./internal/props.js";
 import { StackNode, type StackWidget } from "./stack.js";
@@ -53,18 +53,17 @@ const GTK_STACK_TYPE_NAME = "GtkStack";
 const ADW_VIEW_STACK_TYPE_NAME = "AdwViewStack";
 const STACK_PARENT_SIGNAL = "notify::parent";
 
-interface StackBindable {
+type StackBindable = {
     setStack(stack: StackWidget | null): void;
-}
+};
 
 /**
  * Reconciler node backing every navigation widget that binds to a stack via a
  * `stack` property. See the module documentation for the auto-wire contract.
  *
- * @public
  */
 export class StackNavigationNode extends WidgetNode<StackNavigationWidget, StackNavigationProps> {
-    private syncScheduled = false;
+    private readonly scheduleSync = createAfterCommitDebounce(() => this.applyWiring());
     private wiredStack: StackWidget | null = null;
     private initialMountValidated = false;
 
@@ -99,15 +98,6 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
         if (parent) this.scheduleSync();
     }
 
-    private scheduleSync(): void {
-        if (this.syncScheduled) return;
-        this.syncScheduled = true;
-        scheduleAfterCommit(() => {
-            this.syncScheduled = false;
-            this.applyWiring();
-        });
-    }
-
     private applyWiring(): void {
         if (!this.parent) return;
 
@@ -121,12 +111,11 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
             if (matches.length !== 1) return;
             const target = matches[0];
             if (!target) return;
-            this.bindStack(target.container);
+            this.bindStack(target.backingInstance);
             return;
         }
 
-        const matches = this.assertSingleSiblingStack();
-        this.bindStack(matches[0].container);
+        this.bindStack(this.assertSingleSiblingStack()[0].backingInstance);
     }
 
     private assertSingleSiblingStack(): [StackNode] {
@@ -155,7 +144,8 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
         if (stack === null && !this.supportsNullStack()) return;
 
         this.unsubscribeFromWiredStack();
-        (this.container as unknown as StackBindable).setStack(stack);
+        const bindable: StackBindable = this.backingInstance;
+        bindable.setStack(stack);
         this.wiredStack = stack;
         if (stack !== null) this.subscribeToStackParent(stack);
     }
@@ -181,7 +171,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
     }
 
     private supportsNullStack(): boolean {
-        return !(this.container instanceof Gtk.StackSidebar);
+        return !(this.backingInstance instanceof Gtk.StackSidebar);
     }
 
     private findSiblingStackNodes(): StackNode[] {
@@ -204,7 +194,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
 
     private collectStackNodes(node: Node, expectedTypeName: string, out: StackNode[]): void {
         for (const child of node.children) {
-            if (child === (this as unknown as Node)) continue;
+            if (child === this) continue;
             if (child instanceof StackNode) {
                 if (child.typeName === expectedTypeName) out.push(child);
                 continue;
@@ -216,7 +206,7 @@ export class StackNavigationNode extends WidgetNode<StackNavigationWidget, Stack
     }
 
     private expectedStackTypeName(): string {
-        const widget = this.container;
+        const widget = this.backingInstance;
         const isGtkFamily = widget instanceof Gtk.StackSidebar || widget instanceof Gtk.StackSwitcher;
         return isGtkFamily ? GTK_STACK_TYPE_NAME : ADW_VIEW_STACK_TYPE_NAME;
     }

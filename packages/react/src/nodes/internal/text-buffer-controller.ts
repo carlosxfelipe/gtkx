@@ -1,4 +1,5 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type { SignalHandler } from "@gtkx/ffi";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { GtkTextViewProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
 import { TextAnchorNode } from "../text-anchor.js";
@@ -24,7 +25,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
     constructor(
         private readonly owner: Node & TextContentParent,
-        private readonly container: Gtk.TextView,
+        private readonly backingInstance: Gtk.TextView,
         private readonly createBuffer: () => TBuffer,
     ) {}
 
@@ -32,14 +33,10 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         return this.buffer;
     }
 
-    hasTextChildren(): boolean {
-        return this.textChildren.length > 0;
-    }
-
     ensureBuffer(): TBuffer {
         if (!this.buffer) {
             this.buffer = this.createBuffer();
-            this.container.setBuffer(this.buffer);
+            this.backingInstance.setBuffer(this.buffer);
         }
         return this.buffer;
     }
@@ -49,7 +46,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             if (this.buffer === (buffer as TBuffer) && this.externallyManaged) return;
             this.buffer = buffer as TBuffer;
             this.externallyManaged = true;
-            this.container.setBuffer(buffer);
+            this.backingInstance.setBuffer(buffer);
         } else if (this.externallyManaged) {
             this.buffer = null;
             this.externallyManaged = false;
@@ -112,7 +109,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
                 : null,
             canUndo: onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
             canRedo: onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
-        };
+        } as Record<string, SignalHandler | null>;
     }
 
     private setSignalHandlersChanged(callbacks: BufferCallbackProps): void {
@@ -127,15 +124,6 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         owner.signalStore.set({ owner, obj: buffer, signal: "delete-range", handler: handlers.deleteRange });
         owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-undo", handler: handlers.canUndo });
         owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-redo", handler: handlers.canRedo });
-    }
-
-    isTextContentChild(child: Node): child is TextContentChild {
-        return (
-            child instanceof TextSegmentNode ||
-            child instanceof TextTagNode ||
-            child instanceof TextAnchorNode ||
-            child instanceof TextPaintableNode
-        );
     }
 
     appendChild(child: TextContentChild): void {
@@ -212,7 +200,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             }
             this.setupEmbeddedObjects(child);
         } else if (child instanceof TextAnchorNode || child instanceof TextPaintableNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
+            child.setTextViewAndBuffer(this.backingInstance, buffer);
         }
     }
 
@@ -239,7 +227,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         for (const child of tag.children) {
             if (child instanceof TextPaintableNode || child instanceof TextAnchorNode) {
                 this.deleteTextAtRange(child.getBufferOffset(), child.getBufferOffset() + 1);
-                child.setTextViewAndBuffer(this.container, this.buffer);
+                child.setTextViewAndBuffer(this.backingInstance, this.buffer);
             } else if (child instanceof TextTagNode) {
                 this.setupEmbeddedObjects(child);
             }
@@ -328,9 +316,9 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         if (!this.buffer) return;
 
         if (child instanceof TextPaintableNode) {
-            child.setTextViewAndBuffer(this.container, this.buffer);
+            child.setTextViewAndBuffer(this.backingInstance, this.buffer);
         } else if (child instanceof TextAnchorNode) {
-            child.setTextViewAndBuffer(this.container, this.buffer);
+            child.setTextViewAndBuffer(this.backingInstance, this.buffer);
         } else {
             const text = child.getText();
             if (text.length > 0) {
@@ -367,7 +355,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         this.reapplyTagsFromOffset(offset);
     }
 
-    onChildTextChanged(child: TextSegmentNode, oldLength: number, _newLength: number): void {
+    onChildTextChanged(child: TextSegmentNode, oldLength: number): void {
         if (!this.buffer) return;
 
         const offset = child.getBufferOffset();

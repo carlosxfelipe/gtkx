@@ -1,10 +1,10 @@
 import { css, cx } from "@gtkx/css";
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
-import * as Graphene from "@gtkx/ffi/graphene";
-import * as Gsk from "@gtkx/ffi/gsk";
-import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
@@ -22,14 +22,14 @@ import {
     GtkSeparator,
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { makeValue } from "../../gvalue.js";
+import { buildValue } from "../../gvalue.js";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 import { path as trashSvgPath } from "./user-trash-opening.gpa";
 
-const makeRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
+const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();
     rectangle.x = x;
     rectangle.y = y;
@@ -155,7 +155,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const createColorProvider = useCallback(() => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(makeValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
+        return Gdk.ContentProvider.newForValue(buildValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
     }, [color]);
 
     return (
@@ -167,7 +167,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
 
 function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
     const createClassProvider = useCallback(() => {
-        return Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
+        return Gdk.ContentProvider.newForValue(buildValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
     }, [cssClass]);
 
     return (
@@ -338,7 +338,8 @@ function useItemEditHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
     const createContentProvider = useCallback(
-        (itemId: string) => Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(itemId))),
+        (itemId: string) =>
+            Gdk.ContentProvider.newForValue(buildValue(GObject.Type.STRING, (v) => v.setString(itemId))),
         [],
     );
 
@@ -582,7 +583,7 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
                 name="context-menu"
                 ref={refs.contextMenuRef}
                 hasArrow={false}
-                pointingTo={contextMenu ? makeRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
+                pointingTo={contextMenu ? buildRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
                 autohide
                 onClosed={() => setContextMenu(null)}
             >

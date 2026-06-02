@@ -1,8 +1,8 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { createContainerWithProperties } from "./internal/construct.js";
-import { WidgetAttachmentNode } from "./internal/widget-attachment-node.js";
+import { WidgetAttachmentNode } from "./internal/widget-attachment.js";
 import { WidgetNode } from "./widget.js";
 
 /**
@@ -16,7 +16,6 @@ import { WidgetNode } from "./widget.js";
  * `GtkConstraintLayout`-specific behaviour (constraint/guide/Vfl children,
  * the id→target registry) lives in {@link ConstraintLayoutNode}.
  *
- * @public
  */
 export class LayoutManagerNode<
     T extends Gtk.LayoutManager = Gtk.LayoutManager,
@@ -36,20 +35,20 @@ export class LayoutManagerNode<
     }
 
     public override setParent(parent: WidgetNode | null): void {
-        if (!parent && this.parent?.container.getLayoutManager() === this.container) {
-            this.parent.container.setLayoutManager(null);
+        if (!parent && this.parent?.backingInstance.getLayoutManager() === this.backingInstance) {
+            this.parent.backingInstance.setLayoutManager(null);
         }
 
         super.setParent(parent);
 
         if (parent) {
-            parent.container.setLayoutManager(this.container);
+            parent.backingInstance.setLayoutManager(this.backingInstance);
         }
     }
 
     public override detachDeletedInstance(): void {
-        if (this.parent?.container.getLayoutManager() === this.container) {
-            this.parent.container.setLayoutManager(null);
+        if (this.parent?.backingInstance.getLayoutManager() === this.backingInstance) {
+            this.parent.backingInstance.setLayoutManager(null);
         }
         super.detachDeletedInstance();
     }

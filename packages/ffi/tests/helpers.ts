@@ -1,7 +1,6 @@
-import type { NativeHandle } from "@gtkx/native";
-import type { GType } from "../src/generated/gobject/gobject.js";
-import { G_TYPE_INVALID, typeIsA } from "../src/gtype.js";
-import { getInstanceGType } from "../src/native.js";
+import { G_TYPE_INVALID, typeIsA } from "@gtkx/ffi";
+import type { GType } from "@gtkx/gi/gobject";
+import { getInstanceGType, type NativeHandle } from "@gtkx/native";
 
 /**
  * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.

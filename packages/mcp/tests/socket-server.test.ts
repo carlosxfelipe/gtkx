@@ -48,14 +48,14 @@ const waitForConnection = (registry: ConnectionRegistry): Promise<AppConnection>
         registry.once("connection", (connection) => resolve(connection));
     });
 
-interface SocketServerCtx {
+interface SocketServerContext {
     tmpDir: string;
     socketPath: string;
     server: SocketServer;
     registry: ConnectionRegistry;
 }
 
-const socketCtx = {} as SocketServerCtx;
+const socketCtx = {} as SocketServerContext;
 
 function setupSocketServer(): void {
     beforeEach(() => {
@@ -84,7 +84,10 @@ const nextRequest = (registry: ConnectionRegistry): Promise<IpcRequest> =>
 const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promise<T> => {
     const collector = collectLines(client);
     act();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const deadline = Date.now() + 2000;
+    while (collector.lines.length === 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    }
     client.destroy();
     await collector.promise;
     expect(collector.lines.length).toBeGreaterThan(0);

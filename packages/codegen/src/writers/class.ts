@@ -17,16 +17,17 @@ import {
     renderInstanceMethod,
     renderStaticHead,
 } from "./callables.js";
-import { renderVFuncMeta } from "./class-struct.js";
+import { renderVfuncMetadata } from "./class-struct.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { inputParameters, methodExportName, writePromisifiedBody, writePromisifiedSignature } from "./method.js";
+import { methodExportName, renderPromisifiedBody, renderPromisifiedSignature } from "./method.js";
+import { inputParameters } from "./param-classify.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { appendNativeClassRegistration } from "./registration.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
-import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
-import { writeTsType } from "./types-ts.js";
+import { renderSignalMembers } from "./signal.js";
+import { renderTsType } from "./ts-type.js";
 
 /**
  * Emits a full class declaration for a `<class>` element.
@@ -37,10 +38,10 @@ import { writeTsType } from "./types-ts.js";
  * surfaced by their own writers; this function owns the class shape and
  * the GType / class-struct registration calls.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param klass - The class to emit
  */
-export const emitClass = (ctx: ModuleContext, klass: GirClass): void => {
+export const emitClass = (context: ModuleContext, klass: GirClass): void => {
     if (!klass.introspectable) return;
     if (klass.name.length === 0) return;
     const className = toPascalCase(klass.name);
@@ -49,83 +50,94 @@ export const emitClass = (ctx: ModuleContext, klass: GirClass): void => {
         functions: dedupeCallables(klass.functions),
         methods: dedupeCallables(klass.methods),
     };
-    emitBindings(ctx, callables);
+    emitBindings(context, callables);
 
-    const parentExpression = resolveParent(ctx, klass);
+    const parentExpression = resolveParent(context, klass);
     const extendsClause = parentExpression === undefined ? "" : ` extends ${parentExpression}`;
-    const members = buildClassMembers(ctx, klass, callables, parentExpression !== undefined);
+    const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = members.map((member) => indent(member, 1)).join("\n\n");
-    ctx.module.appendDeclaration(`export class ${className}${extendsClause} {\n${body}\n}`);
-    ctx.module.appendDeclaration(renderConstructorPropsInterface(ctx, klass, className));
+    context.module.appendDeclaration(`export class ${className}${extendsClause} {\n${body}\n}`);
+    context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
 
     const interfaceRefs = klass.implements
-        .map((name) => resolveImplementsReference(ctx, name))
+        .map((name) => resolveImplementsReference(context, name))
         .filter((entry): entry is string => entry !== undefined);
     if (interfaceRefs.length > 0) {
-        ctx.module.appendDeclaration(`export interface ${className} extends ${interfaceRefs.join(", ")} {}`);
+        context.module.appendDeclaration(`export interface ${className} extends ${interfaceRefs.join(", ")} {}`);
     }
 
-    appendClassRegistrations(ctx, klass, className);
+    appendClassRegistrations(context, klass, className);
 };
 
-const buildClassMembers = (
-    ctx: ModuleContext,
+const renderClassMembers = (
+    context: ModuleContext,
     klass: GirClass,
     callables: Callables,
     hasParent: boolean,
 ): readonly string[] => {
     const className = toPascalCase(klass.name);
     const members: string[] = ["declare __gtype__: number;"];
-    const constructorBlock = renderClassConstructor(ctx, klass, className, hasParent);
+    const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
     const claimedNames = new Set<string>();
-    members.push(...renderStaticHead(ctx, callables, className));
-    const inherited = collectInheritedMethods(ctx, klass);
+    members.push(...renderStaticHead(context, callables, className, "gobject"));
+    const inherited = collectInheritedMethods(context, klass);
     const methodByName = indexMethodsByName(callables.methods);
     appendInstanceMethods({
-        ctx,
+        context,
         methods: callables.methods,
         methodByName,
         inherited,
         members,
         claimedNames,
+        className,
     });
-    appendShadowedAliases({ ctx, methods: callables.methods, methodByName, members, claimedNames });
-    appendFlattenedInterfaceMethods({ ctx, klass, inheritedNames: inherited.names, members, claimedNames });
+    appendShadowedAliases({ context, methods: callables.methods, methodByName, members, claimedNames });
+    appendFlattenedInterfaceMethods({ context, klass, inheritedNames: inherited.names, members, claimedNames });
     for (const property of klass.properties) {
-        const block = renderPropertyAccessor(ctx, property, claimedNames);
+        const block = renderPropertyAccessor(context, property, claimedNames, methodByName);
         if (block !== undefined) members.push(block);
     }
-    for (const property of collectInterfaceProperties(ctx, klass)) {
-        const block = renderPropertyAccessor(ctx, property, claimedNames);
+    for (const property of collectInterfaceProperties(context, klass)) {
+        const block = renderPropertyAccessor(context, property, claimedNames, methodByName);
         if (block !== undefined) members.push(block);
     }
-    members.push(...renderSignalMembers(ctx, klass));
+    members.push(...renderSignalMembers(context, klass));
     return members;
 };
 
 type AppendInstanceMethodsOptions = {
-    readonly ctx: ModuleContext;
+    readonly context: ModuleContext;
     readonly methods: readonly GirFunction[];
     readonly methodByName: ReadonlyMap<string, GirFunction>;
     readonly inherited: InheritedMethods;
     readonly members: string[];
     readonly claimedNames: Set<string>;
+    readonly className: string;
 };
 
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { ctx, methods, methodByName, inherited, members, claimedNames } = options;
+    const { context, methods, methodByName, inherited, members, claimedNames, className } = options;
     for (const callable of methods) {
-        if (conflictsWithInherited(ctx, callable, inherited)) continue;
-        const block = renderClassInstanceMember(ctx, callable, methodByName);
+        const rename = conflictRename(context, callable, inherited, className);
+        const block = renderClassInstanceMember(context, callable, methodByName, rename);
         if (block === undefined) continue;
         members.push(block);
-        claimedNames.add(methodExportName(callable));
+        claimedNames.add(rename ?? methodExportName(callable));
     }
 };
 
+/**
+ * The disambiguated name a colliding instance method is emitted under:
+ * `<lowerClassName><MethodName>` (e.g. `iconViewSetCursor`).
+ */
+const conflictingMethodName = (className: string, methodName: string): string => {
+    const camel = toCamelCase(className);
+    return `${camel.charAt(0).toLowerCase()}${camel.slice(1)}${toPascalCase(methodName)}`;
+};
+
 type AppendFlattenedInterfaceMethodsOptions = {
-    readonly ctx: ModuleContext;
+    readonly context: ModuleContext;
     readonly klass: GirClass;
     readonly inheritedNames: ReadonlySet<string>;
     readonly members: string[];
@@ -148,9 +160,9 @@ type AppendFlattenedInterfaceMethodsOptions = {
  * @param options - {@link AppendFlattenedInterfaceMethodsOptions}
  */
 const appendFlattenedInterfaceMethods = (options: AppendFlattenedInterfaceMethodsOptions): void => {
-    const { ctx, klass, inheritedNames, members, claimedNames } = options;
+    const { context, klass, inheritedNames, members, claimedNames } = options;
     for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(ctx, implementName);
+        const iface = resolveImplementedInterface(context, implementName);
         if (iface === undefined) continue;
         const methods = dedupeCallables(iface.klass.methods).map((method) =>
             qualifyFunction(method, iface.namespaceName),
@@ -160,48 +172,48 @@ const appendFlattenedInterfaceMethods = (options: AppendFlattenedInterfaceMethod
             const name = methodExportName(method);
             if (name === "constructor") continue;
             if (claimedNames.has(name) || inheritedNames.has(name)) continue;
-            const block = renderClassInstanceMember(ctx, method, methodByName);
+            const block = renderClassInstanceMember(context, method, methodByName);
             if (block === undefined) continue;
-            appendMethodBinding(ctx, method);
+            appendMethodBinding(context, method);
             members.push(block);
             claimedNames.add(name);
         }
     }
 };
 
-const appendClassRegistrations = (ctx: ModuleContext, klass: GirClass, className: string): void => {
+const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
     const getTypeRef =
         klass.glibGetType === undefined
             ? undefined
-            : renderGetTypeReference(ctx, klass.glibGetType, klass.glibTypeName);
-    appendNativeClassRegistration(ctx, {
+            : renderGetTypeReference(context, klass.glibGetType, klass.glibTypeName);
+    appendNativeClassRegistration(context, {
         className,
         role: "class",
         getTypeRef,
-        vfuncs: renderVFuncMeta(ctx, klass),
-        signals: renderSignalRegistration(ctx, klass),
+        vfuncs: renderVfuncMetadata(context, klass),
     });
 };
 
 const renderClassInstanceMember = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     callable: GirFunction,
     siblings: ReadonlyMap<string, GirFunction>,
+    nameOverride?: string,
 ): string | undefined => {
     if (!callable.introspectable || callable.shadowedBy !== undefined || callable.cIdentifier === undefined) {
         return undefined;
     }
-    const name = methodExportName(callable);
+    const name = nameOverride ?? methodExportName(callable);
     if (name === "constructor") return undefined;
     const override = renderRuntimeOverride(callable, name);
     if (override !== undefined) return override;
-    const promisified = renderPromisifiedMember(ctx, callable, siblings, name);
+    const promisified = renderPromisifiedMember(context, callable, siblings, name);
     if (promisified !== undefined) return promisified;
-    return renderInstanceMethod(ctx, callable);
+    return renderInstanceMethod(context, callable, nameOverride);
 };
 
 const renderPromisifiedMember = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     callable: GirFunction,
     siblings: ReadonlyMap<string, GirFunction>,
     name: string,
@@ -212,18 +224,18 @@ const renderPromisifiedMember = (
     if (finishFn === undefined) return undefined;
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
-    const { signature, returnType } = writePromisifiedSignature(ctx, callable, finishFn);
+    const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
     const finishMember = methodExportName(finishFn);
-    const body = writePromisifiedBody(ctx, callable, finishMember, cIdentifier);
+    const body = renderPromisifiedBody(context, callable, finishMember, cIdentifier);
     return `${name}(${signature}): ${returnType} {\n${indent(body, 1)}\n}`;
 };
 
-const resolveImplementsReference = (ctx: ModuleContext, name: string): string | undefined => {
-    const { namespaceName, typeName } = splitQualifiedName(name, ctx.namespace.name);
-    const resolved = ctx.repository.resolveNamed(namespaceName, typeName);
+const resolveImplementsReference = (context: ModuleContext, name: string): string | undefined => {
+    const { namespaceName, typeName } = splitQualifiedName(name, context.namespace.name);
+    const resolved = context.repository.resolveNamed(namespaceName, typeName);
     if (resolved === undefined || resolved.kind !== "interface") return undefined;
-    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
-    const alias = ctx.addCrossNamespaceImport(namespaceName);
+    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
+    const alias = context.addCrossNamespaceImport(namespaceName);
     return `${alias}.${toPascalCase(typeName)}`;
 };
 
@@ -249,21 +261,21 @@ type InheritedMethodsAccumulator = {
     readonly names: Set<string>;
 };
 
-const collectInheritedMethods = (ctx: ModuleContext, klass: GirClass): InheritedMethods => {
+const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
     const accumulator: InheritedMethodsAccumulator = {
         returnTypes: new Map<string, string>(),
         definitions: new Map<string, InheritedMethod>(),
         names: new Set<string>(),
     };
-    forEachAncestor(ctx, klass, (ancestor) => {
-        absorbInheritedMethods(ctx, ancestor, accumulator);
-        absorbInheritedInterfaceMethodNames(ctx, ancestor, accumulator.names);
+    forEachAncestor(context, klass, (ancestor) => {
+        absorbInheritedMethods(context, ancestor, accumulator);
+        absorbInheritedInterfaceMethodNames(context, ancestor, accumulator.names);
     });
     return accumulator;
 };
 
 const absorbInheritedMethods = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     resolved: { readonly klass: GirClass; readonly namespaceName: string },
     accumulator: InheritedMethodsAccumulator,
 ): void => {
@@ -275,17 +287,17 @@ const absorbInheritedMethods = (
         if (returnTypes.has(name)) continue;
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
         const qualifiedType = qualifyTypeRef(method.returnValue.type, resolved.namespaceName);
-        returnTypes.set(name, writeTsType(ctx, qualifiedType, method.returnValue.nullable));
+        returnTypes.set(name, renderTsType(context, qualifiedType, method.returnValue.nullable));
     }
 };
 
 const absorbInheritedInterfaceMethodNames = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     ancestor: { readonly klass: GirClass; readonly namespaceName: string },
     names: Set<string>,
 ): void => {
     for (const implementName of ancestor.klass.implements) {
-        const iface = resolveImplementedInterface(ctx, implementName, ancestor.namespaceName);
+        const iface = resolveImplementedInterface(context, implementName, ancestor.namespaceName);
         if (iface === undefined) continue;
         for (const method of iface.klass.methods) {
             if (!method.introspectable) continue;
@@ -294,15 +306,33 @@ const absorbInheritedInterfaceMethodNames = (
     }
 };
 
-const conflictsWithInherited = (ctx: ModuleContext, callable: GirFunction, inherited: InheritedMethods): boolean => {
-    if (!callable.introspectable) return false;
+/**
+ * The disambiguated name an instance method is emitted under when it collides
+ * incompatibly with an inherited method, or `undefined` when no rename applies.
+ *
+ * A collision is incompatible when the inherited method of the same name has a
+ * different return type, a distinct enum at a parameter position, or a
+ * different input-parameter arity — each of which would make the override
+ * structurally unassignable to its base. The colliding method is renamed so
+ * both it and the inherited method stay callable.
+ */
+const conflictRename = (
+    context: ModuleContext,
+    callable: GirFunction,
+    inherited: InheritedMethods,
+    className: string,
+): string | undefined => {
+    if (!callable.introspectable) return undefined;
     const name = methodExportName(callable);
     const inheritedReturn = inherited.returnTypes.get(name);
-    if (inheritedReturn === undefined) return false;
-    const ownReturn = writeTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
-    if (inheritedReturn !== ownReturn) return true;
     const inheritedMethod = inherited.definitions.get(name);
-    return inheritedMethod !== undefined && parameterEnumConflict(ctx, callable, inheritedMethod);
+    if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
+    const ownReturn = renderTsType(context, callable.returnValue.type, callable.returnValue.nullable);
+    const conflicts =
+        inheritedReturn !== ownReturn ||
+        hasParameterEnumConflict(context, callable, inheritedMethod) ||
+        inputParameters(callable).length !== inputParameters(inheritedMethod.method).length;
+    return conflicts ? conflictingMethodName(className, callable.name) : undefined;
 };
 
 /**
@@ -314,11 +344,11 @@ const conflictsWithInherited = (ctx: ModuleContext, callable: GirFunction, inher
  * derived class structurally unassignable to its base. Such an override is
  * dropped so the inherited signature stands.
  *
- * @param ctx - The module context
+ * @param context - The module context
  * @param own - The override declared on the derived class
  * @param inherited - The nearest ancestor definition of the same name
  */
-const parameterEnumConflict = (ctx: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
+const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
     const ownParams = inputParameters(own);
     const inheritedParams = inputParameters(inherited.method);
     const count = Math.min(ownParams.length, inheritedParams.length);
@@ -326,29 +356,29 @@ const parameterEnumConflict = (ctx: ModuleContext, own: GirFunction, inherited: 
         const ownParam = ownParams[index];
         const inheritedParam = inheritedParams[index];
         if (ownParam === undefined || inheritedParam === undefined) continue;
-        const ownEnum = enumIdentity(ctx, ownParam.parameter.type, ctx.namespace.name);
-        const inheritedEnum = enumIdentity(ctx, inheritedParam.parameter.type, inherited.namespaceName);
+        const ownEnum = enumIdentity(context, ownParam.parameter.type, context.namespace.name);
+        const inheritedEnum = enumIdentity(context, inheritedParam.parameter.type, inherited.namespaceName);
         if (ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum) return true;
     }
     return false;
 };
 
 const enumIdentity = (
-    ctx: ModuleContext,
+    context: ModuleContext,
     ref: GirTypeRef | undefined,
     defaultNamespace: string,
 ): string | undefined => {
     const qualified = qualifyTypeRef(ref, defaultNamespace);
     if (qualified === undefined || qualified.kind !== "named") return undefined;
-    const resolved = ctx.repository.resolveNamed(qualified.namespaceName ?? defaultNamespace, qualified.typeName);
+    const resolved = context.repository.resolveNamed(qualified.namespaceName ?? defaultNamespace, qualified.typeName);
     if (resolved === undefined || resolved.kind !== "enum") return undefined;
     return `${resolved.namespace.name}.${resolved.value.name}`;
 };
 
-const resolveParent = (ctx: ModuleContext, klass: GirClass): string | undefined => {
+const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
-    const { namespaceName, typeName } = splitQualifiedName(klass.parent, ctx.namespace.name);
-    if (namespaceName === ctx.namespace.name) return toPascalCase(typeName);
-    const alias = ctx.addCrossNamespaceImport(namespaceName);
+    const { namespaceName, typeName } = splitQualifiedName(klass.parent, context.namespace.name);
+    if (namespaceName === context.namespace.name) return toPascalCase(typeName);
+    const alias = context.addCrossNamespaceImport(namespaceName);
     return `${alias}.${toPascalCase(typeName)}`;
 };

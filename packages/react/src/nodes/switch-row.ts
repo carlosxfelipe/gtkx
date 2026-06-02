@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/gi/adw";
 import { type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
 
@@ -11,7 +11,7 @@ export class SwitchRowNode extends WidgetNode<Adw.SwitchRow, SwitchRowProps> {
         return {
             ...super.ownPropDescriptors(),
             onActiveChanged: signal("notify::active", {
-                getArgs: () => [this.container.getActive()],
+                getArgs: () => [this.backingInstance.getActive()],
             }),
         };
     }

@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkNotebook } from "@gtkx/react";
 import type { ReactNode, RefObject } from "react";
 import type { ChildrenBuilder } from "./render-children.js";
@@ -18,7 +18,7 @@ export type NotebookPageContent = (label: string) => ReactNode;
  * @param ref - Ref attached to the rendered `GtkNotebook`.
  * @param content - Maps each page label to the node rendered inside its page.
  */
-export const buildNotebookFrom =
+const buildNotebookFrom =
     (ref: RefObject<Gtk.Notebook | null>, content: NotebookPageContent): ChildrenBuilder<string> =>
     (pages) => (
         <GtkNotebook ref={ref}>

@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     type CreateOptions,
     createScaffolder,
-    getRunCommand,
     type PackageManager,
     type ScaffolderDeps,
 } from "../../src/create/scaffolder.js";
@@ -75,11 +74,11 @@ const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness =
             isCancel: ((_value: unknown) => false) as unknown as ScaffolderDeps["prompts"]["isCancel"],
             spinner: () => ({ start: () => undefined, stop: () => undefined }),
             log: {
-                info: (msg: string) => {
-                    logs.info.push(msg);
+                info: (message: string) => {
+                    logs.info.push(message);
                 },
-                error: (msg: string) => {
-                    logs.error.push(msg);
+                error: (message: string) => {
+                    logs.error.push(message);
                 },
             },
         },
@@ -100,7 +99,7 @@ const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness =
 
 const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
     name: "test-app",
-    appId: "org.test.app",
+    applicationId: "org.test.app",
     packageManager: "pnpm",
     testing: "none",
     claudeSkills: false,
@@ -125,20 +124,6 @@ const runScaffolder = async (
     await createScaffolder(harness.deps).run(defaultOptions(optionOverrides));
     return harness;
 };
-
-describe("getRunCommand", () => {
-    it("returns pnpm dev", () => {
-        expect(getRunCommand("pnpm")).toBe("pnpm dev");
-    });
-
-    it("returns npm run dev", () => {
-        expect(getRunCommand("npm")).toBe("npm run dev");
-    });
-
-    it("returns yarn dev", () => {
-        expect(getRunCommand("yarn")).toBe("yarn dev");
-    });
-});
 
 describe("createScaffolder (directory structure)", () => {
     setupVol();
@@ -195,14 +180,14 @@ describe("createScaffolder (src/* generated files)", () => {
         expect(content).toContain('title="My Cool App"');
     });
 
-    it("propagates the app id through gtkx.config.ts and src/index.tsx", async () => {
+    it("propagates the application id through gtkx.config.ts and src/index.tsx", async () => {
         await runScaffolder();
 
         const config = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
         expect(config).toContain('applicationId: "org.test.app"');
 
         const entry = vol.readFileSync(`${TEST_DIR}/test-app/src/index.tsx`, "utf-8") as string;
-        expect(entry).toContain("import.meta.env.GTKX_APP_ID");
+        expect(entry).toContain("import.meta.env.GTKX_APPLICATION_ID");
     });
 
     it("writes vitest.config.ts when testing=vitest", async () => {
@@ -285,6 +270,18 @@ describe("createScaffolder (next steps)", () => {
         expect(note?.message).toContain("xvfb");
     });
 
+    it("prints the pnpm dev command", async () => {
+        const harness = await runScaffolder({ packageManager: "pnpm", testing: "none" });
+
+        expect(harness.notes.at(-1)?.message).toContain("pnpm dev");
+    });
+
+    it("prints the yarn dev command", async () => {
+        const harness = await runScaffolder({ packageManager: "yarn", testing: "none" });
+
+        expect(harness.notes.at(-1)?.message).toContain("yarn dev");
+    });
+
     it("omits the xvfb note when testing=none", async () => {
         const harness = await runScaffolder();
 
@@ -304,7 +301,12 @@ describe("createScaffolder (prompting cancellations)", () => {
             Promise.resolve("__CANCEL__")) as unknown as ScaffolderDeps["prompts"]["text"];
 
         const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({ appId: "org.test.app", packageManager: "pnpm", testing: "none", claudeSkills: false });
+        await scaffolder.run({
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            testing: "none",
+            claudeSkills: false,
+        });
 
         expect(harness.exit).toHaveBeenCalledWith(0);
     });
@@ -318,7 +320,7 @@ describe("createScaffolder (prompting cancellations)", () => {
         }) as unknown as ScaffolderDeps["prompts"]["select"];
 
         const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({ name: "test-app", appId: "org.test.app", testing: "none", claudeSkills: false });
+        await scaffolder.run({ name: "test-app", applicationId: "org.test.app", testing: "none", claudeSkills: false });
 
         expect(calls[0]?.initialValue).toBe("yarn");
     });
