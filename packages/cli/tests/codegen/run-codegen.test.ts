@@ -15,7 +15,10 @@ vi.mock("@gtkx/codegen", () => ({
 }));
 
 /** Writes a fingerprint sentinel whose recomputed value matches the mock. */
-const writeFingerprint = (cwd: string, libraries: readonly string[] = ["Gtk-4.0"]) => {
+const writeFingerprint = (
+    cwd: string,
+    libraries: readonly string[] = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
+) => {
     writeFileSync(
         join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
         JSON.stringify({ value: "test-fingerprint", girFiles: [], libraries }),
@@ -59,6 +62,13 @@ const writeGiBarrel = (cwd: string, namespace: string) => {
         const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", pkg);
         mkdirSync(linkDir, { recursive: true });
         writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: `@gtkx/${pkg}`, version: "0.0.0" }));
+    }
+};
+
+/** Materializes gi barrels for every namespace the default library set resolves to. */
+const writeDefaultGiBarrels = (cwd: string) => {
+    for (const namespace of ["gtk", "adw", "gtksource", "webkit"]) {
+        writeGiBarrel(cwd, namespace);
     }
 };
 
@@ -111,7 +121,7 @@ describe("runCodegen", () => {
     it("with force, removes the gi store before regenerating", async () => {
         installFfiPackage(cwd);
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
         const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
         writeFileSync(giStale, "");
 
@@ -171,7 +181,7 @@ describe("preflightCodegen", () => {
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
 
@@ -194,7 +204,7 @@ describe("ensureGenerated", () => {
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(true);
     });
@@ -203,7 +213,7 @@ describe("ensureGenerated", () => {
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
 
@@ -214,7 +224,7 @@ describe("ensureGenerated", () => {
         installFfiPackage(cwd);
         installPackage(cwd, "react");
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
         writeFingerprint(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(false);
@@ -249,7 +259,7 @@ describe("ensureGenerated — store links", () => {
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
         rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "ffi"), {
             recursive: true,
@@ -275,7 +285,7 @@ describe("ensureGenerated — fingerprint", () => {
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
-        writeGiBarrel(cwd, "gtk");
+        writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
     };
 
@@ -289,7 +299,11 @@ describe("ensureGenerated — fingerprint", () => {
         installPresentStore();
         writeFileSync(
             join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
-            JSON.stringify({ value: "stale", girFiles: [], libraries: ["Gtk-4.0"] }),
+            JSON.stringify({
+                value: "stale",
+                girFiles: [],
+                libraries: ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"],
+            }),
         );
 
         expect(await ensureGenerated(cwd)).toBe(true);
