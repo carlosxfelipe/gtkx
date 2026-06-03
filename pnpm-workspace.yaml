@@ -24,3 +24,5 @@ overrides:
   '@docsearch/css': ^3.9.0
   '@docsearch/js': ^3.9.0
   '@docsearch/react': ^3.9.0
+  qs: ^6.15.2
+  uuid: ^11.1.1
