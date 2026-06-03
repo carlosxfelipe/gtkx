@@ -13,6 +13,6 @@
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "react": "^19.2.6"
+        "react": "^19.2.7"
     }
 }
