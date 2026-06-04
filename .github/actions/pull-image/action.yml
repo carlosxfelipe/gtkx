@@ -1,5 +1,5 @@
 name: Pull CI Image
-description: Pull the CI Docker image from GHCR and retag locally as gtkx-ci:local; build locally if the registry image is unavailable.
+description: Pull this run's CI image (CI_IMAGE_REF, built by the `image` job) and retag locally as gtkx-ci:local. When CI_IMAGE_REF is set but unpullable (e.g. a fork PR whose image job can't push to GHCR), build the current Dockerfile locally so its changes are still exercised; :latest is used only when no ref is given.
 
 runs:
   using: composite
@@ -16,8 +16,17 @@ runs:
       id: pull
       shell: bash
       run: |
-        if docker pull ghcr.io/gtkx-org/gtkx-ci:latest; then
-          docker tag ghcr.io/gtkx-org/gtkx-ci:latest gtkx-ci:local
+        # A set CI_IMAGE_REF names this run's content-addressed image. If it is
+        # not pullable (fork PRs can't push it), fall through to the local build
+        # of the current Dockerfile instead of the stale :latest, which would
+        # hide Dockerfile changes. :latest is only a fallback when no ref is set.
+        if [ -n "${CI_IMAGE_REF:-}" ]; then
+          ref="$CI_IMAGE_REF"
+        else
+          ref="ghcr.io/gtkx-org/gtkx-ci:latest"
+        fi
+        if docker pull "$ref"; then
+          docker tag "$ref" gtkx-ci:local
           echo "result=pulled" >> "$GITHUB_OUTPUT"
         else
           echo "result=missing" >> "$GITHUB_OUTPUT"
@@ -34,3 +43,4 @@ runs:
         context: .github/docker
         load: true
         tags: gtkx-ci:local
+        cache-from: type=gha,scope=ci-image

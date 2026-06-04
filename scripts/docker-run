@@ -85,6 +85,18 @@ add_engine_args() {
     fi
 }
 
+# Forward any CodSpeed environment so a `codspeed run` invoked inside the
+# container can authenticate and tag its upload. The runner executes entirely in
+# the container, so no profile folder needs sharing with the host.
+add_codspeed_args() {
+    local name
+    while IFS='=' read -r name _; do
+        case "$name" in
+            CODSPEED_*) RUN_ARGS+=(-e "$name") ;;
+        esac
+    done < <(env)
+}
+
 main() {
     local engine root
     engine="$(select_engine)"
@@ -93,6 +105,7 @@ main() {
 
     RUN_ARGS=(--rm -e CI=true -v "$root:/workspace" -w "$(container_workdir "$root")")
     add_engine_args "$engine"
+    add_codspeed_args
     if [ -t 0 ]; then
         RUN_ARGS+=(-it)
     fi
