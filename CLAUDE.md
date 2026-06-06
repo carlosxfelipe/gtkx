@@ -20,7 +20,7 @@ package list is `pnpm-workspace.yaml`. The invariants below are the ones that
 are **not** derivable from reading the code:
 
 - Styling goes through `@gtkx/css` only — no inline styles or other CSS approaches.
-- Generated FFI bindings (`packages/ffi/src/generated/`) are gitignored, so Glob won't see them — use `grep`/`find` in the terminal. If an API is in the `/girs` GIR, it is generated here; don't ask whether a GTK/GLib/Adw API is "supported".
+- Generated FFI bindings (the `@gtkx/gi` package, materialized into the `node_modules/.gtkx` store) are gitignored, so Glob won't see them — use `grep`/`find` in the terminal. If an API is in the `/girs` GIR, it is generated here; don't ask whether a GTK/GLib/Adw API is "supported".
 - The native module holds only transport and GObject identity primitives, not GTK/GLib bindings, and is thoroughly tested — investigate it last when debugging.
 
 ## Commands

@@ -14,20 +14,13 @@ export const packages: PackageConfig[] = [
         name: "react",
         entryPoints: [resolve(root, "packages/react/src/index.ts")],
         tsconfig: resolve(root, "packages/react/tsconfig.lib.json"),
-        intentionallyNotExported: [
-            "ReconcilerInstance",
-            "AnimationBaseProps",
-            "BaseListViewProps",
-            "GtkColumnViewBase",
-            "Container",
-            "SettingTypeMap",
-        ],
+        intentionallyNotExported: ["ReconcilerInstance", "AnimationBaseProps", "GtkColumnViewBase", "SettingTypeMap"],
     },
     {
         name: "css",
         entryPoints: [resolve(root, "packages/css/src/index.ts")],
         tsconfig: resolve(root, "packages/css/tsconfig.lib.json"),
-        intentionallyNotExported: ["CSSClassName"],
+        intentionallyNotExported: ["CssClassName"],
     },
     {
         name: "testing",
@@ -39,6 +32,6 @@ export const packages: PackageConfig[] = [
         name: "ffi",
         entryPoints: [resolve(root, "packages/ffi/src/index.ts")],
         tsconfig: resolve(root, "packages/ffi/tsconfig.lib.json"),
-        intentionallyNotExported: ["GType", "NativeObject", "ParamSpec"],
+        intentionallyNotExported: ["GType", "ParamSpec"],
     },
 ];

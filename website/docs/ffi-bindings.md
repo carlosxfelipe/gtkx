@@ -64,7 +64,7 @@ try {
     const dialog = new Gtk.FileDialog();
     const file = await dialog.openAsync(window, cancellable);
 } catch (error) {
-    if (error instanceof NativeError && error.code === Gio.IOErrorEnum.CANCELLED) {
+    if (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED) {
         console.log("Operation was canceled");
     }
 }
@@ -72,32 +72,34 @@ try {
 
 ## Error Handling
 
-When fallible GLib operations output an error, GTKX throws a `NativeError` that wraps the underlying `GError`:
-
-```tsx
-import { NativeError } from "@gtkx/ffi";
-
-try {
-    await someGtkOperationThatThrows();
-} catch (error) {
-    if (error instanceof NativeError) {
-        console.log(`Error: ${error.message}`);
-        console.log(`Domain: ${error.getDomain()}`);
-        console.log(`Code: ${error.getCode()}`);
-    }
-}
-```
-
-### Accessing the Raw GError
-
-The `NativeError` class also provides access to the underlying `GError` struct for advanced use cases:
+When a fallible GLib operation fails, GTKX throws the underlying `GError` directly. Read its `message`, `domain`, and `code`, and discriminate it against a generated error-domain enum with `instanceof`:
 
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
 
-const gerror = error.gerror;
+try {
+    await someGtkOperationThatThrows();
+} catch (error) {
+    if (error instanceof Gio.IOErrorEnum) {
+        console.log(`Message: ${error.message}`);
+        console.log(`Domain: ${error.domain}`);
+        console.log(`Code: ${error.code}`);
+    }
+}
+```
 
-if (gerror.matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.NOT_FOUND)) {
-    console.log("The requested resource was not found.");
+### Matching a specific error
+
+Compare `code` against the error-domain enum's members to handle a particular failure:
+
+```tsx
+import * as Gio from "@gtkx/gi/gio";
+
+try {
+    await someGtkOperationThatThrows();
+} catch (error) {
+    if (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.NOT_FOUND) {
+        console.log("The requested resource was not found.");
+    }
 }
 ```

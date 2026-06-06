@@ -132,17 +132,10 @@ interface SerializedWidget {
     type: string;
     role: string;
     name: string | null;
-    label: string | null;
     text: string | null;
     sensitive: boolean;
     visible: boolean;
     cssClasses: string[];
     children: SerializedWidget[];
-    bounds?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
 }
 ```

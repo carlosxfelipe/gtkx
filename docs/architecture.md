@@ -43,7 +43,7 @@ A pure, hand-written runtime that the generated `@gtkx/gi` bindings build on. It
 imports **zero** generated code, giving a strictly one-way `gi → ffi` dependency
 graph. Two layers:
 
-1. **Runtime infrastructure (`src/lifecycle.ts`, `src/registry.ts`, `src/handles.ts`, `src/native.ts`, `src/object.ts`, `src/gobject/*`, `src/runtime.ts`, …)** — process-level wiring that glues the bindings to `@gtkx/native`: GType registry, object identity, GValue marshalling (hand-bound `g_value_*` / `g_type_*`), signal/event plumbing, freeze/unfreeze, class registration. Not derivable from GIR.
+1. **Runtime infrastructure (`src/lifecycle.ts`, `src/registry.ts`, `src/handles.ts`, `src/native.ts`, `src/object.ts`, `src/gobject/*`, `src/runtime.ts`, …)** — process-level wiring that glues the bindings to `@gtkx/native`: GType registry, object identity, GValue marshalling (hand-bound `g_value_*` / `g_type_*`), signal/event plumbing, class registration. Not derivable from GIR.
 2. **The single `@gtkx/ffi` barrel (`src/index.ts`)** — the one specifier the generated bindings and their augment overlay import at load and call time.
 
 The generated GTK/GLib/Adw bindings themselves live in `@gtkx/gi`, not here, and

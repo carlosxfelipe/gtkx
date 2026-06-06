@@ -4,7 +4,6 @@
 *.tsbuildinfo
 coverage
 dist
-generated
 gschemas.compiled
 node_modules
 out-tsc
