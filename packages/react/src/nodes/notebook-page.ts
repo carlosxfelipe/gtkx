@@ -58,16 +58,6 @@ export class NotebookPageNode extends SingleChildVirtualNode<
         this.applyOwnProps(oldProps, newProps);
     }
 
-    public override detachDeletedInstance(): void {
-        if (this.findContentChild() && this.parent) {
-            const notebook = this.getParentWidget();
-            if (notebook.getNPages() <= 1) {
-                notebook.setShowTabs(false);
-            }
-        }
-        super.detachDeletedInstance();
-    }
-
     public setPosition(position: number | null): void {
         this.position = position;
     }

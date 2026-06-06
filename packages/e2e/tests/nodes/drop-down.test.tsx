@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown } from "@gtkx/react";
+import { GtkDropDown, GtkLabel } from "@gtkx/react";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -92,5 +92,32 @@ describe("render - DropDown > DropDownNode (2)", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(0);
             expect(screen.queryAllByText("Third")).toHaveLength(0);
         });
+    });
+});
+
+describe("render - DropDown > DropDownNode (3)", () => {
+    it("wires a header factory when renderHeader is provided on a sectioned dropdown", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
+
+        await render(
+            <GtkDropDown
+                ref={dropDownRef}
+                renderHeader={(value: string) => <GtkLabel label={value} />}
+                items={[
+                    { id: "letters", value: "Letters", section: true, children: [{ id: "a", value: "Alpha" }] },
+                    { id: "numbers", value: "Numbers", section: true, children: [{ id: "1", value: "One" }] },
+                ]}
+            />,
+        );
+
+        await waitFor(() => expect(dropDownRef.current?.getHeaderFactory()).not.toBeNull());
+    });
+
+    it("leaves the header factory unset when renderHeader is omitted", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
+
+        await render(<GtkDropDown ref={dropDownRef} items={valueItems(["One", "Two"])} />);
+
+        expect(dropDownRef.current?.getHeaderFactory()).toBeNull();
     });
 });

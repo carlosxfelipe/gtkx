@@ -148,7 +148,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         }
         this.modelController.setupModel();
         this.setupFactory();
-        if (this.props.renderHeader && !this.isDropDown()) {
+        if (this.props.renderHeader) {
             this.setupHeaderFactory();
         }
         this.selectionController.setup(this.props.selectionMode);
