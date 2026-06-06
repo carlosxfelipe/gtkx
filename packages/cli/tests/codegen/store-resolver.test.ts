@@ -44,14 +44,14 @@ describe("resolveCodegenStore", () => {
         installPackage("@gtkx/ffi");
         const reactDir = installPackage("@gtkx/react", "4.5.6");
         const store = resolveCodegenStore(projectRoot);
-        expect(store.realReactDir).toBe(reactDir);
-        expect(store.reactVersion).toBe("4.5.6");
+        expect(store.react?.realDir).toBe(reactDir);
+        expect(store.react?.version).toBe("4.5.6");
     });
 
     it("returns a string ffi dir and a string-or-null React dir", () => {
         installPackage("@gtkx/ffi");
         const store = resolveCodegenStore(projectRoot);
         expect(typeof store.realFfiDir).toBe("string");
-        expect(store.realReactDir === null || typeof store.realReactDir === "string").toBe(true);
+        expect(store.react === null || typeof store.react.realDir === "string").toBe(true);
     });
 });

@@ -94,8 +94,5 @@ export const build = async (options: BuildOptions): Promise<void> => {
             ...viteConfig?.ssr,
             noExternal: true,
         },
-        experimental: {
-            ...viteConfig?.experimental,
-        },
     });
 };

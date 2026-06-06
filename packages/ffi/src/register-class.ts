@@ -121,13 +121,11 @@ function resolveParentGType(klass: AnyClass): GType {
     return G_TYPE_INVALID;
 }
 
-const SKIP_PROTOTYPE_NAMES = new Set(["constructor"]);
-
 function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
     if (!proto) return [];
     return Object.getOwnPropertyNames(proto).filter((name) => {
-        if (SKIP_PROTOTYPE_NAMES.has(name)) return false;
+        if (name === "constructor") return false;
         return typeof (proto as Record<string, unknown>)[name] === "function";
     });
 }
@@ -203,7 +201,7 @@ function discoverInterfaceVfuncs(
     for (const methodName of ownInstanceMethodNames(klass)) {
         if (claimedMethodNames.has(methodName)) continue;
         const descriptor = vfuncRegistry[methodName];
-        if (!descriptor || (descriptor as { kind?: string }).kind !== "interface") continue;
+        if (!descriptor) continue;
         const fn = proto[methodName];
         if (!fn) continue;
         const ifaceDescriptor = descriptor as VfuncDescriptor<"interface">;
@@ -222,7 +220,7 @@ function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDes
         const vfuncRegistry = getVfuncRegistry(current);
         if (vfuncRegistry) {
             const entry = vfuncRegistry[methodName];
-            if (entry && (entry as { kind?: string }).kind === "class") {
+            if (entry) {
                 return entry as VfuncDescriptor<"class">;
             }
         }

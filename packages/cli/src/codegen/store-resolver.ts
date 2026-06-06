@@ -70,12 +70,22 @@ export type CodegenStore = {
     readonly realNativeDir: string;
     /** `@gtkx/ffi`'s version, copied onto the emitted `@gtkx/gi`. */
     readonly ffiVersion: string;
-    /** Real directory of the installed `@gtkx/react`, or `null` when absent. */
-    readonly realReactDir: string | null;
+    /** Installed `@gtkx/react` package, or `null` when absent. */
+    readonly react: CodegenReactPackage | null;
     /** Real directory of the installed `react` runtime, or `null` when absent. */
     readonly realReactRuntimeDir: string | null;
-    /** `@gtkx/react`'s version, or `null` when absent. */
-    readonly reactVersion: string | null;
+};
+
+/**
+ * The installed `@gtkx/react` package, whose real directory and version are
+ * always resolved together: the version is copied onto the emitted
+ * `@gtkx/react-jsx` unit.
+ */
+export type CodegenReactPackage = {
+    /** Real directory of the installed `@gtkx/react`. */
+    readonly realDir: string;
+    /** `@gtkx/react`'s version. */
+    readonly version: string;
 };
 
 type ResolvedPackage = { readonly dir: string; readonly version: string };
@@ -134,8 +144,7 @@ export const resolveCodegenStore = (projectRoot: string): CodegenStore => {
         realFfiDir: ffi.dir,
         realNativeDir: native.dir,
         ffiVersion: ffi.version,
-        realReactDir: react?.dir ?? null,
+        react: react === null ? null : { realDir: react.dir, version: react.version },
         realReactRuntimeDir: reactRuntime?.dir ?? null,
-        reactVersion: react?.version ?? null,
     };
 };

@@ -61,14 +61,14 @@ const buildRunner = (
             version: store.ffiVersion,
         },
         jsx:
-            store.realReactDir !== null && store.realReactRuntimeDir !== null
+            store.react !== null && store.realReactRuntimeDir !== null
                 ? {
                       storeDir: store.jsxStoreDir,
                       linkDir: store.jsxLinkDir,
                       giStoreDir: store.giStoreDir,
                       realReactRuntimeDir: store.realReactRuntimeDir,
-                      realReactPackageDir: store.realReactDir,
-                      version: store.reactVersion ?? store.ffiVersion,
+                      realReactPackageDir: store.react.realDir,
+                      version: store.react.version,
                   }
                 : undefined,
     });
@@ -191,7 +191,7 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
         if (libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)))) {
             return true;
         }
-        if (store.realReactDir !== null && store.realReactRuntimeDir !== null) {
+        if (store.react !== null && store.realReactRuntimeDir !== null) {
             if (!existsSync(store.jsxLinkDir)) return true;
             if (REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)))) return true;
         }

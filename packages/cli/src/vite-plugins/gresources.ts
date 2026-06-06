@@ -91,8 +91,7 @@ type PluginState = {
 };
 
 const compileBundle = (state: PluginState, outputPath: string): Buffer => {
-    const entries = state.entries.size === 0 ? new Map<string, ResourceEntry>() : state.entries;
-    const staged = stageBundle(entries);
+    const staged = stageBundle(state.entries);
     try {
         return runCompiler(staged.dir, staged.manifest, outputPath);
     } finally {

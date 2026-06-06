@@ -114,26 +114,6 @@ export type GtkxConfig = {
     containerSlots?: Record<string, string[]>;
 };
 
-/**
- * Identity helper that lets users author a {@link GtkxConfig} with full
- * type-checking and IDE autocompletion.
- *
- * Validates the config eagerly at load time so misconfigurations surface
- * before any GIR loading or codegen work begins.
- *
- * @param config - The configuration object
- * @returns The same configuration object after validation
- *
- * @example
- * ```ts
- * import { defineConfig } from "@gtkx/cli";
- *
- * export default defineConfig({
- *     libraries: ["Gtk-4.0", "Adw-1"],
- *     girPath: ["/opt/custom/share/gir-1.0"],
- * });
- * ```
- */
 const validateLibraryEntry = (library: unknown): void => {
     if (typeof library === "string" && GIR_NAMESPACE_PATTERN.test(library)) {
         return;
@@ -207,6 +187,26 @@ const validateSlotMap = (slotMap: Record<string, string[]> | undefined, optionNa
     }
 };
 
+/**
+ * Identity helper that lets users author a {@link GtkxConfig} with full
+ * type-checking and IDE autocompletion.
+ *
+ * Validates the config eagerly at load time so misconfigurations surface
+ * before any GIR loading or codegen work begins.
+ *
+ * @param config - The configuration object
+ * @returns The same configuration object after validation
+ *
+ * @example
+ * ```ts
+ * import { defineConfig } from "@gtkx/cli";
+ *
+ * export default defineConfig({
+ *     libraries: ["Gtk-4.0", "Adw-1"],
+ *     girPath: ["/opt/custom/share/gir-1.0"],
+ * });
+ * ```
+ */
 export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);

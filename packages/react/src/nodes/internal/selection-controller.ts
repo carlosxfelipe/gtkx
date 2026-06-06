@@ -62,9 +62,7 @@ export class SelectionController {
     public assignBaseModel(model: Gio.ListModel): void {
         const sel = this.selectionModel;
         if (!sel) return;
-        if (sel instanceof Gtk.SingleSelection || sel instanceof Gtk.MultiSelection || sel instanceof Gtk.NoSelection) {
-            sel.setModel(model);
-        }
+        sel.setModel(model);
     }
 
     public rebuild(selectionMode: Gtk.SelectionMode | null | undefined): void {

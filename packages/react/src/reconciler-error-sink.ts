@@ -1,19 +1,19 @@
 /**
- * Out-of-band error channel for host-config callbacks that React does not wrap
- * in its commit-phase try/catch (notably `resetAfterCommit` and the mutation
- * callbacks `appendChild`/`removeChild`/`insertBefore`).
+ * Out-of-band error channel for the post-commit drain that React does not wrap
+ * in its commit-phase try/catch: `resetAfterCommit` runs the queued
+ * post-commit work via `drainAfterCommit`, and a throw from there would
+ * otherwise escape as an uncaught microtask error.
  *
  * React routes errors from `commitMount` and `commitUpdate` through
  * `captureCommitPhaseError`, which delivers them to the handlers passed to
- * `createContainer` and ultimately rejects the render promise. The other
- * host-config entry points get no such treatment — a throw from them escapes
- * `flushMutationEffects` as an uncaught microtask error.
+ * `createContainer` and ultimately rejects the render promise. The drain in
+ * `resetAfterCommit` gets no such treatment.
  *
- * This sink lets the host-config catch such throws and forward them to the
+ * This sink lets the host-config catch the drain throw and forward it to the
  * same handler the renderer wired into `createContainer`, so the failure mode
- * stays consistent regardless of which host-config hook surfaced the error.
- * When no handler is registered, the error is logged to `console.error` so it
- * still surfaces without crashing the process.
+ * stays consistent with React's own commit-phase errors. When no handler is
+ * registered, the error is logged to `console.error` so it still surfaces
+ * without crashing the process.
  */
 
 /**
