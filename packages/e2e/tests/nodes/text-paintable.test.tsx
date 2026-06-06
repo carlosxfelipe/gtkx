@@ -6,12 +6,12 @@ import { createRef, useMemo } from "react";
 import { describe, expect, it } from "vitest";
 import { getBufferText } from "../helpers/buffer-text.js";
 
-const usePaintable = (): Gdk.Paintable | null => {
+const usePaintable = (): Gtk.IconPaintable | null => {
     return useMemo(() => {
         const display = Gdk.Display.getDefault();
         if (!display) return null;
         const theme = Gtk.IconTheme.getForDisplay(display);
-        const paintable = theme.lookupIcon(
+        return theme.lookupIcon(
             "image-x-generic-symbolic",
             null,
             16,
@@ -19,7 +19,6 @@ const usePaintable = (): Gdk.Paintable | null => {
             Gtk.TextDirection.LTR,
             Gtk.IconLookupFlags.PRELOAD,
         );
-        return paintable as unknown as Gdk.Paintable;
     }, []);
 };
 

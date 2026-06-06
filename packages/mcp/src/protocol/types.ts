@@ -71,11 +71,6 @@ export type AppInfo = {
     applicationId: string;
     /** Process ID */
     pid: number;
-    /** Open windows */
-    windows: Array<{
-        id: string;
-        title: string | null;
-    }>;
 };
 
 /** Zod schema for app registration parameters. */

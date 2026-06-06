@@ -86,7 +86,7 @@ function makeConnectionManager(overrides: Partial<AppQueryClient> = {}): AppQuer
     return {
         getApps: vi.fn(() => []),
         hasConnectedApps: vi.fn(() => false),
-        waitForApp: vi.fn(async () => ({ applicationId: "app-a", pid: 1, windows: [] }) as AppInfo),
+        waitForApp: vi.fn(async () => ({ applicationId: "app-a", pid: 1 }) as AppInfo),
         sendToApp: vi.fn(async () => ({}) as never),
         ...overrides,
     };
@@ -149,7 +149,7 @@ describe("buildTools — registration", () => {
 
 describe("buildTools — gtkx_list_apps success", () => {
     it("returns connected apps with their windows", async () => {
-        const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1, windows: [] }];
+        const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
         const sendToApp = vi.fn(async () => ({
             windows: [{ id: "w1", title: "Main" }],
         }));
@@ -170,7 +170,7 @@ describe("buildTools — gtkx_list_apps success", () => {
     });
 
     it("falls back to the original app info when getWindows fails", async () => {
-        const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1, windows: [] }];
+        const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
         const cm = makeConnectionManager({
             getApps: vi.fn(() => apps),
             hasConnectedApps: vi.fn(() => true),
@@ -187,7 +187,7 @@ describe("buildTools — gtkx_list_apps success", () => {
 
 describe("buildTools — gtkx_list_apps waiting", () => {
     it("waits for an app when waitForApps is true and none are connected", async () => {
-        const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1, windows: [] }) as AppInfo);
+        const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1 }) as AppInfo);
         const cm = makeConnectionManager({
             hasConnectedApps: vi.fn(() => false),
             waitForApp: waitForApp as never,

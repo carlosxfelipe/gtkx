@@ -98,8 +98,8 @@ export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, o
 
 const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
     queryAllByRole,
-    (container, count, role, options) => multipleFoundError(container, "role", { role, options }, count),
-    (container, role, options) => notFoundError(container, "role", { role, options }),
+    (container, count, role, options) => multipleFoundError(container, { queryType: "role", role, options }, count),
+    (container, role, options) => notFoundError(container, { queryType: "role", role, options }),
 );
 
 /**
@@ -134,8 +134,8 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
 
 const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByLabelText,
-    (container, count, text, options) => multipleFoundError(container, "labelText", { text, options }, count),
-    (container, text, options) => notFoundError(container, "labelText", { text, options }),
+    (container, count, text) => multipleFoundError(container, { queryType: "labelText", text }, count),
+    (container, text) => notFoundError(container, { queryType: "labelText", text }),
 );
 
 /**
@@ -151,8 +151,8 @@ export const queryAllByText = (container: Container, text: Matcher, options?: Ma
 
 const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByText,
-    (container, count, text, options) => multipleFoundError(container, "text", { text, options }, count),
-    (container, text, options) => notFoundError(container, "text", { text, options }),
+    (container, count, text) => multipleFoundError(container, { queryType: "text", text }, count),
+    (container, text) => notFoundError(container, { queryType: "text", text }),
 );
 
 /**
@@ -168,8 +168,8 @@ export const queryAllByName = (container: Container, name: Matcher, options?: Ma
 
 const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     queryAllByName,
-    (container, count, name, options) => multipleFoundError(container, "name", { name, options }, count),
-    (container, name, options) => notFoundError(container, "name", { name, options }),
+    (container, count, name) => multipleFoundError(container, { queryType: "name", name }, count),
+    (container, name) => notFoundError(container, { queryType: "name", name }),
 );
 
 /** Finds a single element matching a role without throwing. Returns `null` if not found; throws if multiple match. */

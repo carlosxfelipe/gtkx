@@ -138,7 +138,6 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         const appInfo: AppInfo = {
             applicationId: params.applicationId,
             pid: params.pid,
-            windows: [],
         };
 
         this.apps.set(params.applicationId, { info: appInfo, connection });

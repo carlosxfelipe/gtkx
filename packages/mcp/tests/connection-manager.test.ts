@@ -112,9 +112,9 @@ describe("ConnectionManager registration — basics", () => {
 
         emitRegister(conn, { applicationId: "app-a", pid: 1234 });
 
-        expect(onRegister).toHaveBeenCalledWith({ applicationId: "app-a", pid: 1234, windows: [] });
+        expect(onRegister).toHaveBeenCalledWith({ applicationId: "app-a", pid: 1234 });
         expect(manager.hasConnectedApps()).toBe(true);
-        expect(manager.getApps()).toEqual([{ applicationId: "app-a", pid: 1234, windows: [] }]);
+        expect(manager.getApps()).toEqual([{ applicationId: "app-a", pid: 1234 }]);
         expect(lastResponse(transport)).toEqual({ id: "req-1", result: { success: true } });
     });
 
@@ -213,7 +213,6 @@ describe("ConnectionManager waitForApp", () => {
         await expect(manager.waitForApp()).resolves.toEqual({
             applicationId: "app-a",
             pid: 1,
-            windows: [],
         });
     });
 
@@ -224,7 +223,7 @@ describe("ConnectionManager waitForApp", () => {
 
         emitRegister(conn, { applicationId: "app-late", pid: 99 });
 
-        await expect(promise).resolves.toEqual({ applicationId: "app-late", pid: 99, windows: [] });
+        await expect(promise).resolves.toEqual({ applicationId: "app-late", pid: 99 });
     });
 
     it("rejects when no app registers before the timeout", async () => {

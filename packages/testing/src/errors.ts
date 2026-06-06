@@ -5,8 +5,6 @@ import { formatRole, prettyRoles } from "./role-helpers.js";
 import type { Container } from "./traversal.js";
 import type { ByRoleOptions, Matcher } from "./types.js";
 
-type QueryType = "role" | "text" | "labelText" | "name";
-
 const formatTextMatcher = (text: Matcher): string => {
     if (typeof text === "function") {
         return "custom function";
@@ -28,34 +26,38 @@ const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptio
     return parts.join(" and ");
 };
 
-type QueryArgs = { role?: Gtk.AccessibleRole; text?: Matcher; name?: Matcher; options?: ByRoleOptions };
+/**
+ * A query and the value it matched on, carried per query type so the matched
+ * value is always present for its kind.
+ */
+export type QueryDescriptor =
+    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions }
+    | { queryType: "text"; text: Matcher }
+    | { queryType: "labelText"; text: Matcher }
+    | { queryType: "name"; name: Matcher };
 
-const formatQueryDescription = (queryType: QueryType, args: QueryArgs): string => {
-    switch (queryType) {
+const formatQueryDescription = (descriptor: QueryDescriptor): string => {
+    switch (descriptor.queryType) {
         case "role":
-            if (args.role === undefined) return "role";
-            return formatByRoleDescription(args.role, args.options);
+            return formatByRoleDescription(descriptor.role, descriptor.options);
         case "text":
-            if (args.text === undefined) return "text";
-            return `text ${formatTextMatcher(args.text)}`;
+            return `text ${formatTextMatcher(descriptor.text)}`;
         case "labelText":
-            if (args.text === undefined) return "label text";
-            return `label text ${formatTextMatcher(args.text)}`;
+            return `label text ${formatTextMatcher(descriptor.text)}`;
         case "name":
-            if (args.name === undefined) return "name";
-            return `name ${formatTextMatcher(args.name)}`;
+            return `name ${formatTextMatcher(descriptor.name)}`;
     }
 };
 
 /**
  * Builds an error for when no elements match a query.
  */
-export const notFoundError = (container: Container, queryType: QueryType, args: QueryArgs): Error => {
+export const notFoundError = (container: Container, descriptor: QueryDescriptor): Error => {
     const config = getConfig();
-    const description = formatQueryDescription(queryType, args);
+    const description = formatQueryDescription(descriptor);
     const lines: string[] = [`Unable to find an element with ${description}`];
 
-    if (config.showSuggestions && queryType === "role") {
+    if (config.showSuggestions && descriptor.queryType === "role") {
         lines.push("", "Here are the accessible roles:", "", prettyRoles(container));
     }
 
@@ -68,14 +70,9 @@ export const notFoundError = (container: Container, queryType: QueryType, args: 
 /**
  * Builds an error for when multiple elements match a query but only one was expected.
  */
-export const multipleFoundError = (
-    container: Container,
-    queryType: QueryType,
-    args: QueryArgs,
-    count: number,
-): Error => {
+export const multipleFoundError = (container: Container, descriptor: QueryDescriptor, count: number): Error => {
     const config = getConfig();
-    const description = formatQueryDescription(queryType, args);
+    const description = formatQueryDescription(descriptor);
     const lines: string[] = [
         `Found ${count} elements with ${description}, but expected only one`,
         "",
