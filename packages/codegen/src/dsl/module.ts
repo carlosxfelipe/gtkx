@@ -8,7 +8,9 @@ import { ImportsBuilder } from "./imports.js";
  * 1. *Bindings* — the `const fn_name = t.fn(...)` block at the top.
  * 2. *Declarations* — the class bodies, free function exports, enums,
  *    constants.
- * 3. *Registrations* — the trailing `registerNativeClass(...)` block.
+ * 3. *Registrations* — the trailing block of module-load side-effect
+ *    statements: `registerNativeClass(...)` registrations plus namespace
+ *    `init()` / `finalize` bootstrap calls.
  *
  * Keeping the three buckets independent removes ordering constraints
  * between writers and lets {@link emit} stitch a final source string with
@@ -51,7 +53,9 @@ export class ModuleBuilder {
     }
 
     /**
-     * Appends a trailing registration statement (`registerNativeClass(…)`).
+     * Appends a trailing module-load side-effect statement: a
+     * `registerNativeClass(…)` registration or a namespace `init()` /
+     * `finalize` bootstrap call.
      *
      * @param code - The source fragment, without a trailing newline
      */

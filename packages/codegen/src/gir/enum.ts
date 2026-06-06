@@ -17,7 +17,6 @@ export type GirEnum = {
     readonly kind: EnumKind;
     /** Local name within the namespace (no namespace prefix). */
     readonly name: string;
-    readonly cType: string | undefined;
     /** GLib type name (e.g. `"GtkAlign"`); absent for unregistered enums. */
     readonly glibTypeName: string | undefined;
     /** GLib get-type C symbol; absent for unregistered enums. */
@@ -39,7 +38,6 @@ export type GirEnum = {
 export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     kind,
     name: attr(node, "name") ?? "",
-    cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
     errorDomain: attr(node, "glib:error-domain"),

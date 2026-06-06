@@ -130,7 +130,7 @@ export const emitNamespaceBootstrap = (context: ModuleContext, namespace: GirNam
         if (fn.name === "init") {
             context.module.appendRegistration(`${exportName}();`);
         } else if (fn.name === "finalize") {
-            context.module.imports.addNamed("@gtkx/ffi", "whenStopped");
+            context.addRuntimeImport("whenStopped");
             context.module.appendRegistration(`whenStopped().then(${exportName});`);
         }
     }

@@ -174,12 +174,14 @@ const resolveInterface = (
 };
 
 /**
- * Per-widget prop names that the React package re-types in a hand-written
- * `declare module` augmentation. Skipping them in the generated bag
- * prevents TS2717 "subsequent property declarations must have the same
- * type" when the augmentation widens the GIR property to a declarative
- * React shape (e.g. an array of child-props instead of a raw GObject
- * model).
+ * Per-widget prop names whose generated emission is suppressed because the
+ * React surface supplies them declaratively instead of as the raw GObject
+ * property. The replacement comes either from a hand-written `declare
+ * module` augmentation that re-types the member (e.g. `toggles` on
+ * `AdwToggleGroup`) or from a compound child component (e.g. `columns` on
+ * `GtkColumnView`, supplied through `GtkColumnView.Column`). Suppressing the
+ * generated prop both avoids TS2717 when an augmentation re-types it and
+ * keeps the raw GObject model off a surface that takes the data as children.
  *
  * Entries are matched against the widget's GLib type name (e.g.
  * `"AdwToggleGroup"`); values are the JS prop names to skip.
@@ -203,7 +205,6 @@ const SIGNAL_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> 
     GtkRange: new Set(["onValueChanged"]),
     GtkScaleButton: new Set(["onValueChanged"]),
     GtkSpinButton: new Set(["onValueChanged"]),
-    AdwSwitchRow: new Set(["onActivated"]),
 };
 
 const isSignalOverridden = (ownerName: string, handlerName: string): boolean => {

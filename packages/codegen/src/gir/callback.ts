@@ -4,7 +4,6 @@ import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
 /** A `<callback>` declaration (top-level inside a namespace or nested in a field). */
 export type GirCallback = {
     readonly name: string;
-    readonly cType: string | undefined;
     readonly parameters: readonly GirParameter[];
     readonly returnValue: GirReturnValue;
     readonly introspectable: boolean;
@@ -18,7 +17,6 @@ export const callbackFromNode = (node: RawNode): GirCallback => {
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {
         name: attr(node, "name") ?? "",
-        cType: attr(node, "c:type"),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter)),
         returnValue: returnValueFromNode(childOf(node, "return-value")),
         introspectable: attr(node, "introspectable") !== "0",

@@ -61,7 +61,7 @@ export class ImportsBuilder {
     /**
      * Renders all imports as a single string ending with a trailing
      * newline. Side-effect imports come first (in insertion order),
-     * followed by named/namespace/default imports sorted by specifier.
+     * followed by named/namespace imports sorted by specifier.
      */
     toSource(): string {
         const lines: string[] = [];
