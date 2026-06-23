@@ -352,8 +352,8 @@ describe("buildTools — gtkx_take_screenshot", () => {
 interface MainSetup {
     errorSpy: ReturnType<typeof vi.spyOn>;
     exitSpy: ReturnType<typeof vi.spyOn>;
-    prevSigInt: ReturnType<typeof process.listeners>;
-    prevSigTerm: ReturnType<typeof process.listeners>;
+    prevSigInt: NodeJS.SignalsListener[];
+    prevSigTerm: NodeJS.SignalsListener[];
 }
 
 function resetMainMocks(): void {
@@ -382,10 +382,10 @@ function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainS
     errorSpy.mockRestore();
     exitSpy.mockRestore();
     for (const listener of process.listeners("SIGINT")) {
-        if (!prevSigInt.includes(listener)) process.removeListener("SIGINT", listener as never);
+        if (!prevSigInt.includes(listener)) process.removeListener("SIGINT", listener);
     }
     for (const listener of process.listeners("SIGTERM")) {
-        if (!prevSigTerm.includes(listener)) process.removeListener("SIGTERM", listener as never);
+        if (!prevSigTerm.includes(listener)) process.removeListener("SIGTERM", listener);
     }
 }
 

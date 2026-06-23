@@ -107,19 +107,19 @@ RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.s
     && rm -rf /tmp/weston-src /tmp/weston.tar.xz /var/lib/apt/lists/* \
     && weston --version | grep -q "weston ${WESTON_VERSION}"
 
-# Node 26 is the default runtime; a secondary Node 22 lives in /opt/node22 for
+# Node 24 is the default runtime; a secondary Node 22 lives in /opt/node22 for
 # the CodSpeed reconciler benches, whose @codspeed/core native addon uses a V8
-# symbol Node 26 has dropped. Both come from nodejs.org at exact patch versions
-# so the image stays reproducible under its content hash; bump these deliberately.
-ARG NODE26_VERSION=26.3.1
+# symbol newer Node releases have dropped. Both come from nodejs.org at exact patch
+# versions so the image stays reproducible under its content hash; bump these deliberately.
+ARG NODE24_VERSION=24.17.0
 ARG NODE22_VERSION=22.23.0
 RUN set -eux \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-x64.tar.xz" \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \
     && mkdir -p /opt/node22 \
     && curl -fsSL "https://nodejs.org/dist/v${NODE22_VERSION}/node-v${NODE22_VERSION}-linux-x64.tar.xz" \
         | tar -xJ --strip-components=1 -C /opt/node22 \
-    && node --version | grep -q "v${NODE26_VERSION}" \
+    && node --version | grep -q "v${NODE24_VERSION}" \
     && /opt/node22/bin/node --version | grep -q "v${NODE22_VERSION}"
 
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate

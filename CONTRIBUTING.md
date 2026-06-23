@@ -10,7 +10,7 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 
 ### Prerequisites
 
-- **Node.js** 22 or later
+- **Node.js** 24 or later
 - **pnpm**
 - **turbo**
 - **Rust** stable toolchain

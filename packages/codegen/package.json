@@ -41,7 +41,7 @@
         "codegen:gl": "node --import tsx scripts/generate-gl.ts && biome check --write ../gl/src/generated"
     },
     "engines": {
-        "node": ">=26"
+        "node": ">=24"
     },
     "dependencies": {
         "@gtkx/config": "workspace:*",

@@ -71,7 +71,7 @@ function captureConfigWatcher(): { fireConfigChange: () => void } {
     return { fireConfigChange: () => fire() };
 }
 
-type SignalListener = ReturnType<typeof process.listeners>[number];
+type SignalListener = NodeJS.SignalsListener;
 
 type SupervisorContext = {
     stderrSpy: ReturnType<typeof vi.spyOn>;

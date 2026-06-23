@@ -19,7 +19,7 @@ async function bundle() {
         entryPoints: [join(projectRoot, "dist/bundle.js")],
         bundle: true,
         platform: "node",
-        target: "node22",
+        target: "node24",
         format: "cjs",
         outfile: join(projectRoot, "dist/bundle.cjs"),
         minify: true,

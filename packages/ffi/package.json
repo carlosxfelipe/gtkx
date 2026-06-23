@@ -42,7 +42,7 @@
         "build": "tsc -b"
     },
     "engines": {
-        "node": ">=26"
+        "node": ">=24"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*",
