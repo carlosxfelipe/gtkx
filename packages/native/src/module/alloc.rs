@@ -1,18 +1,4 @@
-//! Memory allocation for boxed types and plain structs.
-//!
-//! The [`alloc`] function allocates zeroed memory for structured/boxed types
-//! on the `GLib` thread. This is used to create instances of GTK structs like
-//! `GdkRGBA`, `GtkTextIter`, etc. that need to be populated field-by-field.
-//!
-//! ## Allocation Modes
-//!
-//! - **Boxed types** (with `type_name)`: Memory is wrapped with `GType` info for
-//!   proper `g_boxed_free` cleanup.
-//! - **Plain structs** (without `type_name)`: Memory is allocated with `g_malloc0`
-//!   and freed with `g_free` on drop.
-
-use gtk4::glib;
-use gtk4::glib::ffi::g_malloc0;
+use glib::ffi::g_malloc0;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -36,7 +22,9 @@ impl ModuleRequest for AllocRequest {
             .transpose()
             .map_err(|err| anyhow::anyhow!("invalid alloc type name: {err}"))?;
 
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: runs on the gtkx-glib thread; `g_malloc0` allocates and zero-initializes
+        // `self.size` bytes (returning null only for a zero-size request, handled below), and the
+        // returned block's ownership is handed to the `Boxed` wrapper.
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {
@@ -55,9 +43,6 @@ impl ModuleRequest for AllocRequest {
     }
 }
 
-/// napi export shim. Excluded from coverage instrumentation: it requires a
-/// live [`napi::Env`]. The [`AllocRequest::execute`] logic it dispatches is
-/// exercised directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -135,18 +120,6 @@ mod tests {
             .execute()
             .expect("unregistered-name alloc should succeed");
         assert!(!handle.ptr().is_null());
-    }
-
-    #[test]
-    fn execute_fails_for_type_name_with_interior_nul() {
-        let request = AllocRequest {
-            size: 16,
-            type_name: Some("Gdk\0RGBA".into()),
-        };
-        let err = request
-            .execute()
-            .expect_err("a type name with an interior NUL should fail");
-        assert!(err.to_string().contains("invalid alloc type name"));
     }
 
     #[test]

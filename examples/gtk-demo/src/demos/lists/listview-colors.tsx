@@ -364,13 +364,6 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
 interface ColorsModels {
     baseStore: Gio.ListStore;
     selection: Gtk.MultiSelection;
-    /**
-     * The demo's sort-state: an ordered array of every {@link ColorObject}
-     * currently in {@link baseStore}, kept in lockstep with it. {@link reorderStore}
-     * sorts this array by the active sort mode and splices the new order back
-     * into {@link baseStore} in one pass, so the visible list reflects the
-     * chosen ordering without rebuilding the items.
-     */
     liveRefs: ColorObject[];
 }
 
@@ -423,13 +416,15 @@ function useColorsInitialFill(
     }
 }
 
-function useColorsRefill(
-    models: ColorsModels,
-    gridView: Gtk.GridView | null,
-    colorLimit: ColorLimit,
-    sortModeRef: React.RefObject<SortMode>,
-    refillToken: number,
-): void {
+interface ColorsRefillOptions {
+    models: ColorsModels;
+    gridView: Gtk.GridView | null;
+    colorLimit: ColorLimit;
+    sortModeRef: React.RefObject<SortMode>;
+    refillToken: number;
+}
+
+function useColorsRefill({ models, gridView, colorLimit, sortModeRef, refillToken }: ColorsRefillOptions): void {
     useEffect(() => {
         if (!gridView || refillToken === 0) return;
         models.baseStore.removeAll();
@@ -471,11 +466,6 @@ function useColorsLimitFill(
 
 const formatItemCount = (count: number): string => `${count.toLocaleString("en-US")} /`;
 
-/**
- * Mirrors the store's live item count into the header label without React
- * state, so the batched tick-callback fill does not re-render the tree on
- * every `items-changed`.
- */
 function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<Gtk.Label | null>): void {
     useSignal(
         baseStore,
@@ -487,10 +477,6 @@ function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<
     );
 }
 
-/**
- * Drives the overlay progress bar's fraction and visibility imperatively
- * from the store's item count, again avoiding a per-tick re-render.
- */
 function useStoreProgressBar(
     baseStore: Gio.ListStore,
     colorLimit: ColorLimit,
@@ -511,7 +497,7 @@ function useStoreProgressBar(
 
 function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
     const bitset = selection.getSelection();
-    const size = bitset.getSize();
+    const size = Number(bitset.getSize());
     const out: ColorItem[] = new Array(size);
     for (let i = 0; i < size; i++) {
         const position = bitset.getNth(i);
@@ -624,7 +610,7 @@ const ColorsHeader = () => {
     return (
         <GtkHeaderBar
             name="header-bar"
-            packStart={
+            start={
                 <>
                     <GtkToggleButton
                         name="selection-toggle"
@@ -649,7 +635,7 @@ const ColorsHeader = () => {
                     />
                 </>
             }
-            packEnd={
+            end={
                 <>
                     <GtkBox spacing={10}>
                         <GtkLabel label="Sort by:" />
@@ -682,7 +668,7 @@ const ColorsGridOverlay = () => {
     const sortModeRef = useLatest(state.sortMode);
     useColorsInitialFill(models, state.colorLimit, sortModeRef);
     useColorsLimitFill(models, state.colorLimit, sortModeRef);
-    useColorsRefill(models, gridView, state.colorLimit, sortModeRef, state.refillToken);
+    useColorsRefill({ models, gridView, colorLimit: state.colorLimit, sortModeRef, refillToken: state.refillToken });
     useStoreProgressBar(models.baseStore, state.colorLimit, progressBarRef);
 
     return (

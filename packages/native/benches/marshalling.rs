@@ -1,17 +1,7 @@
-//! Instruction-count benchmarks over the pure marshalling hot paths.
-//!
-//! These exercise both marshalling directions — container and string decoding
-//! (pointer and per-element index math over Rust-allocated buffers) and
-//! argument encoding (`Value` extraction into FFI storage) — with no GTK or
-//! `GLib` FFI, so they double as the Miri subset: deterministic,
-//! runner-independent, and free of any `dlopen`'d library. Under the
-//! `CodSpeed` runner the wall-clock harness is replaced by instruction
-//! counting, gating the per-element cost as the input grows. The
-//! buffer-view passthrough groups gate the opposite property: their cost
-//! must stay flat as the view grows, because any slope means a copy crept
-//! into the zero-copy path.
-
 #![allow(clippy::significant_drop_tightening)]
+
+#[path = "../tests/common/mod.rs"]
+mod common;
 
 use std::ffi::{CString, c_void};
 
@@ -21,21 +11,14 @@ use codspeed_criterion_compat::{
 };
 use native::ffi::FfiValue;
 use native::types::{
-    ArrayKind, ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _, FloatKind, IntegerKind,
-    Ownership, StringType, Type,
+    ArrayKind, ArrayType, BlobType, FfiDecoder as _, FfiEncoder as _, IntegerKind, Ownership,
+    StringType, Type,
 };
 use native::value::{BufferView, BufferViewKind, Value};
 
-const SIZES: [usize; 3] = [256, 1024, 4096];
+use common::{f32_array_type, i32_array_type};
 
-fn i32_array_type(size: usize) -> ArrayType {
-    ArrayType {
-        item_type: Box::new(Type::Integer(IntegerKind::I32)),
-        kind: ArrayKind::Fixed { size },
-        ownership: Ownership::Borrowed,
-        element_size: None,
-    }
-}
+const SIZES: [usize; 3] = [256, 1024, 4096];
 
 fn borrowed_string_type() -> StringType {
     StringType {
@@ -89,7 +72,7 @@ fn bench_encode_contiguous(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 let encoded = array_type
-                    .encode(black_box(&values), false)
+                    .encode(black_box(&values))
                     .expect("contiguous encode");
                 black_box(encoded);
             });
@@ -110,17 +93,10 @@ fn bench_encode_view_passthrough(c: &mut Criterion) {
             false,
         );
         let value = Value::BufferView(view);
-        let array_type = ArrayType {
-            item_type: Box::new(Type::Float(FloatKind::F32)),
-            kind: ArrayKind::Sized { size_index: 1 },
-            ownership: Ownership::Borrowed,
-            element_size: None,
-        };
+        let array_type = f32_array_type();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = array_type
-                    .encode(black_box(&value), false)
-                    .expect("view encode");
+                let encoded = array_type.encode(black_box(&value)).expect("view encode");
                 black_box(encoded);
             });
         });
@@ -142,9 +118,7 @@ fn bench_blob_encode_passthrough(c: &mut Criterion) {
         let value = Value::BufferView(view);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let encoded = BlobType
-                    .encode(black_box(&value), false)
-                    .expect("blob encode");
+                let encoded = BlobType.encode(black_box(&value)).expect("blob encode");
                 black_box(encoded);
             });
         });
@@ -176,7 +150,7 @@ fn bench_encode_string(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 let encoded = string_type
-                    .encode(black_box(&value), false)
+                    .encode(black_box(&value))
                     .expect("string encode");
                 black_box(encoded);
             });

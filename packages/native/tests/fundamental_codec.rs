@@ -1,5 +1,3 @@
-//! Coverage tests for [`native::types::FundamentalType`] codec implementations.
-
 mod common;
 
 use std::ffi::c_void;
@@ -8,11 +6,18 @@ use gtk4::glib;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec};
+use native::types::{FfiDecoder, FfiEncoder, FundamentalType, Ownership, RawPtrCodec, ReadSource};
 use native::value::Value;
 
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, read_slot, write_return_into_slot,
+};
+
 fn create_param_spec() -> *mut c_void {
-    // SAFETY: Creating a GParamSpec from static NUL-terminated literals has no pointer preconditions.
+    // SAFETY: the test harness has initialized GTK; the four `c"..."` literals are valid
+    // NUL-terminated C strings and the flags are valid `GParamFlags`, so `g_param_spec_boolean`
+    // returns a freshly owned (floating) GParamSpec.
     unsafe {
         let param = glib::gobject_ffi::g_param_spec_boolean(
             c"cov-param".as_ptr(),
@@ -29,13 +34,15 @@ fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
     }
-    // SAFETY: The pointer addresses a live GParamSpec created by this test.
+    // SAFETY: `ptr` is non-null (checked above) and points to a live GParamSpec, so reading its
+    // `ref_count` field is an in-bounds, correctly-typed read.
     unsafe { (*(ptr as *mut glib::gobject_ffi::GParamSpec)).ref_count }
 }
 
 fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     for _ in 0..count {
-        // SAFETY: Releases a reference this test owns on the live GParamSpec.
+        // SAFETY: `ptr` is the live GParamSpec and the caller passes exactly the number of
+        // references it owns, so each `g_param_spec_unref` releases one reference it actually holds.
         unsafe { glib::gobject_ffi::g_param_spec_unref(ptr.cast()) };
     }
 }
@@ -68,7 +75,7 @@ fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalTyp
 
 fn encode_param_spec(codec: &FundamentalType, pspec: *mut c_void) -> ffi::FfiValue {
     codec
-        .encode(&Value::Object(NativeHandle::borrowed(pspec)), false)
+        .encode(&Value::Object(NativeHandle::borrowed(pspec)))
         .expect("encode should succeed")
 }
 
@@ -87,7 +94,8 @@ fn assert_ref_for_transfer(codec: &FundamentalType, expected_extra_refs: u32) {
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    // SAFETY: `pspec` addresses a live GParamSpec.
+    // SAFETY: `pspec` is the live GParamSpec just created; `ref_for_transfer` applies the codec's
+    // resolved ref function (if any), taking the references the caller then releases below.
     let returned =
         unsafe { codec.ref_for_transfer(pspec) }.expect("ref_for_transfer should succeed");
     assert_eq!(returned, pspec);
@@ -100,13 +108,7 @@ fn assert_write_return_writes_pointer(codec: &FundamentalType, expected_extra_re
     let pspec = create_param_spec();
     let before = param_spec_refcount(pspec);
 
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    let value: Result<Value, ()> = Ok(Value::Object(NativeHandle::borrowed(pspec)));
-    // SAFETY: `slot` is a writable local pointer-sized slot and `pspec`
-    // addresses a live GParamSpec.
-    unsafe {
-        codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-    }
+    let slot = write_return_into_slot(codec, &Ok(Value::Object(NativeHandle::borrowed(pspec))));
 
     assert_eq!(slot, pspec);
     assert_eq!(param_spec_refcount(pspec), before + expected_extra_refs);
@@ -164,10 +166,7 @@ fn encode_borrowed_keeps_refcount() {
 #[test]
 fn encode_full_null_pointer_stays_null() {
     common::run(|| {
-        let encoded = fundamental(Ownership::Full)
-            .encode(&Value::Null, false)
-            .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+        common::assert_encode_null_yields_null_ptr(&fundamental(Ownership::Full));
     });
 }
 
@@ -234,7 +233,8 @@ fn transfer_release_full_releases_one_reference() {
         assert!(matches!(release, ffi::PendingRelease::Fundamental(_)));
 
         let pspec = create_param_spec();
-        // SAFETY: Takes a reference on the live GParamSpec this test created.
+        // SAFETY: `pspec` is the live GParamSpec just created; this extra reference is the one the
+        // pending transfer's release will consume below.
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
         let before = param_spec_refcount(pspec);
 
@@ -276,7 +276,8 @@ fn write_return_to_raw_ptr_full_without_ref_fn_writes_plain_pointer() {
 #[test]
 fn ref_for_transfer_full_null_is_noop() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any reference is taken.
+        // SAFETY: `ref_for_transfer` tolerates a null pointer, returning it without dereferencing
+        // or calling the ref function.
         let returned =
             unsafe { fundamental(Ownership::Full).ref_for_transfer(std::ptr::null_mut()) }
                 .expect("null ref_for_transfer should succeed");
@@ -321,10 +322,7 @@ fn decode_full_takes_ownership() {
 #[test]
 fn decode_null_yields_null() {
     common::run(|| {
-        let decoded = fundamental(Ownership::Borrowed)
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&fundamental(Ownership::Borrowed));
     });
 }
 
@@ -334,9 +332,11 @@ fn ptr_to_value_wraps_fundamental() {
         let pspec = create_param_spec();
         let before = param_spec_refcount(pspec);
 
-        // SAFETY: `pspec` addresses a live GParamSpec.
-        let value = unsafe { fundamental(Ownership::Borrowed).ptr_to_value(pspec, "ctx") }
-            .expect("ptr_to_value should succeed");
+        // SAFETY: `pspec` is the live GParamSpec just created; the borrowed `read` wraps it and
+        // takes one new reference released when `value` is dropped.
+        let value =
+            unsafe { fundamental(Ownership::Borrowed).read(ReadSource::Value(pspec, "ctx")) }
+                .expect("ptr_to_value should succeed");
         assert!(matches!(value, Value::Object(_)));
         assert_eq!(param_spec_refcount(pspec), before + 1);
 
@@ -348,11 +348,7 @@ fn ptr_to_value_wraps_fundamental() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any read.
-        let value =
-            unsafe { fundamental(Ownership::Borrowed).ptr_to_value(std::ptr::null_mut(), "ctx") }
-                .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&fundamental(Ownership::Borrowed));
     });
 }
 
@@ -360,15 +356,11 @@ fn ptr_to_value_null_yields_null() {
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
         let pspec = create_param_spec();
-        let slot: *mut c_void = pspec;
 
-        // SAFETY: `slot` is a live local pointer-sized slot holding a live
-        // GParamSpec pointer.
-        let value = unsafe {
-            fundamental(Ownership::Borrowed)
-                .read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
-        }
-        .expect("read_from_raw_ptr should succeed");
+        // SAFETY: `read_slot` places `pspec` into a pointer slot and reads through it; `pspec` is
+        // the live GParamSpec just created, so the slot points to a valid fundamental value.
+        let value = unsafe { read_slot(&fundamental(Ownership::Borrowed), pspec) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
         release_param_spec_refs(pspec, 1);
@@ -392,14 +384,7 @@ fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
 #[test]
 fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Err(());
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            fundamental(Ownership::Borrowed)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
-        assert!(slot.is_null());
+        assert_write_return_err_writes_null(&fundamental(Ownership::Borrowed));
     });
 }
 
@@ -410,8 +395,9 @@ fn write_value_to_raw_ptr_writes_fundamental() {
         let before = param_spec_refcount(pspec);
 
         let mut slot: *mut c_void = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot and
-        // `pspec` addresses a live GParamSpec.
+        // SAFETY: the address of the live, writable pointer stack local `slot` is the pointer slot
+        // the codec writes into; it was null, so no previous value is released, and the write
+        // references the live `pspec`.
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_raw_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
@@ -433,14 +419,16 @@ fn write_value_to_raw_ptr_unrefs_previous_fundamental() {
         let old = create_param_spec();
         let new = create_param_spec();
 
-        // SAFETY: Takes a reference on the live GParamSpec this test created.
+        // SAFETY: `old` is the live GParamSpec; this extra reference is the one the slot owns and
+        // that the codec releases when it overwrites the slot below.
         unsafe { glib::gobject_ffi::g_param_spec_ref(old.cast()) };
         let mut slot: *mut c_void = old;
         let old_before = param_spec_refcount(old);
         let new_before = param_spec_refcount(new);
 
-        // SAFETY: `slot` is a writable local pointer-sized slot holding an
-        // owned reference, and `new` addresses a live GParamSpec.
+        // SAFETY: the address of the live, writable pointer stack local `slot` (currently holding
+        // the owned `old`) is the slot the codec swaps: it references the live `new` and releases
+        // the previously owned `old`.
         unsafe {
             fundamental(Ownership::Borrowed).write_value_to_raw_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
@@ -463,13 +451,15 @@ fn write_value_to_raw_ptr_null_releases_previous_fundamental() {
     common::run(|| {
         let pspec = create_param_spec();
 
-        // SAFETY: Takes a reference on the live GParamSpec this test created.
+        // SAFETY: `pspec` is the live GParamSpec; this extra reference is the one the slot owns and
+        // that the codec releases when it clears the slot below.
         unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
         let mut slot: *mut c_void = pspec;
         let before = param_spec_refcount(pspec);
 
-        // SAFETY: `slot` is a writable local pointer-sized slot holding an
-        // owned reference.
+        // SAFETY: the address of the live, writable pointer stack local `slot` (currently holding
+        // the owned `pspec`) is the slot the codec writes; a null value stores null and releases
+        // the previously owned `pspec`.
         unsafe {
             fundamental(Ownership::Borrowed)
                 .write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)

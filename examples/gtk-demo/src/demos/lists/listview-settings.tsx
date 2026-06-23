@@ -198,7 +198,7 @@ interface ToggleableColumnSpec {
     action: string;
 }
 
-const TOGGLEABLE_COLUMNS: readonly ToggleableColumnSpec[] = [
+const TOGGLEABLE_COLUMNS: ToggleableColumnSpec[] = [
     { id: "type", menuLabel: "Type", action: "show-type" },
     { id: "default", menuLabel: "Default value", action: "show-default" },
     { id: "summary", menuLabel: "Summary", action: "show-summary" },
@@ -289,6 +289,84 @@ interface SettingsColumnViewProps {
     onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
 }
 
+const renderColumnVisibilityActions = (
+    columnVisibility: ColumnVisibility,
+    toggleColumn: (id: ToggleableColumnId) => void,
+) => (
+    <GSimpleActionGroup prefix="columnview">
+        {TOGGLEABLE_COLUMNS.map((column) => (
+            <GSimpleAction
+                key={column.id}
+                name={column.action}
+                state={GLib.Variant.newBoolean(columnVisibility[column.id])}
+                onActivate={() => toggleColumn(column.id)}
+            />
+        ))}
+    </GSimpleActionGroup>
+);
+
+interface SettingsColumnsProps {
+    columnVisibility: ColumnVisibility;
+    onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
+}
+
+const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps) => (
+    <>
+        <GtkColumnViewColumn
+            id="name"
+            title="Name"
+            renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
+        />
+        <GtkColumnViewColumn
+            id="value"
+            title="Value"
+            resizable
+            renderCell={(item: KeyInfo) => (
+                <GtkEditableLabel
+                    text={item.value}
+                    onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
+                />
+            )}
+        />
+        <GtkColumnViewColumn
+            id="type"
+            title="Type"
+            resizable
+            sortable
+            visible={columnVisibility.type}
+            headerMenu={columnVisibilityMenu}
+            renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
+        />
+        <GtkColumnViewColumn
+            id="default"
+            title="Default"
+            resizable
+            expand
+            visible={columnVisibility.default}
+            headerMenu={columnVisibilityMenu}
+            renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
+        />
+        <GtkColumnViewColumn
+            id="summary"
+            title="Summary"
+            resizable
+            expand
+            visible={columnVisibility.summary}
+            headerMenu={columnVisibilityMenu}
+            renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
+        />
+        <GtkColumnViewColumn
+            id="description"
+            title="Description"
+            resizable
+            expand
+            visible={columnVisibility.description}
+            headerMenu={columnVisibilityMenu}
+            renderCell={(item: KeyInfo) => <GtkLabel label={item.description} xalign={0} wrap />}
+        />
+    </>
+);
+
 const SettingsColumnView = ({
     keySearchActive,
     onSearchChanged,
@@ -310,71 +388,9 @@ const SettingsColumnView = ({
                     tabBehavior={Gtk.ListTabBehavior.CELL}
                     cssClasses={["data-table"]}
                     items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
-                    insertActionGroup={
-                        <GSimpleActionGroup prefix="columnview">
-                            {TOGGLEABLE_COLUMNS.map((column) => (
-                                <GSimpleAction
-                                    key={column.id}
-                                    name={column.action}
-                                    state={GLib.Variant.newBoolean(columnVisibility[column.id])}
-                                    onActivate={() => toggleColumn(column.id)}
-                                />
-                            ))}
-                        </GSimpleActionGroup>
-                    }
+                    actionGroups={renderColumnVisibilityActions(columnVisibility, toggleColumn)}
                 >
-                    <GtkColumnViewColumn
-                        id="name"
-                        title="Name"
-                        renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
-                    />
-                    <GtkColumnViewColumn
-                        id="value"
-                        title="Value"
-                        resizable
-                        renderCell={(item: KeyInfo) => (
-                            <GtkEditableLabel
-                                text={item.value}
-                                onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
-                            />
-                        )}
-                    />
-                    <GtkColumnViewColumn
-                        id="type"
-                        title="Type"
-                        resizable
-                        sortable
-                        visible={columnVisibility.type}
-                        headerMenu={columnVisibilityMenu}
-                        renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
-                    />
-                    <GtkColumnViewColumn
-                        id="default"
-                        title="Default"
-                        resizable
-                        expand
-                        visible={columnVisibility.default}
-                        headerMenu={columnVisibilityMenu}
-                        renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
-                    />
-                    <GtkColumnViewColumn
-                        id="summary"
-                        title="Summary"
-                        resizable
-                        expand
-                        visible={columnVisibility.summary}
-                        headerMenu={columnVisibilityMenu}
-                        renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
-                    />
-                    <GtkColumnViewColumn
-                        id="description"
-                        title="Description"
-                        resizable
-                        expand
-                        visible={columnVisibility.description}
-                        headerMenu={columnVisibilityMenu}
-                        renderCell={(item: KeyInfo) => <GtkLabel label={item.description} xalign={0} wrap />}
-                    />
+                    {renderSettingsColumns({ columnVisibility, onValueEdit })}
                 </GtkColumnView>
             </GtkScrolledWindow>
         </GtkBox>
@@ -412,7 +428,7 @@ const ListViewSettingsTitlebar = () => {
     const { state } = useSettingsContext();
     return (
         <GtkHeaderBar
-            packEnd={
+            end={
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"

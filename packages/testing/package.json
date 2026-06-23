@@ -31,25 +31,34 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./act": {
+            "source": "./src/act.ts",
+            "types": "./dist/act.d.ts",
+            "default": "./dist/act.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./src/setup-runtime.ts",
+        "./dist/setup-runtime.js"
+    ],
     "files": [
         "dist",
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "dependencies": {
+        "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/vitest": "workspace:*",
-        "@types/react-reconciler": "^0.33.0",
-        "react-reconciler": "^0.33.0"
+        "@gtkx/config": "workspace:*",
+        "@gtkx/vitest": "workspace:*"
     }
 }

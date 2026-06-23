@@ -3,6 +3,7 @@ import {
     appNotFoundError,
     connectionWriteFailedError,
     invalidRequestError,
+    methodNotFoundError,
     noAppConnectedError,
 } from "./protocol/errors.js";
 import { type AppInfo, type IpcRequest, type IpcResponse, RegisterParamsSchema } from "./protocol/types.js";
@@ -18,26 +19,20 @@ type RegisteredApp = {
     connection: AppConnection;
 };
 
-/**
- * Manages connections between the MCP server and GTKX applications.
- *
- * Handles app registration, request routing, and connection lifecycle. Wire
- * framing and pending-request correlation live on each connection's
- * {@link import("./transport.js").JsonStreamTransport}.
- */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
-    private static readonly DEFAULT_WAIT_TIMEOUT = 10000;
+    private static DEFAULT_WAIT_TIMEOUT = 10000;
 
-    private readonly apps: Map<string, RegisteredApp> = new Map();
-    private readonly connectionToApp: Map<string, string> = new Map();
-    private readonly requestTimeout: number;
+    private apps: Map<string, RegisteredApp> = new Map();
+    private connectionToApp: Map<string, string> = new Map();
+    private requestTimeout: number;
+    private transport: AppTransport;
 
-    constructor(
-        private readonly transport: AppTransport,
-        options: { requestTimeout?: number } = {},
-    ) {
+    constructor(transport: AppTransport, options: { requestTimeout?: number } = {}) {
         super();
-        this.requestTimeout = options.requestTimeout ?? 30000;
+        this.transport = transport;
+        this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
 
         this.transport.on("request", (connection, request) => {
             this.handleRequest(connection, request);
@@ -61,13 +56,6 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
         return first.done ? undefined : first.value;
     }
 
-    /**
-     * Waits for at least one app to connect and register.
-     *
-     * @param timeout - Maximum time to wait in milliseconds (default: 10000).
-     * @returns Promise that resolves with the first registered app info.
-     * @throws Error if timeout is reached before any app registers.
-     */
     waitForApp(timeout: number = ConnectionManager.DEFAULT_WAIT_TIMEOUT): Promise<AppInfo> {
         const defaultApp = this.getDefaultApp();
         if (defaultApp) {
@@ -121,6 +109,11 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
             this.handleRegister(connection, request);
         } else if (request.method === "app.unregister") {
             this.handleUnregister(connection, request);
+        } else {
+            this.transport.send(connection.id, {
+                id: request.id,
+                error: methodNotFoundError(request.method).toIpcError(),
+            });
         }
     }
 

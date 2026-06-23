@@ -1,17 +1,16 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
+    "ignore": ["**/out-tsc/**"],
     "ignoreBinaries": [
-        "dbus-run-session",
         "espeak-ng",
-        "ffmpeg",
         "glib-compile-resources",
         "glib-compile-schemas",
-        "import",
         "pkg-config",
         "setpriv",
-        "Xvfb"
+        "weston"
     ],
+    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
     "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {
         ".": {
@@ -23,7 +22,7 @@
         },
         "packages/cli": {
             "entry": ["src/global.d.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
             "includeEntryExports": true,
@@ -33,15 +32,18 @@
             "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
+        "packages/create-gtkx": {
+            "entry": ["src/cli.ts!"],
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
+        },
         "packages/css": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/e2e": {
-            "includeEntryExports": true,
+            "entry": ["gtkx.config.ts!"],
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "includeEntryExports": true,
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/gl": {
@@ -64,6 +66,7 @@
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "packages/testing": {
+            "entry": ["gtkx.config.ts!"],
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {
@@ -81,22 +84,19 @@
         },
         "examples/hello-world": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"],
-            "ignoreDependencies": ["@gtkx/testing"]
+            "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/tutorial": {
             "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
             "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
         },
-        "website": {
-            "entry": ["screenshots/**/*.test.{ts,tsx}"],
-            "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"]
-        },
         ".gtkx/gi": {
-            "entry": ["**/*.{js,d.ts}!"]
+            "entry": ["**/*.{js,d.ts}!"],
+            "ignoreDependencies": ["@gtkx/.*"]
         },
         ".gtkx/jsx": {
-            "entry": ["**/*.js"]
+            "entry": ["**/*.{js,d.ts}!"],
+            "ignoreDependencies": ["@gtkx/.*"]
         }
     }
 }

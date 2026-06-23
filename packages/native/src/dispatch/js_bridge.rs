@@ -1,11 +1,3 @@
-//! [`Mailbox`] methods that cross into the JavaScript runtime.
-//!
-//! Every function here either invokes a JavaScript callback, converts values
-//! through a live [`napi::Env`], or drives the wake threadsafe function. None
-//! of it can run without a Node.js runtime, so it is excluded from coverage
-//! instrumentation — there is no JavaScript engine or libuv event loop in a
-//! `cargo test` process to exercise it against.
-
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, mpsc};
 
@@ -14,48 +6,76 @@ use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 use napi::{Env, JsFunction, JsObject, NapiValue as _};
 
 use super::{
-    GlibDispatchError, JsReference, Mailbox, NodeCallback, NodeCallbackResult, NodeTask, WakeJsTsfn,
+    GlibDispatchError, JsReference, Mailbox, NodeCallback, NodeCallbackResult, NodeTask,
+    WakeJsTsfn, send_or_report,
 };
-use crate::error_reporter::NativeErrorReporter;
 use crate::panic_handler::format_panic_payload;
+use crate::toggle_ref::RefOp;
 use crate::value::{JsRef, Value};
 
-/// One non-blocking poll of a result channel: `Ok(Some)` on a delivered
-/// result, `Ok(None)` when empty, and the dispatch error when the sender is
-/// gone.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn node_channel_disconnected<R>() -> anyhow::Result<R> {
+    Err(anyhow::anyhow!("JS callback channel disconnected"))
+}
+
+#[derive(Debug)]
+pub struct ReadySignal {
+    tx: mpsc::Sender<()>,
+}
+
+impl ReadySignal {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn signal(self) {
+        send_or_report(
+            &self.tx,
+            (),
+            "Long-lived GLib task ready signal channel was closed",
+        );
+        Mailbox::global().wake_js.notify();
+    }
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn poll_result<R>(rx: &mpsc::Receiver<R>) -> Result<Option<R>, GlibDispatchError> {
     match rx.try_recv() {
         Ok(result) => Ok(Some(result)),
-        Err(mpsc::TryRecvError::Disconnected) => Err(GlibDispatchError::Disconnected),
+        Err(mpsc::TryRecvError::Disconnected) => Err(GlibDispatchError::disconnected()),
         Err(mpsc::TryRecvError::Empty) => Ok(None),
     }
 }
 
 impl Mailbox {
-    /// Stores the threadsafe function used to wake the JS thread from arbitrary
-    /// other threads. Set once during `init()` and invoked by the `GLib` thread
-    /// when callbacks are pushed onto the node inbox.
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
+    fn set_wake_tsfn(&self, tsfn: Arc<WakeJsTsfn>) {
         let _ = self.wake_js_tsfn.set(tsfn);
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn install_wake(&self, env: Env) -> napi::Result<()> {
+        let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
+            Self::global().process_node_pending(*ctx.env);
+            Ok(())
+        })?;
+
+        let wake_tsfn: WakeJsTsfn = wake_js_fn
+            .build_threadsafe_function::<()>()
+            .weak::<true>()
+            .callee_handled::<false>()
+            .build()?;
+
+        self.set_wake_tsfn(Arc::new(wake_tsfn));
+        Ok(())
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn push_node_task(&self, task: NodeTask) {
-        self.node_inbox
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push_back(task);
+        self.node_inbox.lock().push_back(task);
         self.wake_js.notify();
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn pop_node_task(&self) -> Option<NodeTask> {
-        self.node_inbox
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .pop_front()
+        self.node_inbox.lock().pop_front()
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
@@ -71,13 +91,6 @@ impl Mailbox {
         self.wake_node_thread();
     }
 
-    /// Schedules a task on the `GLib` thread and blocks the JS thread until the
-    /// task completes. While blocked, drains any callbacks pushed onto the
-    /// node inbox so re-entrant `GLib → JS → GLib` calls progress.
-    ///
-    /// A panic inside the task is caught on the `GLib` thread and surfaces to
-    /// the caller as [`GlibDispatchError::TaskPanicked`]; the `GLib` thread
-    /// keeps running.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn dispatch_to_glib_and_wait<R, F>(&self, env: Env, task: F) -> Result<R, GlibDispatchError>
     where
@@ -88,29 +101,39 @@ impl Mailbox {
         self.schedule_glib(Box::new(move || {
             let outcome = panic::catch_unwind(AssertUnwindSafe(task))
                 .map_err(|payload| format_panic_payload(&*payload));
-            if tx.send(outcome).is_err() {
-                NativeErrorReporter::global()
-                    .report_str("GLib dispatch completed but result channel was closed");
-            }
+            send_or_report(
+                &tx,
+                outcome,
+                "GLib dispatch completed but result channel was closed",
+            );
         }));
         self.wait_for_glib_result(env, &rx)?
-            .map_err(GlibDispatchError::TaskPanicked)
+            .map_err(|message| GlibDispatchError::task_panicked(&message))
     }
 
-    /// Blocks the JS thread until the receiver yields a value, draining any
-    /// pending node callbacks along the way. Useful when callers schedule
-    /// tasks via [`Mailbox::schedule_glib`] and want fine-grained control over
-    /// what value the `GLib` task signals back through (for example, the
-    /// freeze loop signals readiness mid-execution).
-    ///
-    /// The result is polled *before* pending node tasks are processed: a value
-    /// produced by the `GLib` thread is observed before any reference-delete
-    /// task queued after it, so a wrapper-reference address read on the `GLib`
-    /// thread cannot be freed by a concurrent teardown before the caller
-    /// dereferences it. Node tasks left pending here are picked up by the wake
-    /// threadsafe function or the next wait.
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn wait_for_glib_result<R>(
+    pub fn dispatch_and_wait_napi<R, F>(&self, env: Env, task: F) -> napi::Result<R>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        self.dispatch_to_glib_and_wait(env, task)
+            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn dispatch_long_lived_glib_task<F>(&self, env: Env, task: F) -> napi::Result<()>
+    where
+        F: FnOnce(ReadySignal) + Send + 'static,
+    {
+        let (tx, rx) = mpsc::channel::<()>();
+        self.schedule_glib(Box::new(move || task(ReadySignal { tx })));
+        self.wait_for_glib_result(env, &rx)
+            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn wait_for_glib_result<R>(
         &self,
         env: Env,
         rx: &mpsc::Receiver<R>,
@@ -129,36 +152,6 @@ impl Mailbox {
         }
     }
 
-    /// Pushes a JS callback onto the node inbox and blocks the calling thread
-    /// until JS produces a result. On the `GLib` thread, drains GLib-bound
-    /// tasks pushed by the executing JS callback while blocked, so re-entrant
-    /// `JS → GLib → JS` calls progress.
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    pub fn invoke_node_and_wait(
-        &self,
-        callback: &Arc<JsRef<JsFunction>>,
-        args: Vec<Value>,
-        capture_result: bool,
-    ) -> anyhow::Result<Value> {
-        let (value, _) =
-            self.invoke_node_and_wait_with_cells(callback, args, capture_result, Vec::new())?;
-        Ok(value)
-    }
-
-    /// Like [`Self::invoke_node_and_wait`] but, for each index in
-    /// `out_cell_indices`, passes that argument to JS wrapped in a mutable
-    /// `{ value }` cell and reads the cell's `value` back after the callback
-    /// returns. Used by the trampoline path to flush signal out-parameters the
-    /// handler wrote into their cells.
-    ///
-    /// Native libraries can invoke a callback trampoline on a thread of their
-    /// own (a `GLib.Thread` body, a `Gio.Task` pool worker), so the wait path
-    /// is chosen by thread: the `GLib` thread takes the re-entrant
-    /// [`Self::wait_for_node_result`] loop, while any other thread parks on
-    /// its private result channel. A foreign waiter must never touch the
-    /// `GLib` wait machinery — the shared wake permit holds a single permit
-    /// (two parked threads would steal each other's wakeups), and draining
-    /// GLib-bound tasks would execute GTK mutations off the `GLib` thread.
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn invoke_node_and_wait_with_cells(
         &self,
@@ -167,68 +160,97 @@ impl Mailbox {
         capture_result: bool,
         out_cell_indices: Vec<usize>,
     ) -> anyhow::Result<super::NodeCallbackResult> {
-        let glib_initiated = gtk4::glib::MainContext::default().is_owner();
+        let callback = callback.clone();
+        self.submit_blocking_node_task(move |result_tx, glib_initiated| {
+            NodeTask::Callback(NodeCallback {
+                callback,
+                args,
+                capture_result,
+                out_cell_indices,
+                result_tx,
+                glib_initiated,
+            })
+        })
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn apply_wrapper_ref_op_and_wait(&self, ref_ptr: usize, op: RefOp) -> anyhow::Result<()> {
+        self.submit_blocking_node_task(|result_tx, glib_initiated| NodeTask::WrapperRefOp {
+            ref_ptr,
+            op,
+            result_tx,
+            glib_initiated,
+        })
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn submit_blocking_node_task<R>(
+        &self,
+        build: impl FnOnce(mpsc::Sender<anyhow::Result<R>>, bool) -> NodeTask,
+    ) -> anyhow::Result<R> {
+        let (glib_initiated, wait_depth) = self.node_wait_setup();
+        let (tx, rx) = mpsc::channel();
+
+        self.push_node_task(build(tx, glib_initiated));
+
+        self.wake_node_thread();
+        self.wait_node(&rx, wait_depth)
+    }
+
+    /// Computes whether a blocking node task is initiated from the `GLib` thread and, if so, the
+    /// depth at which the subsequent wait must drain `GLib` tasks.
+    ///
+    /// `glib_initiated` is true when the current thread owns the default `GLib` main context, i.e.
+    /// the task is being submitted from inside a GLib-thread callback. In that case the wait
+    /// must drain only tasks deeper than the current frame, so `wait_depth = callback_depth + 1`
+    /// (see the module-level depth-tagged reentrancy invariant in `dispatch`).
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn node_wait_setup(&self) -> (bool, Option<usize>) {
+        let glib_initiated = glib::MainContext::default().is_owner();
         let wait_depth = glib_initiated.then(|| {
-            // The depth counts GLib-initiated callbacks currently executing
-            // on the JS thread. Those execute only while this GLib thread is
-            // parked in an enclosing wait, so the value read here is exactly
-            // this thread's own wait nesting and cannot change before the
-            // pushed callback runs at that level plus one.
             self.callback_depth
                 .load(std::sync::atomic::Ordering::Acquire)
                 + 1
         });
-        let (tx, rx) = mpsc::channel();
-
-        self.push_node_task(NodeTask::Callback(NodeCallback {
-            callback: callback.clone(),
-            args,
-            capture_result,
-            out_cell_indices,
-            result_tx: tx,
-            glib_initiated,
-        }));
-
-        self.wake_node_thread();
-
-        let Some(depth) = wait_depth else {
-            return rx
-                .recv()
-                .unwrap_or_else(|_| Err(anyhow::anyhow!("JS callback channel disconnected")));
-        };
-
-        self.wait_for_node_result(&rx, depth)
+        (glib_initiated, wait_depth)
     }
 
-    /// Blocks the `GLib` thread until the node callback at `callback_depth`
-    /// produces a result, draining only `glib_inbox` tasks enqueued at that
-    /// depth or deeper — the nested calls the callback itself makes.
-    ///
-    /// Must run only on the `GLib` thread: it parks on the single-permit
-    /// `wake_glib` signal and executes GLib-bound tasks inline.
     #[cfg_attr(coverage_nightly, coverage(off))]
-    fn wait_for_node_result(
+    fn wait_node<R>(
         &self,
-        rx: &mpsc::Receiver<anyhow::Result<NodeCallbackResult>>,
+        rx: &mpsc::Receiver<anyhow::Result<R>>,
+        wait_depth: Option<usize>,
+    ) -> anyhow::Result<R> {
+        let Some(depth) = wait_depth else {
+            return rx.recv().unwrap_or_else(|_| node_channel_disconnected());
+        };
+        self.wait_for_node_result(rx, depth)
+    }
+
+    /// Blocks for a node-task result while keeping the `GLib` thread live at a bounded depth.
+    ///
+    /// This runs on the `GLib` thread for a task it itself initiated. While waiting, it repeatedly
+    /// drains `GLib` tasks tagged `depth >= callback_depth` via [`Mailbox::dispatch_pending_from_depth`]
+    /// — strictly the inner frame's own work — so the inner callback can make progress without
+    /// re-running a task enqueued by an outer frame, preventing a nested cross-thread deadlock
+    /// (see the module-level depth-tagged reentrancy invariant in `dispatch`).
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn wait_for_node_result<R>(
+        &self,
+        rx: &mpsc::Receiver<anyhow::Result<R>>,
         callback_depth: usize,
-    ) -> anyhow::Result<NodeCallbackResult> {
+    ) -> anyhow::Result<R> {
         loop {
             self.dispatch_pending_from_depth(callback_depth);
 
             match rx.try_recv() {
                 Ok(result) => return result,
-                Err(mpsc::TryRecvError::Disconnected) => {
-                    return Err(anyhow::anyhow!("JS callback channel disconnected"));
-                }
+                Err(mpsc::TryRecvError::Disconnected) => return node_channel_disconnected(),
                 Err(mpsc::TryRecvError::Empty) => self.wake_glib.wait(),
             }
         }
     }
 
-    /// Drains all currently-queued node callbacks and invokes them in JS.
-    /// Intended to run on the JS thread, either from the wake TSFN scheduled by
-    /// [`Mailbox::invoke_node_and_wait`] or from the wait loop in
-    /// [`Mailbox::wait_for_glib_result`].
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn process_node_pending(&self, env: Env) {
         while let Some(task) = self.pop_node_task() {
@@ -242,44 +264,70 @@ impl Mailbox {
                         result_tx,
                         glib_initiated,
                     } = pending;
-                    if glib_initiated {
-                        self.enter_glib_callback();
-                    }
-                    let result = Self::execute_callback(
-                        env,
-                        &callback,
-                        args,
-                        capture_result,
-                        &out_cell_indices,
+                    self.run_glib_initiated(
+                        glib_initiated,
+                        &result_tx,
+                        "Node callback completed but result channel was closed",
+                        || {
+                            Self::execute_callback(
+                                env,
+                                &callback,
+                                args,
+                                capture_result,
+                                &out_cell_indices,
+                            )
+                        },
                     );
-                    if glib_initiated {
-                        self.leave_glib_callback();
-                    }
-                    if result_tx.send(result).is_err() {
-                        NativeErrorReporter::global()
-                            .report_str("Node callback completed but result channel was closed");
-                    }
-                    self.wake_glib.notify();
                 }
                 NodeTask::DeleteReference(reference) => reference.delete_on_js_thread(),
+                NodeTask::WrapperRefOp {
+                    ref_ptr,
+                    op,
+                    result_tx,
+                    glib_initiated,
+                } => {
+                    self.run_glib_initiated(
+                        glib_initiated,
+                        &result_tx,
+                        "Wrapper reference operation completed but result channel was closed",
+                        || {
+                            op.apply(&env, ref_ptr);
+                            Ok(())
+                        },
+                    );
+                }
             }
         }
     }
 
-    /// Wraps `value` in a fresh `{ value }` JavaScript object so a callback can
-    /// mutate the slot in place — the cell a trampoline out-parameter is
-    /// written through.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn run_glib_initiated<R>(
+        &self,
+        glib_initiated: bool,
+        result_tx: &mpsc::Sender<anyhow::Result<R>>,
+        closed_message: &'static str,
+        op: impl FnOnce() -> anyhow::Result<R>,
+    ) {
+        if glib_initiated {
+            self.enter_glib_callback();
+        }
+        let result = op();
+        if glib_initiated {
+            self.leave_glib_callback();
+        }
+        send_or_report(result_tx, result, closed_message);
+        self.wake_glib.notify();
+    }
+
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn wrap_out_cell<'env>(env: &'env Env, value: Unknown<'env>) -> napi::Result<Unknown<'env>> {
         let mut cell = env.create_object()?;
         cell.set_named_property("value", value)?;
-        // SAFETY: `cell` is a live JS object just created from the current
-        // callback's `env`.
+        // SAFETY: runs on the Node (JS) thread that owns `env`; `cell` is a live JS object just
+        // created in this `env`, so reconstructing an `Unknown` from its raw value is sound.
         Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), napi::NapiRaw::raw(&cell)) })
     }
 
-    /// Reads the `value` slot of each out-cell argument back into a [`Value`],
-    /// paired with the argument's index, after the callback has run.
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn read_out_cells(
         env: &Env,
@@ -291,8 +339,9 @@ impl Mailbox {
             let Some(arg) = js_args.get(index) else {
                 continue;
             };
-            // SAFETY: `arg` is a live out-cell object built by
-            // `wrap_out_cell` from the current callback's `env`.
+            // SAFETY: runs on the Node (JS) thread that owns `env`; `arg` is a live JS value in
+            // this `env` (an out-cell object passed to the callback), so reconstructing a
+            // `JsObject` from its raw value is sound.
             let cell: JsObject =
                 unsafe { JsObject::from_raw_unchecked(env.raw(), napi::JsValue::raw(arg)) };
             let slot: Unknown<'_> = cell.get_named_property("value")?;
@@ -333,21 +382,21 @@ impl Mailbox {
             .get_value(&env)
             .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
 
-        // SAFETY: `func` is a live function handle from the current
-        // callback's `env`.
+        // SAFETY: `func` is the live callback function retrieved from the napi reference for this
+        // `env`; reading its raw napi value is a plain accessor on the JS thread.
         let func_raw = unsafe { napi::NapiRaw::raw(&func) };
 
         let mut undef_this = std::ptr::null_mut();
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback.
+        // SAFETY: runs on the Node (JS) thread that owns `env`; `napi_get_undefined` writes the
+        // undefined value into the writable `undef_this` out-param.
         unsafe {
             sys::napi_get_undefined(env.raw(), &mut undef_this);
         }
 
         let mut return_value = std::ptr::null_mut();
-        // SAFETY: `func_raw`, `undef_this`, and every element of
-        // `raw_args` are live values from the current callback's `env`,
-        // and `raw_args` stays alive across the call.
+        // SAFETY: on the JS thread with a live `env`; `func_raw` is the callback, `undef_this` the
+        // receiver, and `raw_args`/`raw_args.len()` describe a valid argument array, so calling the
+        // function and writing its result into `return_value` is sound.
         let status = unsafe {
             sys::napi_call_function(
                 env.raw(),
@@ -361,8 +410,8 @@ impl Mailbox {
 
         if status == sys::Status::napi_pending_exception {
             let mut exception = std::ptr::null_mut();
-            // SAFETY: This runs on the JS thread with the live `env` of
-            // the current callback.
+            // SAFETY: on the JS thread with a live `env`; a pending exception is present, so
+            // `napi_get_and_clear_last_exception` retrieves it into the writable out-param.
             unsafe {
                 sys::napi_get_and_clear_last_exception(env.raw(), &mut exception);
             }
@@ -381,8 +430,8 @@ impl Mailbox {
             .map_err(|e| anyhow::anyhow!("reading out-cell args: {e}"))?;
 
         let value = if capture_result {
-            // SAFETY: `return_value` is the live result napi_call_function
-            // produced under the current callback's `env`.
+            // SAFETY: on the JS thread with a live `env`; `return_value` is the live result the
+            // successful `napi_call_function` produced, so wrapping it as an `Unknown` is sound.
             let unknown = unsafe { Unknown::from_raw_unchecked(env.raw(), return_value) };
             Value::from_js_value(&env, unknown)
                 .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?
@@ -400,29 +449,29 @@ impl Mailbox {
         use napi::sys;
 
         let mut value_type = sys::ValueType::napi_undefined;
-        // SAFETY: `exception` is the live value just cleared from `env`'s
-        // pending-exception slot on the JS thread.
+        // SAFETY: on the JS thread with a live `env`; `exception` is the live thrown value, and
+        // `napi_typeof` writes its type into the writable out-param.
         unsafe {
             sys::napi_typeof(env, exception, &mut value_type);
         }
 
         if value_type == sys::ValueType::napi_object {
             let mut message = std::ptr::null_mut();
-            // SAFETY: `exception` is a live object value under `env` on
-            // the JS thread, and the property name is NUL-terminated.
+            // SAFETY: on the JS thread with a live `env`; `exception` is a live object, so reading
+            // its `message` property into the writable out-param is sound.
             unsafe {
                 sys::napi_get_named_property(env, exception, c"message".as_ptr(), &mut message);
             }
             if !message.is_null()
-                // SAFETY: `message` is the live, non-null property value
-                // just read under `env`.
+                // SAFETY: `message` is non-null (guarded by the preceding condition) and a live JS
+                // value in `env`; converting it to a Rust `String` on the JS thread is sound.
                 && let Ok(s) = unsafe { String::from_napi_value(env, message) }
             {
                 return s;
             }
         } else if value_type == sys::ValueType::napi_string
-            // SAFETY: `exception` is a live string value under `env` on
-            // the JS thread.
+            // SAFETY: `exception` is a live JS string value in `env`; converting it to a Rust
+            // `String` on the JS thread is sound.
             && let Ok(s) = unsafe { String::from_napi_value(env, exception) }
         {
             return s;

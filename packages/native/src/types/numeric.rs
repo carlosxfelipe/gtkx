@@ -1,6 +1,4 @@
 use anyhow::bail;
-#[cfg(debug_assertions)]
-use gtk4::glib;
 use libffi::middle as libffi;
 use napi::{Env, JsObject};
 
@@ -30,10 +28,11 @@ macro_rules! impl_integer_kind_dispatch {
 
             /// # Safety
             ///
-            /// `ptr` must be valid for a read of this kind's width.
+            /// `ptr` must point to at least `byte_size()` readable bytes holding a value of this
+            /// kind's wire integer type; alignment is not required because the read is unaligned.
             pub unsafe fn read_ptr(self, ptr: *const u8) -> f64 {
-                // SAFETY: The caller guarantees `ptr` is readable at this
-                // kind's width; the read is unaligned-tolerant.
+                // SAFETY: per the contract `ptr` addresses an in-range value of the matched wire
+                // type; `read_unaligned` loads it without an alignment requirement, then widens to f64.
                 unsafe {
                     match self {
                         $(Self::$variant => ptr.cast::<$ty>().read_unaligned() as f64),+
@@ -43,10 +42,11 @@ macro_rules! impl_integer_kind_dispatch {
 
             /// # Safety
             ///
-            /// `ptr` must be valid for a write of this kind's width.
+            /// `ptr` must point to at least `byte_size()` writable bytes; the f64 is narrowed to
+            /// this kind's wire integer type and stored unaligned.
             pub unsafe fn write_ptr(self, ptr: *mut u8, value: f64) {
-                // SAFETY: The caller guarantees `ptr` is writable at this
-                // kind's width; the write is unaligned-tolerant.
+                // SAFETY: per the contract `ptr` addresses `byte_size()` writable bytes;
+                // `write_unaligned` stores the narrowed value there without an alignment requirement.
                 unsafe {
                     match self {
                         $(Self::$variant => ptr.cast::<$ty>().write_unaligned(value as $ty)),+
@@ -62,11 +62,11 @@ macro_rules! impl_integer_kind_dispatch {
 
             /// # Safety
             ///
-            /// `ptr` must be valid for reads of `length` elements of this
-            /// kind's width, and the elements must be aligned for the kind.
+            /// `ptr` must point to a contiguous array of at least `length` elements of this kind's
+            /// wire integer type (`byte_size() * length` readable bytes).
             pub unsafe fn read_slice(self, ptr: *const u8, length: usize) -> Vec<f64> {
-                // SAFETY: The caller guarantees `ptr` addresses `length`
-                // readable, aligned elements of this kind.
+                // SAFETY: per the contract there are `length` contiguous wire-type elements at
+                // `ptr`; `from_raw_parts` builds a slice over exactly that region, widened to f64.
                 unsafe {
                     match self {
                         $(Self::$variant => {
@@ -89,18 +89,17 @@ macro_rules! impl_integer_kind_dispatch {
 
             /// # Safety
             ///
-            /// The caller must ensure:
-            /// - `cif` matches the function signature of the symbol at `ptr`
-            /// - `ptr` is a valid function pointer
-            /// - `args` contains valid arguments matching the CIF's expected types
+            /// `cif`, `ptr`, and `args` must describe a callable whose return type matches this
+            /// kind's wire integer type, as ensured by the codec that built the cif and arg list.
             pub unsafe fn call_cif_raw(
                 self,
                 cif: &libffi::Cif,
                 ptr: libffi::CodePtr,
                 args: &[libffi::Arg],
             ) -> ffi::FfiValue {
-                // SAFETY: The caller guarantees `cif`, `ptr`, and `args`
-                // describe one matching native call.
+                // SAFETY: the codec guarantees `cif`/`args` agree with the C signature and the
+                // requested `$ty` matches the function's return type, so `cif.call` reads back the
+                // correct scalar from the invoked function.
                 unsafe {
                     match self {
                         $(Self::$variant => ffi::FfiValue::$variant(cif.call::<$ty>(ptr, args))),+
@@ -112,27 +111,11 @@ macro_rules! impl_integer_kind_dispatch {
 }
 with_integer_kinds!(impl_integer_kind_dispatch);
 
-/// Generates the three FFI codec trait impls (`FfiEncoder`, `FfiDecoder`,
-/// `RawPtrCodec`) for a numeric kind enum.
-///
-/// Every numeric kind marshals identically across the codec boundary — a JS
-/// `Number` to and from an `f64` — so the trait surface is uniform. The
-/// genuinely type-specific behavior (range checking, pointer interpretation)
-/// lives in inherent methods (`checked_to_ffi_value`, `ptr_to_value_raw`,
-/// `ffi_type`, `read_ptr`, `write_ptr`, `call_cif_raw`) that the generated
-/// impls delegate to. `$label` names the kind in error messages.
-/// `$ptr_to_value` is the kind's own [`RawPtrCodec::ptr_to_value`] method:
-/// integer kinds reinterpret the pointer value without dereferencing it,
-/// while float kinds read through the pointer.
 macro_rules! impl_numeric_codecs {
     ($kind:ty, $label:literal, $ptr_to_value:item) => {
         impl FfiEncoder for $kind {
-            fn encode(
-                &self,
-                value: &value::Value,
-                optional: bool,
-            ) -> anyhow::Result<ffi::FfiValue> {
-                let number = Self::number_from_value(value, optional)?;
+            fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+                let number = Self::number_from_value(value)?;
                 self.checked_to_ffi_value(number)
             }
 
@@ -146,34 +129,40 @@ macro_rules! impl_numeric_codecs {
                 ptr: libffi::CodePtr,
                 args: &[libffi::Arg],
             ) -> anyhow::Result<ffi::FfiValue> {
-                // SAFETY: The dispatch site built `cif` and `args` for this
-                // descriptor and resolved `ptr` from a loaded library
-                // symbol.
+                // SAFETY: this codec built `cif`/`args` to match the C function's signature and
+                // its return type matches `*self`'s wire type, satisfying `call_cif_raw`'s contract.
                 Ok(unsafe { Self::call_cif_raw(*self, cif, ptr, args) })
             }
         }
 
+        impl $kind {
+            $ptr_to_value
+        }
+
         impl FfiDecoder for $kind {
-            fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-                Ok(value::Value::Number(ffi_value.to_number()?))
+            unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+                match src {
+                    ReadSource::Call(ffi_value) => Ok(value::Value::Number(ffi_value.to_number()?)),
+                    ReadSource::Slot(ptr, context) => {
+                        // SAFETY: `ReadSource::Slot` carries a marshalling-provided pointer to a
+                        // wire-type slot of this kind, satisfying `read_ptr_checked`'s precondition.
+                        Ok(value::Value::Number(unsafe {
+                            self.read_ptr_checked(ptr as *const u8, context)?
+                        }))
+                    }
+                    // SAFETY: `ReadSource::Value` carries a pointer whose interpretation is defined
+                    // by this codec's `ptr_to_value` (it reinterprets the pointer bits/value), which
+                    // the marshalling layer guarantees matches the slot.
+                    ReadSource::Value(ptr, context) => unsafe { self.ptr_to_value(ptr, context) },
+                }
             }
         }
 
         impl RawPtrCodec for $kind {
-            $ptr_to_value
-
-            unsafe fn read_from_raw_ptr(
-                &self,
-                ptr: *const c_void,
-                context: &str,
-            ) -> anyhow::Result<value::Value> {
-                // SAFETY: The caller guarantees `ptr` is readable at this
-                // kind's width.
-                Ok(value::Value::Number(unsafe {
-                    self.read_ptr_checked(ptr as *const u8, context)?
-                }))
-            }
-
+            /// # Safety
+            ///
+            /// `ret` must point to a writable return slot wide enough for this kind's wire type
+            /// (the trampoline widens integers to 8 bytes), as provided by the return path.
             unsafe fn write_return_to_raw_ptr(
                 &self,
                 ret: *mut c_void,
@@ -183,11 +172,15 @@ macro_rules! impl_numeric_codecs {
                     Ok(value::Value::Number(n)) => *n,
                     _ => 0.0,
                 };
-                // SAFETY: The caller guarantees `ret` is a writable libffi
-                // return slot wide enough for this kind's widened result.
+                // SAFETY: `ret` is the writable return slot per the contract; `write_return_widened`
+                // stores the widened scalar into it.
                 unsafe { self.write_return_widened(ret, n) };
             }
 
+            /// # Safety
+            ///
+            /// `ptr` must point to a writable field slot of at least `byte_size()` bytes, as
+            /// provided by the field marshalling layer.
             unsafe fn write_value_to_raw_ptr(
                 &self,
                 ptr: *mut c_void,
@@ -199,8 +192,8 @@ macro_rules! impl_numeric_codecs {
                         $label
                     );
                 };
-                // SAFETY: The caller guarantees `ptr` is writable at this
-                // kind's width.
+                // SAFETY: `ptr` addresses a writable wire-type slot per the contract;
+                // `write_ptr` narrows and stores the number there.
                 unsafe { self.write_ptr(ptr as *mut u8, *n) };
                 Ok(())
             }
@@ -208,15 +201,10 @@ macro_rules! impl_numeric_codecs {
     };
 }
 
-/// The largest magnitude (2^53) a JavaScript number represents exactly as an
-/// integer, shared by the inbound range checks and the outbound loss guards.
 pub const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
 
 const MAX_SAFE_INTEGER: f64 = MAX_SAFE_INTEGER_I128 as f64;
 
-/// Converts a 64-bit-sourced integer to the exact `f64` JavaScript number it
-/// becomes, failing when the magnitude exceeds 2^53 and the conversion would
-/// round. `context` names the crossing site in the error.
 pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     if !(-MAX_SAFE_INTEGER_I128..=MAX_SAFE_INTEGER_I128).contains(&value) {
         bail!(
@@ -227,11 +215,6 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
 }
 
 impl IntegerKind {
-    #[must_use]
-    pub fn is_unsigned(self) -> bool {
-        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64)
-    }
-
     #[must_use]
     pub fn byte_size(self) -> usize {
         match self {
@@ -277,20 +260,19 @@ impl IntegerKind {
         storage.as_numeric_slice(self)
     }
 
-    /// Reads `length` contiguous elements as the exact JavaScript numbers
-    /// they become, failing when a 64-bit element exceeds 2^53.
-    ///
     /// # Safety
     ///
-    /// Same contract as [`Self::read_slice`].
+    /// `ptr` must point to a contiguous array of at least `length` elements of this kind's wire
+    /// integer type (`byte_size() * length` readable bytes).
     pub unsafe fn read_slice_checked(
         self,
         ptr: *const u8,
         length: usize,
         context: &str,
     ) -> anyhow::Result<Vec<f64>> {
-        // SAFETY: The caller guarantees `ptr` addresses `length` readable,
-        // aligned elements of this kind.
+        // SAFETY: per the contract `ptr` covers `length` contiguous wire-type elements; for the
+        // 64-bit kinds `from_raw_parts` reads exactly that region (checking each fits in an f64),
+        // and the smaller kinds forward the same in-bounds buffer to `read_slice`.
         unsafe {
             match self {
                 Self::I64 => std::slice::from_raw_parts(ptr.cast::<i64>(), length)
@@ -306,19 +288,18 @@ impl IntegerKind {
         }
     }
 
-    /// Reads the integer at `ptr` as the exact JavaScript number it becomes,
-    /// failing for 64-bit values whose magnitude exceeds 2^53.
-    ///
     /// # Safety
     ///
-    /// `ptr` must be valid for a read of this kind's width.
+    /// `ptr` must point to at least `byte_size()` readable bytes holding a value of this kind's
+    /// wire integer type.
     pub(crate) unsafe fn read_ptr_checked(
         self,
         ptr: *const u8,
         context: &str,
     ) -> anyhow::Result<f64> {
-        // SAFETY: The caller guarantees `ptr` is readable at this kind's
-        // width; the reads are unaligned-tolerant.
+        // SAFETY: per the contract `ptr` addresses an in-range wire-type value; the 64-bit kinds
+        // read it unaligned and verify it fits in an f64, and the smaller kinds forward to
+        // `read_ptr` over the same in-bounds slot.
         unsafe {
             match self {
                 Self::I64 => lossless_f64(i128::from(ptr.cast::<i64>().read_unaligned()), context),
@@ -340,31 +321,23 @@ impl IntegerKind {
         Ok(value::Value::Number(number))
     }
 
-    /// Extracts the numeric payload an integer argument encodes. Object
-    /// handles are accepted and marshal as pointer-sized integers, the numeric
-    /// representation of pointer-valued arguments.
-    fn number_from_value(value: &value::Value, optional: bool) -> anyhow::Result<f64> {
+    fn number_from_value(value: &value::Value) -> anyhow::Result<f64> {
         match value {
             value::Value::Number(n) => Ok(*n),
             value::Value::Object(handle) => Ok(handle.ptr_as_usize() as f64),
-            value::Value::Null | value::Value::Undefined if optional => Ok(0.0),
+            value::Value::Null | value::Value::Undefined => Ok(0.0),
             _ => bail!("Expected a Number for integer type, got {value:?}"),
         }
     }
 
-    /// Writes a trampoline return value into the libffi closure return slot.
-    ///
-    /// libffi's closure contract requires integral results narrower than
-    /// `ffi_arg` to be stored as a full register-width value — sign-extended
-    /// for signed kinds, zero-extended for unsigned — so the value is narrowed
-    /// to this kind first and then widened into the 8-byte slot.
-    ///
     /// # Safety
     ///
-    /// `ret` must be valid for an 8-byte write.
-    unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
-        // SAFETY: The caller guarantees `ret` is a writable 8-byte libffi
-        // return slot; the writes are unaligned-tolerant.
+    /// `ret` must point to at least 8 writable bytes. The value is narrowed to this kind's wire
+    /// integer type and stored widened to 8 bytes, matching libffi's promotion of small integer
+    /// return values.
+    pub(super) unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
+        // SAFETY: per the contract `ret` addresses 8 writable bytes; each arm narrows the value to
+        // its wire type, re-widens to the 8-byte libffi return slot, and stores it unaligned.
         unsafe {
             match self {
                 Self::I8 => ret.cast::<i64>().write_unaligned(i64::from(value as i8)),
@@ -383,6 +356,10 @@ impl IntegerKind {
 impl_numeric_codecs!(
     IntegerKind,
     "integer",
+    /// # Safety
+    ///
+    /// `ptr` carries the raw value bits for this integer kind directly (it is not dereferenced),
+    /// so any pointer-sized bit pattern is accepted; `context` only labels range-check errors.
     unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
         self.ptr_to_value_raw(ptr, context)
     }
@@ -412,11 +389,12 @@ impl FloatKind {
 
     /// # Safety
     ///
-    /// `ptr` must be valid for a read of this kind's width.
+    /// `ptr` must point to at least 4 (`F32`) or 8 (`F64`) readable bytes holding a value of the
+    /// matching float type; alignment is not required because the read is unaligned.
     #[must_use]
     pub unsafe fn read_ptr(self, ptr: *const u8) -> f64 {
-        // SAFETY: The caller guarantees `ptr` is readable at this kind's
-        // width; the read is unaligned-tolerant.
+        // SAFETY: per the contract `ptr` addresses a value of the matched float width;
+        // `read_unaligned` loads it without an alignment requirement, widening `f32` to `f64`.
         unsafe {
             match self {
                 Self::F32 => ptr.cast::<f32>().read_unaligned() as f64,
@@ -427,10 +405,11 @@ impl FloatKind {
 
     /// # Safety
     ///
-    /// `ptr` must be valid for a write of this kind's width.
+    /// `ptr` must point to at least 4 (`F32`) or 8 (`F64`) writable bytes; the value is narrowed
+    /// to the matching float type and stored unaligned.
     pub unsafe fn write_ptr(self, ptr: *mut u8, value: f64) {
-        // SAFETY: The caller guarantees `ptr` is writable at this kind's
-        // width; the write is unaligned-tolerant.
+        // SAFETY: per the contract `ptr` addresses writable bytes for the matched float width;
+        // `write_unaligned` stores the (possibly narrowed) value without an alignment requirement.
         unsafe {
             match self {
                 Self::F32 => ptr.cast::<f32>().write_unaligned(value as f32),
@@ -451,20 +430,10 @@ impl FloatKind {
         }
     }
 
-    #[must_use]
-    pub fn to_ffi_value(self, value: f64) -> ffi::FfiValue {
-        match self {
-            Self::F32 => ffi::FfiValue::F32(value as f32),
-            Self::F64 => ffi::FfiValue::F64(value),
-        }
-    }
-
     /// # Safety
     ///
-    /// The caller must ensure:
-    /// - `cif` matches the function signature of the symbol at `ptr`
-    /// - `ptr` is a valid function pointer
-    /// - `args` contains valid arguments matching the CIF's expected types
+    /// `cif`, `ptr`, and `args` must describe a callable whose return type matches this float
+    /// kind, as ensured by the codec that built the cif and arg list.
     #[must_use]
     pub unsafe fn call_cif_raw(
         self,
@@ -472,8 +441,8 @@ impl FloatKind {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> ffi::FfiValue {
-        // SAFETY: The caller guarantees `cif`, `ptr`, and `args` describe
-        // one matching native call.
+        // SAFETY: the codec guarantees `cif`/`args` agree with the C signature and the requested
+        // float width matches the function's return type, so `cif.call` reads back the right scalar.
         unsafe {
             match self {
                 Self::F32 => ffi::FfiValue::F32(cif.call::<f32>(ptr, args)),
@@ -484,60 +453,48 @@ impl FloatKind {
 
     /// # Safety
     ///
-    /// `ptr` must be null or valid for a read of this kind's width.
+    /// `ptr` must be null or point to at least 4 (`F32`) or 8 (`F64`) readable bytes holding a
+    /// value of the matching float type.
     #[must_use]
     pub unsafe fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
         if ptr.is_null() {
             return value::Value::Number(0.0);
         }
-        // SAFETY: `ptr` is non-null here, so the caller's contract makes it
-        // readable at this kind's width.
+        // SAFETY: `ptr` is non-null here and points to a value of the matching float width per the
+        // contract, satisfying `read_ptr`'s precondition.
         value::Value::Number(unsafe { self.read_ptr(ptr as *const u8) })
     }
 
-    /// Reads the float at `ptr` as an `f64`; the conversion is exact for both
-    /// widths, so unlike the integer counterpart no range failure exists. The
-    /// `Result` wrapping mirrors [`IntegerKind::read_ptr_checked`] so the
-    /// shared codec macro can call both uniformly.
-    ///
     /// # Safety
     ///
-    /// `ptr` must be valid for a read of this kind's width.
+    /// `ptr` must point to at least 4 (`F32`) or 8 (`F64`) readable bytes holding a value of the
+    /// matching float type.
     #[allow(clippy::unnecessary_wraps)]
     pub(crate) unsafe fn read_ptr_checked(
         self,
         ptr: *const u8,
         _context: &str,
     ) -> anyhow::Result<f64> {
-        // SAFETY: The caller guarantees `ptr` is readable at this kind's
-        // width.
+        // SAFETY: forwards the caller's float-slot guarantee to `read_ptr`; floats need no range
+        // check, so this is infallible.
         Ok(unsafe { self.read_ptr(ptr) })
     }
 
-    /// Extracts the numeric payload a float argument encodes. Unlike the
-    /// integer counterpart, object handles are rejected: a pointer address has
-    /// no floating-point interpretation, and accepting one would feed a heap
-    /// address into the native call as a geometry or opacity value.
-    fn number_from_value(value: &value::Value, optional: bool) -> anyhow::Result<f64> {
+    fn number_from_value(value: &value::Value) -> anyhow::Result<f64> {
         match value {
             value::Value::Number(n) => Ok(*n),
-            value::Value::Null | value::Value::Undefined if optional => Ok(0.0),
+            value::Value::Null | value::Value::Undefined => Ok(0.0),
             _ => bail!("Expected a Number for float type, got {value:?}"),
         }
     }
 
-    /// Writes a trampoline return value into the libffi closure return slot.
-    ///
-    /// Floating-point results are exempt from libffi's `ffi_arg` widening —
-    /// they return through floating-point registers at their exact width — so
-    /// the value is written at the kind's own size.
-    ///
     /// # Safety
     ///
-    /// `ret` must be valid for a write of this kind's width.
+    /// `ret` must point to at least 4 (`F32`) or 8 (`F64`) writable bytes, as provided by the
+    /// trampoline return path.
     unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
-        // SAFETY: The caller guarantees `ret` is a writable libffi return
-        // slot at least this kind's width.
+        // SAFETY: `ret` addresses a writable float-width return slot per the contract; `write_ptr`
+        // narrows and stores the value there.
         unsafe { self.write_ptr(ret as *mut u8, value) };
     }
 }
@@ -545,13 +502,18 @@ impl FloatKind {
 impl_numeric_codecs!(
     FloatKind,
     "float",
+    /// # Safety
+    ///
+    /// `ptr` must be null or point to readable bytes of the matching float width, as provided by
+    /// the value marshalling layer.
+    #[allow(clippy::unnecessary_wraps)]
     unsafe fn ptr_to_value(
         &self,
         ptr: *mut c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is null or valid for this
-        // kind's read, matching `ptr_to_value_raw`'s contract.
+        // SAFETY: forwards the caller's float-slot guarantee to `ptr_to_value_raw`, which itself
+        // null-guards before reading.
         Ok(unsafe { self.ptr_to_value_raw(ptr) })
     }
 );
@@ -562,10 +524,6 @@ impl From<FloatKind> for libffi::Type {
     }
 }
 
-/// Distinguishes a `GLib` enumeration from a flags (bitfield) type.
-///
-/// The two share an identical FFI representation and differ only in how they
-/// convert to and from a `GValue`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TaggedKind {
@@ -573,11 +531,6 @@ pub enum TaggedKind {
     Flags,
 }
 
-/// A `GLib`-registered enumeration or flags type.
-///
-/// Marshaled across the FFI boundary as its underlying integer `storage`, and
-/// converted to a `GValue` of the `GType` resolved from `library` and
-/// `get_type_fn`.
 #[derive(Debug, Clone)]
 pub struct TaggedType {
     pub kind: TaggedKind,
@@ -606,8 +559,6 @@ impl TaggedType {
         })
     }
 
-    /// The integer kind this tag marshals as, which the codec delegates
-    /// ABI-level work to.
     fn wire_kind(&self) -> IntegerKind {
         self.storage
     }
@@ -638,8 +589,8 @@ impl TaggedType {
 }
 
 impl FfiEncoder for TaggedType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let result = FfiEncoder::encode(&self.storage, value, optional)?;
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        let result = FfiEncoder::encode(&self.storage, value)?;
         #[cfg(debug_assertions)]
         if self.kind == TaggedKind::Enum
             && let value::Value::Number(n) = value
@@ -653,41 +604,41 @@ impl FfiEncoder for TaggedType {
 }
 
 impl FfiDecoder for TaggedType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiDecoder::decode(&self.storage, ffi_value)
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => FfiDecoder::decode(&self.storage, ffi_value),
+            ReadSource::Value(ptr, context) => self.storage.ptr_to_value_raw(ptr, context),
+            // SAFETY: `ReadSource::Slot` carries a marshalling-provided pointer to a slot of the
+            // backing integer storage type, satisfying `read_ptr`'s precondition.
+            ReadSource::Slot(ptr, _context) => Ok(value::Value::Number(unsafe {
+                self.storage.read_ptr(ptr as *const u8)
+            })),
+        }
     }
 }
 
 impl RawPtrCodec for TaggedType {
-    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
-        self.storage.ptr_to_value_raw(ptr, context)
-    }
-
-    unsafe fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is readable at the storage
-        // kind's width.
-        Ok(value::Value::Number(unsafe {
-            self.storage.read_ptr(ptr as *const u8)
-        }))
-    }
-
+    /// # Safety
+    ///
+    /// `ret` must point to a writable return slot wide enough for the backing integer storage
+    /// type, as provided by the trampoline return path.
     unsafe fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        // SAFETY: The caller's contract for `ret` carries over unchanged to
-        // the storage kind's codec.
+        // SAFETY: `ret` satisfies the backing integer codec's return-slot precondition per this
+        // method's contract; the delegate writes the tag value there.
         unsafe { RawPtrCodec::write_return_to_raw_ptr(&self.storage, ret, value) };
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must point to a writable field slot wide enough for the backing integer storage type,
+    /// as provided by the field marshalling layer.
     unsafe fn write_value_to_raw_ptr(
         &self,
         ptr: *mut c_void,
         value: &value::Value,
     ) -> anyhow::Result<()> {
-        // SAFETY: The caller's contract for `ptr` carries over unchanged to
-        // the storage kind's codec.
+        // SAFETY: `ptr` satisfies the backing integer codec's field-slot precondition per this
+        // method's contract; the delegate writes the tag value there.
         unsafe { RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value) }
     }
 }

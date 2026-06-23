@@ -1,32 +1,17 @@
 import ts from "typescript";
 
-/**
- * Output of a single TypeScript transpile: the stripped `.js` and the
- * isolated-declaration `.d.ts` it produces.
- */
 export type TranspiledFile = {
-    /** Stripped-types JavaScript output. */
-    readonly js: string;
-    /** Generated TypeScript declaration output. */
-    readonly dts: string;
+    js: string;
+    dts: string;
 };
 
-/**
- * The compiler options the store's single-file transpile passes share. The
- * `.js` emit and the isolated `.d.ts` emit each spread these and add their own
- * emit-specific keys.
- */
-const baseCompilerOptions = (): ts.CompilerOptions => ({
+const COMPILER_OPTIONS: ts.CompilerOptions = {
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     target: ts.ScriptTarget.ESNext,
     skipLibCheck: true,
     jsx: ts.JsxEmit.ReactJSX,
     jsxImportSource: "react",
-});
-
-const COMPILER_OPTIONS: ts.CompilerOptions = {
-    ...baseCompilerOptions(),
     declaration: true,
     skipDefaultLibCheck: true,
     removeComments: false,
@@ -34,19 +19,6 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
     declarationMap: false,
 };
 
-/**
- * Transpiles a single TypeScript source string to a `.js` / `.d.ts` pair.
- *
- * Uses `ts.transpileModule` for the JS half (type-stripping only, no
- * type checking) and `ts.transpileDeclaration` for the declaration half
- * (single-file declaration emit). Generated sources annotate every export
- * for isolated-declaration emit, so `transpileDeclaration` always
- * succeeds; an error-category diagnostic from it represents a writer bug
- * and is surfaced rather than swallowed.
- *
- * @param fileName - Source filename, used by TS for path resolution
- * @param source - The TypeScript source string
- */
 export const transpileSource = (fileName: string, source: string): TranspiledFile => {
     const jsResult = ts.transpileModule(source, {
         compilerOptions: COMPILER_OPTIONS,

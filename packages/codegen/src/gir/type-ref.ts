@@ -1,177 +1,74 @@
-import { attr, childOf, childrenOf, type RawNode } from "./parse.js";
-import { type PrimitiveCategory, primitiveCategory } from "./primitives.js";
+import { attr, childOf, childrenOf, intAttr, nameAttr, type RawNode } from "./parse.js";
+import { primitiveCategory } from "./primitives.js";
+import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContext, type TypeId } from "./type-id.js";
 
-/**
- * Lazily-resolved reference to a GIR type as it appears in a `<type>` or
- * `<array>` slot.
- *
- * The reference captures everything the writers need at emission time
- * without forcing entity resolution to happen at parse time (which would
- * impose a topological-sort order on namespace loading). Resolution into a
- * concrete `GirClass` / `GirBoxed` / `GirEnum` / … is performed on demand
- * by the writers via `GirRepository.resolveNamed`.
- */
-export type GirTypeRef =
-    | PrimitiveTypeRef
-    | NamedTypeRef
-    | ArrayTypeRef
-    | ListTypeRef
-    | HashTableTypeRef
-    | InlineCallbackTypeRef
-    | VarargsTypeRef;
+const LIST_FLAVOR_BY_NAME_LOOKUP: Map<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
 
-/** A GIR scalar primitive: `gint`, `gboolean`, `utf8`, `gpointer`, etc. */
-export type PrimitiveTypeRef = {
-    readonly kind: "primitive";
-    readonly category: PrimitiveCategory;
-    readonly cType: string | undefined;
+const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
+    const elementNode = childOf(node, "type");
+    return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
 };
 
-/**
- * A named type that resolves to a class, interface, boxed, enum, alias, or
- * fundamental in some namespace.
- *
- * `namespaceName` is the namespace prefix from the GIR (`"GLib"`, `"Gtk"`,
- * …) or `undefined` for an unqualified reference. The unqualified form
- * implies "look in the namespace the reference appears in".
- */
-export type NamedTypeRef = {
-    readonly kind: "named";
-    readonly namespaceName: string | undefined;
-    readonly typeName: string;
-    readonly cType: string | undefined;
-};
-
-/** A C array (`<array>`) with optional length or fixed-size metadata. */
-export type ArrayTypeRef = {
-    readonly kind: "array";
-    readonly element: GirTypeRef;
-    readonly cType: string | undefined;
-    readonly lengthParameterIndex: number | undefined;
-    readonly fixedSize: number | undefined;
-};
-
-/** A GLib `GList` / `GSList` / `GPtrArray` / `GArray` / `GByteArray`. */
-export type ListTypeRef = {
-    readonly kind: "list";
-    readonly flavor: "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray";
-    readonly element: GirTypeRef;
-    readonly cType: string | undefined;
-};
-
-/** A GLib `GHashTable` with key and value element types. */
-export type HashTableTypeRef = {
-    readonly kind: "hashtable";
-    readonly key: GirTypeRef;
-    readonly value: GirTypeRef;
-    readonly cType: string | undefined;
-};
-
-/** An inline `<callback>` (used for vtable slots and callback parameters). */
-type InlineCallbackTypeRef = {
-    readonly kind: "callback";
-    readonly callback: RawNode;
-};
-
-/** A `<varargs/>` parameter placeholder; not marshalable. */
-type VarargsTypeRef = { readonly kind: "varargs" };
-
-const LIST_KIND_BY_NAME: ReadonlyMap<string, "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray"> = new Map([
-    ["GLib.List", "glist"],
-    ["GLib.SList", "gslist"],
-    ["GLib.PtrArray", "gptrarray"],
-    ["GLib.Array", "garray"],
-    ["GLib.ByteArray", "gbytearray"],
-] as const);
-
-/**
- * Builds a {@link GirTypeRef} from a parent XML node whose first `<type>`,
- * `<array>`, or `<varargs>` child describes the slot.
- *
- * Pass the parent (`<parameter>`, `<return-value>`, `<field>`, `<property>`,
- * `<constant>`, `<alias>`). The helper extracts the right child and routes
- * to {@link typeRefFromTypeNode}.
- *
- * @param parent - The element whose typed slot we are inspecting
- * @returns The reference, or `undefined` if no type slot exists
- */
-export const typeRefFromSlot = (parent: RawNode | undefined): GirTypeRef | undefined => {
+export const typeRefFromSlot = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) return undefined;
-    if (childOf(parent, "varargs") !== undefined) return { kind: "varargs" };
+    if (childOf(parent, "varargs") !== undefined) return context.internVarargs();
     const arrayNode = childOf(parent, "array");
-    if (arrayNode !== undefined) return arrayTypeRefFromNode(arrayNode);
+    if (arrayNode !== undefined) return arrayTypeRefFromNode(arrayNode, context);
     const typeNode = childOf(parent, "type");
-    if (typeNode !== undefined) return typeRefFromTypeNode(typeNode);
+    if (typeNode !== undefined) return typeRefFromTypeNode(typeNode, context);
     const callback = childOf(parent, "callback");
-    if (callback !== undefined) return { kind: "callback", callback };
+    if (callback !== undefined) return context.internInlineCallback(callback);
     return undefined;
 };
 
-/**
- * Builds a {@link GirTypeRef} from a `<type>` element.
- *
- * Splits a `Namespace.TypeName` form into namespace + type, recognises GLib
- * container types (`GLib.List`, `GLib.HashTable`, …) by name and routes
- * them to the dedicated branches, otherwise produces a primitive or named
- * reference for later resolution.
- *
- * @param typeNode - A `<type>` element
- */
-const typeRefFromTypeNode = (typeNode: RawNode): GirTypeRef => {
-    const name = attr(typeNode, "name") ?? "";
-    const cType = attr(typeNode, "c:type");
+const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId => {
+    const name = nameAttr(typeNode);
 
-    const listFlavor = LIST_KIND_BY_NAME.get(name);
+    const listFlavor = LIST_FLAVOR_BY_NAME_LOOKUP.get(name);
     if (listFlavor !== undefined) {
-        const elementNode = childOf(typeNode, "type");
-        const element = elementNode === undefined ? pointerFallback() : typeRefFromTypeNode(elementNode);
-        return { kind: "list", flavor: listFlavor, element, cType };
+        return context.internContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
     }
 
     if (name === "GLib.HashTable") {
         const elementTypes = childrenOf(typeNode, "type");
         const keyNode = elementTypes[0];
         const valueNode = elementTypes[1];
-        return {
+        return context.internContainer({
             kind: "hashtable",
-            key: keyNode === undefined ? pointerFallback() : typeRefFromTypeNode(keyNode),
-            value: valueNode === undefined ? pointerFallback() : typeRefFromTypeNode(valueNode),
-            cType,
-        };
+            key: keyNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(keyNode, context),
+            value: valueNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(valueNode, context),
+        });
     }
 
     const primitive = primitiveCategory(name);
     if (primitive !== undefined) {
-        return { kind: "primitive", category: primitive, cType };
+        return context.internPrimitive(primitive);
     }
 
-    const [namespaceName, typeName] = splitOptionalNamespace(name);
-    return { kind: "named", namespaceName, typeName, cType };
+    return context.findOrStubType(name);
 };
 
-const arrayTypeRefFromNode = (arrayNode: RawNode): ArrayTypeRef | ListTypeRef => {
-    const elementNode = childOf(arrayNode, "type");
-    const element: GirTypeRef = elementNode === undefined ? pointerFallback() : typeRefFromTypeNode(elementNode);
-    const cType = attr(arrayNode, "c:type");
+const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId => {
+    const element = elementRefOf(arrayNode, context);
     const arrayName = attr(arrayNode, "name");
-    const listFlavor = arrayName === undefined ? undefined : LIST_KIND_BY_NAME.get(arrayName);
+    const listFlavor = arrayName === undefined ? undefined : LIST_FLAVOR_BY_NAME_LOOKUP.get(arrayName);
     if (listFlavor !== undefined) {
-        return { kind: "list", flavor: listFlavor, element, cType };
+        return context.internContainer({ kind: "list", flavor: listFlavor, element });
     }
-    const lengthAttr = attr(arrayNode, "length");
-    const fixedSizeAttr = attr(arrayNode, "fixed-size");
-    return {
-        kind: "array",
+    const elementNode = childOf(arrayNode, "type");
+    const carray: CArrayType = {
+        kind: "carray",
         element,
-        cType,
-        lengthParameterIndex: lengthAttr === undefined ? undefined : Number.parseInt(lengthAttr, 10),
-        fixedSize: fixedSizeAttr === undefined ? undefined : Number.parseInt(fixedSizeAttr, 10),
+        elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
+        lengthParameterIndex: intAttr(arrayNode, "length"),
+        fixedSize: intAttr(arrayNode, "fixed-size"),
     };
+    return context.internContainer(carray);
 };
 
-const pointerFallback = (): PrimitiveTypeRef => ({ kind: "primitive", category: "pointer", cType: undefined });
+const pointerFallback = (context: ParseContext): TypeId => context.internPrimitive("pointer");
 
-const splitOptionalNamespace = (name: string): [string | undefined, string] => {
+export const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     const dot = name.indexOf(".");
     if (dot === -1) return [undefined, name];
     return [name.slice(0, dot), name.slice(dot + 1)];

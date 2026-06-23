@@ -22,10 +22,13 @@ describe("createModuleRegistration", () => {
 
 describe("isReactRefreshBoundary", () => {
     it("returns true when the module value itself is a likely component", () => {
-        const Component = function MyComponent() {
-            return null;
-        };
-        expect(isReactRefreshBoundary(Component as unknown as Record<string, unknown>)).toBe(true);
+        const Component = Object.assign(
+            function MyComponent() {
+                return null;
+            },
+            {} as Record<string, unknown>,
+        );
+        expect(isReactRefreshBoundary(Component)).toBe(true);
     });
 
     it("returns false for a module exporting a non-component value", () => {
@@ -52,14 +55,12 @@ describe("isReactRefreshBoundary", () => {
     });
 
     it("recognizes React.memo-wrapped components", () => {
-        const memoized = (() => null) as { (): null; $$typeof?: symbol };
-        memoized.$$typeof = Symbol.for("react.memo");
+        const memoized = { $$typeof: Symbol.for("react.memo"), type: () => null };
         expect(isReactRefreshBoundary({ wrapped: memoized })).toBe(true);
     });
 
     it("recognizes React.forwardRef-wrapped components", () => {
-        const forwarded = (() => null) as { (): null; $$typeof?: symbol };
-        forwarded.$$typeof = Symbol.for("react.forward_ref");
+        const forwarded = { $$typeof: Symbol.for("react.forward_ref"), render: () => null };
         expect(isReactRefreshBoundary({ wrapped: forwarded })).toBe(true);
     });
 

@@ -1,7 +1,9 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAboutDialog,
+    GtkApplication,
     GtkApplicationWindow,
     GtkBox,
     GtkButton,
@@ -16,6 +18,7 @@ import {
     GtkListBox,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
+import { createRootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef, useState } from "react";
@@ -23,6 +26,9 @@ import { describe, expect, it, vi } from "vitest";
 import { countChildren } from "../helpers/child-count.js";
 
 const render = (element: ReactNode) => baseRender(element);
+
+let nextAppId = 0;
+const uniqueAppId = (): string => `org.gtkx.widgettest${nextAppId++}`;
 
 describe("widget - creation (1)", () => {
     describe("basic widgets", () => {
@@ -248,7 +254,7 @@ describe("widget - props (2)", () => {
         });
 
         it("handles undefined to value transition", async () => {
-            function App({ label }: { label?: string }) {
+            function App({ label }: { label?: string | undefined }) {
                 return <GtkLabel label={label} />;
             }
 
@@ -266,7 +272,7 @@ describe("widget - props (3)", () => {
         it("preserves the last-set value when a prop transitions to undefined", async () => {
             const ref = createRef<Gtk.Label>();
 
-            function App({ label }: { label?: string }) {
+            function App({ label }: { label?: string | undefined }) {
                 return <GtkLabel ref={ref} label={label} />;
             }
 
@@ -556,7 +562,7 @@ describe("widget - signals (6)", () => {
                 const handleEnter = vi.fn();
 
                 await render(
-                    <GtkButton label="Hover Me" addController={<GtkEventControllerMotion onEnter={handleEnter} />} />,
+                    <GtkButton label="Hover Me" controllers={<GtkEventControllerMotion onEnter={handleEnter} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover Me" });
@@ -569,7 +575,7 @@ describe("widget - signals (6)", () => {
                 const handleLeave = vi.fn();
 
                 await render(
-                    <GtkButton label="Hover Me" addController={<GtkEventControllerMotion onLeave={handleLeave} />} />,
+                    <GtkButton label="Hover Me" controllers={<GtkEventControllerMotion onLeave={handleLeave} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover Me" });
@@ -592,7 +598,7 @@ describe("widget - signals (7)", () => {
                     return (
                         <GtkButton
                             label="Hover"
-                            addController={hasController && <GtkEventControllerMotion onEnter={handleEnter} />}
+                            controllers={hasController && <GtkEventControllerMotion onEnter={handleEnter} />}
                         />
                     );
                 }
@@ -620,7 +626,7 @@ describe("widget - signals (8)", () => {
                 const handlePressed = vi.fn();
 
                 await render(
-                    <GtkButton label="Press Me" addController={<GtkGestureClick onPressed={handlePressed} />} />,
+                    <GtkButton label="Press Me" controllers={<GtkGestureClick onPressed={handlePressed} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press Me" });
@@ -633,7 +639,7 @@ describe("widget - signals (8)", () => {
                 const handleReleased = vi.fn();
 
                 await render(
-                    <GtkButton label="Release Me" addController={<GtkGestureClick onReleased={handleReleased} />} />,
+                    <GtkButton label="Release Me" controllers={<GtkGestureClick onReleased={handleReleased} />} />,
                 );
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Release Me" });
@@ -645,7 +651,7 @@ describe("widget - signals (8)", () => {
             it("passes coordinates to press handler", async () => {
                 const handlePressed = vi.fn();
 
-                await render(<GtkButton label="Press" addController={<GtkGestureClick onPressed={handlePressed} />} />);
+                await render(<GtkButton label="Press" controllers={<GtkGestureClick onPressed={handlePressed} />} />);
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press" });
                 await userEvent.pointer(button, "down");
@@ -671,7 +677,7 @@ describe("widget - signals (9)", () => {
                         label="Focus me"
                         canFocus
                         focusable
-                        addController={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
+                        controllers={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
                     />,
                 );
 
@@ -689,7 +695,7 @@ describe("widget - signals (9)", () => {
                         label="Focus me"
                         canFocus
                         focusable
-                        addController={<GtkEventControllerKey onKeyReleased={handleKeyReleased} />}
+                        controllers={<GtkEventControllerKey onKeyReleased={handleKeyReleased} />}
                     />,
                 );
 
@@ -714,7 +720,7 @@ describe("widget - signals (10)", () => {
                             label="Focus me"
                             canFocus
                             focusable
-                            addController={hasController && <GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
+                            controllers={hasController && <GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
                         />
                     );
                 }
@@ -964,14 +970,20 @@ describe("widget - auto-wrapping (4)", () => {
     });
 });
 
-const renderUnwrapped = (element: ReactNode) => baseRender(element, { wrapper: false });
+const renderInApp = (window: ReactNode) =>
+    baseRender(
+        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            {window}
+        </GtkApplication>,
+        { container: createRootElement() },
+    );
 
 describe("widget - AboutDialog (1)", () => {
     describe("creditSections", () => {
         it("applies credit sections on mount", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog
                         ref={ref}
@@ -990,7 +1002,7 @@ describe("widget - AboutDialog (1)", () => {
         it("applies empty credit sections array", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog ref={ref} programName="Test App" creditSections={[]} />
                 </GtkApplicationWindow>,
@@ -1002,7 +1014,7 @@ describe("widget - AboutDialog (1)", () => {
         it("renders without creditSections prop", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog ref={ref} programName="Test App" />
                 </GtkApplicationWindow>,
@@ -1018,7 +1030,7 @@ describe("widget - AboutDialog (2)", () => {
         it("presents dialog on mount", async () => {
             const ref = createRef<Gtk.AboutDialog>();
 
-            await renderUnwrapped(
+            await renderInApp(
                 <GtkApplicationWindow>
                     <GtkAboutDialog ref={ref} programName="Lifecycle Test" />
                 </GtkApplicationWindow>,
@@ -1029,21 +1041,24 @@ describe("widget - AboutDialog (2)", () => {
 
         it("destroys dialog on unmount", async () => {
             const ref = createRef<Gtk.AboutDialog>();
+            const appId = uniqueAppId();
 
             function App({ show }: { show: boolean }) {
                 return (
-                    <GtkApplicationWindow>
-                        {show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null}
-                    </GtkApplicationWindow>
+                    <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                        <GtkApplicationWindow>
+                            {show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null}
+                        </GtkApplicationWindow>
+                    </GtkApplication>
                 );
             }
 
-            await renderUnwrapped(<App show={true} />);
+            const { rerender } = await baseRender(<App show={true} />, { container: createRootElement() });
 
             const handle = ref.current;
             expect(handle).toBeDefined();
 
-            await renderUnwrapped(<App show={false} />);
+            await rerender(<App show={false} />);
         });
     });
 });

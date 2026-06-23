@@ -1,10 +1,3 @@
-//! Request/response plumbing shared by the napi export handlers.
-//!
-//! [`ModuleRequest::dispatch`] and the [`ModuleResponse`] conversions all
-//! require a live [`napi::Env`], so the module is excluded from coverage
-//! instrumentation. The per-request `execute` logic lives in the sibling
-//! modules and is exercised directly by tests.
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::sync::Arc;
@@ -22,16 +15,9 @@ pub trait ModuleRequest: Sized + Send + 'static {
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
 
-    /// Dispatches the request onto the `GLib` thread, blocks the JS thread
-    /// until it completes, and converts the outcome into a JavaScript value.
-    ///
-    /// A failed request surfaces with its full anyhow context chain
-    /// (alternate formatting), so the JavaScript error names both the failing
-    /// operation and the root cause.
     fn dispatch(self, env: &Env) -> napi::Result<Unknown<'_>> {
         let result = dispatch::Mailbox::global()
-            .dispatch_to_glib_and_wait(*env, move || self.execute())
-            .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?
+            .dispatch_and_wait_napi(*env, move || self.execute())?
             .map_err(|e| {
                 napi::Error::new(
                     napi::Status::GenericFailure,
@@ -55,14 +41,8 @@ impl ModuleResponse for Value {
 
 impl ModuleResponse for NativeHandle {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback, and the raw value was just created under it.
-        unsafe {
-            let size_hint = self.size_hint();
-            let external = External::new_with_size_hint(self, size_hint);
-            let raw = External::<Self>::to_napi_value(env.raw(), external)?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
+        let size_hint = self.size_hint();
+        External::new_with_size_hint(self, size_hint).into_unknown(env)
     }
 }
 
@@ -77,23 +57,13 @@ impl ModuleResponse for Option<NativeHandle> {
 
 impl ModuleResponse for u64 {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback, and the raw value was just created under it.
-        unsafe {
-            let raw = f64::to_napi_value(env.raw(), self as f64)?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
+        BigInt::from(self).into_unknown(env)
     }
 }
 
 impl ModuleResponse for () {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
-        // SAFETY: This runs on the JS thread with the live `env` of the
-        // current callback, and the raw value was just created under it.
-        unsafe {
-            let raw = Undefined::to_napi_value(env.raw(), ())?;
-            Ok(Unknown::from_raw_unchecked(env.raw(), raw))
-        }
+        ().into_unknown(env)
     }
 }
 

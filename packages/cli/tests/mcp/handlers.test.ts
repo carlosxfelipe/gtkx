@@ -11,7 +11,11 @@ const hoisted = vi.hoisted(() => ({
     typeText: vi.fn(async () => undefined),
     clear: vi.fn(async () => undefined),
     fireEvent: vi.fn(async () => undefined),
-    prettyWidget: vi.fn(() => "tree"),
+    prettyWidget: vi.fn((_container: unknown, _options?: { getId?: (w: unknown) => string }) => "tree"),
+    formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
+    getWidgetPropertyText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
+        return widget.getLabel?.() ?? widget.getText?.() ?? null;
+    }),
     listToplevels: vi.fn(() => [] as unknown[]),
     AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
 }));
@@ -37,6 +41,8 @@ vi.mock("@gtkx/testing", () => ({
     screenshot: hoisted.screenshot,
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
+    formatRole: hoisted.formatRole,
+    getWidgetPropertyText: hoisted.getWidgetPropertyText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));
 
@@ -80,11 +86,12 @@ describe("dispatch (method routing)", () => {
 });
 
 describe("app.getWindows", () => {
-    it("returns toplevel ids and titles", async () => {
+    it("returns toplevel ids and titles from the registry's captured set", async () => {
         const w1 = makeWidget({ getTitle: () => "Hello" });
         const w2 = makeWidget({ getTitle: () => null });
         listToplevels.mockReturnValueOnce([w1, w2]);
         const registry = new WidgetRegistry();
+        registry.refresh();
 
         const result = (await dispatch("app.getWindows", {}, { app: makeApp() as never, registry })) as {
             windows: Array<{ id: string; title: string | null }>;
@@ -106,7 +113,21 @@ describe("widget.getTree", () => {
         };
 
         expect(result.tree).toBe("rendered");
-        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), { includeIds: true, highlight: false });
+        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), {
+            getId: expect.any(Function),
+            highlight: false,
+        });
+    });
+
+    it("resolves tree ids through the registry", async () => {
+        prettyWidget.mockReturnValueOnce("rendered");
+        const registry = new WidgetRegistry();
+        const widget = makeWidget({});
+
+        await dispatch("widget.getTree", {}, { app: makeApp() as never, registry });
+
+        const getId = prettyWidget.mock.calls[0]?.[1]?.getId;
+        expect(getId?.(widget)).toBe(registry.idFor(widget));
     });
 });
 
@@ -143,11 +164,11 @@ describe("widget.query", () => {
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
     });
 
-    it("rejects unknown query types", async () => {
+    it("rejects an unknown query type at the wire-schema boundary", async () => {
         const registry = new WidgetRegistry();
         await expect(
             dispatch("widget.query", { queryType: "id", value: "x" }, { app: makeApp() as never, registry }),
-        ).rejects.toThrow(/Unknown query type/);
+        ).rejects.toMatchObject({ code: McpErrorCode.INVALID_REQUEST });
     });
 });
 
@@ -220,13 +241,14 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
 });
 
 describe("widget.screenshot", () => {
-    it("screenshots the first window when no windowId is supplied", async () => {
+    it("screenshots the first toplevel when no windowId is supplied", async () => {
         const window = makeWidget({ getTitle: () => "win" });
-        const app = makeApp([window as never]);
+        listToplevels.mockReturnValueOnce([window]);
         screenshot.mockResolvedValueOnce({ data: "abc", mimeType: "image/png" });
         const registry = new WidgetRegistry();
+        registry.refresh();
 
-        const result = (await dispatch("widget.screenshot", {}, { app: app as never, registry })) as {
+        const result = (await dispatch("widget.screenshot", {}, { app: makeApp() as never, registry })) as {
             data: string;
             mimeType: string;
         };

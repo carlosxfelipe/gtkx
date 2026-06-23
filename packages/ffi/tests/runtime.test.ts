@@ -2,21 +2,36 @@ import * as runtime from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_RUNTIME_EXPORTS = [
+    "emitGobjectSignal",
+    "connectGobjectSignal",
+    "newGobjectWithProperties",
+    "getGobjectProperty",
+    "setGobjectProperty",
+    "getGvalueBoxed",
+    "setGvalueBoxed",
     "promisify",
     "getHandle",
+    "getInstanceGtype",
     "setHandle",
     "tryGetHandle",
     "t",
-    "checkError",
     "createErrorDomain",
-    "registerNativeClass",
-    "getNativeObject",
-    "getNativeObjectAsInterface",
-    "connectSignal",
+    "registerWrapperClass",
     "signalBaseName",
+    "wrapValue",
 ] as const;
 
 const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;
+
+const PRIVATE_MARSHALLING_INTERNALS = [
+    "toGvalue",
+    "fromGvalue",
+    "valueGetType",
+    "newValueFromFfi",
+    "outBoxedFromFfi",
+    "inoutBoxedFromFfi",
+    "signalDetailQuark",
+] as const;
 
 describe("runtime barrel", () => {
     it("exposes every helper symbol generated code depends on", () => {
@@ -31,7 +46,9 @@ describe("runtime barrel", () => {
         }
     });
 
-    it("does not re-export `constructNativeObject` so the barrel stays acyclic", () => {
-        expect(runtime).not.toHaveProperty("constructNativeObject");
+    it("keeps the GValue marshalling primitives internal", () => {
+        for (const name of PRIVATE_MARSHALLING_INTERNALS) {
+            expect(runtime, `marshalling internal leaked to the barrel: ${name}`).not.toHaveProperty(name);
+        }
     });
 });

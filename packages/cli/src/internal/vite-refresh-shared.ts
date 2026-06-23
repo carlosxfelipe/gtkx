@@ -1,42 +1,41 @@
-/**
- * Shared options accepted by the SSR refresh-related Vite plugins.
- */
+export const REFRESH_REG = "$RefreshReg$";
+
+export const REFRESH_SIG = "$RefreshSig$";
+
+export const REFRESH_RUNTIME_SPECIFIER = "@gtkx/cli/refresh-runtime";
+
 export type RefreshFilterOptions = {
-    /** File pattern to include — defaults to JS/TS source files. */
     include?: RegExp;
-    /** File pattern to exclude — defaults to `node_modules`, built `dist` output, and the generated `.gtkx` store. */
     exclude?: RegExp;
 };
 
 const defaultInclude = /\.[tj]sx?$/;
 const defaultExclude = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
 
-export type ResolvedRefreshFilter = {
+type ResolvedRefreshFilter = {
     include: RegExp;
     exclude: RegExp;
 };
 
-/**
- * Resolves include/exclude patterns from user options, falling back to defaults.
- */
-export function resolveRefreshFilter(options: RefreshFilterOptions): ResolvedRefreshFilter {
-    return {
-        include: options.include ?? defaultInclude,
-        exclude: options.exclude ?? defaultExclude,
-    };
-}
+const resolveRefreshFilter = (options: RefreshFilterOptions): ResolvedRefreshFilter => ({
+    include: options.include ?? defaultInclude,
+    exclude: options.exclude ?? defaultExclude,
+});
 
-/**
- * Returns true when the given module ID should be transformed by an SSR refresh plugin.
- * Skips non-SSR transforms, files that do not match `include`, and files that match `exclude`.
- */
-export function shouldTransformForRefresh(
+const shouldTransformForRefresh = (
     id: string,
-    transformOptions: { ssr?: boolean } | undefined,
+    transformOptions: { ssr?: boolean | undefined } | undefined,
     filter: ResolvedRefreshFilter,
-): boolean {
+): boolean => {
     if (!transformOptions?.ssr) return false;
     if (!filter.include.test(id)) return false;
     if (filter.exclude.test(id)) return false;
     return true;
-}
+};
+
+export type RefreshGate = (id: string, transformOptions: { ssr?: boolean | undefined } | undefined) => boolean;
+
+export const createRefreshGate = (options: RefreshFilterOptions): RefreshGate => {
+    const filter = resolveRefreshFilter(options);
+    return (id, transformOptions) => shouldTransformForRefresh(id, transformOptions, filter);
+};

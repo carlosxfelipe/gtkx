@@ -1,129 +1,125 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
-import { ConstraintChildButtons } from "./child-buttons.js";
+import { BottomEdgeConstraint, ConstraintContainer, TopEdgeConstraint } from "./constraint-helpers.js";
 import sourceCode from "./constraints.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
 const R = Gtk.ConstraintRelation;
 const S = Gtk.ConstraintStrength;
 
-const ConstraintsDemo = () => (
-    <GtkBox
-        name="container"
-        hexpand
-        vexpand
-        layoutManager={
-            <GtkConstraintLayout>
-                <GtkConstraintLayout.Guide
-                    id="space"
-                    minWidth={10}
-                    minHeight={10}
-                    natWidth={100}
-                    natHeight={10}
-                    maxWidth={200}
-                    maxHeight={20}
-                    strength={S.STRONG}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button1"
-                    targetAttribute={A.WIDTH}
-                    relation={R.LE}
-                    sourceAttribute={A.NONE}
-                    constant={200}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button1"
-                    targetAttribute={A.START}
-                    sourceAttribute={A.START}
-                    constant={8}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button1"
-                    targetAttribute={A.WIDTH}
-                    source="button2"
-                    sourceAttribute={A.WIDTH}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button1"
-                    targetAttribute={A.END}
-                    source="space"
-                    sourceAttribute={A.START}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="space"
-                    targetAttribute={A.END}
-                    source="button2"
-                    sourceAttribute={A.START}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button2"
-                    targetAttribute={A.END}
-                    sourceAttribute={A.END}
-                    constant={-8}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button3"
-                    targetAttribute={A.START}
-                    sourceAttribute={A.START}
-                    constant={8}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button3"
-                    targetAttribute={A.END}
-                    sourceAttribute={A.END}
-                    constant={-8}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button1"
-                    targetAttribute={A.TOP}
-                    sourceAttribute={A.TOP}
-                    constant={8}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button2"
-                    targetAttribute={A.TOP}
-                    sourceAttribute={A.TOP}
-                    constant={8}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button1"
-                    targetAttribute={A.BOTTOM}
-                    source="button3"
-                    sourceAttribute={A.TOP}
-                    constant={-12}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button2"
-                    targetAttribute={A.BOTTOM}
-                    source="button3"
-                    sourceAttribute={A.TOP}
-                    constant={-12}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button3"
-                    targetAttribute={A.HEIGHT}
-                    source="button1"
-                    sourceAttribute={A.HEIGHT}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button3"
-                    targetAttribute={A.HEIGHT}
-                    source="button2"
-                    sourceAttribute={A.HEIGHT}
-                />
-                <GtkConstraintLayout.Constraint
-                    target="button3"
-                    targetAttribute={A.BOTTOM}
-                    sourceAttribute={A.BOTTOM}
-                    constant={-8}
-                />
-            </GtkConstraintLayout>
-        }
-    >
-        <ConstraintChildButtons />
-    </GtkBox>
+const renderSpaceGuide = () => (
+    <>
+        <GtkConstraintLayout.Guide
+            id="space"
+            minWidth={10}
+            minHeight={10}
+            natWidth={100}
+            natHeight={10}
+            maxWidth={200}
+            maxHeight={20}
+            strength={S.STRONG}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.WIDTH}
+            relation={R.LE}
+            sourceAttribute={A.NONE}
+            constant={200}
+        />
+    </>
 );
+
+const renderHorizontalConstraints = () => (
+    <>
+        {renderSpaceGuide()}
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.START}
+            sourceAttribute={A.START}
+            constant={8}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.WIDTH}
+            source="button2"
+            sourceAttribute={A.WIDTH}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.END}
+            source="space"
+            sourceAttribute={A.START}
+        />
+        <GtkConstraintLayout.Constraint
+            target="space"
+            targetAttribute={A.END}
+            source="button2"
+            sourceAttribute={A.START}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button2"
+            targetAttribute={A.END}
+            sourceAttribute={A.END}
+            constant={-8}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.START}
+            sourceAttribute={A.START}
+            constant={8}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.END}
+            sourceAttribute={A.END}
+            constant={-8}
+        />
+    </>
+);
+
+const renderVerticalConstraints = () => (
+    <>
+        <TopEdgeConstraint />
+        <GtkConstraintLayout.Constraint target="button2" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+        <GtkConstraintLayout.Constraint
+            target="button1"
+            targetAttribute={A.BOTTOM}
+            source="button3"
+            sourceAttribute={A.TOP}
+            constant={-12}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button2"
+            targetAttribute={A.BOTTOM}
+            source="button3"
+            sourceAttribute={A.TOP}
+            constant={-12}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.HEIGHT}
+            source="button1"
+            sourceAttribute={A.HEIGHT}
+        />
+        <GtkConstraintLayout.Constraint
+            target="button3"
+            targetAttribute={A.HEIGHT}
+            source="button2"
+            sourceAttribute={A.HEIGHT}
+        />
+        <BottomEdgeConstraint />
+    </>
+);
+
+const renderLayout = () => (
+    <GtkConstraintLayout>
+        {renderHorizontalConstraints()}
+        {renderVerticalConstraints()}
+    </GtkConstraintLayout>
+);
+
+const ConstraintsDemo = () => <ConstraintContainer layoutManager={renderLayout()} />;
 
 export const constraintsDemo: Demo = {
     id: "constraints",

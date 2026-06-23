@@ -1,4 +1,4 @@
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -28,7 +28,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { quit, useApplication, useSetting } from "@gtkx/react";
 import { useRef, useState } from "react";
-import schema from "../com.gtkx.tutorial.gschema.xml";
+import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
 import { NoteCard } from "./components/note-card.js";
@@ -92,7 +92,7 @@ function NoteListContent({
     filteredNotes,
     selectedId,
     setSelectedId,
-}: Readonly<NoteListContentProps>) {
+}: NoteListContentProps) {
     const items = filteredNotes.map((note) => ({ id: note.id, value: note }));
     const selected = selectedId ? [selectedId] : [];
     const renderItem = (note: Note) => <NoteCard note={note} compact={compactMode} fontSize={fontSize} />;
@@ -275,7 +275,7 @@ const ContentHeaderBar = ({
 >) => (
     <AdwHeaderBar
         titleWidget={selectedNote ? undefined : <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
-        packStart={
+        start={
             <>
                 {selectedNote ? (
                     <GtkButton
@@ -298,7 +298,7 @@ const ContentHeaderBar = ({
                 />
             </>
         }
-        packEnd={<MainMenu />}
+        end={<MainMenu />}
     />
 );
 
@@ -378,7 +378,7 @@ const ContentBody = ({
 
 const ContentPage = (props: ContentPageProps) => (
     <AdwNavigationPage title={props.selectedNote?.title ?? CATEGORY_TITLES[props.category] ?? "Notes"}>
-        <AdwToolbarView addTopBar={<ContentHeaderBar {...props} />}>
+        <AdwToolbarView topBar={<ContentHeaderBar {...props} />}>
             <ContentBody {...props} />
         </AdwToolbarView>
     </AdwNavigationPage>
@@ -403,9 +403,9 @@ const SidebarPage = ({
 }: SidebarPageProps) => (
     <AdwNavigationPage title="Notes">
         <AdwToolbarView
-            addTopBar={
+            topBar={
                 <AdwHeaderBar
-                    packStart={
+                    start={
                         <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
                     }
                 />
@@ -473,7 +473,7 @@ const shortcut = (accelerator: string, run: () => void, enabled = true) => (
 const AppShortcuts = ({ selectedId, addNote, deleteSelected, setSearchMode, setSelectedId }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
-        addShortcut={
+        shortcuts={
             <>
                 {shortcut("<Control>n", addNote)}
                 {shortcut("Delete", deleteSelected, Boolean(selectedId))}
@@ -617,9 +617,9 @@ interface NotesWindowActionsProps {
 
 const NotesWindowActions = ({ notes, dialogs, onShortcuts }: NotesWindowActionsProps) => (
     <>
-        <GSimpleAction name="new" onActivate={notes.addNote} accels="<Control>n" />
-        <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} accels="<Control>comma" />
-        <GSimpleAction name="shortcuts" onActivate={onShortcuts} accels="<Control>question" />
+        <GSimpleAction name="new" onActivate={notes.addNote} />
+        <GSimpleAction name="preferences" onActivate={() => dialogs.setShowPreferences(true)} />
+        <GSimpleAction name="shortcuts" onActivate={onShortcuts} />
         <GSimpleAction name="about" onActivate={() => dialogs.setShowAbout(true)} />
     </>
 );
@@ -649,8 +649,8 @@ function NotesWindow() {
                 quit();
                 return true;
             }}
-            addAction={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
-            addController={
+            actions={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
+            controllers={
                 <AppShortcuts
                     selectedId={notes.selectedId}
                     addNote={notes.addNote}
@@ -684,7 +684,14 @@ function NotesWindow() {
 
 export function App() {
     return (
-        <AdwApplication applicationId={applicationId}>
+        <AdwApplication
+            applicationId={applicationId}
+            actionAccels={[
+                { action: "win.new", accels: ["<Control>n"] },
+                { action: "win.preferences", accels: ["<Control>comma"] },
+                { action: "win.shortcuts", accels: ["<Control>question"] },
+            ]}
+        >
             <NotesWindow />
         </AdwApplication>
     );

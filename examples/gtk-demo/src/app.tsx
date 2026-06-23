@@ -1,5 +1,5 @@
 import * as path from "node:path/posix";
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
@@ -24,11 +24,11 @@ import {
 } from "@gtkx/jsx/gtk";
 import { quit, useApplication, useProperty } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
+import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
-import { path as logoResourcePath } from "./icons/org.gtk.Demo4.svg";
 import { useLatest } from "./use-latest.js";
 
 const applicationIconName = path.basename(logoResourcePath, path.extname(logoResourcePath));
@@ -155,7 +155,7 @@ interface AppHeaderBarProps {
 
 const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <GtkHeaderBar
-        packStart={
+        start={
             <>
                 <GtkButton
                     label="Run"
@@ -174,7 +174,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 />
             </>
         }
-        packEnd={
+        end={
             <GtkMenuButton
                 name="menu-button"
                 iconName="open-menu-symbolic"
@@ -218,7 +218,7 @@ const shortcut = (accelerator: string, run: () => void) => (
 const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
-        addShortcut={
+        shortcuts={
             <>
                 {shortcut("<Control>f", onSearchToggle)}
                 {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
@@ -315,7 +315,7 @@ const MainWindowBody = ({
         name="main-window-body"
         vexpand
         hexpand
-        addController={
+        controllers={
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
                 onKeyboardShortcuts={onKeyboardShortcuts}
@@ -327,6 +327,30 @@ const MainWindowBody = ({
         <Sidebar searchMode={searchMode} onSearchChanged={onSearchChanged} />
         <AppNotebook page={notebookPage} onSwitchPage={onNotebookPageChange} />
     </GtkBox>
+);
+
+interface MainWindowTitlebarProps {
+    hasDemo: boolean;
+    searchMode: boolean;
+    onRun: () => void;
+    onSearchToggle: (value: boolean) => void;
+}
+
+const renderMainWindowTitlebar = ({ hasDemo, searchMode, onRun, onSearchToggle }: MainWindowTitlebarProps) => (
+    <AppHeaderBar hasDemo={hasDemo} searchMode={searchMode} onRun={onRun} onSearchToggle={onSearchToggle} />
+);
+
+interface MainWindowActionsProps {
+    onKeyboardShortcuts: () => void;
+    onShowAbout: () => void;
+}
+
+const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindowActionsProps) => (
+    <>
+        <GSimpleAction name="inspector" onActivate={() => Gtk.Window.setInteractiveDebugging(true)} />
+        <GSimpleAction name="shortcuts" onActivate={onKeyboardShortcuts} />
+        <GSimpleAction name="about" onActivate={onShowAbout} />
+    </>
 );
 
 const MainWindow = () => {
@@ -350,36 +374,25 @@ const MainWindow = () => {
         showShortcutsDialog(activeWindow);
     };
 
-    const titlebar = (
-        <AppHeaderBar
-            hasDemo={!!currentDemo?.component}
-            searchMode={searchMode}
-            onRun={handleRun}
-            onSearchToggle={setSearchMode}
-        />
-    );
-
     return (
         <GtkApplicationWindow
             title={windowTitle}
             defaultWidth={800}
             defaultHeight={600}
-            titlebar={titlebar}
+            titlebar={renderMainWindowTitlebar({
+                hasDemo: !!currentDemo?.component,
+                searchMode,
+                onRun: handleRun,
+                onSearchToggle: setSearchMode,
+            })}
             onCloseRequest={() => {
                 quit();
                 return true;
             }}
-            addAction={
-                <>
-                    <GSimpleAction
-                        name="inspector"
-                        onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-                        accels="<Control><Shift>i"
-                    />
-                    <GSimpleAction name="shortcuts" onActivate={handleKeyboardShortcuts} accels="<Control>question" />
-                    <GSimpleAction name="about" onActivate={() => setShowAbout(true)} />
-                </>
-            }
+            actions={renderMainWindowActions({
+                onKeyboardShortcuts: handleKeyboardShortcuts,
+                onShowAbout: () => setShowAbout(true),
+            })}
         >
             <MainWindowBody
                 searchMode={searchMode}
@@ -399,11 +412,6 @@ const MainWindow = () => {
     );
 };
 
-/**
- * The application's content tree: the main window and its provider, without the
- * surrounding {@link GtkApplication}. Rendered directly by tests that supply
- * their own application context.
- */
 export const Demo = () => {
     useApplicationIcon();
 
@@ -415,7 +423,14 @@ export const Demo = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+    <GtkApplication
+        applicationId={applicationId}
+        flags={Gio.ApplicationFlags.NON_UNIQUE}
+        actionAccels={[
+            { action: "win.inspector", accels: ["<Control><Shift>i"] },
+            { action: "win.shortcuts", accels: ["<Control>question"] },
+        ]}
+    >
         <Demo />
     </GtkApplication>
 );

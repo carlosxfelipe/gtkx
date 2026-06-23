@@ -21,11 +21,11 @@ pub enum FfiValue {
     F64(f64),
     Ptr(*mut c_void),
     Storage(FfiStorage),
-    Trampoline(TrampolineValue),
+    Callback(CallbackValue),
     Void,
 }
 
-pub struct TrampolineValue {
+pub struct CallbackValue {
     fn_ptr: *mut c_void,
     state_ptr: *mut c_void,
     destroy_ptr: Option<*mut c_void>,
@@ -33,7 +33,7 @@ pub struct TrampolineValue {
     armed_state: Cell<Option<Box<TrampolineState>>>,
 }
 
-impl TrampolineValue {
+impl CallbackValue {
     #[must_use]
     pub fn new(
         fn_ptr: *mut c_void,
@@ -50,14 +50,6 @@ impl TrampolineValue {
         }
     }
 
-    /// Builds a trampoline value whose state's ownership is pending transfer
-    /// to the native callee.
-    ///
-    /// The state stays armed and drops with the value — freeing the libffi
-    /// closure, the captured data, and its JS reference — unless the native
-    /// call actually happens and [`Self::disarm_pending_transfer`] hands the
-    /// state over to the callee's lifetime protocol (a destroy notify, the
-    /// one-shot self-free, or process lifetime).
     #[must_use]
     pub fn new_armed(
         fn_ptr: *mut c_void,
@@ -74,8 +66,6 @@ impl TrampolineValue {
         }
     }
 
-    /// Hands the armed state to the native callee once the call has actually
-    /// happened. From here the callee's lifetime protocol owns the state.
     pub fn disarm_pending_transfer(&self) {
         if let Some(state) = self.armed_state.take() {
             let _ = Box::into_raw(state);
@@ -98,9 +88,9 @@ impl TrampolineValue {
     }
 }
 
-impl std::fmt::Debug for TrampolineValue {
+impl std::fmt::Debug for CallbackValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TrampolineValue")
+        f.debug_struct("CallbackValue")
             .field("fn_ptr", &self.fn_ptr)
             .field("state_ptr", &self.state_ptr)
             .field("destroy_ptr", &self.destroy_ptr)
@@ -125,55 +115,45 @@ macro_rules! ffi_numeric_with {
 }
 
 impl FfiValue {
-    /// Hands any armed transfer-full ownership to the callee once the native
-    /// call has actually happened. See
-    /// [`FfiStorage::disarm_pending_transfer`] and
-    /// [`TrampolineValue::disarm_pending_transfer`].
     pub fn disarm_pending_transfer(&self) {
         match self {
             Self::Storage(storage) => storage.disarm_pending_transfer(),
-            Self::Trampoline(trampoline) => trampoline.disarm_pending_transfer(),
+            Self::Callback(callback) => callback.disarm_pending_transfer(),
             _ => {}
         }
     }
 
-    /// Writes the scalar payload of an inline numeric variant into the
-    /// out-parameter slot at `slot`, the seed value a `Ref` scalar
-    /// out-parameter carries into a native call.
-    ///
-    /// Pointer-, storage-, trampoline-, and void-shaped values have no scalar
-    /// payload and are rejected with an error.
+    /// Writes this value's scalar payload into the out-parameter slot at `slot`.
     ///
     /// # Safety
     ///
-    /// `slot` must be valid for writes of at least the payload's size. No
-    /// alignment is required; the write is unaligned.
+    /// `slot` must point to writable storage of at least the size of this value's scalar type.
+    /// Alignment is not required: every write uses `write_unaligned`. Non-scalar variants do not
+    /// write and instead return an error.
     pub unsafe fn write_scalar_to(&self, slot: *mut c_void) -> anyhow::Result<()> {
-        // SAFETY: The caller guarantees `slot` is writable at the payload's
-        // size; every write below is unaligned-tolerant. The arms differ
-        // only in payload width.
         match self {
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u8>()` writable bytes;
+            // `write_unaligned` stores the value without an alignment requirement.
             Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i8>()` writable bytes.
             Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u16>()` writable bytes.
             Self::U16(value) => unsafe { slot.cast::<u16>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i16>()` writable bytes.
             Self::I16(value) => unsafe { slot.cast::<i16>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u32>()` writable bytes.
             Self::U32(value) => unsafe { slot.cast::<u32>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i32>()` writable bytes.
             Self::I32(value) => unsafe { slot.cast::<i32>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<u64>()` writable bytes.
             Self::U64(value) => unsafe { slot.cast::<u64>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<i64>()` writable bytes.
             Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<f32>()` writable bytes.
             Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
-            // SAFETY: See the match-level comment.
+            // SAFETY: per the contract `slot` addresses at least `size_of::<f64>()` writable bytes.
             Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
-            Self::Ptr(_) | Self::Storage(_) | Self::Trampoline(_) | Self::Void => {
+            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")
             }
         }
@@ -184,7 +164,7 @@ impl FfiValue {
         match self {
             Self::Ptr(ptr) => Ok(*ptr),
             Self::Storage(storage) => Ok(storage.ptr()),
-            ffi_numeric_with!(Self::Trampoline(_) | Self::Void) => {
+            ffi_numeric_with!(Self::Callback(_) | Self::Void) => {
                 anyhow::bail!("Expected a pointer FfiValue for {type_name}, got {self:?}")
             }
         }
@@ -207,7 +187,7 @@ impl FfiValue {
             Self::U64(v) => crate::types::lossless_f64(i128::from(*v), "call result"),
             Self::F32(v) => Ok(*v as f64),
             Self::F64(v) => Ok(*v),
-            Self::Ptr(_) | Self::Storage(_) | Self::Trampoline(_) | Self::Void => {
+            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("Expected a numeric FfiValue, got {self:?}")
             }
         }
@@ -215,7 +195,7 @@ impl FfiValue {
 
     pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
         match self {
-            Self::Trampoline(tv) => {
+            Self::Callback(tv) => {
                 args.push(libffi::arg(&tv.fn_ptr));
                 args.push(libffi::arg(&tv.state_ptr));
                 if let Some(destroy_ptr) = &tv.destroy_ptr {
@@ -244,8 +224,8 @@ impl<'a> From<&'a FfiValue> for libffi::Arg<'a> {
             FfiValue::F64(value) => libffi::arg(value),
             FfiValue::Ptr(ptr) => libffi::arg(ptr),
             FfiValue::Storage(storage) => libffi::arg(storage.ptr_ref()),
-            FfiValue::Trampoline(_) => {
-                unreachable!("Trampoline requires append_libffi_args for multiple arguments")
+            FfiValue::Callback(_) => {
+                unreachable!("Callback requires append_libffi_args for multiple arguments")
             }
             FfiValue::Void => libffi::arg(&()),
         }
@@ -258,9 +238,8 @@ mod tests {
 
     #[test]
     fn disarm_pending_transfer_covers_every_variant_shape() {
-        let trampoline =
-            TrampolineValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
-        FfiValue::Trampoline(trampoline).disarm_pending_transfer();
+        let callback = CallbackValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
+        FfiValue::Callback(callback).disarm_pending_transfer();
         FfiValue::I32(1).disarm_pending_transfer();
         FfiValue::Storage(FfiStorage::unit(std::ptr::null_mut())).disarm_pending_transfer();
     }

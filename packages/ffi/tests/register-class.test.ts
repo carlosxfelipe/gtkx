@@ -1,8 +1,9 @@
 import { getHandle, registerClass } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/gi/gdk";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import { findNativeClass } from "../src/registry.js";
+import { findWrapperClass } from "../src/registry.js";
 import { instanceIsA } from "./helpers.js";
 
 let suffix = 0;
@@ -21,14 +22,14 @@ describe("registerClass — registration", () => {
         expect(typeName(typeParent(gtype))).toBe("GtkLabel");
     });
 
-    it("registers the JS class so findNativeClass resolves to it for the new GType", () => {
+    it("registers the JS class so findWrapperClass resolves to it for the new GType", () => {
         const name = uniqueName("GtkxResolvableSubclass");
         class CustomButton extends Gtk.Button {}
 
         registerClass(CustomButton, { gtypeName: name });
 
-        const newGType = typeFromName(name);
-        expect(findNativeClass(newGType)).toBe(CustomButton);
+        const newGtype = typeFromName(name);
+        expect(findWrapperClass(newGtype)).toBe(CustomButton);
     });
 
     it("falls back to klass.name when no gtypeName option is supplied", () => {
@@ -40,14 +41,14 @@ describe("registerClass — registration", () => {
         expect(typeFromName(dynamicName)).not.toBe(0);
     });
 
-    it("rejects classes that do not extend a registered native class", () => {
+    it("rejects classes that do not extend a registered wrapper class", () => {
         class NotANativeObject {}
 
         expect(() =>
-            registerClass(NotANativeObject as unknown as Parameters<typeof registerClass>[0], {
+            registerClass(NotANativeObject as Parameters<typeof registerClass>[0], {
                 gtypeName: uniqueName("ShouldNotRegister"),
             }),
-        ).toThrow(/must extend a registered native class/);
+        ).toThrow(/must extend a registered wrapper class/);
     });
 
     it("rejects a name that is already registered with the type system", () => {
@@ -63,33 +64,16 @@ describe("registerClass — registration", () => {
 describe("registerClass — vfunc dispatch", () => {
     it("auto-discovers a class vfunc override from a subclass method", () => {
         const name = uniqueName("GtkxVfuncSubclass");
-        class CustomObject extends GObject {
-            setProperty(): void {}
+        class CustomWidget extends Gtk.Widget {
+            snapshot(): void {}
         }
 
-        registerClass(CustomObject, { gtypeName: name });
+        registerClass(CustomWidget, { gtypeName: name });
 
-        const customGType = typeFromName(name);
-        expect(customGType).not.toBe(0);
-        const instance = GObject.newv(customGType, []);
-        expect(instance).toBeDefined();
-    });
-
-    it("invokes the auto-discovered class vfunc trampoline when GObject dispatches the slot", () => {
-        const name = uniqueName("GtkxVfuncInvocationSubclass");
-        const constructedCalls: string[] = [];
-        class CustomObject extends GObject {
-            constructed(): void {
-                constructedCalls.push("constructed invoked");
-            }
-        }
-
-        registerClass(CustomObject, { gtypeName: name });
-
-        const customGType = typeFromName(name);
-        GObject.newv(customGType, []);
-
-        expect(constructedCalls).toEqual(["constructed invoked"]);
+        const customGtype = typeFromName(name);
+        expect(customGtype).not.toBe(0);
+        const instance = GObject.newv(customGtype, []);
+        expect(instance).toBeInstanceOf(CustomWidget);
     });
 
     it("auto-discovers and dispatches a vfunc override for an interface inherited from the parent", () => {
@@ -104,10 +88,10 @@ describe("registerClass — vfunc dispatch", () => {
 
         registerClass(CustomWidget, { gtypeName: name });
 
-        const customGType = typeFromName(name);
-        expect(customGType).not.toBe(0);
+        const customGtype = typeFromName(name);
+        expect(customGtype).not.toBe(0);
 
-        const instance = GObject.newv(customGType, []);
+        const instance = GObject.newv(customGtype, []);
         expect(instanceIsA(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
 
         const builder = Gtk.Builder.new();
@@ -141,70 +125,123 @@ describe("registerClass — vfunc self argument convention", () => {
     });
 });
 
-describe("registerClass — construction identity", () => {
-    it("delivers the same wrapper to a synchronous vfunc and to user code after `new`", () => {
-        const name = uniqueName("GtkxConstructIdentity");
-        let constructedThis: object | null = null;
-
-        class CustomObject extends GObject {
-            constructed(): void {
-                constructedThis = this;
+describe("registerClass — vfunc argument and return marshalling", () => {
+    it("lifts a boxed vfunc argument to its typed wrapper, not a raw handle", () => {
+        const name = uniqueName("GtkxVfuncBoxedArg");
+        const observed: unknown[] = [];
+        class CustomBuffer extends Gtk.TextBuffer {
+            insertText(iter: Gtk.TextIter, _text: string, _len: number): void {
+                observed.push(iter);
             }
         }
 
-        registerClass(CustomObject, { gtypeName: name });
+        registerClass(CustomBuffer, { gtypeName: name });
 
-        const instance = new CustomObject({});
+        const buffer = new CustomBuffer();
+        buffer.insertAtCursor("hi", 2);
 
-        expect(constructedThis).toBe(instance);
+        expect(observed).toHaveLength(1);
+        expect(observed[0]).toBeInstanceOf(Gtk.TextIter);
     });
 
-    it("makes class field initializers visible on the wrapper after construction returns", () => {
-        const name = uniqueName("GtkxConstructFieldVisibility");
+    it("unwraps a handle-typed vfunc return so the caller receives the object, not null", () => {
+        class ReturnedItem extends GObject {}
+        registerClass(ReturnedItem, { gtypeName: uniqueName("GtkxVfuncReturnedItem") });
+        const returned = new ReturnedItem();
 
-        class CustomObject extends GObject {
-            counter = 0;
-
-            constructed(): void {
-                this.counter = (this.counter ?? 0) + 1;
+        class ReturningModel extends Gtk.StringList {
+            override getNItems(): number {
+                return 1;
+            }
+            override getItem(position: number): GObject | null {
+                return position === 0 ? returned : null;
             }
         }
 
-        registerClass(CustomObject, { gtypeName: name });
+        registerClass(ReturningModel, { gtypeName: uniqueName("GtkxVfuncReturnsObject") });
 
-        const instance = new CustomObject({});
+        const model = new ReturningModel();
+        const viaVtable = Gtk.StringList.prototype.getItem.call(model, 0);
 
-        expect(instance.counter).toBe(0);
+        expect(viaVtable).toBe(returned);
     });
 });
 
-describe("registerClass — nested construction", () => {
-    it("preserves identity when one constructed vfunc instantiates another type", () => {
-        const outerName = uniqueName("GtkxConstructOuter");
-        const innerName = uniqueName("GtkxConstructInner");
-        let innerThis: object | null = null;
-        let outerThis: object | null = null;
-        let nestedInstance: object | null = null;
-
-        class InnerObject extends GObject {
-            constructed(): void {
-                innerThis = this;
+describe("registerClass — caller-allocated and scalar out parameters", () => {
+    it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
+        class CustomChooser extends Gtk.ColorButton {
+            override getRgba(): Gdk.RGBA {
+                return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
             }
         }
-        registerClass(InnerObject, { gtypeName: innerName });
+        registerClass(CustomChooser, { gtypeName: uniqueName("GtkxVfuncCallerOutBoxed") });
 
-        class OuterObject extends GObject {
-            constructed(): void {
-                outerThis = this;
-                nestedInstance = new InnerObject({});
+        const chooser = new CustomChooser();
+        const result = Gtk.ColorButton.prototype.getRgba.call(chooser);
+
+        expect(result.red).toBeCloseTo(0.5);
+        expect(result.green).toBeCloseTo(0.25);
+        expect(result.blue).toBeCloseTo(0.75);
+        expect(result.alpha).toBeCloseTo(1.0);
+    });
+
+    it("writes scalar out parameters from the handler's returned tuple", () => {
+        class CustomWidget extends Gtk.Widget {
+            override measure(_orientation: Gtk.Orientation, _forSize: number): [number, number, number, number] {
+                return [42, 48, -1, -1];
             }
         }
-        registerClass(OuterObject, { gtypeName: outerName });
+        registerClass(CustomWidget, { gtypeName: uniqueName("GtkxVfuncScalarOut") });
 
-        const outer = new OuterObject({});
+        const widget = new CustomWidget();
+        const result = Gtk.Widget.prototype.measure.call(widget, Gtk.Orientation.HORIZONTAL, -1);
 
-        expect(outerThis).toBe(outer);
-        expect(innerThis).toBe(nestedInstance);
-        expect(outerThis).not.toBe(innerThis);
+        expect(result).toEqual([42, 48, -1, -1]);
+    });
+});
+
+describe("registerClass — construct-time vtable slots", () => {
+    it("rejects overriding the `constructed` slot", () => {
+        const name = uniqueName("GtkxConstructedRejected");
+        class CustomObject extends GObject {
+            constructed(): void {}
+        }
+
+        expect(() => registerClass(CustomObject, { gtypeName: name })).toThrow(
+            /construct-time vtable slot 'constructed'/,
+        );
+    });
+
+    it("rejects overriding the `setProperty` slot", () => {
+        const name = uniqueName("GtkxSetPropertyRejected");
+        class CustomObject extends GObject {
+            override setProperty(): void {}
+        }
+
+        expect(() => registerClass(CustomObject, { gtypeName: name })).toThrow(
+            /construct-time vtable slot 'setProperty'/,
+        );
+    });
+});
+
+describe("registerClass — construct-time initialization", () => {
+    it("runs initialization from the subclass constructor with a live handle", () => {
+        const name = uniqueName("GtkxConstructorInit");
+
+        class CustomObject extends GObject {
+            initialized = false;
+
+            constructor() {
+                super({});
+                this.initialized = true;
+            }
+        }
+
+        registerClass(CustomObject, { gtypeName: name });
+
+        const instance = new CustomObject();
+
+        expect(instance.initialized).toBe(true);
+        expect(getHandle(instance)).toBeDefined();
     });
 });

@@ -24,21 +24,20 @@ import {
 } from "@gtkx/jsx/gtk";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { isEditable } from "../src/editable.js";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { renderClickButton } from "./event-render-setup.js";
 
 const widgetHasFocus = (w: Gtk.Widget): boolean => w.hasFocus();
 
 const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
-    if (!isEditable(entry)) {
+    if (!(entry instanceof Gtk.Editable)) {
         throw new Error("Element is not editable");
     }
     expect(entry.getText()).toBe(expected);
 };
 
 const renderGesturedLabel = async (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> => {
-    await render(<GtkLabel name={name} label={label} addController={gesture} />);
+    await render(<GtkLabel name={name} label={label} controllers={gesture} />);
     return screen.findByName(name);
 };
 
@@ -86,7 +85,7 @@ describe("userEvent.click", () => {
         const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON);
         await userEvent.click(toggle);
 
-        const active = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { checked: true });
+        const active = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true });
         expect(active).toBeDefined();
     });
 });
@@ -134,6 +133,33 @@ describe("userEvent.type", () => {
         expectEditableText(entry, "Initial appended");
     });
 
+    it("inserts at a collapsed initial selection", async () => {
+        await render(<GtkEntry text="ac" />);
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "b", { initialSelectionStart: 1 });
+
+        expectEditableText(entry, "abc");
+    });
+
+    it("replaces the text under an initial selection range", async () => {
+        await render(<GtkEntry text="Hello World" />);
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "Goodbye", { initialSelectionStart: 0, initialSelectionEnd: 5 });
+
+        expectEditableText(entry, "Goodbye World");
+    });
+
+    it("still types when click is skipped", async () => {
+        await render(<GtkEntry />);
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "typed", { skipClick: true });
+
+        expectEditableText(entry, "typed");
+    });
+
     describe("error handling", () => {
         it("throws when element is not editable", async () => {
             await expectActionRejectsOnButton(
@@ -141,6 +167,18 @@ describe("userEvent.type", () => {
                 "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
             );
         });
+    });
+});
+
+describe("userEvent.setup options", () => {
+    it("applies skipClick as a default for the instance's type", async () => {
+        await render(<GtkEntry />);
+
+        const user = userEvent.setup({ skipClick: true });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await user.type(entry, "session");
+
+        expectEditableText(entry, "session");
     });
 });
 
@@ -211,6 +249,70 @@ const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<
     );
     return screen.findByRole(Gtk.AccessibleRole.LIST);
 };
+
+describe("userEvent clipboard", () => {
+    const selectAll = (widget: Gtk.Widget): void => {
+        if (widget instanceof Gtk.Editable) widget.selectRegion(0, -1);
+    };
+
+    it("copies a selection and pastes it into another editable", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry text="copy me" name="source" />
+                <GtkEntry name="dest" />
+            </GtkBox>,
+        );
+        const source = await screen.findByName("source");
+        const dest = await screen.findByName("dest");
+
+        selectAll(source);
+        await userEvent.copy(source);
+        await userEvent.paste(dest);
+
+        expectEditableText(dest, "copy me");
+    });
+
+    it("cuts a selection, emptying the source, and pastes it elsewhere", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry text="cut me" name="src" />
+                <GtkEntry name="dst" />
+            </GtkBox>,
+        );
+        const src = await screen.findByName("src");
+        const dst = await screen.findByName("dst");
+
+        selectAll(src);
+        await userEvent.cut(src);
+        expectEditableText(src, "");
+
+        await userEvent.paste(dst);
+        expectEditableText(dst, "cut me");
+    });
+
+    it("pastes explicit text", async () => {
+        await render(<GtkEntry name="literal" />);
+        const entry = await screen.findByName("literal");
+
+        await userEvent.paste(entry, "pasted literal");
+
+        expectEditableText(entry, "pasted literal");
+    });
+
+    describe("error handling", () => {
+        it("rejects copy on a non-editable widget", async () => {
+            await render(<GtkButton label="x" />);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            await expect(userEvent.copy(button)).rejects.toThrow("Cannot copy");
+        });
+
+        it("rejects paste on a non-editable widget", async () => {
+            await render(<GtkButton label="x" />);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            await expect(userEvent.paste(button, "text")).rejects.toThrow("Cannot paste");
+        });
+    });
+});
 
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
@@ -434,14 +536,14 @@ describe("userEvent.drag", () => {
 const renderDropZone = async (
     name: string,
     label: string,
-    gtype: number,
+    gtype: GObject.GType,
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"],
 ): Promise<Gtk.Widget> => {
     await render(
         <GtkLabel
             name={name}
             label={label}
-            addController={<GtkDropTarget types={[gtype]} actions={Gdk.DragAction.COPY} onDrop={onDrop} />}
+            controllers={<GtkDropTarget types={[gtype]} actions={Gdk.DragAction.COPY} onDrop={onDrop} />}
         />,
     );
     return screen.findByName(name);
@@ -450,7 +552,7 @@ const renderDropZone = async (
 describe("userEvent.drop", () => {
     it("emits drop on the widget's DropTarget with a string payload", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("drop-zone", "Drop here", GObject.Type.STRING, handleDrop);
+        const target = await renderDropZone("drop-zone", "Drop here", GObject.TYPE_STRING, handleDrop);
         await userEvent.drop(target, "payload", { x: 10, y: 20 });
 
         expect(handleDrop).toHaveBeenCalledTimes(1);
@@ -462,7 +564,7 @@ describe("userEvent.drop", () => {
 
     it("auto-marshals numeric payloads", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("number-zone", "Drop a number", GObject.Type.DOUBLE, handleDrop);
+        const target = await renderDropZone("number-zone", "Drop a number", GObject.TYPE_DOUBLE, handleDrop);
         await userEvent.drop(target, 42);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -471,7 +573,7 @@ describe("userEvent.drop", () => {
 
     it("auto-marshals boolean payloads", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("bool-zone", "Drop a flag", GObject.Type.BOOLEAN, handleDrop);
+        const target = await renderDropZone("bool-zone", "Drop a flag", GObject.TYPE_BOOLEAN, handleDrop);
         await userEvent.drop(target, true);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
@@ -482,9 +584,9 @@ describe("userEvent.drop", () => {
 describe("userEvent.drop — value passthrough and errors", () => {
     it("forwards a pre-built GObject.Value unchanged", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const target = await renderDropZone("value-zone", "Drop a value", GObject.Type.STRING, handleDrop);
+        const target = await renderDropZone("value-zone", "Drop a value", GObject.TYPE_STRING, handleDrop);
         const value = new GObject.Value();
-        value.init(GObject.Type.STRING);
+        value.init(GObject.TYPE_STRING);
         value.setString("preserved");
         await userEvent.drop(target, value);
 
@@ -508,14 +610,14 @@ describe("userEvent.dragAndDrop", () => {
                 <GtkLabel
                     name="drag-source"
                     label="Drag me"
-                    addController={<GtkDragSource actions={Gdk.DragAction.COPY} />}
+                    controllers={<GtkDragSource actions={Gdk.DragAction.COPY} />}
                 />
                 <GtkLabel
                     name="drop-target"
                     label="Drop here"
-                    addController={
+                    controllers={
                         <GtkDropTarget
-                            types={[GObject.Type.STRING]}
+                            types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
                             onDrop={handleDrop}
                         />
@@ -539,9 +641,9 @@ describe("userEvent.dragAndDrop", () => {
                 <GtkLabel
                     name="drop-target"
                     label="Drop here"
-                    addController={
+                    controllers={
                         <GtkDropTarget
-                            types={[GObject.Type.STRING]}
+                            types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
                             onDrop={() => true}
                         />
@@ -560,10 +662,10 @@ const renderShortcutHost = async (trigger: Gtk.ShortcutTrigger, onActivate: () =
     await render(
         <GtkBox
             name="host"
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
-                    addShortcut={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(onActivate)} />}
+                    shortcuts={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(onActivate)} />}
                 />
             }
         >

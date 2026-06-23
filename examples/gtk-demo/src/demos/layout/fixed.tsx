@@ -24,23 +24,23 @@ const CUBE_FACES: CubeFace[] = [
     { name: "front", rotateX: 0, rotateY: 0 },
 ];
 
-let AXIS_X: Graphene.Vec3 | null = null;
-let AXIS_Y: Graphene.Vec3 | null = null;
+let axisX: Graphene.Vec3 | null = null;
+let axisY: Graphene.Vec3 | null = null;
 
 function getAxisX(): Graphene.Vec3 {
-    if (!AXIS_X) {
-        AXIS_X = new Graphene.Vec3();
-        AXIS_X.init(1, 0, 0);
+    if (!axisX) {
+        axisX = new Graphene.Vec3();
+        axisX.init(1, 0, 0);
     }
-    return AXIS_X;
+    return axisX;
 }
 
 function getAxisY(): Graphene.Vec3 {
-    if (!AXIS_Y) {
-        AXIS_Y = new Graphene.Vec3();
-        AXIS_Y.init(0, 1, 0);
+    if (!axisY) {
+        axisY = new Graphene.Vec3();
+        axisY.init(0, 1, 0);
     }
-    return AXIS_Y;
+    return axisY;
 }
 
 function createFaceTransform(face: CubeFace): Gsk.Transform {
@@ -75,11 +75,6 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
     return t;
 }
 
-/**
- * Fixed Layout / Cube demo matching the official GTK gtk-demo.
- * GtkFixed is a container that allows placing and transforming widgets manually.
- * This demo uses a GtkFixed to create a cube out of child widgets.
- */
 const FixedDemo = () => {
     useCssResource(fixedCss);
 

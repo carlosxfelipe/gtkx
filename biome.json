@@ -1,7 +1,7 @@
 {
     "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
     "files": {
-        "includes": ["**", "!**/*.svg"]
+        "includes": ["**", "!**/*.svg", "!website", "!.design-handoff"]
     },
     "css": {
         "parser": {
@@ -13,7 +13,8 @@
             "complexity": {
                 "noExcessiveCognitiveComplexity": "error",
                 "noExcessiveLinesPerFunction": "error",
-                "useMaxParams": "error"
+                "useMaxParams": "error",
+                "useLiteralKeys": "off"
             },
             "style": {
                 "noNonNullAssertion": "error",
@@ -22,7 +23,9 @@
                 "useExportType": "error",
                 "useConsistentArrayType": {
                     "level": "error",
-                    "options": { "syntax": "shorthand" }
+                    "options": {
+                        "syntax": "shorthand"
+                    }
                 },
                 "useFilenamingConvention": {
                     "level": "error",
@@ -37,21 +40,43 @@
                         "strictCase": false,
                         "requireAscii": true,
                         "conventions": [
-                            { "selector": { "kind": "typeParameter" }, "match": "T?[A-Z][a-zA-Z0-9]*" },
-                            { "selector": { "kind": "enumMember" }, "formats": ["CONSTANT_CASE", "PascalCase"] },
                             {
-                                "selector": { "kind": "objectLiteralProperty" },
-                                "match": "\\$?\\$?_?_?[a-zA-Z][a-zA-Z0-9_]*_?_?\\$?\\$?",
+                                "selector": {
+                                    "kind": "typeParameter"
+                                },
+                                "match": "T?[A-Z][a-zA-Z0-9]*"
+                            },
+                            {
+                                "selector": {
+                                    "kind": "enumMember"
+                                },
+                                "formats": ["CONSTANT_CASE", "PascalCase"]
+                            },
+                            {
+                                "selector": {
+                                    "kind": "objectLiteralProperty"
+                                },
+                                "match": "[0-9]+|[_$]*([a-zA-Z][a-zA-Z0-9_]*?)[_$]*",
                                 "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
                             },
                             {
-                                "selector": { "kind": "typeProperty" },
-                                "match": "\\$?\\$?_?_?[a-zA-Z][a-zA-Z0-9_]*_?_?\\$?\\$?",
+                                "selector": {
+                                    "kind": "typeProperty"
+                                },
+                                "match": "[0-9]+|[_$]*([a-zA-Z][a-zA-Z0-9_]*?)[_$]*",
                                 "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
                             },
                             {
-                                "selector": { "kind": "typeAlias" },
-                                "formats": ["PascalCase"]
+                                "selector": {
+                                    "kind": "typeAlias"
+                                },
+                                "match": "[A-Z][a-zA-Z0-9]*"
+                            },
+                            {
+                                "selector": {
+                                    "kind": "namespace"
+                                },
+                                "match": "[A-Za-z][A-Za-z0-9]*"
                             }
                         ]
                     }
@@ -76,60 +101,27 @@
             }
         },
         {
-            "includes": ["examples/gtk-demo/**"],
-            "linter": {
-                "rules": {
-                    "complexity": {
-                        "noExcessiveCognitiveComplexity": "off",
-                        "noExcessiveLinesPerFunction": "off",
-                        "useMaxParams": "off"
-                    },
-                    "style": {
-                        "useNamingConvention": "off"
-                    }
-                }
-            }
-        },
-        {
-            "includes": ["packages/gl/src/generated/**"],
+            "includes": ["packages/gl/**"],
             "linter": {
                 "rules": {
                     "complexity": {
                         "useMaxParams": "off"
-                    },
-                    "style": {
-                        "useNamingConvention": "off"
                     }
                 }
             }
         },
         {
-            "includes": [
-                "packages/codegen/src/templates/**",
-                "packages/ffi/src/cairo.ts",
-                "packages/ffi/src/gtype.ts",
-                "packages/ffi/src/listeners.ts",
-                "packages/ffi/src/value-marshal.ts",
-                "packages/ffi/src/signals.ts",
-                "packages/ffi/src/gobject/**",
-                "packages/react/src/element-props.ts"
-            ],
+            "includes": ["packages/codegen/src/templates/**"],
             "linter": {
                 "rules": {
-                    "style": {
-                        "useNamingConvention": "off"
+                    "complexity": {
+                        "useMaxParams": "off"
                     }
                 }
             }
         },
         {
-            "includes": ["website/.vitepress/**/*.vue"],
-            "linter": {
-                "enabled": false
-            }
-        },
-        {
-            "includes": ["packages/*/tests/**", "website/screenshots/**"],
+            "includes": ["**/tests/**"],
             "linter": {
                 "rules": {
                     "complexity": {

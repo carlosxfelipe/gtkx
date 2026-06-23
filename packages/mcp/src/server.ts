@@ -6,7 +6,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { ConnectionRegistry } from "./connection-registry.js";
-import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
+import { McpError } from "./protocol/errors.js";
+import { DEFAULT_SOCKET_PATH, queryOptionsSchema, type ServerInitiatedMethod } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
 const require = createRequire(import.meta.url);
@@ -35,14 +36,7 @@ const queryWidgetsShape = {
     ...applicationIdShape,
     by: z.enum(["role", "text", "name", "labelText"]).describe("Query type"),
     value: z.union([z.string(), z.number()]).describe("Value to search for"),
-    options: z
-        .object({
-            name: z.string().optional(),
-            exact: z.boolean().optional(),
-            timeout: z.number().optional(),
-        })
-        .optional()
-        .describe("Additional query options"),
+    options: queryOptionsSchema.optional().describe("Additional query options"),
 };
 
 const typeShape = {
@@ -73,86 +67,76 @@ const imageContent = (data: string, mimeType: string): CallToolResult => ({
     content: [{ type: "image", data, mimeType }],
 });
 
-/**
- * Narrow view of {@link ConnectionManager} consumed by the tool handlers. Each
- * tool needs only app discovery (`getApps`, `hasConnectedApps`, `waitForApp`)
- * and request forwarding (`sendToApp`).
- */
 export type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
-/**
- * Result envelope every tool handler returns to the MCP SDK. Aliased to the
- * SDK's `CallToolResult` so any drift between local handlers and the SDK's
- * structural contract is caught at compile time.
- */
 type ToolHandlerResult = CallToolResult;
 
-/**
- * The argument record received by a typed tool handler — mirrors the SDK's
- * `ShapeOutput<Shape>` (which is not part of the SDK's published exports) so
- * the resolved shape matches what the MCP server actually delivers.
- *
- * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- */
 type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
 
-/**
- * Internal, per-tool typed view used while a tool is being constructed: the
- * `Shape` parameter ties `inputSchema` to the `handler`'s argument record so
- * the SDK's structural contract is enforced inside {@link defineTool}.
- *
- * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- */
+type ToolKind = "readOnly" | "action";
+
 type TypedTool<Shape extends Record<string, z.ZodType>> = {
     name: string;
+    kind: ToolKind;
     config: { description: string; inputSchema: Shape };
     handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
 };
 
-/**
- * A registered MCP tool as exposed to consumers (tests and the registration
- * loop in {@link main}). The per-tool `Shape` parameter is hidden behind the
- * `register` closure so heterogeneous tools can be stored in a single array
- * without type-erasing casts; the closure preserves the typed link between
- * `inputSchema` and `handler` at the point where it actually matters — the
- * call to {@link McpServer.registerTool}.
- */
 export type ToolDefinition = {
     name: string;
+    kind: ToolKind;
     config: { description: string; inputSchema: z.ZodRawShape };
     handler: (args: never) => Promise<ToolHandlerResult>;
     register: (server: McpServer) => void;
 };
 
-/**
- * Builds a {@link ToolDefinition} from a typed tool spec. The SDK's
- * `registerTool` is called inside the returned closure with the original
- * `Shape` in scope; the only cast is a localized assertion to the SDK's
- * `ToolCallback<Shape>` (made necessary by the SDK's optional
- * `inputSchema?: InputArgs` widening to `undefined` during inference) that
- * still names the SDK type so renames in `ToolCallback` itself fail
- * compilation.
- *
- * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- * @param tool - The typed tool spec (without `register`; it is added here).
- * @returns A shape-erased {@link ToolDefinition}.
- */
+const hasStringHint = (data: unknown): data is { hint: string } =>
+    typeof data === "object" && data !== null && "hint" in data && typeof data.hint === "string";
+
+const runTool = async <Shape extends Record<string, z.ZodType>>(
+    handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>,
+    args: ToolArgs<Shape>,
+): Promise<ToolHandlerResult> => {
+    try {
+        return await handler(args);
+    } catch (error) {
+        if (error instanceof McpError) {
+            return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
+        }
+        return textError(error instanceof Error ? error.message : String(error));
+    }
+};
+
 const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Shape>): ToolDefinition => ({
     name: tool.name,
+    kind: tool.kind,
     config: tool.config,
     handler: tool.handler,
     register: (server) => {
-        const callback = ((args: ToolArgs<Shape>, _extra: unknown) => tool.handler(args)) as ToolCallback<Shape>;
-        server.registerTool(tool.name, tool.config, callback);
+        const callback = ((args: ToolArgs<Shape>, _extra: unknown) =>
+            runTool(tool.handler, args)) as ToolCallback<Shape>;
+        server.registerTool(
+            tool.name,
+            {
+                ...tool.config,
+                annotations: {
+                    readOnlyHint: tool.kind === "readOnly",
+                    destructiveHint: tool.kind === "action",
+                    openWorldHint: true,
+                },
+            },
+            callback,
+        );
     },
 });
 
 type ForwardOptions<Shape extends Record<string, z.ZodType>> = {
     name: string;
+    kind: ToolKind;
     description: string;
     inputSchema: Shape;
     connectionManager: AppQueryClient;
-    method: string;
+    method: ServerInitiatedMethod;
     params?: (args: ToolArgs<Shape>) => unknown;
 };
 
@@ -169,12 +153,13 @@ const forwardTool = <Shape extends Record<string, z.ZodType>>(
     perform: (
         connectionManager: AppQueryClient,
         applicationId: string | undefined,
-        method: string,
+        method: ServerInitiatedMethod,
         params: unknown,
     ) => Promise<ToolHandlerResult>,
 ): ToolDefinition =>
     defineTool<Shape>({
         name: options.name,
+        kind: options.kind,
         config: { description: options.description, inputSchema: options.inputSchema },
         handler: async (args) => {
             const { applicationId, params } = buildForwardParams(args, options.params);
@@ -209,17 +194,14 @@ const forwardImage = <Shape extends Record<string, z.ZodType>>(options: ForwardO
 const listAppsTool = (connectionManager: AppQueryClient) =>
     defineTool({
         name: "gtkx_list_apps",
+        kind: "readOnly",
         config: {
             description: "List all connected GTKX applications",
             inputSchema: listAppsShape,
         },
         handler: async ({ waitForApps, timeout }) => {
             if (waitForApps && !connectionManager.hasConnectedApps()) {
-                try {
-                    await connectionManager.waitForApp(timeout);
-                } catch (error) {
-                    return textError(error instanceof Error ? error.message : "Timeout waiting for app");
-                }
+                await connectionManager.waitForApp(timeout);
             }
 
             const apps = connectionManager.getApps();
@@ -242,6 +224,7 @@ const listAppsTool = (connectionManager: AppQueryClient) =>
 const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
     defineTool({
         name: "gtkx_get_widget_tree",
+        kind: "readOnly",
         config: {
             description:
                 "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
@@ -253,22 +236,13 @@ const getWidgetTreeTool = (connectionManager: AppQueryClient) =>
         },
     });
 
-/**
- * Builds the GTKX MCP tool definitions, ready to be registered on a server.
- *
- * Exposed so tests can drive each tool handler against a fake
- * {@link ConnectionManager} without spinning up a real socket server.
- *
- * @param connectionManager - Connection manager that proxies tool requests to the connected
- *   GTKX application.
- * @returns Array of tool definitions in registration order.
- */
-export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
+function buildInspectionTools(connectionManager: AppQueryClient): ToolDefinition[] {
     return [
         listAppsTool(connectionManager),
         getWidgetTreeTool(connectionManager),
         forwardJson({
             name: "gtkx_query_widgets",
+            kind: "readOnly",
             description:
                 "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
             inputSchema: queryWidgetsShape,
@@ -278,13 +252,20 @@ export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] 
         }),
         forwardJson({
             name: "gtkx_get_widget_props",
+            kind: "readOnly",
             description: "Get all properties of a specific widget by its ID",
             inputSchema: widgetIdShape,
             connectionManager,
             method: "widget.getProps",
         }),
+    ];
+}
+
+function buildInteractionTools(connectionManager: AppQueryClient): ToolDefinition[] {
+    return [
         forwardAck({
             name: "gtkx_click",
+            kind: "action",
             description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
             inputSchema: widgetIdShape,
             connectionManager,
@@ -293,6 +274,7 @@ export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] 
         }),
         forwardAck({
             name: "gtkx_type",
+            kind: "action",
             description: "Type text into an editable widget like Entry or TextView",
             inputSchema: typeShape,
             connectionManager,
@@ -301,6 +283,7 @@ export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] 
         }),
         forwardAck({
             name: "gtkx_fire_event",
+            kind: "action",
             description: "Emit a GTK signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
             connectionManager,
@@ -309,6 +292,7 @@ export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] 
         }),
         forwardImage({
             name: "gtkx_take_screenshot",
+            kind: "readOnly",
             description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
             inputSchema: screenshotShape,
             connectionManager,
@@ -317,40 +301,20 @@ export function buildTools(connectionManager: AppQueryClient): ToolDefinition[] 
     ];
 }
 
-/**
- * Configuration for {@link createMcpServer}.
- */
+function buildTools(connectionManager: AppQueryClient): ToolDefinition[] {
+    return [...buildInspectionTools(connectionManager), ...buildInteractionTools(connectionManager)];
+}
+
 export type CreateMcpServerOptions = {
-    /** Unix-domain socket path the server listens on. */
     socketPath?: string;
-    /** Version reported to MCP clients. */
     version: string;
 };
 
-/**
- * Runtime handle returned by {@link createMcpServer}.
- */
 export type McpServerHandle = {
-    /** Starts the socket server and connects the MCP stdio transport. */
     start(): Promise<void>;
-    /**
-     * Tears down the connection manager, socket server, and MCP SDK server.
-     * Idempotent.
-     */
     stop(): Promise<void>;
 };
 
-/**
- * Builds a configured GTKX MCP server, wiring the socket listener, the
- * connection registry, the connection manager, and the MCP SDK server.
- * Returns lifecycle hooks the caller invokes to start and stop the server.
- *
- * The shape is intentionally testable: `createMcpServer` is what tests drive,
- * `main` is the thin shell that adds signal handling on top.
- *
- * @param options - Server configuration.
- * @returns A handle exposing `start` and `stop`.
- */
 export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
 
@@ -386,6 +350,8 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
             await socketServer.start();
             console.error(`[gtkx] Socket server listening on ${socketPath}`);
             const transport = new StdioServerTransport();
+            process.stdin.on("end", () => void this.stop());
+            process.stdin.on("close", () => void this.stop());
             await mcpServer.connect(transport);
         },
         async stop() {
@@ -397,11 +363,7 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
     };
 };
 
-/**
- * Bootstraps the GTKX MCP server: builds it, installs the shared graceful
- * shutdown helper, and awaits the listening socket.
- */
-export async function main() {
+export async function main(): Promise<void> {
     const server = createMcpServer({ version });
     installGracefulShutdown({
         onSignal: () => server.stop(),

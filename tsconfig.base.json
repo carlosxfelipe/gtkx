@@ -1,13 +1,22 @@
 {
     "compilerOptions": {
+        "allowUnreachableCode": false,
+        "allowUnusedLabels": false,
         "composite": true,
         "declarationMap": true,
+        "erasableSyntaxOnly": true,
+        "exactOptionalPropertyTypes": true,
         "forceConsistentCasingInFileNames": true,
         "incremental": true,
+        "isolatedModules": true,
         "jsx": "react-jsx",
-        "lib": ["ESNext"],
+        "lib": ["es2025"],
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noPropertyAccessFromIndexSignature": true,
         "noUncheckedIndexedAccess": true,
         "noUnusedLocals": false,
         "noUnusedParameters": false,
@@ -16,7 +25,7 @@
         "skipLibCheck": true,
         "sourceMap": true,
         "strict": true,
-        "target": "ESNext",
+        "target": "es2025",
         "types": ["node"],
         "verbatimModuleSyntax": true
     }

@@ -17,7 +17,7 @@ import {
     GtkScrolledWindow,
 } from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
-import { path as appleRedPath } from "../css/apple-red.png";
+import { path as appleRedPath } from "#data/demos/css/apple-red.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox.tsx?raw";
 import messagesRaw from "./messages.txt?raw";
@@ -191,7 +191,7 @@ const MessageActions = ({
                             ]}
                         />
                     }
-                    insertActionGroup={
+                    actionGroups={
                         <GSimpleActionGroup prefix="msg">
                             <GSimpleAction name="email" onActivate={() => {}} />
                             <GSimpleAction name="embed" onActivate={() => {}} />

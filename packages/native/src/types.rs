@@ -1,41 +1,3 @@
-//! FFI type system for describing GTK and `GLib` types.
-//!
-//! This module defines the [`Type`] enum and associated types that describe
-//! all values that can flow through the FFI boundary. Types are parsed from
-//! JavaScript objects and converted to libffi types for native calls.
-//!
-//! ## Type Hierarchy
-//!
-//! ```text
-//! Type
-//! ├── Integer(IntegerKind)    - Sized integers (i8..i64, u8..u64)
-//! ├── BigInt(BigIntKind)      - 64-bit integers surfaced to JS as bigint
-//! ├── Float(FloatKind)        - Floating point (f32, f64)
-//! ├── Tagged(TaggedType)      - Enums and flags (GType-tagged integers)
-//! ├── String(StringType)      - UTF-8 strings (owned or borrowed)
-//! ├── Void(VoidType)          - Void return / no value
-//! ├── Boolean(BooleanType)    - Boolean values
-//! ├── GObject(GObjectType)    - GObject instances
-//! ├── Boxed(BoxedType)        - GObject boxed types (e.g., GdkRGBA)
-//! ├── Struct(StructType)      - Plain C structs passed by pointer
-//! ├── Fundamental(FundamentalType) - Fundamental types (GVariant, GParamSpec, etc.)
-//! ├── Array(ArrayType)        - Arrays, GLists, GSLists
-//! ├── HashTable(HashTableType) - GHashTables
-//! ├── Trampoline(TrampolineType) - JavaScript callbacks invoked from native
-//! ├── Ref(RefType)            - Pointers to values (out parameters)
-//! └── Unichar(UnicharType)    - Unicode code points
-//! ```
-//!
-//! ## Ownership
-//!
-//! Many types have an `ownership` field using the [`Ownership`] enum:
-//! - **`Ownership::Full`**: Caller takes ownership, responsible for freeing
-//! - **`Ownership::Borrowed`**: Caller receives a reference, must not free
-//!
-//! This is critical for correct memory management across the FFI boundary.
-//!
-//! [`Ownership`]: Ownership
-
 use std::ffi::c_void;
 
 use anyhow::bail;
@@ -46,9 +8,6 @@ use napi::{Env, JsObject};
 
 use crate::{ffi, value};
 
-/// Reads an optional descriptor property, distinguishing an absent property
-/// (`Ok(None)`) from a present-but-malformed one, which surfaces as an
-/// `InvalidArg` error naming the property instead of silently defaulting.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub(crate) fn optional_descriptor_property<T: FromNapiValue + ValidateNapiValue>(
     obj: &JsObject,
@@ -62,12 +21,8 @@ pub(crate) fn optional_descriptor_property<T: FromNapiValue + ValidateNapiValue>
     })
 }
 
-/// Parses the `argTypes` and `returnType` properties of a [`TrampolineType`]
-/// descriptor. Returns the parsed argument types and return type. An absent
-/// `returnType` is reported as required; a present-but-malformed one
-/// propagates its own parse error.
 #[cfg_attr(coverage_nightly, coverage(off))]
-pub(crate) fn parse_trampoline_arg_and_return_types(
+pub(crate) fn parse_callback_arg_and_return_types(
     env: &Env,
     obj: &JsObject,
     kind: &str,
@@ -79,8 +34,8 @@ pub(crate) fn parse_trampoline_arg_and_return_types(
             format!("'argTypes' property is required for {kind} types"),
         ));
     }
-    // SAFETY: `arg_types_prop` is a live JS value from the current
-    // callback's `env`, verified to be an array just above.
+    // SAFETY: `arg_types_prop` was verified to be an array above, and its raw napi value is valid
+    // for the current `env`, so reconstructing an `Array` from the pair is sound.
     let arg_types_arr: Array = unsafe { Array::from_napi_value(env.raw(), arg_types_prop.raw())? };
     let arg_types = crate::value::map_js_array(env, &arg_types_arr, Type::from_js_value)?;
 
@@ -104,6 +59,7 @@ mod bigint;
 mod blob;
 mod boolean;
 mod boxed;
+mod callback;
 mod fundamental;
 mod gobject;
 mod hashtable;
@@ -112,7 +68,6 @@ mod prelude;
 mod raw_ptr;
 mod ref_type;
 mod string;
-mod trampoline;
 mod unichar;
 mod void;
 
@@ -122,27 +77,22 @@ pub use bigint::BigIntKind;
 pub use blob::BlobType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
+pub use callback::CallbackType;
+#[cfg(feature = "test-support")]
+pub use callback::CallbackScope;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
-pub use hashtable::{HashTableEntryEncoder, HashTableType};
+pub use hashtable::HashTableType;
+#[cfg(feature = "test-support")]
+pub use hashtable::HashTableEntryEncoder;
 pub use numeric::{FloatKind, IntegerKind, TaggedKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::{StringType, str_to_glib_full};
-pub use trampoline::{TrampolineScope, TrampolineType};
 pub use unichar::UnicharType;
 pub use void::VoidType;
 
 pub(crate) use numeric::lossless_f64;
 
-/// Lifecycle of a value crossing the FFI boundary.
-///
-/// One of two ownership modes:
-///
-/// - [`Self::Full`] — caller takes ownership of the original pointer
-///   (GIR `transfer full`). On drop the type-specific destructor releases it.
-/// - [`Self::Borrowed`] — the underlying value's lifetime is uncertain, so
-///   the codec makes a defensive copy / reference (`g_boxed_copy`,
-///   `g_object_ref`, `g_strdup`) and owns the copy.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Ownership {
@@ -209,12 +159,35 @@ impl std::str::FromStr for Ownership {
 
 #[enum_dispatch]
 pub trait FfiEncoder {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
+    /// Encodes the JS-side value into an [`ffi::FfiValue`] ready to be passed to a C call.
+    ///
+    /// The default implementation models the one-method-per-ownership-mode contract that
+    /// glib uses for `to_glib_none`/`to_glib_full`: it reads the object pointer, acquires a
+    /// transfer reference via [`FfiEncoder::ref_for_transfer`], and, when the type owns the
+    /// transfer ([`FfiEncoder::transfer_release`] returns `Some`) and the acquired pointer is
+    /// non-null, wraps it in storage carrying the matching pending release so the callee's
+    /// transfer-out is balanced by exactly one free. Borrowed transfers (no release) yield a
+    /// bare pointer that the caller does not own.
+    fn encode(&self, value: &value::Value) -> anyhow::Result<ffi::FfiValue> {
+        let ptr = value.object_ptr(self.object_ptr_context())?;
+        // SAFETY: `ptr` originates from `value.object_ptr`, which only yields a valid object
+        // pointer (or null) for the live wrapper; `ref_for_transfer` is invoked on the
+        // gtkx-glib thread that owns the object and tolerates null.
+        let transferred = unsafe { self.ref_for_transfer(ptr)? };
+        match self.transfer_release() {
+            Some(release) if !transferred.is_null() => {
+                Ok(raw_ptr::full_transfer_storage(transferred, release))
+            }
+            _ => Ok(ffi::FfiValue::Ptr(transferred)),
+        }
+    }
 
-    /// The release pairing the ownership one [`Self::ref_for_transfer`] call
-    /// acquires for a non-null pointer, or `None` for an identity hand-over
-    /// with nothing to release. Container encoders use it to unwind or arm
-    /// the per-element ownership they acquire.
+    /// Context label describing this encoder's pointer payload, used in error messages when
+    /// [`value::Value::object_ptr`] cannot extract a pointer.
+    fn object_ptr_context(&self) -> &'static str {
+        "object"
+    }
+
     fn transfer_release(&self) -> Option<ffi::PendingRelease> {
         None
     }
@@ -233,31 +206,74 @@ pub trait FfiEncoder {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        // SAFETY: The dispatch site built `cif` and `args` from this
-        // descriptor's own types and resolved `ptr` from a loaded library
-        // symbol, so the call matches the native signature.
+        // SAFETY: `cif` was built to describe the pointer-returning C function at `ptr` with arg
+        // types matching `args`, so invoking it with the `*mut c_void` return shape is sound; this
+        // runs on the gtkx-glib thread that performs all FFI calls.
         Ok(ffi::FfiValue::Ptr(unsafe {
             cif.call::<*mut c_void>(ptr, args)
         }))
     }
 
-    /// Acquires the ownership a transfer-full slot takes over `ptr` (a ref, a
-    /// boxed copy, …), returning the pointer the callee will adopt.
+    /// Acquires a transfer reference on `ptr` for a full-ownership argument, returning a pointer
+    /// the callee will own. The default borrows: it returns `ptr` unchanged.
     ///
     /// # Safety
     ///
-    /// `ptr` must be null or a pointer to a live instance of this codec's
-    /// type.
+    /// `ptr` must be null or a pointer to a live value of this encoder's type, owned by the
+    /// gtkx-glib thread. An overriding implementation may take a new reference/copy that the
+    /// caller becomes responsible for releasing.
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         Ok(ptr)
     }
 }
 
+#[derive(Debug)]
+pub enum ReadSource<'a> {
+    Call(&'a ffi::FfiValue),
+    Slot(*const c_void, &'a str),
+    Value(*mut c_void, &'a str),
+}
+
 #[enum_dispatch]
 pub trait FfiDecoder {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let _ = ffi_value;
+    /// Decodes a value from the requested [`ReadSource`].
+    ///
+    /// # Safety
+    ///
+    /// For [`ReadSource::Value`]/[`ReadSource::Slot`] the contained pointer must satisfy the
+    /// preconditions of [`FfiDecoder::read_value`]/[`FfiDecoder::read_pointer_slot`] respectively
+    /// (a live value pointer, or a readable pointer-sized slot). The call must run on the
+    /// gtkx-glib thread.
+    unsafe fn read(&self, src: ReadSource<'_>) -> anyhow::Result<value::Value> {
+        match src {
+            ReadSource::Call(ffi_value) => self.read_call(ffi_value),
+            // SAFETY: the caller's `read` contract guarantees `ptr` is a live value pointer for
+            // this decoder's type when the source is `Value`.
+            ReadSource::Value(ptr, context) => unsafe { self.read_value(ptr, context) },
+            // SAFETY: the caller's `read` contract guarantees `ptr` is a readable pointer-sized
+            // slot when the source is `Slot`.
+            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(ptr, context) },
+        }
+    }
+
+    fn read_call(&self, _ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         bail!("This type cannot be decoded from FfiValue")
+    }
+
+    /// Reads a value directly from a pointer to a live instance of this decoder's type.
+    ///
+    /// # Safety
+    ///
+    /// `_ptr` must be null or point to a live value of this decoder's type owned by the
+    /// gtkx-glib thread; null yields [`value::Value::Null`] where supported.
+    unsafe fn read_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        bail!("This type cannot be read from pointer")
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        // SAFETY: `ReadSource::Call` carries an `FfiValue`, not a raw pointer, so no pointer
+        // precondition applies; `read` only dispatches to `read_call`.
+        unsafe { self.read(ReadSource::Call(ffi_value)) }
     }
 
     fn decode_with_context(
@@ -268,68 +284,65 @@ pub trait FfiDecoder {
     ) -> anyhow::Result<value::Value> {
         self.decode(ffi_value)
     }
-}
 
-#[enum_dispatch]
-pub trait RawPtrCodec {
-    /// Reads a value from a `*const T**` (a pointer-to-pointer location), by
-    /// dereferencing once and delegating to [`ptr_to_value`]. Pointer-typed
-    /// codecs (string/gobject/boxed/struct/fundamental) inherit this default;
-    /// scalar codecs override with a direct read.
+    /// Reads a value through a pointer-sized slot that stores a pointer to the instance.
     ///
     /// # Safety
     ///
-    /// `ptr` must be valid for a read of this codec's slot representation (a
-    /// pointer-sized slot for the default implementation).
-    unsafe fn read_from_raw_ptr(
+    /// `ptr` must point to a readable, pointer-sized slot whose stored pointer is null or a live
+    /// value of this decoder's type owned by the gtkx-glib thread.
+    unsafe fn read_pointer_slot(
         &self,
         ptr: *const c_void,
         context: &str,
     ) -> anyhow::Result<value::Value> {
-        // SAFETY: The caller guarantees `ptr` is a readable pointer-sized
-        // slot.
+        // SAFETY: `ptr` is a readable pointer-sized slot per the contract; this loads the stored
+        // inner pointer.
         let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        // SAFETY: The dereferenced pointer is the value the slot carries for
-        // this codec, satisfying `ptr_to_value`'s validity requirement.
-        unsafe { self.ptr_to_value(inner_ptr, context) }
+        // SAFETY: `inner_ptr` is the slot's stored value (null or a live value of this type), the
+        // precondition `read`/`read_value` require for a `Value` source.
+        unsafe { self.read(ReadSource::Value(inner_ptr, context)) }
     }
 
-    /// Writes a trampoline return value into the libffi closure return slot.
+    #[allow(clippy::unused_self)]
+    fn null_guarded<F>(&self, ptr: *mut c_void, decode: F) -> anyhow::Result<value::Value>
+    where
+        F: FnOnce(*mut c_void) -> anyhow::Result<value::Value>,
+    {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        decode(ptr)
+    }
+}
+
+#[enum_dispatch]
+pub trait RawPtrCodec {
+    /// Writes a vfunc/callback return value into the C return slot `ret`. The default writes a
+    /// null pointer.
     ///
     /// # Safety
     ///
-    /// `ret` must be valid for this codec's write at its return-slot
-    /// representation size.
+    /// `ret` must point to a writable, pointer-sized return slot supplied by the FFI layer, and
+    /// the call must run on the gtkx-glib thread.
     unsafe fn write_return_to_raw_ptr(
         &self,
         ret: *mut c_void,
         value: &std::result::Result<value::Value, ()>,
     ) {
         let _ = value;
-        // SAFETY: The caller guarantees `ret` is a writable pointer-sized
-        // return slot.
+        // SAFETY: `ret` is a writable, pointer-sized return slot per the contract; the default
+        // stores a null pointer for types that have no meaningful raw return.
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
 
-    /// Decodes the value `ptr` represents — a dereference for pointer-typed
-    /// codecs, a reinterpretation of the pointer value itself for scalars.
+    /// Writes `value` into a C field/out slot at `ptr`. The default rejects the operation.
     ///
     /// # Safety
     ///
-    /// `ptr` must be null or valid for this codec's read at its
-    /// representation size.
-    unsafe fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
-        let _ = (ptr, context);
-        bail!("This type cannot be read from pointer")
-    }
-
-    /// Writes `value` into the slot at `ptr` using this codec's
-    /// representation.
-    ///
-    /// # Safety
-    ///
-    /// `ptr` must be valid for this codec's write at its representation
-    /// size.
+    /// `ptr` must point to a writable slot of the appropriate size/layout for this type, owned by
+    /// the gtkx-glib thread; overriding implementations may take or release ownership to keep the
+    /// slot's reference count balanced.
     unsafe fn write_value_to_raw_ptr(
         &self,
         ptr: *mut c_void,
@@ -338,10 +351,36 @@ pub trait RawPtrCodec {
         let _ = (ptr, value);
         bail!("This type cannot be written to a raw pointer")
     }
+
+    #[allow(clippy::unused_self)]
+    fn write_return_with_ownership<F>(
+        &self,
+        ret: *mut c_void,
+        value: &std::result::Result<value::Value, ()>,
+        ownership: Ownership,
+        acquire: F,
+    ) where
+        F: FnOnce(*mut c_void) -> *mut c_void,
+    {
+        raw_ptr::write_return_object_ptr(ret, value, |ptr| {
+            if ownership.is_borrowed() {
+                ptr
+            } else {
+                acquire(ptr)
+            }
+        });
+    }
 }
 
+#[cfg(feature = "test-support")]
 pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec {}
+#[cfg(feature = "test-support")]
 impl<T: FfiEncoder + FfiDecoder + RawPtrCodec> FfiCodec for T {}
+
+pub(crate) trait FromDescriptor: Sized {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn from_descriptor(env: &Env, obj: &JsObject) -> napi::Result<Self>;
+}
 
 #[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrCodec)]
 #[derive(Debug, Clone)]
@@ -361,7 +400,7 @@ pub enum Type {
     Array(ArrayType),
     Blob(BlobType),
     HashTable(HashTableType),
-    Trampoline(TrampolineType),
+    Callback(CallbackType),
     Ref(RefType),
     Unichar(UnicharType),
 }
@@ -386,7 +425,7 @@ impl std::fmt::Display for Type {
             Self::Array(_) => write!(f, "Array"),
             Self::Blob(_) => write!(f, "Blob"),
             Self::HashTable(_) => write!(f, "HashTable"),
-            Self::Trampoline(_) => write!(f, "Trampoline"),
+            Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
             Self::Unichar(_) => write!(f, "Unichar"),
         }
@@ -422,19 +461,19 @@ impl Type {
                 &obj,
                 TaggedKind::Flags,
             )?)),
-            "string" => Ok(Self::String(StringType::from_js_value(env, &obj)?)),
+            "string" => Ok(Self::String(StringType::from_descriptor(env, &obj)?)),
             "boolean" => Ok(Self::Boolean(BooleanType)),
             "void" => Ok(Self::Void(VoidType)),
-            "gobject" => Ok(Self::GObject(GObjectType::from_js_value(env, &obj)?)),
-            "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(env, &obj)?)),
-            "struct" => Ok(Self::Struct(StructType::from_js_value(env, &obj)?)),
-            "array" => Ok(Self::Array(ArrayType::from_js_value(env, &obj)?)),
+            "gobject" => Ok(Self::GObject(GObjectType::from_descriptor(env, &obj)?)),
+            "boxed" => Ok(Self::Boxed(BoxedType::from_descriptor(env, &obj)?)),
+            "struct" => Ok(Self::Struct(StructType::from_descriptor(env, &obj)?)),
+            "array" => Ok(Self::Array(ArrayType::from_descriptor(env, &obj)?)),
             "blob" => Ok(Self::Blob(BlobType)),
-            "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(env, &obj)?)),
-            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(env, &obj)?)),
-            "ref" => Ok(Self::Ref(RefType::from_js_value(env, &obj)?)),
+            "hashtable" => Ok(Self::HashTable(HashTableType::from_descriptor(env, &obj)?)),
+            "callback" => Ok(Self::Callback(CallbackType::from_descriptor(env, &obj)?)),
+            "ref" => Ok(Self::Ref(RefType::from_descriptor(env, &obj)?)),
             "unichar" => Ok(Self::Unichar(UnicharType)),
-            "fundamental" => Ok(Self::Fundamental(FundamentalType::from_js_value(
+            "fundamental" => Ok(Self::Fundamental(FundamentalType::from_descriptor(
                 env, &obj,
             )?)),
             other => Err(napi::Error::new(
@@ -444,25 +483,11 @@ impl Type {
         }
     }
 
-    /// Whether this type may occupy a function's return slot.
-    ///
-    /// `Trampoline`, `Ref`, and `Blob` describe argument-only shapes — a
-    /// callback handler, an out-parameter, or a raw memory argument — and have
-    /// no return-slot codec (their [`FfiEncoder::call_cif`] implementations
-    /// bail). Callers consult this at the descriptor-parsing boundary to
-    /// reject a malformed return type with a precise `InvalidArg` error.
     #[must_use]
     pub fn can_be_return_type(&self) -> bool {
-        !matches!(self, Self::Trampoline(_) | Self::Ref(_) | Self::Blob(_))
+        !matches!(self, Self::Callback(_) | Self::Ref(_) | Self::Blob(_))
     }
 
-    /// Whether this type may describe a function or callback argument.
-    ///
-    /// `Void` describes the absence of a value: it has no argument encoding,
-    /// and a `void` entry in a libffi argument list is outside libffi's API
-    /// contract, corrupting the call frame classification of every following
-    /// parameter. Callers consult this at the descriptor-parsing boundary to
-    /// reject a malformed argument type with a precise `InvalidArg` error.
     #[must_use]
     pub fn can_be_argument_type(&self) -> bool {
         !matches!(self, Self::Void(_))
@@ -471,7 +496,8 @@ impl Type {
 
 #[cfg(test)]
 mod tests {
-    use super::trampoline::TrampolineScope;
+    use super::array::ArrayKind;
+    use super::callback::CallbackScope;
     use super::*;
 
     #[test]
@@ -482,20 +508,83 @@ mod tests {
     }
 
     #[test]
-    fn trampoline_cannot_be_return_type() {
-        let trampoline = TrampolineType {
+    fn callback_cannot_be_return_type() {
+        let callback = CallbackType {
             arg_types: Vec::new(),
             return_type: Box::new(Type::Void(VoidType)),
             has_destroy: false,
             user_data_index: None,
-            scope: TrampolineScope::Call,
+            scope: CallbackScope::Call,
         };
-        assert!(!Type::Trampoline(trampoline).can_be_return_type());
+        assert!(!Type::Callback(callback).can_be_return_type());
     }
 
     #[test]
     fn ref_cannot_be_return_type() {
         let ref_type = RefType::new(Type::Integer(IntegerKind::I32));
         assert!(!Type::Ref(ref_type).can_be_return_type());
+    }
+
+    #[test]
+    fn ownership_parses_full_and_borrowed_only() {
+        assert!(matches!("full".parse::<Ownership>(), Ok(Ownership::Full)));
+        assert!(matches!(
+            "borrowed".parse::<Ownership>(),
+            Ok(Ownership::Borrowed)
+        ));
+        assert!("none".parse::<Ownership>().is_err());
+        assert!("nonsense".parse::<Ownership>().is_err());
+    }
+
+    #[test]
+    fn array_kind_parses_every_variant() {
+        assert!(matches!("array".parse::<ArrayKind>(), Ok(ArrayKind::Array)));
+        assert!(matches!("glist".parse::<ArrayKind>(), Ok(ArrayKind::GList)));
+        assert!(matches!(
+            "gslist".parse::<ArrayKind>(),
+            Ok(ArrayKind::GSList)
+        ));
+        assert!(matches!(
+            "gptrarray".parse::<ArrayKind>(),
+            Ok(ArrayKind::GPtrArray)
+        ));
+        assert!(matches!(
+            "garray".parse::<ArrayKind>(),
+            Ok(ArrayKind::GArray)
+        ));
+        assert!(matches!(
+            "gbytearray".parse::<ArrayKind>(),
+            Ok(ArrayKind::GByteArray)
+        ));
+        assert!(matches!(
+            "sized".parse::<ArrayKind>(),
+            Ok(ArrayKind::Sized { .. })
+        ));
+        assert!(matches!(
+            "fixed".parse::<ArrayKind>(),
+            Ok(ArrayKind::Fixed { .. })
+        ));
+        assert!("listish".parse::<ArrayKind>().is_err());
+    }
+
+    #[test]
+    fn callback_scope_parses_every_variant() {
+        assert!(matches!(
+            "call".parse::<CallbackScope>(),
+            Ok(CallbackScope::Call)
+        ));
+        assert!(matches!(
+            "notified".parse::<CallbackScope>(),
+            Ok(CallbackScope::Notified)
+        ));
+        assert!(matches!(
+            "async".parse::<CallbackScope>(),
+            Ok(CallbackScope::Async)
+        ));
+        assert!(matches!(
+            "forever".parse::<CallbackScope>(),
+            Ok(CallbackScope::Forever)
+        ));
+        assert!("whenever".parse::<CallbackScope>().is_err());
     }
 }

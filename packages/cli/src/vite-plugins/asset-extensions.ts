@@ -1,10 +1,4 @@
-/**
- * File extensions treated as binary assets by both the GResource pipeline
- * (`gtkxResources`) and the dev-time asset resolver (`gtkxAssets`).
- *
- * Listed without the leading dot. Matching is case-insensitive.
- */
-const ASSET_EXTENSIONS = [
+export const ASSET_EXTENSIONS = [
     "png",
     "jpg",
     "jpeg",
@@ -27,21 +21,20 @@ const ASSET_EXTENSIONS = [
     "avif",
     "data",
     "gpa",
-] as const;
+];
 
-/**
- * Regex matching any file whose extension is in {@link ASSET_EXTENSIONS}.
- *
- * The match is anchored to the end of the string and tolerates query
- * suffixes via the caller-supplied test (use {@link ASSET_PATH_RE} for
- * paths with potential `?query` parts).
- */
 export const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 
-/**
- * Regex matching asset extensions while ignoring any trailing query string.
- *
- * Useful when inspecting Vite ids that may carry `?import`, `?inline`, or
- * other suffixes appended by the resolver.
- */
 export const ASSET_PATH_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})(?:\?.*)?$`, "i");
+
+const assetModuleBlock = (extension: string): string =>
+    [
+        `declare module "*.${extension}" {`,
+        "    const resourceUri: string;",
+        "    export const path: string;",
+        "    export default resourceUri;",
+        "}",
+    ].join("\n");
+
+/** @public */
+export const renderAssetEnvModule = (extensions: string[]): string => extensions.map(assetModuleBlock).join("\n\n");

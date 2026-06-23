@@ -38,20 +38,18 @@
     ],
     "scripts": {
         "build": "tsc -b",
-        "codegen:gl": "node --import tsx scripts/generate-gl.ts && biome check --write ../gl/src/generated",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "codegen:gl": "node --import tsx scripts/generate-gl.ts && biome check --write ../gl/src/generated"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "dependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "fast-xml-parser": "^5.8.0",
-        "typescript": "^6.0.3"
+        "fast-xml-parser": "^5.9.3",
+        "typescript": "catalog:"
     },
     "devDependencies": {
-        "@types/node": "^25.9.3"
-    },
-    "engines": {
-        "node": ">=24"
+        "@types/node": "catalog:"
     }
 }

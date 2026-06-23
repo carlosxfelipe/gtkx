@@ -5,6 +5,19 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-applauncher.js";
 import { renderDemo } from "../../test-utils.js";
 
+const appInfoPrototype = (): Gio.AppInfo => {
+    const [first] = Gio.appInfoGetAll();
+    if (first === undefined) throw new Error("expected at least one installed application");
+    return Object.getPrototypeOf(first);
+};
+
+const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
+    await renderDemo(listviewApplauncherDemo);
+    const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+    await fireEvent(listView, "activate", 0);
+    await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+};
+
 describe("listviewApplauncherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewApplauncherDemo.id).toBe("listview-applauncher");
@@ -46,26 +59,20 @@ describe("listviewApplauncherDemo rows", () => {
     });
 
     it("invokes Gio.AppInfo.launch when a row is activated", async () => {
-        const launchSpy = vi.spyOn(Gio.AppInfo.prototype, "launch").mockReturnValue(true);
+        const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockReturnValue(true);
         try {
-            await renderDemo(listviewApplauncherDemo);
-            const listView = (await screen.findByName("list-view")) as Gtk.ListView;
-            await fireEvent(listView, "activate", 0);
-            await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+            await activateFirstRowAndExpectLaunch(launchSpy);
         } finally {
             launchSpy.mockRestore();
         }
     });
 
     it("presents an alert dialog when launching the selected app throws", async () => {
-        const launchSpy = vi.spyOn(Gio.AppInfo.prototype, "launch").mockImplementation(() => {
+        const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockImplementation(() => {
             throw new Error("denied by policy");
         });
         try {
-            await renderDemo(listviewApplauncherDemo);
-            const listView = (await screen.findByName("list-view")) as Gtk.ListView;
-            await fireEvent(listView, "activate", 0);
-            await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+            await activateFirstRowAndExpectLaunch(launchSpy);
             await screen.findByText("denied by policy");
         } finally {
             launchSpy.mockRestore();

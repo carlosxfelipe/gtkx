@@ -5,9 +5,12 @@
     "license": "MPL-2.0",
     "description": "Notes app from the GTKX tutorial",
     "type": "module",
+    "imports": {
+        "#data/*": "./data/*"
+    },
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "gtkx codegen && tsc -b --noEmit",
+        "typecheck": "gtkx codegen && tsc -b --emitDeclarationOnly",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js",
         "bundle": "gtkx build && node scripts/bundle.ts",
@@ -17,13 +20,13 @@
     },
     "dependencies": {
         "@gtkx/animate": "workspace:*",
-        "@gtkx/config": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.7"
+        "react": "catalog:"
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6"
     }

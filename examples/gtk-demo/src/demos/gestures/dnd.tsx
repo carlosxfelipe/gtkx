@@ -6,6 +6,7 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkButton,
     GtkDragSource,
@@ -22,13 +23,12 @@ import {
     GtkScrolledWindow,
     GtkSeparator,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
+import { path as trashSvgPath } from "#data/demos/gestures/user-trash-opening.gpa";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
-import { path as trashSvgPath } from "./user-trash-opening.gpa";
 
 const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();
@@ -148,7 +148,7 @@ function createRotationTransform(halfW: number, halfH: number, angle: number): G
     return t;
 }
 
-function ColorSwatch({ color }: Readonly<{ color: string }>) {
+function ColorSwatch({ color }: { color: string }) {
     const dynamicStyle = css`
         background-color: ${color};
     `;
@@ -163,21 +163,21 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
         <GtkBox
             name={`swatch-${color}`}
             cssClasses={[swatchStyle, dynamicStyle]}
-            addController={<GtkDragSource onPrepare={createColorProvider} actions={Gdk.DragAction.COPY} />}
+            controllers={<GtkDragSource onPrepare={createColorProvider} actions={Gdk.DragAction.COPY} />}
         />
     );
 }
 
-function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
+function CssPatternSwatch({ id, cssClass }: { id: string; cssClass: string }) {
     const createClassProvider = () => {
-        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(cssClass)));
     };
 
     return (
         <GtkBox
             name={`pattern-${id}`}
             cssClasses={[swatchStyle, cssClass]}
-            addController={<GtkDragSource onPrepare={createClassProvider} actions={Gdk.DragAction.COPY} />}
+            controllers={<GtkDragSource onPrepare={createClassProvider} actions={Gdk.DragAction.COPY} />}
         />
     );
 }
@@ -207,7 +207,7 @@ function getItemStyleClass(style: ItemStyle): string[] {
 }
 
 function themeIsDark(): boolean {
-    const envTheme = process.env.GTK_THEME;
+    const envTheme = process.env["GTK_THEME"];
     if (envTheme != null) {
         return envTheme.endsWith(":dark") || envTheme.endsWith("-dark");
     }
@@ -340,7 +340,7 @@ function useItemEditHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
     const createContentProvider = (itemId: string) =>
-        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.Type.STRING, (v) => v.setString(itemId)));
+        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(itemId)));
 
     const toggleEditing = (itemId: string) =>
         args.setEditState(args.contextMenu?.itemId === itemId ? null : { itemId });
@@ -496,7 +496,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                 name={`item${item.id}`}
                 label={item.label}
                 cssClasses={cx(itemStyle, ...getItemStyleClass(item.style))}
-                addController={
+                controllers={
                     <>
                         <GtkGestureClick
                             onReleased={() => {
@@ -522,7 +522,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                             actions={Gdk.DragAction.MOVE}
                         />
                         <GtkDropTarget
-                            types={[gdkRgbaType, GObject.Type.STRING]}
+                            types={[gdkRgbaType, GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.COPY}
                             onMotion={() => Gdk.DragAction.COPY}
                             onDrop={(value: GObject.Value) => handlers.handleItemColorDrop(item.id, value)}
@@ -575,7 +575,6 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
 const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: CanvasItem }) => {
     const { refs, handlers, setEditState } = dnd;
     const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
-    const angleAdjustment = useAdjustment({ value: editingItem.angle % 360, lower: 0, upper: 360 });
     return (
         <GtkFixedChild x={editingItem.x} y={editingItem.y + 2 * halfH}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -588,7 +587,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
                 />
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
-                    adjustment={angleAdjustment}
+                    adjustment={<GtkAdjustment value={editingItem.angle % 360} lower={0} upper={360} />}
                     onValueChanged={(scale) => handlers.updateItemAngle(editingItem.id, scale.getValue())}
                     drawValue={false}
                 />
@@ -628,9 +627,9 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                     css`padding: 12px;`,
                     trashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
                 ]}
-                addController={
+                controllers={
                     <GtkDropTarget
-                        types={[GObject.Type.STRING]}
+                        types={[GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.MOVE}
                         onEnter={() => {
                             setTrashHovering(true);
@@ -688,10 +687,10 @@ const DndDemo = () => {
                 hexpand
                 vexpand
                 cssClasses={[css`min-height: 400px;`]}
-                addController={
+                controllers={
                     <>
                         <GtkDropTarget
-                            types={[GObject.Type.STRING]}
+                            types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.MOVE}
                             onMotion={() => Gdk.DragAction.MOVE}
                             onDrop={(value: GObject.Value, dropX: number, dropY: number) =>

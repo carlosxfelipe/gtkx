@@ -120,7 +120,7 @@ const collectDirectoryItems = (dirList: Gtk.DirectoryList): FileItem[] => {
                 name: obj.getName(),
                 displayName: obj.getDisplayName(),
                 isDirectory: obj.getFileType() === Gio.FileType.DIRECTORY,
-                size: obj.getSize(),
+                size: Number(obj.getSize()),
                 icon: obj.getIcon(),
                 contentType: obj.getContentType(),
             });
@@ -189,8 +189,8 @@ const ListViewFilebrowserTitlebar = () => {
     return (
         <GtkHeaderBar
             name="filebrowser-header"
-            packStart={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
-            packEnd={
+            start={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
+            end={
                 <GtkListView
                     name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}

@@ -1,5 +1,5 @@
-import { call, type NativeHandle, read } from "../../index.js";
-import type { Type } from "../../types.js";
+import { call, type Handle, read } from "../../index.js";
+import type { Type, Value } from "../../types.js";
 
 const GOBJECT_REF_COUNT_OFFSET = 8;
 
@@ -16,6 +16,7 @@ export const UINT8 = { type: "uint8" as const };
 export const UINT16 = { type: "uint16" as const };
 export const UINT32 = { type: "uint32" as const };
 export const UINT64 = { type: "uint64" as const };
+export const BIGUINT64 = { type: "biguint64" as const };
 export const FLOAT32 = { type: "float32" as const };
 export const FLOAT64 = { type: "float64" as const };
 export const BOOLEAN = { type: "boolean" as const };
@@ -32,18 +33,18 @@ export const STRING_ARRAY = {
     ownership: "full" as const,
 };
 
-export function createLabel(text: string = "Test"): unknown {
+export function createLabel(text: string = "Test"): Value {
     return call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: text }], GOBJECT);
 }
 
-export function createButton(label?: string): unknown {
+export function createButton(label?: string): Value {
     if (label !== undefined) {
         return call(GTK_LIB, "gtk_button_new_with_label", [{ type: STRING, value: label }], GOBJECT);
     }
     return call(GTK_LIB, "gtk_button_new", [], GOBJECT);
 }
 
-export function createBox(orientation: number = 0, spacing: number = 0): unknown {
+export function createBox(orientation: number = 0, spacing: number = 0): Value {
     return call(
         GTK_LIB,
         "gtk_box_new",
@@ -55,7 +56,7 @@ export function createBox(orientation: number = 0, spacing: number = 0): unknown
     );
 }
 
-export function createScale(orientation: number = 0, min: number = 0, max: number = 100, step: number = 1): unknown {
+export function createScale(orientation: number = 0, min: number = 0, max: number = 100, step: number = 1): Value {
     return call(
         GTK_LIB,
         "gtk_scale_new_with_range",
@@ -69,20 +70,20 @@ export function createScale(orientation: number = 0, min: number = 0, max: numbe
     );
 }
 
-export function createProgressBar(): unknown {
+export function createProgressBar(): Value {
     return call(GTK_LIB, "gtk_progress_bar_new", [], GOBJECT);
 }
 
-export function createGrid(): unknown {
+export function createGrid(): Value {
     return call(GTK_LIB, "gtk_grid_new", [], GOBJECT);
 }
 
-export function createCancellable(): unknown {
+export function createCancellable(): Value {
     return call(GIO_LIB, "g_cancellable_new", [], GOBJECT);
 }
 
-export const typeFromName = (name: string): number =>
-    Number(call(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], UINT64));
+export const typeFromName = (name: string): bigint =>
+    call(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], BIGUINT64) as bigint;
 
 export function forceGC(): void {
     if (!global.gc) {
@@ -92,7 +93,7 @@ export function forceGC(): void {
 }
 
 export function getRefCount(obj: unknown): number {
-    return read(obj as NativeHandle, { type: "uint32" }, GOBJECT_REF_COUNT_OFFSET) as number;
+    return read(obj as Handle, { type: "uint32" }, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
 type MemoryMeasurement = {
@@ -126,17 +127,17 @@ export function connectSignalReturning(
         GOBJECT_LIB,
         "g_signal_connect_data",
         [
-            { type: GOBJECT_BORROWED, value: obj },
+            { type: GOBJECT_BORROWED, value: obj as Handle },
             { type: STRING, value: signalName },
             {
                 type: {
-                    type: "trampoline",
+                    type: "callback",
                     argTypes: [GOBJECT_BORROWED, UINT64],
                     returnType: { type: "void" },
                     hasDestroy: true,
                     userDataIndex: 1,
                 },
-                value: callback,
+                value: callback as (...args: Value[]) => Value,
             },
             { type: INT32, value: 0 },
         ],
@@ -144,7 +145,7 @@ export function connectSignalReturning(
     );
 }
 
-export function connectSignalTrampoline(
+export function connectSignalCallback(
     obj: unknown,
     signalName: string,
     callback: (...args: unknown[]) => void,
@@ -158,17 +159,17 @@ export function connectSignalTrampoline(
         GOBJECT_LIB,
         "g_signal_connect_data",
         [
-            { type: GOBJECT_BORROWED, value: obj },
+            { type: GOBJECT_BORROWED, value: obj as Handle },
             { type: STRING, value: signalName },
             {
                 type: {
-                    type: "trampoline",
+                    type: "callback",
                     argTypes: options.argTypes,
                     returnType: { type: "void" },
                     hasDestroy: options.hasDestroy ?? true,
                     userDataIndex: options.userDataIndex,
                 },
-                value: callback,
+                value: callback as (...args: Value[]) => Value,
             },
             { type: INT32, value: 0 },
         ],
@@ -176,7 +177,7 @@ export function connectSignalTrampoline(
     ) as number;
 }
 
-export function disconnectSignal(obj: unknown, handlerId: number): void {
+export function disconnectSignal(obj: Value, handlerId: number): void {
     call(
         GOBJECT_LIB,
         "g_signal_handler_disconnect",
@@ -188,7 +189,7 @@ export function disconnectSignal(obj: unknown, handlerId: number): void {
     );
 }
 
-export function boxAppend(box: unknown, child: unknown): void {
+export function boxAppend(box: Value, child: Value): void {
     call(
         GTK_LIB,
         "gtk_box_append",
@@ -200,7 +201,7 @@ export function boxAppend(box: unknown, child: unknown): void {
     );
 }
 
-export function boxRemove(box: unknown, child: unknown): void {
+export function boxRemove(box: Value, child: Value): void {
     call(
         GTK_LIB,
         "gtk_box_remove",
@@ -212,15 +213,15 @@ export function boxRemove(box: unknown, child: unknown): void {
     );
 }
 
-export function getFirstChild(widget: unknown): unknown {
+export function getFirstChild(widget: Value): Value {
     return call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
 }
 
-export function getNextSibling(widget: unknown): unknown {
+export function getNextSibling(widget: Value): Value {
     return call(GTK_LIB, "gtk_widget_get_next_sibling", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
 }
 
-export function getParent(widget: unknown): unknown {
+export function getParent(widget: Value): Value {
     return call(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
 }
 
@@ -234,7 +235,7 @@ function measureSlot(
 }
 
 export type MeasureWidgetOptions = {
-    widget: unknown;
+    widget: Value;
     orientation: number;
     forSize: number;
     minRef?: { value: number } | null;
@@ -260,7 +261,7 @@ export function measureWidget(options: MeasureWidgetOptions): void {
     );
 }
 
-export function measureWidgetAllNull(widget: unknown): unknown {
+export function measureWidgetAllNull(widget: Value): unknown {
     return call(
         GTK_LIB,
         "gtk_widget_measure",
@@ -277,7 +278,7 @@ export function measureWidgetAllNull(widget: unknown): unknown {
     );
 }
 
-export function isSignalHandlerConnected(obj: unknown, handlerId: number): boolean {
+export function isSignalHandlerConnected(obj: Value, handlerId: number): boolean {
     return call(
         GOBJECT_LIB,
         "g_signal_handler_is_connected",

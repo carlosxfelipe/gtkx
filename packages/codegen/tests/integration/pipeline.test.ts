@@ -13,9 +13,9 @@ describe("codegen FFI pipeline", () => {
         expect(names).toEqual(expect.arrayContaining(["GLib", "GObject", "Gio", "Gdk", "Gsk", "Gtk", "Adw"]));
     });
 
-    it("emits one module per namespace at the expected path", () => {
-        for (const { path } of ffiModules) {
-            expect(path).toMatch(/^[a-z0-9]+\/[a-z0-9]+\.ts$/);
+    it("emits one module per namespace under the expected directory", () => {
+        for (const { directory } of ffiModules) {
+            expect(directory).toMatch(/^[a-z0-9]+$/);
         }
         expect(ffiModules.length).toBe(repository.namespaces.size);
     });
@@ -28,15 +28,15 @@ describe("codegen FFI pipeline", () => {
     });
 
     it("emits a registered GTK Button class binding", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         expect(gtk).toBeDefined();
         expect(gtk?.source).toContain("Button");
     });
 
     it("transpiles a generated FFI module to valid JS and declarations", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         expect(gtk).toBeDefined();
-        const { js, dts } = transpileSource(gtk?.path ?? "", gtk?.source ?? "");
+        const { js, dts } = transpileSource(`${gtk?.directory ?? ""}.ts`, gtk?.source ?? "");
         expect(js.length).toBeGreaterThan(0);
         expect(dts.length).toBeGreaterThan(0);
         expect(js).not.toContain("interface ");
@@ -45,27 +45,27 @@ describe("codegen FFI pipeline", () => {
 
 describe("codegen return-value convention", () => {
     it("folds an out-array length companion out of the return tuple", () => {
-        const gio = ffiModules.find(({ path }) => path === "gio/gio.ts");
+        const gio = ffiModules.find(({ directory }) => directory === "gio");
         const source = gio?.source ?? "";
         expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string]");
         expect(source).not.toContain("[boolean, number[], number, string]");
     });
 
     it("returns a bare array when the only surfaced out is an array with a folded length", () => {
-        const pango = ffiModules.find(({ path }) => path === "pango/pango.ts");
+        const pango = ffiModules.find(({ directory }) => directory === "pango");
         const source = pango?.source ?? "";
         expect(source).toContain("listFamilies(): FontFamily[]");
         expect(source).not.toContain("listFamilies(): [FontFamily[], number]");
     });
 
     it("keeps an unlinked length out-parameter in the return tuple", () => {
-        const glib = ffiModules.find(({ path }) => path === "glib/glib.ts");
+        const glib = ffiModules.find(({ directory }) => directory === "glib");
         const source = glib?.source ?? "";
         expect(source).toContain("getGroups(): [string[], number]");
     });
 
     it("drops a skip-annotated return value from the surfaced result", () => {
-        const glib = ffiModules.find(({ path }) => path === "glib/glib.ts");
+        const glib = ffiModules.find(({ directory }) => directory === "glib");
         const source = glib?.source ?? "";
         expect(source).toContain(
             "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
@@ -76,21 +76,21 @@ describe("codegen return-value convention", () => {
 
 describe("codegen notify detail signals", () => {
     it("keys each introduced property's notify detail off GObject.Object's notify member", () => {
-        const gobject = ffiModules.find(({ path }) => path === "gobject/gobject.ts");
+        const gobject = ffiModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain('"notify::source-property": ObjectSignalHandlers["notify"];');
         expect(source).toContain('"notify::source-property": ObjectSignalEmit["notify"];');
     });
 
     it("qualifies the notify member reference across namespaces", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
         expect(source).toContain('"notify::visible": GObject.ObjectSignalHandlers["notify"];');
         expect(source).toContain('"notify::visible": GObject.ObjectSignalEmit["notify"];');
     });
 
     it("inherits a property's notify detail through the parent map rather than re-listing it", () => {
-        const gtk = ffiModules.find(({ path }) => path === "gtk/gtk.ts");
+        const gtk = ffiModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
         const buttonHandlers = source.slice(source.indexOf("export interface ButtonSignalHandlers"));
         const buttonBody = buttonHandlers.slice(0, buttonHandlers.indexOf("}"));
@@ -98,7 +98,7 @@ describe("codegen notify detail signals", () => {
     });
 
     it("gives a class that introduces properties but no signals its own typed overloads", () => {
-        const gobject = ffiModules.find(({ path }) => path === "gobject/gobject.ts");
+        const gobject = ffiModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain("export interface Binding {");
         expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");
@@ -154,17 +154,19 @@ describe("codegen React pipeline", () => {
 describe("codegen React pipeline (auto-derived slots)", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null;");
+        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null | undefined;");
     });
 
     it("widens a text view's buffer into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkTextView")).toContain("buffer?: Gtk.TextBuffer | ReactElement | null;");
+        expect(interfaceBody(gtk, "GtkTextView")).toContain(
+            "buffer?: Gtk.TextBuffer | ReactElement | null | undefined;",
+        );
     });
 
     it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
         const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
-        expect(body).toContain("child?: Gtk.Widget | null;");
+        expect(body).toContain("child?: Gtk.Widget | null | undefined;");
         expect(body).not.toContain("child?: Gtk.Widget | ReactElement");
     });
 
@@ -173,20 +175,24 @@ describe("codegen React pipeline (auto-derived slots)", () => {
     });
 
     it("promotes a user-supplied container slot on a widget without built-in ones", () => {
-        const overridden = generateJsxFiles(repository, { containerSlots: { GtkButton: ["addChild"] } });
+        const overridden = generateJsxFiles(repository, {
+            containerProps: { GtkButton: { extras: { attach: "addChild" } } },
+        });
         const gtk = sourceFor(overridden, "gtk");
-        expect(gtk).toContain("addChild?: ReactNode | null;");
-        expect(overridden.metadata).toMatch(/"GtkButton": \[\s*"addChild"\s*\]/);
+        expect(gtk).toContain("extras?: ReactNode | null | undefined;");
+        expect(overridden.metadata).toMatch(/"GtkButton": \{\s*"extras": \{\s*"attach": "addChild"/);
         const { js } = transpileSource("gtk/gtk.tsx", gtk);
         expect(js.length).toBeGreaterThan(0);
     });
 
     it("promotes a user container slot on a plain GObject class", () => {
-        const overridden = generateJsxFiles(repository, { containerSlots: { GApplication: ["addWindow"] } });
+        const overridden = generateJsxFiles(repository, {
+            containerProps: { GApplication: { windows: { attach: "addWindow" } } },
+        });
         const gio = sourceFor(overridden, "gio");
         expect(gio).toContain("GApplicationProps");
-        expect(gio).toContain("addWindow?: ReactNode | null;");
-        expect(overridden.metadata).toMatch(/"GApplication": \[\s*"addWindow"\s*\]/);
+        expect(gio).toContain("windows?: ReactNode | null | undefined;");
+        expect(overridden.metadata).toMatch(/"GApplication": \{\s*"windows": \{\s*"attach": "addWindow"/);
         const { js, dts } = transpileSource("gio/gio.tsx", gio);
         expect(js.length).toBeGreaterThan(0);
         expect(dts.length).toBeGreaterThan(0);
@@ -201,7 +207,7 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 describe("codegen array props", () => {
     it("emits the built-in array-prop line and item-type import on its element", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
+        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
         expect(gtk).toMatch(/import type \{[^}]*\} from "@gtkx\/react";/);
         expect(gtk).toContain("ScaleMark");
         const adw = sourceFor(reactPipeline, "adw");
@@ -211,7 +217,7 @@ describe("codegen array props", () => {
     it("suppresses the raw GObject property of an array-prop name", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         const dropTargetBody = interfaceBody(gtk, "GtkDropTarget");
-        expect(dropTargetBody).toContain("types?: DropTargetType[] | null;");
+        expect(dropTargetBody).toContain("types?: DropTargetType[] | null | undefined;");
         expect(dropTargetBody).not.toContain("types?: GType[] | null;");
         expect(dropTargetBody).not.toContain("onNotifyTypes");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
@@ -223,8 +229,8 @@ describe("codegen array props", () => {
             arrayProps: { GtkScale: { marks: { itemType: "ScaleMark", clear: "clearMarks" } } },
         });
         const gtk = sourceFor(overridden, "gtk");
-        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null;");
-        expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null;");
+        expect(interfaceBody(gtk, "GtkScale")).toContain("marks?: ScaleMark[] | null | undefined;");
+        expect(interfaceBody(gtk, "GtkCalendar")).toContain("markedDays?: CalendarMark[] | null | undefined;");
         expect(gtk).toContain('from "@gtkx/react";');
         expect(gtk).toContain("ScaleMark");
         const { dts } = transpileSource("gtk/gtk.tsx", gtk);
@@ -243,7 +249,7 @@ describe("codegen read-only props", () => {
     it("keeps the settable line for a writable property", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         const widgetBody = interfaceBody(gtk, "GtkWidget");
-        expect(widgetBody).toContain("opacity?: number | null;");
+        expect(widgetBody).toContain("opacity?: number | null | undefined;");
         expect(widgetBody).toContain("onNotifyOpacity?:");
     });
 });
@@ -257,7 +263,7 @@ describe("codegen runtime tables", () => {
         expect(reactPipeline.metadata).toContain("export const TOP_LEVEL_TYPES");
         expect(reactPipeline.metadata).toContain("export const META_OBJECT_ADD_METHODS");
         expect(reactPipeline.metadata).toContain("export const PAGE_META_SETTERS");
-        expect(reactPipeline.metadata).toContain("export const CONTAINER_SLOTS");
+        expect(reactPipeline.metadata).toContain("export const CONTAINER_PROPS");
     });
 
     it("appends user elementMap rows after the built-ins", () => {
@@ -298,5 +304,14 @@ describe("repository lookups", () => {
     it("returns undefined for an unknown type", () => {
         expect(repository.resolveNamed("GLib", "NoSuchType")).toBeUndefined();
         expect(repository.resolveNamed("NoSuchNamespace", "Thing")).toBeUndefined();
+    });
+
+    it("leaves only non-introspectable C types unresolved across the closure", () => {
+        const unresolved = repository.collectUnresolved();
+        const unexpected = unresolved.filter((name) => {
+            const local = name.slice(name.indexOf(".") + 1);
+            return local !== "va_list" && local !== "";
+        });
+        expect(unexpected).toEqual([]);
     });
 });

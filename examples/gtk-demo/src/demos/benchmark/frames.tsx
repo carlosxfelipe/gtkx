@@ -36,11 +36,12 @@ class ColorWidget extends Gtk.Widget {
     private time2 = 0;
     private t = 0;
 
-    constructed(): void {
+    constructor(props: ConstructorParameters<typeof Gtk.Widget>[0] = {}) {
+        super(props);
         this.setHexpand(true);
         this.setVexpand(true);
         this.addTickCallback((widget, frameClock) => {
-            const time = frameClock.getFrameTime();
+            const time = Number(frameClock.getFrameTime());
             if (time >= this.time2) {
                 this.time2 = time + TIME_SPAN_US;
                 this.color1 = this.color2;
@@ -121,10 +122,7 @@ const FramesProvider = ({ children }: DemoProviderProps) => {
 const FramesTitlebar = () => {
     const { fps, fpsAttrs } = useFrames();
     return (
-        <GtkHeaderBar
-            name="frames-header"
-            packEnd={<GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />}
-        />
+        <GtkHeaderBar name="frames-header" end={<GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />} />
     );
 };
 

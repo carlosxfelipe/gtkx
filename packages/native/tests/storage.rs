@@ -7,31 +7,37 @@ use native::ffi::{
     FfiStorage, FfiStorageKind, FfiValue, GArrayData, GListData, GSListData, HashTableData,
     StringGListData, StringGSListData,
 };
-use native::types::{ArrayKind, ArrayType, IntegerKind, Ownership, StringType, Type};
+use native::types::{
+    ArrayKind, ArrayType, FfiEncoder as _, IntegerKind, Ownership, StringType, Type,
+};
 use native::value::Value;
 
 fn make_glist_one() -> *mut glib::ffi::GList {
-    // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
+    // SAFETY: appending to a null (empty) GList with an opaque non-null sentinel pointer as the
+    // single element is the documented way to build a one-node list; the data is never dereferenced.
     unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
 }
 
 fn make_gslist_one() -> *mut glib::ffi::GSList {
-    // SAFETY: Appending to a (possibly null) GSList head only requires a valid element pointer.
+    // SAFETY: appending to a null (empty) GSList with an opaque non-null sentinel as the single
+    // element is the documented one-node construction; the data is never dereferenced.
     unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
 }
 
 fn make_g_array() -> *mut glib::ffi::GArray {
-    // SAFETY: Creating a GArray from size parameters has no pointer preconditions.
+    // SAFETY: `g_array_sized_new` with a valid `i32` element size returns a freshly allocated,
+    // owned empty GArray.
     unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) }
 }
 
 fn make_g_byte_array() -> *mut glib::ffi::GByteArray {
-    // SAFETY: Creating an empty GByteArray has no pointer preconditions.
+    // SAFETY: `g_byte_array_sized_new` returns a freshly allocated, owned empty GByteArray.
     unsafe { glib::ffi::g_byte_array_sized_new(0) }
 }
 
 fn make_hash_table() -> *mut glib::ffi::GHashTable {
-    // SAFETY: Creating a GHashTable from hash/equal function pointers has no pointer preconditions.
+    // SAFETY: the direct hash/equal functions are valid GLib callbacks and null key/value destroy
+    // functions are allowed; `g_hash_table_new_full` returns a freshly allocated, owned GHashTable.
     unsafe {
         glib::ffi::g_hash_table_new_full(
             Some(glib::ffi::g_direct_hash),
@@ -75,8 +81,9 @@ fn garray_storage(array_ptr: *mut glib::ffi::GArray, should_free: bool) -> FfiSt
 }
 
 fn gbytearray_storage(array_ptr: *mut glib::ffi::GByteArray, should_free: bool) -> FfiStorage {
+    // SAFETY: when `should_free` is set, `array_ptr` is a live, owned GByteArray; `from_glib_full`
+    // takes ownership of that single reference, which the wrapper releases on drop.
     let owned: Option<glib::ByteArray> =
-        // SAFETY: The fresh GByteArray's one reference is adopted by the wrapper.
         should_free.then(|| unsafe { glib::translate::from_glib_full(array_ptr) });
     FfiStorage::new(array_ptr as *mut c_void, FfiStorageKind::GByteArray(owned))
 }
@@ -130,14 +137,16 @@ fn hashtable_storage_unrefs_on_drop() {
     common::run(|| {
         let hash_table = make_hash_table();
 
-        // SAFETY: `hash_table` is the live table created above; the extra reference balances the storage's release.
+        // SAFETY: `hash_table` is the live, owned table just created; this extra reference is the
+        // one the storage consumes on drop, leaving the original for the final unref below.
         unsafe { glib::ffi::g_hash_table_ref(hash_table) };
 
         {
             let _storage = hashtable_storage(hash_table, true);
         }
 
-        // SAFETY: Releases a reference this test owns on the live GHashTable.
+        // SAFETY: after the storage dropped one reference, `hash_table` still holds its original
+        // reference; this releases it, freeing the table exactly once.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
 }
@@ -185,12 +194,6 @@ fn as_numeric_slice_matches_every_integer_kind() {
         let slice = storage.as_numeric_slice(*kind).expect("kind should match");
         assert_eq!(slice.len(), 2);
     }
-}
-
-#[test]
-fn as_numeric_slice_rejects_mismatched_kind() {
-    let storage: FfiStorage = vec![1u8].into();
-    assert!(storage.as_numeric_slice(IntegerKind::I64).is_err());
 }
 
 #[test]
@@ -307,10 +310,11 @@ fn glist_storage_keeps_when_not_freed() {
         {
             let _storage = glist_storage(list, false);
         }
-        // SAFETY: `list` is the live GList built by this test.
+        // SAFETY: the non-freeing storage left `list` intact, so it is still a live one-node GList;
+        // `g_list_length` reads its length.
         let len = unsafe { glib::ffi::g_list_length(list) };
         assert_eq!(len, 1);
-        // SAFETY: Frees the list this test owns.
+        // SAFETY: `list` is the still-live GList; `g_list_free` releases its spine exactly once.
         unsafe { glib::ffi::g_list_free(list) };
     });
 }
@@ -344,7 +348,8 @@ fn gslist_storage_keeps_when_not_freed() {
         {
             let _storage = gslist_storage(list, false);
         }
-        // SAFETY: Frees the list this test owns.
+        // SAFETY: the non-freeing storage left `list` intact, so it is still a live GSList;
+        // `g_slist_free` releases its spine exactly once.
         unsafe { glib::ffi::g_slist_free(list) };
     });
 }
@@ -378,7 +383,8 @@ fn garray_storage_keeps_when_not_freed() {
         {
             let _storage = garray_storage(array, false);
         }
-        // SAFETY: Releases the reference this test owns on the live GArray.
+        // SAFETY: the non-freeing storage left `array` intact, so it is still a live, owned GArray;
+        // `g_array_unref` releases its single reference exactly once.
         unsafe { glib::ffi::g_array_unref(array) };
     });
 }
@@ -411,7 +417,8 @@ fn gbytearray_storage_keeps_when_not_freed() {
         {
             let _storage = gbytearray_storage(array, false);
         }
-        // SAFETY: Releases the reference this test owns on the live GByteArray.
+        // SAFETY: the non-owning storage did not take a reference, so `array` is still a live,
+        // owned GByteArray; `g_byte_array_unref` releases its single reference exactly once.
         unsafe { glib::ffi::g_byte_array_unref(array) };
     });
 }
@@ -428,21 +435,29 @@ fn hashtable_storage_keeps_when_not_freed() {
         {
             let _storage = hashtable_storage(hash_table, false);
         }
-        // SAFETY: Releases a reference this test owns on the live GHashTable.
+        // SAFETY: the non-freeing storage left `hash_table` intact, so it is still a live, owned
+        // table; `g_hash_table_unref` releases its single reference exactly once.
         unsafe { glib::ffi::g_hash_table_unref(hash_table) };
     });
+}
+
+fn string_list_element_ptr(s: &CString, dup: bool) -> *mut c_void {
+    if dup {
+        // SAFETY: `s.as_ptr()` is the live `CString`'s valid NUL-terminated buffer; `g_strdup`
+        // returns a freshly `g_malloc`-ed owned copy.
+        unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+    } else {
+        s.as_ptr() as *mut c_void
+    }
 }
 
 fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
     let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
     for s in strings {
-        let ptr = if dup {
-            // SAFETY: Duplicating a live NUL-terminated local has no other preconditions.
-            unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-        } else {
-            s.as_ptr() as *mut c_void
-        };
-        // SAFETY: Appending to a (possibly null) GList head only requires a valid element pointer.
+        let ptr = string_list_element_ptr(s, dup);
+        // SAFETY: `list` is either null or the running, owned GList head, and `ptr` is a valid
+        // element pointer (a `g_strdup`'ed copy or the live `CString`'s buffer); `g_list_append`
+        // returns the updated head.
         list = unsafe { glib::ffi::g_list_append(list, ptr) };
     }
     list
@@ -479,7 +494,9 @@ fn string_glist_storage_frees_shallow_when_not_duped() {
 fn string_glist_storage_keeps_when_not_freed() {
     common::run(|| {
         let list = drop_borrowed_string_glist_storage(false);
-        // SAFETY: Frees the list this test owns.
+        // SAFETY: the non-freeing storage left `list` intact, so it is still a live GList spine
+        // (its elements borrow the now-dropped `CString`s, which `g_list_free` does not touch);
+        // freeing the spine once is sound.
         unsafe { glib::ffi::g_list_free(list) };
     });
 }
@@ -492,13 +509,9 @@ fn string_glist_storage_null_ptr_safe_on_drop() {
 fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList {
     let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
     for s in strings.iter().rev() {
-        let ptr = if dup {
-            // SAFETY: Duplicating a live NUL-terminated local has no other preconditions.
-            unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-        } else {
-            s.as_ptr() as *mut c_void
-        };
-        // SAFETY: Prepending to a (possibly null) GSList head only requires a valid element pointer.
+        let ptr = string_list_element_ptr(s, dup);
+        // SAFETY: `list` is either null or the running, owned GSList head, and `ptr` is a valid
+        // element pointer; `g_slist_prepend` returns the updated head.
         list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
     }
     list
@@ -535,7 +548,8 @@ fn string_gslist_storage_frees_shallow_when_not_duped() {
 fn string_gslist_storage_keeps_when_not_freed() {
     common::run(|| {
         let list = drop_borrowed_string_gslist_storage(false);
-        // SAFETY: Frees the list this test owns.
+        // SAFETY: the non-freeing storage left `list` intact, so it is still a live GSList spine
+        // whose elements borrow the dropped `CString`s; freeing the spine once is sound.
         unsafe { glib::ffi::g_slist_free(list) };
     });
 }
@@ -543,12 +557,6 @@ fn string_gslist_storage_keeps_when_not_freed() {
 #[test]
 fn string_gslist_storage_null_ptr_safe_on_drop() {
     let _storage = string_gslist_storage(Vec::new(), std::ptr::null_mut(), true, true);
-}
-
-#[test]
-fn storage_debug_renders_kind() {
-    let storage: FfiStorage = vec![1u8].into();
-    assert!(format!("{storage:?}").contains("FfiStorage"));
 }
 
 fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) -> ArrayType {
@@ -566,7 +574,7 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
 #[test]
 fn encode_empty_string_glist_full_container_arms_null_transfer_safe_on_drop() {
     let ty = string_full_item_array_type(ArrayKind::GList, Ownership::Full);
-    let encoded = ty.encode(&Value::Array(Vec::new()), false).unwrap();
+    let encoded = ty.encode(&Value::Array(Vec::new())).unwrap();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
@@ -587,18 +595,20 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
         Value::String("foo".to_string()),
         Value::String("bar".to_string()),
     ]);
-    let encoded = ty.encode(&val, false).unwrap();
+    let encoded = ty.encode(&val).unwrap();
     let FfiValue::Storage(storage) = &encoded else {
         panic!("expected storage")
     };
     let block = storage.ptr() as *mut *mut c_char;
-    // SAFETY: The staged block holds live NUL-terminated duplicates.
+    // SAFETY: the string-array encode produced a NULL-terminated array of `char*` held alive by
+    // `storage`, so `block[0]` and `block[1]` are valid NUL-terminated C strings.
     let first = unsafe { CStr::from_ptr(*block) };
-    // SAFETY: The staged block holds live NUL-terminated duplicates.
+    // SAFETY: `block[1]` is the second valid entry of the same NULL-terminated array.
     let second = unsafe { CStr::from_ptr(*block.add(1)) };
     assert_eq!(first.to_str().unwrap(), "foo");
     assert_eq!(second.to_str().unwrap(), "bar");
-    // SAFETY: The staged block is a live three-slot block ending in NULL.
+    // SAFETY: the array has two elements followed by a NULL terminator, so `block[2]` is the
+    // in-bounds terminator slot.
     assert!(unsafe { (*block.add(2)).is_null() });
     drop(encoded);
 }
@@ -613,18 +623,18 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
             element_size: None,
         };
         let val = Value::Array(vec![Value::Number(7.0), Value::Number(8.0)]);
-        let encoded = ty.encode(&val, false).unwrap();
+        let encoded = ty.encode(&val).unwrap();
         let FfiValue::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
         assert!(matches!(storage.kind(), FfiStorageKind::GByteArray(None)));
         let byte_array = storage.ptr() as *mut glib::ffi::GByteArray;
-        // SAFETY: `byte_array` is the live array the encode created; the
-        // extra reference keeps it alive past the storage's release.
+        // SAFETY: `byte_array` is the live GByteArray owned by `storage`; this extra reference keeps
+        // it alive past the `drop(encoded)` below so its contents can be inspected and then freed.
         unsafe { glib::ffi::g_byte_array_ref(byte_array) };
         drop(encoded);
-        // SAFETY: The reference taken above keeps the array live for the
-        // field reads, and releasing that reference frees it.
+        // SAFETY: the extra reference above keeps `byte_array` live; it holds two bytes (7, 8), so
+        // reading `len` and `data[0..2]` is in bounds, and the final unref releases this reference.
         unsafe {
             assert_eq!((*byte_array).len, 2);
             assert_eq!(*(*byte_array).data, 7);

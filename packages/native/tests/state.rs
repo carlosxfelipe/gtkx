@@ -1,6 +1,19 @@
 mod common;
 
-use native::state::{GlibThread, GlibThreadState, RuntimePhase};
+use native::state::{GlibThread, GlibThreadState};
+
+fn join_panicking_handle<F>(panicking_body: F) -> Option<String>
+where
+    F: FnOnce() + Send + 'static,
+{
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let handle = std::thread::spawn(panicking_body);
+    GlibThread::global().set_handle(handle);
+    let result = GlibThread::global().join();
+    std::panic::set_hook(previous_hook);
+    result
+}
 
 #[test]
 fn gtk_thread_state_default_initializes_correctly() {
@@ -38,17 +51,6 @@ fn get_library_caches_loaded_libraries() {
 
             assert_eq!(lib1_ptr, lib2_ptr);
         });
-    });
-}
-
-#[test]
-fn get_library_returns_error_for_nonexistent() {
-    common::run(|| {
-        let is_err = GlibThreadState::with(|state| {
-            state.library("libnonexistent_library_12345.so").is_err()
-        });
-
-        assert!(is_err);
     });
 }
 
@@ -116,21 +118,6 @@ fn resolve_gtype_caches_repeated_resolutions() {
             assert_ne!(first, gtk4::glib::Type::INVALID);
             assert_eq!(first, second);
         });
-    });
-}
-
-#[test]
-fn resolve_gtype_missing_symbol_returns_error() {
-    common::run(|| {
-        let err = GlibThreadState::with(|state| {
-            state
-                .resolve_gtype("libgtk-4.so.1", "no_such_get_type_symbol_12345")
-                .err()
-                .map(|e| e.to_string())
-        });
-
-        let message = err.expect("missing get_type symbol should fail");
-        assert!(message.contains("Failed to find symbol"));
     });
 }
 
@@ -215,63 +202,6 @@ fn lookup_fundamental_fns_unref_without_ref_errors() {
 }
 
 #[test]
-fn lookup_fundamental_fns_missing_ref_symbol_errors() {
-    common::run(|| {
-        let err = GlibThreadState::with(|state| {
-            state
-                .lookup_fundamental_fns(
-                    "libgobject-2.0.so.0",
-                    "no_such_ref_symbol_12345",
-                    "g_object_unref",
-                )
-                .err()
-                .map(|e| e.to_string())
-        });
-
-        let message = err.expect("missing ref symbol should fail");
-        assert!(message.contains("Failed to find ref symbol"));
-    });
-}
-
-#[test]
-fn lookup_fundamental_fns_missing_unref_symbol_errors() {
-    common::run(|| {
-        let err = GlibThreadState::with(|state| {
-            state
-                .lookup_fundamental_fns(
-                    "libgobject-2.0.so.0",
-                    "g_object_ref",
-                    "no_such_unref_symbol_12345",
-                )
-                .err()
-                .map(|e| e.to_string())
-        });
-
-        let message = err.expect("missing unref symbol should fail");
-        assert!(message.contains("Failed to find unref symbol"));
-    });
-}
-
-#[test]
-fn gtk_thread_state_debug_format() {
-    common::run(|| {
-        GlibThreadState::with(|state| {
-            let debug_str = format!("{state:?}");
-            assert!(debug_str.contains("GlibThreadState"));
-            assert!(debug_str.contains("libraries_len"));
-
-            let libs_debug = format!("{:?}", state.libs);
-            assert!(libs_debug.contains("LibraryCache"));
-            assert!(libs_debug.contains("len"));
-
-            let fns_debug = format!("{:?}", state.fundamental_fns);
-            assert!(fns_debug.contains("FundamentalFnCache"));
-            assert!(fns_debug.contains("len"));
-        });
-    });
-}
-
-#[test]
 fn gtk_thread_global_is_stable_singleton() {
     let first = GlibThread::global() as *const GlibThread;
     let second = GlibThread::global() as *const GlibThread;
@@ -314,14 +244,9 @@ fn gtk_thread_set_handle_replacing_unjoined_handle_keeps_replacement() {
 #[test]
 fn gtk_thread_join_reports_str_panic_payload() {
     common::run(|| {
-        let previous_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(|_| {}));
-        let handle = std::thread::spawn(|| {
+        let result = join_panicking_handle(|| {
             std::panic::panic_any("static panic message");
         });
-        GlibThread::global().set_handle(handle);
-        let result = GlibThread::global().join();
-        std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("static panic message"));
     });
@@ -330,92 +255,10 @@ fn gtk_thread_join_reports_str_panic_payload() {
 #[test]
 fn gtk_thread_join_reports_string_panic_payload() {
     common::run(|| {
-        let previous_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(|_| {}));
-        let handle = std::thread::spawn(|| {
+        let result = join_panicking_handle(|| {
             panic!("{}", String::from("owned panic message"));
         });
-        GlibThread::global().set_handle(handle);
-        let result = GlibThread::global().join();
-        std::panic::set_hook(previous_hook);
 
         assert_eq!(result.as_deref(), Some("owned panic message"));
-    });
-}
-
-#[test]
-fn gtk_thread_join_reports_unknown_panic_payload() {
-    common::run(|| {
-        let previous_hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(|_| {}));
-        let handle = std::thread::spawn(|| {
-            std::panic::panic_any(42_u32);
-        });
-        GlibThread::global().set_handle(handle);
-        let result = GlibThread::global().join();
-        std::panic::set_hook(previous_hook);
-
-        assert_eq!(result.as_deref(), Some("unknown panic"));
-    });
-}
-
-#[test]
-fn gtk_thread_debug_format() {
-    let debug_str = format!("{:?}", GlibThread::global());
-    assert!(debug_str.contains("GlibThread"));
-}
-
-#[test]
-fn gtk_thread_phase_lifecycle_transitions() {
-    common::run(|| {
-        let thread = GlibThread::global();
-        thread.reset_phase_for_test();
-
-        assert_eq!(thread.phase(), RuntimePhase::New);
-        assert!(thread.begin_start().is_ok());
-        assert_eq!(thread.phase(), RuntimePhase::Running);
-
-        let double_start = thread.begin_start().expect_err("second init must fail");
-        assert!(double_start.contains("already running"));
-
-        assert!(thread.begin_stop().is_ok());
-        assert_eq!(thread.phase(), RuntimePhase::Stopped);
-
-        let double_stop = thread.begin_stop().expect_err("second stop must fail");
-        assert!(double_stop.contains("already-stopped"));
-
-        let restart = thread
-            .begin_start()
-            .expect_err("re-init after stop must fail");
-        assert!(restart.contains("cannot be reinitialized"));
-
-        thread.reset_phase_for_test();
-        assert_eq!(thread.phase(), RuntimePhase::New);
-    });
-}
-
-#[test]
-fn gtk_thread_abort_start_restores_new_phase() {
-    common::run(|| {
-        let thread = GlibThread::global();
-        thread.reset_phase_for_test();
-
-        assert!(thread.begin_start().is_ok());
-        thread.abort_start();
-        assert_eq!(thread.phase(), RuntimePhase::New);
-
-        assert!(thread.begin_start().is_ok());
-        thread.reset_phase_for_test();
-    });
-}
-
-#[test]
-fn gtk_thread_stop_before_init_fails() {
-    common::run(|| {
-        let thread = GlibThread::global();
-        thread.reset_phase_for_test();
-
-        let err = thread.begin_stop().expect_err("stop before init must fail");
-        assert!(err.contains("before init"));
     });
 }

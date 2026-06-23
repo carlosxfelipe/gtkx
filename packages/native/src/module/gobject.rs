@@ -1,10 +1,4 @@
-//! `GObject` runtime helpers.
-//!
-//! Provides direct access to `GObject` class metadata so that JavaScript does
-//! not need to traverse the `GTypeInstance` → `GTypeClass` → `GObjectClass`
-//! chain through several individual FFI dispatches.
-
-use gtk4::glib::gobject_ffi;
+use glib::gobject_ffi;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -13,11 +7,11 @@ use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
 
 #[cfg_attr(test, allow(dead_code))]
-struct GetInstanceGtypeRequest {
+struct GetTypeRequest {
     instance_addr: usize,
 }
 
-impl ModuleRequest for GetInstanceGtypeRequest {
+impl ModuleRequest for GetTypeRequest {
     type Output = u64;
 
     fn execute(self) -> anyhow::Result<u64> {
@@ -25,27 +19,24 @@ impl ModuleRequest for GetInstanceGtypeRequest {
             return Ok(0);
         }
         let instance = self.instance_addr as *mut gobject_ffi::GTypeInstance;
-        // SAFETY: The non-zero address came from a live NativeHandle whose
-        // wrapper keeps the instance alive.
+        // SAFETY: `instance_addr` is non-zero (checked above) and points to a live
+        // `GTypeInstance`; reading its `g_class` field is sound (the field may itself be null,
+        // which is handled below).
         let g_class = unsafe { (*instance).g_class };
         if g_class.is_null() {
             return Ok(0);
         }
-        // SAFETY: The class pointer was just verified non-null and belongs
-        // to the live instance.
+        // SAFETY: `g_class` is non-null (checked above) and points to the instance's live
+        // `GTypeClass`; reading its `g_type` field yields the registered GType.
         let gtype = unsafe { (*g_class).g_type };
         Ok(gtype as u64)
     }
 
     fn error_context() -> &'static str {
-        "get_instance_gtype"
+        "get_type"
     }
 }
 
-/// napi export shim for `GObject` metadata access. Excluded from coverage
-/// instrumentation: it dispatches through a live [`napi::Env`]. The
-/// [`GetInstanceGtypeRequest`] `execute` logic it dispatches is exercised
-/// directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -53,11 +44,11 @@ mod napi_export {
 
     #[napi(catch_unwind)]
     #[cfg_attr(test, allow(dead_code))]
-    pub fn get_instance_gtype<'env>(
+    pub fn get_type<'env>(
         env: &'env Env,
         handle: &External<NativeHandle>,
     ) -> napi::Result<Unknown<'env>> {
-        GetInstanceGtypeRequest {
+        GetTypeRequest {
             instance_addr: handle.ptr_as_usize(),
         }
         .dispatch(env)
@@ -66,8 +57,7 @@ mod napi_export {
 
 #[cfg(test)]
 mod tests {
-    use gtk4::glib;
-    use gtk4::glib::translate::{IntoGlib as _, ToGlibPtr as _};
+    use glib::translate::{IntoGlib as _, ToGlibPtr as _};
     use gtk4::prelude::StaticType as _;
 
     use super::*;
@@ -78,9 +68,9 @@ mod tests {
     }
 
     #[test]
-    fn get_instance_gtype_returns_real_gtype() {
+    fn get_type_returns_real_gtype() {
         let object = glib::Object::new::<glib::Object>();
-        let request = GetInstanceGtypeRequest {
+        let request = GetTypeRequest {
             instance_addr: object_addr(&object),
         };
         let gtype = request.execute().expect("gtype query should succeed");
@@ -88,18 +78,18 @@ mod tests {
     }
 
     #[test]
-    fn get_instance_gtype_returns_zero_for_null_instance() {
-        let request = GetInstanceGtypeRequest { instance_addr: 0 };
+    fn get_type_returns_zero_for_null_instance() {
+        let request = GetTypeRequest { instance_addr: 0 };
         let gtype = request.execute().expect("null instance should be Ok(0)");
         assert_eq!(gtype, 0);
     }
 
     #[test]
-    fn get_instance_gtype_returns_zero_for_instance_without_class() {
-        // SAFETY: GTypeInstance is a plain C struct of pointers, for which
-        // all-zero bytes are a valid (null-class) representation.
+    fn get_type_returns_zero_for_instance_without_class() {
+        // SAFETY: `GTypeInstance` is a single nullable `g_class` pointer field, for which an
+        // all-zero bit pattern is a valid value representing an instance with a null class.
         let mut instance: gobject_ffi::GTypeInstance = unsafe { std::mem::zeroed() };
-        let request = GetInstanceGtypeRequest {
+        let request = GetTypeRequest {
             instance_addr: std::ptr::addr_of_mut!(instance) as usize,
         };
         let gtype = request
@@ -109,10 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn get_instance_gtype_error_context_is_stable() {
-        assert_eq!(
-            GetInstanceGtypeRequest::error_context(),
-            "get_instance_gtype"
-        );
+    fn get_type_error_context_is_stable() {
+        assert_eq!(GetTypeRequest::error_context(), "get_type");
     }
 }

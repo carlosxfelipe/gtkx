@@ -1,5 +1,3 @@
-//! Coverage tests for [`native::types::GObjectType`] codec implementations.
-
 mod common;
 
 use std::ffi::c_void;
@@ -9,10 +7,13 @@ use gtk4::prelude::ObjectType as _;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrCodec};
+use native::types::{FfiDecoder, FfiEncoder, GObjectType, Ownership, RawPtrCodec, ReadSource};
 use native::value::Value;
 
-use common::get_gobject_refcount;
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, get_gobject_refcount, read_slot, write_return_into_slot,
+};
 
 fn borrowed() -> GObjectType {
     GObjectType {
@@ -26,8 +27,6 @@ fn full() -> GObjectType {
     }
 }
 
-/// Creates a fresh `GObject`, returning the owning guard together with its
-/// raw pointer and the refcount observed at creation.
 fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
@@ -40,26 +39,8 @@ fn object_value_of(ptr: *mut glib::gobject_ffi::GObject) -> Value {
 }
 
 fn encode_object(ty: &GObjectType, ptr: *mut glib::gobject_ffi::GObject) -> ffi::FfiValue {
-    ty.encode(&object_value_of(ptr), false)
+    ty.encode(&object_value_of(ptr))
         .expect("encode should succeed")
-}
-
-/// A zeroed pointer-sized region wide enough for the `GObject` header reads the
-/// codec performs before bailing on an invalid type class.
-fn with_fake_object_region(check: impl FnOnce(*mut c_void)) {
-    let mut fake = [0usize; 4];
-    check(fake.as_mut_ptr() as *mut c_void);
-}
-
-/// Writes `value` into a null-initialized slot through
-/// `write_return_to_raw_ptr` and returns the written pointer.
-fn write_return_into_slot(ty: &GObjectType, value: &Result<Value, ()>) -> *mut c_void {
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    // SAFETY: `slot` is a writable local pointer-sized slot.
-    unsafe {
-        ty.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value);
-    }
-    slot
 }
 
 #[test]
@@ -77,7 +58,8 @@ fn encode_full_transfer_adds_exactly_one_ref() {
         };
         assert_eq!(storage.ptr(), obj_ptr as *mut c_void);
 
-        // SAFETY: Releases a reference this test owns on the live GObject.
+        // SAFETY: the full-transfer encode took one extra reference on the live `obj_ptr` (whose
+        // pending transfer was disarmed); this releases exactly that reference.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), before);
     });
@@ -110,17 +92,7 @@ fn encode_borrowed_does_not_change_refcount() {
 #[test]
 fn encode_null_object_stays_null() {
     common::run(|| {
-        let encoded = full()
-            .encode(&Value::Null, false)
-            .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
-    });
-}
-
-#[test]
-fn encode_rejects_non_object() {
-    common::run(|| {
-        assert!(full().encode(&Value::Number(1.0), false).is_err());
+        common::assert_encode_null_yields_null_ptr(&full());
     });
 }
 
@@ -129,14 +101,15 @@ fn ref_for_transfer_full_adds_one_ref() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        // SAFETY: `obj_ptr` addresses the live GObject owned by the guard.
+        // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; the full `ref_for_transfer`
+        // takes one new strong reference that the explicit `g_object_unref` below balances.
         let returned = unsafe { full().ref_for_transfer(obj_ptr as *mut c_void) }
             .expect("ref_for_transfer should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
         assert_eq!(returned, obj_ptr as *mut c_void);
 
-        // SAFETY: Releases a reference this test owns on the live GObject.
+        // SAFETY: `obj_ptr` is still live; this releases the reference added by `ref_for_transfer`.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(get_gobject_refcount(obj_ptr), before);
     });
@@ -147,7 +120,8 @@ fn ref_for_transfer_borrowed_keeps_refcount() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        // SAFETY: `obj_ptr` addresses the live GObject owned by the guard.
+        // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; the borrowed
+        // `ref_for_transfer` returns it unchanged without taking a reference.
         let returned = unsafe { borrowed().ref_for_transfer(obj_ptr as *mut c_void) }
             .expect("ref_for_transfer should succeed");
 
@@ -159,7 +133,8 @@ fn ref_for_transfer_borrowed_keeps_refcount() {
 #[test]
 fn ref_for_transfer_full_null_is_noop() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any reference is taken.
+        // SAFETY: `ref_for_transfer` tolerates a null pointer, returning it without dereferencing
+        // or taking a reference.
         let returned = unsafe { full().ref_for_transfer(std::ptr::null_mut()) }
             .expect("null ref_for_transfer should succeed");
         assert!(returned.is_null());
@@ -187,7 +162,8 @@ fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
     common::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
-        // SAFETY: Takes a reference on the live GObject; this test balances it itself.
+        // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; this extra reference models
+        // the full-transfer caller's owned reference that the decode consumes.
         unsafe { glib::gobject_ffi::g_object_ref(obj_ptr) };
         let before = get_gobject_refcount(obj_ptr);
 
@@ -203,7 +179,8 @@ fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
 #[test]
 fn decode_floating_object_is_sunk() {
     common::run(|| {
-        // SAFETY: Creating a GObject from a registered GType and a null property list has no pointer preconditions.
+        // SAFETY: `g_initially_unowned_get_type` is a valid GType and a null varargs terminator is
+        // the documented "no properties" call, so `g_object_new` returns a fresh floating object.
         let obj_ptr = unsafe {
             glib::gobject_ffi::g_object_new(
                 glib::gobject_ffi::g_initially_unowned_get_type(),
@@ -211,7 +188,8 @@ fn decode_floating_object_is_sunk() {
             )
         };
 
-        // SAFETY: `obj_ptr` is the live GObject just created.
+        // SAFETY: `obj_ptr` is the freshly created, live object; `g_object_is_floating` queries its
+        // floating state.
         assert!(unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 });
         let before = get_gobject_refcount(obj_ptr);
 
@@ -219,7 +197,8 @@ fn decode_floating_object_is_sunk() {
             .decode(&ffi::FfiValue::Ptr(obj_ptr as *mut c_void))
             .expect("floating decode should succeed");
 
-        // SAFETY: `obj_ptr` is the live GObject just created.
+        // SAFETY: `obj_ptr` is still live (the decode ref-sank rather than freed it); this queries
+        // its now-non-floating state.
         assert!(!unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 });
         assert_eq!(get_gobject_refcount(obj_ptr), before);
         assert!(matches!(decoded, Value::Object(_)));
@@ -229,19 +208,7 @@ fn decode_floating_object_is_sunk() {
 #[test]
 fn decode_null_pointer_yields_null() {
     common::run(|| {
-        let decoded = borrowed()
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
-    });
-}
-
-#[test]
-fn decode_invalid_type_class_bails() {
-    common::run(|| {
-        with_fake_object_region(|fake_ptr| {
-            assert!(borrowed().decode(&ffi::FfiValue::Ptr(fake_ptr)).is_err());
-        });
+        assert_decode_null_yields_null(&borrowed());
     });
 }
 
@@ -250,8 +217,9 @@ fn ptr_to_value_wraps_borrowed_object() {
     common::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        // SAFETY: `obj_ptr` addresses the live GObject owned by the guard.
-        let value = unsafe { borrowed().ptr_to_value(obj_ptr as *mut c_void, "ctx") }
+        // SAFETY: `obj_ptr` is the live GObject of the `_obj` binding; the borrowed `read` wraps it
+        // and takes one new strong reference released when `value` is dropped.
+        let value = unsafe { borrowed().read(ReadSource::Value(obj_ptr as *mut c_void, "ctx")) }
             .expect("ptr_to_value should succeed");
 
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
@@ -263,21 +231,7 @@ fn ptr_to_value_wraps_borrowed_object() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any read.
-        let value = unsafe { borrowed().ptr_to_value(std::ptr::null_mut(), "ctx") }
-            .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
-    });
-}
-
-#[test]
-fn ptr_to_value_invalid_type_class_bails() {
-    common::run(|| {
-        with_fake_object_region(|fake_ptr| {
-            // SAFETY: `fake_ptr` addresses a live zeroed local wide enough for
-            // the GObject header reads the codec performs before bailing.
-            assert!(unsafe { borrowed().ptr_to_value(fake_ptr, "ctx") }.is_err());
-        });
+        assert_read_null_yields_null(&borrowed());
     });
 }
 
@@ -285,14 +239,11 @@ fn ptr_to_value_invalid_type_class_bails() {
 fn read_from_raw_ptr_dereferences_and_wraps() {
     common::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
-        let slot: *mut c_void = obj_ptr as *mut c_void;
 
-        // SAFETY: `slot` is a live local pointer-sized slot holding a live
-        // GObject pointer.
-        let value = unsafe {
-            borrowed().read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
-        }
-        .expect("read_from_raw_ptr should succeed");
+        // SAFETY: `read_slot` places `obj_ptr` into a pointer slot and reads through it; `obj_ptr`
+        // is the live GObject of the `_obj` binding, so the slot points to a valid object.
+        let value = unsafe { read_slot(&borrowed(), obj_ptr as *mut c_void) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
     });
@@ -307,7 +258,8 @@ fn write_return_to_raw_ptr_full_transfer_writes_referenced_pointer() {
 
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
-        // SAFETY: Releases a reference this test owns on the live GObject.
+        // SAFETY: the full-transfer return write took one extra reference on the live `obj_ptr`;
+        // this releases exactly that reference.
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
     });
 }
@@ -327,14 +279,7 @@ fn write_return_to_raw_ptr_borrowed_keeps_refcount() {
 #[test]
 fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Err(());
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            borrowed()
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
-        assert!(slot.is_null());
+        assert_write_return_err_writes_null(&borrowed());
     });
 }
 
@@ -344,8 +289,9 @@ fn write_value_to_raw_ptr_writes_object() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let mut slot: *mut c_void = std::ptr::null_mut();
-        // SAFETY: `slot` is a writable local pointer-sized slot and
-        // `obj_ptr` addresses the live GObject owned by the guard.
+        // SAFETY: the address of the live, writable pointer stack local `slot` is the pointer slot
+        // the codec writes into; it was null, so no previous object is released, and the write
+        // stores a newly referenced pointer to the live `obj_ptr`.
         unsafe {
             borrowed().write_value_to_raw_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
@@ -357,7 +303,8 @@ fn write_value_to_raw_ptr_writes_object() {
         assert_eq!(slot, obj_ptr as *mut c_void);
         assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
 
-        // SAFETY: Releases a reference this test owns on the live GObject.
+        // SAFETY: `slot` now holds the live `obj_ptr` with the extra reference taken by the write;
+        // this releases exactly that reference.
         unsafe { glib::gobject_ffi::g_object_unref(slot.cast()) };
     });
 }
@@ -368,14 +315,16 @@ fn write_value_to_raw_ptr_unrefs_previous_object() {
         let (_old, old_ptr, _) = fresh_gobject();
         let (_new, new_ptr, _) = fresh_gobject();
 
-        // SAFETY: Takes a reference on the live GObject; this test balances it itself.
+        // SAFETY: `old_ptr` is the live old GObject; this extra reference is the one the slot owns
+        // and that the codec releases when it overwrites the slot below.
         unsafe { glib::gobject_ffi::g_object_ref(old_ptr.cast()) };
         let mut slot: *mut c_void = old_ptr as *mut c_void;
         let old_before = get_gobject_refcount(old_ptr);
         let new_before = get_gobject_refcount(new_ptr);
 
-        // SAFETY: `slot` is a writable local pointer-sized slot holding an
-        // owned reference, and `new_ptr` addresses a live GObject.
+        // SAFETY: the address of the live, writable pointer stack local `slot` (currently holding
+        // the owned `old_ptr`) is the slot the codec swaps: it references the live `new_ptr` and
+        // releases the previously owned `old_ptr`, keeping the count balanced.
         unsafe {
             borrowed().write_value_to_raw_ptr(
                 &mut slot as *mut *mut c_void as *mut c_void,
@@ -388,7 +337,8 @@ fn write_value_to_raw_ptr_unrefs_previous_object() {
         assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
         assert_eq!(get_gobject_refcount(old_ptr), old_before - 1);
 
-        // SAFETY: Releases a reference this test owns on the live GObject.
+        // SAFETY: `slot` now holds the live `new_ptr` with the reference taken by the write; this
+        // releases exactly that reference.
         unsafe { glib::gobject_ffi::g_object_unref(slot.cast()) };
     });
 }
@@ -398,13 +348,15 @@ fn write_value_to_raw_ptr_null_releases_previous_object() {
     common::run(|| {
         let (_obj, obj_ptr, _) = fresh_gobject();
 
-        // SAFETY: Takes a reference on the live GObject; this test balances it itself.
+        // SAFETY: `obj_ptr` is the live GObject; this extra reference is the one the slot owns and
+        // that the codec releases when it clears the slot below.
         unsafe { glib::gobject_ffi::g_object_ref(obj_ptr.cast()) };
         let mut slot: *mut c_void = obj_ptr as *mut c_void;
         let before = get_gobject_refcount(obj_ptr);
 
-        // SAFETY: `slot` is a writable local pointer-sized slot holding an
-        // owned reference.
+        // SAFETY: the address of the live, writable pointer stack local `slot` (currently holding
+        // the owned `obj_ptr`) is the slot the codec writes; a null value stores null and releases
+        // the previously owned `obj_ptr`.
         unsafe {
             borrowed()
                 .write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)

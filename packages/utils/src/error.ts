@@ -1,12 +1,27 @@
-/**
- * Coerces an unknown thrown value into a human-readable string.
- *
- * Returns `error.message` when `error` is an `Error` instance, otherwise
- * delegates to `String(error)`. Use at boundaries where exceptions are
- * surfaced to logs, IPC frames, or user-facing output and the type cannot
- * be narrowed otherwise.
- *
- * @param error - The caught value of unknown shape.
- * @returns A string describing the error.
- */
-export const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+import { types } from "node:util";
+
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+
+const isErrorLike = (value: unknown): value is { message: string } =>
+    isObject(value) && "message" in value && typeof value["message"] === "string";
+
+export const errorMessage = (error: unknown): string =>
+    types.isNativeError(error) || isErrorLike(error) ? error.message : String(error);
+
+export const normalizeError = (error: unknown): Error => {
+    if (types.isNativeError(error)) return error;
+    return Object.assign(new Error(errorMessage(error)), isErrorLike(error) ? error : {});
+};
+
+const readStream = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (value instanceof Uint8Array || Buffer.isBuffer(value)) return value.toString();
+    return "";
+};
+
+export const formatChildProcessError = (error: unknown): string | undefined => {
+    if (!isObject(error)) return undefined;
+    const { stderr, stdout } = error;
+    const details = [readStream(stderr), readStream(stdout)].filter(Boolean).join("\n").trim();
+    return details.length > 0 ? details : undefined;
+};

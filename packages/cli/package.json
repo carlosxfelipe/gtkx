@@ -60,19 +60,20 @@
         "bin",
         "dist",
         "env.d.ts",
-        "src",
-        "templates"
+        "src"
     ],
     "scripts": {
         "build": "tsc -b",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly",
-        "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../.."
+        "check:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts --check",
+        "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../..",
+        "generate:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "dependencies": {
-        "@babel/core": "^7.29.7",
-        "@babel/preset-typescript": "^7.29.7",
-        "@clack/prompts": "^1.5.1",
+        "@babel/core": "^8.0.1",
+        "@babel/preset-typescript": "^8.0.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
@@ -82,28 +83,20 @@
         "@swc/core": "^1.15.41",
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
-        "ejs": "^6.0.1",
-        "fast-xml-parser": "^5.8.0",
-        "nypm": "^0.6.7",
+        "create-gtkx": "workspace:*",
+        "fast-xml-parser": "^5.9.3",
+        "picocolors": "^1.1.1",
         "react-refresh": "^0.18.0",
-        "tinyexec": "^1.2.4",
-        "typescript": "^6.0.3",
-        "vite": "^8.0.16"
+        "typescript": "catalog:",
+        "vite": "catalog:"
     },
     "devDependencies": {
+        "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@types/babel__core": "^7.20.5",
-        "@types/ejs": "^3.1.5",
-        "@types/react-refresh": "^0.14.7",
-        "memfs": "^4.57.7"
+        "@types/react-refresh": "^0.14.7"
     },
     "peerDependencies": {
-        "@gtkx/react": "workspace:*",
         "react": "^19"
-    },
-    "peerDependenciesMeta": {
-        "@gtkx/react": {
-            "optional": true
-        }
     }
 }

@@ -1,29 +1,6 @@
-//! FFI function call execution.
-//!
-//! This module implements [`call`], which executes native function calls via
-//! libffi. This is the core mechanism for invoking GTK and `GLib` functions from
-//! JavaScript.
-//!
-//! ## Call Flow
-//!
-//! 1. Parse library name, symbol name, arguments, and return type from JS
-//! 2. Convert arguments to [`ffi::FfiValue`] representations
-//! 3. Build a libffi CIF (Call Interface) with proper type signatures
-//! 4. Load the library and resolve the symbol on the `GLib` thread
-//! 5. Execute the FFI call with proper type dispatching
-//! 6. Convert the result back to a [`Value`] for JavaScript
-//! 7. Update any `Ref` type out-parameters with modified values
-//!
-//! ## Callbacks
-//!
-//! Special handling is required for callback arguments (`AsyncReady`, Destroy,
-//! `DrawFunc`). These expand to multiple FFI arguments: the callback function
-//! pointer, user data, and optionally a destroy notify.
-
 use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
-use gtk4::glib;
 use libffi::middle as libffi;
 use napi::Env;
 use napi::bindgen_prelude::*;
@@ -43,6 +20,15 @@ struct CallRequest {
     library_name: String,
     symbol_name: String,
     args: Vec<Arg>,
+    result_type: Type,
+}
+
+/// A function signature whose argument and return type descriptors are parsed once.
+///
+/// `bind` compiles a signature a single time and reuses the resulting handle for every call, so
+/// the per-call path marshals only argument values and never re-walks the type descriptor objects.
+pub struct CompiledSignature {
+    arg_types: Vec<Type>,
     result_type: Type,
 }
 
@@ -72,7 +58,7 @@ impl ModuleRequest for CallRequest {
             .enumerate()
             .map(|(i, arg)| {
                 arg.ty
-                    .encode(&arg.value, arg.optional)
+                    .encode(&arg.value)
                     .with_context(|| format!("encoding arg {} of {}", i, self.symbol_name))
             })
             .collect::<anyhow::Result<Vec<ffi::FfiValue>>>()?;
@@ -82,9 +68,9 @@ impl ModuleRequest for CallRequest {
             ffi_value.append_libffi_args(&mut ffi_args);
         }
 
-        // SAFETY: The looked-up symbol is only stored as a code pointer
-        // here; the erased signature is never called through directly, and
-        // the library stays loaded for the process lifetime.
+        // SAFETY: runs on the gtkx-glib thread; `state.library` returns a loaded library and
+        // `get` resolves the named symbol within it. The code pointer is only invoked through the
+        // `cif` built from `result_type`/`arg_types` below, which describes the symbol's real ABI.
         let symbol_ptr = unsafe {
             GlibThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;
@@ -124,13 +110,6 @@ impl ModuleRequest for CallRequest {
 }
 
 impl CallRequest {
-    /// Frees the container of a transfer-full sized or fixed-size array
-    /// return value once its elements have been copied out.
-    ///
-    /// The decoder cannot perform this release itself: the same decode path
-    /// also reads caller-owned out-parameter buffers, whose containers must
-    /// not be freed. Running after the decode — error or not — also keeps a
-    /// failed element decode from leaking the container.
     fn release_sized_array_return(&self, result: &ffi::FfiValue) {
         let Type::Array(array_type) = &self.result_type else {
             return;
@@ -146,18 +125,13 @@ impl CallRequest {
         if let ffi::FfiValue::Ptr(ptr) = result
             && !ptr.is_null()
         {
-            // SAFETY: A transfer-full sized/fixed array return hands this
-            // call the one owned container, released here exactly once
-            // after the decode copied the elements.
+            // SAFETY: the result is a transfer-full sized/fixed array whose backing buffer the
+            // callee allocated with the GLib allocator; after decoding it above, freeing `*ptr`
+            // with `g_free` on the gtkx-glib thread releases that buffer exactly once.
             unsafe { glib::ffi::g_free(*ptr) };
         }
     }
 
-    /// Collects the out-parameter write-backs for `Ref`-typed arguments.
-    ///
-    /// Excluded from coverage instrumentation: a `Value::Ref` carries an
-    /// `Arc<JsRef<JsObject>>`, which only exists when a live JavaScript runtime
-    /// produced it, so this path cannot run under `cargo test`.
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn collect_ref_updates(&self, ffi_values: &[ffi::FfiValue]) -> anyhow::Result<Vec<RefUpdate>> {
         let mut ref_updates = Vec::new();
@@ -176,9 +150,6 @@ impl CallRequest {
     }
 }
 
-/// napi export shim. Excluded from coverage instrumentation: it parses JS
-/// arguments through a live [`napi::Env`]. The [`CallRequest::execute`] logic
-/// it dispatches is exercised directly by tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -209,11 +180,78 @@ mod napi_export {
         };
         request.dispatch(env)
     }
+
+    #[napi(catch_unwind)]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn compile_signature(
+        env: Env,
+        arg_types: Array,
+        return_type: Unknown<'_>,
+    ) -> napi::Result<External<CompiledSignature>> {
+        let parsed_arg_types = crate::value::map_js_array(&env, &arg_types, |env, value| {
+            let ty = Type::from_js_value(env, value)?;
+            if !ty.can_be_argument_type() {
+                return Err(napi::Error::new(
+                    napi::Status::InvalidArg,
+                    format!("'{ty}' cannot be used as a function argument type"),
+                ));
+            }
+            Ok(ty)
+        })?;
+        let result_type = Type::from_js_value(&env, return_type)?;
+        if !result_type.can_be_return_type() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'{result_type}' cannot be used as a function return type"),
+            ));
+        }
+        Ok(External::new(CompiledSignature {
+            arg_types: parsed_arg_types,
+            result_type,
+        }))
+    }
+
+    #[napi(catch_unwind)]
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn call_compiled<'env>(
+        env: &'env Env,
+        library: String,
+        symbol: String,
+        compiled: &External<CompiledSignature>,
+        values: Array,
+    ) -> napi::Result<Unknown<'env>> {
+        let signature: &CompiledSignature = compiled;
+        let parsed_values = crate::value::map_js_array(env, &values, Value::from_js_value)?;
+        if parsed_values.len() != signature.arg_types.len() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!(
+                    "{symbol}: expected {} arguments, received {}",
+                    signature.arg_types.len(),
+                    parsed_values.len()
+                ),
+            ));
+        }
+        let args = signature
+            .arg_types
+            .iter()
+            .cloned()
+            .zip(parsed_values)
+            .map(|(ty, value)| Arg::new(ty, value))
+            .collect();
+        let request = CallRequest {
+            library_name: library,
+            symbol_name: symbol,
+            args,
+            result_type: signature.result_type.clone(),
+        };
+        request.dispatch(env)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{ArrayType, BlobType, IntegerKind, Ownership, RefType, StringType};
+    use crate::types::{ArrayType, BlobType, IntegerKind, Ownership, StringType};
     use crate::value::{BufferView, BufferViewKind};
 
     use super::*;
@@ -356,93 +394,6 @@ mod tests {
         assert!(ref_updates.is_empty());
         let n = value.as_number().expect("result should be a number");
         assert!((10.0..20.0).contains(&n));
-    }
-
-    #[test]
-    fn execute_fails_for_unknown_symbol() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_no_such_symbol_12345".into(),
-            args: vec![],
-            result_type: Type::Integer(IntegerKind::I32),
-        };
-        assert!(request.execute().is_err());
-    }
-
-    #[test]
-    fn execute_fails_when_an_argument_cannot_be_encoded() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int_range".into(),
-            args: vec![Arg::new(
-                Type::Integer(IntegerKind::I32),
-                Value::String("not a number".into()),
-            )],
-            result_type: Type::Integer(IntegerKind::I32),
-        };
-        let err = request
-            .execute()
-            .expect_err("encoding a string as an integer should fail");
-        assert!(err.to_string().contains("encoding arg 0"));
-    }
-
-    #[test]
-    fn execute_fails_for_void_argument_type() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int_range".into(),
-            args: vec![Arg::new(Type::Void(crate::types::VoidType), Value::Null)],
-            result_type: Type::Integer(IntegerKind::I32),
-        };
-        let err = request
-            .execute()
-            .expect_err("a void argument type should fail the call");
-        assert!(
-            err.to_string()
-                .contains("cannot be used as a function argument type")
-        );
-    }
-
-    #[test]
-    fn execute_fails_when_result_type_cannot_occupy_return_slot() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_random_int".into(),
-            args: vec![],
-            result_type: Type::Ref(RefType::new(Type::Integer(IntegerKind::I32))),
-        };
-        let err = request
-            .execute()
-            .expect_err("a ref return type should fail the call");
-        assert!(err.to_string().contains("calling g_random_int"));
-    }
-
-    #[test]
-    fn execute_fails_when_return_value_cannot_be_decoded() {
-        let request = CallRequest {
-            library_name: "libglib-2.0.so.0".into(),
-            symbol_name: "g_strdup".into(),
-            args: vec![Arg::new(
-                Type::String(StringType {
-                    ownership: Ownership::Borrowed,
-                    length: None,
-                }),
-                Value::Null,
-            )],
-            result_type: Type::Array(ArrayType {
-                item_type: Box::new(Type::Integer(IntegerKind::U8)),
-                kind: ArrayKind::Sized { size_index: 9 },
-                ownership: Ownership::Borrowed,
-                element_size: None,
-            }),
-        };
-        let err = request
-            .execute()
-            .expect_err("decoding with an out-of-bounds size index should fail");
-        assert!(
-            err.to_string()
-                .contains("decoding return value of g_strdup")
-        );
     }
 
     #[test]

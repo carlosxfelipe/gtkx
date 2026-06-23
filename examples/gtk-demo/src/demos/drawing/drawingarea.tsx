@@ -12,7 +12,7 @@ const ovalPath = (cr: Context, { xc, yc, xr, yr }: { xc: number; yc: number; xr:
     cr.translate(xc, yc);
     cr.scale(1, yr / xr);
     cr.moveTo(xr, 0);
-    cr.arc({ xc: 0, yc: 0, radius: xr, angle1: 0, angle2: 2 * Math.PI });
+    cr.arc(0, 0, xr, 0, 2 * Math.PI);
     cr.closePath();
     cr.restore();
 };
@@ -148,7 +148,7 @@ function useScribbleHandlers(
     return { handleDragBegin, handleDragUpdate: handleDragOffset, handleDragEnd: handleDragOffset };
 }
 
-const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Widget[] }) => {
+const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Widget[] | undefined }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const surfaceRef = useRef<ImageSurface | null>(null);
     const startPointRef = useRef({ x: 0, y: 0 });
@@ -176,7 +176,7 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
             onResize={handleResize}
             accessibleRole={Gtk.AccessibleRole.IMG}
             accessibleLabelledBy={accessibleLabelledBy}
-            addController={
+            controllers={
                 <GtkGestureDrag
                     button={0}
                     onDragBegin={handleDragBegin}

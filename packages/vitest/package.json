@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/vitest",
     "version": "0.21.0",
-    "description": "Vitest plugin for GTKX applications with Xvfb display isolation",
+    "description": "Vitest plugin for GTKX applications with headless Wayland display isolation",
     "keywords": [
         "gtkx",
         "gtk",
@@ -9,7 +9,7 @@
         "vitest",
         "testing",
         "plugin",
-        "xvfb",
+        "wayland",
         "linux",
         "desktop"
     ],
@@ -39,14 +39,16 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "dependencies": {
         "@gtkx/config": "workspace:*"
     },
     "devDependencies": {
-        "vitest": "^4.1.8"
+        "vitest": "catalog:"
     },
     "peerDependencies": {
         "vitest": ">=4"

@@ -1,6 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkAdjustment,
     GtkOverlay,
     GtkOverlayChild,
     GtkPicture,
@@ -10,16 +11,14 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { useState } from "react";
+import { path as decor1Path } from "#data/demos/layout/decor1.png";
+import { path as decor2Path } from "#data/demos/layout/decor2.png";
 import type { Demo } from "../types.js";
-import { path as decor1Path } from "./decor1.png";
-import { path as decor2Path } from "./decor2.png";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
-    const marginAdjustment = useAdjustment({ value: margin, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 1 });
 
     const decor1 = Gdk.Texture.newFromResource(decor1Path);
     const decor2 = Gdk.Texture.newFromResource(decor2Path);
@@ -76,7 +75,9 @@ const OverlayDecorativeDemo = () => {
                     marginEnd={20}
                     marginBottom={20}
                     tooltipText="Margin"
-                    adjustment={marginAdjustment}
+                    adjustment={
+                        <GtkAdjustment value={margin} lower={0} upper={100} stepIncrement={1} pageIncrement={1} />
+                    }
                     onValueChanged={(scale) => setMargin(scale.getValue())}
                 />
             </GtkOverlayChild>

@@ -1,60 +1,46 @@
-import { quote, toCamelCase, toIdentifier } from "@gtkx/utils";
+import { quote, toCamelCase, toCamelIdentifier } from "@gtkx/utils";
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { renderBlock } from "../dsl/emit.js";
 import type { GirFunction } from "../gir/function.js";
-import type { GirProperty } from "../gir/property.js";
-import type { GirTypeRef } from "../gir/type-ref.js";
+import { type GirProperty, isConstructableProperty } from "../gir/property.js";
+import type { TypeId } from "../gir/type-id.js";
 import { renderMethodReturnType } from "./method.js";
 import { renderTsType } from "./ts-type.js";
 import { renderFfiType } from "./value.js";
 
-/**
- * Whether a GObject property of `type` can hold `null`.
- *
- * Reference values — objects, boxed records, interfaces, and containers —
- * marshal to `null` when unset; scalar value types (numbers, booleans,
- * strings, `unichar`, enums) are surfaced non-null to match their typed
- * setters. Aliases resolve to their target.
- *
- * @param context - The module context
- * @param type - The property's value type
- */
-const isNullablePropertyType = (context: ModuleContext, type: GirTypeRef | undefined): boolean => {
+const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) return false;
-    if (type.kind === "primitive") return false;
-    if (type.kind !== "named") return true;
-    const resolved = context.repository.resolveNamed(type.namespaceName ?? context.namespace.name, type.typeName);
+    const resolved = context.repository.typeOf(type);
     if (resolved === undefined) return true;
+    if (resolved.kind === "primitive") return false;
     if (resolved.kind === "enum") return false;
-    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.targetRef);
+    if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.target);
     return true;
 };
 
-/**
- * Renders the `get` / `set` accessor pair for a single GObject property
- * on a class declaration.
- *
- * Read-only properties get only a getter; readonly + non-writable
- * properties are skipped entirely. Properties whose name has already
- * been claimed by an emitted method (its camelCase form clashes) are
- * skipped, since the method takes precedence; the property's value stays
- * reachable through the raw `getProperty`/`setProperty` GValue bindings.
- *
- * @param context - The module context
- * @param property - The property to surface
- * @param claimedNames - Names already used by emitted methods
- */
-export const renderPropertyAccessor = (
-    context: ModuleContext,
-    property: GirProperty,
-    claimedNames: ReadonlySet<string>,
-    methodByName: ReadonlyMap<string, GirFunction>,
-): string | undefined => {
-    const jsName = toIdentifier(toCamelCase(property.name));
+type ResolvedAccessor = {
+    jsName: string;
+    tsType: string;
+    writable: boolean;
+    getterMember: string | undefined;
+    getMethod: GirFunction | undefined;
+    setterMember: string | undefined;
+};
+
+export type PropertyAccessorArgs = {
+    context: ModuleContext;
+    property: GirProperty;
+    claimedNames: Set<string>;
+    methodByName: Map<string, GirFunction>;
+};
+
+const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
+    const { context, property, claimedNames, methodByName } = args;
+    const jsName = toCamelIdentifier(property.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
 
-    const writable = property.writable || property.construct || property.constructOnly;
+    const writable = isConstructableProperty(property);
     const getterMember = delegateMember(property.getter, jsName, claimedNames);
     const getMethod =
         getterMember !== undefined && property.getter !== undefined ? methodByName.get(property.getter) : undefined;
@@ -70,78 +56,63 @@ export const renderPropertyAccessor = (
               ? renderMethodReturnType(context, getMethod)
               : renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 
-    const blocks: string[] = [];
-    const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
-    blocks.push(`get ${jsName}(): ${tsType} {\n${indent(getBody, 1)}\n}`);
-
-    if (writable) {
-        const setBody =
-            setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
-        blocks.push(`set ${jsName}(value: ${tsType}) {\n${indent(setBody, 1)}\n}`);
-    }
-    return blocks.join("\n\n");
+    return { jsName, tsType, writable, getterMember, getMethod, setterMember };
 };
 
-/**
- * Renders the FFI type descriptor for a property's value, resolved statically
- * from the GIR — the same descriptor the typed constructor marshals through.
- */
+const withAccessor = (
+    args: PropertyAccessorArgs,
+    render: (accessor: ResolvedAccessor) => string,
+): string | undefined => {
+    const accessor = resolveAccessor(args);
+    if (accessor === undefined) return undefined;
+    return render(accessor);
+};
+
+export const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
+    withAccessor(args, (accessor) => {
+        const { context, property } = args;
+        const { jsName, tsType, writable, getterMember, getMethod, setterMember } = accessor;
+
+        const blocks: string[] = [];
+        const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
+        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
+
+        if (writable) {
+            const setBody =
+                setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
+            blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
+        }
+        return blocks.join("\n\n");
+    });
+
+export const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
+    withAccessor(args, ({ jsName, tsType, writable }) =>
+        writable ? `${jsName}: ${tsType};` : `get ${jsName}(): ${tsType};`,
+    );
+
 const renderPropertyFfiType = (context: ModuleContext, property: GirProperty): string =>
     renderFfiType(context, property.type, property.transferOwnership);
 
-/**
- * Renders the generic getter body for a property with no typed C accessor: a
- * `getObjectProperty` call carrying the property's statically-rendered FFI type,
- * which inits a matching `GValue`, reads it via `g_object_get_property`, and
- * unmarshals the result. No runtime param-spec introspection.
- *
- * @param context - The module context
- * @param property - The property being read
- * @param tsType - The accessor's TypeScript type
- */
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
-    context.addRuntimeImport("getObjectProperty");
+    context.addRuntimeImport("getGobjectProperty");
     context.addRuntimeImport("t");
-    return `return getObjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}) as ${tsType};`;
+    return `return getGobjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}) as ${tsType};`;
 };
 
-/**
- * Renders the generic setter body for a property with no typed C accessor: a
- * `setObjectProperty` call carrying the property's statically-rendered FFI type,
- * which marshals the value into a matching `GValue` and dispatches
- * `g_object_set_property`. No runtime param-spec introspection.
- *
- * @param context - The module context
- * @param property - The property being written
- */
 const renderGenericSetBody = (context: ModuleContext, property: GirProperty): string => {
-    context.addRuntimeImport("setObjectProperty");
+    context.addRuntimeImport("setGobjectProperty");
     context.addRuntimeImport("t");
-    return `setObjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}, value);`;
+    return `setGobjectProperty(this, ${quote(property.name)}, ${renderPropertyFfiType(context, property)}, value);`;
 };
 
-/**
- * Inputs for {@link renderGetterBody}.
- */
 type GetterBodyOptions = {
-    readonly context: ModuleContext;
-    readonly property: GirProperty;
-    readonly getterMember: string | undefined;
-    readonly getMethod: GirFunction | undefined;
-    readonly tsType: string;
+    context: ModuleContext;
+    property: GirProperty;
+    getterMember: string | undefined;
+    getMethod: GirFunction | undefined;
+    tsType: string;
 };
 
-/**
- * Renders a property getter body.
- *
- * The property type follows the setter's parameter (what callers may assign),
- * so a getter whose own GIR nullability differs is narrowed to it with a single
- * assertion; matching nullability needs no cast. Properties with no typed
- * getter read through the generic `getObjectProperty` path, marshalling a
- * `GValue` of the property's statically-rendered FFI type.
- *
- * @param options - {@link GetterBodyOptions}
- */
 const renderGetterBody = (options: GetterBodyOptions): string => {
     const { context, property, getterMember, getMethod, tsType } = options;
     if (getterMember === undefined) return renderGenericGetBody(context, property, tsType);
@@ -150,24 +121,10 @@ const renderGetterBody = (options: GetterBodyOptions): string => {
     return getType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
 };
 
-/**
- * Resolves a property's GIR `getter`/`setter` method name to the camelCase
- * member to delegate the accessor to, or `undefined` to fall back to the
- * generic `getProperty`/`setProperty` GValue path.
- *
- * Delegation is used only when the named method was actually emitted on the
- * class (so object, interface, and boxed values marshal through their typed
- * setter rather than the GValue `valueFromJS` path) and the member name does
- * not collide with the accessor itself, which would recurse.
- *
- * @param accessorName - The accessor's own camelCase member name
- * @param attribute - The GIR `getter`/`setter` attribute, if present
- * @param claimedNames - Names already emitted as methods on the class
- */
 const delegateMember = (
     attribute: string | undefined,
     accessorName: string,
-    claimedNames: ReadonlySet<string>,
+    claimedNames: Set<string>,
 ): string | undefined => {
     if (attribute === undefined) return undefined;
     const member = toCamelCase(attribute);

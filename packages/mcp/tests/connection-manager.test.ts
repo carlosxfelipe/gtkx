@@ -1,4 +1,5 @@
 import EventEmitter from "node:events";
+import { Duplex } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectionManager } from "../src/connection-manager.js";
 import { McpError, McpErrorCode } from "../src/protocol/errors.js";
@@ -7,35 +8,34 @@ import {
     type AppConnection,
     type AppTransport,
     type AppTransportEvents,
-    type FrameWriter,
     JsonStreamTransport,
 } from "../src/transport.js";
 
+class FakeSocket extends Duplex {
+    lines: string[] = [];
+
+    override _write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+        this.lines.push(chunk.toString());
+        callback();
+    }
+}
+
 type TestConnection = AppConnection & {
-    capture: { lines: string[]; writable: boolean };
+    socket: FakeSocket;
 };
 
 const createdConnections: TestConnection[] = [];
 
 function makeConnection(id: string): TestConnection {
-    const capture = { lines: [] as string[], writable: true };
-    const writer: FrameWriter = {
-        write(line) {
-            capture.lines.push(line);
-            return true;
-        },
-        get writable() {
-            return capture.writable;
-        },
-    };
-    const transport = new JsonStreamTransport(writer);
-    const connection: TestConnection = { id, transport, capture };
+    const socket = new FakeSocket();
+    const transport = new JsonStreamTransport(socket);
+    const connection: TestConnection = { id, transport, socket };
     createdConnections.push(connection);
     return connection;
 }
 
 class FakeAppTransport extends EventEmitter<AppTransportEvents> implements AppTransport {
-    readonly sent: Array<{ connectionId: string; message: IpcMessage }> = [];
+    sent: Array<{ connectionId: string; message: IpcMessage }> = [];
 
     send(connectionId: string, message: IpcMessage): void {
         this.sent.push({ connectionId, message });
@@ -48,7 +48,7 @@ function lastResponse(transport: FakeAppTransport): IpcResponse | undefined {
 }
 
 function lastOutgoingRequest(conn: TestConnection): IpcRequest {
-    const line = conn.capture.lines[conn.capture.lines.length - 1];
+    const line = conn.socket.lines[conn.socket.lines.length - 1];
     if (!line) throw new Error("No outgoing request captured");
     return JSON.parse(line) as IpcRequest;
 }
@@ -60,25 +60,10 @@ interface ManagerContext {
 
 const ctx = {} as ManagerContext;
 
-/**
- * Emits an `app.register` request for the given connection on the shared
- * context transport, leaving the recorded `sent` messages untouched.
- *
- * @param conn - Connection the request originates from.
- * @param params - Registration parameters, where `pid` may be omitted to
- *   exercise validation failures.
- * @param id - Request id carried by the emitted message.
- */
 function emitRegister(conn: TestConnection, params: { applicationId: string; pid?: number }, id = "req-1"): void {
     ctx.transport.emit("request", conn, { id, method: "app.register", params });
 }
 
-/**
- * Creates a connection, attaches a fresh spy to the manager's
- * `appUnregistered` event, and registers `app-a` from that connection.
- *
- * @returns The created connection and the attached unregister spy.
- */
 function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: ReturnType<typeof vi.fn> } {
     const conn = makeConnection("c1");
     const onUnregister = vi.fn();
@@ -132,11 +117,13 @@ describe("ConnectionManager registration — basics", () => {
         expect(response?.error?.code).toBe(McpErrorCode.INVALID_REQUEST);
     });
 
-    it("ignores unknown request methods on the manager event channel", () => {
+    it("replies with methodNotFound for unknown request methods", () => {
         const { transport } = ctx;
         const conn = makeConnection("c1");
         transport.emit("request", conn, { id: "req-1", method: "something.else" });
-        expect(transport.sent).toEqual([]);
+        const response = lastResponse(transport);
+        expect(response?.id).toBe("req-1");
+        expect(response?.error?.code).toBe(McpErrorCode.METHOD_NOT_FOUND);
     });
 });
 
@@ -295,7 +282,7 @@ describe("ConnectionManager sendToApp — transport errors", () => {
         const conn = registerAppForContext("app-a");
         const onUnregister = vi.fn();
         ctx.manager.on("appUnregistered", onUnregister);
-        conn.capture.writable = false;
+        conn.socket.destroy();
 
         await expect(ctx.manager.sendToApp("app-a", "ping")).rejects.toMatchObject({
             code: McpErrorCode.CONNECTION_WRITE_FAILED,

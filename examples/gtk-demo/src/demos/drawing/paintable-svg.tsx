@@ -2,8 +2,8 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useState } from "react";
+import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
 import type { Demo, DemoProviderProps } from "../types.js";
-import nodeEditorSvgUri from "./org.gtk.gtk4.NodeEditor.Devel.svg";
 import sourceCode from "./paintable-svg.tsx?raw";
 
 const loadSvgFromFile = (file: Gio.File): Gtk.Svg | null => {
@@ -72,7 +72,7 @@ const PaintableSvgTitlebar = () => {
     return (
         <GtkHeaderBar
             name="paintable-svg-header"
-            packStart={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />}
+            start={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />}
         />
     );
 };
@@ -92,7 +92,7 @@ const PaintableSvgDemo = () => {
             paintable={svg}
             widthRequest={16}
             heightRequest={16}
-            addController={<GtkGestureClick onPressed={handlePressed} />}
+            controllers={<GtkGestureClick onPressed={handlePressed} />}
         />
     );
 };

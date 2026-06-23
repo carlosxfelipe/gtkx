@@ -43,9 +43,10 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "dependencies": {
         "@gtkx/utils": "workspace:*",

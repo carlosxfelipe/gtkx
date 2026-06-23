@@ -5,21 +5,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(() => null as { applicationId: string | null } | null),
+    quitApplication: vi.fn(),
+    installGracefulShutdown: vi.fn(),
     startMcpClient: vi.fn(async () => undefined),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
-    whenStopped: vi.fn(() => new Promise<void>(() => {})),
     performRefresh: vi.fn(),
     isReactRefreshBoundary: vi.fn(() => false),
     createServer: vi.fn(async () => ({}) as unknown),
 }));
 
-vi.mock("@gtkx/ffi", () => ({
-    whenStopped: hoisted.whenStopped,
-}));
-
 vi.mock("@gtkx/gi/gio", () => ({
     Application: { getDefault: hoisted.getDefault },
+}));
+
+vi.mock("@gtkx/ffi", () => ({
+    quitApplication: hoisted.quitApplication,
+}));
+
+vi.mock("@gtkx/utils", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@gtkx/utils")>()),
+    installGracefulShutdown: hoisted.installGracefulShutdown,
 }));
 
 vi.mock("vite", () => ({
@@ -51,7 +57,6 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         const deps = defaultDevRunnerDeps();
 
         expect(deps.createServer).toBe(hoisted.createServer);
-        expect(deps.whenStopped).toBe(hoisted.whenStopped);
         expect(deps.stopMcpClient).toBe(hoisted.stopMcpClient);
         expect(deps.performRefresh).toBe(hoisted.performRefresh);
         expect(deps.isReactRefreshBoundary).toBe(hoisted.isReactRefreshBoundary);
@@ -71,20 +76,25 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
     });
 
-    it("installs a teardown that passes the app-graph default teardown to the runner callback", async () => {
+    it("installs a lifecycle whose quit forwards the app-graph default quit to the runner callback", async () => {
         const deps = defaultDevRunnerDeps();
-        const setApplicationTeardown = vi.fn();
-        const defaultApplicationTeardown = vi.fn();
-        const loadAppModule = vi.fn(async () => ({ setApplicationTeardown, defaultApplicationTeardown }));
-        const onTeardown = vi.fn();
+        const setApplicationLifecycle = vi.fn();
+        const defaultApplicationLifecycle = { quit: vi.fn() };
+        const loadAppModule = vi.fn(async () => ({ setApplicationLifecycle, defaultApplicationLifecycle }));
+        const onQuit = vi.fn();
 
-        await deps.installApplicationTeardown(loadAppModule, onTeardown);
+        await deps.installApplicationLifecycle(loadAppModule, onQuit);
 
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react");
-        expect(setApplicationTeardown).toHaveBeenCalledTimes(1);
-        const installed = setApplicationTeardown.mock.calls[0]?.[0] as () => void;
-        installed();
-        expect(onTeardown).toHaveBeenCalledWith(defaultApplicationTeardown);
+        expect(setApplicationLifecycle).toHaveBeenCalledTimes(1);
+        const installed = setApplicationLifecycle.mock.calls[0]?.[0] as { quit: (application: unknown) => void };
+        const app = { quit: vi.fn() };
+        installed.quit(app);
+
+        expect(onQuit).toHaveBeenCalledTimes(1);
+        const runDefaultQuit = onQuit.mock.calls[0]?.[0] as () => void;
+        runDefaultQuit();
+        expect(defaultApplicationLifecycle.quit).toHaveBeenCalledWith(app);
     });
 });
 
@@ -129,6 +139,41 @@ describe("defaultDevRunnerDeps (getApplicationId)", () => {
     });
 });
 
+describe("defaultDevRunnerDeps (shutdown wiring)", () => {
+    beforeEach(() => {
+        hoisted.quitApplication.mockReset();
+        hoisted.installGracefulShutdown.mockReset();
+    });
+
+    it("routes shutdown handlers through installGracefulShutdown", () => {
+        const deps = defaultDevRunnerDeps();
+        const onSignal = vi.fn();
+
+        deps.installShutdownHandlers(onSignal);
+
+        expect(hoisted.installGracefulShutdown).toHaveBeenCalledWith({ onSignal });
+    });
+
+    it("quits the live default application", () => {
+        const deps = defaultDevRunnerDeps();
+        const application = { applicationId: "com.example.app" };
+        hoisted.getDefault.mockReturnValueOnce(application);
+
+        deps.quitDefaultApplication();
+
+        expect(hoisted.quitApplication).toHaveBeenCalledWith(application);
+    });
+
+    it("does nothing when no default application is registered", () => {
+        const deps = defaultDevRunnerDeps();
+        hoisted.getDefault.mockReturnValueOnce(null);
+
+        deps.quitDefaultApplication();
+
+        expect(hoisted.quitApplication).not.toHaveBeenCalled();
+    });
+});
+
 describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
     let root: string;
 
@@ -155,12 +200,12 @@ describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
 });
 
 describe("defaultDevRunnerDeps (log and exit)", () => {
-    it("forwards log messages through console.log with the [gtkx] prefix", () => {
+    it("forwards log messages through the output sink with the [gtkx] prefix", () => {
         const deps = defaultDevRunnerDeps();
-        const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         try {
             deps.log("hello");
-            expect(spy).toHaveBeenCalledWith("[gtkx] hello");
+            expect(spy).toHaveBeenCalledWith("[gtkx] hello\n");
         } finally {
             spy.mockRestore();
         }

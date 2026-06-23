@@ -125,3989 +125,6 @@ import type {
     VertexProvokingMode,
 } from "./types.js";
 
-const LIB = "libGL.so.1";
-
-const glActiveShaderProgram = t.fn(LIB, "glActiveShaderProgram", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glActiveTexture = t.fn(LIB, "glActiveTexture", [{ type: t.uint32 }], t.void);
-
-const glAttachShader = t.fn(LIB, "glAttachShader", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBeginConditionalRender = t.fn(
-    LIB,
-    "glBeginConditionalRender",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBeginQuery = t.fn(LIB, "glBeginQuery", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBeginQueryIndexed = t.fn(
-    LIB,
-    "glBeginQueryIndexed",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBeginTransformFeedback = t.fn(LIB, "glBeginTransformFeedback", [{ type: t.uint32 }], t.void);
-
-const glBindAttribLocation = t.fn(
-    LIB,
-    "glBindAttribLocation",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.void,
-);
-
-const glBindBuffer = t.fn(LIB, "glBindBuffer", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindBufferBase = t.fn(
-    LIB,
-    "glBindBufferBase",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBindBufferRange = t.fn(
-    LIB,
-    "glBindBufferRange",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glBindBuffersBase = t.fn(
-    LIB,
-    "glBindBuffersBase",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glBindBuffersRange = t.fn(
-    LIB,
-    "glBindBuffersRange",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.array(t.int64) },
-        { type: t.array(t.int64) },
-    ],
-    t.void,
-);
-
-const glBindFragDataLocation = t.fn(
-    LIB,
-    "glBindFragDataLocation",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.void,
-);
-
-const glBindFragDataLocationIndexed = t.fn(
-    LIB,
-    "glBindFragDataLocationIndexed",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.void,
-);
-
-const glBindFramebuffer = t.fn(LIB, "glBindFramebuffer", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindImageTexture = t.fn(
-    LIB,
-    "glBindImageTexture",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.boolean },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glBindImageTextures = t.fn(
-    LIB,
-    "glBindImageTextures",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glBindProgramPipeline = t.fn(LIB, "glBindProgramPipeline", [{ type: t.uint32 }], t.void);
-
-const glBindRenderbuffer = t.fn(LIB, "glBindRenderbuffer", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindSampler = t.fn(LIB, "glBindSampler", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindSamplers = t.fn(
-    LIB,
-    "glBindSamplers",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glBindTexture = t.fn(LIB, "glBindTexture", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindTextures = t.fn(
-    LIB,
-    "glBindTextures",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glBindTextureUnit = t.fn(LIB, "glBindTextureUnit", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindTransformFeedback = t.fn(LIB, "glBindTransformFeedback", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBindVertexArray = t.fn(LIB, "glBindVertexArray", [{ type: t.uint32 }], t.void);
-
-const glBindVertexBuffer = t.fn(
-    LIB,
-    "glBindVertexBuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int32 }],
-    t.void,
-);
-
-const glBindVertexBuffers = t.fn(
-    LIB,
-    "glBindVertexBuffers",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.array(t.int64) },
-        { type: t.array(t.int32) },
-    ],
-    t.void,
-);
-
-const glBlendColor = t.fn(
-    LIB,
-    "glBlendColor",
-    [{ type: t.float32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glBlendEquation = t.fn(LIB, "glBlendEquation", [{ type: t.uint32 }], t.void);
-
-const glBlendEquationi = t.fn(LIB, "glBlendEquationi", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBlendEquationSeparate = t.fn(LIB, "glBlendEquationSeparate", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBlendEquationSeparatei = t.fn(
-    LIB,
-    "glBlendEquationSeparatei",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBlendFunc = t.fn(LIB, "glBlendFunc", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBlendFunci = t.fn(LIB, "glBlendFunci", [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glBlendFuncSeparate = t.fn(
-    LIB,
-    "glBlendFuncSeparate",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBlendFuncSeparatei = t.fn(
-    LIB,
-    "glBlendFuncSeparatei",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBlitFramebuffer = t.fn(
-    LIB,
-    "glBlitFramebuffer",
-    [
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glBlitNamedFramebuffer = t.fn(
-    LIB,
-    "glBlitNamedFramebuffer",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glBufferData = t.fn(
-    LIB,
-    "glBufferData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.blob }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBufferStorage = t.fn(
-    LIB,
-    "glBufferStorage",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.blob }, { type: t.uint32 }],
-    t.void,
-);
-
-const glBufferSubData = t.fn(
-    LIB,
-    "glBufferSubData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.blob }],
-    t.void,
-);
-
-const glCheckFramebufferStatus = t.fn(LIB, "glCheckFramebufferStatus", [{ type: t.uint32 }], t.uint32);
-
-const glCheckNamedFramebufferStatus = t.fn(
-    LIB,
-    "glCheckNamedFramebufferStatus",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.uint32,
-);
-
-const glClampColor = t.fn(LIB, "glClampColor", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glClear = t.fn(LIB, "glClear", [{ type: t.uint32 }], t.void);
-
-const glClearBufferData = t.fn(
-    LIB,
-    "glClearBufferData",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.blob }],
-    t.void,
-);
-
-const glClearBufferfi = t.fn(
-    LIB,
-    "glClearBufferfi",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glClearBufferfv = t.fn(
-    LIB,
-    "glClearBufferfv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glClearBufferiv = t.fn(
-    LIB,
-    "glClearBufferiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glClearBufferSubData = t.fn(
-    LIB,
-    "glClearBufferSubData",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int64 },
-        { type: t.int64 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glClearBufferuiv = t.fn(
-    LIB,
-    "glClearBufferuiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glClearColor = t.fn(
-    LIB,
-    "glClearColor",
-    [{ type: t.float32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glClearDepth = t.fn(LIB, "glClearDepth", [{ type: t.float64 }], t.void);
-
-const glClearDepthf = t.fn(LIB, "glClearDepthf", [{ type: t.float32 }], t.void);
-
-const glClearNamedBufferData = t.fn(
-    LIB,
-    "glClearNamedBufferData",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.blob }],
-    t.void,
-);
-
-const glClearNamedBufferSubData = t.fn(
-    LIB,
-    "glClearNamedBufferSubData",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int64 },
-        { type: t.int64 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glClearNamedFramebufferfi = t.fn(
-    LIB,
-    "glClearNamedFramebufferfi",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.float32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glClearNamedFramebufferfv = t.fn(
-    LIB,
-    "glClearNamedFramebufferfv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glClearNamedFramebufferiv = t.fn(
-    LIB,
-    "glClearNamedFramebufferiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glClearNamedFramebufferuiv = t.fn(
-    LIB,
-    "glClearNamedFramebufferuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glClearStencil = t.fn(LIB, "glClearStencil", [{ type: t.int32 }], t.void);
-
-const glClearTexImage = t.fn(
-    LIB,
-    "glClearTexImage",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.blob }],
-    t.void,
-);
-
-const glClearTexSubImage = t.fn(
-    LIB,
-    "glClearTexSubImage",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glClientWaitSync = t.fn(
-    LIB,
-    "glClientWaitSync",
-    [{ type: t.struct("borrowed") }, { type: t.uint32 }, { type: t.uint64 }],
-    t.uint32,
-);
-
-const glClipControl = t.fn(LIB, "glClipControl", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glColorMask = t.fn(
-    LIB,
-    "glColorMask",
-    [{ type: t.boolean }, { type: t.boolean }, { type: t.boolean }, { type: t.boolean }],
-    t.void,
-);
-
-const glColorMaski = t.fn(
-    LIB,
-    "glColorMaski",
-    [{ type: t.uint32 }, { type: t.boolean }, { type: t.boolean }, { type: t.boolean }, { type: t.boolean }],
-    t.void,
-);
-
-const glCompileShader = t.fn(LIB, "glCompileShader", [{ type: t.uint32 }], t.void);
-
-const glCompressedTexImage1D = t.fn(
-    LIB,
-    "glCompressedTexImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTexImage2D = t.fn(
-    LIB,
-    "glCompressedTexImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTexImage3D = t.fn(
-    LIB,
-    "glCompressedTexImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTexSubImage1D = t.fn(
-    LIB,
-    "glCompressedTexSubImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTexSubImage2D = t.fn(
-    LIB,
-    "glCompressedTexSubImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTexSubImage3D = t.fn(
-    LIB,
-    "glCompressedTexSubImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTextureSubImage1D = t.fn(
-    LIB,
-    "glCompressedTextureSubImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTextureSubImage2D = t.fn(
-    LIB,
-    "glCompressedTextureSubImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCompressedTextureSubImage3D = t.fn(
-    LIB,
-    "glCompressedTextureSubImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glCopyBufferSubData = t.fn(
-    LIB,
-    "glCopyBufferSubData",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glCopyImageSubData = t.fn(
-    LIB,
-    "glCopyImageSubData",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCopyNamedBufferSubData = t.fn(
-    LIB,
-    "glCopyNamedBufferSubData",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glCopyTexImage1D = t.fn(
-    LIB,
-    "glCopyTexImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCopyTexImage2D = t.fn(
-    LIB,
-    "glCopyTexImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCopyTexSubImage1D = t.fn(
-    LIB,
-    "glCopyTexSubImage1D",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glCopyTexSubImage2D = t.fn(
-    LIB,
-    "glCopyTexSubImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCopyTexSubImage3D = t.fn(
-    LIB,
-    "glCopyTexSubImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCopyTextureSubImage1D = t.fn(
-    LIB,
-    "glCopyTextureSubImage1D",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glCopyTextureSubImage2D = t.fn(
-    LIB,
-    "glCopyTextureSubImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCopyTextureSubImage3D = t.fn(
-    LIB,
-    "glCopyTextureSubImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glCreateBuffers = t.fn(
-    LIB,
-    "glCreateBuffers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCreateFramebuffers = t.fn(
-    LIB,
-    "glCreateFramebuffers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCreateProgram = t.fn(LIB, "glCreateProgram", [], t.uint32);
-
-const glCreateProgramPipelines = t.fn(
-    LIB,
-    "glCreateProgramPipelines",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCreateQueries = t.fn(
-    LIB,
-    "glCreateQueries",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 1)) }],
-    t.void,
-);
-
-const glCreateRenderbuffers = t.fn(
-    LIB,
-    "glCreateRenderbuffers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCreateSamplers = t.fn(
-    LIB,
-    "glCreateSamplers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCreateShader = t.fn(LIB, "glCreateShader", [{ type: t.uint32 }], t.uint32);
-
-const glCreateShaderProgramv = t.fn(
-    LIB,
-    "glCreateShaderProgramv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.string("borrowed")) }],
-    t.uint32,
-);
-
-const glCreateTextures = t.fn(
-    LIB,
-    "glCreateTextures",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 1)) }],
-    t.void,
-);
-
-const glCreateTransformFeedbacks = t.fn(
-    LIB,
-    "glCreateTransformFeedbacks",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCreateVertexArrays = t.fn(
-    LIB,
-    "glCreateVertexArrays",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glCullFace = t.fn(LIB, "glCullFace", [{ type: t.uint32 }], t.void);
-
-const glDebugMessageControl = t.fn(
-    LIB,
-    "glDebugMessageControl",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glDebugMessageInsert = t.fn(
-    LIB,
-    "glDebugMessageInsert",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.string("borrowed") },
-    ],
-    t.void,
-);
-
-const glDeleteBuffers = t.fn(LIB, "glDeleteBuffers", [{ type: t.int32 }, { type: t.array(t.uint32) }], t.void);
-
-const glDeleteFramebuffers = t.fn(
-    LIB,
-    "glDeleteFramebuffers",
-    [{ type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glDeleteProgram = t.fn(LIB, "glDeleteProgram", [{ type: t.uint32 }], t.void);
-
-const glDeleteProgramPipelines = t.fn(
-    LIB,
-    "glDeleteProgramPipelines",
-    [{ type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glDeleteQueries = t.fn(LIB, "glDeleteQueries", [{ type: t.int32 }, { type: t.array(t.uint32) }], t.void);
-
-const glDeleteRenderbuffers = t.fn(
-    LIB,
-    "glDeleteRenderbuffers",
-    [{ type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glDeleteSamplers = t.fn(LIB, "glDeleteSamplers", [{ type: t.int32 }, { type: t.array(t.uint32) }], t.void);
-
-const glDeleteShader = t.fn(LIB, "glDeleteShader", [{ type: t.uint32 }], t.void);
-
-const glDeleteSync = t.fn(LIB, "glDeleteSync", [{ type: t.struct("borrowed") }], t.void);
-
-const glDeleteTextures = t.fn(LIB, "glDeleteTextures", [{ type: t.int32 }, { type: t.array(t.uint32) }], t.void);
-
-const glDeleteTransformFeedbacks = t.fn(
-    LIB,
-    "glDeleteTransformFeedbacks",
-    [{ type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glDeleteVertexArrays = t.fn(
-    LIB,
-    "glDeleteVertexArrays",
-    [{ type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glDepthFunc = t.fn(LIB, "glDepthFunc", [{ type: t.uint32 }], t.void);
-
-const glDepthMask = t.fn(LIB, "glDepthMask", [{ type: t.boolean }], t.void);
-
-const glDepthRange = t.fn(LIB, "glDepthRange", [{ type: t.float64 }, { type: t.float64 }], t.void);
-
-const glDepthRangeArrayv = t.fn(
-    LIB,
-    "glDepthRangeArrayv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glDepthRangef = t.fn(LIB, "glDepthRangef", [{ type: t.float32 }, { type: t.float32 }], t.void);
-
-const glDepthRangeIndexed = t.fn(
-    LIB,
-    "glDepthRangeIndexed",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glDetachShader = t.fn(LIB, "glDetachShader", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glDisable = t.fn(LIB, "glDisable", [{ type: t.uint32 }], t.void);
-
-const glDisablei = t.fn(LIB, "glDisablei", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glDisableVertexArrayAttrib = t.fn(
-    LIB,
-    "glDisableVertexArrayAttrib",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glDisableVertexAttribArray = t.fn(LIB, "glDisableVertexAttribArray", [{ type: t.uint32 }], t.void);
-
-const glDispatchCompute = t.fn(
-    LIB,
-    "glDispatchCompute",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glDispatchComputeIndirect = t.fn(LIB, "glDispatchComputeIndirect", [{ type: t.int64 }], t.void);
-
-const glDrawArrays = t.fn(LIB, "glDrawArrays", [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }], t.void);
-
-const glDrawArraysIndirect = t.fn(LIB, "glDrawArraysIndirect", [{ type: t.uint32 }, { type: t.uint64 }], t.void);
-
-const glDrawArraysInstanced = t.fn(
-    LIB,
-    "glDrawArraysInstanced",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glDrawArraysInstancedBaseInstance = t.fn(
-    LIB,
-    "glDrawArraysInstancedBaseInstance",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glDrawBuffer = t.fn(LIB, "glDrawBuffer", [{ type: t.uint32 }], t.void);
-
-const glDrawBuffers = t.fn(LIB, "glDrawBuffers", [{ type: t.int32 }, { type: t.array(t.uint32) }], t.void);
-
-const glDrawElements = t.fn(
-    LIB,
-    "glDrawElements",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint64 }],
-    t.void,
-);
-
-const glDrawElementsBaseVertex = t.fn(
-    LIB,
-    "glDrawElementsBaseVertex",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint64 }, { type: t.int32 }],
-    t.void,
-);
-
-const glDrawElementsIndirect = t.fn(
-    LIB,
-    "glDrawElementsIndirect",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint64 }],
-    t.void,
-);
-
-const glDrawElementsInstanced = t.fn(
-    LIB,
-    "glDrawElementsInstanced",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint64 }, { type: t.int32 }],
-    t.void,
-);
-
-const glDrawElementsInstancedBaseInstance = t.fn(
-    LIB,
-    "glDrawElementsInstancedBaseInstance",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint64 },
-        { type: t.int32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glDrawElementsInstancedBaseVertex = t.fn(
-    LIB,
-    "glDrawElementsInstancedBaseVertex",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint64 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glDrawElementsInstancedBaseVertexBaseInstance = t.fn(
-    LIB,
-    "glDrawElementsInstancedBaseVertexBaseInstance",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint64 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glDrawRangeElements = t.fn(
-    LIB,
-    "glDrawRangeElements",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint64 },
-    ],
-    t.void,
-);
-
-const glDrawRangeElementsBaseVertex = t.fn(
-    LIB,
-    "glDrawRangeElementsBaseVertex",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint64 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glDrawTransformFeedback = t.fn(LIB, "glDrawTransformFeedback", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glDrawTransformFeedbackInstanced = t.fn(
-    LIB,
-    "glDrawTransformFeedbackInstanced",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glDrawTransformFeedbackStream = t.fn(
-    LIB,
-    "glDrawTransformFeedbackStream",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glDrawTransformFeedbackStreamInstanced = t.fn(
-    LIB,
-    "glDrawTransformFeedbackStreamInstanced",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glEnable = t.fn(LIB, "glEnable", [{ type: t.uint32 }], t.void);
-
-const glEnablei = t.fn(LIB, "glEnablei", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glEnableVertexArrayAttrib = t.fn(
-    LIB,
-    "glEnableVertexArrayAttrib",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glEnableVertexAttribArray = t.fn(LIB, "glEnableVertexAttribArray", [{ type: t.uint32 }], t.void);
-
-const glEndConditionalRender = t.fn(LIB, "glEndConditionalRender", [], t.void);
-
-const glEndQuery = t.fn(LIB, "glEndQuery", [{ type: t.uint32 }], t.void);
-
-const glEndQueryIndexed = t.fn(LIB, "glEndQueryIndexed", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glEndTransformFeedback = t.fn(LIB, "glEndTransformFeedback", [], t.void);
-
-const glFenceSync = t.fn(LIB, "glFenceSync", [{ type: t.uint32 }, { type: t.uint32 }], t.struct("borrowed"));
-
-const glFinish = t.fn(LIB, "glFinish", [], t.void);
-
-const glFlush = t.fn(LIB, "glFlush", [], t.void);
-
-const glFlushMappedBufferRange = t.fn(
-    LIB,
-    "glFlushMappedBufferRange",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glFlushMappedNamedBufferRange = t.fn(
-    LIB,
-    "glFlushMappedNamedBufferRange",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glFramebufferParameteri = t.fn(
-    LIB,
-    "glFramebufferParameteri",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glFramebufferRenderbuffer = t.fn(
-    LIB,
-    "glFramebufferRenderbuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glFramebufferTexture = t.fn(
-    LIB,
-    "glFramebufferTexture",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glFramebufferTexture1D = t.fn(
-    LIB,
-    "glFramebufferTexture1D",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glFramebufferTexture2D = t.fn(
-    LIB,
-    "glFramebufferTexture2D",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glFramebufferTexture3D = t.fn(
-    LIB,
-    "glFramebufferTexture3D",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glFramebufferTextureLayer = t.fn(
-    LIB,
-    "glFramebufferTextureLayer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glFrontFace = t.fn(LIB, "glFrontFace", [{ type: t.uint32 }], t.void);
-
-const glGenBuffers = t.fn(LIB, "glGenBuffers", [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }], t.void);
-
-const glGenerateMipmap = t.fn(LIB, "glGenerateMipmap", [{ type: t.uint32 }], t.void);
-
-const glGenerateTextureMipmap = t.fn(LIB, "glGenerateTextureMipmap", [{ type: t.uint32 }], t.void);
-
-const glGenFramebuffers = t.fn(
-    LIB,
-    "glGenFramebuffers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGenProgramPipelines = t.fn(
-    LIB,
-    "glGenProgramPipelines",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGenQueries = t.fn(LIB, "glGenQueries", [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }], t.void);
-
-const glGenRenderbuffers = t.fn(
-    LIB,
-    "glGenRenderbuffers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGenSamplers = t.fn(
-    LIB,
-    "glGenSamplers",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGenTextures = t.fn(
-    LIB,
-    "glGenTextures",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGenTransformFeedbacks = t.fn(
-    LIB,
-    "glGenTransformFeedbacks",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGenVertexArrays = t.fn(
-    LIB,
-    "glGenVertexArrays",
-    [{ type: t.int32 }, { type: t.ref(t.sizedArray(t.uint32, 0)) }],
-    t.void,
-);
-
-const glGetAttachedShaders = t.fn(
-    LIB,
-    "glGetAttachedShaders",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.int32) }, { type: t.ref(t.sizedArray(t.uint32, 1)) }],
-    t.void,
-);
-
-const glGetAttribLocation = t.fn(
-    LIB,
-    "glGetAttribLocation",
-    [{ type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetBufferParameteri64v = t.fn(
-    LIB,
-    "glGetBufferParameteri64v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int64) }],
-    t.void,
-);
-
-const glGetBufferParameteriv = t.fn(
-    LIB,
-    "glGetBufferParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetBufferSubData = t.fn(
-    LIB,
-    "glGetBufferSubData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.blob }],
-    t.void,
-);
-
-const glGetCompressedTexImage = t.fn(
-    LIB,
-    "glGetCompressedTexImage",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.blob }],
-    t.void,
-);
-
-const glGetCompressedTextureImage = t.fn(
-    LIB,
-    "glGetCompressedTextureImage",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.blob }],
-    t.void,
-);
-
-const glGetCompressedTextureSubImage = t.fn(
-    LIB,
-    "glGetCompressedTextureSubImage",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glGetError = t.fn(LIB, "glGetError", [], t.uint32);
-
-const glGetFragDataIndex = t.fn(
-    LIB,
-    "glGetFragDataIndex",
-    [{ type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetFragDataLocation = t.fn(
-    LIB,
-    "glGetFragDataLocation",
-    [{ type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetFramebufferAttachmentParameteriv = t.fn(
-    LIB,
-    "glGetFramebufferAttachmentParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetFramebufferParameteriv = t.fn(
-    LIB,
-    "glGetFramebufferParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetGraphicsResetStatus = t.fn(LIB, "glGetGraphicsResetStatus", [], t.uint32);
-
-const glGetInternalformati64v = t.fn(
-    LIB,
-    "glGetInternalformati64v",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.ref(t.sizedArray(t.int64, 3)) },
-    ],
-    t.void,
-);
-
-const glGetInternalformativ = t.fn(
-    LIB,
-    "glGetInternalformativ",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.ref(t.sizedArray(t.int32, 3)) },
-    ],
-    t.void,
-);
-
-const glGetNamedBufferParameteri64v = t.fn(
-    LIB,
-    "glGetNamedBufferParameteri64v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int64) }],
-    t.void,
-);
-
-const glGetNamedBufferParameteriv = t.fn(
-    LIB,
-    "glGetNamedBufferParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetNamedBufferSubData = t.fn(
-    LIB,
-    "glGetNamedBufferSubData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.blob }],
-    t.void,
-);
-
-const glGetNamedFramebufferAttachmentParameteriv = t.fn(
-    LIB,
-    "glGetNamedFramebufferAttachmentParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetNamedFramebufferParameteriv = t.fn(
-    LIB,
-    "glGetNamedFramebufferParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetNamedRenderbufferParameteriv = t.fn(
-    LIB,
-    "glGetNamedRenderbufferParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetnCompressedTexImage = t.fn(
-    LIB,
-    "glGetnCompressedTexImage",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.blob }],
-    t.void,
-);
-
-const glGetnTexImage = t.fn(
-    LIB,
-    "glGetnTexImage",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glGetProgramBinary = t.fn(
-    LIB,
-    "glGetProgramBinary",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.int32) }, { type: t.ref(t.uint32) }, { type: t.blob }],
-    t.void,
-);
-
-const glGetProgramiv = t.fn(
-    LIB,
-    "glGetProgramiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetProgramPipelineiv = t.fn(
-    LIB,
-    "glGetProgramPipelineiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetProgramResourceIndex = t.fn(
-    LIB,
-    "glGetProgramResourceIndex",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.uint32,
-);
-
-const glGetProgramResourceiv = t.fn(
-    LIB,
-    "glGetProgramResourceiv",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.int32 },
-        { type: t.ref(t.int32) },
-        { type: t.ref(t.sizedArray(t.int32, 5)) },
-    ],
-    t.void,
-);
-
-const glGetProgramResourceLocation = t.fn(
-    LIB,
-    "glGetProgramResourceLocation",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetProgramResourceLocationIndex = t.fn(
-    LIB,
-    "glGetProgramResourceLocationIndex",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetProgramStageiv = t.fn(
-    LIB,
-    "glGetProgramStageiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetQueryBufferObjecti64v = t.fn(
-    LIB,
-    "glGetQueryBufferObjecti64v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }],
-    t.void,
-);
-
-const glGetQueryBufferObjectiv = t.fn(
-    LIB,
-    "glGetQueryBufferObjectiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }],
-    t.void,
-);
-
-const glGetQueryBufferObjectui64v = t.fn(
-    LIB,
-    "glGetQueryBufferObjectui64v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }],
-    t.void,
-);
-
-const glGetQueryBufferObjectuiv = t.fn(
-    LIB,
-    "glGetQueryBufferObjectuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }],
-    t.void,
-);
-
-const glGetQueryiv = t.fn(
-    LIB,
-    "glGetQueryiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetQueryObjecti64v = t.fn(
-    LIB,
-    "glGetQueryObjecti64v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int64) }],
-    t.void,
-);
-
-const glGetQueryObjectiv = t.fn(
-    LIB,
-    "glGetQueryObjectiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetQueryObjectui64v = t.fn(
-    LIB,
-    "glGetQueryObjectui64v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.uint64) }],
-    t.void,
-);
-
-const glGetQueryObjectuiv = t.fn(
-    LIB,
-    "glGetQueryObjectuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGetRenderbufferParameteriv = t.fn(
-    LIB,
-    "glGetRenderbufferParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetShaderiv = t.fn(
-    LIB,
-    "glGetShaderiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetShaderPrecisionFormat = t.fn(
-    LIB,
-    "glGetShaderPrecisionFormat",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.fixedArray(t.int32, 2)) }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetString = t.fn(LIB, "glGetString", [{ type: t.uint32 }], t.string("borrowed"));
-
-const glGetStringi = t.fn(LIB, "glGetStringi", [{ type: t.uint32 }, { type: t.uint32 }], t.string("borrowed"));
-
-const glGetSubroutineIndex = t.fn(
-    LIB,
-    "glGetSubroutineIndex",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.uint32,
-);
-
-const glGetSubroutineUniformLocation = t.fn(
-    LIB,
-    "glGetSubroutineUniformLocation",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetSynciv = t.fn(
-    LIB,
-    "glGetSynciv",
-    [
-        { type: t.struct("borrowed") },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.ref(t.int32) },
-        { type: t.ref(t.sizedArray(t.int32, 2)) },
-    ],
-    t.void,
-);
-
-const glGetTexImage = t.fn(
-    LIB,
-    "glGetTexImage",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.blob }],
-    t.void,
-);
-
-const glGetTextureImage = t.fn(
-    LIB,
-    "glGetTextureImage",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glGetTextureLevelParameterfv = t.fn(
-    LIB,
-    "glGetTextureLevelParameterfv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.ref(t.float32) }],
-    t.void,
-);
-
-const glGetTextureLevelParameteriv = t.fn(
-    LIB,
-    "glGetTextureLevelParameteriv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetTextureParameterfv = t.fn(
-    LIB,
-    "glGetTextureParameterfv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.float32) }],
-    t.void,
-);
-
-const glGetTextureParameterIiv = t.fn(
-    LIB,
-    "glGetTextureParameterIiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetTextureParameterIuiv = t.fn(
-    LIB,
-    "glGetTextureParameterIuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGetTextureParameteriv = t.fn(
-    LIB,
-    "glGetTextureParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetTextureSubImage = t.fn(
-    LIB,
-    "glGetTextureSubImage",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glGetTransformFeedbacki_v = t.fn(
-    LIB,
-    "glGetTransformFeedbacki_v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetTransformFeedbacki64_v = t.fn(
-    LIB,
-    "glGetTransformFeedbacki64_v",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int64) }],
-    t.void,
-);
-
-const glGetTransformFeedbackiv = t.fn(
-    LIB,
-    "glGetTransformFeedbackiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetUniformBlockIndex = t.fn(
-    LIB,
-    "glGetUniformBlockIndex",
-    [{ type: t.uint32 }, { type: t.string("borrowed") }],
-    t.uint32,
-);
-
-const glGetUniformLocation = t.fn(
-    LIB,
-    "glGetUniformLocation",
-    [{ type: t.uint32 }, { type: t.string("borrowed") }],
-    t.int32,
-);
-
-const glGetUniformSubroutineuiv = t.fn(
-    LIB,
-    "glGetUniformSubroutineuiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGetVertexArrayIndexed64iv = t.fn(
-    LIB,
-    "glGetVertexArrayIndexed64iv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int64) }],
-    t.void,
-);
-
-const glGetVertexArrayIndexediv = t.fn(
-    LIB,
-    "glGetVertexArrayIndexediv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetVertexArrayiv = t.fn(
-    LIB,
-    "glGetVertexArrayiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetVertexAttribdv = t.fn(
-    LIB,
-    "glGetVertexAttribdv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.fixedArray(t.float64, 4)) }],
-    t.void,
-);
-
-const glGetVertexAttribfv = t.fn(
-    LIB,
-    "glGetVertexAttribfv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.fixedArray(t.float32, 4)) }],
-    t.void,
-);
-
-const glGetVertexAttribIiv = t.fn(
-    LIB,
-    "glGetVertexAttribIiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.int32) }],
-    t.void,
-);
-
-const glGetVertexAttribIuiv = t.fn(
-    LIB,
-    "glGetVertexAttribIuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGetVertexAttribiv = t.fn(
-    LIB,
-    "glGetVertexAttribiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.ref(t.fixedArray(t.int32, 4)) }],
-    t.void,
-);
-
-const glHint = t.fn(LIB, "glHint", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glInvalidateBufferData = t.fn(LIB, "glInvalidateBufferData", [{ type: t.uint32 }], t.void);
-
-const glInvalidateBufferSubData = t.fn(
-    LIB,
-    "glInvalidateBufferSubData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glInvalidateFramebuffer = t.fn(
-    LIB,
-    "glInvalidateFramebuffer",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glInvalidateNamedFramebufferData = t.fn(
-    LIB,
-    "glInvalidateNamedFramebufferData",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glInvalidateNamedFramebufferSubData = t.fn(
-    LIB,
-    "glInvalidateNamedFramebufferSubData",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glInvalidateSubFramebuffer = t.fn(
-    LIB,
-    "glInvalidateSubFramebuffer",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glInvalidateTexImage = t.fn(LIB, "glInvalidateTexImage", [{ type: t.uint32 }, { type: t.int32 }], t.void);
-
-const glInvalidateTexSubImage = t.fn(
-    LIB,
-    "glInvalidateTexSubImage",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glIsBuffer = t.fn(LIB, "glIsBuffer", [{ type: t.uint32 }], t.uint8);
-
-const glIsEnabled = t.fn(LIB, "glIsEnabled", [{ type: t.uint32 }], t.uint8);
-
-const glIsEnabledi = t.fn(LIB, "glIsEnabledi", [{ type: t.uint32 }, { type: t.uint32 }], t.uint8);
-
-const glIsFramebuffer = t.fn(LIB, "glIsFramebuffer", [{ type: t.uint32 }], t.uint8);
-
-const glIsProgram = t.fn(LIB, "glIsProgram", [{ type: t.uint32 }], t.uint8);
-
-const glIsProgramPipeline = t.fn(LIB, "glIsProgramPipeline", [{ type: t.uint32 }], t.uint8);
-
-const glIsQuery = t.fn(LIB, "glIsQuery", [{ type: t.uint32 }], t.uint8);
-
-const glIsRenderbuffer = t.fn(LIB, "glIsRenderbuffer", [{ type: t.uint32 }], t.uint8);
-
-const glIsSampler = t.fn(LIB, "glIsSampler", [{ type: t.uint32 }], t.uint8);
-
-const glIsShader = t.fn(LIB, "glIsShader", [{ type: t.uint32 }], t.uint8);
-
-const glIsSync = t.fn(LIB, "glIsSync", [{ type: t.struct("borrowed") }], t.uint8);
-
-const glIsTexture = t.fn(LIB, "glIsTexture", [{ type: t.uint32 }], t.uint8);
-
-const glIsTransformFeedback = t.fn(LIB, "glIsTransformFeedback", [{ type: t.uint32 }], t.uint8);
-
-const glIsVertexArray = t.fn(LIB, "glIsVertexArray", [{ type: t.uint32 }], t.uint8);
-
-const glLineWidth = t.fn(LIB, "glLineWidth", [{ type: t.float32 }], t.void);
-
-const glLinkProgram = t.fn(LIB, "glLinkProgram", [{ type: t.uint32 }], t.void);
-
-const glLogicOp = t.fn(LIB, "glLogicOp", [{ type: t.uint32 }], t.void);
-
-const glMapBuffer = t.fn(LIB, "glMapBuffer", [{ type: t.uint32 }, { type: t.uint32 }], t.struct("borrowed"));
-
-const glMapBufferRange = t.fn(
-    LIB,
-    "glMapBufferRange",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.uint32 }],
-    t.struct("borrowed"),
-);
-
-const glMapNamedBuffer = t.fn(LIB, "glMapNamedBuffer", [{ type: t.uint32 }, { type: t.uint32 }], t.struct("borrowed"));
-
-const glMapNamedBufferRange = t.fn(
-    LIB,
-    "glMapNamedBufferRange",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.uint32 }],
-    t.struct("borrowed"),
-);
-
-const glMemoryBarrier = t.fn(LIB, "glMemoryBarrier", [{ type: t.uint32 }], t.void);
-
-const glMemoryBarrierByRegion = t.fn(LIB, "glMemoryBarrierByRegion", [{ type: t.uint32 }], t.void);
-
-const glMinSampleShading = t.fn(LIB, "glMinSampleShading", [{ type: t.float32 }], t.void);
-
-const glMultiDrawArrays = t.fn(
-    LIB,
-    "glMultiDrawArrays",
-    [{ type: t.uint32 }, { type: t.array(t.int32) }, { type: t.array(t.int32) }, { type: t.int32 }],
-    t.void,
-);
-
-const glMultiDrawArraysIndirect = t.fn(
-    LIB,
-    "glMultiDrawArraysIndirect",
-    [{ type: t.uint32 }, { type: t.uint64 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glMultiDrawArraysIndirectCount = t.fn(
-    LIB,
-    "glMultiDrawArraysIndirectCount",
-    [{ type: t.uint32 }, { type: t.blob }, { type: t.int64 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glMultiDrawElements = t.fn(
-    LIB,
-    "glMultiDrawElements",
-    [
-        { type: t.uint32 },
-        { type: t.array(t.int32) },
-        { type: t.uint32 },
-        { type: t.array(t.uint64) },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glMultiDrawElementsBaseVertex = t.fn(
-    LIB,
-    "glMultiDrawElementsBaseVertex",
-    [
-        { type: t.uint32 },
-        { type: t.array(t.int32) },
-        { type: t.uint32 },
-        { type: t.array(t.uint64) },
-        { type: t.int32 },
-        { type: t.array(t.int32) },
-    ],
-    t.void,
-);
-
-const glMultiDrawElementsIndirect = t.fn(
-    LIB,
-    "glMultiDrawElementsIndirect",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint64 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glMultiDrawElementsIndirectCount = t.fn(
-    LIB,
-    "glMultiDrawElementsIndirectCount",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.blob }, { type: t.int64 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glNamedBufferData = t.fn(
-    LIB,
-    "glNamedBufferData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.blob }, { type: t.uint32 }],
-    t.void,
-);
-
-const glNamedBufferStorage = t.fn(
-    LIB,
-    "glNamedBufferStorage",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.blob }, { type: t.uint32 }],
-    t.void,
-);
-
-const glNamedBufferSubData = t.fn(
-    LIB,
-    "glNamedBufferSubData",
-    [{ type: t.uint32 }, { type: t.int64 }, { type: t.int64 }, { type: t.blob }],
-    t.void,
-);
-
-const glNamedFramebufferDrawBuffer = t.fn(
-    LIB,
-    "glNamedFramebufferDrawBuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glNamedFramebufferDrawBuffers = t.fn(
-    LIB,
-    "glNamedFramebufferDrawBuffers",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glNamedFramebufferParameteri = t.fn(
-    LIB,
-    "glNamedFramebufferParameteri",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glNamedFramebufferReadBuffer = t.fn(
-    LIB,
-    "glNamedFramebufferReadBuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glNamedFramebufferRenderbuffer = t.fn(
-    LIB,
-    "glNamedFramebufferRenderbuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glNamedFramebufferTexture = t.fn(
-    LIB,
-    "glNamedFramebufferTexture",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glNamedFramebufferTextureLayer = t.fn(
-    LIB,
-    "glNamedFramebufferTextureLayer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glNamedRenderbufferStorage = t.fn(
-    LIB,
-    "glNamedRenderbufferStorage",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glNamedRenderbufferStorageMultisample = t.fn(
-    LIB,
-    "glNamedRenderbufferStorageMultisample",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glObjectLabel = t.fn(
-    LIB,
-    "glObjectLabel",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.string("borrowed") }],
-    t.void,
-);
-
-const glObjectPtrLabel = t.fn(
-    LIB,
-    "glObjectPtrLabel",
-    [{ type: t.blob }, { type: t.int32 }, { type: t.string("borrowed") }],
-    t.void,
-);
-
-const glPatchParameterfv = t.fn(LIB, "glPatchParameterfv", [{ type: t.uint32 }, { type: t.array(t.float32) }], t.void);
-
-const glPatchParameteri = t.fn(LIB, "glPatchParameteri", [{ type: t.uint32 }, { type: t.int32 }], t.void);
-
-const glPauseTransformFeedback = t.fn(LIB, "glPauseTransformFeedback", [], t.void);
-
-const glPixelStoref = t.fn(LIB, "glPixelStoref", [{ type: t.uint32 }, { type: t.float32 }], t.void);
-
-const glPixelStorei = t.fn(LIB, "glPixelStorei", [{ type: t.uint32 }, { type: t.int32 }], t.void);
-
-const glPointParameterf = t.fn(LIB, "glPointParameterf", [{ type: t.uint32 }, { type: t.float32 }], t.void);
-
-const glPointParameterfv = t.fn(LIB, "glPointParameterfv", [{ type: t.uint32 }, { type: t.array(t.float32) }], t.void);
-
-const glPointParameteri = t.fn(LIB, "glPointParameteri", [{ type: t.uint32 }, { type: t.int32 }], t.void);
-
-const glPointParameteriv = t.fn(LIB, "glPointParameteriv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glPointSize = t.fn(LIB, "glPointSize", [{ type: t.float32 }], t.void);
-
-const glPolygonMode = t.fn(LIB, "glPolygonMode", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glPolygonOffset = t.fn(LIB, "glPolygonOffset", [{ type: t.float32 }, { type: t.float32 }], t.void);
-
-const glPolygonOffsetClamp = t.fn(
-    LIB,
-    "glPolygonOffsetClamp",
-    [{ type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glPopDebugGroup = t.fn(LIB, "glPopDebugGroup", [], t.void);
-
-const glPrimitiveRestartIndex = t.fn(LIB, "glPrimitiveRestartIndex", [{ type: t.uint32 }], t.void);
-
-const glProgramBinary = t.fn(
-    LIB,
-    "glProgramBinary",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.blob }, { type: t.int32 }],
-    t.void,
-);
-
-const glProgramParameteri = t.fn(
-    LIB,
-    "glProgramParameteri",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glProgramUniform1d = t.fn(
-    LIB,
-    "glProgramUniform1d",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float64 }],
-    t.void,
-);
-
-const glProgramUniform1dv = t.fn(
-    LIB,
-    "glProgramUniform1dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniform1f = t.fn(
-    LIB,
-    "glProgramUniform1f",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glProgramUniform1fv = t.fn(
-    LIB,
-    "glProgramUniform1fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniform1i = t.fn(
-    LIB,
-    "glProgramUniform1i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glProgramUniform1iv = t.fn(
-    LIB,
-    "glProgramUniform1iv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glProgramUniform1ui = t.fn(
-    LIB,
-    "glProgramUniform1ui",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glProgramUniform1uiv = t.fn(
-    LIB,
-    "glProgramUniform1uiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glProgramUniform2d = t.fn(
-    LIB,
-    "glProgramUniform2d",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glProgramUniform2dv = t.fn(
-    LIB,
-    "glProgramUniform2dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniform2f = t.fn(
-    LIB,
-    "glProgramUniform2f",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glProgramUniform2fv = t.fn(
-    LIB,
-    "glProgramUniform2fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniform2i = t.fn(
-    LIB,
-    "glProgramUniform2i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glProgramUniform2iv = t.fn(
-    LIB,
-    "glProgramUniform2iv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glProgramUniform2ui = t.fn(
-    LIB,
-    "glProgramUniform2ui",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glProgramUniform2uiv = t.fn(
-    LIB,
-    "glProgramUniform2uiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glProgramUniform3d = t.fn(
-    LIB,
-    "glProgramUniform3d",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glProgramUniform3dv = t.fn(
-    LIB,
-    "glProgramUniform3dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniform3f = t.fn(
-    LIB,
-    "glProgramUniform3f",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glProgramUniform3fv = t.fn(
-    LIB,
-    "glProgramUniform3fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniform3i = t.fn(
-    LIB,
-    "glProgramUniform3i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glProgramUniform3iv = t.fn(
-    LIB,
-    "glProgramUniform3iv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glProgramUniform3ui = t.fn(
-    LIB,
-    "glProgramUniform3ui",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glProgramUniform3uiv = t.fn(
-    LIB,
-    "glProgramUniform3uiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glProgramUniform4d = t.fn(
-    LIB,
-    "glProgramUniform4d",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-        { type: t.float64 },
-    ],
-    t.void,
-);
-
-const glProgramUniform4dv = t.fn(
-    LIB,
-    "glProgramUniform4dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniform4f = t.fn(
-    LIB,
-    "glProgramUniform4f",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.float32 },
-        { type: t.float32 },
-        { type: t.float32 },
-        { type: t.float32 },
-    ],
-    t.void,
-);
-
-const glProgramUniform4fv = t.fn(
-    LIB,
-    "glProgramUniform4fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniform4i = t.fn(
-    LIB,
-    "glProgramUniform4i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glProgramUniform4iv = t.fn(
-    LIB,
-    "glProgramUniform4iv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glProgramUniform4ui = t.fn(
-    LIB,
-    "glProgramUniform4ui",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glProgramUniform4uiv = t.fn(
-    LIB,
-    "glProgramUniform4uiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix2dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix2dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix2fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix2fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix2x3dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix2x3dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix2x3fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix2x3fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix2x4dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix2x4dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix2x4fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix2x4fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix3dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix3dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix3fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix3fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix3x2dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix3x2dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix3x2fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix3x2fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix3x4dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix3x4dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix3x4fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix3x4fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix4dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix4dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix4fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix4fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix4x2dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix4x2dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix4x2fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix4x2fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProgramUniformMatrix4x3dv = t.fn(
-    LIB,
-    "glProgramUniformMatrix4x3dv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glProgramUniformMatrix4x3fv = t.fn(
-    LIB,
-    "glProgramUniformMatrix4x3fv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glProvokingVertex = t.fn(LIB, "glProvokingVertex", [{ type: t.uint32 }], t.void);
-
-const glPushDebugGroup = t.fn(
-    LIB,
-    "glPushDebugGroup",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.string("borrowed") }],
-    t.void,
-);
-
-const glQueryCounter = t.fn(LIB, "glQueryCounter", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glReadBuffer = t.fn(LIB, "glReadBuffer", [{ type: t.uint32 }], t.void);
-
-const glReadnPixels = t.fn(
-    LIB,
-    "glReadnPixels",
-    [
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glReadPixels = t.fn(
-    LIB,
-    "glReadPixels",
-    [
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glReleaseShaderCompiler = t.fn(LIB, "glReleaseShaderCompiler", [], t.void);
-
-const glRenderbufferStorage = t.fn(
-    LIB,
-    "glRenderbufferStorage",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glRenderbufferStorageMultisample = t.fn(
-    LIB,
-    "glRenderbufferStorageMultisample",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glResumeTransformFeedback = t.fn(LIB, "glResumeTransformFeedback", [], t.void);
-
-const glSampleCoverage = t.fn(LIB, "glSampleCoverage", [{ type: t.float32 }, { type: t.boolean }], t.void);
-
-const glSampleMaski = t.fn(LIB, "glSampleMaski", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glSamplerParameterf = t.fn(
-    LIB,
-    "glSamplerParameterf",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glSamplerParameterfv = t.fn(
-    LIB,
-    "glSamplerParameterfv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glSamplerParameteri = t.fn(
-    LIB,
-    "glSamplerParameteri",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glSamplerParameterIiv = t.fn(
-    LIB,
-    "glSamplerParameterIiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glSamplerParameterIuiv = t.fn(
-    LIB,
-    "glSamplerParameterIuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glSamplerParameteriv = t.fn(
-    LIB,
-    "glSamplerParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glScissor = t.fn(
-    LIB,
-    "glScissor",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glScissorArrayv = t.fn(
-    LIB,
-    "glScissorArrayv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glScissorIndexed = t.fn(
-    LIB,
-    "glScissorIndexed",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glScissorIndexedv = t.fn(LIB, "glScissorIndexedv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glShaderBinary = t.fn(
-    LIB,
-    "glShaderBinary",
-    [{ type: t.int32 }, { type: t.array(t.uint32) }, { type: t.uint32 }, { type: t.blob }, { type: t.int32 }],
-    t.void,
-);
-
-const glShaderSource = t.fn(
-    LIB,
-    "glShaderSource",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.string("borrowed")) }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glShaderStorageBlockBinding = t.fn(
-    LIB,
-    "glShaderStorageBlockBinding",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glSpecializeShader = t.fn(
-    LIB,
-    "glSpecializeShader",
-    [
-        { type: t.uint32 },
-        { type: t.string("borrowed") },
-        { type: t.uint32 },
-        { type: t.array(t.uint32) },
-        { type: t.array(t.uint32) },
-    ],
-    t.void,
-);
-
-const glStencilFunc = t.fn(LIB, "glStencilFunc", [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }], t.void);
-
-const glStencilFuncSeparate = t.fn(
-    LIB,
-    "glStencilFuncSeparate",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glStencilMask = t.fn(LIB, "glStencilMask", [{ type: t.uint32 }], t.void);
-
-const glStencilMaskSeparate = t.fn(LIB, "glStencilMaskSeparate", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glStencilOp = t.fn(LIB, "glStencilOp", [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glStencilOpSeparate = t.fn(
-    LIB,
-    "glStencilOpSeparate",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glTexBuffer = t.fn(LIB, "glTexBuffer", [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glTexBufferRange = t.fn(
-    LIB,
-    "glTexBufferRange",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glTexImage1D = t.fn(
-    LIB,
-    "glTexImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTexImage2D = t.fn(
-    LIB,
-    "glTexImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTexImage2DMultisample = t.fn(
-    LIB,
-    "glTexImage2DMultisample",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glTexImage3D = t.fn(
-    LIB,
-    "glTexImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTexImage3DMultisample = t.fn(
-    LIB,
-    "glTexImage3DMultisample",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glTexParameterf = t.fn(
-    LIB,
-    "glTexParameterf",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glTexParameterfv = t.fn(
-    LIB,
-    "glTexParameterfv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glTexParameteri = t.fn(
-    LIB,
-    "glTexParameteri",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glTexParameterIiv = t.fn(
-    LIB,
-    "glTexParameterIiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glTexParameterIuiv = t.fn(
-    LIB,
-    "glTexParameterIuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glTexParameteriv = t.fn(
-    LIB,
-    "glTexParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glTexStorage1D = t.fn(
-    LIB,
-    "glTexStorage1D",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glTexStorage2D = t.fn(
-    LIB,
-    "glTexStorage2D",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glTexStorage2DMultisample = t.fn(
-    LIB,
-    "glTexStorage2DMultisample",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glTexStorage3D = t.fn(
-    LIB,
-    "glTexStorage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glTexStorage3DMultisample = t.fn(
-    LIB,
-    "glTexStorage3DMultisample",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glTexSubImage1D = t.fn(
-    LIB,
-    "glTexSubImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTexSubImage2D = t.fn(
-    LIB,
-    "glTexSubImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTexSubImage3D = t.fn(
-    LIB,
-    "glTexSubImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTextureBarrier = t.fn(LIB, "glTextureBarrier", [], t.void);
-
-const glTextureBuffer = t.fn(
-    LIB,
-    "glTextureBuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glTextureBufferRange = t.fn(
-    LIB,
-    "glTextureBufferRange",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glTextureParameterf = t.fn(
-    LIB,
-    "glTextureParameterf",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glTextureParameterfv = t.fn(
-    LIB,
-    "glTextureParameterfv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glTextureParameteri = t.fn(
-    LIB,
-    "glTextureParameteri",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glTextureParameterIiv = t.fn(
-    LIB,
-    "glTextureParameterIiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glTextureParameterIuiv = t.fn(
-    LIB,
-    "glTextureParameterIuiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glTextureParameteriv = t.fn(
-    LIB,
-    "glTextureParameteriv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glTextureStorage1D = t.fn(
-    LIB,
-    "glTextureStorage1D",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glTextureStorage2D = t.fn(
-    LIB,
-    "glTextureStorage2D",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glTextureStorage2DMultisample = t.fn(
-    LIB,
-    "glTextureStorage2DMultisample",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glTextureStorage3D = t.fn(
-    LIB,
-    "glTextureStorage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-    ],
-    t.void,
-);
-
-const glTextureStorage3DMultisample = t.fn(
-    LIB,
-    "glTextureStorage3DMultisample",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.boolean },
-    ],
-    t.void,
-);
-
-const glTextureSubImage1D = t.fn(
-    LIB,
-    "glTextureSubImage1D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTextureSubImage2D = t.fn(
-    LIB,
-    "glTextureSubImage2D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTextureSubImage3D = t.fn(
-    LIB,
-    "glTextureSubImage3D",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.blob },
-    ],
-    t.void,
-);
-
-const glTextureView = t.fn(
-    LIB,
-    "glTextureView",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glTransformFeedbackBufferBase = t.fn(
-    LIB,
-    "glTransformFeedbackBufferBase",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glTransformFeedbackBufferRange = t.fn(
-    LIB,
-    "glTransformFeedbackBufferRange",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int64 }],
-    t.void,
-);
-
-const glTransformFeedbackVaryings = t.fn(
-    LIB,
-    "glTransformFeedbackVaryings",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.string("borrowed")) }, { type: t.uint32 }],
-    t.void,
-);
-
-const glUniform1d = t.fn(LIB, "glUniform1d", [{ type: t.int32 }, { type: t.float64 }], t.void);
-
-const glUniform1dv = t.fn(
-    LIB,
-    "glUniform1dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniform1f = t.fn(LIB, "glUniform1f", [{ type: t.int32 }, { type: t.float32 }], t.void);
-
-const glUniform1fv = t.fn(
-    LIB,
-    "glUniform1fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniform1i = t.fn(LIB, "glUniform1i", [{ type: t.int32 }, { type: t.int32 }], t.void);
-
-const glUniform1iv = t.fn(
-    LIB,
-    "glUniform1iv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glUniform1ui = t.fn(LIB, "glUniform1ui", [{ type: t.int32 }, { type: t.uint32 }], t.void);
-
-const glUniform1uiv = t.fn(
-    LIB,
-    "glUniform1uiv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glUniform2d = t.fn(LIB, "glUniform2d", [{ type: t.int32 }, { type: t.float64 }, { type: t.float64 }], t.void);
-
-const glUniform2dv = t.fn(
-    LIB,
-    "glUniform2dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniform2f = t.fn(LIB, "glUniform2f", [{ type: t.int32 }, { type: t.float32 }, { type: t.float32 }], t.void);
-
-const glUniform2fv = t.fn(
-    LIB,
-    "glUniform2fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniform2i = t.fn(LIB, "glUniform2i", [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }], t.void);
-
-const glUniform2iv = t.fn(
-    LIB,
-    "glUniform2iv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glUniform2ui = t.fn(LIB, "glUniform2ui", [{ type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glUniform2uiv = t.fn(
-    LIB,
-    "glUniform2uiv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glUniform3d = t.fn(
-    LIB,
-    "glUniform3d",
-    [{ type: t.int32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glUniform3dv = t.fn(
-    LIB,
-    "glUniform3dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniform3f = t.fn(
-    LIB,
-    "glUniform3f",
-    [{ type: t.int32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glUniform3fv = t.fn(
-    LIB,
-    "glUniform3fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniform3i = t.fn(
-    LIB,
-    "glUniform3i",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glUniform3iv = t.fn(
-    LIB,
-    "glUniform3iv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glUniform3ui = t.fn(
-    LIB,
-    "glUniform3ui",
-    [{ type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glUniform3uiv = t.fn(
-    LIB,
-    "glUniform3uiv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glUniform4d = t.fn(
-    LIB,
-    "glUniform4d",
-    [{ type: t.int32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glUniform4dv = t.fn(
-    LIB,
-    "glUniform4dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniform4f = t.fn(
-    LIB,
-    "glUniform4f",
-    [{ type: t.int32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glUniform4fv = t.fn(
-    LIB,
-    "glUniform4fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniform4i = t.fn(
-    LIB,
-    "glUniform4i",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glUniform4iv = t.fn(
-    LIB,
-    "glUniform4iv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.int32) }],
-    t.void,
-);
-
-const glUniform4ui = t.fn(
-    LIB,
-    "glUniform4ui",
-    [{ type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glUniform4uiv = t.fn(
-    LIB,
-    "glUniform4uiv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glUniformBlockBinding = t.fn(
-    LIB,
-    "glUniformBlockBinding",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glUniformMatrix2dv = t.fn(
-    LIB,
-    "glUniformMatrix2dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix2fv = t.fn(
-    LIB,
-    "glUniformMatrix2fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix2x3dv = t.fn(
-    LIB,
-    "glUniformMatrix2x3dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix2x3fv = t.fn(
-    LIB,
-    "glUniformMatrix2x3fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix2x4dv = t.fn(
-    LIB,
-    "glUniformMatrix2x4dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix2x4fv = t.fn(
-    LIB,
-    "glUniformMatrix2x4fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix3dv = t.fn(
-    LIB,
-    "glUniformMatrix3dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix3fv = t.fn(
-    LIB,
-    "glUniformMatrix3fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix3x2dv = t.fn(
-    LIB,
-    "glUniformMatrix3x2dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix3x2fv = t.fn(
-    LIB,
-    "glUniformMatrix3x2fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix3x4dv = t.fn(
-    LIB,
-    "glUniformMatrix3x4dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix3x4fv = t.fn(
-    LIB,
-    "glUniformMatrix3x4fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix4dv = t.fn(
-    LIB,
-    "glUniformMatrix4dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix4fv = t.fn(
-    LIB,
-    "glUniformMatrix4fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix4x2dv = t.fn(
-    LIB,
-    "glUniformMatrix4x2dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix4x2fv = t.fn(
-    LIB,
-    "glUniformMatrix4x2fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformMatrix4x3dv = t.fn(
-    LIB,
-    "glUniformMatrix4x3dv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float64) }],
-    t.void,
-);
-
-const glUniformMatrix4x3fv = t.fn(
-    LIB,
-    "glUniformMatrix4x3fv",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.boolean }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glUniformSubroutinesuiv = t.fn(
-    LIB,
-    "glUniformSubroutinesuiv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glUnmapBuffer = t.fn(LIB, "glUnmapBuffer", [{ type: t.uint32 }], t.uint8);
-
-const glUnmapNamedBuffer = t.fn(LIB, "glUnmapNamedBuffer", [{ type: t.uint32 }], t.uint8);
-
-const glUseProgram = t.fn(LIB, "glUseProgram", [{ type: t.uint32 }], t.void);
-
-const glUseProgramStages = t.fn(
-    LIB,
-    "glUseProgramStages",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glValidateProgram = t.fn(LIB, "glValidateProgram", [{ type: t.uint32 }], t.void);
-
-const glValidateProgramPipeline = t.fn(LIB, "glValidateProgramPipeline", [{ type: t.uint32 }], t.void);
-
-const glVertexArrayAttribBinding = t.fn(
-    LIB,
-    "glVertexArrayAttribBinding",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexArrayAttribFormat = t.fn(
-    LIB,
-    "glVertexArrayAttribFormat",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.boolean },
-        { type: t.uint32 },
-    ],
-    t.void,
-);
-
-const glVertexArrayAttribIFormat = t.fn(
-    LIB,
-    "glVertexArrayAttribIFormat",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexArrayAttribLFormat = t.fn(
-    LIB,
-    "glVertexArrayAttribLFormat",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexArrayBindingDivisor = t.fn(
-    LIB,
-    "glVertexArrayBindingDivisor",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexArrayElementBuffer = t.fn(
-    LIB,
-    "glVertexArrayElementBuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexArrayVertexBuffer = t.fn(
-    LIB,
-    "glVertexArrayVertexBuffer",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.int64 }, { type: t.int32 }],
-    t.void,
-);
-
-const glVertexArrayVertexBuffers = t.fn(
-    LIB,
-    "glVertexArrayVertexBuffers",
-    [
-        { type: t.uint32 },
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.array(t.uint32) },
-        { type: t.array(t.int64) },
-        { type: t.array(t.int32) },
-    ],
-    t.void,
-);
-
-const glVertexAttrib1d = t.fn(LIB, "glVertexAttrib1d", [{ type: t.uint32 }, { type: t.float64 }], t.void);
-
-const glVertexAttrib1dv = t.fn(LIB, "glVertexAttrib1dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttrib1f = t.fn(LIB, "glVertexAttrib1f", [{ type: t.uint32 }, { type: t.float32 }], t.void);
-
-const glVertexAttrib1fv = t.fn(LIB, "glVertexAttrib1fv", [{ type: t.uint32 }, { type: t.array(t.float32) }], t.void);
-
-const glVertexAttrib1s = t.fn(LIB, "glVertexAttrib1s", [{ type: t.uint32 }, { type: t.int16 }], t.void);
-
-const glVertexAttrib1sv = t.fn(LIB, "glVertexAttrib1sv", [{ type: t.uint32 }, { type: t.array(t.int16) }], t.void);
-
-const glVertexAttrib2d = t.fn(
-    LIB,
-    "glVertexAttrib2d",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glVertexAttrib2dv = t.fn(LIB, "glVertexAttrib2dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttrib2f = t.fn(
-    LIB,
-    "glVertexAttrib2f",
-    [{ type: t.uint32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glVertexAttrib2fv = t.fn(LIB, "glVertexAttrib2fv", [{ type: t.uint32 }, { type: t.array(t.float32) }], t.void);
-
-const glVertexAttrib2s = t.fn(
-    LIB,
-    "glVertexAttrib2s",
-    [{ type: t.uint32 }, { type: t.int16 }, { type: t.int16 }],
-    t.void,
-);
-
-const glVertexAttrib2sv = t.fn(LIB, "glVertexAttrib2sv", [{ type: t.uint32 }, { type: t.array(t.int16) }], t.void);
-
-const glVertexAttrib3d = t.fn(
-    LIB,
-    "glVertexAttrib3d",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glVertexAttrib3dv = t.fn(LIB, "glVertexAttrib3dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttrib3f = t.fn(
-    LIB,
-    "glVertexAttrib3f",
-    [{ type: t.uint32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glVertexAttrib3fv = t.fn(LIB, "glVertexAttrib3fv", [{ type: t.uint32 }, { type: t.array(t.float32) }], t.void);
-
-const glVertexAttrib3s = t.fn(
-    LIB,
-    "glVertexAttrib3s",
-    [{ type: t.uint32 }, { type: t.int16 }, { type: t.int16 }, { type: t.int16 }],
-    t.void,
-);
-
-const glVertexAttrib3sv = t.fn(LIB, "glVertexAttrib3sv", [{ type: t.uint32 }, { type: t.array(t.int16) }], t.void);
-
-const glVertexAttrib4bv = t.fn(LIB, "glVertexAttrib4bv", [{ type: t.uint32 }, { type: t.array(t.int8) }], t.void);
-
-const glVertexAttrib4d = t.fn(
-    LIB,
-    "glVertexAttrib4d",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glVertexAttrib4dv = t.fn(LIB, "glVertexAttrib4dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttrib4f = t.fn(
-    LIB,
-    "glVertexAttrib4f",
-    [{ type: t.uint32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glVertexAttrib4fv = t.fn(LIB, "glVertexAttrib4fv", [{ type: t.uint32 }, { type: t.array(t.float32) }], t.void);
-
-const glVertexAttrib4iv = t.fn(LIB, "glVertexAttrib4iv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glVertexAttrib4Nbv = t.fn(LIB, "glVertexAttrib4Nbv", [{ type: t.uint32 }, { type: t.array(t.int8) }], t.void);
-
-const glVertexAttrib4Niv = t.fn(LIB, "glVertexAttrib4Niv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glVertexAttrib4Nsv = t.fn(LIB, "glVertexAttrib4Nsv", [{ type: t.uint32 }, { type: t.array(t.int16) }], t.void);
-
-const glVertexAttrib4Nub = t.fn(
-    LIB,
-    "glVertexAttrib4Nub",
-    [{ type: t.uint32 }, { type: t.uint8 }, { type: t.uint8 }, { type: t.uint8 }, { type: t.uint8 }],
-    t.void,
-);
-
-const glVertexAttrib4Nubv = t.fn(LIB, "glVertexAttrib4Nubv", [{ type: t.uint32 }, { type: t.array(t.uint8) }], t.void);
-
-const glVertexAttrib4Nuiv = t.fn(LIB, "glVertexAttrib4Nuiv", [{ type: t.uint32 }, { type: t.array(t.uint32) }], t.void);
-
-const glVertexAttrib4Nusv = t.fn(LIB, "glVertexAttrib4Nusv", [{ type: t.uint32 }, { type: t.array(t.uint16) }], t.void);
-
-const glVertexAttrib4s = t.fn(
-    LIB,
-    "glVertexAttrib4s",
-    [{ type: t.uint32 }, { type: t.int16 }, { type: t.int16 }, { type: t.int16 }, { type: t.int16 }],
-    t.void,
-);
-
-const glVertexAttrib4sv = t.fn(LIB, "glVertexAttrib4sv", [{ type: t.uint32 }, { type: t.array(t.int16) }], t.void);
-
-const glVertexAttrib4ubv = t.fn(LIB, "glVertexAttrib4ubv", [{ type: t.uint32 }, { type: t.array(t.uint8) }], t.void);
-
-const glVertexAttrib4uiv = t.fn(LIB, "glVertexAttrib4uiv", [{ type: t.uint32 }, { type: t.array(t.uint32) }], t.void);
-
-const glVertexAttrib4usv = t.fn(LIB, "glVertexAttrib4usv", [{ type: t.uint32 }, { type: t.array(t.uint16) }], t.void);
-
-const glVertexAttribBinding = t.fn(LIB, "glVertexAttribBinding", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glVertexAttribDivisor = t.fn(LIB, "glVertexAttribDivisor", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glVertexAttribFormat = t.fn(
-    LIB,
-    "glVertexAttribFormat",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribI1i = t.fn(LIB, "glVertexAttribI1i", [{ type: t.uint32 }, { type: t.int32 }], t.void);
-
-const glVertexAttribI1iv = t.fn(LIB, "glVertexAttribI1iv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glVertexAttribI1ui = t.fn(LIB, "glVertexAttribI1ui", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glVertexAttribI1uiv = t.fn(LIB, "glVertexAttribI1uiv", [{ type: t.uint32 }, { type: t.array(t.uint32) }], t.void);
-
-const glVertexAttribI2i = t.fn(
-    LIB,
-    "glVertexAttribI2i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glVertexAttribI2iv = t.fn(LIB, "glVertexAttribI2iv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glVertexAttribI2ui = t.fn(
-    LIB,
-    "glVertexAttribI2ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribI2uiv = t.fn(LIB, "glVertexAttribI2uiv", [{ type: t.uint32 }, { type: t.array(t.uint32) }], t.void);
-
-const glVertexAttribI3i = t.fn(
-    LIB,
-    "glVertexAttribI3i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glVertexAttribI3iv = t.fn(LIB, "glVertexAttribI3iv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glVertexAttribI3ui = t.fn(
-    LIB,
-    "glVertexAttribI3ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribI3uiv = t.fn(LIB, "glVertexAttribI3uiv", [{ type: t.uint32 }, { type: t.array(t.uint32) }], t.void);
-
-const glVertexAttribI4bv = t.fn(LIB, "glVertexAttribI4bv", [{ type: t.uint32 }, { type: t.array(t.int8) }], t.void);
-
-const glVertexAttribI4i = t.fn(
-    LIB,
-    "glVertexAttribI4i",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glVertexAttribI4iv = t.fn(LIB, "glVertexAttribI4iv", [{ type: t.uint32 }, { type: t.array(t.int32) }], t.void);
-
-const glVertexAttribI4sv = t.fn(LIB, "glVertexAttribI4sv", [{ type: t.uint32 }, { type: t.array(t.int16) }], t.void);
-
-const glVertexAttribI4ubv = t.fn(LIB, "glVertexAttribI4ubv", [{ type: t.uint32 }, { type: t.array(t.uint8) }], t.void);
-
-const glVertexAttribI4ui = t.fn(
-    LIB,
-    "glVertexAttribI4ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribI4uiv = t.fn(LIB, "glVertexAttribI4uiv", [{ type: t.uint32 }, { type: t.array(t.uint32) }], t.void);
-
-const glVertexAttribI4usv = t.fn(LIB, "glVertexAttribI4usv", [{ type: t.uint32 }, { type: t.array(t.uint16) }], t.void);
-
-const glVertexAttribIFormat = t.fn(
-    LIB,
-    "glVertexAttribIFormat",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribIPointer = t.fn(
-    LIB,
-    "glVertexAttribIPointer",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.uint64 }],
-    t.void,
-);
-
-const glVertexAttribL1d = t.fn(LIB, "glVertexAttribL1d", [{ type: t.uint32 }, { type: t.float64 }], t.void);
-
-const glVertexAttribL1dv = t.fn(LIB, "glVertexAttribL1dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttribL2d = t.fn(
-    LIB,
-    "glVertexAttribL2d",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glVertexAttribL2dv = t.fn(LIB, "glVertexAttribL2dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttribL3d = t.fn(
-    LIB,
-    "glVertexAttribL3d",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glVertexAttribL3dv = t.fn(LIB, "glVertexAttribL3dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttribL4d = t.fn(
-    LIB,
-    "glVertexAttribL4d",
-    [{ type: t.uint32 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }, { type: t.float64 }],
-    t.void,
-);
-
-const glVertexAttribL4dv = t.fn(LIB, "glVertexAttribL4dv", [{ type: t.uint32 }, { type: t.array(t.float64) }], t.void);
-
-const glVertexAttribLFormat = t.fn(
-    LIB,
-    "glVertexAttribLFormat",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribLPointer = t.fn(
-    LIB,
-    "glVertexAttribLPointer",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.uint32 }, { type: t.int32 }, { type: t.uint64 }],
-    t.void,
-);
-
-const glVertexAttribP1ui = t.fn(
-    LIB,
-    "glVertexAttribP1ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribP1uiv = t.fn(
-    LIB,
-    "glVertexAttribP1uiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glVertexAttribP2ui = t.fn(
-    LIB,
-    "glVertexAttribP2ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribP2uiv = t.fn(
-    LIB,
-    "glVertexAttribP2uiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glVertexAttribP3ui = t.fn(
-    LIB,
-    "glVertexAttribP3ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribP3uiv = t.fn(
-    LIB,
-    "glVertexAttribP3uiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glVertexAttribP4ui = t.fn(
-    LIB,
-    "glVertexAttribP4ui",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.uint32 }],
-    t.void,
-);
-
-const glVertexAttribP4uiv = t.fn(
-    LIB,
-    "glVertexAttribP4uiv",
-    [{ type: t.uint32 }, { type: t.uint32 }, { type: t.boolean }, { type: t.array(t.uint32) }],
-    t.void,
-);
-
-const glVertexAttribPointer = t.fn(
-    LIB,
-    "glVertexAttribPointer",
-    [
-        { type: t.uint32 },
-        { type: t.int32 },
-        { type: t.uint32 },
-        { type: t.boolean },
-        { type: t.int32 },
-        { type: t.uint64 },
-    ],
-    t.void,
-);
-
-const glVertexBindingDivisor = t.fn(LIB, "glVertexBindingDivisor", [{ type: t.uint32 }, { type: t.uint32 }], t.void);
-
-const glViewport = t.fn(
-    LIB,
-    "glViewport",
-    [{ type: t.int32 }, { type: t.int32 }, { type: t.int32 }, { type: t.int32 }],
-    t.void,
-);
-
-const glViewportArrayv = t.fn(
-    LIB,
-    "glViewportArrayv",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glViewportIndexedf = t.fn(
-    LIB,
-    "glViewportIndexedf",
-    [{ type: t.uint32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }, { type: t.float32 }],
-    t.void,
-);
-
-const glViewportIndexedfv = t.fn(
-    LIB,
-    "glViewportIndexedfv",
-    [{ type: t.uint32 }, { type: t.array(t.float32) }],
-    t.void,
-);
-
-const glWaitSync = t.fn(
-    LIB,
-    "glWaitSync",
-    [{ type: t.struct("borrowed") }, { type: t.uint32 }, { type: t.uint64 }],
-    t.void,
-);
-
-const glCreateBuffersSingle = t.fn(LIB, "glCreateBuffers", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glCreateFramebuffersSingle = t.fn(
-    LIB,
-    "glCreateFramebuffers",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glCreateProgramPipelinesSingle = t.fn(
-    LIB,
-    "glCreateProgramPipelines",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glCreateQueriesSingle = t.fn(
-    LIB,
-    "glCreateQueries",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glCreateRenderbuffersSingle = t.fn(
-    LIB,
-    "glCreateRenderbuffers",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glCreateSamplersSingle = t.fn(LIB, "glCreateSamplers", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glCreateTexturesSingle = t.fn(
-    LIB,
-    "glCreateTextures",
-    [{ type: t.uint32 }, { type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glCreateTransformFeedbacksSingle = t.fn(
-    LIB,
-    "glCreateTransformFeedbacks",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glCreateVertexArraysSingle = t.fn(
-    LIB,
-    "glCreateVertexArrays",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGenBuffersSingle = t.fn(LIB, "glGenBuffers", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glGenFramebuffersSingle = t.fn(LIB, "glGenFramebuffers", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glGenProgramPipelinesSingle = t.fn(
-    LIB,
-    "glGenProgramPipelines",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGenQueriesSingle = t.fn(LIB, "glGenQueries", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glGenRenderbuffersSingle = t.fn(
-    LIB,
-    "glGenRenderbuffers",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGenSamplersSingle = t.fn(LIB, "glGenSamplers", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glGenTexturesSingle = t.fn(LIB, "glGenTextures", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
-const glGenTransformFeedbacksSingle = t.fn(
-    LIB,
-    "glGenTransformFeedbacks",
-    [{ type: t.int32 }, { type: t.ref(t.uint32) }],
-    t.void,
-);
-
-const glGenVertexArraysSingle = t.fn(LIB, "glGenVertexArrays", [{ type: t.int32 }, { type: t.ref(t.uint32) }], t.void);
-
 /**
  * `void glActiveShaderProgram(GLuint pipeline, GLuint program)`
  *
@@ -4276,7 +293,7 @@ export function bindBuffersBase(
     target: BufferTargetARB,
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
+    buffers: GLuint[] | Uint32Array,
 ): void {
     glBindBuffersBase(target, first, count, buffers);
 }
@@ -4298,9 +315,9 @@ export function bindBuffersRange(
     target: BufferTargetARB,
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
-    offsets: readonly GLintptr[],
-    sizes: readonly GLsizeiptr[],
+    buffers: GLuint[] | Uint32Array,
+    offsets: GLintptr[],
+    sizes: GLsizeiptr[],
 ): void {
     glBindBuffersRange(target, first, count, buffers, offsets, sizes);
 }
@@ -4383,7 +400,7 @@ export function bindImageTexture(
  * @param textures - `const GLuint *`, length `count`, object kind `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindImageTextures.xhtml
  */
-export function bindImageTextures(first: GLuint, count: GLsizei, textures: readonly GLuint[] | Uint32Array): void {
+export function bindImageTextures(first: GLuint, count: GLsizei, textures: GLuint[] | Uint32Array): void {
     glBindImageTextures(first, count, textures);
 }
 
@@ -4435,7 +452,7 @@ export function bindSampler(unit: GLuint, sampler: GLuint): void {
  * @param samplers - `const GLuint *`, length `count`, object kind `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindSamplers.xhtml
  */
-export function bindSamplers(first: GLuint, count: GLsizei, samplers: readonly GLuint[] | Uint32Array): void {
+export function bindSamplers(first: GLuint, count: GLsizei, samplers: GLuint[] | Uint32Array): void {
     glBindSamplers(first, count, samplers);
 }
 
@@ -4462,7 +479,7 @@ export function bindTexture(target: TextureTarget, texture: GLuint): void {
  * @param textures - `const GLuint *`, length `count`, object kind `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindTextures.xhtml
  */
-export function bindTextures(first: GLuint, count: GLsizei, textures: readonly GLuint[] | Uint32Array): void {
+export function bindTextures(first: GLuint, count: GLsizei, textures: GLuint[] | Uint32Array): void {
     glBindTextures(first, count, textures);
 }
 
@@ -4534,9 +551,9 @@ export function bindVertexBuffer(bindingindex: GLuint, buffer: GLuint, offset: G
 export function bindVertexBuffers(
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
-    offsets: readonly GLintptr[],
-    strides: readonly GLsizei[] | Int32Array,
+    buffers: GLuint[] | Uint32Array,
+    offsets: GLintptr[],
+    strides: GLsizei[] | Int32Array,
 ): void {
     glBindVertexBuffers(first, count, buffers, offsets, strides);
 }
@@ -4921,7 +938,7 @@ export function clearBufferfi(buffer: Buffer, drawbuffer: GLint, depth: GLfloat,
  * @param value - `const GLfloat *`, length `COMPSIZE(buffer)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearBufferfv.xhtml
  */
-export function clearBufferfv(buffer: Buffer, drawbuffer: GLint, value: readonly GLfloat[] | Float32Array): void {
+export function clearBufferfv(buffer: Buffer, drawbuffer: GLint, value: GLfloat[] | Float32Array): void {
     glClearBufferfv(buffer, drawbuffer, value);
 }
 
@@ -4935,7 +952,7 @@ export function clearBufferfv(buffer: Buffer, drawbuffer: GLint, value: readonly
  * @param value - `const GLint *`, length `COMPSIZE(buffer)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearBufferiv.xhtml
  */
-export function clearBufferiv(buffer: Buffer, drawbuffer: GLint, value: readonly GLint[] | Int32Array): void {
+export function clearBufferiv(buffer: Buffer, drawbuffer: GLint, value: GLint[] | Int32Array): void {
     glClearBufferiv(buffer, drawbuffer, value);
 }
 
@@ -4975,7 +992,7 @@ export function clearBufferSubData(
  * @param value - `const GLuint *`, length `COMPSIZE(buffer)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClearBufferuiv.xhtml
  */
-export function clearBufferuiv(buffer: Buffer, drawbuffer: GLint, value: readonly GLuint[] | Uint32Array): void {
+export function clearBufferuiv(buffer: Buffer, drawbuffer: GLint, value: GLuint[] | Uint32Array): void {
     glClearBufferuiv(buffer, drawbuffer, value);
 }
 
@@ -5103,7 +1120,7 @@ export function clearNamedFramebufferfv(
     framebuffer: GLuint,
     buffer: Buffer,
     drawbuffer: GLint,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glClearNamedFramebufferfv(framebuffer, buffer, drawbuffer, value);
 }
@@ -5123,7 +1140,7 @@ export function clearNamedFramebufferiv(
     framebuffer: GLuint,
     buffer: Buffer,
     drawbuffer: GLint,
-    value: readonly GLint[] | Int32Array,
+    value: GLint[] | Int32Array,
 ): void {
     glClearNamedFramebufferiv(framebuffer, buffer, drawbuffer, value);
 }
@@ -5143,7 +1160,7 @@ export function clearNamedFramebufferuiv(
     framebuffer: GLuint,
     buffer: Buffer,
     drawbuffer: GLint,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glClearNamedFramebufferuiv(framebuffer, buffer, drawbuffer, value);
 }
@@ -6009,7 +2026,7 @@ export function createShader(type: ShaderType): GLuint {
  * @returns `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glCreateShaderProgramv.xhtml
  */
-export function createShaderProgramv(type: ShaderType, count: GLsizei, strings: readonly string[]): GLuint {
+export function createShaderProgramv(type: ShaderType, count: GLsizei, strings: string[]): GLuint {
     return glCreateShaderProgramv(type, count, strings) as GLuint;
 }
 
@@ -6089,7 +2106,7 @@ export function debugMessageControl(
     type: DebugType,
     severity: DebugSeverity,
     count: GLsizei,
-    ids: readonly GLuint[] | Uint32Array,
+    ids: GLuint[] | Uint32Array,
     enabled: boolean,
 ): void {
     glDebugMessageControl(source, type, severity, count, ids, enabled);
@@ -6128,7 +2145,7 @@ export function debugMessageInsert(
  * @param buffers - `const GLuint *`, length `n`, object kind `buffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteBuffers.xhtml
  */
-export function deleteBuffers(n: GLsizei, buffers: readonly GLuint[] | Uint32Array): void {
+export function deleteBuffers(n: GLsizei, buffers: GLuint[] | Uint32Array): void {
     glDeleteBuffers(n, buffers);
 }
 
@@ -6141,7 +2158,7 @@ export function deleteBuffers(n: GLsizei, buffers: readonly GLuint[] | Uint32Arr
  * @param framebuffers - `const GLuint *`, length `n`, object kind `framebuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteFramebuffers.xhtml
  */
-export function deleteFramebuffers(n: GLsizei, framebuffers: readonly GLuint[] | Uint32Array): void {
+export function deleteFramebuffers(n: GLsizei, framebuffers: GLuint[] | Uint32Array): void {
     glDeleteFramebuffers(n, framebuffers);
 }
 
@@ -6166,7 +2183,7 @@ export function deleteProgram(program: GLuint): void {
  * @param pipelines - `const GLuint *`, length `n`, object kind `program pipeline`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteProgramPipelines.xhtml
  */
-export function deleteProgramPipelines(n: GLsizei, pipelines: readonly GLuint[] | Uint32Array): void {
+export function deleteProgramPipelines(n: GLsizei, pipelines: GLuint[] | Uint32Array): void {
     glDeleteProgramPipelines(n, pipelines);
 }
 
@@ -6179,7 +2196,7 @@ export function deleteProgramPipelines(n: GLsizei, pipelines: readonly GLuint[] 
  * @param ids - `const GLuint *`, length `n`, object kind `query`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteQueries.xhtml
  */
-export function deleteQueries(n: GLsizei, ids: readonly GLuint[] | Uint32Array): void {
+export function deleteQueries(n: GLsizei, ids: GLuint[] | Uint32Array): void {
     glDeleteQueries(n, ids);
 }
 
@@ -6192,7 +2209,7 @@ export function deleteQueries(n: GLsizei, ids: readonly GLuint[] | Uint32Array):
  * @param renderbuffers - `const GLuint *`, length `n`, object kind `renderbuffer`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteRenderbuffers.xhtml
  */
-export function deleteRenderbuffers(n: GLsizei, renderbuffers: readonly GLuint[] | Uint32Array): void {
+export function deleteRenderbuffers(n: GLsizei, renderbuffers: GLuint[] | Uint32Array): void {
     glDeleteRenderbuffers(n, renderbuffers);
 }
 
@@ -6205,7 +2222,7 @@ export function deleteRenderbuffers(n: GLsizei, renderbuffers: readonly GLuint[]
  * @param samplers - `const GLuint *`, length `count`, object kind `sampler`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteSamplers.xhtml
  */
-export function deleteSamplers(count: GLsizei, samplers: readonly GLuint[] | Uint32Array): void {
+export function deleteSamplers(count: GLsizei, samplers: GLuint[] | Uint32Array): void {
     glDeleteSamplers(count, samplers);
 }
 
@@ -6242,7 +2259,7 @@ export function deleteSync(sync: GLsync): void {
  * @param textures - `const GLuint *`, length `n`, object kind `texture`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteTextures.xhtml
  */
-export function deleteTextures(n: GLsizei, textures: readonly GLuint[] | Uint32Array): void {
+export function deleteTextures(n: GLsizei, textures: GLuint[] | Uint32Array): void {
     glDeleteTextures(n, textures);
 }
 
@@ -6255,7 +2272,7 @@ export function deleteTextures(n: GLsizei, textures: readonly GLuint[] | Uint32A
  * @param ids - `const GLuint *`, length `n`, object kind `transform feedback`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteTransformFeedbacks.xhtml
  */
-export function deleteTransformFeedbacks(n: GLsizei, ids: readonly GLuint[] | Uint32Array): void {
+export function deleteTransformFeedbacks(n: GLsizei, ids: GLuint[] | Uint32Array): void {
     glDeleteTransformFeedbacks(n, ids);
 }
 
@@ -6268,7 +2285,7 @@ export function deleteTransformFeedbacks(n: GLsizei, ids: readonly GLuint[] | Ui
  * @param arrays - `const GLuint *`, length `n`, object kind `vertex array`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteVertexArrays.xhtml
  */
-export function deleteVertexArrays(n: GLsizei, arrays: readonly GLuint[] | Uint32Array): void {
+export function deleteVertexArrays(n: GLsizei, arrays: GLuint[] | Uint32Array): void {
     glDeleteVertexArrays(n, arrays);
 }
 
@@ -6319,7 +2336,7 @@ export function depthRange(n: GLdouble, f: GLdouble): void {
  * @param v - `const GLdouble *`, length `COMPSIZE(count)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDepthRangeArrayv.xhtml
  */
-export function depthRangeArrayv(first: GLuint, count: GLsizei, v: readonly GLdouble[] | Float64Array): void {
+export function depthRangeArrayv(first: GLuint, count: GLsizei, v: GLdouble[] | Float64Array): void {
     glDepthRangeArrayv(first, count, v);
 }
 
@@ -6418,13 +2435,13 @@ export function disableVertexAttribArray(index: GLuint): void {
  *
  * Provided by `GL_VERSION_4_3`.
  *
- * @param num_groups_x - `GLuint`
- * @param num_groups_y - `GLuint`
- * @param num_groups_z - `GLuint`
+ * @param numGroupsX - `GLuint`
+ * @param numGroupsY - `GLuint`
+ * @param numGroupsZ - `GLuint`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDispatchCompute.xhtml
  */
-export function dispatchCompute(num_groups_x: GLuint, num_groups_y: GLuint, num_groups_z: GLuint): void {
-    glDispatchCompute(num_groups_x, num_groups_y, num_groups_z);
+export function dispatchCompute(numGroupsX: GLuint, numGroupsY: GLuint, numGroupsZ: GLuint): void {
+    glDispatchCompute(numGroupsX, numGroupsY, numGroupsZ);
 }
 
 /**
@@ -6524,7 +2541,7 @@ export function drawBuffer(buf: DrawBufferMode): void {
  * @param bufs - `const GLenum *`, group `DrawBufferMode`, length `n`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawBuffers.xhtml
  */
-export function drawBuffers(n: GLsizei, bufs: readonly DrawBufferMode[] | Uint32Array): void {
+export function drawBuffers(n: GLsizei, bufs: DrawBufferMode[] | Uint32Array): void {
     glDrawBuffers(n, bufs);
 }
 
@@ -7278,17 +3295,17 @@ export function getActiveAttrib(
     const out1 = { value: 0 };
     const out2 = { value: 0 };
     const out3 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetActiveAttrib",
         [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.uint32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
+            t.uint32,
+            t.uint32,
+            t.int32,
+            t.ref(t.int32),
+            t.ref(t.int32),
+            t.ref(t.uint32),
+            t.ref(t.string("borrowed", bufSize)),
         ],
         t.void,
     );
@@ -7316,17 +3333,10 @@ export function getActiveSubroutineName(
 ): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetActiveSubroutineName",
-        [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.uint32, t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(program, shadertype, index, bufSize, out0, out1);
@@ -7353,17 +3363,10 @@ export function getActiveSubroutineUniformName(
 ): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetActiveSubroutineUniformName",
-        [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.uint32, t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(program, shadertype, index, bufSize, out0, out1);
@@ -7390,17 +3393,17 @@ export function getActiveUniform(
     const out1 = { value: 0 };
     const out2 = { value: 0 };
     const out3 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetActiveUniform",
         [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.uint32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
+            t.uint32,
+            t.uint32,
+            t.int32,
+            t.ref(t.int32),
+            t.ref(t.int32),
+            t.ref(t.uint32),
+            t.ref(t.string("borrowed", bufSize)),
         ],
         t.void,
     );
@@ -7426,16 +3429,10 @@ export function getActiveUniformBlockName(
 ): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetActiveUniformBlockName",
-        [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(program, uniformBlockIndex, bufSize, out0, out1);
@@ -7456,16 +3453,10 @@ export function getActiveUniformBlockName(
 export function getActiveUniformName(program: GLuint, uniformIndex: GLuint, bufSize: GLsizei): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetActiveUniformName",
-        [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(program, uniformIndex, bufSize, out0, out1);
@@ -7645,18 +3636,18 @@ export function getDebugMessageLog(
     const out3 = { value: new Array<number>(count).fill(0) };
     const out4 = { value: new Array<number>(count).fill(0) };
     const out5 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetDebugMessageLog",
         [
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.sizedArray(t.uint32, 0)) },
-            { type: t.ref(t.sizedArray(t.uint32, 0)) },
-            { type: t.ref(t.sizedArray(t.uint32, 0)) },
-            { type: t.ref(t.sizedArray(t.uint32, 0)) },
-            { type: t.ref(t.sizedArray(t.int32, 0)) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
+            t.uint32,
+            t.int32,
+            t.ref(t.sizedArray(t.uint32, 0)),
+            t.ref(t.sizedArray(t.uint32, 0)),
+            t.ref(t.sizedArray(t.uint32, 0)),
+            t.ref(t.sizedArray(t.uint32, 0)),
+            t.ref(t.sizedArray(t.int32, 0)),
+            t.ref(t.string("borrowed", bufSize)),
         ],
         t.uint32,
     );
@@ -7960,16 +3951,10 @@ export function getnTexImage(
 export function getObjectLabel(identifier: ObjectIdentifier, name: GLuint, bufSize: GLsizei): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetObjectLabel",
-        [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(identifier, name, bufSize, out0, out1);
@@ -7989,10 +3974,10 @@ export function getObjectLabel(identifier: ObjectIdentifier, name: GLuint, bufSi
 export function getObjectPtrLabel(ptr: ArrayBufferView | GLintptr | null, bufSize: GLsizei): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetObjectPtrLabel",
-        [{ type: t.blob }, { type: t.int32 }, { type: t.ref(t.int32) }, { type: t.ref(t.string("borrowed", bufSize)) }],
+        [t.blob, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(ptr, bufSize, out0, out1);
@@ -8087,7 +4072,7 @@ export function getProgramResourceiv(
     programInterface: ProgramInterface,
     index: GLuint,
     propCount: GLsizei,
-    props: readonly ProgramResourceProperty[] | Uint32Array,
+    props: ProgramResourceProperty[] | Uint32Array,
     count: GLsizei,
 ): [GLsizei, GLint[]] {
     const out0 = { value: 0 };
@@ -8150,17 +4135,10 @@ export function getProgramResourceName(
 ): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetProgramResourceName",
-        [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.uint32, t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(program, programInterface, index, bufSize, out0, out1);
@@ -8406,15 +4384,10 @@ export function getShaderPrecisionFormat(shadertype: ShaderType, precisiontype: 
 export function getShaderSource(shader: GLuint, bufSize: GLsizei): [GLsizei, string] {
     const out0 = { value: 0 };
     const out1 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetShaderSource",
-        [
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
-        ],
+        [t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", bufSize))],
         t.void,
     );
     binding(shader, bufSize, out0, out1);
@@ -8700,9 +4673,9 @@ export function getTextureSubImage(
  * @returns `param` (`GLint *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTransformFeedbacki_v.xhtml
  */
-export function getTransformFeedbacki_v(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint {
+export function getTransformFeedbackiV(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint {
     const out0 = { value: 0 };
-    glGetTransformFeedbacki_v(xfb, pname, index, out0);
+    glGetTransformFeedbackiV(xfb, pname, index, out0);
     return out0.value;
 }
 
@@ -8717,9 +4690,9 @@ export function getTransformFeedbacki_v(xfb: GLuint, pname: TransformFeedbackPNa
  * @returns `param` (`GLint64 *`)
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetTransformFeedbacki64_v.xhtml
  */
-export function getTransformFeedbacki64_v(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint64 {
+export function getTransformFeedbacki64V(xfb: GLuint, pname: TransformFeedbackPName, index: GLuint): GLint64 {
     const out0 = { value: 0 };
-    glGetTransformFeedbacki64_v(xfb, pname, index, out0);
+    glGetTransformFeedbacki64V(xfb, pname, index, out0);
     return out0.value;
 }
 
@@ -8759,17 +4732,17 @@ export function getTransformFeedbackVarying(
     const out1 = { value: 0 };
     const out2 = { value: 0 };
     const out3 = { value: "" };
-    const binding = t.fn(
+    const binding = t.bind(
         LIB,
         "glGetTransformFeedbackVarying",
         [
-            { type: t.uint32 },
-            { type: t.uint32 },
-            { type: t.int32 },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.int32) },
-            { type: t.ref(t.uint32) },
-            { type: t.ref(t.string("borrowed", bufSize)) },
+            t.uint32,
+            t.uint32,
+            t.int32,
+            t.ref(t.int32),
+            t.ref(t.int32),
+            t.ref(t.uint32),
+            t.ref(t.string("borrowed", bufSize)),
         ],
         t.void,
     );
@@ -9003,7 +4976,7 @@ export function invalidateBufferSubData(buffer: GLuint, offset: GLintptr, length
 export function invalidateFramebuffer(
     target: FramebufferTarget,
     numAttachments: GLsizei,
-    attachments: readonly InvalidateFramebufferAttachment[] | Uint32Array,
+    attachments: InvalidateFramebufferAttachment[] | Uint32Array,
 ): void {
     glInvalidateFramebuffer(target, numAttachments, attachments);
 }
@@ -9021,7 +4994,7 @@ export function invalidateFramebuffer(
 export function invalidateNamedFramebufferData(
     framebuffer: GLuint,
     numAttachments: GLsizei,
-    attachments: readonly FramebufferAttachment[] | Uint32Array,
+    attachments: FramebufferAttachment[] | Uint32Array,
 ): void {
     glInvalidateNamedFramebufferData(framebuffer, numAttachments, attachments);
 }
@@ -9043,7 +5016,7 @@ export function invalidateNamedFramebufferData(
 export function invalidateNamedFramebufferSubData(
     framebuffer: GLuint,
     numAttachments: GLsizei,
-    attachments: readonly FramebufferAttachment[] | Uint32Array,
+    attachments: FramebufferAttachment[] | Uint32Array,
     x: GLint,
     y: GLint,
     width: GLsizei,
@@ -9069,7 +5042,7 @@ export function invalidateNamedFramebufferSubData(
 export function invalidateSubFramebuffer(
     target: FramebufferTarget,
     numAttachments: GLsizei,
-    attachments: readonly InvalidateFramebufferAttachment[] | Uint32Array,
+    attachments: InvalidateFramebufferAttachment[] | Uint32Array,
     x: GLint,
     y: GLint,
     width: GLsizei,
@@ -9457,8 +5430,8 @@ export function minSampleShading(value: GLfloat): void {
  */
 export function multiDrawArrays(
     mode: PrimitiveType,
-    first: readonly GLint[] | Int32Array,
-    count: readonly GLsizei[] | Int32Array,
+    first: GLint[] | Int32Array,
+    count: GLsizei[] | Int32Array,
     drawcount: GLsizei,
 ): void {
     glMultiDrawArrays(mode, first, count, drawcount);
@@ -9520,9 +5493,9 @@ export function multiDrawArraysIndirectCount(
  */
 export function multiDrawElements(
     mode: PrimitiveType,
-    count: readonly GLsizei[] | Int32Array,
+    count: GLsizei[] | Int32Array,
     type: DrawElementsType,
-    indices: readonly GLintptr[],
+    indices: GLintptr[],
     drawcount: GLsizei,
 ): void {
     glMultiDrawElements(mode, count, type, indices, drawcount);
@@ -9543,11 +5516,11 @@ export function multiDrawElements(
  */
 export function multiDrawElementsBaseVertex(
     mode: PrimitiveType,
-    count: readonly GLsizei[] | Int32Array,
+    count: GLsizei[] | Int32Array,
     type: DrawElementsType,
-    indices: readonly GLintptr[],
+    indices: GLintptr[],
     drawcount: GLsizei,
-    basevertex: readonly GLint[] | Int32Array,
+    basevertex: GLint[] | Int32Array,
 ): void {
     glMultiDrawElementsBaseVertex(mode, count, type, indices, drawcount, basevertex);
 }
@@ -9681,11 +5654,7 @@ export function namedFramebufferDrawBuffer(framebuffer: GLuint, buf: ColorBuffer
  * @param bufs - `const GLenum *`, group `ColorBuffer`, length `n`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glNamedFramebufferDrawBuffers.xhtml
  */
-export function namedFramebufferDrawBuffers(
-    framebuffer: GLuint,
-    n: GLsizei,
-    bufs: readonly ColorBuffer[] | Uint32Array,
-): void {
+export function namedFramebufferDrawBuffers(framebuffer: GLuint, n: GLsizei, bufs: ColorBuffer[] | Uint32Array): void {
     glNamedFramebufferDrawBuffers(framebuffer, n, bufs);
 }
 
@@ -9858,7 +5827,7 @@ export function objectPtrLabel(ptr: ArrayBufferView | GLintptr | null, length: G
  * @param values - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPatchParameterfv.xhtml
  */
-export function patchParameterfv(pname: PatchParameterName, values: readonly GLfloat[] | Float32Array): void {
+export function patchParameterfv(pname: PatchParameterName, values: GLfloat[] | Float32Array): void {
     glPatchParameterfv(pname, values);
 }
 
@@ -9933,7 +5902,7 @@ export function pointParameterf(pname: PointParameterNameARB, param: GLfloat): v
  * @param params - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPointParameterfv.xhtml
  */
-export function pointParameterfv(pname: PointParameterNameARB, params: readonly GLfloat[] | Float32Array): void {
+export function pointParameterfv(pname: PointParameterNameARB, params: GLfloat[] | Float32Array): void {
     glPointParameterfv(pname, params);
 }
 
@@ -9959,7 +5928,7 @@ export function pointParameteri(pname: PointParameterNameARB, param: GLint): voi
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPointParameteriv.xhtml
  */
-export function pointParameteriv(pname: PointParameterNameARB, params: readonly GLint[] | Int32Array): void {
+export function pointParameteriv(pname: PointParameterNameARB, params: GLint[] | Int32Array): void {
     glPointParameteriv(pname, params);
 }
 
@@ -10100,7 +6069,7 @@ export function programUniform1dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform1dv(program, location, count, value);
 }
@@ -10134,7 +6103,7 @@ export function programUniform1fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform1fv(program, location, count, value);
 }
@@ -10164,12 +6133,7 @@ export function programUniform1i(program: GLuint, location: GLint, v0: GLint): v
  * @param value - `const GLint *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform1iv.xhtml
  */
-export function programUniform1iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform1iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform1iv(program, location, count, value);
 }
 
@@ -10202,7 +6166,7 @@ export function programUniform1uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform1uiv(program, location, count, value);
 }
@@ -10237,7 +6201,7 @@ export function programUniform2dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform2dv(program, location, count, value);
 }
@@ -10272,7 +6236,7 @@ export function programUniform2fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform2fv(program, location, count, value);
 }
@@ -10303,12 +6267,7 @@ export function programUniform2i(program: GLuint, location: GLint, v0: GLint, v1
  * @param value - `const GLint *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform2iv.xhtml
  */
-export function programUniform2iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform2iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform2iv(program, location, count, value);
 }
 
@@ -10342,7 +6301,7 @@ export function programUniform2uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform2uiv(program, location, count, value);
 }
@@ -10378,7 +6337,7 @@ export function programUniform3dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform3dv(program, location, count, value);
 }
@@ -10414,7 +6373,7 @@ export function programUniform3fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform3fv(program, location, count, value);
 }
@@ -10446,12 +6405,7 @@ export function programUniform3i(program: GLuint, location: GLint, v0: GLint, v1
  * @param value - `const GLint *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform3iv.xhtml
  */
-export function programUniform3iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform3iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform3iv(program, location, count, value);
 }
 
@@ -10486,7 +6440,7 @@ export function programUniform3uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform3uiv(program, location, count, value);
 }
@@ -10530,7 +6484,7 @@ export function programUniform4dv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniform4dv(program, location, count, value);
 }
@@ -10574,7 +6528,7 @@ export function programUniform4fv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniform4fv(program, location, count, value);
 }
@@ -10607,12 +6561,7 @@ export function programUniform4i(program: GLuint, location: GLint, v0: GLint, v1
  * @param value - `const GLint *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glProgramUniform4iv.xhtml
  */
-export function programUniform4iv(
-    program: GLuint,
-    location: GLint,
-    count: GLsizei,
-    value: readonly GLint[] | Int32Array,
-): void {
+export function programUniform4iv(program: GLuint, location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glProgramUniform4iv(program, location, count, value);
 }
 
@@ -10655,7 +6604,7 @@ export function programUniform4uiv(
     program: GLuint,
     location: GLint,
     count: GLsizei,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glProgramUniform4uiv(program, location, count, value);
 }
@@ -10677,7 +6626,7 @@ export function programUniformMatrix2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix2dv(program, location, count, transpose, value);
 }
@@ -10699,7 +6648,7 @@ export function programUniformMatrix2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix2fv(program, location, count, transpose, value);
 }
@@ -10721,7 +6670,7 @@ export function programUniformMatrix2x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix2x3dv(program, location, count, transpose, value);
 }
@@ -10743,7 +6692,7 @@ export function programUniformMatrix2x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix2x3fv(program, location, count, transpose, value);
 }
@@ -10765,7 +6714,7 @@ export function programUniformMatrix2x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix2x4dv(program, location, count, transpose, value);
 }
@@ -10787,7 +6736,7 @@ export function programUniformMatrix2x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix2x4fv(program, location, count, transpose, value);
 }
@@ -10809,7 +6758,7 @@ export function programUniformMatrix3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix3dv(program, location, count, transpose, value);
 }
@@ -10831,7 +6780,7 @@ export function programUniformMatrix3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix3fv(program, location, count, transpose, value);
 }
@@ -10853,7 +6802,7 @@ export function programUniformMatrix3x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix3x2dv(program, location, count, transpose, value);
 }
@@ -10875,7 +6824,7 @@ export function programUniformMatrix3x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix3x2fv(program, location, count, transpose, value);
 }
@@ -10897,7 +6846,7 @@ export function programUniformMatrix3x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix3x4dv(program, location, count, transpose, value);
 }
@@ -10919,7 +6868,7 @@ export function programUniformMatrix3x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix3x4fv(program, location, count, transpose, value);
 }
@@ -10941,7 +6890,7 @@ export function programUniformMatrix4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix4dv(program, location, count, transpose, value);
 }
@@ -10963,7 +6912,7 @@ export function programUniformMatrix4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix4fv(program, location, count, transpose, value);
 }
@@ -10985,7 +6934,7 @@ export function programUniformMatrix4x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix4x2dv(program, location, count, transpose, value);
 }
@@ -11007,7 +6956,7 @@ export function programUniformMatrix4x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix4x2fv(program, location, count, transpose, value);
 }
@@ -11029,7 +6978,7 @@ export function programUniformMatrix4x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glProgramUniformMatrix4x3dv(program, location, count, transpose, value);
 }
@@ -11051,7 +7000,7 @@ export function programUniformMatrix4x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glProgramUniformMatrix4x3fv(program, location, count, transpose, value);
 }
@@ -11274,11 +7223,7 @@ export function samplerParameterf(sampler: GLuint, pname: SamplerParameterF, par
  * @param param - `const GLfloat *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterfv.xhtml
  */
-export function samplerParameterfv(
-    sampler: GLuint,
-    pname: SamplerParameterF,
-    param: readonly GLfloat[] | Float32Array,
-): void {
+export function samplerParameterfv(sampler: GLuint, pname: SamplerParameterF, param: GLfloat[] | Float32Array): void {
     glSamplerParameterfv(sampler, pname, param);
 }
 
@@ -11306,11 +7251,7 @@ export function samplerParameteri(sampler: GLuint, pname: SamplerParameterI, par
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterIiv.xhtml
  */
-export function samplerParameterIiv(
-    sampler: GLuint,
-    pname: SamplerParameterI,
-    param: readonly GLint[] | Int32Array,
-): void {
+export function samplerParameterIiv(sampler: GLuint, pname: SamplerParameterI, param: GLint[] | Int32Array): void {
     glSamplerParameterIiv(sampler, pname, param);
 }
 
@@ -11324,11 +7265,7 @@ export function samplerParameterIiv(
  * @param param - `const GLuint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameterIuiv.xhtml
  */
-export function samplerParameterIuiv(
-    sampler: GLuint,
-    pname: SamplerParameterI,
-    param: readonly GLuint[] | Uint32Array,
-): void {
+export function samplerParameterIuiv(sampler: GLuint, pname: SamplerParameterI, param: GLuint[] | Uint32Array): void {
     glSamplerParameterIuiv(sampler, pname, param);
 }
 
@@ -11342,11 +7279,7 @@ export function samplerParameterIuiv(
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glSamplerParameteriv.xhtml
  */
-export function samplerParameteriv(
-    sampler: GLuint,
-    pname: SamplerParameterI,
-    param: readonly GLint[] | Int32Array,
-): void {
+export function samplerParameteriv(sampler: GLuint, pname: SamplerParameterI, param: GLint[] | Int32Array): void {
     glSamplerParameteriv(sampler, pname, param);
 }
 
@@ -11375,7 +7308,7 @@ export function scissor(x: GLint, y: GLint, width: GLsizei, height: GLsizei): vo
  * @param v - `const GLint *`, length `COMPSIZE(count)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glScissorArrayv.xhtml
  */
-export function scissorArrayv(first: GLuint, count: GLsizei, v: readonly GLint[] | Int32Array): void {
+export function scissorArrayv(first: GLuint, count: GLsizei, v: GLint[] | Int32Array): void {
     glScissorArrayv(first, count, v);
 }
 
@@ -11404,7 +7337,7 @@ export function scissorIndexed(index: GLuint, left: GLint, bottom: GLint, width:
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glScissorIndexedv.xhtml
  */
-export function scissorIndexedv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function scissorIndexedv(index: GLuint, v: GLint[] | Int32Array): void {
     glScissorIndexedv(index, v);
 }
 
@@ -11422,7 +7355,7 @@ export function scissorIndexedv(index: GLuint, v: readonly GLint[] | Int32Array)
  */
 export function shaderBinary(
     count: GLsizei,
-    shaders: readonly GLuint[] | Uint32Array,
+    shaders: GLuint[] | Uint32Array,
     binaryFormat: ShaderBinaryFormat,
     binary: ArrayBufferView | GLintptr | null,
     length: GLsizei,
@@ -11441,12 +7374,7 @@ export function shaderBinary(
  * @param length - `const GLint *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glShaderSource.xhtml
  */
-export function shaderSource(
-    shader: GLuint,
-    count: GLsizei,
-    string: readonly string[],
-    length: readonly GLint[] | Int32Array,
-): void {
+export function shaderSource(shader: GLuint, count: GLsizei, string: string[], length: GLint[] | Int32Array): void {
     glShaderSource(shader, count, string, length);
 }
 
@@ -11484,8 +7412,8 @@ export function specializeShader(
     shader: GLuint,
     pEntryPoint: string,
     numSpecializationConstants: GLuint,
-    pConstantIndex: readonly GLuint[] | Uint32Array,
-    pConstantValue: readonly GLuint[] | Uint32Array,
+    pConstantIndex: GLuint[] | Uint32Array,
+    pConstantValue: GLuint[] | Uint32Array,
 ): void {
     glSpecializeShader(shader, pEntryPoint, numSpecializationConstants, pConstantIndex, pConstantValue);
 }
@@ -11776,7 +7704,7 @@ export function texParameterf(target: TextureTarget, pname: TextureParameterName
 export function texParameterfv(
     target: TextureTarget,
     pname: TextureParameterName,
-    params: readonly GLfloat[] | Float32Array,
+    params: GLfloat[] | Float32Array,
 ): void {
     glTexParameterfv(target, pname, params);
 }
@@ -11808,7 +7736,7 @@ export function texParameteri(target: TextureTarget, pname: TextureParameterName
 export function texParameterIiv(
     target: TextureTarget,
     pname: TextureParameterName,
-    params: readonly GLint[] | Int32Array,
+    params: GLint[] | Int32Array,
 ): void {
     glTexParameterIiv(target, pname, params);
 }
@@ -11826,7 +7754,7 @@ export function texParameterIiv(
 export function texParameterIuiv(
     target: TextureTarget,
     pname: TextureParameterName,
-    params: readonly GLuint[] | Uint32Array,
+    params: GLuint[] | Uint32Array,
 ): void {
     glTexParameterIuiv(target, pname, params);
 }
@@ -11841,11 +7769,7 @@ export function texParameterIuiv(
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexParameteriv.xhtml
  */
-export function texParameteriv(
-    target: TextureTarget,
-    pname: TextureParameterName,
-    params: readonly GLint[] | Int32Array,
-): void {
+export function texParameteriv(target: TextureTarget, pname: TextureParameterName, params: GLint[] | Int32Array): void {
     glTexParameteriv(target, pname, params);
 }
 
@@ -12128,7 +8052,7 @@ export function textureParameterf(texture: GLuint, pname: TextureParameterName, 
 export function textureParameterfv(
     texture: GLuint,
     pname: TextureParameterName,
-    param: readonly GLfloat[] | Float32Array,
+    param: GLfloat[] | Float32Array,
 ): void {
     glTextureParameterfv(texture, pname, param);
 }
@@ -12157,11 +8081,7 @@ export function textureParameteri(texture: GLuint, pname: TextureParameterName, 
  * @param params - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameterIiv.xhtml
  */
-export function textureParameterIiv(
-    texture: GLuint,
-    pname: TextureParameterName,
-    params: readonly GLint[] | Int32Array,
-): void {
+export function textureParameterIiv(texture: GLuint, pname: TextureParameterName, params: GLint[] | Int32Array): void {
     glTextureParameterIiv(texture, pname, params);
 }
 
@@ -12178,7 +8098,7 @@ export function textureParameterIiv(
 export function textureParameterIuiv(
     texture: GLuint,
     pname: TextureParameterName,
-    params: readonly GLuint[] | Uint32Array,
+    params: GLuint[] | Uint32Array,
 ): void {
     glTextureParameterIuiv(texture, pname, params);
 }
@@ -12193,11 +8113,7 @@ export function textureParameterIuiv(
  * @param param - `const GLint *`, length `COMPSIZE(pname)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTextureParameteriv.xhtml
  */
-export function textureParameteriv(
-    texture: GLuint,
-    pname: TextureParameterName,
-    param: readonly GLint[] | Int32Array,
-): void {
+export function textureParameteriv(texture: GLuint, pname: TextureParameterName, param: GLint[] | Int32Array): void {
     glTextureParameteriv(texture, pname, param);
 }
 
@@ -12485,7 +8401,7 @@ export function transformFeedbackBufferRange(
 export function transformFeedbackVaryings(
     program: GLuint,
     count: GLsizei,
-    varyings: readonly string[],
+    varyings: string[],
     bufferMode: TransformFeedbackBufferMode,
 ): void {
     glTransformFeedbackVaryings(program, count, varyings, bufferMode);
@@ -12514,7 +8430,7 @@ export function uniform1d(location: GLint, x: GLdouble): void {
  * @param value - `const GLdouble *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1dv.xhtml
  */
-export function uniform1dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform1dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform1dv(location, count, value);
 }
 
@@ -12541,7 +8457,7 @@ export function uniform1f(location: GLint, v0: GLfloat): void {
  * @param value - `const GLfloat *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1fv.xhtml
  */
-export function uniform1fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform1fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform1fv(location, count, value);
 }
 
@@ -12568,7 +8484,7 @@ export function uniform1i(location: GLint, v0: GLint): void {
  * @param value - `const GLint *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1iv.xhtml
  */
-export function uniform1iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform1iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform1iv(location, count, value);
 }
 
@@ -12595,7 +8511,7 @@ export function uniform1ui(location: GLint, v0: GLuint): void {
  * @param value - `const GLuint *`, length `count*1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform1uiv.xhtml
  */
-export function uniform1uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform1uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform1uiv(location, count, value);
 }
 
@@ -12623,7 +8539,7 @@ export function uniform2d(location: GLint, x: GLdouble, y: GLdouble): void {
  * @param value - `const GLdouble *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2dv.xhtml
  */
-export function uniform2dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform2dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform2dv(location, count, value);
 }
 
@@ -12651,7 +8567,7 @@ export function uniform2f(location: GLint, v0: GLfloat, v1: GLfloat): void {
  * @param value - `const GLfloat *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2fv.xhtml
  */
-export function uniform2fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform2fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform2fv(location, count, value);
 }
 
@@ -12679,7 +8595,7 @@ export function uniform2i(location: GLint, v0: GLint, v1: GLint): void {
  * @param value - `const GLint *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2iv.xhtml
  */
-export function uniform2iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform2iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform2iv(location, count, value);
 }
 
@@ -12707,7 +8623,7 @@ export function uniform2ui(location: GLint, v0: GLuint, v1: GLuint): void {
  * @param value - `const GLuint *`, length `count*2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform2uiv.xhtml
  */
-export function uniform2uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform2uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform2uiv(location, count, value);
 }
 
@@ -12736,7 +8652,7 @@ export function uniform3d(location: GLint, x: GLdouble, y: GLdouble, z: GLdouble
  * @param value - `const GLdouble *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3dv.xhtml
  */
-export function uniform3dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform3dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform3dv(location, count, value);
 }
 
@@ -12765,7 +8681,7 @@ export function uniform3f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat
  * @param value - `const GLfloat *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3fv.xhtml
  */
-export function uniform3fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform3fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform3fv(location, count, value);
 }
 
@@ -12794,7 +8710,7 @@ export function uniform3i(location: GLint, v0: GLint, v1: GLint, v2: GLint): voi
  * @param value - `const GLint *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3iv.xhtml
  */
-export function uniform3iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform3iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform3iv(location, count, value);
 }
 
@@ -12823,7 +8739,7 @@ export function uniform3ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint):
  * @param value - `const GLuint *`, length `count*3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform3uiv.xhtml
  */
-export function uniform3uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform3uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform3uiv(location, count, value);
 }
 
@@ -12853,7 +8769,7 @@ export function uniform4d(location: GLint, x: GLdouble, y: GLdouble, z: GLdouble
  * @param value - `const GLdouble *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4dv.xhtml
  */
-export function uniform4dv(location: GLint, count: GLsizei, value: readonly GLdouble[] | Float64Array): void {
+export function uniform4dv(location: GLint, count: GLsizei, value: GLdouble[] | Float64Array): void {
     glUniform4dv(location, count, value);
 }
 
@@ -12883,7 +8799,7 @@ export function uniform4f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat
  * @param value - `const GLfloat *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4fv.xhtml
  */
-export function uniform4fv(location: GLint, count: GLsizei, value: readonly GLfloat[] | Float32Array): void {
+export function uniform4fv(location: GLint, count: GLsizei, value: GLfloat[] | Float32Array): void {
     glUniform4fv(location, count, value);
 }
 
@@ -12913,7 +8829,7 @@ export function uniform4i(location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: 
  * @param value - `const GLint *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4iv.xhtml
  */
-export function uniform4iv(location: GLint, count: GLsizei, value: readonly GLint[] | Int32Array): void {
+export function uniform4iv(location: GLint, count: GLsizei, value: GLint[] | Int32Array): void {
     glUniform4iv(location, count, value);
 }
 
@@ -12943,7 +8859,7 @@ export function uniform4ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, 
  * @param value - `const GLuint *`, length `count*4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniform4uiv.xhtml
  */
-export function uniform4uiv(location: GLint, count: GLsizei, value: readonly GLuint[] | Uint32Array): void {
+export function uniform4uiv(location: GLint, count: GLsizei, value: GLuint[] | Uint32Array): void {
     glUniform4uiv(location, count, value);
 }
 
@@ -12976,7 +8892,7 @@ export function uniformMatrix2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix2dv(location, count, transpose, value);
 }
@@ -12996,7 +8912,7 @@ export function uniformMatrix2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix2fv(location, count, transpose, value);
 }
@@ -13016,7 +8932,7 @@ export function uniformMatrix2x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix2x3dv(location, count, transpose, value);
 }
@@ -13036,7 +8952,7 @@ export function uniformMatrix2x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix2x3fv(location, count, transpose, value);
 }
@@ -13056,7 +8972,7 @@ export function uniformMatrix2x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix2x4dv(location, count, transpose, value);
 }
@@ -13076,7 +8992,7 @@ export function uniformMatrix2x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix2x4fv(location, count, transpose, value);
 }
@@ -13096,7 +9012,7 @@ export function uniformMatrix3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix3dv(location, count, transpose, value);
 }
@@ -13116,7 +9032,7 @@ export function uniformMatrix3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix3fv(location, count, transpose, value);
 }
@@ -13136,7 +9052,7 @@ export function uniformMatrix3x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix3x2dv(location, count, transpose, value);
 }
@@ -13156,7 +9072,7 @@ export function uniformMatrix3x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix3x2fv(location, count, transpose, value);
 }
@@ -13176,7 +9092,7 @@ export function uniformMatrix3x4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix3x4dv(location, count, transpose, value);
 }
@@ -13196,7 +9112,7 @@ export function uniformMatrix3x4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix3x4fv(location, count, transpose, value);
 }
@@ -13216,7 +9132,7 @@ export function uniformMatrix4dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix4dv(location, count, transpose, value);
 }
@@ -13236,7 +9152,7 @@ export function uniformMatrix4fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix4fv(location, count, transpose, value);
 }
@@ -13256,7 +9172,7 @@ export function uniformMatrix4x2dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix4x2dv(location, count, transpose, value);
 }
@@ -13276,7 +9192,7 @@ export function uniformMatrix4x2fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix4x2fv(location, count, transpose, value);
 }
@@ -13296,7 +9212,7 @@ export function uniformMatrix4x3dv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLdouble[] | Float64Array,
+    value: GLdouble[] | Float64Array,
 ): void {
     glUniformMatrix4x3dv(location, count, transpose, value);
 }
@@ -13316,7 +9232,7 @@ export function uniformMatrix4x3fv(
     location: GLint,
     count: GLsizei,
     transpose: boolean,
-    value: readonly GLfloat[] | Float32Array,
+    value: GLfloat[] | Float32Array,
 ): void {
     glUniformMatrix4x3fv(location, count, transpose, value);
 }
@@ -13331,11 +9247,7 @@ export function uniformMatrix4x3fv(
  * @param indices - `const GLuint *`, length `count`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glUniformSubroutinesuiv.xhtml
  */
-export function uniformSubroutinesuiv(
-    shadertype: ShaderType,
-    count: GLsizei,
-    indices: readonly GLuint[] | Uint32Array,
-): void {
+export function uniformSubroutinesuiv(shadertype: ShaderType, count: GLsizei, indices: GLuint[] | Uint32Array): void {
     glUniformSubroutinesuiv(shadertype, count, indices);
 }
 
@@ -13563,9 +9475,9 @@ export function vertexArrayVertexBuffers(
     vaobj: GLuint,
     first: GLuint,
     count: GLsizei,
-    buffers: readonly GLuint[] | Uint32Array,
-    offsets: readonly GLintptr[],
-    strides: readonly GLsizei[] | Int32Array,
+    buffers: GLuint[] | Uint32Array,
+    offsets: GLintptr[],
+    strides: GLsizei[] | Int32Array,
 ): void {
     glVertexArrayVertexBuffers(vaobj, first, count, buffers, offsets, strides);
 }
@@ -13592,7 +9504,7 @@ export function vertexAttrib1d(index: GLuint, x: GLdouble): void {
  * @param v - `const GLdouble *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib1dv.xhtml
  */
-export function vertexAttrib1dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib1dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib1dv(index, v);
 }
 
@@ -13618,7 +9530,7 @@ export function vertexAttrib1f(index: GLuint, x: GLfloat): void {
  * @param v - `const GLfloat *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib1fv.xhtml
  */
-export function vertexAttrib1fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib1fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib1fv(index, v);
 }
 
@@ -13644,7 +9556,7 @@ export function vertexAttrib1s(index: GLuint, x: GLshort): void {
  * @param v - `const GLshort *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib1sv.xhtml
  */
-export function vertexAttrib1sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib1sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib1sv(index, v);
 }
 
@@ -13671,7 +9583,7 @@ export function vertexAttrib2d(index: GLuint, x: GLdouble, y: GLdouble): void {
  * @param v - `const GLdouble *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib2dv.xhtml
  */
-export function vertexAttrib2dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib2dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib2dv(index, v);
 }
 
@@ -13698,7 +9610,7 @@ export function vertexAttrib2f(index: GLuint, x: GLfloat, y: GLfloat): void {
  * @param v - `const GLfloat *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib2fv.xhtml
  */
-export function vertexAttrib2fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib2fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib2fv(index, v);
 }
 
@@ -13725,7 +9637,7 @@ export function vertexAttrib2s(index: GLuint, x: GLshort, y: GLshort): void {
  * @param v - `const GLshort *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib2sv.xhtml
  */
-export function vertexAttrib2sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib2sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib2sv(index, v);
 }
 
@@ -13753,7 +9665,7 @@ export function vertexAttrib3d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdou
  * @param v - `const GLdouble *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib3dv.xhtml
  */
-export function vertexAttrib3dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib3dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib3dv(index, v);
 }
 
@@ -13781,7 +9693,7 @@ export function vertexAttrib3f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat
  * @param v - `const GLfloat *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib3fv.xhtml
  */
-export function vertexAttrib3fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib3fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib3fv(index, v);
 }
 
@@ -13809,7 +9721,7 @@ export function vertexAttrib3s(index: GLuint, x: GLshort, y: GLshort, z: GLshort
  * @param v - `const GLshort *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib3sv.xhtml
  */
-export function vertexAttrib3sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib3sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib3sv(index, v);
 }
 
@@ -13822,7 +9734,7 @@ export function vertexAttrib3sv(index: GLuint, v: readonly GLshort[] | Int16Arra
  * @param v - `const GLbyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4bv.xhtml
  */
-export function vertexAttrib4bv(index: GLuint, v: readonly GLbyte[] | Int8Array): void {
+export function vertexAttrib4bv(index: GLuint, v: GLbyte[] | Int8Array): void {
     glVertexAttrib4bv(index, v);
 }
 
@@ -13851,7 +9763,7 @@ export function vertexAttrib4d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdou
  * @param v - `const GLdouble *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4dv.xhtml
  */
-export function vertexAttrib4dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttrib4dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttrib4dv(index, v);
 }
 
@@ -13880,7 +9792,7 @@ export function vertexAttrib4f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat
  * @param v - `const GLfloat *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4fv.xhtml
  */
-export function vertexAttrib4fv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function vertexAttrib4fv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glVertexAttrib4fv(index, v);
 }
 
@@ -13893,7 +9805,7 @@ export function vertexAttrib4fv(index: GLuint, v: readonly GLfloat[] | Float32Ar
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4iv.xhtml
  */
-export function vertexAttrib4iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttrib4iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttrib4iv(index, v);
 }
 
@@ -13906,7 +9818,7 @@ export function vertexAttrib4iv(index: GLuint, v: readonly GLint[] | Int32Array)
  * @param v - `const GLbyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nbv.xhtml
  */
-export function vertexAttrib4Nbv(index: GLuint, v: readonly GLbyte[] | Int8Array): void {
+export function vertexAttrib4Nbv(index: GLuint, v: GLbyte[] | Int8Array): void {
     glVertexAttrib4Nbv(index, v);
 }
 
@@ -13919,7 +9831,7 @@ export function vertexAttrib4Nbv(index: GLuint, v: readonly GLbyte[] | Int8Array
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Niv.xhtml
  */
-export function vertexAttrib4Niv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttrib4Niv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttrib4Niv(index, v);
 }
 
@@ -13932,7 +9844,7 @@ export function vertexAttrib4Niv(index: GLuint, v: readonly GLint[] | Int32Array
  * @param v - `const GLshort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nsv.xhtml
  */
-export function vertexAttrib4Nsv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib4Nsv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib4Nsv(index, v);
 }
 
@@ -13961,7 +9873,7 @@ export function vertexAttrib4Nub(index: GLuint, x: GLubyte, y: GLubyte, z: GLuby
  * @param v - `const GLubyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nubv.xhtml
  */
-export function vertexAttrib4Nubv(index: GLuint, v: readonly GLubyte[] | Uint8Array): void {
+export function vertexAttrib4Nubv(index: GLuint, v: GLubyte[] | Uint8Array): void {
     glVertexAttrib4Nubv(index, v);
 }
 
@@ -13974,7 +9886,7 @@ export function vertexAttrib4Nubv(index: GLuint, v: readonly GLubyte[] | Uint8Ar
  * @param v - `const GLuint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nuiv.xhtml
  */
-export function vertexAttrib4Nuiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttrib4Nuiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttrib4Nuiv(index, v);
 }
 
@@ -13987,7 +9899,7 @@ export function vertexAttrib4Nuiv(index: GLuint, v: readonly GLuint[] | Uint32Ar
  * @param v - `const GLushort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4Nusv.xhtml
  */
-export function vertexAttrib4Nusv(index: GLuint, v: readonly GLushort[] | Uint16Array): void {
+export function vertexAttrib4Nusv(index: GLuint, v: GLushort[] | Uint16Array): void {
     glVertexAttrib4Nusv(index, v);
 }
 
@@ -14016,7 +9928,7 @@ export function vertexAttrib4s(index: GLuint, x: GLshort, y: GLshort, z: GLshort
  * @param v - `const GLshort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4sv.xhtml
  */
-export function vertexAttrib4sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttrib4sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttrib4sv(index, v);
 }
 
@@ -14029,7 +9941,7 @@ export function vertexAttrib4sv(index: GLuint, v: readonly GLshort[] | Int16Arra
  * @param v - `const GLubyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4ubv.xhtml
  */
-export function vertexAttrib4ubv(index: GLuint, v: readonly GLubyte[] | Uint8Array): void {
+export function vertexAttrib4ubv(index: GLuint, v: GLubyte[] | Uint8Array): void {
     glVertexAttrib4ubv(index, v);
 }
 
@@ -14042,7 +9954,7 @@ export function vertexAttrib4ubv(index: GLuint, v: readonly GLubyte[] | Uint8Arr
  * @param v - `const GLuint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4uiv.xhtml
  */
-export function vertexAttrib4uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttrib4uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttrib4uiv(index, v);
 }
 
@@ -14055,7 +9967,7 @@ export function vertexAttrib4uiv(index: GLuint, v: readonly GLuint[] | Uint32Arr
  * @param v - `const GLushort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttrib4usv.xhtml
  */
-export function vertexAttrib4usv(index: GLuint, v: readonly GLushort[] | Uint16Array): void {
+export function vertexAttrib4usv(index: GLuint, v: GLushort[] | Uint16Array): void {
     glVertexAttrib4usv(index, v);
 }
 
@@ -14129,7 +10041,7 @@ export function vertexAttribI1i(index: GLuint, x: GLint): void {
  * @param v - `const GLint *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI1iv.xhtml
  */
-export function vertexAttribI1iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI1iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI1iv(index, v);
 }
 
@@ -14155,7 +10067,7 @@ export function vertexAttribI1ui(index: GLuint, x: GLuint): void {
  * @param v - `const GLuint *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI1uiv.xhtml
  */
-export function vertexAttribI1uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI1uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI1uiv(index, v);
 }
 
@@ -14182,7 +10094,7 @@ export function vertexAttribI2i(index: GLuint, x: GLint, y: GLint): void {
  * @param v - `const GLint *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI2iv.xhtml
  */
-export function vertexAttribI2iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI2iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI2iv(index, v);
 }
 
@@ -14209,7 +10121,7 @@ export function vertexAttribI2ui(index: GLuint, x: GLuint, y: GLuint): void {
  * @param v - `const GLuint *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI2uiv.xhtml
  */
-export function vertexAttribI2uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI2uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI2uiv(index, v);
 }
 
@@ -14237,7 +10149,7 @@ export function vertexAttribI3i(index: GLuint, x: GLint, y: GLint, z: GLint): vo
  * @param v - `const GLint *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI3iv.xhtml
  */
-export function vertexAttribI3iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI3iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI3iv(index, v);
 }
 
@@ -14265,7 +10177,7 @@ export function vertexAttribI3ui(index: GLuint, x: GLuint, y: GLuint, z: GLuint)
  * @param v - `const GLuint *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI3uiv.xhtml
  */
-export function vertexAttribI3uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI3uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI3uiv(index, v);
 }
 
@@ -14278,7 +10190,7 @@ export function vertexAttribI3uiv(index: GLuint, v: readonly GLuint[] | Uint32Ar
  * @param v - `const GLbyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4bv.xhtml
  */
-export function vertexAttribI4bv(index: GLuint, v: readonly GLbyte[] | Int8Array): void {
+export function vertexAttribI4bv(index: GLuint, v: GLbyte[] | Int8Array): void {
     glVertexAttribI4bv(index, v);
 }
 
@@ -14307,7 +10219,7 @@ export function vertexAttribI4i(index: GLuint, x: GLint, y: GLint, z: GLint, w: 
  * @param v - `const GLint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4iv.xhtml
  */
-export function vertexAttribI4iv(index: GLuint, v: readonly GLint[] | Int32Array): void {
+export function vertexAttribI4iv(index: GLuint, v: GLint[] | Int32Array): void {
     glVertexAttribI4iv(index, v);
 }
 
@@ -14320,7 +10232,7 @@ export function vertexAttribI4iv(index: GLuint, v: readonly GLint[] | Int32Array
  * @param v - `const GLshort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4sv.xhtml
  */
-export function vertexAttribI4sv(index: GLuint, v: readonly GLshort[] | Int16Array): void {
+export function vertexAttribI4sv(index: GLuint, v: GLshort[] | Int16Array): void {
     glVertexAttribI4sv(index, v);
 }
 
@@ -14333,7 +10245,7 @@ export function vertexAttribI4sv(index: GLuint, v: readonly GLshort[] | Int16Arr
  * @param v - `const GLubyte *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4ubv.xhtml
  */
-export function vertexAttribI4ubv(index: GLuint, v: readonly GLubyte[] | Uint8Array): void {
+export function vertexAttribI4ubv(index: GLuint, v: GLubyte[] | Uint8Array): void {
     glVertexAttribI4ubv(index, v);
 }
 
@@ -14362,7 +10274,7 @@ export function vertexAttribI4ui(index: GLuint, x: GLuint, y: GLuint, z: GLuint,
  * @param v - `const GLuint *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4uiv.xhtml
  */
-export function vertexAttribI4uiv(index: GLuint, v: readonly GLuint[] | Uint32Array): void {
+export function vertexAttribI4uiv(index: GLuint, v: GLuint[] | Uint32Array): void {
     glVertexAttribI4uiv(index, v);
 }
 
@@ -14375,7 +10287,7 @@ export function vertexAttribI4uiv(index: GLuint, v: readonly GLuint[] | Uint32Ar
  * @param v - `const GLushort *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribI4usv.xhtml
  */
-export function vertexAttribI4usv(index: GLuint, v: readonly GLushort[] | Uint16Array): void {
+export function vertexAttribI4usv(index: GLuint, v: GLushort[] | Uint16Array): void {
     glVertexAttribI4usv(index, v);
 }
 
@@ -14443,7 +10355,7 @@ export function vertexAttribL1d(index: GLuint, x: GLdouble): void {
  * @param v - `const GLdouble *`, length `1`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL1dv.xhtml
  */
-export function vertexAttribL1dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL1dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL1dv(index, v);
 }
 
@@ -14470,7 +10382,7 @@ export function vertexAttribL2d(index: GLuint, x: GLdouble, y: GLdouble): void {
  * @param v - `const GLdouble *`, length `2`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL2dv.xhtml
  */
-export function vertexAttribL2dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL2dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL2dv(index, v);
 }
 
@@ -14498,7 +10410,7 @@ export function vertexAttribL3d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdo
  * @param v - `const GLdouble *`, length `3`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL3dv.xhtml
  */
-export function vertexAttribL3dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL3dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL3dv(index, v);
 }
 
@@ -14527,7 +10439,7 @@ export function vertexAttribL4d(index: GLuint, x: GLdouble, y: GLdouble, z: GLdo
  * @param v - `const GLdouble *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribL4dv.xhtml
  */
-export function vertexAttribL4dv(index: GLuint, v: readonly GLdouble[] | Float64Array): void {
+export function vertexAttribL4dv(index: GLuint, v: GLdouble[] | Float64Array): void {
     glVertexAttribL4dv(index, v);
 }
 
@@ -14608,7 +10520,7 @@ export function vertexAttribP1uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP1uiv(index, type, normalized, value);
 }
@@ -14648,7 +10560,7 @@ export function vertexAttribP2uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP2uiv(index, type, normalized, value);
 }
@@ -14688,7 +10600,7 @@ export function vertexAttribP3uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP3uiv(index, type, normalized, value);
 }
@@ -14728,7 +10640,7 @@ export function vertexAttribP4uiv(
     index: GLuint,
     type: VertexAttribPointerType,
     normalized: boolean,
-    value: readonly GLuint[] | Uint32Array,
+    value: GLuint[] | Uint32Array,
 ): void {
     glVertexAttribP4uiv(index, type, normalized, value);
 }
@@ -14795,7 +10707,7 @@ export function viewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei): v
  * @param v - `const GLfloat *`, length `COMPSIZE(count)`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewportArrayv.xhtml
  */
-export function viewportArrayv(first: GLuint, count: GLsizei, v: readonly GLfloat[] | Float32Array): void {
+export function viewportArrayv(first: GLuint, count: GLsizei, v: GLfloat[] | Float32Array): void {
     glViewportArrayv(first, count, v);
 }
 
@@ -14824,7 +10736,7 @@ export function viewportIndexedf(index: GLuint, x: GLfloat, y: GLfloat, w: GLflo
  * @param v - `const GLfloat *`, length `4`
  * @see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewportIndexedfv.xhtml
  */
-export function viewportIndexedfv(index: GLuint, v: readonly GLfloat[] | Float32Array): void {
+export function viewportIndexedfv(index: GLuint, v: GLfloat[] | Float32Array): void {
     glViewportIndexedfv(index, v);
 }
 
@@ -15176,3 +11088,2301 @@ export function genVertexArray(): GLuint {
     glGenVertexArraysSingle(1, out);
     return out.value;
 }
+
+const LIB = "libGL.so.1";
+
+const glActiveShaderProgram = t.bind(LIB, "glActiveShaderProgram", [t.uint32, t.uint32], t.void);
+
+const glActiveTexture = t.bind(LIB, "glActiveTexture", [t.uint32], t.void);
+
+const glAttachShader = t.bind(LIB, "glAttachShader", [t.uint32, t.uint32], t.void);
+
+const glBeginConditionalRender = t.bind(LIB, "glBeginConditionalRender", [t.uint32, t.uint32], t.void);
+
+const glBeginQuery = t.bind(LIB, "glBeginQuery", [t.uint32, t.uint32], t.void);
+
+const glBeginQueryIndexed = t.bind(LIB, "glBeginQueryIndexed", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glBeginTransformFeedback = t.bind(LIB, "glBeginTransformFeedback", [t.uint32], t.void);
+
+const glBindAttribLocation = t.bind(LIB, "glBindAttribLocation", [t.uint32, t.uint32, t.string("borrowed")], t.void);
+
+const glBindBuffer = t.bind(LIB, "glBindBuffer", [t.uint32, t.uint32], t.void);
+
+const glBindBufferBase = t.bind(LIB, "glBindBufferBase", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glBindBufferRange = t.bind(LIB, "glBindBufferRange", [t.uint32, t.uint32, t.uint32, t.int64, t.int64], t.void);
+
+const glBindBuffersBase = t.bind(LIB, "glBindBuffersBase", [t.uint32, t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glBindBuffersRange = t.bind(
+    LIB,
+    "glBindBuffersRange",
+    [t.uint32, t.uint32, t.int32, t.array(t.uint32), t.array(t.int64), t.array(t.int64)],
+    t.void,
+);
+
+const glBindFragDataLocation = t.bind(
+    LIB,
+    "glBindFragDataLocation",
+    [t.uint32, t.uint32, t.string("borrowed")],
+    t.void,
+);
+
+const glBindFragDataLocationIndexed = t.bind(
+    LIB,
+    "glBindFragDataLocationIndexed",
+    [t.uint32, t.uint32, t.uint32, t.string("borrowed")],
+    t.void,
+);
+
+const glBindFramebuffer = t.bind(LIB, "glBindFramebuffer", [t.uint32, t.uint32], t.void);
+
+const glBindImageTexture = t.bind(
+    LIB,
+    "glBindImageTexture",
+    [t.uint32, t.uint32, t.int32, t.boolean, t.int32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glBindImageTextures = t.bind(LIB, "glBindImageTextures", [t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glBindProgramPipeline = t.bind(LIB, "glBindProgramPipeline", [t.uint32], t.void);
+
+const glBindRenderbuffer = t.bind(LIB, "glBindRenderbuffer", [t.uint32, t.uint32], t.void);
+
+const glBindSampler = t.bind(LIB, "glBindSampler", [t.uint32, t.uint32], t.void);
+
+const glBindSamplers = t.bind(LIB, "glBindSamplers", [t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glBindTexture = t.bind(LIB, "glBindTexture", [t.uint32, t.uint32], t.void);
+
+const glBindTextures = t.bind(LIB, "glBindTextures", [t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glBindTextureUnit = t.bind(LIB, "glBindTextureUnit", [t.uint32, t.uint32], t.void);
+
+const glBindTransformFeedback = t.bind(LIB, "glBindTransformFeedback", [t.uint32, t.uint32], t.void);
+
+const glBindVertexArray = t.bind(LIB, "glBindVertexArray", [t.uint32], t.void);
+
+const glBindVertexBuffer = t.bind(LIB, "glBindVertexBuffer", [t.uint32, t.uint32, t.int64, t.int32], t.void);
+
+const glBindVertexBuffers = t.bind(
+    LIB,
+    "glBindVertexBuffers",
+    [t.uint32, t.int32, t.array(t.uint32), t.array(t.int64), t.array(t.int32)],
+    t.void,
+);
+
+const glBlendColor = t.bind(LIB, "glBlendColor", [t.float32, t.float32, t.float32, t.float32], t.void);
+
+const glBlendEquation = t.bind(LIB, "glBlendEquation", [t.uint32], t.void);
+
+const glBlendEquationi = t.bind(LIB, "glBlendEquationi", [t.uint32, t.uint32], t.void);
+
+const glBlendEquationSeparate = t.bind(LIB, "glBlendEquationSeparate", [t.uint32, t.uint32], t.void);
+
+const glBlendEquationSeparatei = t.bind(LIB, "glBlendEquationSeparatei", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glBlendFunc = t.bind(LIB, "glBlendFunc", [t.uint32, t.uint32], t.void);
+
+const glBlendFunci = t.bind(LIB, "glBlendFunci", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glBlendFuncSeparate = t.bind(LIB, "glBlendFuncSeparate", [t.uint32, t.uint32, t.uint32, t.uint32], t.void);
+
+const glBlendFuncSeparatei = t.bind(
+    LIB,
+    "glBlendFuncSeparatei",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glBlitFramebuffer = t.bind(
+    LIB,
+    "glBlitFramebuffer",
+    [t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glBlitNamedFramebuffer = t.bind(
+    LIB,
+    "glBlitNamedFramebuffer",
+    [t.uint32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glBufferData = t.bind(LIB, "glBufferData", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+
+const glBufferStorage = t.bind(LIB, "glBufferStorage", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+
+const glBufferSubData = t.bind(LIB, "glBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+
+const glCheckFramebufferStatus = t.bind(LIB, "glCheckFramebufferStatus", [t.uint32], t.uint32);
+
+const glCheckNamedFramebufferStatus = t.bind(LIB, "glCheckNamedFramebufferStatus", [t.uint32, t.uint32], t.uint32);
+
+const glClampColor = t.bind(LIB, "glClampColor", [t.uint32, t.uint32], t.void);
+
+const glClear = t.bind(LIB, "glClear", [t.uint32], t.void);
+
+const glClearBufferData = t.bind(LIB, "glClearBufferData", [t.uint32, t.uint32, t.uint32, t.uint32, t.blob], t.void);
+
+const glClearBufferfi = t.bind(LIB, "glClearBufferfi", [t.uint32, t.int32, t.float32, t.int32], t.void);
+
+const glClearBufferfv = t.bind(LIB, "glClearBufferfv", [t.uint32, t.int32, t.array(t.float32)], t.void);
+
+const glClearBufferiv = t.bind(LIB, "glClearBufferiv", [t.uint32, t.int32, t.array(t.int32)], t.void);
+
+const glClearBufferSubData = t.bind(
+    LIB,
+    "glClearBufferSubData",
+    [t.uint32, t.uint32, t.int64, t.int64, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glClearBufferuiv = t.bind(LIB, "glClearBufferuiv", [t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glClearColor = t.bind(LIB, "glClearColor", [t.float32, t.float32, t.float32, t.float32], t.void);
+
+const glClearDepth = t.bind(LIB, "glClearDepth", [t.float64], t.void);
+
+const glClearDepthf = t.bind(LIB, "glClearDepthf", [t.float32], t.void);
+
+const glClearNamedBufferData = t.bind(
+    LIB,
+    "glClearNamedBufferData",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glClearNamedBufferSubData = t.bind(
+    LIB,
+    "glClearNamedBufferSubData",
+    [t.uint32, t.uint32, t.int64, t.int64, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glClearNamedFramebufferfi = t.bind(
+    LIB,
+    "glClearNamedFramebufferfi",
+    [t.uint32, t.uint32, t.int32, t.float32, t.int32],
+    t.void,
+);
+
+const glClearNamedFramebufferfv = t.bind(
+    LIB,
+    "glClearNamedFramebufferfv",
+    [t.uint32, t.uint32, t.int32, t.array(t.float32)],
+    t.void,
+);
+
+const glClearNamedFramebufferiv = t.bind(
+    LIB,
+    "glClearNamedFramebufferiv",
+    [t.uint32, t.uint32, t.int32, t.array(t.int32)],
+    t.void,
+);
+
+const glClearNamedFramebufferuiv = t.bind(
+    LIB,
+    "glClearNamedFramebufferuiv",
+    [t.uint32, t.uint32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glClearStencil = t.bind(LIB, "glClearStencil", [t.int32], t.void);
+
+const glClearTexImage = t.bind(LIB, "glClearTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.blob], t.void);
+
+const glClearTexSubImage = t.bind(
+    LIB,
+    "glClearTexSubImage",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glClientWaitSync = t.bind(LIB, "glClientWaitSync", [t.struct("borrowed"), t.uint32, t.uint64], t.uint32);
+
+const glClipControl = t.bind(LIB, "glClipControl", [t.uint32, t.uint32], t.void);
+
+const glColorMask = t.bind(LIB, "glColorMask", [t.boolean, t.boolean, t.boolean, t.boolean], t.void);
+
+const glColorMaski = t.bind(LIB, "glColorMaski", [t.uint32, t.boolean, t.boolean, t.boolean, t.boolean], t.void);
+
+const glCompileShader = t.bind(LIB, "glCompileShader", [t.uint32], t.void);
+
+const glCompressedTexImage1D = t.bind(
+    LIB,
+    "glCompressedTexImage1D",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTexImage2D = t.bind(
+    LIB,
+    "glCompressedTexImage2D",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTexImage3D = t.bind(
+    LIB,
+    "glCompressedTexImage3D",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTexSubImage1D = t.bind(
+    LIB,
+    "glCompressedTexSubImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTexSubImage2D = t.bind(
+    LIB,
+    "glCompressedTexSubImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTexSubImage3D = t.bind(
+    LIB,
+    "glCompressedTexSubImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTextureSubImage1D = t.bind(
+    LIB,
+    "glCompressedTextureSubImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTextureSubImage2D = t.bind(
+    LIB,
+    "glCompressedTextureSubImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glCompressedTextureSubImage3D = t.bind(
+    LIB,
+    "glCompressedTextureSubImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glCopyBufferSubData = t.bind(LIB, "glCopyBufferSubData", [t.uint32, t.uint32, t.int64, t.int64, t.int64], t.void);
+
+const glCopyImageSubData = t.bind(
+    LIB,
+    "glCopyImageSubData",
+    [
+        t.uint32,
+        t.uint32,
+        t.int32,
+        t.int32,
+        t.int32,
+        t.int32,
+        t.uint32,
+        t.uint32,
+        t.int32,
+        t.int32,
+        t.int32,
+        t.int32,
+        t.int32,
+        t.int32,
+        t.int32,
+    ],
+    t.void,
+);
+
+const glCopyNamedBufferSubData = t.bind(
+    LIB,
+    "glCopyNamedBufferSubData",
+    [t.uint32, t.uint32, t.int64, t.int64, t.int64],
+    t.void,
+);
+
+const glCopyTexImage1D = t.bind(
+    LIB,
+    "glCopyTexImage1D",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTexImage2D = t.bind(
+    LIB,
+    "glCopyTexImage2D",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTexSubImage1D = t.bind(
+    LIB,
+    "glCopyTexSubImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTexSubImage2D = t.bind(
+    LIB,
+    "glCopyTexSubImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTexSubImage3D = t.bind(
+    LIB,
+    "glCopyTexSubImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTextureSubImage1D = t.bind(
+    LIB,
+    "glCopyTextureSubImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTextureSubImage2D = t.bind(
+    LIB,
+    "glCopyTextureSubImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCopyTextureSubImage3D = t.bind(
+    LIB,
+    "glCopyTextureSubImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glCreateBuffers = t.bind(LIB, "glCreateBuffers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glCreateFramebuffers = t.bind(LIB, "glCreateFramebuffers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glCreateProgram = t.bind(LIB, "glCreateProgram", [], t.uint32);
+
+const glCreateProgramPipelines = t.bind(
+    LIB,
+    "glCreateProgramPipelines",
+    [t.int32, t.ref(t.sizedArray(t.uint32, 0))],
+    t.void,
+);
+
+const glCreateQueries = t.bind(LIB, "glCreateQueries", [t.uint32, t.int32, t.ref(t.sizedArray(t.uint32, 1))], t.void);
+
+const glCreateRenderbuffers = t.bind(LIB, "glCreateRenderbuffers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glCreateSamplers = t.bind(LIB, "glCreateSamplers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glCreateShader = t.bind(LIB, "glCreateShader", [t.uint32], t.uint32);
+
+const glCreateShaderProgramv = t.bind(
+    LIB,
+    "glCreateShaderProgramv",
+    [t.uint32, t.int32, t.array(t.string("borrowed"))],
+    t.uint32,
+);
+
+const glCreateTextures = t.bind(LIB, "glCreateTextures", [t.uint32, t.int32, t.ref(t.sizedArray(t.uint32, 1))], t.void);
+
+const glCreateTransformFeedbacks = t.bind(
+    LIB,
+    "glCreateTransformFeedbacks",
+    [t.int32, t.ref(t.sizedArray(t.uint32, 0))],
+    t.void,
+);
+
+const glCreateVertexArrays = t.bind(LIB, "glCreateVertexArrays", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glCullFace = t.bind(LIB, "glCullFace", [t.uint32], t.void);
+
+const glDebugMessageControl = t.bind(
+    LIB,
+    "glDebugMessageControl",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.array(t.uint32), t.boolean],
+    t.void,
+);
+
+const glDebugMessageInsert = t.bind(
+    LIB,
+    "glDebugMessageInsert",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed")],
+    t.void,
+);
+
+const glDeleteBuffers = t.bind(LIB, "glDeleteBuffers", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteFramebuffers = t.bind(LIB, "glDeleteFramebuffers", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteProgram = t.bind(LIB, "glDeleteProgram", [t.uint32], t.void);
+
+const glDeleteProgramPipelines = t.bind(LIB, "glDeleteProgramPipelines", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteQueries = t.bind(LIB, "glDeleteQueries", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteRenderbuffers = t.bind(LIB, "glDeleteRenderbuffers", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteSamplers = t.bind(LIB, "glDeleteSamplers", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteShader = t.bind(LIB, "glDeleteShader", [t.uint32], t.void);
+
+const glDeleteSync = t.bind(LIB, "glDeleteSync", [t.struct("borrowed")], t.void);
+
+const glDeleteTextures = t.bind(LIB, "glDeleteTextures", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteTransformFeedbacks = t.bind(LIB, "glDeleteTransformFeedbacks", [t.int32, t.array(t.uint32)], t.void);
+
+const glDeleteVertexArrays = t.bind(LIB, "glDeleteVertexArrays", [t.int32, t.array(t.uint32)], t.void);
+
+const glDepthFunc = t.bind(LIB, "glDepthFunc", [t.uint32], t.void);
+
+const glDepthMask = t.bind(LIB, "glDepthMask", [t.boolean], t.void);
+
+const glDepthRange = t.bind(LIB, "glDepthRange", [t.float64, t.float64], t.void);
+
+const glDepthRangeArrayv = t.bind(LIB, "glDepthRangeArrayv", [t.uint32, t.int32, t.array(t.float64)], t.void);
+
+const glDepthRangef = t.bind(LIB, "glDepthRangef", [t.float32, t.float32], t.void);
+
+const glDepthRangeIndexed = t.bind(LIB, "glDepthRangeIndexed", [t.uint32, t.float64, t.float64], t.void);
+
+const glDetachShader = t.bind(LIB, "glDetachShader", [t.uint32, t.uint32], t.void);
+
+const glDisable = t.bind(LIB, "glDisable", [t.uint32], t.void);
+
+const glDisablei = t.bind(LIB, "glDisablei", [t.uint32, t.uint32], t.void);
+
+const glDisableVertexArrayAttrib = t.bind(LIB, "glDisableVertexArrayAttrib", [t.uint32, t.uint32], t.void);
+
+const glDisableVertexAttribArray = t.bind(LIB, "glDisableVertexAttribArray", [t.uint32], t.void);
+
+const glDispatchCompute = t.bind(LIB, "glDispatchCompute", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glDispatchComputeIndirect = t.bind(LIB, "glDispatchComputeIndirect", [t.int64], t.void);
+
+const glDrawArrays = t.bind(LIB, "glDrawArrays", [t.uint32, t.int32, t.int32], t.void);
+
+const glDrawArraysIndirect = t.bind(LIB, "glDrawArraysIndirect", [t.uint32, t.uint64], t.void);
+
+const glDrawArraysInstanced = t.bind(LIB, "glDrawArraysInstanced", [t.uint32, t.int32, t.int32, t.int32], t.void);
+
+const glDrawArraysInstancedBaseInstance = t.bind(
+    LIB,
+    "glDrawArraysInstancedBaseInstance",
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32],
+    t.void,
+);
+
+const glDrawBuffer = t.bind(LIB, "glDrawBuffer", [t.uint32], t.void);
+
+const glDrawBuffers = t.bind(LIB, "glDrawBuffers", [t.int32, t.array(t.uint32)], t.void);
+
+const glDrawElements = t.bind(LIB, "glDrawElements", [t.uint32, t.int32, t.uint32, t.uint64], t.void);
+
+const glDrawElementsBaseVertex = t.bind(
+    LIB,
+    "glDrawElementsBaseVertex",
+    [t.uint32, t.int32, t.uint32, t.uint64, t.int32],
+    t.void,
+);
+
+const glDrawElementsIndirect = t.bind(LIB, "glDrawElementsIndirect", [t.uint32, t.uint32, t.uint64], t.void);
+
+const glDrawElementsInstanced = t.bind(
+    LIB,
+    "glDrawElementsInstanced",
+    [t.uint32, t.int32, t.uint32, t.uint64, t.int32],
+    t.void,
+);
+
+const glDrawElementsInstancedBaseInstance = t.bind(
+    LIB,
+    "glDrawElementsInstancedBaseInstance",
+    [t.uint32, t.int32, t.uint32, t.uint64, t.int32, t.uint32],
+    t.void,
+);
+
+const glDrawElementsInstancedBaseVertex = t.bind(
+    LIB,
+    "glDrawElementsInstancedBaseVertex",
+    [t.uint32, t.int32, t.uint32, t.uint64, t.int32, t.int32],
+    t.void,
+);
+
+const glDrawElementsInstancedBaseVertexBaseInstance = t.bind(
+    LIB,
+    "glDrawElementsInstancedBaseVertexBaseInstance",
+    [t.uint32, t.int32, t.uint32, t.uint64, t.int32, t.int32, t.uint32],
+    t.void,
+);
+
+const glDrawRangeElements = t.bind(
+    LIB,
+    "glDrawRangeElements",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.uint32, t.uint64],
+    t.void,
+);
+
+const glDrawRangeElementsBaseVertex = t.bind(
+    LIB,
+    "glDrawRangeElementsBaseVertex",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.uint32, t.uint64, t.int32],
+    t.void,
+);
+
+const glDrawTransformFeedback = t.bind(LIB, "glDrawTransformFeedback", [t.uint32, t.uint32], t.void);
+
+const glDrawTransformFeedbackInstanced = t.bind(
+    LIB,
+    "glDrawTransformFeedbackInstanced",
+    [t.uint32, t.uint32, t.int32],
+    t.void,
+);
+
+const glDrawTransformFeedbackStream = t.bind(
+    LIB,
+    "glDrawTransformFeedbackStream",
+    [t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glDrawTransformFeedbackStreamInstanced = t.bind(
+    LIB,
+    "glDrawTransformFeedbackStreamInstanced",
+    [t.uint32, t.uint32, t.uint32, t.int32],
+    t.void,
+);
+
+const glEnable = t.bind(LIB, "glEnable", [t.uint32], t.void);
+
+const glEnablei = t.bind(LIB, "glEnablei", [t.uint32, t.uint32], t.void);
+
+const glEnableVertexArrayAttrib = t.bind(LIB, "glEnableVertexArrayAttrib", [t.uint32, t.uint32], t.void);
+
+const glEnableVertexAttribArray = t.bind(LIB, "glEnableVertexAttribArray", [t.uint32], t.void);
+
+const glEndConditionalRender = t.bind(LIB, "glEndConditionalRender", [], t.void);
+
+const glEndQuery = t.bind(LIB, "glEndQuery", [t.uint32], t.void);
+
+const glEndQueryIndexed = t.bind(LIB, "glEndQueryIndexed", [t.uint32, t.uint32], t.void);
+
+const glEndTransformFeedback = t.bind(LIB, "glEndTransformFeedback", [], t.void);
+
+const glFenceSync = t.bind(LIB, "glFenceSync", [t.uint32, t.uint32], t.struct("borrowed"));
+
+const glFinish = t.bind(LIB, "glFinish", [], t.void);
+
+const glFlush = t.bind(LIB, "glFlush", [], t.void);
+
+const glFlushMappedBufferRange = t.bind(LIB, "glFlushMappedBufferRange", [t.uint32, t.int64, t.int64], t.void);
+
+const glFlushMappedNamedBufferRange = t.bind(
+    LIB,
+    "glFlushMappedNamedBufferRange",
+    [t.uint32, t.int64, t.int64],
+    t.void,
+);
+
+const glFramebufferParameteri = t.bind(LIB, "glFramebufferParameteri", [t.uint32, t.uint32, t.int32], t.void);
+
+const glFramebufferRenderbuffer = t.bind(
+    LIB,
+    "glFramebufferRenderbuffer",
+    [t.uint32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glFramebufferTexture = t.bind(LIB, "glFramebufferTexture", [t.uint32, t.uint32, t.uint32, t.int32], t.void);
+
+const glFramebufferTexture1D = t.bind(
+    LIB,
+    "glFramebufferTexture1D",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.int32],
+    t.void,
+);
+
+const glFramebufferTexture2D = t.bind(
+    LIB,
+    "glFramebufferTexture2D",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.int32],
+    t.void,
+);
+
+const glFramebufferTexture3D = t.bind(
+    LIB,
+    "glFramebufferTexture3D",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.int32],
+    t.void,
+);
+
+const glFramebufferTextureLayer = t.bind(
+    LIB,
+    "glFramebufferTextureLayer",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.int32],
+    t.void,
+);
+
+const glFrontFace = t.bind(LIB, "glFrontFace", [t.uint32], t.void);
+
+const glGenBuffers = t.bind(LIB, "glGenBuffers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenerateMipmap = t.bind(LIB, "glGenerateMipmap", [t.uint32], t.void);
+
+const glGenerateTextureMipmap = t.bind(LIB, "glGenerateTextureMipmap", [t.uint32], t.void);
+
+const glGenFramebuffers = t.bind(LIB, "glGenFramebuffers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenProgramPipelines = t.bind(LIB, "glGenProgramPipelines", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenQueries = t.bind(LIB, "glGenQueries", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenRenderbuffers = t.bind(LIB, "glGenRenderbuffers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenSamplers = t.bind(LIB, "glGenSamplers", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenTextures = t.bind(LIB, "glGenTextures", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGenTransformFeedbacks = t.bind(
+    LIB,
+    "glGenTransformFeedbacks",
+    [t.int32, t.ref(t.sizedArray(t.uint32, 0))],
+    t.void,
+);
+
+const glGenVertexArrays = t.bind(LIB, "glGenVertexArrays", [t.int32, t.ref(t.sizedArray(t.uint32, 0))], t.void);
+
+const glGetAttachedShaders = t.bind(
+    LIB,
+    "glGetAttachedShaders",
+    [t.uint32, t.int32, t.ref(t.int32), t.ref(t.sizedArray(t.uint32, 1))],
+    t.void,
+);
+
+const glGetAttribLocation = t.bind(LIB, "glGetAttribLocation", [t.uint32, t.string("borrowed")], t.int32);
+
+const glGetBufferParameteri64v = t.bind(LIB, "glGetBufferParameteri64v", [t.uint32, t.uint32, t.ref(t.int64)], t.void);
+
+const glGetBufferParameteriv = t.bind(LIB, "glGetBufferParameteriv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetBufferSubData = t.bind(LIB, "glGetBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+
+const glGetCompressedTexImage = t.bind(LIB, "glGetCompressedTexImage", [t.uint32, t.int32, t.blob], t.void);
+
+const glGetCompressedTextureImage = t.bind(
+    LIB,
+    "glGetCompressedTextureImage",
+    [t.uint32, t.int32, t.int32, t.blob],
+    t.void,
+);
+
+const glGetCompressedTextureSubImage = t.bind(
+    LIB,
+    "glGetCompressedTextureSubImage",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.blob],
+    t.void,
+);
+
+const glGetError = t.bind(LIB, "glGetError", [], t.uint32);
+
+const glGetFragDataIndex = t.bind(LIB, "glGetFragDataIndex", [t.uint32, t.string("borrowed")], t.int32);
+
+const glGetFragDataLocation = t.bind(LIB, "glGetFragDataLocation", [t.uint32, t.string("borrowed")], t.int32);
+
+const glGetFramebufferAttachmentParameteriv = t.bind(
+    LIB,
+    "glGetFramebufferAttachmentParameteriv",
+    [t.uint32, t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetFramebufferParameteriv = t.bind(
+    LIB,
+    "glGetFramebufferParameteriv",
+    [t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetGraphicsResetStatus = t.bind(LIB, "glGetGraphicsResetStatus", [], t.uint32);
+
+const glGetInternalformati64v = t.bind(
+    LIB,
+    "glGetInternalformati64v",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.ref(t.sizedArray(t.int64, 3))],
+    t.void,
+);
+
+const glGetInternalformativ = t.bind(
+    LIB,
+    "glGetInternalformativ",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.ref(t.sizedArray(t.int32, 3))],
+    t.void,
+);
+
+const glGetNamedBufferParameteri64v = t.bind(
+    LIB,
+    "glGetNamedBufferParameteri64v",
+    [t.uint32, t.uint32, t.ref(t.int64)],
+    t.void,
+);
+
+const glGetNamedBufferParameteriv = t.bind(
+    LIB,
+    "glGetNamedBufferParameteriv",
+    [t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetNamedBufferSubData = t.bind(LIB, "glGetNamedBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+
+const glGetNamedFramebufferAttachmentParameteriv = t.bind(
+    LIB,
+    "glGetNamedFramebufferAttachmentParameteriv",
+    [t.uint32, t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetNamedFramebufferParameteriv = t.bind(
+    LIB,
+    "glGetNamedFramebufferParameteriv",
+    [t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetNamedRenderbufferParameteriv = t.bind(
+    LIB,
+    "glGetNamedRenderbufferParameteriv",
+    [t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetnCompressedTexImage = t.bind(LIB, "glGetnCompressedTexImage", [t.uint32, t.int32, t.int32, t.blob], t.void);
+
+const glGetnTexImage = t.bind(LIB, "glGetnTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.blob], t.void);
+
+const glGetProgramBinary = t.bind(
+    LIB,
+    "glGetProgramBinary",
+    [t.uint32, t.int32, t.ref(t.int32), t.ref(t.uint32), t.blob],
+    t.void,
+);
+
+const glGetProgramiv = t.bind(LIB, "glGetProgramiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetProgramPipelineiv = t.bind(LIB, "glGetProgramPipelineiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetProgramResourceIndex = t.bind(
+    LIB,
+    "glGetProgramResourceIndex",
+    [t.uint32, t.uint32, t.string("borrowed")],
+    t.uint32,
+);
+
+const glGetProgramResourceiv = t.bind(
+    LIB,
+    "glGetProgramResourceiv",
+    [
+        t.uint32,
+        t.uint32,
+        t.uint32,
+        t.int32,
+        t.array(t.uint32),
+        t.int32,
+        t.ref(t.int32),
+        t.ref(t.sizedArray(t.int32, 5)),
+    ],
+    t.void,
+);
+
+const glGetProgramResourceLocation = t.bind(
+    LIB,
+    "glGetProgramResourceLocation",
+    [t.uint32, t.uint32, t.string("borrowed")],
+    t.int32,
+);
+
+const glGetProgramResourceLocationIndex = t.bind(
+    LIB,
+    "glGetProgramResourceLocationIndex",
+    [t.uint32, t.uint32, t.string("borrowed")],
+    t.int32,
+);
+
+const glGetProgramStageiv = t.bind(LIB, "glGetProgramStageiv", [t.uint32, t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetQueryBufferObjecti64v = t.bind(
+    LIB,
+    "glGetQueryBufferObjecti64v",
+    [t.uint32, t.uint32, t.uint32, t.int64],
+    t.void,
+);
+
+const glGetQueryBufferObjectiv = t.bind(
+    LIB,
+    "glGetQueryBufferObjectiv",
+    [t.uint32, t.uint32, t.uint32, t.int64],
+    t.void,
+);
+
+const glGetQueryBufferObjectui64v = t.bind(
+    LIB,
+    "glGetQueryBufferObjectui64v",
+    [t.uint32, t.uint32, t.uint32, t.int64],
+    t.void,
+);
+
+const glGetQueryBufferObjectuiv = t.bind(
+    LIB,
+    "glGetQueryBufferObjectuiv",
+    [t.uint32, t.uint32, t.uint32, t.int64],
+    t.void,
+);
+
+const glGetQueryiv = t.bind(LIB, "glGetQueryiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetQueryObjecti64v = t.bind(LIB, "glGetQueryObjecti64v", [t.uint32, t.uint32, t.ref(t.int64)], t.void);
+
+const glGetQueryObjectiv = t.bind(LIB, "glGetQueryObjectiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetQueryObjectui64v = t.bind(LIB, "glGetQueryObjectui64v", [t.uint32, t.uint32, t.ref(t.uint64)], t.void);
+
+const glGetQueryObjectuiv = t.bind(LIB, "glGetQueryObjectuiv", [t.uint32, t.uint32, t.ref(t.uint32)], t.void);
+
+const glGetRenderbufferParameteriv = t.bind(
+    LIB,
+    "glGetRenderbufferParameteriv",
+    [t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetShaderiv = t.bind(LIB, "glGetShaderiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetShaderPrecisionFormat = t.bind(
+    LIB,
+    "glGetShaderPrecisionFormat",
+    [t.uint32, t.uint32, t.ref(t.fixedArray(t.int32, 2)), t.ref(t.int32)],
+    t.void,
+);
+
+const glGetString = t.bind(LIB, "glGetString", [t.uint32], t.string("borrowed"));
+
+const glGetStringi = t.bind(LIB, "glGetStringi", [t.uint32, t.uint32], t.string("borrowed"));
+
+const glGetSubroutineIndex = t.bind(LIB, "glGetSubroutineIndex", [t.uint32, t.uint32, t.string("borrowed")], t.uint32);
+
+const glGetSubroutineUniformLocation = t.bind(
+    LIB,
+    "glGetSubroutineUniformLocation",
+    [t.uint32, t.uint32, t.string("borrowed")],
+    t.int32,
+);
+
+const glGetSynciv = t.bind(
+    LIB,
+    "glGetSynciv",
+    [t.struct("borrowed"), t.uint32, t.int32, t.ref(t.int32), t.ref(t.sizedArray(t.int32, 2))],
+    t.void,
+);
+
+const glGetTexImage = t.bind(LIB, "glGetTexImage", [t.uint32, t.int32, t.uint32, t.uint32, t.blob], t.void);
+
+const glGetTextureImage = t.bind(
+    LIB,
+    "glGetTextureImage",
+    [t.uint32, t.int32, t.uint32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glGetTextureLevelParameterfv = t.bind(
+    LIB,
+    "glGetTextureLevelParameterfv",
+    [t.uint32, t.int32, t.uint32, t.ref(t.float32)],
+    t.void,
+);
+
+const glGetTextureLevelParameteriv = t.bind(
+    LIB,
+    "glGetTextureLevelParameteriv",
+    [t.uint32, t.int32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetTextureParameterfv = t.bind(LIB, "glGetTextureParameterfv", [t.uint32, t.uint32, t.ref(t.float32)], t.void);
+
+const glGetTextureParameterIiv = t.bind(LIB, "glGetTextureParameterIiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetTextureParameterIuiv = t.bind(
+    LIB,
+    "glGetTextureParameterIuiv",
+    [t.uint32, t.uint32, t.ref(t.uint32)],
+    t.void,
+);
+
+const glGetTextureParameteriv = t.bind(LIB, "glGetTextureParameteriv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetTextureSubImage = t.bind(
+    LIB,
+    "glGetTextureSubImage",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glGetTransformFeedbackiV = t.bind(
+    LIB,
+    "glGetTransformFeedbacki_v",
+    [t.uint32, t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetTransformFeedbacki64V = t.bind(
+    LIB,
+    "glGetTransformFeedbacki64_v",
+    [t.uint32, t.uint32, t.uint32, t.ref(t.int64)],
+    t.void,
+);
+
+const glGetTransformFeedbackiv = t.bind(LIB, "glGetTransformFeedbackiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetUniformBlockIndex = t.bind(LIB, "glGetUniformBlockIndex", [t.uint32, t.string("borrowed")], t.uint32);
+
+const glGetUniformLocation = t.bind(LIB, "glGetUniformLocation", [t.uint32, t.string("borrowed")], t.int32);
+
+const glGetUniformSubroutineuiv = t.bind(
+    LIB,
+    "glGetUniformSubroutineuiv",
+    [t.uint32, t.int32, t.ref(t.uint32)],
+    t.void,
+);
+
+const glGetVertexArrayIndexed64iv = t.bind(
+    LIB,
+    "glGetVertexArrayIndexed64iv",
+    [t.uint32, t.uint32, t.uint32, t.ref(t.int64)],
+    t.void,
+);
+
+const glGetVertexArrayIndexediv = t.bind(
+    LIB,
+    "glGetVertexArrayIndexediv",
+    [t.uint32, t.uint32, t.uint32, t.ref(t.int32)],
+    t.void,
+);
+
+const glGetVertexArrayiv = t.bind(LIB, "glGetVertexArrayiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetVertexAttribdv = t.bind(
+    LIB,
+    "glGetVertexAttribdv",
+    [t.uint32, t.uint32, t.ref(t.fixedArray(t.float64, 4))],
+    t.void,
+);
+
+const glGetVertexAttribfv = t.bind(
+    LIB,
+    "glGetVertexAttribfv",
+    [t.uint32, t.uint32, t.ref(t.fixedArray(t.float32, 4))],
+    t.void,
+);
+
+const glGetVertexAttribIiv = t.bind(LIB, "glGetVertexAttribIiv", [t.uint32, t.uint32, t.ref(t.int32)], t.void);
+
+const glGetVertexAttribIuiv = t.bind(LIB, "glGetVertexAttribIuiv", [t.uint32, t.uint32, t.ref(t.uint32)], t.void);
+
+const glGetVertexAttribiv = t.bind(
+    LIB,
+    "glGetVertexAttribiv",
+    [t.uint32, t.uint32, t.ref(t.fixedArray(t.int32, 4))],
+    t.void,
+);
+
+const glHint = t.bind(LIB, "glHint", [t.uint32, t.uint32], t.void);
+
+const glInvalidateBufferData = t.bind(LIB, "glInvalidateBufferData", [t.uint32], t.void);
+
+const glInvalidateBufferSubData = t.bind(LIB, "glInvalidateBufferSubData", [t.uint32, t.int64, t.int64], t.void);
+
+const glInvalidateFramebuffer = t.bind(LIB, "glInvalidateFramebuffer", [t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glInvalidateNamedFramebufferData = t.bind(
+    LIB,
+    "glInvalidateNamedFramebufferData",
+    [t.uint32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glInvalidateNamedFramebufferSubData = t.bind(
+    LIB,
+    "glInvalidateNamedFramebufferSubData",
+    [t.uint32, t.int32, t.array(t.uint32), t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glInvalidateSubFramebuffer = t.bind(
+    LIB,
+    "glInvalidateSubFramebuffer",
+    [t.uint32, t.int32, t.array(t.uint32), t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glInvalidateTexImage = t.bind(LIB, "glInvalidateTexImage", [t.uint32, t.int32], t.void);
+
+const glInvalidateTexSubImage = t.bind(
+    LIB,
+    "glInvalidateTexSubImage",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glIsBuffer = t.bind(LIB, "glIsBuffer", [t.uint32], t.uint8);
+
+const glIsEnabled = t.bind(LIB, "glIsEnabled", [t.uint32], t.uint8);
+
+const glIsEnabledi = t.bind(LIB, "glIsEnabledi", [t.uint32, t.uint32], t.uint8);
+
+const glIsFramebuffer = t.bind(LIB, "glIsFramebuffer", [t.uint32], t.uint8);
+
+const glIsProgram = t.bind(LIB, "glIsProgram", [t.uint32], t.uint8);
+
+const glIsProgramPipeline = t.bind(LIB, "glIsProgramPipeline", [t.uint32], t.uint8);
+
+const glIsQuery = t.bind(LIB, "glIsQuery", [t.uint32], t.uint8);
+
+const glIsRenderbuffer = t.bind(LIB, "glIsRenderbuffer", [t.uint32], t.uint8);
+
+const glIsSampler = t.bind(LIB, "glIsSampler", [t.uint32], t.uint8);
+
+const glIsShader = t.bind(LIB, "glIsShader", [t.uint32], t.uint8);
+
+const glIsSync = t.bind(LIB, "glIsSync", [t.struct("borrowed")], t.uint8);
+
+const glIsTexture = t.bind(LIB, "glIsTexture", [t.uint32], t.uint8);
+
+const glIsTransformFeedback = t.bind(LIB, "glIsTransformFeedback", [t.uint32], t.uint8);
+
+const glIsVertexArray = t.bind(LIB, "glIsVertexArray", [t.uint32], t.uint8);
+
+const glLineWidth = t.bind(LIB, "glLineWidth", [t.float32], t.void);
+
+const glLinkProgram = t.bind(LIB, "glLinkProgram", [t.uint32], t.void);
+
+const glLogicOp = t.bind(LIB, "glLogicOp", [t.uint32], t.void);
+
+const glMapBuffer = t.bind(LIB, "glMapBuffer", [t.uint32, t.uint32], t.struct("borrowed"));
+
+const glMapBufferRange = t.bind(LIB, "glMapBufferRange", [t.uint32, t.int64, t.int64, t.uint32], t.struct("borrowed"));
+
+const glMapNamedBuffer = t.bind(LIB, "glMapNamedBuffer", [t.uint32, t.uint32], t.struct("borrowed"));
+
+const glMapNamedBufferRange = t.bind(
+    LIB,
+    "glMapNamedBufferRange",
+    [t.uint32, t.int64, t.int64, t.uint32],
+    t.struct("borrowed"),
+);
+
+const glMemoryBarrier = t.bind(LIB, "glMemoryBarrier", [t.uint32], t.void);
+
+const glMemoryBarrierByRegion = t.bind(LIB, "glMemoryBarrierByRegion", [t.uint32], t.void);
+
+const glMinSampleShading = t.bind(LIB, "glMinSampleShading", [t.float32], t.void);
+
+const glMultiDrawArrays = t.bind(
+    LIB,
+    "glMultiDrawArrays",
+    [t.uint32, t.array(t.int32), t.array(t.int32), t.int32],
+    t.void,
+);
+
+const glMultiDrawArraysIndirect = t.bind(
+    LIB,
+    "glMultiDrawArraysIndirect",
+    [t.uint32, t.uint64, t.int32, t.int32],
+    t.void,
+);
+
+const glMultiDrawArraysIndirectCount = t.bind(
+    LIB,
+    "glMultiDrawArraysIndirectCount",
+    [t.uint32, t.blob, t.int64, t.int32, t.int32],
+    t.void,
+);
+
+const glMultiDrawElements = t.bind(
+    LIB,
+    "glMultiDrawElements",
+    [t.uint32, t.array(t.int32), t.uint32, t.array(t.uint64), t.int32],
+    t.void,
+);
+
+const glMultiDrawElementsBaseVertex = t.bind(
+    LIB,
+    "glMultiDrawElementsBaseVertex",
+    [t.uint32, t.array(t.int32), t.uint32, t.array(t.uint64), t.int32, t.array(t.int32)],
+    t.void,
+);
+
+const glMultiDrawElementsIndirect = t.bind(
+    LIB,
+    "glMultiDrawElementsIndirect",
+    [t.uint32, t.uint32, t.uint64, t.int32, t.int32],
+    t.void,
+);
+
+const glMultiDrawElementsIndirectCount = t.bind(
+    LIB,
+    "glMultiDrawElementsIndirectCount",
+    [t.uint32, t.uint32, t.blob, t.int64, t.int32, t.int32],
+    t.void,
+);
+
+const glNamedBufferData = t.bind(LIB, "glNamedBufferData", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+
+const glNamedBufferStorage = t.bind(LIB, "glNamedBufferStorage", [t.uint32, t.int64, t.blob, t.uint32], t.void);
+
+const glNamedBufferSubData = t.bind(LIB, "glNamedBufferSubData", [t.uint32, t.int64, t.int64, t.blob], t.void);
+
+const glNamedFramebufferDrawBuffer = t.bind(LIB, "glNamedFramebufferDrawBuffer", [t.uint32, t.uint32], t.void);
+
+const glNamedFramebufferDrawBuffers = t.bind(
+    LIB,
+    "glNamedFramebufferDrawBuffers",
+    [t.uint32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glNamedFramebufferParameteri = t.bind(LIB, "glNamedFramebufferParameteri", [t.uint32, t.uint32, t.int32], t.void);
+
+const glNamedFramebufferReadBuffer = t.bind(LIB, "glNamedFramebufferReadBuffer", [t.uint32, t.uint32], t.void);
+
+const glNamedFramebufferRenderbuffer = t.bind(
+    LIB,
+    "glNamedFramebufferRenderbuffer",
+    [t.uint32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glNamedFramebufferTexture = t.bind(
+    LIB,
+    "glNamedFramebufferTexture",
+    [t.uint32, t.uint32, t.uint32, t.int32],
+    t.void,
+);
+
+const glNamedFramebufferTextureLayer = t.bind(
+    LIB,
+    "glNamedFramebufferTextureLayer",
+    [t.uint32, t.uint32, t.uint32, t.int32, t.int32],
+    t.void,
+);
+
+const glNamedRenderbufferStorage = t.bind(
+    LIB,
+    "glNamedRenderbufferStorage",
+    [t.uint32, t.uint32, t.int32, t.int32],
+    t.void,
+);
+
+const glNamedRenderbufferStorageMultisample = t.bind(
+    LIB,
+    "glNamedRenderbufferStorageMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32],
+    t.void,
+);
+
+const glObjectLabel = t.bind(LIB, "glObjectLabel", [t.uint32, t.uint32, t.int32, t.string("borrowed")], t.void);
+
+const glObjectPtrLabel = t.bind(LIB, "glObjectPtrLabel", [t.blob, t.int32, t.string("borrowed")], t.void);
+
+const glPatchParameterfv = t.bind(LIB, "glPatchParameterfv", [t.uint32, t.array(t.float32)], t.void);
+
+const glPatchParameteri = t.bind(LIB, "glPatchParameteri", [t.uint32, t.int32], t.void);
+
+const glPauseTransformFeedback = t.bind(LIB, "glPauseTransformFeedback", [], t.void);
+
+const glPixelStoref = t.bind(LIB, "glPixelStoref", [t.uint32, t.float32], t.void);
+
+const glPixelStorei = t.bind(LIB, "glPixelStorei", [t.uint32, t.int32], t.void);
+
+const glPointParameterf = t.bind(LIB, "glPointParameterf", [t.uint32, t.float32], t.void);
+
+const glPointParameterfv = t.bind(LIB, "glPointParameterfv", [t.uint32, t.array(t.float32)], t.void);
+
+const glPointParameteri = t.bind(LIB, "glPointParameteri", [t.uint32, t.int32], t.void);
+
+const glPointParameteriv = t.bind(LIB, "glPointParameteriv", [t.uint32, t.array(t.int32)], t.void);
+
+const glPointSize = t.bind(LIB, "glPointSize", [t.float32], t.void);
+
+const glPolygonMode = t.bind(LIB, "glPolygonMode", [t.uint32, t.uint32], t.void);
+
+const glPolygonOffset = t.bind(LIB, "glPolygonOffset", [t.float32, t.float32], t.void);
+
+const glPolygonOffsetClamp = t.bind(LIB, "glPolygonOffsetClamp", [t.float32, t.float32, t.float32], t.void);
+
+const glPopDebugGroup = t.bind(LIB, "glPopDebugGroup", [], t.void);
+
+const glPrimitiveRestartIndex = t.bind(LIB, "glPrimitiveRestartIndex", [t.uint32], t.void);
+
+const glProgramBinary = t.bind(LIB, "glProgramBinary", [t.uint32, t.uint32, t.blob, t.int32], t.void);
+
+const glProgramParameteri = t.bind(LIB, "glProgramParameteri", [t.uint32, t.uint32, t.int32], t.void);
+
+const glProgramUniform1d = t.bind(LIB, "glProgramUniform1d", [t.uint32, t.int32, t.float64], t.void);
+
+const glProgramUniform1dv = t.bind(
+    LIB,
+    "glProgramUniform1dv",
+    [t.uint32, t.int32, t.int32, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniform1f = t.bind(LIB, "glProgramUniform1f", [t.uint32, t.int32, t.float32], t.void);
+
+const glProgramUniform1fv = t.bind(
+    LIB,
+    "glProgramUniform1fv",
+    [t.uint32, t.int32, t.int32, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniform1i = t.bind(LIB, "glProgramUniform1i", [t.uint32, t.int32, t.int32], t.void);
+
+const glProgramUniform1iv = t.bind(LIB, "glProgramUniform1iv", [t.uint32, t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glProgramUniform1ui = t.bind(LIB, "glProgramUniform1ui", [t.uint32, t.int32, t.uint32], t.void);
+
+const glProgramUniform1uiv = t.bind(
+    LIB,
+    "glProgramUniform1uiv",
+    [t.uint32, t.int32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glProgramUniform2d = t.bind(LIB, "glProgramUniform2d", [t.uint32, t.int32, t.float64, t.float64], t.void);
+
+const glProgramUniform2dv = t.bind(
+    LIB,
+    "glProgramUniform2dv",
+    [t.uint32, t.int32, t.int32, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniform2f = t.bind(LIB, "glProgramUniform2f", [t.uint32, t.int32, t.float32, t.float32], t.void);
+
+const glProgramUniform2fv = t.bind(
+    LIB,
+    "glProgramUniform2fv",
+    [t.uint32, t.int32, t.int32, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniform2i = t.bind(LIB, "glProgramUniform2i", [t.uint32, t.int32, t.int32, t.int32], t.void);
+
+const glProgramUniform2iv = t.bind(LIB, "glProgramUniform2iv", [t.uint32, t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glProgramUniform2ui = t.bind(LIB, "glProgramUniform2ui", [t.uint32, t.int32, t.uint32, t.uint32], t.void);
+
+const glProgramUniform2uiv = t.bind(
+    LIB,
+    "glProgramUniform2uiv",
+    [t.uint32, t.int32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glProgramUniform3d = t.bind(
+    LIB,
+    "glProgramUniform3d",
+    [t.uint32, t.int32, t.float64, t.float64, t.float64],
+    t.void,
+);
+
+const glProgramUniform3dv = t.bind(
+    LIB,
+    "glProgramUniform3dv",
+    [t.uint32, t.int32, t.int32, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniform3f = t.bind(
+    LIB,
+    "glProgramUniform3f",
+    [t.uint32, t.int32, t.float32, t.float32, t.float32],
+    t.void,
+);
+
+const glProgramUniform3fv = t.bind(
+    LIB,
+    "glProgramUniform3fv",
+    [t.uint32, t.int32, t.int32, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniform3i = t.bind(LIB, "glProgramUniform3i", [t.uint32, t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glProgramUniform3iv = t.bind(LIB, "glProgramUniform3iv", [t.uint32, t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glProgramUniform3ui = t.bind(
+    LIB,
+    "glProgramUniform3ui",
+    [t.uint32, t.int32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glProgramUniform3uiv = t.bind(
+    LIB,
+    "glProgramUniform3uiv",
+    [t.uint32, t.int32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glProgramUniform4d = t.bind(
+    LIB,
+    "glProgramUniform4d",
+    [t.uint32, t.int32, t.float64, t.float64, t.float64, t.float64],
+    t.void,
+);
+
+const glProgramUniform4dv = t.bind(
+    LIB,
+    "glProgramUniform4dv",
+    [t.uint32, t.int32, t.int32, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniform4f = t.bind(
+    LIB,
+    "glProgramUniform4f",
+    [t.uint32, t.int32, t.float32, t.float32, t.float32, t.float32],
+    t.void,
+);
+
+const glProgramUniform4fv = t.bind(
+    LIB,
+    "glProgramUniform4fv",
+    [t.uint32, t.int32, t.int32, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniform4i = t.bind(
+    LIB,
+    "glProgramUniform4i",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glProgramUniform4iv = t.bind(LIB, "glProgramUniform4iv", [t.uint32, t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glProgramUniform4ui = t.bind(
+    LIB,
+    "glProgramUniform4ui",
+    [t.uint32, t.int32, t.uint32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glProgramUniform4uiv = t.bind(
+    LIB,
+    "glProgramUniform4uiv",
+    [t.uint32, t.int32, t.int32, t.array(t.uint32)],
+    t.void,
+);
+
+const glProgramUniformMatrix2dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix2dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix2fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix2fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix2x3dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix2x3dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix2x3fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix2x3fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix2x4dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix2x4dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix2x4fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix2x4fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix3dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix3dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix3fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix3fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix3x2dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix3x2dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix3x2fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix3x2fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix3x4dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix3x4dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix3x4fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix3x4fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix4dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix4dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix4fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix4fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix4x2dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix4x2dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix4x2fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix4x2fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProgramUniformMatrix4x3dv = t.bind(
+    LIB,
+    "glProgramUniformMatrix4x3dv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glProgramUniformMatrix4x3fv = t.bind(
+    LIB,
+    "glProgramUniformMatrix4x3fv",
+    [t.uint32, t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glProvokingVertex = t.bind(LIB, "glProvokingVertex", [t.uint32], t.void);
+
+const glPushDebugGroup = t.bind(LIB, "glPushDebugGroup", [t.uint32, t.uint32, t.int32, t.string("borrowed")], t.void);
+
+const glQueryCounter = t.bind(LIB, "glQueryCounter", [t.uint32, t.uint32], t.void);
+
+const glReadBuffer = t.bind(LIB, "glReadBuffer", [t.uint32], t.void);
+
+const glReadnPixels = t.bind(
+    LIB,
+    "glReadnPixels",
+    [t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.int32, t.blob],
+    t.void,
+);
+
+const glReadPixels = t.bind(
+    LIB,
+    "glReadPixels",
+    [t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glReleaseShaderCompiler = t.bind(LIB, "glReleaseShaderCompiler", [], t.void);
+
+const glRenderbufferStorage = t.bind(LIB, "glRenderbufferStorage", [t.uint32, t.uint32, t.int32, t.int32], t.void);
+
+const glRenderbufferStorageMultisample = t.bind(
+    LIB,
+    "glRenderbufferStorageMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32],
+    t.void,
+);
+
+const glResumeTransformFeedback = t.bind(LIB, "glResumeTransformFeedback", [], t.void);
+
+const glSampleCoverage = t.bind(LIB, "glSampleCoverage", [t.float32, t.boolean], t.void);
+
+const glSampleMaski = t.bind(LIB, "glSampleMaski", [t.uint32, t.uint32], t.void);
+
+const glSamplerParameterf = t.bind(LIB, "glSamplerParameterf", [t.uint32, t.uint32, t.float32], t.void);
+
+const glSamplerParameterfv = t.bind(LIB, "glSamplerParameterfv", [t.uint32, t.uint32, t.array(t.float32)], t.void);
+
+const glSamplerParameteri = t.bind(LIB, "glSamplerParameteri", [t.uint32, t.uint32, t.int32], t.void);
+
+const glSamplerParameterIiv = t.bind(LIB, "glSamplerParameterIiv", [t.uint32, t.uint32, t.array(t.int32)], t.void);
+
+const glSamplerParameterIuiv = t.bind(LIB, "glSamplerParameterIuiv", [t.uint32, t.uint32, t.array(t.uint32)], t.void);
+
+const glSamplerParameteriv = t.bind(LIB, "glSamplerParameteriv", [t.uint32, t.uint32, t.array(t.int32)], t.void);
+
+const glScissor = t.bind(LIB, "glScissor", [t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glScissorArrayv = t.bind(LIB, "glScissorArrayv", [t.uint32, t.int32, t.array(t.int32)], t.void);
+
+const glScissorIndexed = t.bind(LIB, "glScissorIndexed", [t.uint32, t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glScissorIndexedv = t.bind(LIB, "glScissorIndexedv", [t.uint32, t.array(t.int32)], t.void);
+
+const glShaderBinary = t.bind(LIB, "glShaderBinary", [t.int32, t.array(t.uint32), t.uint32, t.blob, t.int32], t.void);
+
+const glShaderSource = t.bind(
+    LIB,
+    "glShaderSource",
+    [t.uint32, t.int32, t.array(t.string("borrowed")), t.array(t.int32)],
+    t.void,
+);
+
+const glShaderStorageBlockBinding = t.bind(LIB, "glShaderStorageBlockBinding", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glSpecializeShader = t.bind(
+    LIB,
+    "glSpecializeShader",
+    [t.uint32, t.string("borrowed"), t.uint32, t.array(t.uint32), t.array(t.uint32)],
+    t.void,
+);
+
+const glStencilFunc = t.bind(LIB, "glStencilFunc", [t.uint32, t.int32, t.uint32], t.void);
+
+const glStencilFuncSeparate = t.bind(LIB, "glStencilFuncSeparate", [t.uint32, t.uint32, t.int32, t.uint32], t.void);
+
+const glStencilMask = t.bind(LIB, "glStencilMask", [t.uint32], t.void);
+
+const glStencilMaskSeparate = t.bind(LIB, "glStencilMaskSeparate", [t.uint32, t.uint32], t.void);
+
+const glStencilOp = t.bind(LIB, "glStencilOp", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glStencilOpSeparate = t.bind(LIB, "glStencilOpSeparate", [t.uint32, t.uint32, t.uint32, t.uint32], t.void);
+
+const glTexBuffer = t.bind(LIB, "glTexBuffer", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glTexBufferRange = t.bind(LIB, "glTexBufferRange", [t.uint32, t.uint32, t.uint32, t.int64, t.int64], t.void);
+
+const glTexImage1D = t.bind(
+    LIB,
+    "glTexImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTexImage2D = t.bind(
+    LIB,
+    "glTexImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTexImage2DMultisample = t.bind(
+    LIB,
+    "glTexImage2DMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.boolean],
+    t.void,
+);
+
+const glTexImage3D = t.bind(
+    LIB,
+    "glTexImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTexImage3DMultisample = t.bind(
+    LIB,
+    "glTexImage3DMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.boolean],
+    t.void,
+);
+
+const glTexParameterf = t.bind(LIB, "glTexParameterf", [t.uint32, t.uint32, t.float32], t.void);
+
+const glTexParameterfv = t.bind(LIB, "glTexParameterfv", [t.uint32, t.uint32, t.array(t.float32)], t.void);
+
+const glTexParameteri = t.bind(LIB, "glTexParameteri", [t.uint32, t.uint32, t.int32], t.void);
+
+const glTexParameterIiv = t.bind(LIB, "glTexParameterIiv", [t.uint32, t.uint32, t.array(t.int32)], t.void);
+
+const glTexParameterIuiv = t.bind(LIB, "glTexParameterIuiv", [t.uint32, t.uint32, t.array(t.uint32)], t.void);
+
+const glTexParameteriv = t.bind(LIB, "glTexParameteriv", [t.uint32, t.uint32, t.array(t.int32)], t.void);
+
+const glTexStorage1D = t.bind(LIB, "glTexStorage1D", [t.uint32, t.int32, t.uint32, t.int32], t.void);
+
+const glTexStorage2D = t.bind(LIB, "glTexStorage2D", [t.uint32, t.int32, t.uint32, t.int32, t.int32], t.void);
+
+const glTexStorage2DMultisample = t.bind(
+    LIB,
+    "glTexStorage2DMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.boolean],
+    t.void,
+);
+
+const glTexStorage3D = t.bind(LIB, "glTexStorage3D", [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32], t.void);
+
+const glTexStorage3DMultisample = t.bind(
+    LIB,
+    "glTexStorage3DMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.boolean],
+    t.void,
+);
+
+const glTexSubImage1D = t.bind(
+    LIB,
+    "glTexSubImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTexSubImage2D = t.bind(
+    LIB,
+    "glTexSubImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTexSubImage3D = t.bind(
+    LIB,
+    "glTexSubImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTextureBarrier = t.bind(LIB, "glTextureBarrier", [], t.void);
+
+const glTextureBuffer = t.bind(LIB, "glTextureBuffer", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glTextureBufferRange = t.bind(
+    LIB,
+    "glTextureBufferRange",
+    [t.uint32, t.uint32, t.uint32, t.int64, t.int64],
+    t.void,
+);
+
+const glTextureParameterf = t.bind(LIB, "glTextureParameterf", [t.uint32, t.uint32, t.float32], t.void);
+
+const glTextureParameterfv = t.bind(LIB, "glTextureParameterfv", [t.uint32, t.uint32, t.array(t.float32)], t.void);
+
+const glTextureParameteri = t.bind(LIB, "glTextureParameteri", [t.uint32, t.uint32, t.int32], t.void);
+
+const glTextureParameterIiv = t.bind(LIB, "glTextureParameterIiv", [t.uint32, t.uint32, t.array(t.int32)], t.void);
+
+const glTextureParameterIuiv = t.bind(LIB, "glTextureParameterIuiv", [t.uint32, t.uint32, t.array(t.uint32)], t.void);
+
+const glTextureParameteriv = t.bind(LIB, "glTextureParameteriv", [t.uint32, t.uint32, t.array(t.int32)], t.void);
+
+const glTextureStorage1D = t.bind(LIB, "glTextureStorage1D", [t.uint32, t.int32, t.uint32, t.int32], t.void);
+
+const glTextureStorage2D = t.bind(LIB, "glTextureStorage2D", [t.uint32, t.int32, t.uint32, t.int32, t.int32], t.void);
+
+const glTextureStorage2DMultisample = t.bind(
+    LIB,
+    "glTextureStorage2DMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.boolean],
+    t.void,
+);
+
+const glTextureStorage3D = t.bind(
+    LIB,
+    "glTextureStorage3D",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32],
+    t.void,
+);
+
+const glTextureStorage3DMultisample = t.bind(
+    LIB,
+    "glTextureStorage3DMultisample",
+    [t.uint32, t.int32, t.uint32, t.int32, t.int32, t.int32, t.boolean],
+    t.void,
+);
+
+const glTextureSubImage1D = t.bind(
+    LIB,
+    "glTextureSubImage1D",
+    [t.uint32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTextureSubImage2D = t.bind(
+    LIB,
+    "glTextureSubImage2D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTextureSubImage3D = t.bind(
+    LIB,
+    "glTextureSubImage3D",
+    [t.uint32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.int32, t.uint32, t.uint32, t.blob],
+    t.void,
+);
+
+const glTextureView = t.bind(
+    LIB,
+    "glTextureView",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.uint32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glTransformFeedbackBufferBase = t.bind(
+    LIB,
+    "glTransformFeedbackBufferBase",
+    [t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glTransformFeedbackBufferRange = t.bind(
+    LIB,
+    "glTransformFeedbackBufferRange",
+    [t.uint32, t.uint32, t.uint32, t.int64, t.int64],
+    t.void,
+);
+
+const glTransformFeedbackVaryings = t.bind(
+    LIB,
+    "glTransformFeedbackVaryings",
+    [t.uint32, t.int32, t.array(t.string("borrowed")), t.uint32],
+    t.void,
+);
+
+const glUniform1d = t.bind(LIB, "glUniform1d", [t.int32, t.float64], t.void);
+
+const glUniform1dv = t.bind(LIB, "glUniform1dv", [t.int32, t.int32, t.array(t.float64)], t.void);
+
+const glUniform1f = t.bind(LIB, "glUniform1f", [t.int32, t.float32], t.void);
+
+const glUniform1fv = t.bind(LIB, "glUniform1fv", [t.int32, t.int32, t.array(t.float32)], t.void);
+
+const glUniform1i = t.bind(LIB, "glUniform1i", [t.int32, t.int32], t.void);
+
+const glUniform1iv = t.bind(LIB, "glUniform1iv", [t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glUniform1ui = t.bind(LIB, "glUniform1ui", [t.int32, t.uint32], t.void);
+
+const glUniform1uiv = t.bind(LIB, "glUniform1uiv", [t.int32, t.int32, t.array(t.uint32)], t.void);
+
+const glUniform2d = t.bind(LIB, "glUniform2d", [t.int32, t.float64, t.float64], t.void);
+
+const glUniform2dv = t.bind(LIB, "glUniform2dv", [t.int32, t.int32, t.array(t.float64)], t.void);
+
+const glUniform2f = t.bind(LIB, "glUniform2f", [t.int32, t.float32, t.float32], t.void);
+
+const glUniform2fv = t.bind(LIB, "glUniform2fv", [t.int32, t.int32, t.array(t.float32)], t.void);
+
+const glUniform2i = t.bind(LIB, "glUniform2i", [t.int32, t.int32, t.int32], t.void);
+
+const glUniform2iv = t.bind(LIB, "glUniform2iv", [t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glUniform2ui = t.bind(LIB, "glUniform2ui", [t.int32, t.uint32, t.uint32], t.void);
+
+const glUniform2uiv = t.bind(LIB, "glUniform2uiv", [t.int32, t.int32, t.array(t.uint32)], t.void);
+
+const glUniform3d = t.bind(LIB, "glUniform3d", [t.int32, t.float64, t.float64, t.float64], t.void);
+
+const glUniform3dv = t.bind(LIB, "glUniform3dv", [t.int32, t.int32, t.array(t.float64)], t.void);
+
+const glUniform3f = t.bind(LIB, "glUniform3f", [t.int32, t.float32, t.float32, t.float32], t.void);
+
+const glUniform3fv = t.bind(LIB, "glUniform3fv", [t.int32, t.int32, t.array(t.float32)], t.void);
+
+const glUniform3i = t.bind(LIB, "glUniform3i", [t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glUniform3iv = t.bind(LIB, "glUniform3iv", [t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glUniform3ui = t.bind(LIB, "glUniform3ui", [t.int32, t.uint32, t.uint32, t.uint32], t.void);
+
+const glUniform3uiv = t.bind(LIB, "glUniform3uiv", [t.int32, t.int32, t.array(t.uint32)], t.void);
+
+const glUniform4d = t.bind(LIB, "glUniform4d", [t.int32, t.float64, t.float64, t.float64, t.float64], t.void);
+
+const glUniform4dv = t.bind(LIB, "glUniform4dv", [t.int32, t.int32, t.array(t.float64)], t.void);
+
+const glUniform4f = t.bind(LIB, "glUniform4f", [t.int32, t.float32, t.float32, t.float32, t.float32], t.void);
+
+const glUniform4fv = t.bind(LIB, "glUniform4fv", [t.int32, t.int32, t.array(t.float32)], t.void);
+
+const glUniform4i = t.bind(LIB, "glUniform4i", [t.int32, t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glUniform4iv = t.bind(LIB, "glUniform4iv", [t.int32, t.int32, t.array(t.int32)], t.void);
+
+const glUniform4ui = t.bind(LIB, "glUniform4ui", [t.int32, t.uint32, t.uint32, t.uint32, t.uint32], t.void);
+
+const glUniform4uiv = t.bind(LIB, "glUniform4uiv", [t.int32, t.int32, t.array(t.uint32)], t.void);
+
+const glUniformBlockBinding = t.bind(LIB, "glUniformBlockBinding", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glUniformMatrix2dv = t.bind(LIB, "glUniformMatrix2dv", [t.int32, t.int32, t.boolean, t.array(t.float64)], t.void);
+
+const glUniformMatrix2fv = t.bind(LIB, "glUniformMatrix2fv", [t.int32, t.int32, t.boolean, t.array(t.float32)], t.void);
+
+const glUniformMatrix2x3dv = t.bind(
+    LIB,
+    "glUniformMatrix2x3dv",
+    [t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glUniformMatrix2x3fv = t.bind(
+    LIB,
+    "glUniformMatrix2x3fv",
+    [t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glUniformMatrix2x4dv = t.bind(
+    LIB,
+    "glUniformMatrix2x4dv",
+    [t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glUniformMatrix2x4fv = t.bind(
+    LIB,
+    "glUniformMatrix2x4fv",
+    [t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glUniformMatrix3dv = t.bind(LIB, "glUniformMatrix3dv", [t.int32, t.int32, t.boolean, t.array(t.float64)], t.void);
+
+const glUniformMatrix3fv = t.bind(LIB, "glUniformMatrix3fv", [t.int32, t.int32, t.boolean, t.array(t.float32)], t.void);
+
+const glUniformMatrix3x2dv = t.bind(
+    LIB,
+    "glUniformMatrix3x2dv",
+    [t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glUniformMatrix3x2fv = t.bind(
+    LIB,
+    "glUniformMatrix3x2fv",
+    [t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glUniformMatrix3x4dv = t.bind(
+    LIB,
+    "glUniformMatrix3x4dv",
+    [t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glUniformMatrix3x4fv = t.bind(
+    LIB,
+    "glUniformMatrix3x4fv",
+    [t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glUniformMatrix4dv = t.bind(LIB, "glUniformMatrix4dv", [t.int32, t.int32, t.boolean, t.array(t.float64)], t.void);
+
+const glUniformMatrix4fv = t.bind(LIB, "glUniformMatrix4fv", [t.int32, t.int32, t.boolean, t.array(t.float32)], t.void);
+
+const glUniformMatrix4x2dv = t.bind(
+    LIB,
+    "glUniformMatrix4x2dv",
+    [t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glUniformMatrix4x2fv = t.bind(
+    LIB,
+    "glUniformMatrix4x2fv",
+    [t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glUniformMatrix4x3dv = t.bind(
+    LIB,
+    "glUniformMatrix4x3dv",
+    [t.int32, t.int32, t.boolean, t.array(t.float64)],
+    t.void,
+);
+
+const glUniformMatrix4x3fv = t.bind(
+    LIB,
+    "glUniformMatrix4x3fv",
+    [t.int32, t.int32, t.boolean, t.array(t.float32)],
+    t.void,
+);
+
+const glUniformSubroutinesuiv = t.bind(LIB, "glUniformSubroutinesuiv", [t.uint32, t.int32, t.array(t.uint32)], t.void);
+
+const glUnmapBuffer = t.bind(LIB, "glUnmapBuffer", [t.uint32], t.uint8);
+
+const glUnmapNamedBuffer = t.bind(LIB, "glUnmapNamedBuffer", [t.uint32], t.uint8);
+
+const glUseProgram = t.bind(LIB, "glUseProgram", [t.uint32], t.void);
+
+const glUseProgramStages = t.bind(LIB, "glUseProgramStages", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glValidateProgram = t.bind(LIB, "glValidateProgram", [t.uint32], t.void);
+
+const glValidateProgramPipeline = t.bind(LIB, "glValidateProgramPipeline", [t.uint32], t.void);
+
+const glVertexArrayAttribBinding = t.bind(LIB, "glVertexArrayAttribBinding", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glVertexArrayAttribFormat = t.bind(
+    LIB,
+    "glVertexArrayAttribFormat",
+    [t.uint32, t.uint32, t.int32, t.uint32, t.boolean, t.uint32],
+    t.void,
+);
+
+const glVertexArrayAttribIFormat = t.bind(
+    LIB,
+    "glVertexArrayAttribIFormat",
+    [t.uint32, t.uint32, t.int32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glVertexArrayAttribLFormat = t.bind(
+    LIB,
+    "glVertexArrayAttribLFormat",
+    [t.uint32, t.uint32, t.int32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glVertexArrayBindingDivisor = t.bind(LIB, "glVertexArrayBindingDivisor", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glVertexArrayElementBuffer = t.bind(LIB, "glVertexArrayElementBuffer", [t.uint32, t.uint32], t.void);
+
+const glVertexArrayVertexBuffer = t.bind(
+    LIB,
+    "glVertexArrayVertexBuffer",
+    [t.uint32, t.uint32, t.uint32, t.int64, t.int32],
+    t.void,
+);
+
+const glVertexArrayVertexBuffers = t.bind(
+    LIB,
+    "glVertexArrayVertexBuffers",
+    [t.uint32, t.uint32, t.int32, t.array(t.uint32), t.array(t.int64), t.array(t.int32)],
+    t.void,
+);
+
+const glVertexAttrib1d = t.bind(LIB, "glVertexAttrib1d", [t.uint32, t.float64], t.void);
+
+const glVertexAttrib1dv = t.bind(LIB, "glVertexAttrib1dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttrib1f = t.bind(LIB, "glVertexAttrib1f", [t.uint32, t.float32], t.void);
+
+const glVertexAttrib1fv = t.bind(LIB, "glVertexAttrib1fv", [t.uint32, t.array(t.float32)], t.void);
+
+const glVertexAttrib1s = t.bind(LIB, "glVertexAttrib1s", [t.uint32, t.int16], t.void);
+
+const glVertexAttrib1sv = t.bind(LIB, "glVertexAttrib1sv", [t.uint32, t.array(t.int16)], t.void);
+
+const glVertexAttrib2d = t.bind(LIB, "glVertexAttrib2d", [t.uint32, t.float64, t.float64], t.void);
+
+const glVertexAttrib2dv = t.bind(LIB, "glVertexAttrib2dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttrib2f = t.bind(LIB, "glVertexAttrib2f", [t.uint32, t.float32, t.float32], t.void);
+
+const glVertexAttrib2fv = t.bind(LIB, "glVertexAttrib2fv", [t.uint32, t.array(t.float32)], t.void);
+
+const glVertexAttrib2s = t.bind(LIB, "glVertexAttrib2s", [t.uint32, t.int16, t.int16], t.void);
+
+const glVertexAttrib2sv = t.bind(LIB, "glVertexAttrib2sv", [t.uint32, t.array(t.int16)], t.void);
+
+const glVertexAttrib3d = t.bind(LIB, "glVertexAttrib3d", [t.uint32, t.float64, t.float64, t.float64], t.void);
+
+const glVertexAttrib3dv = t.bind(LIB, "glVertexAttrib3dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttrib3f = t.bind(LIB, "glVertexAttrib3f", [t.uint32, t.float32, t.float32, t.float32], t.void);
+
+const glVertexAttrib3fv = t.bind(LIB, "glVertexAttrib3fv", [t.uint32, t.array(t.float32)], t.void);
+
+const glVertexAttrib3s = t.bind(LIB, "glVertexAttrib3s", [t.uint32, t.int16, t.int16, t.int16], t.void);
+
+const glVertexAttrib3sv = t.bind(LIB, "glVertexAttrib3sv", [t.uint32, t.array(t.int16)], t.void);
+
+const glVertexAttrib4bv = t.bind(LIB, "glVertexAttrib4bv", [t.uint32, t.array(t.int8)], t.void);
+
+const glVertexAttrib4d = t.bind(
+    LIB,
+    "glVertexAttrib4d",
+    [t.uint32, t.float64, t.float64, t.float64, t.float64],
+    t.void,
+);
+
+const glVertexAttrib4dv = t.bind(LIB, "glVertexAttrib4dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttrib4f = t.bind(
+    LIB,
+    "glVertexAttrib4f",
+    [t.uint32, t.float32, t.float32, t.float32, t.float32],
+    t.void,
+);
+
+const glVertexAttrib4fv = t.bind(LIB, "glVertexAttrib4fv", [t.uint32, t.array(t.float32)], t.void);
+
+const glVertexAttrib4iv = t.bind(LIB, "glVertexAttrib4iv", [t.uint32, t.array(t.int32)], t.void);
+
+const glVertexAttrib4Nbv = t.bind(LIB, "glVertexAttrib4Nbv", [t.uint32, t.array(t.int8)], t.void);
+
+const glVertexAttrib4Niv = t.bind(LIB, "glVertexAttrib4Niv", [t.uint32, t.array(t.int32)], t.void);
+
+const glVertexAttrib4Nsv = t.bind(LIB, "glVertexAttrib4Nsv", [t.uint32, t.array(t.int16)], t.void);
+
+const glVertexAttrib4Nub = t.bind(LIB, "glVertexAttrib4Nub", [t.uint32, t.uint8, t.uint8, t.uint8, t.uint8], t.void);
+
+const glVertexAttrib4Nubv = t.bind(LIB, "glVertexAttrib4Nubv", [t.uint32, t.array(t.uint8)], t.void);
+
+const glVertexAttrib4Nuiv = t.bind(LIB, "glVertexAttrib4Nuiv", [t.uint32, t.array(t.uint32)], t.void);
+
+const glVertexAttrib4Nusv = t.bind(LIB, "glVertexAttrib4Nusv", [t.uint32, t.array(t.uint16)], t.void);
+
+const glVertexAttrib4s = t.bind(LIB, "glVertexAttrib4s", [t.uint32, t.int16, t.int16, t.int16, t.int16], t.void);
+
+const glVertexAttrib4sv = t.bind(LIB, "glVertexAttrib4sv", [t.uint32, t.array(t.int16)], t.void);
+
+const glVertexAttrib4ubv = t.bind(LIB, "glVertexAttrib4ubv", [t.uint32, t.array(t.uint8)], t.void);
+
+const glVertexAttrib4uiv = t.bind(LIB, "glVertexAttrib4uiv", [t.uint32, t.array(t.uint32)], t.void);
+
+const glVertexAttrib4usv = t.bind(LIB, "glVertexAttrib4usv", [t.uint32, t.array(t.uint16)], t.void);
+
+const glVertexAttribBinding = t.bind(LIB, "glVertexAttribBinding", [t.uint32, t.uint32], t.void);
+
+const glVertexAttribDivisor = t.bind(LIB, "glVertexAttribDivisor", [t.uint32, t.uint32], t.void);
+
+const glVertexAttribFormat = t.bind(
+    LIB,
+    "glVertexAttribFormat",
+    [t.uint32, t.int32, t.uint32, t.boolean, t.uint32],
+    t.void,
+);
+
+const glVertexAttribI1i = t.bind(LIB, "glVertexAttribI1i", [t.uint32, t.int32], t.void);
+
+const glVertexAttribI1iv = t.bind(LIB, "glVertexAttribI1iv", [t.uint32, t.array(t.int32)], t.void);
+
+const glVertexAttribI1ui = t.bind(LIB, "glVertexAttribI1ui", [t.uint32, t.uint32], t.void);
+
+const glVertexAttribI1uiv = t.bind(LIB, "glVertexAttribI1uiv", [t.uint32, t.array(t.uint32)], t.void);
+
+const glVertexAttribI2i = t.bind(LIB, "glVertexAttribI2i", [t.uint32, t.int32, t.int32], t.void);
+
+const glVertexAttribI2iv = t.bind(LIB, "glVertexAttribI2iv", [t.uint32, t.array(t.int32)], t.void);
+
+const glVertexAttribI2ui = t.bind(LIB, "glVertexAttribI2ui", [t.uint32, t.uint32, t.uint32], t.void);
+
+const glVertexAttribI2uiv = t.bind(LIB, "glVertexAttribI2uiv", [t.uint32, t.array(t.uint32)], t.void);
+
+const glVertexAttribI3i = t.bind(LIB, "glVertexAttribI3i", [t.uint32, t.int32, t.int32, t.int32], t.void);
+
+const glVertexAttribI3iv = t.bind(LIB, "glVertexAttribI3iv", [t.uint32, t.array(t.int32)], t.void);
+
+const glVertexAttribI3ui = t.bind(LIB, "glVertexAttribI3ui", [t.uint32, t.uint32, t.uint32, t.uint32], t.void);
+
+const glVertexAttribI3uiv = t.bind(LIB, "glVertexAttribI3uiv", [t.uint32, t.array(t.uint32)], t.void);
+
+const glVertexAttribI4bv = t.bind(LIB, "glVertexAttribI4bv", [t.uint32, t.array(t.int8)], t.void);
+
+const glVertexAttribI4i = t.bind(LIB, "glVertexAttribI4i", [t.uint32, t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glVertexAttribI4iv = t.bind(LIB, "glVertexAttribI4iv", [t.uint32, t.array(t.int32)], t.void);
+
+const glVertexAttribI4sv = t.bind(LIB, "glVertexAttribI4sv", [t.uint32, t.array(t.int16)], t.void);
+
+const glVertexAttribI4ubv = t.bind(LIB, "glVertexAttribI4ubv", [t.uint32, t.array(t.uint8)], t.void);
+
+const glVertexAttribI4ui = t.bind(
+    LIB,
+    "glVertexAttribI4ui",
+    [t.uint32, t.uint32, t.uint32, t.uint32, t.uint32],
+    t.void,
+);
+
+const glVertexAttribI4uiv = t.bind(LIB, "glVertexAttribI4uiv", [t.uint32, t.array(t.uint32)], t.void);
+
+const glVertexAttribI4usv = t.bind(LIB, "glVertexAttribI4usv", [t.uint32, t.array(t.uint16)], t.void);
+
+const glVertexAttribIFormat = t.bind(LIB, "glVertexAttribIFormat", [t.uint32, t.int32, t.uint32, t.uint32], t.void);
+
+const glVertexAttribIPointer = t.bind(
+    LIB,
+    "glVertexAttribIPointer",
+    [t.uint32, t.int32, t.uint32, t.int32, t.uint64],
+    t.void,
+);
+
+const glVertexAttribL1d = t.bind(LIB, "glVertexAttribL1d", [t.uint32, t.float64], t.void);
+
+const glVertexAttribL1dv = t.bind(LIB, "glVertexAttribL1dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttribL2d = t.bind(LIB, "glVertexAttribL2d", [t.uint32, t.float64, t.float64], t.void);
+
+const glVertexAttribL2dv = t.bind(LIB, "glVertexAttribL2dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttribL3d = t.bind(LIB, "glVertexAttribL3d", [t.uint32, t.float64, t.float64, t.float64], t.void);
+
+const glVertexAttribL3dv = t.bind(LIB, "glVertexAttribL3dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttribL4d = t.bind(
+    LIB,
+    "glVertexAttribL4d",
+    [t.uint32, t.float64, t.float64, t.float64, t.float64],
+    t.void,
+);
+
+const glVertexAttribL4dv = t.bind(LIB, "glVertexAttribL4dv", [t.uint32, t.array(t.float64)], t.void);
+
+const glVertexAttribLFormat = t.bind(LIB, "glVertexAttribLFormat", [t.uint32, t.int32, t.uint32, t.uint32], t.void);
+
+const glVertexAttribLPointer = t.bind(
+    LIB,
+    "glVertexAttribLPointer",
+    [t.uint32, t.int32, t.uint32, t.int32, t.uint64],
+    t.void,
+);
+
+const glVertexAttribP1ui = t.bind(LIB, "glVertexAttribP1ui", [t.uint32, t.uint32, t.boolean, t.uint32], t.void);
+
+const glVertexAttribP1uiv = t.bind(
+    LIB,
+    "glVertexAttribP1uiv",
+    [t.uint32, t.uint32, t.boolean, t.array(t.uint32)],
+    t.void,
+);
+
+const glVertexAttribP2ui = t.bind(LIB, "glVertexAttribP2ui", [t.uint32, t.uint32, t.boolean, t.uint32], t.void);
+
+const glVertexAttribP2uiv = t.bind(
+    LIB,
+    "glVertexAttribP2uiv",
+    [t.uint32, t.uint32, t.boolean, t.array(t.uint32)],
+    t.void,
+);
+
+const glVertexAttribP3ui = t.bind(LIB, "glVertexAttribP3ui", [t.uint32, t.uint32, t.boolean, t.uint32], t.void);
+
+const glVertexAttribP3uiv = t.bind(
+    LIB,
+    "glVertexAttribP3uiv",
+    [t.uint32, t.uint32, t.boolean, t.array(t.uint32)],
+    t.void,
+);
+
+const glVertexAttribP4ui = t.bind(LIB, "glVertexAttribP4ui", [t.uint32, t.uint32, t.boolean, t.uint32], t.void);
+
+const glVertexAttribP4uiv = t.bind(
+    LIB,
+    "glVertexAttribP4uiv",
+    [t.uint32, t.uint32, t.boolean, t.array(t.uint32)],
+    t.void,
+);
+
+const glVertexAttribPointer = t.bind(
+    LIB,
+    "glVertexAttribPointer",
+    [t.uint32, t.int32, t.uint32, t.boolean, t.int32, t.uint64],
+    t.void,
+);
+
+const glVertexBindingDivisor = t.bind(LIB, "glVertexBindingDivisor", [t.uint32, t.uint32], t.void);
+
+const glViewport = t.bind(LIB, "glViewport", [t.int32, t.int32, t.int32, t.int32], t.void);
+
+const glViewportArrayv = t.bind(LIB, "glViewportArrayv", [t.uint32, t.int32, t.array(t.float32)], t.void);
+
+const glViewportIndexedf = t.bind(
+    LIB,
+    "glViewportIndexedf",
+    [t.uint32, t.float32, t.float32, t.float32, t.float32],
+    t.void,
+);
+
+const glViewportIndexedfv = t.bind(LIB, "glViewportIndexedfv", [t.uint32, t.array(t.float32)], t.void);
+
+const glWaitSync = t.bind(LIB, "glWaitSync", [t.struct("borrowed"), t.uint32, t.uint64], t.void);
+
+const glCreateBuffersSingle = t.bind(LIB, "glCreateBuffers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateFramebuffersSingle = t.bind(LIB, "glCreateFramebuffers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateProgramPipelinesSingle = t.bind(LIB, "glCreateProgramPipelines", [t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateQueriesSingle = t.bind(LIB, "glCreateQueries", [t.uint32, t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateRenderbuffersSingle = t.bind(LIB, "glCreateRenderbuffers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateSamplersSingle = t.bind(LIB, "glCreateSamplers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateTexturesSingle = t.bind(LIB, "glCreateTextures", [t.uint32, t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateTransformFeedbacksSingle = t.bind(LIB, "glCreateTransformFeedbacks", [t.int32, t.ref(t.uint32)], t.void);
+
+const glCreateVertexArraysSingle = t.bind(LIB, "glCreateVertexArrays", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenBuffersSingle = t.bind(LIB, "glGenBuffers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenFramebuffersSingle = t.bind(LIB, "glGenFramebuffers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenProgramPipelinesSingle = t.bind(LIB, "glGenProgramPipelines", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenQueriesSingle = t.bind(LIB, "glGenQueries", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenRenderbuffersSingle = t.bind(LIB, "glGenRenderbuffers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenSamplersSingle = t.bind(LIB, "glGenSamplers", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenTexturesSingle = t.bind(LIB, "glGenTextures", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenTransformFeedbacksSingle = t.bind(LIB, "glGenTransformFeedbacks", [t.int32, t.ref(t.uint32)], t.void);
+
+const glGenVertexArraysSingle = t.bind(LIB, "glGenVertexArrays", [t.int32, t.ref(t.uint32)], t.void);

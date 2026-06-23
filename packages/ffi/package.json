@@ -31,11 +31,6 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./cairo": {
-            "source": "./src/cairo.ts",
-            "types": "./dist/cairo.d.ts",
-            "default": "./dist/cairo.js"
         }
     },
     "files": [
@@ -44,12 +39,10 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*",

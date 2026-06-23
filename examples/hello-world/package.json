@@ -7,17 +7,16 @@
     "type": "module",
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "gtkx codegen && tsc -b --noEmit",
+        "typecheck": "gtkx codegen && tsc -b --emitDeclarationOnly",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js"
     },
     "dependencies": {
-        "@gtkx/config": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.7"
+        "react": "catalog:"
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@gtkx/testing": "workspace:*"
+        "@gtkx/config": "workspace:*"
     }
 }

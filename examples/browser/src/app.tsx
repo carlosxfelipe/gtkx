@@ -1,4 +1,4 @@
-import { applicationId } from "@gtkx/config/runtime";
+import { applicationId } from "virtual:gtkx-config";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
@@ -122,7 +122,7 @@ const BrowserWindow = () => {
             }}
         >
             <AdwToolbarView
-                addTopBar={
+                topBar={
                     <AdwHeaderBar
                         titleWidget={
                             <GtkEntry
@@ -134,7 +134,7 @@ const BrowserWindow = () => {
                                 placeholderText="Enter URL..."
                             />
                         }
-                        packStart={
+                        start={
                             <NavigationButtons
                                 canGoBack={canGoBack}
                                 canGoForward={canGoForward}

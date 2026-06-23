@@ -1,21 +1,12 @@
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
+import { createVirtualNamespace, resolveToVirtual } from "./virtual-module.js";
 
 const CSS_RE = /\.css$/i;
+const INJECT_SUFFIX = "?inject";
 const VIRTUAL_PREFIX = "\0gtkx:";
+const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-/**
- * Vite plugin that converts bare CSS imports into runtime
- * `injectGlobal` calls.
- *
- * Intercepts `import "./style.css"` (side-effect form) and rewrites it to
- * a virtual module whose body reads the file at build/dev time and calls
- * `injectGlobal` from `@gtkx/css`, installing the stylesheet into the GTK
- * CSS provider when the importing module is evaluated.
- *
- * Binary asset imports (images, fonts, video, etc.) are owned by
- * `gtkxResources`, which routes them through the GResource pipeline.
- */
 export function gtkxAssets(): Plugin {
     return {
         name: "gtkx:assets",
@@ -26,15 +17,15 @@ export function gtkxAssets(): Plugin {
                 return;
             }
 
-            const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
-            if (!resolved || resolved.external) return;
+            const virtualId = await resolveToVirtual(this, { source, importer, options }, VIRTUAL_PREFIX);
+            if (virtualId === undefined) return;
 
-            return `${VIRTUAL_PREFIX + resolved.id}?inject`;
+            return virtualId + INJECT_SUFFIX;
         },
 
         load(id) {
-            if (id.startsWith(VIRTUAL_PREFIX) && id.endsWith("?inject")) {
-                const filePath = id.slice(VIRTUAL_PREFIX.length, -"?inject".length);
+            if (isVirtual(id) && id.endsWith(INJECT_SUFFIX)) {
+                const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
                 const content = readFileSync(filePath, "utf-8");
                 return [`import { injectGlobal } from "@gtkx/css";`, `injectGlobal(${JSON.stringify(content)});`].join(
                     "\n",

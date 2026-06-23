@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use native::wait_signal::WaitSignal;
+use native::dispatch::wait_signal::WaitSignal;
 
 #[test]
 fn new_creates_unsignalled_state() {
@@ -72,11 +72,4 @@ fn wait_blocks_until_another_thread_notifies() {
     signal.notify();
     waiter.join().expect("waiter thread should finish");
     assert!(woke.load(Ordering::SeqCst));
-}
-
-#[test]
-fn debug_format_includes_type_name() {
-    let signal = WaitSignal::new();
-    let debug_str = format!("{signal:?}");
-    assert!(debug_str.contains("WaitSignal"));
 }

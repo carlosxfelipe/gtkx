@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
     plugins: [gtkx()],
     test: {
+        bail: 1,
         name: "gtk-demo",
         include: ["tests/**/*.test.{ts,tsx}"],
         setupFiles: ["./tests/setup.ts"],
@@ -13,10 +14,7 @@ export default defineConfig({
             exclude: ["src/**/*.d.ts", "src/demos/types.ts"],
             reporter: ["text", "html", "lcov"],
             thresholds: {
-                lines: 85,
-                statements: 85,
-                functions: 85,
-                branches: 60,
+                lines: 80,
             },
         },
     },

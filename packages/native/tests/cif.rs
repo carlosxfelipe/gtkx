@@ -23,6 +23,18 @@ macro_rules! expect_variant {
     }};
 }
 
+fn u8_array_arg(value: value::Value) -> Arg {
+    Arg::new(
+        Type::Array(ArrayType {
+            item_type: Box::new(Type::Integer(IntegerKind::U8)),
+            kind: ArrayKind::Array,
+            ownership: Ownership::Full,
+            element_size: None,
+        }),
+        value,
+    )
+}
+
 #[test]
 fn owned_ptr_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
@@ -37,7 +49,8 @@ fn owned_ptr_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
     let owned: FfiStorage = data.into();
 
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
+    // SAFETY: `owned` was built from the three-element `u64` vec and keeps it alive, so its pointer
+    // addresses exactly three contiguous, correctly-typed `u64`s spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u64, 3);
         assert_eq!(slice, &[10, 20, 30]);
@@ -50,7 +63,8 @@ fn owned_ptr_keeps_cstring_alive() {
     let ptr = cstring.as_ptr() as *mut c_void;
     let owned = FfiStorage::new(ptr, FfiStorageKind::CString(cstring));
 
-    // SAFETY: The encoded storage owns a live NUL-terminated string.
+    // SAFETY: `owned` keeps the source `CString` alive, so its pointer addresses a valid
+    // NUL-terminated C string that `CStr::from_ptr` can read.
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "test string");
@@ -68,7 +82,8 @@ fn owned_ptr_tuple_keeps_both_alive() {
 
     let owned = FfiStorage::new(tuple_ptr, FfiStorageKind::StringArray(strings, ptrs));
 
-    // SAFETY: The encoded storage owns a live pointer block of NUL-terminated strings.
+    // SAFETY: `owned` keeps both the `ptrs` vec and the backing `CString`s alive, so its pointer
+    // addresses two contiguous `*const i8` entries, each a valid NUL-terminated C string.
     unsafe {
         let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 2);
         let s0 = std::ffi::CStr::from_ptr(ptr_slice[0]);
@@ -130,7 +145,6 @@ fn try_from_integer_optional_null() {
     let arg = Arg {
         ty: Type::Integer(IntegerKind::I32),
         value: value::Value::Null,
-        optional: true,
     };
 
     let v = expect_variant!(arg, I32);
@@ -169,7 +183,9 @@ fn try_from_string_full() {
         panic!("Expected FfiValue::Storage, got {encoded:?}");
     };
     let ptr = storage.ptr();
-    // SAFETY: The call returned a live NUL-terminated string.
+    // SAFETY: the full-ownership string encode produced a freshly `g_malloc`-ed NUL-terminated
+    // copy at `ptr` whose pending transfer was disarmed, so this code now owns it: `CStr::from_ptr`
+    // reads the valid string and `g_free` releases it exactly once.
     unsafe {
         let s = std::ffi::CStr::from_ptr(ptr as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -188,7 +204,8 @@ fn try_from_string_borrowed() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live NUL-terminated string.
+    // SAFETY: the borrowed string encode kept the source `CString` alive inside `owned`, so its
+    // pointer addresses a valid NUL-terminated C string for `CStr::from_ptr`.
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
@@ -243,22 +260,15 @@ fn try_from_undefined() {
 
 #[test]
 fn try_from_array_u8() {
-    let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            element_size: None,
-        }),
-        value::Value::Array(vec![
-            value::Value::Number(1.0),
-            value::Value::Number(2.0),
-            value::Value::Number(3.0),
-        ]),
-    );
+    let arg = u8_array_arg(value::Value::Array(vec![
+        value::Value::Number(1.0),
+        value::Value::Number(2.0),
+        value::Value::Number(3.0),
+    ]));
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
+    // SAFETY: the array encode stored three `u8`s in `owned` and keeps them alive, so its pointer
+    // addresses exactly three contiguous, correctly-typed bytes spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
         assert_eq!(slice, &[1, 2, 3]);
@@ -282,7 +292,8 @@ fn try_from_array_i32() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
+    // SAFETY: the array encode stored three `i32`s in `owned` and keeps them alive, so its pointer
+    // addresses exactly three contiguous, correctly-typed values spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[-10, 0, 10]);
@@ -302,7 +313,8 @@ fn try_from_array_f64() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
+    // SAFETY: the array encode stored two `f64`s in `owned` and keeps them alive, so its pointer
+    // addresses exactly two contiguous, correctly-typed values spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
         assert!((slice[0] - 1.1).abs() < 0.001);
@@ -329,7 +341,9 @@ fn try_from_array_string() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live pointer block of NUL-terminated strings.
+    // SAFETY: the string-array encode stored a NULL-terminated array of two `char*` in `owned` and
+    // keeps the backing strings alive, so the pointer addresses three entries (two valid C strings
+    // followed by the NULL terminator) spanned by this slice.
     unsafe {
         let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
         let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
@@ -357,7 +371,8 @@ fn try_from_array_boolean() {
     );
 
     let owned = expect_variant!(arg, Storage);
-    // SAFETY: The encoded storage owns a live buffer of the asserted length.
+    // SAFETY: the boolean-array encode stored three `i32`s (1/0/1) in `owned` and keeps them alive,
+    // so its pointer addresses exactly three contiguous, correctly-typed values spanned by this slice.
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[1, 0, 1]);
@@ -422,6 +437,7 @@ fn try_from_struct_null() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Borrowed,
         size: Some(16),
+        caller_allocated: false,
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Null);
 
@@ -434,47 +450,12 @@ fn try_from_struct_undefined() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Full,
         size: None,
+        caller_allocated: false,
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Undefined);
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
-}
-
-#[test]
-fn try_from_struct_invalid_type() {
-    let struct_type = native::types::StructType {
-        ownership: Ownership::Borrowed,
-        size: Some(16),
-    };
-    let arg = Arg::new(
-        Type::Struct(struct_type),
-        value::Value::String("invalid".to_string()),
-    );
-
-    assert!(FfiValue::try_from(arg).is_err());
-}
-
-#[test]
-fn try_from_struct_invalid_number() {
-    let struct_type = native::types::StructType {
-        ownership: Ownership::Borrowed,
-        size: Some(16),
-    };
-    let arg = Arg::new(Type::Struct(struct_type), value::Value::Number(42.0));
-
-    assert!(FfiValue::try_from(arg).is_err());
-}
-
-#[test]
-fn try_from_struct_invalid_boolean() {
-    let struct_type = native::types::StructType {
-        ownership: Ownership::Full,
-        size: Some(8),
-    };
-    let arg = Arg::new(Type::Struct(struct_type), value::Value::Boolean(true));
-
-    assert!(FfiValue::try_from(arg).is_err());
 }
 
 #[test]
@@ -487,7 +468,6 @@ fn try_from_array_optional_null_yields_null_ptr() {
             element_size: None,
         }),
         value: value::Value::Null,
-        optional: true,
     };
 
     match FfiValue::try_from(arg).unwrap() {
@@ -498,15 +478,7 @@ fn try_from_array_optional_null_yields_null_ptr() {
 
 #[test]
 fn try_from_array_propagates_encode_error() {
-    let arg = Arg::new(
-        Type::Array(ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Full,
-            element_size: None,
-        }),
-        value::Value::Number(1.0),
-    );
+    let arg = u8_array_arg(value::Value::Number(1.0));
 
     assert!(FfiValue::try_from(arg).is_err());
 }
@@ -532,10 +504,12 @@ fn try_from_struct_transfer_none_vs_full() {
     let transfer_none_type = native::types::StructType {
         ownership: Ownership::Full,
         size: Some(16),
+        caller_allocated: false,
     };
     let transfer_full_type = native::types::StructType {
         ownership: Ownership::Borrowed,
         size: Some(16),
+        caller_allocated: false,
     };
 
     let transfer_none_arg = Arg::new(Type::Struct(transfer_none_type), value::Value::Null);

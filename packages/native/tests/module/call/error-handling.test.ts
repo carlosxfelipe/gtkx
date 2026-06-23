@@ -50,7 +50,7 @@ describe("call - error handling - type errors", () => {
                 "gtk_label_new",
                 [
                     {
-                        type: { type: "invalid_type" } as unknown as { type: "string"; ownership: "borrowed" },
+                        type: { type: "invalid_type" as "int8" },
                         value: "Test",
                     },
                 ],
@@ -119,7 +119,7 @@ describe("call - error handling - value errors", () => {
                     { type: STRING, value: "clicked" },
                     {
                         type: {
-                            type: "trampoline",
+                            type: "callback",
                             argTypes: [GOBJECT_BORROWED, UINT64],
                             returnType: { type: "void" },
                             hasDestroy: true,

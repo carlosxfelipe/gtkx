@@ -1,13 +1,9 @@
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme";
-import Layout from "./layout.vue";
-import "./styles/tokens.css";
-import "./styles/fonts.css";
-import "./styles/vars.css";
-import "./styles/home.css";
-import "./styles/custom.css";
+import Layout from "./Layout.vue";
+import "./styles/index.css";
 
 export default {
-    extends: DefaultTheme,
-    Layout,
+  extends: DefaultTheme,
+  Layout,
 } satisfies Theme;

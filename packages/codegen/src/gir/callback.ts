@@ -1,18 +1,15 @@
 import { type GirParameter, type GirReturnValue, parseCallable } from "./parameter.js";
-import { attr, type RawNode } from "./parse.js";
+import { attrBool, type RawNode } from "./parse.js";
+import type { ParseContext } from "./type-id.js";
 
-/** A `<callback>` declaration (top-level inside a namespace or nested in a field). */
 export type GirCallback = {
-    readonly name: string;
-    readonly parameters: readonly GirParameter[];
-    readonly returnValue: GirReturnValue;
-    readonly introspectable: boolean;
+    name: string;
+    parameters: GirParameter[];
+    returnValue: GirReturnValue;
+    introspectable: boolean;
 };
 
-/**
- * Builds a {@link GirCallback} from a `<callback>` element.
- */
-export const callbackFromNode = (node: RawNode): GirCallback => ({
-    ...parseCallable(node),
-    introspectable: attr(node, "introspectable") !== "0",
+export const callbackFromNode = (node: RawNode, context: ParseContext): GirCallback => ({
+    ...parseCallable(node, context),
+    introspectable: attrBool(node, "introspectable", true),
 });

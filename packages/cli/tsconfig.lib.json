@@ -1,3 +1,29 @@
 {
-    "extends": "../../tsconfig.lib.json"
+    "extends": "../../tsconfig.lib.json",
+    "compilerOptions": {
+        "isolatedDeclarations": false
+    },
+    "references": [
+        {
+            "path": "../codegen/tsconfig.lib.json"
+        },
+        {
+            "path": "../config/tsconfig.lib.json"
+        },
+        {
+            "path": "../create-gtkx/tsconfig.lib.json"
+        },
+        {
+            "path": "../ffi/tsconfig.lib.json"
+        },
+        {
+            "path": "../mcp/tsconfig.lib.json"
+        },
+        {
+            "path": "../utils/tsconfig.lib.json"
+        },
+        {
+            "path": "../vitest/tsconfig.lib.json"
+        }
+    ]
 }

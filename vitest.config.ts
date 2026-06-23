@@ -2,10 +2,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
     test: {
-        projects: ["packages/*/vitest.config.ts"],
+        projects: ["packages/*/vitest.config.ts", "examples/gtk-demo/vitest.config.ts"],
+        include: ["tests/**/*.test.{ts,tsx}"],
         bail: 1,
         coverage: {
             provider: "v8",
+            allowExternal: true,
             reporter: ["lcov", "text-summary"],
             reportsDirectory: "coverage",
             include: [
@@ -13,6 +15,7 @@ export default defineConfig({
                 "packages/cli/src/**/*.{ts,tsx}",
                 "packages/codegen/src/**/*.{ts,tsx}",
                 "packages/config/src/**/*.{ts,tsx}",
+                "packages/create-gtkx/src/**/*.{ts,tsx}",
                 "packages/css/src/**/*.{ts,tsx}",
                 "packages/ffi/src/**/*.{ts,tsx}",
                 "packages/gl/src/**/*.{ts,tsx}",
@@ -28,6 +31,7 @@ export default defineConfig({
                 "**/*.test.{ts,tsx}",
                 "**/*.spec.{ts,tsx}",
                 "packages/codegen/src/templates/**",
+                "packages/gl/src/generated/**",
             ],
         },
     },

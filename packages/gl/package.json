@@ -38,12 +38,14 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "dependencies": {
-        "@gtkx/ffi": "workspace:*"
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*"

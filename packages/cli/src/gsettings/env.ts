@@ -1,31 +1,40 @@
-import { type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { createHash } from "node:crypto";
+import { copyFileSync, type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { DATA_IMPORT_PREFIX } from "@gtkx/config";
+import { sortedAlpha } from "@gtkx/utils";
+import { warn } from "../internal/log.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
-const SCHEMA_SUFFIX = ".gschema.xml";
+export const SCHEMA_SUFFIX = ".gschema.xml";
 
-const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(["node_modules", "dist", "out-tsc", "coverage"]);
-
-/**
- * Result of {@link emitSchemaEnv}.
- */
-export type SchemaEnvResult = {
-    /** Absolute path of the emitted `env.d.ts`. */
-    readonly path: string;
-    /** Absolute paths of the `.gschema.xml` files the emission covered. */
-    readonly schemaFiles: readonly string[];
-    /** Whether the file's content changed on disk. */
-    readonly written: boolean;
+export const prependSchemaDir = (dir: string, existing: string | undefined): string => {
+    if (existing === undefined || existing.length === 0) return dir;
+    if (existing.split(":").includes(dir)) return existing;
+    return `${dir}:${existing}`;
 };
 
-/**
- * Finds every `.gschema.xml` file under a project root, skipping
- * `node_modules`, build output, and hidden directories.
- *
- * @param rootDir - Absolute path of the project root
- * @returns Absolute file paths in deterministic (sorted) order
- */
+const STAGED_NAME_LENGTH = 16;
+
+const stagedSchemaName = (filePath: string): string =>
+    `${createHash("sha1").update(filePath).digest("hex").slice(0, STAGED_NAME_LENGTH)}${SCHEMA_SUFFIX}`;
+
+export const stageSchema = (dir: string, filePath: string): void => {
+    copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
+};
+
+const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "/");
+
+const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
+    `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;
+
+export type SchemaEnvResult = {
+    path: string;
+    schemaFiles: string[];
+    written: boolean;
+};
+
 const readVisibleEntries = (dir: string): Dirent[] => {
     try {
         return readdirSync(dir, { withFileTypes: true }).filter((entry) => !entry.name.startsWith("."));
@@ -34,53 +43,35 @@ const readVisibleEntries = (dir: string): Dirent[] => {
     }
 };
 
-const shouldDescend = (entry: Dirent): boolean => entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name);
-
 const isSchemaFile = (entry: Dirent): boolean => entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX);
 
-export const findSchemaFiles = (rootDir: string): string[] => {
+export const findSchemaFiles = (dataDir: string): string[] => {
     const found: string[] = [];
     const walk = (dir: string): void => {
         for (const entry of readVisibleEntries(dir)) {
             const full = join(dir, entry.name);
-            if (shouldDescend(entry)) {
+            if (entry.isDirectory()) {
                 walk(full);
             } else if (isSchemaFile(entry)) {
                 found.push(full);
             }
         }
     };
-    walk(rootDir);
-    return found.sort((a, b) => a.localeCompare(b));
+    walk(dataDir);
+    return sortedAlpha(found);
 };
 
-/**
- * Absolute path of the generated schema declaration file for a project: the
- * app-local `node_modules/.gtkx/env.d.ts` that the scaffolded
- * `src/gtkx-env.d.ts` references by relative path.
- *
- * @param rootDir - Absolute path of the project root
- */
 export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
 
-const parseProjectSchemas = (schemaFiles: readonly string[]): ParsedSchemaFile[] => {
-    const sourceByBasename = new Map<string, string>();
+const parseProjectSchemas = (schemaFiles: string[], dataDirAbs: string): ParsedSchemaFile[] => {
     const parsed: ParsedSchemaFile[] = [];
     for (const filePath of schemaFiles) {
-        const fileName = basename(filePath);
-        const existing = sourceByBasename.get(fileName);
-        if (existing !== undefined) {
-            throw new Error(
-                `Duplicate GSettings schema file name "${fileName}" (${existing} and ${filePath}). ` +
-                    "Schema module types are matched on the file name, so every .gschema.xml in a project must be named uniquely.",
-            );
-        }
-        sourceByBasename.set(fileName, filePath);
+        const specifier = moduleSpecifierFor(dataDirAbs, filePath);
         try {
-            parsed.push(parseSchemaXml(readFileSync(filePath, "utf-8"), fileName));
+            parsed.push(parseSchemaXml(readFileSync(filePath, "utf-8"), specifier));
         } catch (error) {
             if (!(error instanceof SchemaParseError)) throw error;
-            console.warn(`[gtkx] Skipping ${filePath} in schema type generation: ${error.message}`);
+            warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
         }
     }
     return parsed;
@@ -99,24 +90,11 @@ const writeIfChanged = (path: string, content: string): boolean => {
     return true;
 };
 
-/**
- * Generates the project's schema declaration file
- * (`node_modules/.gtkx/env.d.ts`) from every `.gschema.xml` under the
- * project root.
- *
- * The file is written only when its content changes, so repeated emission is
- * cheap and does not churn TypeScript watch processes. A project with no
- * schema files still gets the (empty) file, keeping the scaffolded
- * `/// <reference path>` resolvable. Files that fail to parse are skipped
- * with a warning; two schema files sharing a basename are an error, since
- * module types are matched on the file name.
- *
- * @param rootDir - Absolute path of the project root
- * @returns The {@link SchemaEnvResult}
- */
-export const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
-    const schemaFiles = findSchemaFiles(rootDir);
-    const content = renderEnvModule(parseProjectSchemas(schemaFiles));
+export const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult => {
+    const dataDirAbs = dataDir === null ? null : join(rootDir, dataDir);
+    const schemaFiles = dataDirAbs === null ? [] : findSchemaFiles(dataDirAbs);
+    const parsed = dataDirAbs === null ? [] : parseProjectSchemas(schemaFiles, dataDirAbs);
+    const content = renderEnvModule(parsed);
     const path = schemaEnvPath(rootDir);
     const written = writeIfChanged(path, content);
     return { path, schemaFiles, written };

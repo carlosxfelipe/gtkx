@@ -4,18 +4,17 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "bench": "vitest bench --run --config vitest.bench.config.ts",
-        "build": "tsc -b",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
+        "build": "tsc -b"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.5.0",
-        "@gtkx/ffi": "workspace:*",
+        "@codspeed/vitest-plugin": "^5.6.0",
         "@gtkx/animate": "workspace:*",
+        "@gtkx/config": "workspace:*",
+        "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "react": "^19.2.7"
+        "react": "catalog:"
     }
 }

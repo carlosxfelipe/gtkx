@@ -1,82 +1,43 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative } from "node:path";
-import { createGtkxConfigLoader, type GtkxConfigLoader } from "@gtkx/config";
+import { dirname, join } from "node:path";
+import { createGtkxConfigLoader, DATA_IMPORT_PREFIX, type GtkxConfigLoader } from "@gtkx/config";
+import { formatChildProcessError } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { renderInitModule } from "../gresources/render.js";
+import { error, info } from "../internal/log.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
+import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
-import { BUNDLE_FILENAME, escapeXml, OVERRIDE_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
+import {
+    BUNDLE_FILENAME,
+    escapeXml,
+    fromVirtualId,
+    isVirtual,
+    REL_SEPARATOR,
+    toVirtualId,
+    VIRTUAL_INIT,
+} from "./gresource-protocol.js";
+
+const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
 const RESOURCE_COMPILER = "glib-compile-resources";
 const DEFAULT_RESOURCE_PREFIX = "/gtkx/app";
-const RESOURCE_QUERY = "resource";
 const MANIFEST_PREFIX = "/";
 
-/**
- * Converts a GLib application id like `org.gtk.Demo4` into the standard
- * GResource path prefix `/org/gtk/Demo4`.
- *
- * Falls back to {@link DEFAULT_RESOURCE_PREFIX} when no id is supplied so
- * the pipeline still emits a deterministic, registerable path for projects
- * that have not yet declared an `applicationId` in `gtkx.config.ts`.
- */
 const deriveResourcePrefix = (applicationId?: string): string => {
     if (!applicationId) return DEFAULT_RESOURCE_PREFIX;
     return `/${applicationId.replaceAll(".", "/")}`;
 };
 
-const toForwardSlashes = (value: string): string => value.split(/[/\\]/).join("/");
-
-/**
- * Splits an import specifier into its path and an optional `?resource=`
- * override. Returns `override: null` when the query is absent; an empty
- * `?resource=` yields an empty-string override (a deliberate request for
- * the bundle root).
- */
-const parseResourceQuery = (source: string): { path: string; override: string | null } => {
+const stripQuery = (source: string): string => {
     const queryIndex = source.indexOf("?");
-    if (queryIndex === -1) return { path: source, override: null };
-    const params = new URLSearchParams(source.slice(queryIndex + 1));
-    return { path: source.slice(0, queryIndex), override: params.get(RESOURCE_QUERY) };
-};
-
-/**
- * Computes an asset's GResource path.
- *
- * With no `?resource=` override, the path is the file's location relative
- * to the Vite `root`, nested under `prefix` — the caller does not care
- * about the exact value and simply uses the import's returned `path`.
- * Throws when the file resolves outside the Vite root.
- *
- * With a `?resource=<path>` override, the path is taken verbatim: a
- * relative override nests under `prefix` (e.g. `?resource=style.css` →
- * `<prefix>/style.css`, matching GApplication's default
- * `resource_base_path` so Adw/Gtk auto-load it), while an override with a
- * leading slash is absolute and bypasses `prefix` entirely (e.g.
- * `?resource=/css_multiplebgs/brick.png`).
- */
-const computeResourcePath = (state: PluginState, absFile: string, override: string | null): string => {
-    if (override !== null) {
-        const normalized = toForwardSlashes(override);
-        if (normalized.startsWith("/")) {
-            return `/${normalized.replace(/^\/+/, "")}`;
-        }
-        return `${state.prefix}/${normalized}`;
-    }
-    const rel = toForwardSlashes(relative(state.root, absFile));
-    if (rel.startsWith("..") || isAbsolute(rel)) {
-        throw new Error(
-            `gtkx:gresources: asset "${absFile}" is outside the Vite root "${state.root}". ` +
-                `Move the file under the root, or pin its location with an explicit \`?resource=<path>\` import query.`,
-        );
-    }
-    return `${state.prefix}/${rel}`;
+    return queryIndex === -1 ? source : source.slice(0, queryIndex);
 };
 
 type ResourceEntry = {
     sourcePath: string;
-    /** Path relative to the temp staging dir, used inside the generated XML. */
     stagedRelPath: string;
     resourcePath: string;
 };
@@ -84,25 +45,19 @@ type ResourceEntry = {
 type PluginState = {
     prefix: string;
     isBuild: boolean;
-    root: string;
     entries: Map<string, ResourceEntry>;
+    sourcePaths: Set<string>;
     devStagingDir: string | null;
     devBundlePath: string;
 };
 
-const compileBundle = (state: PluginState, outputPath: string): Buffer => {
-    const staged = stageBundle(state.entries);
-    try {
-        return runCompiler(staged.dir, staged.manifest, outputPath);
-    } finally {
-        rmSync(staged.dir, { recursive: true, force: true });
-    }
-};
+const compileBundle = (state: PluginState, outputPath: string): Buffer =>
+    withStagingDir("gresources", (dir) => {
+        const manifest = stageBundle(dir, state.entries);
+        return runCompiler(dir, manifest, outputPath);
+    });
 
-type StagedBundle = { dir: string; manifest: string };
-
-const stageBundle = (entries: Map<string, ResourceEntry>): StagedBundle => {
-    const dir = mkdtempSync(join(tmpdir(), "gtkx-gresources-"));
+const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string => {
     const fileNodes: string[] = [];
     for (const entry of entries.values()) {
         const targetPath = join(dir, entry.stagedRelPath);
@@ -122,11 +77,20 @@ const stageBundle = (entries: Map<string, ResourceEntry>): StagedBundle => {
         ``,
     ].join("\n");
     writeFileSync(manifest, xml);
-    return { dir, manifest };
+    return manifest;
 };
 
 const runCompiler = (sourceDir: string, manifest: string, outputPath: string): Buffer => {
-    execFileSync(resolveCliTool(RESOURCE_COMPILER), [`--sourcedir=${sourceDir}`, `--target=${outputPath}`, manifest]);
+    try {
+        execFileSync(resolveCliTool(RESOURCE_COMPILER), [
+            `--sourcedir=${sourceDir}`,
+            `--target=${outputPath}`,
+            manifest,
+        ]);
+    } catch (error) {
+        const details = formatChildProcessError(error);
+        throw new Error(`${RESOURCE_COMPILER} failed${details ? `:\n${details}` : ""}`, { cause: error });
+    }
     return readFileSync(outputPath);
 };
 
@@ -138,92 +102,29 @@ const ensureDevBundle = (state: PluginState): void => {
     compileBundle(state, state.devBundlePath);
 };
 
-const buildInitModuleSource = (): string =>
-    [
-        `import { dirname, join } from "node:path";`,
-        `import { fileURLToPath } from "node:url";`,
-        `import { resourceLoad, resourcesRegister } from "@gtkx/gi/gio";`,
-        ``,
-        `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
-        `const resource = resourceLoad(join(bundleDir, ${JSON.stringify(BUNDLE_FILENAME)}));`,
-        `resourcesRegister(resource);`,
-        ``,
-        `export function ensureRegistered() {}`,
-        `export function __refresh() {}`,
-    ].join("\n");
-
-const devInitModuleSource = (bundlePath: string): string => {
-    const bundlePathLiteral = JSON.stringify(bundlePath);
-    return [
-        `import { statSync } from "node:fs";`,
-        `import { resourceLoad, resourcesRegister, resourcesUnregister } from "@gtkx/gi/gio";`,
-        ``,
-        `let current = null;`,
-        `let lastSig = "";`,
-        ``,
-        `function register() {`,
-        `    const next = resourceLoad(${bundlePathLiteral});`,
-        `    if (current) resourcesUnregister(current);`,
-        `    resourcesRegister(next);`,
-        `    current = next;`,
-        `}`,
-        ``,
-        `export function ensureRegistered() {`,
-        `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
-        `    const sig = size + ":" + mtimeMs;`,
-        `    if (sig === lastSig) return;`,
-        `    register();`,
-        `    lastSig = sig;`,
-        `}`,
-        ``,
-        `ensureRegistered();`,
-        ``,
-        `export function __refresh() {`,
-        `    register();`,
-        `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
-        `    lastSig = size + ":" + mtimeMs;`,
-        `}`,
-    ].join("\n");
-};
-
-const renderInitModule = (state: PluginState): string =>
-    state.isBuild ? buildInitModuleSource() : devInitModuleSource(state.devBundlePath);
-
-const registerEntry = (state: PluginState, absPath: string, override: string | null): ResourceEntry => {
-    const key = `${absPath}\0${override ?? ""}`;
-    const existing = state.entries.get(key);
+const registerEntry = (state: PluginState, absPath: string, rel: string): ResourceEntry => {
+    const existing = state.entries.get(absPath);
     if (existing) return existing;
 
-    const resourcePath = computeResourcePath(state, absPath, override);
+    const resourcePath = `${state.prefix}/${rel}`;
     const entry: ResourceEntry = {
         sourcePath: absPath,
         stagedRelPath: resourcePath.replace(/^\/+/, ""),
         resourcePath,
     };
-    state.entries.set(key, entry);
+    state.entries.set(absPath, entry);
+    state.sourcePaths.add(absPath);
     return entry;
 };
 
-const isTrackedSource = (state: PluginState, file: string): boolean => {
-    for (const entry of state.entries.values()) {
-        if (entry.sourcePath === file) return true;
-    }
-    return false;
-};
-
-const decodeVirtualAsset = (virtualId: string): { absPath: string; override: string | null } => {
-    const rest = virtualId.slice(VIRTUAL_PREFIX.length);
-    const sepIndex = rest.indexOf(OVERRIDE_SEPARATOR);
-    if (sepIndex === -1) return { absPath: rest, override: null };
-    return {
-        absPath: rest.slice(0, sepIndex),
-        override: rest.slice(sepIndex + OVERRIDE_SEPARATOR.length),
-    };
-};
+const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
 
 const loadAssetModule = (state: PluginState, virtualId: string): string => {
-    const { absPath, override } = decodeVirtualAsset(virtualId);
-    const entry = registerEntry(state, absPath, override);
+    const rest = fromVirtualId(virtualId);
+    const separatorIndex = rest.indexOf(REL_SEPARATOR);
+    const absPath = rest.slice(0, separatorIndex);
+    const rel = rest.slice(separatorIndex + REL_SEPARATOR.length);
+    const entry = registerEntry(state, absPath, rel);
     const uri = `resource://${entry.resourcePath}`;
 
     if (!state.isBuild) {
@@ -243,14 +144,9 @@ const emitBuildBundle = (
     state: PluginState,
 ): void => {
     if (!state.isBuild || state.entries.size === 0) return;
-    const outDir = mkdtempSync(join(tmpdir(), "gtkx-gresources-out-"));
-    try {
-        const compiled = compileBundle(state, join(outDir, BUNDLE_FILENAME));
-        ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
-        console.log(`[gtkx] Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
-    } finally {
-        rmSync(outDir, { recursive: true, force: true });
-    }
+    const compiled = withStagingDir("gresources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
+    ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
+    info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
 };
 
 const refreshDevRegistration = async (server: ViteDevServer, state: PluginState): Promise<void> => {
@@ -258,16 +154,11 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
     try {
         const mod = (await server.ssrLoadModule(VIRTUAL_INIT)) as { __refresh?: () => void };
         mod.__refresh?.();
-    } catch (error) {
-        console.error("[gtkx] Failed to refresh GResource bundle:", error);
+    } catch (cause) {
+        error("Failed to refresh GResource bundle:", cause);
     }
 };
 
-/**
- * Reads `applicationId` from the resolved `gtkx.config.ts`, fixes the plugin's
- * resource prefix from it, and returns the partial Vite config: the asset
- * matcher.
- */
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: GtkxConfigLoader) => {
     const { applicationId } = await loadConfig(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
@@ -276,60 +167,23 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
     };
 };
 
-/**
- * Wires the dev server's watcher so a change to any tracked asset recompiles
- * and re-registers the GResource bundle without a process restart.
- */
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
     const onFileEvent = (file: string): void => {
         if (!isTrackedSource(state, file)) return;
-        refreshDevRegistration(server, state).catch((error) => {
-            console.error("[gtkx] GResource refresh failed:", error);
+        refreshDevRegistration(server, state).catch((cause) => {
+            error("GResource refresh failed:", cause);
         });
     };
     server.watcher.on("change", onFileEvent);
     server.watcher.on("add", onFileEvent);
 };
 
-/**
- * Vite plugin that bundles static asset imports into a single
- * `.gresource` file and rewrites import sites to `resource:///` URIs.
- *
- * **Build mode:** Every bare asset import is captured during `load`; the
- * collected files are compiled with `glib-compile-resources` at `buildEnd`
- * into `dist/gtkx.gresource`. A generated init module registers the bundle
- * with GIO when the user's entry first imports any asset.
- *
- * **Dev mode:** The bundle is staged into a temp directory and recompiled
- * whenever an asset file changes; the init module exposes a `__refresh`
- * hook that re-registers the bundle without restarting the process.
- *
- * **Path layout:** By default an asset resolves to
- * `resource:///<prefix>/<path-relative-to-vite-root>`, where `<prefix>` is
- * derived from the `applicationId` declared in `gtkx.config.ts` (loaded
- * during the `config` hook) — `org.gtk.Demo4` yields `/org/gtk/Demo4`, and a
- * missing id falls back to `/gtkx/app`. The exact value is
- * incidental — callers use the import's returned `path`/URI rather than
- * depending on it.
- *
- * **Explicit paths:** Append `?resource=<path>` to pin where an asset
- * lands. A relative override nests under `<prefix>` (e.g.
- * `import css from "./style.css?resource=style.css"` →
- * `resource:///<prefix>/style.css`, matching GApplication's default
- * `resource_base_path` so Adw/Gtk auto-load it). A leading slash makes the
- * override absolute and bypasses `<prefix>` (e.g.
- * `?resource=/css_multiplebgs/brick.png` →
- * `resource:///css_multiplebgs/brick.png`).
- *
- * @param loadConfig - Memoizing config loader, shared with the other gtkx
- *   plugins by `gtkxVitePlugins` so the pipeline loads `gtkx.config.ts` once.
- */
 export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: DEFAULT_RESOURCE_PREFIX,
         isBuild: false,
-        root: "",
         entries: new Map(),
+        sourcePaths: new Set(),
         devStagingDir: null,
         devBundlePath: "",
     };
@@ -344,7 +198,6 @@ export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoa
 
         configResolved(config: ResolvedConfig) {
             state.isBuild = config.command === "build";
-            state.root = config.root;
         },
 
         configureServer(server) {
@@ -353,19 +206,21 @@ export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoa
 
         async resolveId(source, importer, opts) {
             if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
-            if (!ASSET_PATH_RE.test(source)) return;
+            const clean = stripQuery(source);
+            if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) return;
 
-            const { path: rawSource, override } = parseResourceQuery(source);
-            const resolved = await this.resolve(rawSource, importer, { ...opts, skipSelf: true });
+            const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
             if (!resolved || resolved.external) return;
 
-            const suffix = override === null ? "" : `${OVERRIDE_SEPARATOR}${override}`;
-            return VIRTUAL_PREFIX + resolved.id + suffix;
+            const rel = clean.slice(DATA_PREFIX.length);
+            return toVirtualId(resolved.id) + REL_SEPARATOR + rel;
         },
 
         load(id) {
-            if (id === VIRTUAL_INIT) return renderInitModule(state);
-            if (!id.startsWith(VIRTUAL_PREFIX)) return;
+            if (id === VIRTUAL_INIT) {
+                return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
+            }
+            if (!isVirtual(id)) return;
             return loadAssetModule(state, id);
         },
 

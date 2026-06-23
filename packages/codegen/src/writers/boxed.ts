@@ -1,37 +1,19 @@
 import type { ModuleContext } from "../dsl/context.js";
-import { indent } from "../dsl/emit.js";
+import { indentMembers } from "../dsl/emit.js";
 import type { GirBoxed } from "../gir/boxed.js";
 import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 import { type Callables, dedupeCallables, emitBindings, renderPlainTypeMembers } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
-import { renderGetTypeReference } from "./gtype-binding.js";
-import { appendNativeClassRegistration } from "./registration.js";
+import { gtypeExprFor } from "./gtype-binding.js";
+import { appendWrapperClassRegistration } from "./registration.js";
 
-/**
- * Emits a class declaration plus optional boxed registration for a
- * `<record>` or `<union>`.
- *
- * Walks constructors, static functions, and methods just like
- * {@link emitClass}, attaching them to the boxed class. The typed
- * constructor ({@link renderBoxedConstructor}), its
- * {@link renderBoxedConstructorPropsInterface} props interface, and the
- * field accessors are emitted by their dedicated writers.
- *
- * Vtable records (`glib:is-gtype-struct-for`) are skipped here — they are
- * consumed by the owning class's vtable registration. Class- and
- * interface-struct records (`GTypeClass`, `GEnumClass`, …) are likewise skipped
- * as they are runtime vtables rather than marshallable values.
- *
- * @param context - The module context
- * @param boxed - The boxed to emit
- */
 export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     if (!boxed.introspectable) return;
     if (boxed.isVtable) return;
     if (boxed.name.length === 0) return;
-    if (isClassStructRecord(context.namespace.name, boxed)) return;
+    if (isClassStructRecord(context.repository, context.namespace.name, boxed)) return;
     const className = boxed.name;
     const callables: Callables = {
         constructors: dedupeCallables(boxed.constructors),
@@ -41,18 +23,14 @@ export const emitBoxed = (context: ModuleContext, boxed: GirBoxed): void => {
     emitBindings(context, callables);
 
     const members = renderBoxedMembers(context, boxed, className, callables);
-    const body = members.map((member) => indent(member, 1)).join("\n\n");
+    const body = indentMembers(members);
     context.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
     context.module.appendDeclaration(renderBoxedConstructorPropsInterface(context, boxed, className));
 
-    const getTypeRef =
-        boxed.glibGetType === undefined
-            ? undefined
-            : renderGetTypeReference(context, boxed.glibGetType, boxed.glibTypeName);
-    appendNativeClassRegistration(context, {
+    const gtypeExpr = gtypeExprFor(context, boxed);
+    appendWrapperClassRegistration(context, {
         className,
-        role: "boxed",
-        getTypeRef,
+        gtypeExpr,
     });
 };
 
@@ -61,13 +39,12 @@ const renderBoxedMembers = (
     boxed: GirBoxed,
     className: string,
     callables: Callables,
-): readonly string[] => {
+): string[] => {
     const { members, claimedNames } = renderPlainTypeMembers({
         context,
         className,
         callables,
-        hasGType: boxed.glibGetType !== undefined,
-        wrap: "boxed",
+        hasGtype: boxed.glibGetType !== undefined,
     });
     members.unshift(renderBoxedConstructor(context, boxed, className));
     const { slots } = computeBoxedFieldSlots(context, boxed.fields, boxed.isUnion);

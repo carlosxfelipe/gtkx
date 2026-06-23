@@ -1,18 +1,3 @@
-//! Function argument representation combining type and value.
-//!
-//! [`Arg`] pairs a [`Type`] descriptor with a [`Value`], representing a single
-//! argument to an FFI function call. Arguments are parsed from JavaScript
-//! objects containing `type`, `value`, and optional `optional` properties.
-//!
-//! ## Structure
-//!
-//! ```text
-//! { type: TypeDescriptor, value: any, optional?: boolean }
-//! ```
-//!
-//! The `optional` flag allows null/undefined values for otherwise required types,
-//! converting them to appropriate defaults (null pointers, zero values).
-
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 
@@ -22,17 +7,12 @@ use crate::{types::Type, value::Value};
 pub struct Arg {
     pub ty: Type,
     pub value: Value,
-    pub optional: bool,
 }
 
 impl Arg {
     #[must_use]
     pub fn new(ty: Type, value: Value) -> Self {
-        Self {
-            ty,
-            value,
-            optional: false,
-        }
+        Self { ty, value }
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
@@ -54,13 +34,6 @@ impl Arg {
         }
         let value = Value::from_js_value(env, value_prop)?;
 
-        let optional =
-            crate::types::optional_descriptor_property::<bool>(&obj, "optional")?.unwrap_or(false);
-
-        Ok(Self {
-            ty,
-            value,
-            optional,
-        })
+        Ok(Self { ty, value })
     }
 }

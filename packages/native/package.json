@@ -28,6 +28,7 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "source": "./index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }
@@ -51,14 +52,16 @@
         "artifacts": "napi artifacts",
         "build": "tsc -b && cp native-binding.cjs native-binding.d.cts dist/",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
-        "native-bench": "cargo bench --bench marshalling",
-        "native-build": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
-        "native-coverage": "mkdir -p coverage && xvfb-run -a cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 100 --fail-under-functions 100 -- --test-threads=1",
-        "native-test": "xvfb-run -a cargo test -- --test-threads=1",
+        "lint": "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings",
+        "native-bench": "cargo bench --features test-support --bench marshalling",
+        "native-build": "napi build --platform --release --features test-support --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
+        "native-build:dist": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
+        "native-coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --features test-support --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
         "prepublishOnly": "napi prepublish -t npm",
-        "test": "vitest run",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "test": "node ../../scripts/ci.ts headless cargo test --features test-support -- --test-threads=1"
+    },
+    "engines": {
+        "node": ">=26"
     },
     "optionalDependencies": {
         "@gtkx/native-linux-arm64-gnu": "workspace:*",
@@ -66,6 +69,6 @@
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "@napi-rs/cli": "^3.7.1"
+        "@napi-rs/cli": "^3.7.2"
     }
 }

@@ -1,10 +1,9 @@
 {
     "extends": "./tsconfig.base.json",
     "compilerOptions": {
-        "customConditions": ["source"],
         "outDir": "${configDir}/out-tsc/test",
         "tsBuildInfoFile": "${configDir}/out-tsc/test/tsconfig.test.tsbuildinfo",
         "emitDeclarationOnly": true
     },
-    "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx"]
+    "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx", "${configDir}/vitest.config.ts"]
 }

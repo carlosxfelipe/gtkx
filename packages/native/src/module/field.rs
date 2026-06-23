@@ -1,28 +1,3 @@
-//! Field access for boxed/structured memory.
-//!
-//! This module provides read and write access to fields in boxed types at given
-//! byte offsets. This enables JavaScript to access struct fields that aren't
-//! exposed via GTK property accessors.
-//!
-//! ## Read Types
-//!
-//! - `Integer` (all sizes and signs)
-//! - `Float` (f32, f64)
-//! - `Boolean`
-//! - `String` (as pointer to C string)
-//! - `GObject` (as pointer to object)
-//! - `Boxed` (as pointer to boxed value)
-//! - `Fundamental` (as pointer to fundamental value)
-//! - `Struct` (as pointer to struct, copied with known size)
-//!
-//! ## Write Types
-//!
-//! - `Integer` (all sizes and signs)
-//! - `Float` (f32, f64)
-//! - `Boolean`
-//! - `String` (copies via `g_strdup`)
-//! - `GObject` / `Boxed` / `Struct` / `Fundamental` (writes pointer value)
-
 use std::ffi::c_void;
 
 use napi::Env;
@@ -31,11 +6,9 @@ use napi_derive::napi;
 
 use super::handler::ModuleRequest;
 use crate::managed::NativeHandle;
-use crate::types::{RawPtrCodec as _, Type};
+use crate::types::{FfiDecoder as _, RawPtrCodec as _, ReadSource, Type};
 use crate::value::Value;
 
-/// The address of a field inside a boxed/structured native value: the base
-/// pointer of the owning allocation plus a byte `offset`.
 #[cfg_attr(test, allow(dead_code))]
 struct FieldLocation {
     base_addr: usize,
@@ -43,19 +16,19 @@ struct FieldLocation {
 }
 
 impl FieldLocation {
-    /// Resolves the field's address, failing when the owning handle holds a
-    /// null pointer.
+    /// Resolves the field address as `base_addr + offset`.
     ///
     /// # Safety
     ///
-    /// `base_addr` plus `offset` must stay within one live allocation.
+    /// `base_addr` must be 0 or the address of a live struct, and `base_addr + offset` must stay
+    /// within that struct's allocation so the returned pointer addresses a valid field slot.
     #[cfg_attr(test, allow(dead_code))]
     unsafe fn resolve(&self) -> anyhow::Result<*mut c_void> {
         if self.base_addr == 0 {
             anyhow::bail!("NativeHandle has a null pointer");
         }
-        // SAFETY: The caller guarantees the offset address stays within the
-        // allocation `base_addr` points into.
+        // SAFETY: `base_addr` is non-null (checked above) and, per the contract, `offset` lies
+        // within the struct's allocation, so the `add` stays in bounds of the same object.
         Ok(unsafe { (self.base_addr as *mut u8).add(self.offset) as *mut c_void })
     }
 }
@@ -70,12 +43,15 @@ impl ModuleRequest for ReadRequest {
     type Output = Value;
 
     fn execute(self) -> anyhow::Result<Value> {
-        // SAFETY: The location came from a live NativeHandle and a
-        // descriptor-declared field offset within its allocation.
+        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `NativeHandle`
+        // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? }.cast_const();
-        // SAFETY: The resolved field address is valid for the declared
-        // field type's read.
-        unsafe { self.field_type.read_from_raw_ptr(field_ptr, "field read") }
+        // SAFETY: `field_ptr` addresses a valid field slot of `field_type`; reading from it as a
+        // `Slot` source decodes the field according to that type.
+        unsafe {
+            self.field_type
+                .read(ReadSource::Slot(field_ptr, "field read"))
+        }
     }
 
     fn error_context() -> &'static str {
@@ -94,11 +70,11 @@ impl ModuleRequest for WriteRequest {
     type Output = ();
 
     fn execute(self) -> anyhow::Result<()> {
-        // SAFETY: The location came from a live NativeHandle and a
-        // descriptor-declared field offset within its allocation.
+        // SAFETY: runs on the gtkx-glib thread; `location` was built from a live `NativeHandle`
+        // pointer plus an in-bounds field offset, satisfying `resolve`'s contract.
         let field_ptr = unsafe { self.location.resolve()? };
-        // SAFETY: The resolved field address is valid for the declared
-        // field type's write.
+        // SAFETY: `field_ptr` addresses a valid, writable field slot of `field_type`; the codec
+        // writes `value` into it, balancing any owned pointer the slot previously held.
         unsafe {
             self.field_type
                 .write_value_to_raw_ptr(field_ptr, &self.value)
@@ -110,10 +86,6 @@ impl ModuleRequest for WriteRequest {
     }
 }
 
-/// napi export shims for field access. Excluded from coverage instrumentation:
-/// both parse JS values through a live [`napi::Env`]. The [`ReadRequest`] and
-/// [`WriteRequest`] `execute` logic they dispatch is exercised directly by
-/// tests.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::wildcard_imports)]
 mod napi_export {
@@ -175,7 +147,7 @@ mod tests {
             base_addr,
             offset: 8,
         };
-        // SAFETY: Offset 8 stays within the 32-byte local buffer.
+        // SAFETY: `base_addr` is the address of the live 32-byte `buffer` and offset 8 is within it.
         let resolved = unsafe { location.resolve() }.expect("resolve should succeed");
         assert_eq!(resolved as usize, base_addr + 8);
     }
@@ -186,7 +158,7 @@ mod tests {
             base_addr: 0,
             offset: 0,
         };
-        // SAFETY: A zero base fails before any address arithmetic.
+        // SAFETY: a zero `base_addr` is the explicit null case `resolve` rejects without deref.
         let err = unsafe { location.resolve() }.expect_err("null base should fail");
         assert!(err.to_string().contains("null pointer"));
     }

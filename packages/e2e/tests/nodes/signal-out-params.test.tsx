@@ -1,4 +1,3 @@
-import { getBoxed, inoutBoxedFromFfi, outBoxedFromFfi, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -147,32 +146,17 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         );
 
         const overlay = overlayRef.current as Gtk.Overlay;
+
+        await waitFor(() => {
+            expect(overlay.getWidth()).toBeGreaterThan(0);
+        });
+
         const child = overlay.getLastChild() as Gtk.Widget;
         const [handled, allocation] = overlay.emit("get-child-position", child);
 
         expect(handled).toBe(true);
         expect(allocation.width).toBe(overlay.getWidth());
         expect(allocation.height).toBe(overlay.getHeight());
-    });
-});
-
-describe("signal emit() - boxed marshalling: caller-allocated out copies, inout shares", () => {
-    const rectangleFfi = t.boxed("GdkRectangle", "borrowed", "libgtk-4.so.1", "gdk_rectangle_get_type");
-
-    it("inoutBoxedFromFfi shares the caller's wrapper so an in-place mutation is visible", () => {
-        const rect = new Gdk.Rectangle({ width: 1 });
-        const value = inoutBoxedFromFfi(rectangleFfi, rect);
-        rect.width = 42;
-        const seen = getBoxed(value) as Gdk.Rectangle;
-        expect(seen.width).toBe(42);
-    });
-
-    it("outBoxedFromFfi copies the wrapper so a later mutation is not visible", () => {
-        const rect = new Gdk.Rectangle({ width: 1 });
-        const value = outBoxedFromFfi(rectangleFfi, rect);
-        rect.width = 42;
-        const seen = getBoxed(value) as Gdk.Rectangle;
-        expect(seen.width).toBe(1);
     });
 });
 

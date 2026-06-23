@@ -1,60 +1,50 @@
-import type * as native from "./native-binding.cjs";
+import type { ExternalObject } from "./native-binding.cjs";
 
-/**
- * Opaque reference to a native pointer (GObject, Boxed, Fundamental, or struct).
- *
- * Values of this type are produced exclusively by the binding's primitives
- * (`alloc`, `call`, etc.) and must never be constructed by user code. It is
- * the napi `ExternalObject` wrapping a raw native pointer, so TypeScript
- * treats it opaquely.
- */
-export type NativeHandle = Parameters<typeof native.read>[0];
+type AnyValue = Handle | number | bigint | string | boolean | ArrayBufferView | [Value, Value][] | null | undefined;
 
-/**
- * Union of all possible FFI return value types.
- *
- * Returned by `call()` and `read()` where the concrete type
- * depends on the type descriptor passed to the function.
- */
-export type FfiValue = NativeHandle | number | bigint | string | boolean | FfiValue[] | null | undefined;
+export type Handle = ExternalObject<unknown>;
 
-type Int8Type = { type: "int8" };
-type Uint8Type = { type: "uint8" };
-type Int16Type = { type: "int16" };
-type Uint16Type = { type: "uint16" };
-type Int32Type = { type: "int32" };
-type Uint32Type = { type: "uint32" };
-type Int64Type = { type: "int64" };
-type Uint64Type = { type: "uint64" };
-type BigInt64Type = { type: "bigint64" };
-type BigUint64Type = { type: "biguint64" };
+export type CompiledSignature = ExternalObject<unknown>;
 
-type Float32Type = { type: "float32" };
-type Float64Type = { type: "float64" };
+export type Value = Ref | AnyValue | Value[] | ((...args: never[]) => unknown);
 
-type EnumType = { type: "enum"; library: string; getTypeFn: string; signed: boolean };
-type FlagsType = { type: "flags"; library: string; getTypeFn: string; signed: boolean };
+export type Ref = { value: Value | null };
 
-type BooleanType = { type: "boolean" };
+export type Int8Type = { type: "int8" };
+export type Uint8Type = { type: "uint8" };
+export type Int16Type = { type: "int16" };
+export type Uint16Type = { type: "uint16" };
+export type Int32Type = { type: "int32" };
+export type Uint32Type = { type: "uint32" };
+export type Int64Type = { type: "int64" };
+export type Uint64Type = { type: "uint64" };
+export type BigInt64Type = { type: "bigint64" };
+export type BigUint64Type = { type: "biguint64" };
+export type Float32Type = { type: "float32" };
+export type Float64Type = { type: "float64" };
+export type EnumType = { type: "enum"; library: string; getTypeFn: string; signed: boolean };
+export type FlagsType = { type: "flags"; library: string; getTypeFn: string; signed: boolean };
+export type BooleanType = { type: "boolean" };
+export type Ownership = "full" | "borrowed";
+export type StringType = { type: "string"; ownership: Ownership; length?: number };
+export type GObjectType = { type: "gobject"; ownership: Ownership; typeName?: string };
+export type UnicharType = { type: "unichar" };
+export type VoidType = { type: "void" };
+export type BlobType = { type: "blob" };
+export type StructType = { type: "struct"; ownership: Ownership; size?: number; callerAllocated?: boolean };
+export type RefType = { type: "ref"; innerType: Type; inout?: boolean };
 
-type Ownership = "full" | "borrowed" | "none";
-
-type StringType = { type: "string"; ownership: Ownership; length?: number };
-
-type GObjectType = { type: "gobject"; ownership: Ownership };
-
-type BoxedType = {
+export type BoxedType = {
     type: "boxed";
     ownership: Ownership;
     innerType: string;
     library?: string;
     getTypeFn?: string;
     freeFn?: string;
+    callerAllocated?: boolean;
 };
 
-type StructType = { type: "struct"; ownership: Ownership; size?: number };
-
-type FundamentalType = {
+export type FundamentalType = {
     type: "fundamental";
     ownership: Ownership;
     library: string;
@@ -73,8 +63,6 @@ export type ArrayType = {
     fixedSize?: number;
 };
 
-type BlobType = { type: "blob" };
-
 export type HashTableType = {
     type: "hashtable";
     keyType: Type;
@@ -82,14 +70,8 @@ export type HashTableType = {
     ownership: Ownership;
 };
 
-export type RefType = { type: "ref"; innerType: Type };
-
-type UnicharType = { type: "unichar" };
-
-type VoidType = { type: "void" };
-
-export type TrampolineType = {
-    type: "trampoline";
+export type CallbackType = {
+    type: "callback";
     argTypes: Type[];
     returnType: Type;
     hasDestroy?: boolean;
@@ -97,11 +79,6 @@ export type TrampolineType = {
     scope?: "call" | "notified" | "async" | "forever";
 };
 
-/**
- * Discriminated union of all FFI type descriptors.
- *
- * Describes how to marshal values between JavaScript and native code.
- */
 export type Type =
     | Int8Type
     | Uint8Type
@@ -127,20 +104,55 @@ export type Type =
     | BlobType
     | HashTableType
     | RefType
-    | TrampolineType
+    | CallbackType
     | UnicharType
     | VoidType;
 
-/**
- * An argument for an FFI call.
- *
- * Combines a value with its type information for marshaling.
- */
+export type ValueOf<D extends Type> = D extends { type: infer Tag }
+    ? Tag extends
+          | "int8"
+          | "uint8"
+          | "int16"
+          | "uint16"
+          | "int32"
+          | "uint32"
+          | "float32"
+          | "float64"
+          | "enum"
+          | "flags"
+          | "unichar"
+        ? number
+        : Tag extends "int64" | "uint64" | "bigint64" | "biguint64"
+          ? bigint
+          : Tag extends "boolean"
+            ? boolean
+            : Tag extends "string"
+              ? string | null
+              : Tag extends "gobject" | "boxed" | "struct" | "fundamental"
+                ? Handle | null
+                : Tag extends "void"
+                  ? undefined
+                  : Value
+    : Value;
+
 export type Arg = {
-    /** Type descriptor for marshaling */
     type: Type;
-    /** The argument value */
-    value: unknown;
-    /** Whether the argument can be null/undefined */
-    optional?: boolean;
+    value: Value;
+};
+
+export type RegisterClassVfunc = {
+    byteOffset: number;
+    argTypes: Type[];
+    returnType: Type;
+    fn: (...args: Value[]) => Value;
+};
+
+export type RegisterClassInterface = {
+    gtype: bigint;
+    vfuncs: RegisterClassVfunc[];
+};
+
+export type RegisterClassOptions = {
+    vfuncs?: RegisterClassVfunc[];
+    interfaces?: RegisterClassInterface[];
 };

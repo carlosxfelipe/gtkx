@@ -1,12 +1,17 @@
-import { getHandle, getNativeObject, t, wrapHandle } from "@gtkx/ffi";
-import { alloc, INT_TYPE, LIB, type NativeHandle, RECT_INT_T, REGION_T, REGION_T_NONE, write } from "@gtkx/ffi/cairo";
-import type { RegionOverlap, Status } from "@gtkx/gi/cairo/cairo.js";
-import { RectangleInt, Region } from "@gtkx/gi/cairo/cairo.js";
+import { getHandle, setHandle, t, wrapHandle } from "@gtkx/ffi";
+import { alloc, type Handle, write } from "@gtkx/native";
+import type { RegionOverlap, Status } from "../cairo.js";
+import { RectangleInt, Region } from "../cairo.js";
 
-const { fn } = t;
-const RECT_INT_ARRAY_T = t.boxed("cairo_rectangle_int_t[]", "borrowed", LIB);
+const { bind } = t;
+const REGION_T = t.boxed("CairoRegion", {
+    ownership: "borrowed",
+    library: "libcairo-gobject.so.2",
+    getTypeFn: "cairo_gobject_region_get_type",
+});
+const RECT_INT_ARRAY_T = t.boxed("cairo_rectangle_int_t[]", { ownership: "borrowed", library: "libcairo.so.2" });
 
-declare module "@gtkx/gi/cairo/cairo.js" {
+declare module "../cairo.js" {
     interface Region {
         copy(): Region;
         status(): Status;
@@ -29,22 +34,53 @@ declare module "@gtkx/gi/cairo/cairo.js" {
     }
 }
 
-const cairo_region_create = fn(LIB, "cairo_region_create", [], REGION_T);
-const cairo_region_create_rectangle = fn(LIB, "cairo_region_create_rectangle", [{ type: RECT_INT_T }], REGION_T);
-const cairo_region_create_rectangles = fn(
-    LIB,
+const cairoRegionCreate = bind(
+    "libcairo.so.2",
+    "cairo_region_create",
+    [],
+    t.boxed("CairoRegion", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_region_get_type",
+    }),
+);
+const cairoRegionCreateRectangle = bind(
+    "libcairo.so.2",
+    "cairo_region_create_rectangle",
+    [t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    t.boxed("CairoRegion", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_region_get_type",
+    }),
+);
+const cairoRegionCreateRectangles = bind(
+    "libcairo.so.2",
     "cairo_region_create_rectangles",
-    [{ type: RECT_INT_ARRAY_T }, { type: INT_TYPE }],
-    REGION_T,
+    [RECT_INT_ARRAY_T, t.int32],
+    t.boxed("CairoRegion", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_region_get_type",
+    }),
 );
 
 class RegionImpl extends Region {
+    constructor(rect: RectangleInt) {
+        super();
+        setHandle(this, cairoRegionCreateRectangle(getHandle(rect)) as Handle);
+    }
+
     static empty(): Region {
-        return wrapHandle(RegionImpl, cairo_region_create() as NativeHandle);
+        return wrapHandle(cairoRegionCreate() as Handle, RegionImpl);
+    }
+
+    static copy(original: Region): Region {
+        return wrapHandle(cairoRegionCopy(getHandle(original)) as Handle, RegionImpl);
     }
 
     static forRectangle(rect: RectangleInt): Region {
-        return wrapHandle(RegionImpl, cairo_region_create_rectangle(getHandle(rect)) as NativeHandle);
+        return wrapHandle(cairoRegionCreateRectangle(getHandle(rect)) as Handle, RegionImpl);
     }
 
     static createRectangles(rects: Array<{ x: number; y: number; width: number; height: number }>): Region {
@@ -54,146 +90,149 @@ class RegionImpl extends Region {
         const buf = alloc(rects.length * 16, "cairo_rectangle_int_t[]");
         let offset = 0;
         for (const rect of rects) {
-            write(buf, INT_TYPE, offset, rect.x);
-            write(buf, INT_TYPE, offset + 4, rect.y);
-            write(buf, INT_TYPE, offset + 8, rect.width);
-            write(buf, INT_TYPE, offset + 12, rect.height);
+            write(buf, t.int32, offset, rect.x);
+            write(buf, t.int32, offset + 4, rect.y);
+            write(buf, t.int32, offset + 8, rect.width);
+            write(buf, t.int32, offset + 12, rect.height);
             offset += 16;
         }
-        const ptr = cairo_region_create_rectangles(buf, rects.length) as NativeHandle;
-        return getNativeObject(ptr, Region) as Region;
+        const ptr = cairoRegionCreateRectangles(buf, rects.length) as Handle;
+        return wrapHandle(ptr, Region) as Region;
     }
 }
 
 export { RegionImpl as Region };
 
-const cairo_region_copy = fn(LIB, "cairo_region_copy", [{ type: REGION_T_NONE }], REGION_T);
+const cairoRegionCopy = bind(
+    "libcairo.so.2",
+    "cairo_region_copy",
+    [REGION_T],
+    t.boxed("CairoRegion", {
+        ownership: "full",
+        library: "libcairo-gobject.so.2",
+        getTypeFn: "cairo_gobject_region_get_type",
+    }),
+);
 Region.prototype.copy = function (): Region {
-    return getNativeObject(cairo_region_copy(getHandle(this)) as NativeHandle, Region) as Region;
+    return wrapHandle(cairoRegionCopy(getHandle(this)) as Handle, Region) as Region;
 };
 
-const cairo_region_status = fn(LIB, "cairo_region_status", [{ type: REGION_T_NONE }], INT_TYPE);
+const cairoRegionStatus = bind("libcairo.so.2", "cairo_region_status", [REGION_T], t.int32);
 Region.prototype.status = function (): Status {
-    return cairo_region_status(getHandle(this)) as Status;
+    return cairoRegionStatus(getHandle(this)) as Status;
 };
 
-const cairo_region_get_extents = fn(
-    LIB,
+const cairoRegionGetExtents = bind(
+    "libcairo.so.2",
     "cairo_region_get_extents",
-    [{ type: REGION_T_NONE }, { type: RECT_INT_T }],
+    [REGION_T, t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Region.prototype.getExtents = function (): RectangleInt {
     const rect = new RectangleInt();
-    cairo_region_get_extents(getHandle(this), getHandle(rect));
+    cairoRegionGetExtents(getHandle(this), getHandle(rect));
     return rect;
 };
 
-const cairo_region_num_rectangles = fn(LIB, "cairo_region_num_rectangles", [{ type: REGION_T_NONE }], INT_TYPE);
+const cairoRegionNumRectangles = bind("libcairo.so.2", "cairo_region_num_rectangles", [REGION_T], t.int32);
 Region.prototype.numRectangles = function (): number {
-    return cairo_region_num_rectangles(getHandle(this)) as number;
+    return cairoRegionNumRectangles(getHandle(this)) as number;
 };
 
-const cairo_region_get_rectangle = fn(
-    LIB,
+const cairoRegionGetRectangle = bind(
+    "libcairo.so.2",
     "cairo_region_get_rectangle",
-    [{ type: REGION_T_NONE }, { type: INT_TYPE }, { type: RECT_INT_T }],
+    [REGION_T, t.int32, t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" })],
     t.void,
 );
 Region.prototype.getRectangle = function (nth: number): RectangleInt {
     const rect = new RectangleInt();
-    cairo_region_get_rectangle(getHandle(this), nth, getHandle(rect));
+    cairoRegionGetRectangle(getHandle(this), nth, getHandle(rect));
     return rect;
 };
 
-const cairo_region_is_empty = fn(LIB, "cairo_region_is_empty", [{ type: REGION_T_NONE }], t.boolean);
+const cairoRegionIsEmpty = bind("libcairo.so.2", "cairo_region_is_empty", [REGION_T], t.boolean);
 Region.prototype.isEmpty = function (): boolean {
-    return cairo_region_is_empty(getHandle(this)) as boolean;
+    return cairoRegionIsEmpty(getHandle(this)) as boolean;
 };
 
-const cairo_region_contains_point = fn(
-    LIB,
+const cairoRegionContainsPoint = bind(
+    "libcairo.so.2",
     "cairo_region_contains_point",
-    [{ type: REGION_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }],
+    [REGION_T, t.int32, t.int32],
     t.boolean,
 );
 Region.prototype.containsPoint = function (x: number, y: number): boolean {
-    return cairo_region_contains_point(getHandle(this), x, y) as boolean;
+    return cairoRegionContainsPoint(getHandle(this), x, y) as boolean;
 };
 
-const cairo_region_contains_rectangle = fn(
-    LIB,
+const cairoRegionContainsRectangle = bind(
+    "libcairo.so.2",
     "cairo_region_contains_rectangle",
-    [{ type: REGION_T_NONE }, { type: RECT_INT_T }],
-    INT_TYPE,
+    [REGION_T, t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" })],
+    t.int32,
 );
 Region.prototype.containsRectangle = function (rect: RectangleInt): RegionOverlap {
-    return cairo_region_contains_rectangle(getHandle(this), getHandle(rect)) as RegionOverlap;
+    return cairoRegionContainsRectangle(getHandle(this), getHandle(rect)) as RegionOverlap;
 };
 
-const cairo_region_equal = fn(LIB, "cairo_region_equal", [{ type: REGION_T_NONE }, { type: REGION_T_NONE }], t.boolean);
+const cairoRegionEqual = bind("libcairo.so.2", "cairo_region_equal", [REGION_T, REGION_T], t.boolean);
 Region.prototype.equal = function (other: Region): boolean {
-    return cairo_region_equal(getHandle(this), getHandle(other)) as boolean;
+    return cairoRegionEqual(getHandle(this), getHandle(other)) as boolean;
 };
 
-const cairo_region_translate = fn(
-    LIB,
-    "cairo_region_translate",
-    [{ type: REGION_T_NONE }, { type: INT_TYPE }, { type: INT_TYPE }],
-    t.void,
-);
+const cairoRegionTranslate = bind("libcairo.so.2", "cairo_region_translate", [REGION_T, t.int32, t.int32], t.void);
 Region.prototype.translate = function (dx: number, dy: number): void {
-    cairo_region_translate(getHandle(this), dx, dy);
+    cairoRegionTranslate(getHandle(this), dx, dy);
 };
 
-const BINARY_OP_ARGS = [{ type: REGION_T_NONE }, { type: REGION_T_NONE }] as const;
-const cairo_region_intersect = fn(LIB, "cairo_region_intersect", BINARY_OP_ARGS, INT_TYPE);
-const cairo_region_subtract = fn(LIB, "cairo_region_subtract", BINARY_OP_ARGS, INT_TYPE);
-const cairo_region_union = fn(LIB, "cairo_region_union", BINARY_OP_ARGS, INT_TYPE);
-const cairo_region_xor = fn(LIB, "cairo_region_xor", BINARY_OP_ARGS, INT_TYPE);
+const BINARY_OP_ARGS = [REGION_T, REGION_T] as const;
+const cairoRegionIntersect = bind("libcairo.so.2", "cairo_region_intersect", BINARY_OP_ARGS, t.int32);
+const cairoRegionSubtract = bind("libcairo.so.2", "cairo_region_subtract", BINARY_OP_ARGS, t.int32);
+const cairoRegionUnion = bind("libcairo.so.2", "cairo_region_union", BINARY_OP_ARGS, t.int32);
+const cairoRegionXor = bind("libcairo.so.2", "cairo_region_xor", BINARY_OP_ARGS, t.int32);
 
-const RECT_OP_ARGS = [{ type: REGION_T_NONE }, { type: RECT_INT_T }] as const;
-const cairo_region_intersect_rectangle = fn(LIB, "cairo_region_intersect_rectangle", RECT_OP_ARGS, INT_TYPE);
-const cairo_region_subtract_rectangle = fn(LIB, "cairo_region_subtract_rectangle", RECT_OP_ARGS, INT_TYPE);
-const cairo_region_union_rectangle = fn(LIB, "cairo_region_union_rectangle", RECT_OP_ARGS, INT_TYPE);
-const cairo_region_xor_rectangle = fn(LIB, "cairo_region_xor_rectangle", RECT_OP_ARGS, INT_TYPE);
+const RECT_OP_ARGS = [
+    REGION_T,
+    t.boxed("cairo_rectangle_int_t", { ownership: "borrowed", library: "libcairo.so.2" }),
+] as const;
+const cairoRegionIntersectRectangle = bind("libcairo.so.2", "cairo_region_intersect_rectangle", RECT_OP_ARGS, t.int32);
+const cairoRegionSubtractRectangle = bind("libcairo.so.2", "cairo_region_subtract_rectangle", RECT_OP_ARGS, t.int32);
+const cairoRegionUnionRectangle = bind("libcairo.so.2", "cairo_region_union_rectangle", RECT_OP_ARGS, t.int32);
+const cairoRegionXorRectangle = bind("libcairo.so.2", "cairo_region_xor_rectangle", RECT_OP_ARGS, t.int32);
 
-const regionBinaryOp = (self: Region, boundFn: (...args: unknown[]) => unknown, other: Region): void => {
-    boundFn(getHandle(self), getHandle(other));
-};
-
-const regionRectOp = (self: Region, boundFn: (...args: unknown[]) => unknown, rect: RectangleInt): void => {
-    boundFn(getHandle(self), getHandle(rect));
+const regionOp = (self: Region, boundFn: (...args: unknown[]) => unknown, arg: Region | RectangleInt): void => {
+    boundFn(getHandle(self), getHandle(arg));
 };
 
 Region.prototype.intersect = function (other: Region): void {
-    regionBinaryOp(this, cairo_region_intersect, other);
+    regionOp(this, cairoRegionIntersect, other);
 };
 
 Region.prototype.intersectRectangle = function (rect: RectangleInt): void {
-    regionRectOp(this, cairo_region_intersect_rectangle, rect);
+    regionOp(this, cairoRegionIntersectRectangle, rect);
 };
 
 Region.prototype.subtract = function (other: Region): void {
-    regionBinaryOp(this, cairo_region_subtract, other);
+    regionOp(this, cairoRegionSubtract, other);
 };
 
 Region.prototype.subtractRectangle = function (rect: RectangleInt): void {
-    regionRectOp(this, cairo_region_subtract_rectangle, rect);
+    regionOp(this, cairoRegionSubtractRectangle, rect);
 };
 
 Region.prototype.union = function (other: Region): void {
-    regionBinaryOp(this, cairo_region_union, other);
+    regionOp(this, cairoRegionUnion, other);
 };
 
 Region.prototype.unionRectangle = function (rect: RectangleInt): void {
-    regionRectOp(this, cairo_region_union_rectangle, rect);
+    regionOp(this, cairoRegionUnionRectangle, rect);
 };
 
 Region.prototype.xor = function (other: Region): void {
-    regionBinaryOp(this, cairo_region_xor, other);
+    regionOp(this, cairoRegionXor, other);
 };
 
 Region.prototype.xorRectangle = function (rect: RectangleInt): void {
-    regionRectOp(this, cairo_region_xor_rectangle, rect);
+    regionOp(this, cairoRegionXorRectangle, rect);
 };

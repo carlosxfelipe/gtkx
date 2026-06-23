@@ -1,13 +1,15 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ScreenshotResult, WaitForOptions } from "./types.js";
+import type { ScreenshotOptions, ScreenshotResult, WindowSelector } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
 const bytesToBase64 = (bytes: number[]): string => {
     return Buffer.from(bytes).toString("base64");
 };
 
-const DEFAULT_SCREENSHOT_TIMEOUT = 100;
 const DEFAULT_SCREENSHOT_INTERVAL = 10;
 
 const describeWidgetState = (widget: Gtk.Widget): string =>
@@ -59,42 +61,6 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
     }
 };
 
-/**
- * Options for capturing widget screenshots.
- */
-export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
-    /**
-     * Supersampling factor applied while rasterizing the widget. The widget is
-     * laid out at its logical size and painted at `scale` times that size, so
-     * text and strokes render crisply in the enlarged output (e.g. `2` yields a
-     * 2x-resolution capture suitable for high-DPI documentation imagery).
-     * Defaults to `1`.
-     */
-    scale?: number;
-};
-
-/**
- * Captures a screenshot of a GTK widget as a PNG image.
- *
- * This function will retry multiple times if the widget hasn't finished
- * rendering, waiting for GTK to complete its paint cycle.
- *
- * @param widget - The widget to capture (typically a Window)
- * @param options - Optional timeout and interval configuration
- * @returns Screenshot result containing base64-encoded PNG data and dimensions
- * @throws Error if widget has no size, is not realized, or rendering fails after timeout
- *
- * @example
- * ```tsx
- * import { render, screenshot } from "@gtkx/testing";
- * import * as Gtk from "@gtkx/gi/gtk";
- *
- * const { container } = await render(<MyApp />);
- * const window = container.getWindows()[0];
- * const result = await screenshot(window);
- * console.log(result.mimeType); // "image/png"
- * ```
- */
 export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
     const scale = options?.scale ?? 1;
 
@@ -103,17 +69,68 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
     }
 
     return waitFor(() => captureSnapshot(widget, scale), {
-        timeout: options?.timeout ?? DEFAULT_SCREENSHOT_TIMEOUT,
+        timeout: options?.timeout,
         interval: options?.interval ?? DEFAULT_SCREENSHOT_INTERVAL,
-        onTimeout: (error) => {
-            const paintable = new Gtk.WidgetPaintable({ widget });
-            const width = paintable.getIntrinsicWidth();
-            const height = paintable.getIntrinsicHeight();
-
-            if (width <= 0 || height <= 0) {
-                return new Error("Widget has no size: ensure it is realized and visible");
-            }
-            return new Error(`Widget produced no render content after waiting for paint cycle: ${error.message}`);
-        },
     });
+};
+
+const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
+    const windows = Gtk.Window.listToplevels();
+
+    if (windows.length === 0) {
+        throw new Error("No windows available for screenshot");
+    }
+
+    if (selector === undefined) {
+        const [first] = windows;
+        if (!(first instanceof Gtk.Window)) {
+            throw new TypeError("First toplevel is not a Window");
+        }
+        return first;
+    }
+
+    if (typeof selector === "number") {
+        const indexed = windows[selector];
+        if (!(indexed instanceof Gtk.Window)) {
+            throw new TypeError(`Window at index ${selector} not found`);
+        }
+        return indexed;
+    }
+
+    const isRegex = selector instanceof RegExp;
+    const found = windows.find((w): w is Gtk.Window => {
+        if (!(w instanceof Gtk.Window)) return false;
+        const title = w.getTitle() ?? "";
+        return isRegex ? selector.test(title) : title.includes(selector);
+    });
+
+    if (!found) {
+        const pattern = isRegex ? selector.toString() : `"${selector}"`;
+        throw new Error(`No window found with title matching ${pattern}`);
+    }
+    return found;
+};
+
+const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
+    const dir = join(tmpdir(), "gtkx-screenshots");
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+    }
+    const filepath = join(dir, `${Date.now()}-screenshot.png`);
+    writeFileSync(filepath, Buffer.from(result.data, "base64"));
+    return filepath;
+};
+
+export const logScreenshotPath = (filepath: string): void => {
+    console.log(`Screenshot saved: file://${filepath}`);
+};
+
+export const captureAndSaveScreenshot = async (
+    selector?: WindowSelector,
+    options?: ScreenshotOptions,
+): Promise<ScreenshotResult> => {
+    const target = resolveWindow(selector);
+    const result = await screenshot(target, options);
+    logScreenshotPath(saveScreenshotToTempFile(result));
+    return result;
 };

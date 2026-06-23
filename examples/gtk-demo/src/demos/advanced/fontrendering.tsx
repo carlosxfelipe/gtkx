@@ -344,7 +344,7 @@ function useOverlayAnimation(state: FontRenderingState) {
         const animation = animationRef.current;
         if (!animation) return false;
 
-        const frameTime = frameClock.getFrameTime();
+        const frameTime = Number(frameClock.getFrameTime());
         animation.startFrameTime ??= frameTime;
         const t = Math.min((frameTime - animation.startFrameTime) / ANIMATION_DURATION_US, 1);
         const eased = easeOutCubic(t);
@@ -879,10 +879,10 @@ const FontRenderingDemo = () => {
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             vexpand
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    addShortcut={
+                    shortcuts={
                         <>
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}

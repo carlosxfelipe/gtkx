@@ -4,6 +4,7 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
+    GtkAdjustment,
     GtkButton,
     GtkDropDown,
     GtkEntry,
@@ -16,7 +17,6 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
@@ -38,7 +38,7 @@ function createNuclearTexture(): Gdk.Texture {
     cr.setLineWidth(1.5);
     cr.setSourceRgba(0, 0, 0, 1);
 
-    cr.arc({ xc: cx, yc: cy, radius: r * 0.15, angle1: 0, angle2: 2 * Math.PI });
+    cr.arc(cx, cy, r * 0.15, 0, 2 * Math.PI);
     cr.fill();
 
     for (let i = 0; i < 3; i++) {
@@ -48,7 +48,7 @@ function createNuclearTexture(): Gdk.Texture {
         cr.rotate(orbAngle);
         cr.scale(1, 0.35);
         cr.newPath();
-        cr.arc({ xc: 0, yc: 0, radius: r * 0.85, angle1: 0, angle2: 2 * Math.PI });
+        cr.arc(0, 0, r * 0.85, 0, 2 * Math.PI);
         cr.restore();
         cr.stroke();
     }
@@ -380,7 +380,6 @@ const TextViewInternationalSection = () => (
 );
 
 const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
-    const scaleAdjustment = useAdjustment({ lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 });
     return (
         <>
             {"\n\nYou can put widgets in the buffer: Here's a button: "}
@@ -399,7 +398,11 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
             </GtkTextAnchor>
             {" and a scale: "}
             <GtkTextAnchor>
-                <GtkScale orientation={Gtk.Orientation.HORIZONTAL} adjustment={scaleAdjustment} widthRequest={100} />
+                <GtkScale
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    adjustment={<GtkAdjustment lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+                    widthRequest={100}
+                />
             </GtkTextAnchor>
             {" finally a text entry: "}
             <GtkTextAnchor>
@@ -412,6 +415,60 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
     );
 };
 
+const lookupIconPaintable = (): Gtk.IconPaintable | null => {
+    const display = Gdk.Display.getDefault();
+    if (!display) return null;
+    const iconTheme = Gtk.IconTheme.getForDisplay(display);
+    return iconTheme.lookupIcon("drive-harddisk", null, 32, 1, Gtk.TextDirection.NONE, 0);
+};
+
+interface PrimaryTextViewProps {
+    textView1Ref: RefObject<Gtk.TextView | null>;
+    setSharedBuffer: (buffer: Gtk.TextBuffer | null) => void;
+    iconPaintable: Gtk.IconPaintable | null;
+    nuclearPaintable: Gdk.Texture;
+    onClickMe: () => void;
+}
+
+const renderPrimaryTextView = ({
+    textView1Ref,
+    setSharedBuffer,
+    iconPaintable,
+    nuclearPaintable,
+    onClickMe,
+}: PrimaryTextViewProps) => (
+    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+        <GtkTextView
+            ref={textView1Ref}
+            name="text-view-1"
+            wrapMode={Gtk.WrapMode.WORD}
+            buffer={
+                <GtkTextBuffer ref={setSharedBuffer}>
+                    <TextViewIntroSection />
+                    <TextViewFontStylesSection />
+                    <TextViewColorsSection />
+                    <TextViewUnderlineRiseSection />
+                    <TextViewImagesSection iconPaintable={iconPaintable} nuclearPaintable={nuclearPaintable} />
+                    <TextViewSpacingSection />
+                    <TextViewEditabilitySection />
+                    <TextViewWrappingSection />
+                    <TextViewJustificationSection />
+                    <TextViewInternationalSection />
+                    <TextViewWidgetsSection onClickMe={onClickMe} />
+                </GtkTextBuffer>
+            }
+        />
+    </GtkScrolledWindow>
+);
+
+const renderSecondaryTextView = (textView2Ref: RefObject<Gtk.TextView | null>, sharedBuffer: Gtk.TextBuffer | null) => (
+    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+        {sharedBuffer && (
+            <GtkTextView ref={textView2Ref} name="text-view-2" wrapMode={Gtk.WrapMode.WORD} buffer={sharedBuffer} />
+        )}
+    </GtkScrolledWindow>
+);
+
 const TextViewDemo = () => {
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
@@ -423,13 +480,7 @@ const TextViewDemo = () => {
         if (tv) handleEasterEgg(tv, easterEggWindowRef);
     };
 
-    const iconPaintable = (() => {
-        const display = Gdk.Display.getDefault();
-        if (!display) return null;
-        const iconTheme = Gtk.IconTheme.getForDisplay(display);
-        return iconTheme.lookupIcon("drive-harddisk", null, 32, 1, Gtk.TextDirection.NONE, 0);
-    })();
-
+    const iconPaintable = lookupIconPaintable();
     const nuclearPaintable = createNuclearTexture();
 
     useLayoutEffect(() => {
@@ -454,51 +505,14 @@ const TextViewDemo = () => {
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
             resizeEndChild
-            startChild={
-                <GtkScrolledWindow
-                    hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                >
-                    <GtkTextView
-                        ref={textView1Ref}
-                        name="text-view-1"
-                        wrapMode={Gtk.WrapMode.WORD}
-                        buffer={
-                            <GtkTextBuffer ref={setSharedBuffer}>
-                                <TextViewIntroSection />
-                                <TextViewFontStylesSection />
-                                <TextViewColorsSection />
-                                <TextViewUnderlineRiseSection />
-                                <TextViewImagesSection
-                                    iconPaintable={iconPaintable}
-                                    nuclearPaintable={nuclearPaintable}
-                                />
-                                <TextViewSpacingSection />
-                                <TextViewEditabilitySection />
-                                <TextViewWrappingSection />
-                                <TextViewJustificationSection />
-                                <TextViewInternationalSection />
-                                <TextViewWidgetsSection onClickMe={handleClickMe} />
-                            </GtkTextBuffer>
-                        }
-                    />
-                </GtkScrolledWindow>
-            }
-            endChild={
-                <GtkScrolledWindow
-                    hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                >
-                    {sharedBuffer && (
-                        <GtkTextView
-                            ref={textView2Ref}
-                            name="text-view-2"
-                            wrapMode={Gtk.WrapMode.WORD}
-                            buffer={sharedBuffer}
-                        />
-                    )}
-                </GtkScrolledWindow>
-            }
+            startChild={renderPrimaryTextView({
+                textView1Ref,
+                setSharedBuffer,
+                iconPaintable,
+                nuclearPaintable,
+                onClickMe: handleClickMe,
+            })}
+            endChild={renderSecondaryTextView(textView2Ref, sharedBuffer)}
         />
     );
 };

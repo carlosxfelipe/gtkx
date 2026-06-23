@@ -1,4 +1,4 @@
-.vitepress/dist
-.vitepress/cache
-api
-screenshots/out
+node_modules/
+.vitepress/dist/
+.vitepress/cache/
+*.log

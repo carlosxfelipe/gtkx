@@ -1,85 +1,118 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/logo.svg" alt="GTKX" width="100" height="100">
+  <img src="logo.svg" alt="gtkx" width="180" />
 </p>
 
-<h1 align="center">GTKX</h1>
+# gtkx
 
-<p align="center">
-    <strong>Native Linux application development for the modern age</strong><br>
-    React 19 + TypeScript render to real GTK4 and Libadwaita widgets on Node.js. No Electron, no WebView.
-</p>
+gtkx is a framework for building native GTK4/libadwaita desktop applications with React, TypeScript, and JSX. You write declarative JSX whose element types are GTK widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon owns the single GLib main-loop thread and performs every call into GTK. A build-time generator turns GObject-Introspection (GIR) XML into typed bindings, JSX element types, and reconciler metadata, and a Vite-based CLI provides scaffolding, a hot-reloading dev server, single-file production bundling, and GTK-asset integration.
 
-<p align="center">
-    <a href="https://www.npmjs.com/package/@gtkx/react"><img src="https://img.shields.io/npm/v/@gtkx/react.svg" alt="npm version"></a>
-    <a href="https://github.com/gtkx-org/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/gtkx-org/gtkx/ci.yml" alt="CI"></a>
-    <a href="https://gtkx.dev"><img src="https://img.shields.io/badge/docs-gtkx.dev-c8102e" alt="Documentation"></a>
-    <a href="https://github.com/gtkx-org/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License"></a>
-    <a href="https://github.com/gtkx-org/gtkx/discussions"><img src="https://img.shields.io/badge/discussions-GitHub-blue" alt="GitHub Discussions"></a>
-</p>
+Homepage: [gtkx.dev](https://gtkx.dev)
 
----
-
-<p align="center">
-    <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/demo.gif" alt="A GTKX-built editor saves a style edit and Vite Fast Refresh repaints the running app" width="100%">
-</p>
-
-<p align="center">
-    <a href="https://gtkx.dev">▶ Watch in HD on gtkx.dev</a>
-</p>
-
----
-
-GTKX is a framework for building native Linux applications with React and GTK. A custom React reconciler renders your components to real GObject widgets, TypeScript bindings for the whole GTK4/GLib platform are generated from GObject Introspection, and everything runs on vanilla Node.js — so the npm ecosystem and the GNOME platform meet in one app.
-
-## Features
-
-- **React 19, exactly** — Hooks, Suspense, and concurrent rendering. A custom reconciler turns the component model you already know into real GTK4 widgets.
-- **Native, not embedded** — No Chromium, no WebView, no second runtime. A Rust napi-rs module binds vanilla Node.js straight to GTK through libffi.
-- **All of GTK4 and Libadwaita** — Every class, signal, and property, generated from GObject Introspection with full TypeScript types. The GNOME look and feel out of the box.
-- **CSS-in-JS for GTK** — Emotion-style tagged templates compile to GTK CSS. Nesting, prop interpolation, and global styles.
-- **Tests that touch real widgets** — A Testing Library-style API and a Vitest plugin drive real GTK under Xvfb. Query by accessible role, click, type, assert.
-- **Built for AI agents** — A built-in MCP server exposes the live widget tree: agents inspect, click, type, fire signals, and screenshot your running app.
+![gtkx demo](demo.gif)
 
 ## Prerequisites
 
-GTKX targets the Linux desktop and reads native GTK libraries at runtime. Before you start, make sure the toolchain is in place:
+This is a Linux desktop framework, not a browser/DOM renderer. You need:
 
-- **GTK 4.22+** and its development files, available on the system
-- **GObject-Introspection** with the GIR XML installed (the standard `/usr/share/gir-1.0` location, or any directory pointed at by `pkg-config --variable=girdir gobject-introspection-1.0`); codegen reads these GIR files to generate the TypeScript bindings
-- **Node.js >= 24**
+- **Node.js** — the engines floor is Node `>=24`.
+- **pnpm** — the workspace package manager, provisioned via Corepack from the `packageManager` field.
+- **Rust toolchain** — 2024 edition with a C linker, plus the napi-rs CLI and Node N-API headers, to compile the native addon. A nightly toolchain is additionally required for the coverage, asan, and miri paths.
+- **libffi** — for dynamic CIF construction and closures in the native addon.
+- **GTK4 and libadwaita** development libraries, plus the broader GNOME library set the examples use (GtkSourceView, WebKitGTK, VTE, GStreamer, etc.), with `pkg-config`.
+- **GLib/GObject** shared libraries present at build and run time; gtkx resolves GTK symbols dynamically by name.
+- **GObject-Introspection** development data and system GIR files (read by codegen), plus `glib-compile-resources` and `glib-compile-schemas` for asset compilation.
+- **A headless Wayland compositor** (Weston, or Sway when `GTKX_COMPOSITOR=sway`) and software GL/Vulkan rasterization to run GTK tests and benches without a GPU.
+- **git**, for repository initialization during scaffolding.
 
-The [getting-started guide](https://gtkx.dev/docs/getting-started) lists the exact packages per distribution.
+For the containerized CI path you additionally need Docker; the CI image pins the full GTK/Rust/Node toolchain.
 
-## Quick start
+## Getting started
 
-```bash
-npx @gtkx/cli@latest create my-app
-cd my-app
-npm run dev
+```sh
+git clone https://github.com/gtkx-org/gtkx.git
+cd gtkx
+corepack enable
+pnpm install
+pnpm build
 ```
 
-## Examples
+`pnpm build` runs the Rust `native-build` and `@gtkx/cli#codegen` first (hard Turbo upstreams), so the first build compiles the addon and generates the `@gtkx/gi`/`@gtkx/jsx` binding stores before any TypeScript package builds.
 
-Explore complete applications in the [`examples/`](./examples) directory:
+## Common commands
 
-- **[hello-world](./examples/hello-world)** — Minimal application showing a counter
-- **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
-- **[tutorial](./examples/tutorial)** — Notes app from the tutorial with GSettings and Adwaita
-- **[browser](./examples/browser)** — Simple browser using WebKitWebView
+All root scripts run through Turbo over the workspace (the root meta-package is excluded with `--filter=!gtkx`).
+
+| Command | Description |
+| --- | --- |
+| `pnpm build` | Build all workspace packages (runs codegen + native-build first). |
+| `pnpm --filter <pkg> dev` | Start a package/example dev server (hot-reloading `gtkx dev`); see [Running the examples](#running-the-examples). There is no root `dev` script. |
+| `pnpm test` | Run the Vitest workspace plus per-package test scripts. |
+| `pnpm typecheck` | Type-check every package via `tsc -b --emitDeclarationOnly` across the reference graph. |
+| `pnpm lint` | Full quality gate: ts-reference drift check, biome, knip (default + production), dependency-cruiser, plus per-package lint (Rust fmt/clippy on native). |
+| `pnpm codegen` | Generate/refresh the `.gtkx` GIR and JSX binding stores consumed by other packages. |
+| `pnpm coverage` | Aggregated v8 lcov coverage (TS) plus native Rust coverage. |
+| `pnpm sync:ts-refs` | Rewrite TypeScript project references from `package.json` deps and format them (add `--check` to fail on drift). |
+| `pnpm asan` / `pnpm miri` / `pnpm bench` | Native AddressSanitizer suite, Miri marshalling subset, and CodSpeed benchmarks under the headless compositor. |
+| `pnpm release` | Build, inject README into published packages, stage native artifacts, and publish to npm. |
+| `pnpm publish-test` | Publish to an ephemeral Verdaccio registry, then scaffold, build, typecheck, and test a consumer app end-to-end. |
+
+To run tests for a single package, filter through Turbo or pnpm, for example:
+
+```sh
+pnpm --filter @gtkx/ffi test
+pnpm --filter @gtkx/react test
+pnpm --filter @gtkx/cli build
+```
+
+## Running the examples
+
+Each example exposes the standard `dev`, `build`, and `start` scripts that wrap the CLI (`gtkx dev` / `gtkx build` / `node dist/bundle.js`).
+
+```sh
+# Counter app demonstrating the basics
+pnpm --filter hello-world dev
+
+# Notes app from the tutorial (uses @gtkx/css and @gtkx/animate, GSettings via #data)
+pnpm --filter tutorial dev
+
+# GTK4 widget showcase (the React port of the official gtk-demo; the only example with tests)
+pnpm --filter gtk-demo dev
+pnpm --filter gtk-demo coverage
+
+# Simple browser using WebKitWebView
+pnpm --filter browser dev
+```
+
+Build and run any example's production bundle:
+
+```sh
+pnpm --filter hello-world build
+pnpm --filter hello-world start
+```
+
+The tutorial additionally packages as a single executable (`pnpm --filter tutorial build:sea`) and as a Flatpak (`pnpm --filter tutorial build:flatpak`); these need esbuild, postject, and a Flatpak toolchain.
+
+## Gotchas
+
+- **codegen and native-build come first.** A clean checkout cannot type-check or build any TypeScript package until the Rust addon is compiled and codegen has produced `.gtkx`; both are hard Turbo upstreams. `pnpm lint` first creates the `.gtkx` symlink that knip and dependency-cruiser resolve against.
+- **Generated packages are not hand-edited.** `@gtkx/gi`, `@gtkx/jsx`, and the generated `@gtkx/gl` sources come from `@gtkx/codegen`. Change the emitters or `gtkx.config.ts` and regenerate (`pnpm codegen`); the store swap is atomic, so partial writes never appear.
+- **GTK tests/benches need a headless display.** Running native `test`/`coverage`/`asan` or the GTK suites outside the headless wrapper fails to initialize a display; the harness provisions a Wayland compositor with software rendering. Native tests run single-threaded because GTK requires a single owning thread.
+- **The native runtime is single-use.** All GObject/GTK mutation runs only on the single `gtkx-glib` thread; native init is one-shot and quit is terminal, so a process cannot restart the runtime. Importing `@gtkx/ffi` starts the GLib main loop and registers a process exit handler.
+- **Project references track deps.** TypeScript references are generated from `package.json` dependency fields by `sync-ts-references`; hand-editing them is reported as drift by the `--check` run in lint. Change deps, then run `pnpm sync:ts-refs`.
+- **`@gtkx/testing` cleanup is not automatic.** Consumers must register `cleanup()` (the e2e setup wires it into `afterEach`/`afterAll`), or leaked windows persist across tests.
+- **The dev loop restarts via exit code 75.** The dev supervisor and runner signal restart intent purely through process exit code 75; Fast Refresh applies only to SSR-transformed project files where every export looks like a React component, otherwise the whole process restarts.
 
 ## Documentation
 
-Visit [https://gtkx.dev](https://gtkx.dev) for the full documentation: the [tutorial](https://gtkx.dev/docs/tutorial/1-window-and-header-bar) builds a complete GNOME Notes app, the [widget gallery](https://gtkx.dev/docs/gallery/) shows real captures of the components next to their source, and the [API reference](https://gtkx.dev/api/react/) covers every package.
+Architecture and subsystem docs live under `docs/`:
 
-## Contributing
+- [`docs/architecture.md`](docs/architecture.md) — architecture overview and layer stack.
+- [`docs/rendering.md`](docs/rendering.md) — the render and event pipeline.
+- [`docs/codegen.md`](docs/codegen.md) — the GIR/Khronos code generator and the runtime contract.
+- [`docs/cli.md`](docs/cli.md) — the CLI and project workflow.
+- [`docs/styling.md`](docs/styling.md) — styling, animation, and GL.
+- [`docs/mcp.md`](docs/mcp.md) — the MCP server.
+- [`docs/testing.md`](docs/testing.md) — the testing architecture.
+- [`docs/build-system.md`](docs/build-system.md) — the build system and quality tooling.
 
-Contributions are welcome! Please see the [contributing guidelines](./CONTRIBUTING.md).
-
-## Community
-
-- [GitHub Discussions](https://github.com/gtkx-org/gtkx/discussions) — Questions, ideas, and general discussion
-- [Issue Tracker](https://github.com/gtkx-org/gtkx/issues) — Bug reports and feature requests
-
-## License
-
-[MPL-2.0](./LICENSE)
+For an agent-oriented index of packages and the hard build rules, see [`CLAUDE.md`](CLAUDE.md).

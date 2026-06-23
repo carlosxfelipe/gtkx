@@ -1,16 +1,12 @@
-//! napi-rs module exports for FFI operations.
-//!
-//! This module contains all the functions exported to JavaScript via napi-rs.
-
 mod alloc;
 mod call;
-mod connect_signal;
 mod field;
 mod freeze;
 mod gobject;
-pub(crate) mod handler;
+mod handler;
 mod init;
+mod quit;
 mod register_class;
-mod stop;
+#[cfg(feature = "test-support")]
 mod test_support;
 mod toggle_ref;

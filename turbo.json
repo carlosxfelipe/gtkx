@@ -1,70 +1,29 @@
 {
     "$schema": "https://turborepo.com/schema.json",
-    "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.test.json", "biome.json"],
+    "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.app.json", "tsconfig.test.json"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
-    "globalPassThroughEnv": [
-        "TURBO_TOKEN",
-        "TURBO_TEAM",
-        "DISPLAY",
-        "WAYLAND_DISPLAY",
-        "XDG_RUNTIME_DIR",
-        "XAUTHORITY",
-        "DBUS_SESSION_BUS_ADDRESS",
-        "GDK_BACKEND",
-        "GDK_DISABLE",
-        "GSK_RENDERER",
-        "LIBGL_ALWAYS_SOFTWARE"
-    ],
+    "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM"],
     "tasks": {
-        "//#lint:all": {
-            "dependsOn": [
-                "@gtkx/cli#build",
-                "@gtkx/codegen#build",
-                "@gtkx/css#build",
-                "@gtkx/ffi#build",
-                "@gtkx/mcp#build",
-                "@gtkx/native#build",
-                "@gtkx/react#build",
-                "@gtkx/testing#build",
-                "@gtkx/vitest#build"
-            ],
-            "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json", ".dependency-cruiser.cjs"],
+        "//#setup:store-link": {
+            "dependsOn": ["@gtkx/cli#codegen"],
+            "outputs": [".gtkx"],
             "outputLogs": "new-only"
         },
-        "//#test:all": {
-            "dependsOn": [
-                "@gtkx/cli#build",
-                "@gtkx/codegen#build",
-                "@gtkx/css#build",
-                "@gtkx/ffi#build",
-                "@gtkx/mcp#build",
-                "@gtkx/native#build",
-                "@gtkx/native#native-build",
-                "@gtkx/react#build",
-                "@gtkx/testing#build",
-                "@gtkx/vitest#build"
-            ],
+        "//#lint:all": {
+            "dependsOn": ["//#setup:store-link", "@gtkx/cli#build", "@gtkx/vitest#build"],
             "inputs": [
-                "vitest.config.ts",
-                "packages/*/vitest.config.ts",
-                "packages/*/src/**/*.{ts,tsx}",
-                "packages/*/tests/**/*.{ts,tsx}"
+                "**/*.ts",
+                "**/*.tsx",
+                "**/package.json",
+                "**/tsconfig*.json",
+                "biome.json",
+                "knip.json",
+                ".dependency-cruiser.cjs"
             ],
             "outputLogs": "new-only"
         },
         "//#coverage:all": {
-            "dependsOn": [
-                "@gtkx/cli#build",
-                "@gtkx/codegen#build",
-                "@gtkx/css#build",
-                "@gtkx/ffi#build",
-                "@gtkx/mcp#build",
-                "@gtkx/native#build",
-                "@gtkx/native#native-build",
-                "@gtkx/react#build",
-                "@gtkx/testing#build",
-                "@gtkx/vitest#build"
-            ],
+            "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build", "@gtkx/native#native-build"],
             "inputs": [
                 "vitest.config.ts",
                 "packages/*/vitest.config.ts",
@@ -74,11 +33,18 @@
             "outputs": ["coverage/**"],
             "outputLogs": "new-only"
         },
-        "lint": {
-            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs", "tests/**/*.rs"],
-            "outputs": [],
-            "outputLogs": "new-only",
-            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
+        "//#test:all": {
+            "dependsOn": ["@gtkx/cli#build", "@gtkx/vitest#build", "@gtkx/native#native-build"],
+            "inputs": [
+                "vitest.config.ts",
+                "packages/*/vitest.config.ts",
+                "packages/*/src/**/*.{ts,tsx}",
+                "packages/*/tests/**/*.{ts,tsx}",
+                "examples/gtk-demo/vitest.config.ts",
+                "examples/gtk-demo/src/**/*.{ts,tsx}",
+                "examples/gtk-demo/tests/**/*.{ts,tsx}"
+            ],
+            "outputLogs": "new-only"
         },
         "@gtkx/native#lint": {
             "dependsOn": ["native-build"],
@@ -88,7 +54,7 @@
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "build": {
-            "dependsOn": ["^build", "native-build"],
+            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
             "inputs": [
                 "package.json",
                 "*.ts",
@@ -108,38 +74,8 @@
             "outputLogs": "new-only"
         },
         "@gtkx/cli#codegen": {
-            "dependsOn": ["@gtkx/native#native-build", "@gtkx/native#build"],
+            "dependsOn": ["@gtkx/native#native-build"],
             "cache": false
-        },
-        "@gtkx/ffi#build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/react#build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/testing#build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/css#build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/cli#build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/e2e#build": {
-            "dependsOn": ["^build", "native-build", "@gtkx/cli#codegen"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
-            "outputLogs": "new-only"
         },
         "native-build": {
             "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs"],
@@ -153,9 +89,9 @@
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
         },
-        "native-test": {
+        "@gtkx/native#test": {
             "dependsOn": ["native-build"],
-            "inputs": ["Cargo.toml", "src/**/*.rs"],
+            "inputs": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
             "outputs": [],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
@@ -177,28 +113,35 @@
             "persistent": true,
             "cache": false
         },
+        "//#typecheck:packages": {
+            "dependsOn": ["//#setup:store-link", "@gtkx/cli#codegen"],
+            "inputs": [
+                "packages/*/src/**/*.ts",
+                "packages/*/src/**/*.tsx",
+                "packages/*/tests/**/*.ts",
+                "packages/*/tests/**/*.tsx",
+                "packages/*/vitest.config.ts",
+                "packages/native/*.ts",
+                "scripts/**/*.ts",
+                "vitest.config.ts",
+                "tsconfig.base.json",
+                "tsconfig.check.json"
+            ],
+            "outputs": []
+        },
         "typecheck": {
-            "dependsOn": ["@gtkx/cli#codegen", "@gtkx/native#build"],
+            "dependsOn": ["^build", "@gtkx/cli#codegen"],
             "inputs": [
                 "src/**/*.ts",
                 "src/**/*.tsx",
                 "src/**/*.d.ts",
-                "src/**/*.js",
-                "scripts/**/*.ts",
-                "screenshots/**/*.ts",
-                "screenshots/**/*.tsx",
-                "tests/**/*.ts",
-                "tests/**/*.tsx",
+                "vitest.config.ts",
                 "tsconfig.json",
+                "tsconfig.app.json",
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "test": {
-            "dependsOn": ["^build", "native-test", "@gtkx/cli#codegen"],
-            "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "bench": {
@@ -209,33 +152,6 @@
             "dependsOn": ["native-build"],
             "cache": false,
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CODSPEED_RUNNER_MODE"]
-        },
-        "docs": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "inputs": [
-                "package.json",
-                ".vitepress/**",
-                "docs/**",
-                "index.md",
-                "public/**",
-                "scripts/**",
-                "typedoc.config.ts",
-                "typedoc.json",
-                "tsconfig.json"
-            ],
-            "outputs": [".vitepress/dist/**", "api/**"],
-            "outputLogs": "new-only"
-        },
-        "@gtkx/native#typecheck": {
-            "dependsOn": ["^build", "native-build"],
-            "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "website#dev": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "persistent": true,
-            "cache": false
         }
     }
 }

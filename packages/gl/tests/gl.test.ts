@@ -70,7 +70,7 @@ beforeAll(async () => {
     window.setChild(glArea);
 
     const glReady = await new Promise<boolean>((resolve) => {
-        glArea.connect("realize", () => {
+        glArea.on("realize", () => {
             glArea.makeCurrent();
             resolve(!glArea.getError());
         });
@@ -433,7 +433,6 @@ describe("sync objects", () => {
 describe("debug output", () => {
     it("delivers inserted messages to the synchronous callback", () => {
         const received: string[] = [];
-        // biome-ignore lint/complexity/useMaxParams: mirrors the C `GLDEBUGPROC` callback signature
         gl.debugMessageCallback((_source, _type, _id, _severity, message) => {
             received.push(message);
         });

@@ -1,20 +1,54 @@
-import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { type RenderResult, render } from "@gtkx/testing";
+import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { createRootElement } from "@gtkx/react";
+import { type RenderResult, render, screen } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";
 import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
 
-/**
- * Per-test render options for {@link renderDemo}.
- */
+export const makeStringValue = (text: string): GObject.Value => {
+    const value = new GObject.Value();
+    value.init(GObject.TYPE_STRING);
+    value.setString(text);
+    return value;
+};
+
+export const makeIntValue = (n: number): GObject.Value => {
+    const value = new GObject.Value();
+    value.init(GObject.TYPE_INT);
+    value.setInt(n);
+    return value;
+};
+
+export const makeRgbaValue = (r: number, g: number, b: number, a: number): GObject.Value => {
+    const rgba = new Gdk.RGBA();
+    rgba.red = r;
+    rgba.green = g;
+    rgba.blue = b;
+    rgba.alpha = a;
+    const value = new GObject.Value();
+    value.init(GObject.typeFromName("GdkRGBA"));
+    value.setBoxed(rgba);
+    return value;
+};
+
+export const makeFileValue = (path: string): GObject.Value => {
+    const file = Gio.fileNewForPath(path);
+    const value = new GObject.Value();
+    value.init(GObject.typeFromName("GFile"));
+    value.setObject(file);
+    return value;
+};
+
+let nextAppId = 0;
+
 export interface RenderDemoOptions {
-    /** Callback fired when the demo signals it wants to close. */
     onClose?: () => void;
-    /** Override the demo's titlebar component. */
     titlebar?: ComponentType<DemoProps>;
-    /** Override the demo's state provider component. */
     provider?: ComponentType<DemoProviderProps>;
 }
 
@@ -35,6 +69,7 @@ const buildWrapper = ({
 }: WrapperArgs): ComponentType<{ children: ReactNode }> => {
     const DemoShell = ({ children }: { children: ReactNode }) => {
         const [windowReady, setWindowReady] = useState(false);
+        const [applicationId] = useState(() => `org.gtkx.gtkdemo${nextAppId++}`);
         const { windowTitle, defaultWidget } = useDemo();
         const titlebar = Titlebar ? <Titlebar window={windowRef} onClose={onClose} /> : undefined;
         const handleWindowRef = useCallback((widget: Gtk.Widget | null): void => {
@@ -42,21 +77,23 @@ const buildWrapper = ({
             if (widget) setWindowReady(true);
         }, []);
         return (
-            <Provider window={windowRef} onClose={onClose}>
-                <GtkApplicationWindow
-                    ref={handleWindowRef}
-                    title={windowTitle ?? demo?.windowTitle}
-                    defaultWidth={demo?.defaultWidth ?? 800}
-                    defaultHeight={demo?.defaultHeight ?? 600}
-                    resizable={demo?.resizable ?? true}
-                    deletable={demo?.deletable ?? true}
-                    cssClasses={demo?.windowCssClasses}
-                    defaultWidget={defaultWidget}
-                    titlebar={titlebar}
-                >
-                    {windowReady ? children : null}
-                </GtkApplicationWindow>
-            </Provider>
+            <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                <Provider window={windowRef} onClose={onClose}>
+                    <GtkApplicationWindow
+                        ref={handleWindowRef}
+                        title={windowTitle ?? demo?.windowTitle}
+                        defaultWidth={demo?.defaultWidth ?? 800}
+                        defaultHeight={demo?.defaultHeight ?? 600}
+                        resizable={demo?.resizable ?? true}
+                        deletable={demo?.deletable ?? true}
+                        cssClasses={demo?.windowCssClasses}
+                        defaultWidget={defaultWidget}
+                        titlebar={titlebar}
+                    >
+                        {windowReady ? children : null}
+                    </GtkApplicationWindow>
+                </Provider>
+            </GtkApplication>
         );
     };
     return ({ children }: { children: ReactNode }) => (
@@ -71,18 +108,6 @@ const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo =>
 
 const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => children;
 
-/**
- * Renders a {@link Demo} (or a bare demo component) inside a {@link GtkApplicationWindow}
- * that mirrors what the production app shell provides — titlebar, provider, default size,
- * resizable flag, and window title from the demo metadata.
- *
- * Wraps `@gtkx/testing`'s {@link render} so tests do not need to repeat the window/provider
- * scaffolding themselves. Equivalent to React Testing Library's documented custom-render
- * pattern (https://testing-library.com/docs/react-testing-library/setup#custom-render).
- *
- * Use `screen.findByRole(Gtk.AccessibleRole.WINDOW)` to locate the host window
- * in tests; the internal window ref is private to the wrapper.
- */
 export const renderDemo = async (
     componentOrDemo: ComponentType<DemoProps> | Demo,
     options: RenderDemoOptions = {},
@@ -97,6 +122,29 @@ export const renderDemo = async (
         options.provider ?? (isDemo(componentOrDemo) ? componentOrDemo.provider : undefined) ?? PassthroughProvider;
     const demo = isDemo(componentOrDemo) ? componentOrDemo : undefined;
     return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
+        container: createRootElement(),
         wrapper: buildWrapper({ windowRef, onClose, Provider, Titlebar, demo }),
     });
+};
+
+export const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {
+    const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+    expect(toggle).toBeInstanceOf(Gtk.ToggleButton);
+    expect(toggle.getActive()).toBe(false);
+    return toggle;
+};
+
+export const findOpenButton = async (): Promise<Gtk.Button> =>
+    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+
+export const renderDemoAndExpectOpenButton = async (demo: Demo): Promise<void> => {
+    await renderDemo(demo);
+    const openButton = await findOpenButton();
+    expect(openButton).toBeInstanceOf(Gtk.Button);
+    expect(openButton.getUseUnderline()).toBe(true);
+};
+
+export const readBufferText = (view: Gtk.TextView): string => {
+    const buffer = view.getBuffer();
+    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
 };

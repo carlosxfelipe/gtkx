@@ -28,7 +28,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Detect changes
         id: filter
@@ -37,7 +37,6 @@ jobs:
           filters: |
             code:
               - '**'
-              - '!website/**'
               - '!**/*.md'
 
   # Builds the CI container from this run's Dockerfile and publishes it under a
@@ -54,7 +53,7 @@ jobs:
       ref: ${{ steps.meta.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Compute image tags
         id: meta
@@ -100,7 +99,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -121,7 +120,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -142,7 +141,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -154,29 +153,7 @@ jobs:
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
-  docs:
-    needs: image
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NODE_OPTIONS: --max-old-space-size=8192
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
-      - name: Build docs
-        uses: ./.github/actions/run-in-container
-        with:
-          command: pnpm run docs
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
-          extra-env: NODE_OPTIONS
-
-  consumer-smoke:
+  publish-test:
     needs: [changes, image]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -185,7 +162,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -206,7 +183,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -214,7 +191,7 @@ jobs:
       - name: Build the native addon under AddressSanitizer and run its suite
         uses: ./.github/actions/run-in-container
         with:
-          command: scripts/ci-asan.sh
+          command: pnpm asan
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
@@ -227,7 +204,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -235,12 +212,12 @@ jobs:
       - name: Run Miri over the FFI-free marshalling subset
         uses: ./.github/actions/run-in-container
         with:
-          command: scripts/ci-miri.sh
+          command: pnpm miri
           mount-cargo-cache: "true"
 
   # The benches need the image's pinned GTK runtime, and that image is now
   # Ubuntu-based — the platform the CodSpeed runner supports — so the runner runs
-  # directly inside the container (scripts/ci-bench.sh) and uploads over OIDC.
+  # directly inside the container (pnpm bench) and uploads over OIDC.
   # One `codspeed run` wraps both the Rust and TypeScript suites as a single
   # report; run-in-container forwards the OIDC token and GitHub context it needs.
   bench:
@@ -256,7 +233,7 @@ jobs:
       CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup CI
         uses: ./.github/actions/setup-ci
@@ -264,7 +241,7 @@ jobs:
       - name: Build the workspace and the Rust benchmark
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec turbo build --filter=@gtkx/e2e && (cd packages/native && cargo codspeed build --bench marshalling)
+          command: pnpm exec turbo build --filter=@gtkx/e2e && (cd packages/native && cargo codspeed build --features test-support --bench marshalling)
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
@@ -272,7 +249,7 @@ jobs:
         uses: ./.github/actions/run-in-container
         with:
           install: "false"
-          command: scripts/ci-bench.sh
+          command: pnpm bench
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
           seccomp-unconfined: "true"

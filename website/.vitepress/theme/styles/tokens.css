@@ -1,189 +1,259 @@
 /* ============================================================
-   GTKX Design System — tokens
-   Crimson brand, warm-paper light surfaces, Adwaita-dark mapping.
-   The single source of truth consumed by vars.css and custom.css.
+   gtkx — design tokens
+   Brand red derived from the logo gradient (#E03A3E -> #B81C25),
+   aligned with Red Hat's red. Neutral ramp tuned for voidzero-
+   style dark surfaces + clean Red Hat light surfaces. Adwaita
+   blue (#3584e4) is the secondary "native platform" accent.
+   Light is :root; dark overrides under html.dark (VitePress
+   appearance). Dark is the marketing default.
    ============================================================ */
 
 :root {
-    /* ---- 1. Color primitives ---- */
+  /* ---- Brand red scale ---- */
+  --red-50: #fff1f1;
+  --red-100: #ffdede;
+  --red-200: #fbb9ba;
+  --red-300: #f58a8c;
+  --red-400: #ee5a5d;
+  --red-500: #e03a3e; /* brand primary (logo light stop) */
+  --red-600: #c92127;
+  --red-700: #b81c25; /* logo dark stop */
+  --red-800: #971018;
+  --red-900: #6e0c12;
 
-    /* Brand — Crimson (the GTKX accent) */
-    --gtkx-crimson-50: #fdecee;
-    --gtkx-crimson-100: #fbd3d7;
-    --gtkx-crimson-200: #f5a3ab;
-    --gtkx-crimson-300: #ec6b78;
-    --gtkx-crimson-400: #de3d4e;
-    --gtkx-crimson-500: #c8102e;
-    --gtkx-crimson-600: #a60a24;
-    --gtkx-crimson-700: #82081c;
-    --gtkx-crimson-800: #5e0614;
-    --gtkx-crimson-900: #3a040c;
+  /* ---- Neutral ramp (cool gray) ---- */
+  --gray-0: #ffffff;
+  --gray-50: #f7f7f8;
+  --gray-100: #ececef;
+  --gray-200: #dadade;
+  --gray-300: #c1c1c9;
+  --gray-400: #989aa4;
+  --gray-500: #6b6d77;
+  --gray-600: #4b4d56;
+  --gray-700: #32343b;
+  --gray-800: #202127;
+  --gray-850: #1b1b1f;
+  --gray-900: #151518;
+  --gray-950: #0d0d10;
+  --gray-1000: #09090b;
 
-    /* Adwaita-inspired blue — links and code accents, never CTA */
-    --gtkx-blue-100: #dbe9fb;
-    --gtkx-blue-300: #6fa0ec;
-    --gtkx-blue-500: #1c71d8;
-    --gtkx-blue-700: #134d94;
+  /* ---- Adwaita platform blue (secondary accent) ---- */
+  --blue-300: #99c1f1;
+  --blue-400: #62a0ea;
+  --blue-500: #3584e4; /* Adwaita @accent_color */
+  --blue-600: #1c71d8;
+  --blue-700: #1a5fb4;
 
-    /* Neutrals — warm, GNOME Adwaita-leaning */
-    --gtkx-ink-900: #15161b;
-    --gtkx-ink-800: #25272f;
-    --gtkx-ink-700: #3a3d47;
-    --gtkx-ink-600: #5b6473;
-    --gtkx-ink-500: #7a8392;
-    --gtkx-ink-400: #a0a7b3;
-    --gtkx-ink-300: #c4c9d1;
-    --gtkx-ink-200: #e2e4e9;
-    --gtkx-ink-100: #eef0f3;
-    --gtkx-ink-50: #f5f6f8;
+  /* ---- Functional hues ---- */
+  --green-500: #2ec27e; /* Adwaita success */
+  --green-600: #26a269;
+  --amber-500: #e5a50a; /* Adwaita warning */
+  --amber-600: #c64600;
+  --purple-500: #9141ac;
 
-    --gtkx-paper: #faf8f5;
-    --gtkx-surface: #ffffff;
-    --gtkx-overlay: rgba(21, 22, 27, 0.55);
+  /* ===========================================================
+     SEMANTIC ALIASES — light theme (Red Hat / docs default)
+     =========================================================== */
+  --bg: var(--gray-0);
+  --bg-alt: var(--gray-50);
+  --bg-soft: var(--gray-100);
+  --bg-elevated: var(--gray-0);
+  --bg-inset: var(--gray-50);
 
-    /* Semantic state */
-    --gtkx-success: #1f8a5b;
-    --gtkx-warning: #c97a0f;
-    --gtkx-danger: var(--gtkx-crimson-500);
-    --gtkx-info: var(--gtkx-blue-500);
+  --text-1: var(--gray-900);
+  --text-2: var(--gray-600);
+  --text-3: var(--gray-500);
+  --text-inverse: var(--gray-0);
+  --text-brand: var(--red-600);
 
-    /* Code surface */
-    --gtkx-code-bg: #14151b;
-    --gtkx-code-bg-2: #1d1f27;
-    --gtkx-code-line: #2a2d38;
-    --gtkx-code-fg: #e8eaf0;
-    --gtkx-code-dim: #8c93a4;
-    --gtkx-code-red: #ff6b7a;
-    --gtkx-code-blue: #8ab7ff;
-    --gtkx-code-green: #69d29a;
-    --gtkx-code-amber: #f2c26b;
-    --gtkx-code-purple: #c99cff;
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-brand: var(--red-500);
 
-    /* ---- 2. Semantic color tokens (light) ---- */
-    --fg-1: var(--gtkx-ink-900);
-    --fg-2: var(--gtkx-ink-700);
-    --fg-3: var(--gtkx-ink-600);
-    --fg-dim: var(--gtkx-ink-500);
-    --fg-on-accent: #ffffff;
+  --brand: var(--red-500);
+  --brand-hover: var(--red-600);
+  --brand-active: var(--red-700);
+  --brand-soft: var(--red-50);
+  --brand-soft-bd: var(--red-200);
+  --brand-contrast: var(--gray-0);
 
-    --bg-1: var(--gtkx-paper);
-    --bg-2: var(--gtkx-surface);
-    --bg-elevated: #ffffff;
-    --bg-sunken: var(--gtkx-ink-50);
-    --bg-tint-accent: var(--gtkx-crimson-50);
+  --accent: var(--blue-500);
+  --accent-hover: var(--blue-600);
+  --accent-soft: #e8f1fd;
 
-    --border-1: var(--gtkx-ink-200);
-    --border-2: var(--gtkx-ink-100);
-    --border-strong: var(--gtkx-ink-300);
-    --focus-ring: rgba(200, 16, 46, 0.4);
+  --success: var(--green-600);
+  --success-soft: #e4f6ee;
+  --warning: var(--amber-600);
+  --warning-soft: #fbf0d9;
+  --danger: var(--red-600);
+  --danger-soft: var(--red-50);
 
-    --accent: var(--gtkx-crimson-500);
-    --accent-hover: var(--gtkx-crimson-400);
-    --accent-pressed: var(--gtkx-crimson-600);
-    --accent-soft: var(--gtkx-crimson-50);
+  --code-bg: var(--gray-50);
+  --code-text: var(--red-700);
+  --kbd-bg: var(--gray-100);
 
-    --link: var(--gtkx-blue-500);
-    --link-hover: var(--gtkx-blue-700);
+  /* Brand gradients */
+  --gradient-brand: linear-gradient(135deg, #e03a3e 0%, #b81c25 100%);
+  --gradient-hero: linear-gradient(120deg, #ff6b6b 0%, #e03a3e 42%, #b81c25 100%);
+  --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.28) 0%, rgba(224, 58, 62, 0) 70%);
+  --gradient-text: linear-gradient(92deg, #ff7a7c 0%, #e03a3e 55%, #b81c25 100%);
 
-    /* ---- 3. Typography primitives ---- */
-    --font-display: "Red Hat Display", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-body: "Red Hat Text", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-mono: "Red Hat Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+  /* ---- Type families ---- */
+  --font-display: "Red Hat Display", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Red Hat Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Red Hat Mono", "SFMono-Regular", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
 
-    --fw-regular: 400;
-    --fw-medium: 500;
-    --fw-semibold: 600;
-    --fw-bold: 700;
-    --fw-display: 800;
-    --fw-display-black: 900;
+  /* ---- Weights ---- */
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+  --fw-black: 900;
 
-    --t-xs: 12px;
-    --t-sm: 13px;
-    --t-base: 15px;
-    --t-md: 17px;
-    --t-lg: 20px;
-    --t-xl: 24px;
-    --t-2xl: 30px;
-    --t-3xl: 38px;
-    --t-4xl: 48px;
-    --t-5xl: 60px;
-    --t-6xl: 76px;
+  /* ---- Type scale ---- */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 3rem;
+  --text-4xl: 3.75rem;
+  --text-5xl: 5rem;
 
-    --lh-tight: 1.1;
-    --lh-snug: 1.25;
-    --lh-normal: 1.45;
-    --lh-loose: 1.65;
+  /* ---- Line heights ---- */
+  --leading-none: 1;
+  --leading-tight: 1.12;
+  --leading-snug: 1.28;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.72;
 
-    --tr-tight: -0.022em;
-    --tr-snug: -0.012em;
-    --tr-normal: 0;
-    --tr-wide: 0.04em;
-    --tr-eyebrow: 0.18em;
+  /* ---- Letter spacing ---- */
+  --tracking-tighter: -0.04em;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+  --tracking-caps: 0.08em;
 
-    /* ---- 4. Spacing (4px base) ---- */
-    --sp-0: 0;
-    --sp-1: 4px;
-    --sp-2: 8px;
-    --sp-3: 12px;
-    --sp-4: 16px;
-    --sp-5: 20px;
-    --sp-6: 24px;
-    --sp-7: 32px;
-    --sp-8: 40px;
-    --sp-9: 56px;
-    --sp-10: 80px;
-    --sp-11: 120px;
+  /* ---- Spacing (8px grid) ---- */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 2.5rem;
+  --space-8: 3rem;
+  --space-9: 4rem;
+  --space-10: 5rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
 
-    /* ---- 5. Radii (Adwaita defaults) ---- */
-    --r-xs: 3px;
-    --r-sm: 6px;
-    --r-md: 9px;
-    --r-lg: 12px;
-    --r-xl: 18px;
-    --r-2xl: 24px;
-    --r-pill: 9999px;
+  /* ---- Radius ---- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+  --radius-mark: 30px;
 
-    /* ---- 6. Elevation ---- */
-    --el-0: none;
-    --el-1: 0 1px 0 rgba(21, 22, 27, 0.04), 0 1px 2px rgba(21, 22, 27, 0.06);
-    --el-2: 0 2px 4px rgba(21, 22, 27, 0.06), 0 4px 12px rgba(21, 22, 27, 0.06);
-    --el-3: 0 8px 24px rgba(21, 22, 27, 0.1), 0 2px 6px rgba(21, 22, 27, 0.06);
-    --el-4: 0 24px 60px rgba(21, 22, 27, 0.18), 0 4px 12px rgba(21, 22, 27, 0.08);
-    --el-inset-1: inset 0 0 0 1px var(--border-1);
-    --el-inset-strong: inset 0 0 0 1px var(--border-strong);
+  /* ---- Border widths ---- */
+  --border-1: 1px;
+  --border-2: 2px;
+  --border-3: 3px;
 
-    /* ---- 7. Motion ---- */
-    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
-    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
-    --dur-1: 120ms;
-    --dur-2: 200ms;
-    --dur-3: 320ms;
-    --dur-4: 480ms;
+  /* ---- Shadows (light theme) ---- */
+  --shadow-xs: 0 1px 2px rgba(15, 15, 20, 0.06);
+  --shadow-sm: 0 1px 3px rgba(15, 15, 20, 0.08), 0 1px 2px rgba(15, 15, 20, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 15, 20, 0.08), 0 2px 4px rgba(15, 15, 20, 0.04);
+  --shadow-lg: 0 12px 32px rgba(15, 15, 20, 0.12), 0 4px 8px rgba(15, 15, 20, 0.05);
+  --shadow-xl: 0 24px 60px rgba(15, 15, 20, 0.18);
+  --shadow-brand: 0 8px 28px rgba(224, 58, 62, 0.32);
+  --shadow-focus: 0 0 0 3px rgba(224, 58, 62, 0.35);
+
+  /* ---- Layout ---- */
+  --container-sm: 640px;
+  --container-md: 860px;
+  --container-lg: 1100px;
+  --container-xl: 1280px;
+  --container-prose: 720px;
+  --nav-h: 64px;
+  --gutter: var(--space-5);
+
+  /* ---- Motion ---- */
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+  --dur-slower: 560ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emphasis: cubic-bezier(0.34, 1.3, 0.64, 1);
+
+  --transition-colors: color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+  --transition-transform: transform var(--dur-base) var(--ease-out);
 }
 
-/* ---- Dark mode (Adwaita dark surfaces). VitePress toggles .dark on <html>. ---- */
-.dark {
-    --fg-1: #f3f4f6;
-    --fg-2: #c7cad2;
-    --fg-3: #9da3ae;
-    --fg-dim: #7c8290;
+/* ===========================================================
+   SEMANTIC ALIASES — dark theme (voidzero landing default)
+   =========================================================== */
+html.dark {
+  --bg: var(--gray-850);
+  --bg-alt: var(--gray-900);
+  --bg-soft: var(--gray-800);
+  --bg-elevated: var(--gray-800);
+  --bg-inset: var(--gray-950);
 
-    --bg-1: #1b1c22;
-    --bg-2: #242630;
-    --bg-elevated: #2c2f3a;
-    --bg-sunken: #14151b;
-    --bg-tint-accent: rgba(222, 61, 78, 0.15);
+  --text-1: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(235, 235, 245, 0.62);
+  --text-3: rgba(235, 235, 245, 0.42);
+  --text-inverse: var(--gray-900);
+  --text-brand: var(--red-300);
 
-    --border-1: #353844;
-    --border-2: #2b2d38;
-    --border-strong: #444856;
-    --focus-ring: rgba(236, 107, 120, 0.45);
+  --border: rgba(120, 120, 130, 0.26);
+  --border-strong: rgba(120, 120, 130, 0.42);
+  --border-brand: var(--red-500);
 
-    --accent: var(--gtkx-crimson-400);
-    --accent-hover: var(--gtkx-crimson-300);
-    --accent-pressed: var(--gtkx-crimson-500);
-    --accent-soft: rgba(222, 61, 78, 0.16);
+  --brand: var(--red-500);
+  --brand-hover: var(--red-400);
+  --brand-active: var(--red-300);
+  --brand-soft: rgba(224, 58, 62, 0.14);
+  --brand-soft-bd: rgba(224, 58, 62, 0.32);
+  --brand-contrast: var(--gray-0);
 
-    --link: var(--gtkx-blue-300);
+  --accent: var(--blue-400);
+  --accent-hover: var(--blue-300);
+  --accent-soft: rgba(53, 132, 228, 0.16);
+
+  --success: var(--green-500);
+  --success-soft: rgba(46, 194, 126, 0.15);
+  --warning: var(--amber-500);
+  --warning-soft: rgba(229, 165, 10, 0.15);
+  --danger: var(--red-400);
+  --danger-soft: rgba(224, 58, 62, 0.15);
+
+  --code-bg: var(--gray-950);
+  --code-text: var(--red-300);
+  --kbd-bg: var(--gray-800);
+
+  --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.34) 0%, rgba(224, 58, 62, 0) 70%);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 28px 70px rgba(0, 0, 0, 0.7);
+  --shadow-brand: 0 8px 32px rgba(224, 58, 62, 0.45);
 }

@@ -1,3 +1,23 @@
 {
-    "extends": "../../tsconfig.test.json"
+    "extends": "../../tsconfig.test.json",
+    "references": [
+        {
+            "path": "../animate/tsconfig.lib.json"
+        },
+        {
+            "path": "../config/tsconfig.lib.json"
+        },
+        {
+            "path": "../ffi/tsconfig.lib.json"
+        },
+        {
+            "path": "../react/tsconfig.lib.json"
+        },
+        {
+            "path": "../testing/tsconfig.lib.json"
+        },
+        {
+            "path": "../vitest/tsconfig.lib.json"
+        }
+    ]
 }

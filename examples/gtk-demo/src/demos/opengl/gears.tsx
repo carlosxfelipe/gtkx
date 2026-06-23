@@ -1,8 +1,17 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
-import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkOverlayChild, GtkScale } from "@gtkx/jsx/gtk";
-import { useAdjustment, useTickCallback } from "@gtkx/react";
+import {
+    GtkAdjustment,
+    GtkBox,
+    GtkFrame,
+    GtkGLArea,
+    GtkLabel,
+    GtkOverlay,
+    GtkOverlayChild,
+    GtkScale,
+} from "@gtkx/jsx/gtk";
+import { useTickCallback } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
@@ -440,7 +449,6 @@ function drawGear(params: DrawGearParams) {
 }
 
 const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; onChange: (value: number) => void }) => {
-    const adjustment = useAdjustment({ value, lower: 0, upper: 360, stepIncrement: 1, pageIncrement: 12 });
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
             <GtkLabel label={axis} />
@@ -449,7 +457,7 @@ const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; on
                 inverted
                 drawValue={false}
                 vexpand
-                adjustment={adjustment}
+                adjustment={<GtkAdjustment value={value} lower={0} upper={360} stepIncrement={1} pageIncrement={12} />}
                 onValueChanged={(scale) => onChange(scale.getValue())}
             />
         </GtkBox>
@@ -502,14 +510,14 @@ function useGearsRefs(state: GearsState): GearsRefs {
 }
 
 const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.RefObject<number>): void => {
-    const frame = frameClock.getFrameCounter();
-    const historyStart = frameClock.getHistoryStart();
+    const frame = Number(frameClock.getFrameCounter());
+    const historyStart = Number(frameClock.getHistoryStart());
     if (frame % 60 !== 0) return;
     const historyLen = frame - historyStart;
     if (historyLen <= 0) return;
-    const previousTimings = frameClock.getTimings(frame - historyLen);
+    const previousTimings = frameClock.getTimings(BigInt(frame - historyLen));
     if (!previousTimings) return;
-    const previousFrameTime = previousTimings.getFrameTime();
+    const previousFrameTime = Number(previousTimings.getFrameTime());
     fpsRef.current = (1_000_000 * historyLen) / (frameTime - previousFrameTime);
 };
 
@@ -517,7 +525,7 @@ const FPS_POLL_MS = 500;
 
 function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, setFps: (fps: number) => void) {
     useTickCallback(refs.glAreaRef, (_widget, frameClock) => {
-        const frameTime = frameClock.getFrameTime();
+        const frameTime = Number(frameClock.getFrameTime());
         if (refs.firstFrameTimeRef.current === 0) {
             refs.firstFrameTimeRef.current = frameTime;
             return true;

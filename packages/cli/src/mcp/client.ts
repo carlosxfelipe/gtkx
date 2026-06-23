@@ -2,52 +2,35 @@ import * as net from "node:net";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
-import { errorMessage } from "@gtkx/utils";
+import { errorMessage, normalizeError } from "@gtkx/utils";
+import { error, info, warn } from "../internal/log.js";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
-/**
- * Options for constructing an {@link McpClient}.
- */
 export type McpClientOptions = {
-    /** Socket path to connect to; defaults to `@gtkx/mcp`'s {@link DEFAULT_SOCKET_PATH}. */
     socketPath?: string;
-    /** The GTK application ID the client should register with. */
     applicationId: string;
 };
 
 const RECONNECT_DELAY_MS = 2000;
+const REGISTER_TIMEOUT_MS = 30000;
 
-/**
- * Connects a GTKX app to the MCP socket server.
- *
- * Owns the socket lifecycle (connect, reconnect, disconnect) and routes
- * inbound requests through {@link dispatch}. Wire framing and pending-request
- * correlation are delegated to {@link JsonStreamTransport}, the same class
- * the MCP server uses on its end — so both sides agree exactly on how a
- * frame is bounded, parsed, and resolved.
- */
 export class McpClient {
     private socket: net.Socket | null = null;
     private transport: JsonStreamTransport | null = null;
-    private readonly socketPath: string;
-    private readonly applicationId: string;
+    private socketPath: string;
+    private applicationId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
     private pendingConnectReject: ((error: Error) => void) | null = null;
-    private readonly registry = new WidgetRegistry();
+    private registry = new WidgetRegistry();
 
     constructor(options: McpClientOptions) {
         this.socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
         this.applicationId = options.applicationId;
     }
 
-    /**
-     * Establishes the initial connection and registers this app with the
-     * MCP server. Subsequent disconnects are handled transparently by the
-     * built-in reconnect timer.
-     */
     async connect(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             this.pendingConnectReject = reject;
@@ -64,11 +47,6 @@ export class McpClient {
         });
     }
 
-    /**
-     * Tears down the socket and cancels any pending reconnect timer. Rejects
-     * an in-flight {@link connect} call with a disconnect error so callers
-     * waiting on registration do not hang past teardown.
-     */
     disconnect(): void {
         this.isStopping = true;
         if (this.pendingConnectReject) {
@@ -99,48 +77,48 @@ export class McpClient {
         };
 
         const socket = net.createConnection(this.socketPath, () => {
-            console.log(`[gtkx] Connected to MCP server at ${this.socketPath}`);
+            info(`Connected to MCP server at ${this.socketPath}`);
             this.hasConnected = true;
             this.register()
                 .then(() => {
-                    console.log("[gtkx] Registered with MCP server");
+                    info("Registered with MCP server");
                     settle(onSuccess);
                 })
-                .catch((error) => {
-                    console.error("[gtkx] Failed to register with MCP server:", error.message);
-                    settle(onError, error instanceof Error ? error : new Error(String(error)));
+                .catch((cause) => {
+                    error("Failed to register with MCP server:", cause.message);
+                    settle(onError, normalizeError(cause));
                 });
         });
 
         const transport = JsonStreamTransport.fromSocket(socket, {
             onClose: () => {
                 if (this.hasConnected) {
-                    console.log("[gtkx] Disconnected from MCP server");
+                    info("Disconnected from MCP server");
                     this.hasConnected = false;
                 }
                 this.socket = null;
                 this.transport = null;
                 this.scheduleReconnect();
             },
-            onError: (error) => {
-                const code = (error as NodeJS.ErrnoException).code;
+            onError: (socketError) => {
+                const code = (socketError as NodeJS.ErrnoException).code;
                 const isDisconnectError =
                     code === "ENOENT" || code === "ECONNREFUSED" || code === "EPIPE" || code === "ECONNRESET";
                 if (isDisconnectError) {
                     this.scheduleReconnect();
                 } else {
-                    console.error("[gtkx] Socket error:", error.message);
+                    error("Socket error:", socketError.message);
                 }
-                settle(onError, error);
+                settle(onError, socketError);
             },
         });
         transport.on("request", (request) => {
-            this.handleRequest(request).catch((error) => {
-                console.error("[gtkx] Error handling request:", error);
+            this.handleRequest(request).catch((cause) => {
+                error("Error handling request:", cause);
             });
         });
-        transport.on("invalid", ({ error }) => {
-            console.warn(`[gtkx] Received invalid JSON from MCP server: ${error.message}`);
+        transport.on("invalid", ({ error: parseError }) => {
+            warn(`Received invalid JSON from MCP server: ${parseError.message}`);
         });
 
         this.socket = socket;
@@ -159,10 +137,14 @@ export class McpClient {
         if (!this.transport) {
             return Promise.reject(new Error("Transport not initialized"));
         }
-        return this.transport.sendRequest("app.register", {
-            applicationId: this.applicationId,
-            pid: process.pid,
-        });
+        return this.transport.sendRequest(
+            "app.register",
+            {
+                applicationId: this.applicationId,
+                pid: process.pid,
+            },
+            REGISTER_TIMEOUT_MS,
+        );
     }
 
     private async handleRequest(request: IpcRequest): Promise<void> {

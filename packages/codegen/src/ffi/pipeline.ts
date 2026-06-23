@@ -2,6 +2,7 @@ import { ModuleContext } from "../dsl/context.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirRepository } from "../gir/repository.js";
+import { splitOptionalNamespace } from "../gir/type-ref.js";
 import { emitAlias } from "../writers/alias.js";
 import { emitBoxed } from "../writers/boxed.js";
 import { emitCallback } from "../writers/callback.js";
@@ -11,26 +12,9 @@ import { emitEnum } from "../writers/enum.js";
 import { emitNamespaceBootstrap, emitNamespaceFunction } from "../writers/function.js";
 import { emitInterface } from "../writers/interface.js";
 
-/**
- * Generates the TypeScript source for one FFI namespace module.
- *
- * Walks the namespace's declared enums, boxeds, classes, interfaces,
- * callbacks, functions, constants, and aliases, dispatching to the
- * per-construct writers in `writers/`: bindings first, declarations second,
- * registrations trailing.
- *
- * @param namespace - The namespace to emit
- * @param repository - The full repository (for cross-namespace lookups)
- * @param bigintAliases - Qualified `Namespace.Alias` names surfaced as `bigint`
- * @returns The relative output path and the TypeScript source string
- */
-export const generateNamespaceModule = (
-    namespace: GirNamespace,
-    repository: GirRepository,
-    bigintAliases: ReadonlySet<string> = new Set(),
-): { readonly path: string; readonly source: string } => {
-    const context = new ModuleContext(namespace, repository, bigintAliases);
-    context.addGObjectBootstrapImports();
+export const generateNamespaceModule = (namespace: GirNamespace, repository: GirRepository): { source: string } => {
+    const context = new ModuleContext(namespace, repository);
+    context.addGobjectBootstrapImports();
 
     for (const enumeration of namespace.enums) {
         emitEnum(context, enumeration);
@@ -58,31 +42,11 @@ export const generateNamespaceModule = (
         emitAlias(context, alias);
     }
 
-    const directory = namespace.name.toLowerCase();
-    return {
-        path: `${directory}/${directory}.ts`,
-        source: context.module.toSource(),
-    };
+    context.flushImports();
+    return { source: context.module.toSource() };
 };
 
-/**
- * Returns the namespace's classes ordered so each class is preceded by every
- * same-namespace ancestor it extends.
- *
- * Generated JS classes use `extends`, which is a runtime reference: a child
- * class declaration that names its parent before the parent's class body runs
- * hits a temporal dead-zone error. GIR file order is source order, which does
- * not match the inheritance order for namespaces where a leaf type (e.g.
- * `GObject.Binding`) is declared earlier in the file than its base (e.g.
- * `GObject.Object`). The codegen sorts by inheritance instead.
- *
- * Cross-namespace parents are imported by the writer and do not participate in
- * the sort.
- *
- * @param classes - The classes to order
- * @param namespaceName - The namespace these classes live in
- */
-const topologicalClassOrder = (classes: readonly GirClass[], namespaceName: string): readonly GirClass[] => {
+const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {
     const byLocalName = new Map<string, GirClass>();
     for (const klass of classes) byLocalName.set(klass.name, klass);
     const result: GirClass[] = [];
@@ -105,11 +69,10 @@ const topologicalClassOrder = (classes: readonly GirClass[], namespaceName: stri
 const sameNamespaceParent = (
     klass: GirClass,
     namespaceName: string,
-    byLocalName: ReadonlyMap<string, GirClass>,
+    byLocalName: Map<string, GirClass>,
 ): GirClass | undefined => {
     if (klass.parent === undefined) return undefined;
-    const dot = klass.parent.indexOf(".");
-    if (dot === -1) return byLocalName.get(klass.parent);
-    if (klass.parent.slice(0, dot) !== namespaceName) return undefined;
-    return byLocalName.get(klass.parent.slice(dot + 1));
+    const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
+    if (parentNamespace !== undefined && parentNamespace !== namespaceName) return undefined;
+    return byLocalName.get(typeName);
 };

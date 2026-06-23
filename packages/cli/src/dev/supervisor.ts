@@ -1,61 +1,60 @@
-import { type ChildProcess, fork } from "node:child_process";
+import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { exitCodeForSignal, installGracefulShutdown } from "@gtkx/utils";
+import { error, info } from "../internal/log.js";
 import { RELOAD_EXIT_CODE } from "./protocol.js";
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 
-/**
- * Lets `gtkx dev` regenerate bindings and restart the runner when the project's
- * `gtkx.config.ts` changes — e.g. after editing the `libraries` list.
- */
-export type DevWatch = {
-    /** Absolute paths whose change triggers a regenerate-and-restart. */
-    readonly paths: readonly string[];
-    /**
-     * Regenerates the bindings for the current configuration. The runner is
-     * relaunched only when this resolves; a rejection leaves the running
-     * process in place so a broken config never tears down a working app.
-     */
-    readonly regenerate: () => Promise<void>;
+export type SupervisedChild = {
+    killed: boolean;
+    pid?: number | undefined;
+    exitCode: number | null;
+    kill(signal?: number | NodeJS.Signals): boolean;
+    on(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
+    once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
 };
 
-/** Mutable state shared by the supervisor's collaborating helpers. */
+export type ForkRunner = (modulePath: string, args: string[]) => SupervisedChild;
+
+const defaultForkRunner: ForkRunner = (modulePath, args) => nodeFork(modulePath, [...args], { stdio: "inherit" });
+
+export type DevWatch = {
+    paths: string[];
+    regenerate: () => Promise<void>;
+};
+
 type SupervisorState = {
-    readonly runnerPath: string;
-    readonly entryPath: string;
-    readonly watch: DevWatch | undefined;
-    readonly watchers: FSWatcher[];
-    child: ChildProcess | null;
+    runnerPath: string;
+    entryPath: string;
+    watch: DevWatch | undefined;
+    watchers: FSWatcher[];
+    fork: ForkRunner;
+    child: SupervisedChild | null;
     shuttingDown: boolean;
     restarting: boolean;
     capturedChildExit: number | undefined;
 };
 
-const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
+const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {
         child.kill(signal);
     }
 };
 
-const forceKillChild = (child: ChildProcess | null): void => {
+const forceKillChild = (child: SupervisedChild | null): void => {
     if (!child?.pid || child.exitCode !== null || child.killed) return;
     try {
         process.kill(child.pid, "SIGKILL");
     } catch {}
 };
 
-/**
- * Forks the dev runner and wires its exit handling: relaunch on
- * {@link RELOAD_EXIT_CODE}, stay quiet while a config-driven restart is in
- * flight, capture the code during shutdown, otherwise exit the supervisor.
- */
 const launch = (state: SupervisorState): void => {
-    const child = fork(state.runnerPath, [state.entryPath], { stdio: "inherit" });
+    const child = state.fork(state.runnerPath, [state.entryPath]);
     state.child = child;
     child.on("exit", (code, signal) => {
         state.child = null;
@@ -69,7 +68,7 @@ const launch = (state: SupervisorState): void => {
             return;
         }
         if (code === RELOAD_EXIT_CODE) {
-            console.log("[gtkx] Restarting dev runner...");
+            info("Restarting dev runner...");
             launch(state);
             return;
         }
@@ -77,19 +76,14 @@ const launch = (state: SupervisorState): void => {
     });
 };
 
-/**
- * Regenerates the bindings, then restarts the runner so the new process imports
- * the freshly generated `@gtkx/gi`. A failed regeneration leaves the current
- * runner in place; the restart relaunches once the old child has exited.
- */
 const restart = async (state: SupervisorState): Promise<void> => {
     if (state.restarting || state.shuttingDown || state.watch === undefined) return;
     state.restarting = true;
-    console.log("[gtkx] gtkx.config.ts changed; regenerating bindings...");
+    info("gtkx.config.ts changed; regenerating bindings...");
     try {
         await state.watch.regenerate();
-    } catch (error) {
-        console.error("[gtkx] Codegen failed; keeping the current dev runner. Fix the error and save again.", error);
+    } catch (cause) {
+        error("Codegen failed; keeping the current dev runner. Fix the error and save again.", cause);
         state.restarting = false;
         return;
     }
@@ -106,18 +100,13 @@ const restart = async (state: SupervisorState): Promise<void> => {
     current.once("exit", () => {
         state.restarting = false;
         if (!state.shuttingDown) {
-            console.log("[gtkx] Restarting dev runner...");
+            info("Restarting dev runner...");
             launch(state);
         }
     });
     forwardSignal(current, "SIGTERM");
 };
 
-/**
- * Watches each {@link DevWatch} path's directory and schedules a debounced
- * restart when a watched file changes. Watching the directory (and filtering by
- * filename) survives the write-then-rename atomic saves many editors perform.
- */
 const installConfigWatchers = (state: SupervisorState): void => {
     const watch = state.watch;
     if (watch === undefined || watch.paths.length === 0) return;
@@ -141,10 +130,6 @@ const installConfigWatchers = (state: SupervisorState): void => {
     }
 };
 
-/**
- * Installs signal handling: forwards the signal to the child, closes the config
- * watchers, and propagates the child's exit code (or the signal-mapped code).
- */
 const installShutdown = (state: SupervisorState): void => {
     installGracefulShutdown({
         onSignal: (signal) =>
@@ -164,26 +149,17 @@ const installShutdown = (state: SupervisorState): void => {
     });
 };
 
-/**
- * Supervises the dev-runner child process for the lifetime of `gtkx dev`.
- *
- * Forks `bin/gtkx-dev-runner.js`, forwards `SIGINT`/`SIGTERM`/`SIGHUP` to it,
- * and relaunches the runner whenever it exits with {@link RELOAD_EXIT_CODE}.
- * When a {@link DevWatch} is supplied, a change to one of its paths regenerates
- * the bindings and restarts the runner so the new process imports the freshly
- * generated `@gtkx/gi`. The returned promise never resolves: control returns
- * only when the runner exits non-reloadably and the supervisor calls
- * `process.exit`.
- *
- * @param entryPath - Absolute path of the user's entry module.
- * @param watch - Optional config-watch descriptor for regenerate-and-restart.
- */
-export const runDevSupervisor = async (entryPath: string, watch?: DevWatch): Promise<never> => {
+export const runDevSupervisor = async (
+    entryPath: string,
+    watch?: DevWatch,
+    fork: ForkRunner = defaultForkRunner,
+): Promise<never> => {
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
         watch,
         watchers: [],
+        fork,
         child: null,
         shuttingDown: false,
         restarting: false,

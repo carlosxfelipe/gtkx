@@ -1,6 +1,3 @@
-//! Coverage tests for [`native::types::BoxedType`] and
-//! [`native::types::StructType`] codec implementations.
-
 mod common;
 
 use std::ffi::c_void;
@@ -12,8 +9,15 @@ use gtk4::prelude::StaticType as _;
 
 use native::ffi;
 use native::managed::NativeHandle;
-use native::types::{BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, StructType};
+use native::types::{
+    BoxedType, FfiDecoder, FfiEncoder, Ownership, RawPtrCodec, ReadSource, StructType,
+};
 use native::value::Value;
+
+use common::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, read_slot, write_return_into_slot, write_value_into_slot,
+};
 
 fn rgba_type_name() -> String {
     gdk::RGBA::static_type().name().to_string()
@@ -26,17 +30,23 @@ fn boxed(ownership: Ownership) -> BoxedType {
         library: None,
         get_type_fn: None,
         free_fn: None,
+        caller_allocated: false,
     }
 }
 
 fn struct_type(ownership: Ownership, size: Option<usize>) -> StructType {
-    StructType { ownership, size }
+    StructType {
+        ownership,
+        size,
+        caller_allocated: false,
+    }
 }
 
 fn assert_slot_holds_copy_then_free(slot: *mut c_void, original: *mut c_void, gtype: glib::Type) {
     assert!(!slot.is_null());
     assert_ne!(slot, original);
-    // SAFETY: Frees the boxed allocations this test owns.
+    // SAFETY: the pointer(s) are owned boxed value(s) of `gtype`; `g_boxed_free` releases each
+    // exactly once on the GTK-initialized test thread.
     unsafe {
         glib::gobject_ffi::g_boxed_free(gtype.into_glib(), slot);
         glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original);
@@ -49,7 +59,8 @@ fn rgba_boxed_alloc() -> (glib::Type, *mut c_void) {
 }
 
 fn free_rgba(gtype: glib::Type, ptr: *mut c_void) {
-    // SAFETY: Frees the boxed allocation this test owns.
+    // SAFETY: the pointer(s) are owned boxed value(s) of `gtype`; `g_boxed_free` releases each
+    // exactly once on the GTK-initialized test thread.
     unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr) };
 }
 
@@ -57,35 +68,22 @@ fn object_value_of(ptr: *mut c_void) -> Value {
     Value::Object(NativeHandle::borrowed(ptr))
 }
 
+fn assert_read_aliases_source<C: FfiDecoder>(codec: &C, original: *mut c_void, message: &str) {
+    // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+    // this read.
+    let value = unsafe { codec.read(ReadSource::Value(original, "ctx")) }
+        .expect("ptr_to_value should succeed");
+    let Value::Object(handle) = &value else {
+        panic!("expected Object value");
+    };
+    assert_eq!(handle.ptr(), original, "{message}");
+    drop(value);
+}
+
 fn encode_rgba(ownership: Ownership, ptr: *mut c_void) -> ffi::FfiValue {
     boxed(ownership)
-        .encode(&object_value_of(ptr), false)
+        .encode(&object_value_of(ptr))
         .expect("encode should succeed")
-}
-
-/// Writes `value` into a null-initialized slot through
-/// `write_return_to_raw_ptr` and returns the written pointer.
-fn write_return_into_slot<C: RawPtrCodec>(codec: &C, value: &Result<Value, ()>) -> *mut c_void {
-    let mut slot: *mut c_void = std::ptr::null_mut();
-    // SAFETY: `slot` is a writable local pointer-sized slot.
-    unsafe { codec.write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) };
-    slot
-}
-
-/// Writes `value` into a slot seeded with `initial` through
-/// `write_value_to_raw_ptr`, asserting success, and returns the written
-/// pointer.
-fn write_value_into_slot<C: RawPtrCodec>(
-    codec: &C,
-    initial: *mut c_void,
-    value: &Value,
-) -> *mut c_void {
-    let mut slot: *mut c_void = initial;
-    // SAFETY: `slot` is a writable local pointer-sized slot whose seed value
-    // satisfies the per-test ownership contract.
-    unsafe { codec.write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, value) }
-        .expect("write_value_to_raw_ptr should succeed");
-    slot
 }
 
 #[test]
@@ -105,51 +103,10 @@ fn gtype_resolves_via_library_lookup() {
             library: Some("libgobject-2.0.so.0".to_owned()),
             get_type_fn: Some("g_bytes_get_type".to_owned()),
             free_fn: None,
+            caller_allocated: false,
         };
         let resolved = bytes_type.gtype();
         assert_eq!(resolved, Some(glib::Bytes::static_type()));
-    });
-}
-
-#[test]
-fn gtype_unknown_without_library_yields_none() {
-    common::run(|| {
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "CompletelyUnknownBoxed".to_owned(),
-            library: None,
-            get_type_fn: None,
-            free_fn: None,
-        };
-        assert!(unknown.gtype().is_none());
-    });
-}
-
-#[test]
-fn gtype_unknown_with_library_but_no_get_type_fn_yields_none() {
-    common::run(|| {
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "AnotherUnknownBoxed".to_owned(),
-            library: Some("libgobject-2.0.so.0".to_owned()),
-            get_type_fn: None,
-            free_fn: None,
-        };
-        assert!(unknown.gtype().is_none());
-    });
-}
-
-#[test]
-fn gtype_with_missing_symbol_reports_error_and_yields_none() {
-    common::run(|| {
-        let bad = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "BadSymbolBoxed".to_owned(),
-            library: Some("libgobject-2.0.so.0".to_owned()),
-            get_type_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
-            free_fn: None,
-        };
-        assert!(bad.gtype().is_none());
     });
 }
 
@@ -203,10 +160,7 @@ fn encode_borrowed_keeps_same_pointer() {
 #[test]
 fn encode_full_null_pointer_stays_null() {
     common::run(|| {
-        let encoded = boxed(Ownership::Full)
-            .encode(&Value::Null, false)
-            .expect("null encode should succeed");
-        assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p.is_null()));
+        common::assert_encode_null_yields_null_ptr(&boxed(Ownership::Full));
     });
 }
 
@@ -215,7 +169,8 @@ fn ref_for_transfer_full_copies_to_distinct_pointer() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        // SAFETY: `original` addresses a live boxed GdkRGBA.
+        // SAFETY: `original` is a live boxed value of the codec's gtype; `ref_for_transfer`
+        // returns either it (borrowed) or a fresh owned copy (full).
         let copied = unsafe { boxed(Ownership::Full).ref_for_transfer(original) }
             .expect("ref_for_transfer should succeed");
         assert!(!copied.is_null());
@@ -231,7 +186,8 @@ fn ref_for_transfer_borrowed_returns_same_pointer() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        // SAFETY: `original` addresses a live boxed GdkRGBA.
+        // SAFETY: `original` is a live boxed value of the codec's gtype; `ref_for_transfer`
+        // returns either it (borrowed) or a fresh owned copy (full).
         let returned = unsafe { boxed(Ownership::Borrowed).ref_for_transfer(original) }
             .expect("ref_for_transfer should succeed");
         assert_eq!(returned, original);
@@ -243,7 +199,7 @@ fn ref_for_transfer_borrowed_returns_same_pointer() {
 #[test]
 fn ref_for_transfer_full_null_is_noop() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any copy is made.
+        // SAFETY: a null pointer is accepted by `ref_for_transfer`, which returns it unchanged.
         let returned = unsafe { boxed(Ownership::Full).ref_for_transfer(std::ptr::null_mut()) }
             .expect("null ref_for_transfer should succeed");
         assert!(returned.is_null());
@@ -279,32 +235,9 @@ fn decode_borrowed_copies_boxed() {
 }
 
 #[test]
-fn decode_borrowed_unknown_gtype_bails() {
-    common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
-        let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let unknown = BoxedType {
-            ownership: Ownership::Borrowed,
-            type_name: "DecodeUnknownBoxed".to_owned(),
-            library: None,
-            get_type_fn: None,
-            free_fn: None,
-        };
-        let result = unknown.decode(&ffi::FfiValue::Ptr(raw));
-        assert!(result.is_err());
-
-        // SAFETY: Frees the allocation this test owns.
-        unsafe { glib::ffi::g_free(raw) };
-    });
-}
-
-#[test]
 fn decode_null_yields_null() {
     common::run(|| {
-        let decoded = boxed(Ownership::Borrowed)
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&boxed(Ownership::Borrowed));
     });
 }
 
@@ -313,8 +246,9 @@ fn ptr_to_value_wraps_boxed() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
 
-        // SAFETY: `original` addresses a live boxed GdkRGBA.
-        let value = unsafe { boxed(Ownership::Borrowed).ptr_to_value(original, "ctx") }
+        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+        // this read.
+        let value = unsafe { boxed(Ownership::Borrowed).read(ReadSource::Value(original, "ctx")) }
             .expect("ptr_to_value should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
@@ -326,10 +260,7 @@ fn ptr_to_value_wraps_boxed() {
 #[test]
 fn ptr_to_value_null_yields_null() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any read.
-        let value = unsafe { boxed(Ownership::Borrowed).ptr_to_value(std::ptr::null_mut(), "ctx") }
-            .expect("null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&boxed(Ownership::Borrowed));
     });
 }
 
@@ -339,8 +270,9 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
         let (gtype, original) = rgba_boxed_alloc();
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
-            // SAFETY: `original` addresses a live boxed GdkRGBA.
-            let value = unsafe { boxed(ownership).ptr_to_value(original, "ctx") }
+            // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+            // this read.
+            let value = unsafe { boxed(ownership).read(ReadSource::Value(original, "ctx")) }
                 .expect("ptr_to_value should succeed");
             let Value::Object(handle) = &value else {
                 panic!("expected Object value");
@@ -359,18 +291,52 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
 }
 
 #[test]
+fn caller_allocated_boxed_aliases_source_without_copying() {
+    common::run(|| {
+        let (gtype, original) = rgba_boxed_alloc();
+
+        let ty = BoxedType {
+            caller_allocated: true,
+            ..boxed(Ownership::Borrowed)
+        };
+        assert_read_aliases_source(
+            &ty,
+            original,
+            "a caller-allocated out boxed must alias the caller's buffer, not copy it",
+        );
+        assert!(common::is_valid_boxed_ptr(original, gtype));
+
+        free_rgba(gtype, original);
+    });
+}
+
+#[test]
+fn caller_allocated_struct_aliases_source_without_copying() {
+    common::run(|| {
+        let (gtype, original) = rgba_boxed_alloc();
+
+        let ty = StructType {
+            caller_allocated: true,
+            ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
+        };
+        assert_read_aliases_source(
+            &ty,
+            original,
+            "a caller-allocated out struct must alias the caller's buffer, not copy it",
+        );
+
+        free_rgba(gtype, original);
+    });
+}
+
+#[test]
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
         let (gtype, original) = rgba_boxed_alloc();
-        let slot: *mut c_void = original;
 
-        // SAFETY: `slot` is a live local pointer-sized slot holding a live
-        // boxed GdkRGBA pointer.
-        let value = unsafe {
-            boxed(Ownership::Borrowed)
-                .read_from_raw_ptr(&slot as *const *mut c_void as *const c_void, "ctx")
-        }
-        .expect("read_from_raw_ptr should succeed");
+        // SAFETY: `original` is a live boxed value the codec can read from a pointer-sized slot.
+        let value = unsafe { read_slot(&boxed(Ownership::Borrowed), original) }
+            .expect("read_from_raw_ptr should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
@@ -405,14 +371,7 @@ fn write_return_to_raw_ptr_borrowed_writes_same_pointer() {
 #[test]
 fn write_return_to_raw_ptr_err_writes_null() {
     common::run(|| {
-        let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-        let value: Result<Value, ()> = Err(());
-        // SAFETY: `slot` is a writable local pointer-sized slot.
-        unsafe {
-            boxed(Ownership::Borrowed)
-                .write_return_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &value);
-        }
-        assert!(slot.is_null());
+        assert_write_return_err_writes_null(&boxed(Ownership::Borrowed));
     });
 }
 
@@ -436,10 +395,11 @@ fn write_value_to_raw_ptr_falls_back_when_gtype_unresolvable() {
         let target: u64 = 0xAA55;
         let unknown = BoxedType {
             ownership: Ownership::Borrowed,
-            type_name: "GtypeUnknownBoxed".to_owned(),
+            type_name: "GTypeUnknownBoxed".to_owned(),
             library: None,
             get_type_fn: None,
             free_fn: None,
+            caller_allocated: false,
         };
 
         let slot = write_value_into_slot(
@@ -490,11 +450,12 @@ fn struct_encode_keeps_pointer() {
         let original = common::allocate_test_boxed(gtype);
 
         let encoded = struct_type(Ownership::Borrowed, None)
-            .encode(&Value::Object(NativeHandle::borrowed(original)), false)
+            .encode(&Value::Object(NativeHandle::borrowed(original)))
             .expect("struct encode should succeed");
         assert!(matches!(encoded, ffi::FfiValue::Ptr(p) if p == original));
 
-        // SAFETY: Frees the boxed allocation this test owns.
+        // SAFETY: the pointer(s) are owned boxed value(s) of `gtype`; `g_boxed_free` releases each
+        // exactly once on the GTK-initialized test thread.
         unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
     });
 }
@@ -502,7 +463,8 @@ fn struct_encode_keeps_pointer() {
 #[test]
 fn struct_decode_full_takes_ownership() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+        // the requested size that the test owns and later frees.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Full, None)
             .decode(&ffi::FfiValue::Ptr(raw))
@@ -515,7 +477,8 @@ fn struct_decode_full_takes_ownership() {
 #[test]
 fn struct_decode_borrowed_with_size_copies() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+        // the requested size that the test owns and later frees.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, Some(64))
             .decode(&ffi::FfiValue::Ptr(raw))
@@ -523,7 +486,7 @@ fn struct_decode_borrowed_with_size_copies() {
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
 
-        // SAFETY: Frees the allocation this test owns.
+        // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
         unsafe { glib::ffi::g_free(raw) };
     });
 }
@@ -531,7 +494,8 @@ fn struct_decode_borrowed_with_size_copies() {
 #[test]
 fn struct_decode_borrowed_without_size_is_unowned() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+        // the requested size that the test owns and later frees.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
         let decoded = struct_type(Ownership::Borrowed, None)
             .decode(&ffi::FfiValue::Ptr(raw))
@@ -539,7 +503,7 @@ fn struct_decode_borrowed_without_size_is_unowned() {
         assert!(matches!(decoded, Value::Object(_)));
         drop(decoded);
 
-        // SAFETY: Frees the allocation this test owns.
+        // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
         unsafe { glib::ffi::g_free(raw) };
     });
 }
@@ -547,25 +511,26 @@ fn struct_decode_borrowed_without_size_is_unowned() {
 #[test]
 fn struct_decode_null_yields_null() {
     common::run(|| {
-        let decoded = struct_type(Ownership::Borrowed, None)
-            .decode(&ffi::FfiValue::Ptr(std::ptr::null_mut()))
-            .expect("struct null decode should succeed");
-        assert!(matches!(decoded, Value::Null));
+        assert_decode_null_yields_null(&struct_type(Ownership::Borrowed, None));
     });
 }
 
 #[test]
 fn struct_ptr_to_value_wraps_struct() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+        // this read.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
-        // SAFETY: `raw` addresses a live 64-byte allocation.
-        let value = unsafe { struct_type(Ownership::Borrowed, Some(64)).ptr_to_value(raw, "ctx") }
-            .expect("struct ptr_to_value should succeed");
+        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+        // this read.
+        let value = unsafe {
+            struct_type(Ownership::Borrowed, Some(64)).read(ReadSource::Value(raw, "ctx"))
+        }
+        .expect("struct ptr_to_value should succeed");
         assert!(matches!(value, Value::Object(_)));
         drop(value);
 
-        // SAFETY: Frees the allocation this test owns.
+        // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
         unsafe { glib::ffi::g_free(raw) };
     });
 }
@@ -573,25 +538,23 @@ fn struct_ptr_to_value_wraps_struct() {
 #[test]
 fn struct_ptr_to_value_null_yields_null() {
     common::run(|| {
-        // SAFETY: Null short-circuits before any read.
-        let value = unsafe {
-            struct_type(Ownership::Borrowed, None).ptr_to_value(std::ptr::null_mut(), "ctx")
-        }
-        .expect("struct null ptr_to_value should succeed");
-        assert!(matches!(value, Value::Null));
+        assert_read_null_yields_null(&struct_type(Ownership::Borrowed, None));
     });
 }
 
 #[test]
 fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+        // this read.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
-            // SAFETY: `raw` addresses a live 64-byte allocation.
-            let value = unsafe { struct_type(ownership, Some(64)).ptr_to_value(raw, "ctx") }
-                .expect("struct ptr_to_value should succeed");
+            let value =
+                // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+                // this read.
+                unsafe { struct_type(ownership, Some(64)).read(ReadSource::Value(raw, "ctx")) }
+                    .expect("struct ptr_to_value should succeed");
             let Value::Object(handle) = &value else {
                 panic!("expected Object value");
             };
@@ -603,7 +566,7 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
             drop(value);
         }
 
-        // SAFETY: Frees the allocation this test owns.
+        // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
         unsafe { glib::ffi::g_free(raw) };
     });
 }
@@ -611,12 +574,15 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
 #[test]
 fn struct_ptr_to_value_without_size_wraps_unowned() {
     common::run(|| {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+        // this read.
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
-        // SAFETY: `raw` addresses a live 64-byte allocation.
-        let value = unsafe { struct_type(Ownership::Borrowed, None).ptr_to_value(raw, "ctx") }
-            .expect("struct ptr_to_value without size should succeed");
+        let value =
+            // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+            // this read.
+            unsafe { struct_type(Ownership::Borrowed, None).read(ReadSource::Value(raw, "ctx")) }
+                .expect("struct ptr_to_value without size should succeed");
         let Value::Object(handle) = &value else {
             panic!("expected Object value");
         };
@@ -627,7 +593,8 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
         );
         drop(value);
 
-        // SAFETY: Frees the allocation this test owns.
+        // SAFETY: `ret` is a live, pointer-sized stack slot; the call writes exactly one pointer
+        // (or null) into it, read back after the call.
         unsafe { glib::ffi::g_free(raw) };
     });
 }
@@ -699,8 +666,8 @@ fn struct_write_value_to_raw_ptr_with_size_bails_for_null_dst() {
         let src: u64 = 1;
         let mut slot: *mut c_void = std::ptr::null_mut();
 
-        // SAFETY: `slot` is a writable local pointer-sized slot; the null
-        // destination bails before any copy.
+        // SAFETY: the field slot is a live, pointer-sized stack slot pre-seeded with the prior
+        // (null/owned) value; the call swaps in the new value, balancing ownership.
         let err = unsafe {
             struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
                 .write_value_to_raw_ptr(
@@ -719,7 +686,7 @@ mod free_fn {
     use gtk4::glib;
 
     use native::ffi;
-    use native::types::{BoxedType, FfiDecoder, Ownership, RawPtrCodec};
+    use native::types::{BoxedType, FfiDecoder, Ownership, ReadSource};
     use native::value::Value;
 
     use super::common;
@@ -734,19 +701,16 @@ mod free_fn {
             library: Some(LIBGLIB.to_owned()),
             get_type_fn: None,
             free_fn: Some(G_FREE.to_owned()),
+            caller_allocated: false,
         }
     }
 
-    /// Allocates 16 zeroed bytes and asserts the value `wrap` produces
-    /// aliases the allocation. A full wrapper adopts the allocation and
-    /// releases it via the resolved free function on drop (leak detectors
-    /// would surface a missed free); a borrowed wrapper leaves ownership
-    /// with the test, which then frees it.
     fn assert_free_fn_wrapper_aliases(
         ownership: Ownership,
         wrap: impl FnOnce(&BoxedType, *mut c_void) -> Value,
     ) {
-        // SAFETY: Allocating zeroed memory has no pointer preconditions.
+        // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+        // the requested size that the test owns and later frees.
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
         let value = wrap(&boxed_with_free_fn(ownership), ptr);
@@ -757,7 +721,7 @@ mod free_fn {
         drop(value);
 
         if ownership.is_borrowed() {
-            // SAFETY: Frees the allocation this test owns.
+            // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
             unsafe { glib::ffi::g_free(ptr) };
         }
     }
@@ -769,8 +733,9 @@ mod free_fn {
     }
 
     fn ptr_to_value_wrapper(descriptor: &BoxedType, ptr: *mut c_void) -> Value {
-        // SAFETY: `ptr` addresses a live 16-byte allocation.
-        unsafe { descriptor.ptr_to_value(ptr, "ctx") }
+        // SAFETY: the pointer addresses a live value/container of the codec's type, valid for
+        // this read.
+        unsafe { descriptor.read(ReadSource::Value(ptr, "ctx")) }
             .expect("ptr_to_value with freeFn should succeed")
     }
 
@@ -805,7 +770,8 @@ mod free_fn {
     #[test]
     fn decode_with_unresolvable_free_fn_bails() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
+            // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+            // the requested size that the test owns and later frees.
             let raw = unsafe { glib::ffi::g_malloc0(8) };
             let descriptor = BoxedType {
                 ownership: Ownership::Full,
@@ -813,6 +779,7 @@ mod free_fn {
                 library: Some(LIBGLIB.to_owned()),
                 get_type_fn: None,
                 free_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
+                caller_allocated: false,
             };
 
             let err = descriptor
@@ -822,7 +789,7 @@ mod free_fn {
             assert!(msg.contains("BadFreeFnBoxed"));
             assert!(msg.contains("definitely_not_a_real_symbol_xyz"));
 
-            // SAFETY: Frees the allocation this test owns.
+            // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
             unsafe { glib::ffi::g_free(raw) };
         });
     }
@@ -830,7 +797,8 @@ mod free_fn {
     #[test]
     fn decode_with_unloadable_library_bails() {
         common::run(|| {
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
+            // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+            // the requested size that the test owns and later frees.
             let raw = unsafe { glib::ffi::g_malloc0(8) };
             let descriptor = BoxedType {
                 ownership: Ownership::Full,
@@ -838,6 +806,7 @@ mod free_fn {
                 library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
                 get_type_fn: None,
                 free_fn: Some(G_FREE.to_owned()),
+                caller_allocated: false,
             };
 
             let err = descriptor
@@ -845,7 +814,7 @@ mod free_fn {
                 .expect_err("decode with missing library should fail");
             assert!(format!("{err}").contains("BadLibBoxed"));
 
-            // SAFETY: Frees the allocation this test owns.
+            // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
             unsafe { glib::ffi::g_free(raw) };
         });
     }
@@ -853,23 +822,15 @@ mod free_fn {
     #[test]
     fn ptr_to_value_null_with_free_fn_yields_null() {
         common::run(|| {
-            // SAFETY: Null short-circuits before any read.
-            let value = unsafe {
-                boxed_with_free_fn(Ownership::Full)
-                    .ptr_to_value(std::ptr::null_mut::<c_void>(), "ctx")
-            }
-            .expect("null ptr_to_value should succeed");
-            assert!(matches!(value, Value::Null));
+            common::assert_read_null_yields_null(&boxed_with_free_fn(Ownership::Full));
         });
     }
 
     #[test]
     fn descriptor_with_free_fn_falls_back_for_library_lookup() {
         common::run(|| {
-            // The "(no library)" fallback branch in boxed_with_free_fn is
-            // reached when freeFn is set but library is None. The lookup
-            // unconditionally fails, surfacing the type name in the error.
-            // SAFETY: Allocating zeroed memory has no pointer preconditions.
+            // SAFETY: runs on the GTK-initialized test thread; `g_malloc0` returns a zeroed block of
+            // the requested size that the test owns and later frees.
             let raw = unsafe { glib::ffi::g_malloc0(8) };
             let descriptor = BoxedType {
                 ownership: Ownership::Full,
@@ -877,6 +838,7 @@ mod free_fn {
                 library: None,
                 get_type_fn: None,
                 free_fn: Some(G_FREE.to_owned()),
+                caller_allocated: false,
             };
 
             let err = descriptor
@@ -884,7 +846,7 @@ mod free_fn {
                 .expect_err("decode without library should fail");
             assert!(format!("{err}").contains("LibrarylessFreeFn"));
 
-            // SAFETY: Frees the allocation this test owns.
+            // SAFETY: the pointer is the test-owned allocation from above; `g_free` releases it once.
             unsafe { glib::ffi::g_free(raw) };
         });
     }

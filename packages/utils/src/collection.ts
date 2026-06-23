@@ -1,41 +1,47 @@
-/**
- * Pure, runtime-agnostic collection helpers shared across GTKX packages.
- */
-
-/**
- * Returns a shallow copy of `record` with the given `keys` removed.
- *
- * Keys absent from `record` are ignored, and `record` is not mutated. The
- * result is typed as the input shape because callers treat the excluded keys
- * as runtime-only concerns absent from the static type.
- *
- * @typeParam T - The record shape.
- * @param record - The source object.
- * @param keys - The keys to exclude from the copy.
- * @returns A new object holding every own enumerable key of `record` except
- *   those listed in `keys`.
- */
-export const omit = <T extends Record<string, unknown>>(record: T, keys: readonly string[]): T => {
+export const omit = <T extends Record<string, unknown>, K extends keyof T>(record: T, keys: K[]): Omit<T, K> => {
     const result: Record<string, unknown> = {};
     for (const key of Object.keys(record)) {
-        if (!keys.includes(key)) {
+        if (!keys.includes(key as K)) {
             result[key] = record[key];
         }
     }
-    return result as T;
+    return result as Omit<T, K>;
 };
 
-/**
- * Builds a reverse lookup from a numeric enum's values to their member names.
- *
- * A TypeScript numeric enum's runtime object carries both name-to-value and
- * value-to-name entries; this keeps only the name-to-value direction and
- * inverts it, yielding a `Map` from each numeric value to the name that
- * declared it.
- *
- * @param enumObject - A numeric enum's runtime object.
- * @returns A map from each numeric enum value to its declared member name.
- */
+export const dedupeBy = <T>(items: T[], key: (item: T) => string): T[] => {
+    const seen = new Set<string>();
+    const result: T[] = [];
+    for (const item of items) {
+        const identity = key(item);
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        result.push(item);
+    }
+    return result;
+};
+
+export const compareAlpha = (a: string, b: string): number => a.localeCompare(b);
+
+export const sortedAlpha = (values: Iterable<string>): string[] => [...values].sort(compareAlpha);
+
+export const sortedAlphaBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
+    [...items].sort((a, b) => compareAlpha(key(a), key(b)));
+
+export const shallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+
+    for (const key of keysA) {
+        if (a[key] !== b[key]) return false;
+    }
+
+    return true;
+};
+
 export const reverseNumericEnum = (enumObject: Record<string, string | number>): Map<number, string> =>
     new Map<number, string>(
         Object.entries(enumObject)

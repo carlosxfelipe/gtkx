@@ -3,6 +3,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
+    GtkAdjustment,
     GtkBox,
     GtkButton,
     GtkCheckButton,
@@ -27,7 +28,6 @@ import {
     GtkToggleButton,
     GtkViewport,
 } from "@gtkx/jsx/gtk";
-import { useAdjustment } from "@gtkx/react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -792,7 +792,6 @@ const SliderEntryRow = ({
     onEntryActivate,
     sensitive,
 }: SliderEntryRowProps) => {
-    const adjustment = useAdjustment({ value, lower, upper, stepIncrement, pageIncrement });
     return (
         <>
             <GtkGridChild column={0} row={row}>
@@ -803,7 +802,15 @@ const SliderEntryRow = ({
                     hexpand
                     widthRequest={100}
                     valign={Gtk.Align.BASELINE}
-                    adjustment={adjustment}
+                    adjustment={
+                        <GtkAdjustment
+                            value={value}
+                            lower={lower}
+                            upper={upper}
+                            stepIncrement={stepIncrement}
+                            pageIncrement={pageIncrement}
+                        />
+                    }
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                     sensitive={sensitive}
                 />
@@ -912,7 +919,7 @@ const FeatureGroupBox = ({
                       active={checkStates.get(tag) === "active"}
                       inconsistent={checkStates.get(tag) === "inconsistent"}
                       onToggled={() => onToggleCheck(tag)}
-                      addController={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
+                      controllers={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
                   />
               ))}
     </GtkBox>
@@ -1141,7 +1148,7 @@ const FontFeaturesTitlebar = () => {
     return (
         <GtkHeaderBar
             name="font-features-header"
-            packStart={
+            start={
                 <GtkButton
                     name="reset"
                     iconName="view-refresh-symbolic"
@@ -1172,10 +1179,10 @@ const FontFeaturesDemo = () => {
     return (
         <GtkBox
             ref={state.containerRef}
-            addController={
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    addShortcut={
+                    shortcuts={
                         <GtkShortcut
                             trigger={Gtk.ShortcutTrigger.parseString("Escape")}
                             action={Gtk.CallbackAction.new(() => {
