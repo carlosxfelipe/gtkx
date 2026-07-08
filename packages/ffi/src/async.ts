@@ -1,41 +1,29 @@
 import { tryGetHandle } from "./registry.js";
 
-type AsyncStartFn = (...args: unknown[]) => void;
-
-type AsyncFinishFn = (result: object) => unknown;
-
-export type PromisifyArgs = {
-    leading: unknown[];
-    trailing?: unknown[];
-};
-
-const PROMISE_CREATION_MARKER = "### Promise created here: ###";
-
-const spliceCreationStack = (error: unknown, creationStack: string | undefined): void => {
-    if (!(error instanceof Error) || creationStack === undefined) return;
-    const callerFrames = creationStack.split("\n").slice(2).join("\n");
-    error.stack = `${error.stack ?? ""}\n${PROMISE_CREATION_MARKER}\n${callerFrames}`;
+const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
+    if (creationStack === undefined || !(error instanceof Error)) return;
+    if (error.cause !== undefined || !Object.isExtensible(error)) return;
+    error.cause = creationStack;
 };
 
 export const promisify = (
-    asyncFn: AsyncStartFn,
-    finish: AsyncFinishFn,
+    asyncFn: (...args: unknown[]) => void,
+    finish: (result: object) => unknown,
     cancellable: object | null | undefined,
-    args: PromisifyArgs,
+    ...leading: unknown[]
 ): Promise<unknown> =>
     new Promise((resolve, reject) => {
-        const creationError = new Error();
-        asyncFn(
-            ...args.leading,
-            tryGetHandle(cancellable),
-            ...(args.trailing ?? []),
-            (_source: object | null, asyncResult: object) => {
-                try {
-                    resolve(finish(asyncResult));
-                } catch (error) {
-                    spliceCreationStack(error, creationError.stack);
-                    reject(error);
-                }
-            },
-        );
+        let creationStack: Error | undefined;
+        if (process.env.NODE_ENV !== "production") {
+            creationStack = new Error("gtkx async operation started here");
+            Error.captureStackTrace(creationStack, promisify);
+        }
+        asyncFn(...leading, tryGetHandle(cancellable), (_source: object | null, asyncResult: object) => {
+            try {
+                resolve(finish(asyncResult));
+            } catch (error) {
+                attachCreationStack(error, creationStack);
+                reject(error);
+            }
+        });
     });

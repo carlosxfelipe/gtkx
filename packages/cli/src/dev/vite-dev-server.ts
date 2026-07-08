@@ -20,11 +20,14 @@ export type DevServer = {
     };
 };
 
-export const buildConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
+export const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
     root,
     appType: "custom",
     plugins,
     server: { middlewareMode: true },
     optimizeDeps: { noDiscovery: true, include: [] },
-    ssr: { external: true, noExternal: [/^@gtkx\/(config|react|jsx|animate)(\/|$)/, /[/\\]\.gtkx[/\\]/] },
+    ssr: {
+        external: true,
+        noExternal: [/^@gtkx\/(?!(?:native|gi|gl|ffi|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
+    },
 });

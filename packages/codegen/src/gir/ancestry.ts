@@ -1,26 +1,33 @@
 import type { GirClass } from "./class.js";
-import type { GirRepository } from "./repository.js";
+import type { Library } from "./library.js";
 
 export type ResolvedAncestor = {
     klass: GirClass;
     namespaceName: string;
 };
 
-export const resolveClassOrInterface = (
-    repository: GirRepository,
+const resolveClassOrInterface = (
+    library: Library,
     defaultNamespace: string,
     name: string,
 ): ResolvedAncestor | undefined => {
-    const resolved = repository.resolveType(defaultNamespace, name);
-    if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
+    const resolved = library.resolveType(defaultNamespace, name);
+    if (resolved === undefined) return undefined;
+    if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
     return { klass: resolved.value, namespaceName: resolved.namespace.name };
 };
 
-export function* ancestorChain(
-    repository: GirRepository,
-    klass: GirClass,
-    namespaceName: string,
-): Generator<ResolvedAncestor> {
+export const resolveInterface = (
+    library: Library,
+    defaultNamespace: string,
+    name: string,
+): ResolvedAncestor | undefined => {
+    const resolved = library.resolveType(defaultNamespace, name);
+    if (resolved?.kind !== "interface") return undefined;
+    return { klass: resolved.value, namespaceName: resolved.namespace.name };
+};
+
+export function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
     const visited = new Set<string>();
     let current: ResolvedAncestor | undefined = { klass, namespaceName };
     while (current !== undefined) {
@@ -29,6 +36,6 @@ export function* ancestorChain(
         visited.add(key);
         yield current;
         if (current.klass.parent === undefined) return;
-        current = resolveClassOrInterface(repository, current.namespaceName, current.klass.parent);
+        current = resolveClassOrInterface(library, current.namespaceName, current.klass.parent);
     }
 }

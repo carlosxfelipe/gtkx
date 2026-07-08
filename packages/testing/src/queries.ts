@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { multipleFoundError, notFoundError } from "./errors.js";
-import { type BuiltQueries, buildQueries } from "./query-helpers.js";
+import { type BuiltQueries, buildQueries, type QueryAllBy } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";
 import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, NormalizerOptions } from "./types.js";
 import {
@@ -11,15 +11,15 @@ import {
     getWidgetDisplayValue,
     getWidgetExpandedState,
     getWidgetLabelledByText,
+    getWidgetLabelText,
     getWidgetLevel,
     getWidgetName,
     getWidgetOwnLabel,
     getWidgetPlaceholderText,
     getWidgetPressedState,
     getWidgetSelectedState,
-    getWidgetText,
     getWidgetValue,
-    isHiddenFromAccessibility,
+    isInaccessible,
 } from "./widget-text.js";
 
 export const getDefaultNormalizer = ({
@@ -125,18 +125,53 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
     return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
 };
 
+type NamedFamily<Suffix extends string, Args extends unknown[]> = {
+    [P in `queryBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget | null;
+} & {
+    [P in `queryAllBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget[];
+} & {
+    [P in `getBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget;
+} & {
+    [P in `getAllBy${Suffix}`]: (container: Container, ...args: Args) => Gtk.Widget[];
+} & {
+    [P in `findBy${Suffix}`]: (container: Container, ...args: Args) => Promise<Gtk.Widget>;
+} & {
+    [P in `findAllBy${Suffix}`]: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>;
+};
+
+const nameQueryFamily = <Suffix extends string, Args extends unknown[]>(
+    suffix: Suffix,
+    queryAllBy: QueryAllBy<Args>,
+    built: BuiltQueries<Args>,
+): NamedFamily<Suffix, Args> => {
+    const family = {
+        [`queryBy${suffix}`]: built.queryBy,
+        [`queryAllBy${suffix}`]: queryAllBy,
+        [`getBy${suffix}`]: built.getBy,
+        [`getAllBy${suffix}`]: built.getAllBy,
+        [`findBy${suffix}`]: built.findBy,
+        [`findAllBy${suffix}`]: built.findAllBy,
+    };
+    return family as NamedFamily<Suffix, Args>;
+};
+
 export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
     findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) return false;
-        if (!options?.hidden && isHiddenFromAccessibility(widget)) return false;
+        if (!options?.hidden && isInaccessible(widget)) return false;
         return matchByRoleOptions(widget, options);
     });
 
-const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
+const roleQueries = nameQueryFamily(
     "Role",
     queryAllByRole,
-    (container, matches, role, options) => multipleFoundError(container, { queryType: "role", role, options }, matches),
-    (container, role, options) => notFoundError(container, { queryType: "role", role, options }),
+    buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
+        "Role",
+        queryAllByRole,
+        (container, matches, role, options) =>
+            multipleFoundError(container, { queryType: "role", role, options }, matches),
+        (container, role, options) => notFoundError(container, { queryType: "role", role, options }),
+    ),
 );
 
 const collectMnemonicMatch = (
@@ -167,66 +202,44 @@ export const queryAllByLabelText = (container: Container, text: Matcher, options
     return [...results];
 };
 
-const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+const labelTextQueries = nameQueryFamily(
     "LabelText",
     queryAllByLabelText,
-    (container, matches, text) => multipleFoundError(container, { queryType: "labelText", text }, matches),
-    (container, text) => notFoundError(container, { queryType: "labelText", text }),
+    buildQueries<[text: Matcher, options?: MatcherOptions]>(
+        "LabelText",
+        queryAllByLabelText,
+        (container, matches, text) => multipleFoundError(container, { queryType: "labelText", text }, matches),
+        (container, text) => notFoundError(container, { queryType: "labelText", text }),
+    ),
 );
 
 export const queryAllByText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
-    findAll(container, (widget) => matchText(getWidgetText(widget), text, widget, options));
+    findAll(container, (widget) => matchText(getWidgetLabelText(widget), text, widget, options));
 
-const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+const textQueries = nameQueryFamily(
     "Text",
     queryAllByText,
-    (container, matches, text) => multipleFoundError(container, { queryType: "text", text }, matches),
-    (container, text) => notFoundError(container, { queryType: "text", text }),
+    buildQueries<[text: Matcher, options?: MatcherOptions]>(
+        "Text",
+        queryAllByText,
+        (container, matches, text) => multipleFoundError(container, { queryType: "text", text }, matches),
+        (container, text) => notFoundError(container, { queryType: "text", text }),
+    ),
 );
 
 export const queryAllByName = (container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (widget) => matchText(getWidgetName(widget), name, widget, options));
 
-const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
+const nameQueries = nameQueryFamily(
     "Name",
     queryAllByName,
-    (container, matches, name) => multipleFoundError(container, { queryType: "name", name }, matches),
-    (container, name) => notFoundError(container, { queryType: "name", name }),
+    buildQueries<[name: Matcher, options?: MatcherOptions]>(
+        "Name",
+        queryAllByName,
+        (container, matches, name) => multipleFoundError(container, { queryType: "name", name }, matches),
+        (container, name) => notFoundError(container, { queryType: "name", name }),
+    ),
 );
-
-export const queryByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["queryBy"] =
-    roleVariants.queryBy;
-export const getByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["getBy"] = roleVariants.getBy;
-export const getAllByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["getAllBy"] =
-    roleVariants.getAllBy;
-export const findByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["findBy"] =
-    roleVariants.findBy;
-export const findAllByRole: BuiltQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>["findAllBy"] =
-    roleVariants.findAllBy;
-
-export const queryByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] =
-    labelTextVariants.queryBy;
-export const getByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] = labelTextVariants.getBy;
-export const getAllByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] =
-    labelTextVariants.getAllBy;
-export const findByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] =
-    labelTextVariants.findBy;
-export const findAllByLabelText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
-    labelTextVariants.findAllBy;
-
-export const queryByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] = textVariants.queryBy;
-export const getByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] = textVariants.getBy;
-export const getAllByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] = textVariants.getAllBy;
-export const findByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] = textVariants.findBy;
-export const findAllByText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
-    textVariants.findAllBy;
-
-export const queryByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["queryBy"] = nameVariants.queryBy;
-export const getByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["getBy"] = nameVariants.getBy;
-export const getAllByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["getAllBy"] = nameVariants.getAllBy;
-export const findByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["findBy"] = nameVariants.findBy;
-export const findAllByName: BuiltQueries<[name: Matcher, options?: MatcherOptions]>["findAllBy"] =
-    nameVariants.findAllBy;
 
 export const queryAllByPlaceholderText = (
     container: Container,
@@ -234,41 +247,83 @@ export const queryAllByPlaceholderText = (
     options?: MatcherOptions,
 ): Gtk.Widget[] => findAll(container, (widget) => matchText(getWidgetPlaceholderText(widget), text, widget, options));
 
-const placeholderTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
+const placeholderTextQueries = nameQueryFamily(
     "PlaceholderText",
     queryAllByPlaceholderText,
-    (container, matches, text) => multipleFoundError(container, { queryType: "placeholderText", text }, matches),
-    (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
+    buildQueries<[text: Matcher, options?: MatcherOptions]>(
+        "PlaceholderText",
+        queryAllByPlaceholderText,
+        (container, matches, text) => multipleFoundError(container, { queryType: "placeholderText", text }, matches),
+        (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
+    ),
 );
 
 export const queryAllByDisplayValue = (container: Container, value: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (widget) => matchText(getWidgetDisplayValue(widget), value, widget, options));
 
-const displayValueVariants = buildQueries<[value: Matcher, options?: MatcherOptions]>(
+const displayValueQueries = nameQueryFamily(
     "DisplayValue",
     queryAllByDisplayValue,
-    (container, matches, value) => multipleFoundError(container, { queryType: "displayValue", value }, matches),
-    (container, value) => notFoundError(container, { queryType: "displayValue", value }),
+    buildQueries<[value: Matcher, options?: MatcherOptions]>(
+        "DisplayValue",
+        queryAllByDisplayValue,
+        (container, matches, value) => multipleFoundError(container, { queryType: "displayValue", value }, matches),
+        (container, value) => notFoundError(container, { queryType: "displayValue", value }),
+    ),
 );
 
-export const queryByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["queryBy"] =
-    placeholderTextVariants.queryBy;
-export const getByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getBy"] =
-    placeholderTextVariants.getBy;
-export const getAllByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["getAllBy"] =
-    placeholderTextVariants.getAllBy;
-export const findByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findBy"] =
-    placeholderTextVariants.findBy;
-export const findAllByPlaceholderText: BuiltQueries<[text: Matcher, options?: MatcherOptions]>["findAllBy"] =
-    placeholderTextVariants.findAllBy;
+export type BuiltinQueries = NamedFamily<"Role", [role: Gtk.AccessibleRole, options?: ByRoleOptions]> &
+    NamedFamily<"LabelText", [text: Matcher, options?: MatcherOptions]> &
+    NamedFamily<"Text", [text: Matcher, options?: MatcherOptions]> &
+    NamedFamily<"Name", [name: Matcher, options?: MatcherOptions]> &
+    NamedFamily<"PlaceholderText", [text: Matcher, options?: MatcherOptions]> &
+    NamedFamily<"DisplayValue", [value: Matcher, options?: MatcherOptions]>;
 
-export const queryByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["queryBy"] =
-    displayValueVariants.queryBy;
-export const getByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["getBy"] =
-    displayValueVariants.getBy;
-export const getAllByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["getAllBy"] =
-    displayValueVariants.getAllBy;
-export const findByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["findBy"] =
-    displayValueVariants.findBy;
-export const findAllByDisplayValue: BuiltQueries<[value: Matcher, options?: MatcherOptions]>["findAllBy"] =
-    displayValueVariants.findAllBy;
+export const builtinQueries: BuiltinQueries = {
+    ...roleQueries,
+    ...labelTextQueries,
+    ...textQueries,
+    ...nameQueries,
+    ...placeholderTextQueries,
+    ...displayValueQueries,
+};
+
+export const queryByRole: BuiltinQueries["queryByRole"] = roleQueries.queryByRole;
+export const getAllByRole: BuiltinQueries["getAllByRole"] = roleQueries.getAllByRole;
+export const getByRole: BuiltinQueries["getByRole"] = roleQueries.getByRole;
+export const findAllByRole: BuiltinQueries["findAllByRole"] = roleQueries.findAllByRole;
+export const findByRole: BuiltinQueries["findByRole"] = roleQueries.findByRole;
+
+export const queryByLabelText: BuiltinQueries["queryByLabelText"] = labelTextQueries.queryByLabelText;
+export const getAllByLabelText: BuiltinQueries["getAllByLabelText"] = labelTextQueries.getAllByLabelText;
+export const getByLabelText: BuiltinQueries["getByLabelText"] = labelTextQueries.getByLabelText;
+export const findAllByLabelText: BuiltinQueries["findAllByLabelText"] = labelTextQueries.findAllByLabelText;
+export const findByLabelText: BuiltinQueries["findByLabelText"] = labelTextQueries.findByLabelText;
+
+export const queryByText: BuiltinQueries["queryByText"] = textQueries.queryByText;
+export const getAllByText: BuiltinQueries["getAllByText"] = textQueries.getAllByText;
+export const getByText: BuiltinQueries["getByText"] = textQueries.getByText;
+export const findAllByText: BuiltinQueries["findAllByText"] = textQueries.findAllByText;
+export const findByText: BuiltinQueries["findByText"] = textQueries.findByText;
+
+export const queryByName: BuiltinQueries["queryByName"] = nameQueries.queryByName;
+export const getAllByName: BuiltinQueries["getAllByName"] = nameQueries.getAllByName;
+export const getByName: BuiltinQueries["getByName"] = nameQueries.getByName;
+export const findAllByName: BuiltinQueries["findAllByName"] = nameQueries.findAllByName;
+export const findByName: BuiltinQueries["findByName"] = nameQueries.findByName;
+
+export const queryByPlaceholderText: BuiltinQueries["queryByPlaceholderText"] =
+    placeholderTextQueries.queryByPlaceholderText;
+export const getAllByPlaceholderText: BuiltinQueries["getAllByPlaceholderText"] =
+    placeholderTextQueries.getAllByPlaceholderText;
+export const getByPlaceholderText: BuiltinQueries["getByPlaceholderText"] = placeholderTextQueries.getByPlaceholderText;
+export const findAllByPlaceholderText: BuiltinQueries["findAllByPlaceholderText"] =
+    placeholderTextQueries.findAllByPlaceholderText;
+export const findByPlaceholderText: BuiltinQueries["findByPlaceholderText"] =
+    placeholderTextQueries.findByPlaceholderText;
+
+export const queryByDisplayValue: BuiltinQueries["queryByDisplayValue"] = displayValueQueries.queryByDisplayValue;
+export const getAllByDisplayValue: BuiltinQueries["getAllByDisplayValue"] = displayValueQueries.getAllByDisplayValue;
+export const getByDisplayValue: BuiltinQueries["getByDisplayValue"] = displayValueQueries.getByDisplayValue;
+export const findAllByDisplayValue: BuiltinQueries["findAllByDisplayValue"] = displayValueQueries.findAllByDisplayValue;
+export const findByDisplayValue: BuiltinQueries["findByDisplayValue"] = displayValueQueries.findByDisplayValue;

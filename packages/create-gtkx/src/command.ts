@@ -1,20 +1,15 @@
 import { defineCommand } from "citty";
-import { createApp } from "./create.js";
-import {
-    isKnownPackageManager,
-    isTestingOption,
-    PACKAGE_MANAGER_FLAG_DESCRIPTION,
-    type PackageManager,
-    TESTING_FLAG_DESCRIPTION,
-    type TestingOption,
-} from "./options.js";
+import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./options.js";
+import { scaffold } from "./scaffolder.js";
 
-/** Raw, unparsed command-line arguments accepted by the create command. */
 export type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
-    pm?: string | undefined;
-    testing?: string | undefined;
+    "package-manager"?: string | undefined;
+    vitest?: boolean | undefined;
+    yes?: boolean | undefined;
+    "no-interactive"?: boolean | undefined;
+    overwrite?: boolean | undefined;
 };
 
 const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
@@ -25,54 +20,55 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
     return value;
 };
 
-const parseTestingOption = (value: string | undefined): TestingOption | undefined => {
-    if (value === undefined) return undefined;
-    if (!isTestingOption(value)) {
-        throw new Error(`Unknown testing setup "${value}". Expected one of: ${TESTING_FLAG_DESCRIPTION}.`);
-    }
-    return value;
-};
-
-/**
- * Normalize raw create arguments and scaffold the application. Throws on an
- * unknown package manager or testing option before any files are written.
- */
 export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
-    await createApp({
+    const interactive = args["no-interactive"] ? false : args.yes ? false : process.stdin.isTTY === true;
+    await scaffold({
         name: args.name,
         applicationId: args["application-id"],
-        packageManager: parsePackageManager(args.pm),
-        testing: parseTestingOption(args.testing),
+        packageManager: parsePackageManager(args["package-manager"]),
+        includeTesting: args.vitest,
+        interactive,
+        overwrite: args.overwrite,
     });
 };
 
-/**
- * The shared create command: scaffold a new gtkx application. Used as the
- * `gtkx create` subcommand and re-exposed by the standalone `create-gtkx`
- * binary.
- */
 export const createCommand = defineCommand({
     meta: {
         name: "create",
-        description: "Create a new GTKX application",
+        description: "Create a new gtkx application",
     },
     args: {
         name: {
             type: "positional",
-            description: "Project name",
+            description: "Target directory or project name (e.g. my-app, ., apps/my-app)",
             required: false,
         },
         "application-id": {
             type: "string",
             description: "Application ID (e.g., com.example.myapp)",
         },
-        pm: {
+        "package-manager": {
             type: "string",
+            alias: "pm",
             description: PACKAGE_MANAGER_FLAG_DESCRIPTION,
         },
-        testing: {
-            type: "string",
-            description: TESTING_FLAG_DESCRIPTION,
+        vitest: {
+            type: "boolean",
+            description: "Include a Vitest testing setup",
+        },
+        yes: {
+            type: "boolean",
+            alias: "y",
+            description: "Skip prompts and accept defaults for unspecified options",
+        },
+        "no-interactive": {
+            type: "boolean",
+            description: "Run without prompts, failing instead of asking",
+        },
+        overwrite: {
+            type: "boolean",
+            alias: "force",
+            description: "Overwrite the target directory if it already exists",
         },
     },
     run: ({ args }) => runCreate(args),

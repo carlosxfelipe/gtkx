@@ -1,6 +1,6 @@
 import { attr, attrBool, childOf, childrenOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
-import { typeRefFromSlot } from "./type-ref.js";
+import { typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";
 
@@ -15,7 +15,7 @@ const SCOPES: Set<CallbackScope> = new Set(["call", "notified", "async", "foreve
 export const transferOwnership = (node: RawNode): ParameterTransfer =>
     parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
 
-export const nullableAttr = (node: RawNode): boolean => attrBool(node, "nullable") || attrBool(node, "allow-none");
+const nullableAttr = (node: RawNode): boolean => attrBool(node, "nullable") || attrBool(node, "allow-none");
 
 export type GirParameter = {
     name: string;
@@ -33,7 +33,7 @@ export type GirParameter = {
 
 export const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
-    type: typeRefFromSlot(node, context),
+    type: typeRefFromNode(node, context),
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
     nullable: nullableAttr(node),
@@ -60,25 +60,25 @@ export type GirReturnValue = {
     skip: boolean;
 };
 
-export const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
+const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
     if (node === undefined) {
         return { type: undefined, transferOwnership: "none", nullable: false, skip: false };
     }
     return {
-        type: typeRefFromSlot(node, context),
+        type: typeRefFromNode(node, context),
         transferOwnership: transferOwnership(node),
         nullable: nullableAttr(node),
         skip: attrBool(node, "skip"),
     };
 };
 
-type GirCallable = {
+export type GirSignal = {
     name: string;
     parameters: GirParameter[];
     returnValue: GirReturnValue;
 };
 
-export const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
+export const parseCallable = (node: RawNode, context: ParseContext): GirSignal => {
     const parametersNode = childOf(node, "parameters");
     const parameterNodes = childrenOf(parametersNode, "parameter");
     return {

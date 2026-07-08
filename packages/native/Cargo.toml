@@ -4,60 +4,25 @@ version = "0.0.0"
 authors = ["Eugenio Depalo <eugeniodepalo@gmail.com>"]
 license = "MPL-2.0"
 edition = "2024"
-exclude = ["index.node"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[features]
-test-support = []
-
-[[bench]]
-name = "marshalling"
-harness = false
-
 [dependencies]
-napi = { version = "3", features = ["napi8", "anyhow", "compat-mode"] }
+napi = { version = "3", features = ["napi8"] }
 napi-derive = "3"
 glib = { version = "0.22", features = ["v2_68"] }
 libloading = "0.9.0"
 libffi = "5.1.1"
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 enum_dispatch = "0.3"
-parking_lot = "0.12"
 
 [build-dependencies]
 napi-build = "2"
 
-[lints.rust]
-missing_debug_implementations = "warn"
-unexpected_cfgs = { level = "warn", check-cfg = [
-    'cfg(coverage)',
-    'cfg(coverage_nightly)',
-] }
-
 [lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
-undocumented_unsafe_blocks = "warn"
-missing_safety_doc = "warn"
-module_name_repetitions = "allow"
-missing_errors_doc = "allow"
-missing_panics_doc = "allow"
-missing_const_for_fn = "allow"
-cast_possible_truncation = "allow"
-cast_possible_wrap = "allow"
-cast_sign_loss = "allow"
-cast_precision_loss = "allow"
-cast_lossless = "allow"
-ptr_as_ptr = "allow"
-borrow_as_ptr = "allow"
-ref_as_ptr = "allow"
-as_ptr_cast_mut = "allow"
-ptr_cast_constness = "allow"
-float_cmp = "allow"
-cast_ptr_alignment = "allow"
+missing_safety_doc = "allow"
 
 [dev-dependencies]
-codspeed-criterion-compat = "5.0.0"
-gtk4 = "0.11.3"
+gtk4 = "0.11.4"
+test-support = { path = "test-support" }

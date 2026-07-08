@@ -1,3 +1,4 @@
+import { ListView } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -6,7 +7,6 @@ import {
     GtkEntry,
     GtkHeaderBar,
     GtkLabel,
-    GtkListView,
     GtkScrolledWindow,
     GtkSearchBar,
     GtkSearchEntry,
@@ -119,9 +119,16 @@ const filterSchemaKeys = (searchText: string): SchemaKeys[] => {
         .filter((s): s is SchemaKeys => s !== null);
 };
 
+const revertingEntries = new WeakSet<Gtk.Entry>();
+
 const revertEntry = (entry: Gtk.Entry, key: KeyItem, keysState: React.RefObject<Map<string, string>>) => {
     entry.errorBell();
-    entry.setText(keysState.current.get(key.id) ?? key.value);
+    revertingEntries.add(entry);
+    try {
+        entry.setText(keysState.current.get(key.id) ?? key.value);
+    } finally {
+        revertingEntries.delete(entry);
+    }
 };
 
 const validateAgainstSchema = (variant: GLib.Variant, key: KeyItem): boolean => {
@@ -134,6 +141,7 @@ const validateAgainstSchema = (variant: GLib.Variant, key: KeyItem): boolean => 
 };
 
 const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.RefObject<Map<string, string>>) => {
+    if (revertingEntries.has(entry)) return;
     const text = entry.getText();
     if (!key.valueType) return;
     try {
@@ -160,11 +168,11 @@ interface SchemaKeysListViewProps {
 
 const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
     <GtkScrolledWindow name="scrolled">
-        <GtkListView
+        <ListView
             name="list-view"
             vexpand
             cssClasses={["rich-list"]}
-            renderItem={(key: KeyItem) => (
+            renderItem={({ item: key }: { item: KeyItem }) => (
                 <GtkBox>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                         <GtkLabel label={key.name} xalign={0} />
@@ -178,12 +186,11 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
                     />
                 </GtkBox>
             )}
-            renderHeader={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
-            items={filteredSchemaKeys.map((schema) => ({
+            renderHeader={({ section: schemaId }: { section: string }) => <GtkLabel label={schemaId} xalign={0} />}
+            sections={filteredSchemaKeys.map((schema) => ({
                 id: schema.schemaId,
                 value: schema.schemaId,
-                section: true,
-                children: schema.keys.map((key) => ({ id: key.id, value: key })),
+                data: schema.keys.map((key) => ({ id: key.id, value: key })),
             }))}
         />
     </GtkScrolledWindow>

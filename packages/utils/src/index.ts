@@ -1,20 +1,19 @@
-export type { AnyClass } from "./class.js";
-export {
-    compareAlpha,
-    dedupeBy,
-    omit,
-    reverseNumericEnum,
-    shallowEqual,
-    sortedAlpha,
-    sortedAlphaBy,
-} from "./collection.js";
+export { type AnyClass, getParentClass, walkClassChain } from "./class.js";
+export { shallowEqual, sortedStrings, sortedStringsBy, uniqBy } from "./collection.js";
 export { errorMessage, formatChildProcessError, normalizeError } from "./error.js";
+export { exitCodeForSignal, installGracefulShutdown } from "./graceful-shutdown.js";
 export {
-    exitCodeForSignal,
-    type GracefulShutdownHandle,
-    type GracefulShutdownOptions,
-    installGracefulShutdown,
-} from "./graceful-shutdown.js";
-export { GTKX_ENV_MODULE_HEADER, isValidApplicationId, renderEmptyGtkxEnvModule } from "./project.js";
-export { quote, toCamelIdentifier, toIdentifier } from "./source.js";
-export { toCamelCase, toKebabCase, toLowerFirst, toPascalCase, toUpperFirst } from "./string.js";
+    createLogger,
+    debug,
+    error,
+    info,
+    Logger,
+    type LoggerOptions,
+    logger,
+    type OutputStream,
+    warn,
+} from "./log.js";
+export { installMixins, type Mixin } from "./mixin.js";
+export { callMethod, packageVersion } from "./reflect.js";
+export { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "./source.js";
+export { lowerFirst, toCamelCase, toKebabCase, toPascalCase, upperFirst } from "./string.js";

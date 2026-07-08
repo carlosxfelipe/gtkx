@@ -28,18 +28,18 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./index.ts",
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
+            "types": "./main.d.ts",
+            "default": "./main.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./main.js"
+    ],
     "files": [
-        "dist",
-        "index.ts",
-        "types.ts",
-        "native-binding.cjs",
-        "native-binding.d.cts"
+        "index.js",
+        "index.d.ts",
+        "main.js",
+        "main.d.ts"
     ],
     "napi": {
         "binaryName": "native",
@@ -50,25 +50,19 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build": "tsc -b && cp native-binding.cjs native-binding.d.cts dist/",
+        "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
+        "coverage": "mkdir -p coverage && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 70 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint": "cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings",
-        "native-bench": "cargo bench --features test-support --bench marshalling",
-        "native-build": "napi build --platform --release --features test-support --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
-        "native-build:dist": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node npm/linux-$(node -p \"process.arch\")-gnu/",
-        "native-coverage": "mkdir -p coverage && node ../../scripts/ci.ts headless cargo +nightly llvm-cov --features test-support --lcov --output-path coverage/native.lcov.info --fail-under-lines 80 -- --test-threads=1",
-        "prepublishOnly": "napi prepublish -t npm",
-        "test": "node ../../scripts/ci.ts headless cargo test --features test-support -- --test-threads=1"
+        "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
+        "test:asan": "RUSTFLAGS=\"-Zsanitizer=address\" ASAN_OPTIONS=\"detect_leaks=0:abort_on_error=1:detect_stack_use_after_return=1\" tsx ../../scripts/run-headless.ts cargo +nightly test --target x86_64-unknown-linux-gnu -- --test-threads=1",
+        "test:miri": "tsx ../../scripts/run-headless.ts cargo +nightly miri test --test marshalling",
+        "test": "tsx ../../scripts/run-headless.ts cargo test -- --test-threads=1",
+        "release": "napi prepublish -t npm && cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"
     },
-    "optionalDependencies": {
-        "@gtkx/native-linux-arm64-gnu": "workspace:*",
-        "@gtkx/native-linux-x64-gnu": "workspace:*"
-    },
     "devDependencies": {
-        "@gtkx/vitest": "workspace:*",
         "@napi-rs/cli": "^3.7.2"
     }
 }

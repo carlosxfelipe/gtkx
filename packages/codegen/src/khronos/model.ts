@@ -5,7 +5,7 @@ export type GlParam = {
     cType: string;
     group?: string;
     len?: string;
-    kind?: string;
+    objectClass?: string;
 };
 
 export type GlCommand = {
@@ -18,14 +18,11 @@ export type GlCommand = {
 export type GlEnum = {
     name: string;
     value: string;
-    api?: string;
     groups: string[];
-    bitmask: boolean;
 };
 
 export type GlInterfaceBlock = {
     profile?: string;
-    api?: string;
     commands: string[];
     enums: string[];
 };
@@ -69,12 +66,12 @@ const parseParam = (node: OrderedNode): GlParam => {
     };
     const group = nodeAttr(node, "group");
     const len = nodeAttr(node, "len");
-    const kind = nodeAttr(node, "class");
+    const objectClass = nodeAttr(node, "class");
     return {
         ...param,
         ...(group !== undefined ? { group } : {}),
         ...(len !== undefined ? { len } : {}),
-        ...(kind !== undefined ? { kind } : {}),
+        ...(objectClass !== undefined ? { objectClass } : {}),
     };
 };
 
@@ -95,20 +92,16 @@ const parseCommand = (node: OrderedNode): GlCommand | undefined => {
 };
 
 const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
-    const bitmask = nodeAttr(node, "type") === "bitmask";
     for (const child of nodeChildren(node)) {
         if (nodeTag(child) !== "enum") continue;
         const name = nodeAttr(child, "name");
         const value = nodeAttr(child, "value");
         if (name === undefined || value === undefined) continue;
-        const api = nodeAttr(child, "api");
         const group = nodeAttr(child, "group");
         into.push({
             name,
             value,
-            ...(api !== undefined ? { api } : {}),
             groups: group === undefined ? [] : group.split(",").map((part) => part.trim()),
-            bitmask,
         });
     }
 };
@@ -124,10 +117,8 @@ const parseInterfaceBlock = (node: OrderedNode): GlInterfaceBlock => {
         else if (tag === "enum") enums.push(name);
     }
     const profile = nodeAttr(node, "profile");
-    const api = nodeAttr(node, "api");
     return {
         ...(profile !== undefined ? { profile } : {}),
-        ...(api !== undefined ? { api } : {}),
         commands,
         enums,
     };

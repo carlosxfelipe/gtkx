@@ -33,7 +33,7 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
 
 const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
 
-const getDefaultText = (widget: Gtk.Widget): string | null => {
+export const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     for (const getter of DEFAULT_TEXT_GETTERS) {
         const value = callStringGetter(widget, getter);
         if (value) return value;
@@ -51,13 +51,9 @@ const collectLabels = (widget: Gtk.Widget): string[] => {
     return labels;
 };
 
-export const getWidgetText = (widget: Gtk.Widget): string | null => {
+export const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
     if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return null;
     return getLabelText(widget);
-};
-
-export const getWidgetPropertyText = (widget: Gtk.Widget): string | null => {
-    return getDefaultText(widget);
 };
 
 export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
@@ -77,7 +73,7 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const accessibleLabel = getAccessibleMetadata<string>(widget, "accessibleLabel");
     if (accessibleLabel) return accessibleLabel;
 
-    const ownText = getDefaultText(widget);
+    const ownText = getWidgetNodeText(widget);
     if (ownText) return ownText;
 
     const childLabels = collectLabels(widget);
@@ -158,12 +154,37 @@ export type WidgetValue = {
     text: string | null;
 };
 
-export const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
-    now: readAccessibleNumber(widget, "accessibleValueNow"),
-    min: readAccessibleNumber(widget, "accessibleValueMin"),
-    max: readAccessibleNumber(widget, "accessibleValueMax"),
-    text: readAccessibleString(widget, "accessibleValueText"),
+type ValueTriplet = { now: number | null; min: number | null; max: number | null };
+
+const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
+    now: adjustment.getValue(),
+    min: adjustment.getLower(),
+    max: adjustment.getUpper(),
 });
+
+const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
+    if (widget instanceof Gtk.Range) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.Scrollbar) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.SpinButton) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.ScaleButton) return adjustmentValue(widget.getAdjustment());
+    if (widget instanceof Gtk.LevelBar) {
+        return { now: widget.getValue(), min: widget.getMinValue(), max: widget.getMaxValue() };
+    }
+    if (widget instanceof Gtk.ProgressBar) return { now: widget.getFraction(), min: 0, max: 1 };
+    return null;
+};
+
+export const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
+    const text = readAccessibleString(widget, "accessibleValueText");
+    const live = getWidgetLiveValue(widget);
+    if (live) return { ...live, text };
+    return {
+        now: readAccessibleNumber(widget, "accessibleValueNow"),
+        min: readAccessibleNumber(widget, "accessibleValueMin"),
+        max: readAccessibleNumber(widget, "accessibleValueMax"),
+        text,
+    };
+};
 
 export const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, "accessibleLabel");
@@ -182,7 +203,7 @@ export const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
     return texts.length > 0 ? texts.join(" ") : null;
 };
 
-export const isHiddenFromAccessibility = (widget: Gtk.Widget): boolean => {
+export const isInaccessible = (widget: Gtk.Widget): boolean => {
     let current: Gtk.Widget | null = widget;
     while (current) {
         if (!current.getVisible()) return true;

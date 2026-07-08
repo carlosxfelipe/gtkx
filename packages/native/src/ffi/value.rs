@@ -1,246 +1,199 @@
-use std::cell::Cell;
 use std::ffi::c_void;
 
-use libffi::middle as libffi;
+use napi::bindgen_prelude::*;
+use napi::{Env, ValueType, sys};
 
-use super::storage::FfiStorage;
-use crate::trampoline::TrampolineState;
+use crate::handle::Handle;
 
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum FfiValue {
-    U8(u8),
-    I8(i8),
-    U16(u16),
-    I16(i16),
-    U32(u32),
-    I32(i32),
-    U64(u64),
-    I64(i64),
-    F32(f32),
-    F64(f64),
-    Ptr(*mut c_void),
-    Storage(FfiStorage),
-    Callback(CallbackValue),
-    Void,
+fn from_napi<T: FromNapiValue>(env: &Env, raw: sys::napi_value) -> napi::Result<T> {
+    unsafe { T::from_napi_value(env.raw(), raw) }
 }
 
-pub struct CallbackValue {
-    fn_ptr: *mut c_void,
-    state_ptr: *mut c_void,
-    destroy_ptr: Option<*mut c_void>,
-    _owned_state: Option<Box<TrampolineState>>,
-    armed_state: Cell<Option<Box<TrampolineState>>>,
+mod buffer_view;
+mod callback;
+mod js_ref;
+mod r#ref;
+
+pub use buffer_view::{BufferView, BufferViewKind};
+pub use callback::Callback;
+pub use js_ref::JsHandle;
+pub(crate) use js_ref::release_registered_js_ref;
+pub use r#ref::Ref;
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    Number(f64),
+    BigInt(i128),
+    String(String),
+    Boolean(bool),
+    Object(Handle),
+    Null,
+    Undefined,
+    Array(Vec<Self>),
+    BufferView(BufferView),
+    Callback(Callback),
+    Ref(Ref),
 }
 
-impl CallbackValue {
-    #[must_use]
-    pub fn new(
-        fn_ptr: *mut c_void,
-        state_ptr: *mut c_void,
-        destroy_ptr: Option<*mut c_void>,
-        owned_state: Option<Box<TrampolineState>>,
-    ) -> Self {
-        Self {
-            fn_ptr,
-            state_ptr,
-            destroy_ptr,
-            _owned_state: owned_state,
-            armed_state: Cell::new(None),
+impl From<crate::handle::Value> for Value {
+    fn from(value: crate::handle::Value) -> Self {
+        Self::Object(value.into())
+    }
+}
+
+impl From<crate::handle::Boxed> for Value {
+    fn from(boxed: crate::handle::Boxed) -> Self {
+        crate::handle::Value::Boxed(boxed).into()
+    }
+}
+
+impl From<crate::handle::Fundamental> for Value {
+    fn from(fundamental: crate::handle::Fundamental) -> Self {
+        crate::handle::Value::Fundamental(fundamental).into()
+    }
+}
+
+impl Value {
+    pub fn result_to_ptr(result: &std::result::Result<Self, ()>) -> *mut c_void {
+        match result {
+            Ok(Self::Object(handle)) => handle.as_ptr(),
+            _ => std::ptr::null_mut(),
         }
     }
 
-    #[must_use]
-    pub fn new_armed(
-        fn_ptr: *mut c_void,
-        destroy_ptr: Option<*mut c_void>,
-        state: Box<TrampolineState>,
-    ) -> Self {
-        let state_ptr = std::ptr::from_ref::<TrampolineState>(&state) as *mut c_void;
-        Self {
-            fn_ptr,
-            state_ptr,
-            destroy_ptr,
-            _owned_state: None,
-            armed_state: Cell::new(Some(state)),
-        }
-    }
-
-    pub fn disarm_pending_transfer(&self) {
-        if let Some(state) = self.armed_state.take() {
-            let _ = Box::into_raw(state);
-        }
-    }
-
-    #[must_use]
-    pub fn fn_ptr(&self) -> *mut c_void {
-        self.fn_ptr
-    }
-
-    #[must_use]
-    pub fn state_ptr(&self) -> *mut c_void {
-        self.state_ptr
-    }
-
-    #[must_use]
-    pub fn destroy_ptr(&self) -> Option<*mut c_void> {
-        self.destroy_ptr
-    }
-}
-
-impl std::fmt::Debug for CallbackValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CallbackValue")
-            .field("fn_ptr", &self.fn_ptr)
-            .field("state_ptr", &self.state_ptr)
-            .field("destroy_ptr", &self.destroy_ptr)
-            .finish_non_exhaustive()
-    }
-}
-
-macro_rules! ffi_numeric_with {
-    ($($rest:pat_param)|*) => {
-        Self::U8(_)
-            | Self::I8(_)
-            | Self::U16(_)
-            | Self::I16(_)
-            | Self::U32(_)
-            | Self::I32(_)
-            | Self::U64(_)
-            | Self::I64(_)
-            | Self::F32(_)
-            | Self::F64(_)
-            $(| $rest)*
-    };
-}
-
-impl FfiValue {
-    pub fn disarm_pending_transfer(&self) {
+    pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
-            Self::Storage(storage) => storage.disarm_pending_transfer(),
-            Self::Callback(callback) => callback.disarm_pending_transfer(),
-            _ => {}
-        }
-    }
-
-    /// Writes this value's scalar payload into the out-parameter slot at `slot`.
-    ///
-    /// # Safety
-    ///
-    /// `slot` must point to writable storage of at least the size of this value's scalar type.
-    /// Alignment is not required: every write uses `write_unaligned`. Non-scalar variants do not
-    /// write and instead return an error.
-    pub unsafe fn write_scalar_to(&self, slot: *mut c_void) -> anyhow::Result<()> {
-        match self {
-            // SAFETY: per the contract `slot` addresses at least `size_of::<u8>()` writable bytes;
-            // `write_unaligned` stores the value without an alignment requirement.
-            Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<i8>()` writable bytes.
-            Self::I8(value) => unsafe { slot.cast::<i8>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<u16>()` writable bytes.
-            Self::U16(value) => unsafe { slot.cast::<u16>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<i16>()` writable bytes.
-            Self::I16(value) => unsafe { slot.cast::<i16>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<u32>()` writable bytes.
-            Self::U32(value) => unsafe { slot.cast::<u32>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<i32>()` writable bytes.
-            Self::I32(value) => unsafe { slot.cast::<i32>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<u64>()` writable bytes.
-            Self::U64(value) => unsafe { slot.cast::<u64>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<i64>()` writable bytes.
-            Self::I64(value) => unsafe { slot.cast::<i64>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<f32>()` writable bytes.
-            Self::F32(value) => unsafe { slot.cast::<f32>().write_unaligned(*value) },
-            // SAFETY: per the contract `slot` addresses at least `size_of::<f64>()` writable bytes.
-            Self::F64(value) => unsafe { slot.cast::<f64>().write_unaligned(*value) },
-            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
-                anyhow::bail!("{self:?} has no scalar payload for an out-parameter slot")
-            }
-        }
-        Ok(())
-    }
-
-    pub fn as_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
-        match self {
-            Self::Ptr(ptr) => Ok(*ptr),
-            Self::Storage(storage) => Ok(storage.ptr()),
-            ffi_numeric_with!(Self::Callback(_) | Self::Void) => {
-                anyhow::bail!("Expected a pointer FfiValue for {type_name}, got {self:?}")
+            Self::Object(handle) => Ok(handle.as_ptr()),
+            Self::Null | Self::Undefined => Ok(std::ptr::null_mut()),
+            Self::Number(_)
+            | Self::BigInt(_)
+            | Self::String(_)
+            | Self::Boolean(_)
+            | Self::Array(_)
+            | Self::BufferView(_)
+            | Self::Callback(_)
+            | Self::Ref(_) => {
+                anyhow::bail!("Expected an Object for {type_name} type, got {self:?}")
             }
         }
     }
 
-    pub fn as_non_null_ptr(&self, type_name: &str) -> anyhow::Result<Option<*mut c_void>> {
-        let ptr = self.as_ptr(type_name)?;
-        Ok(if ptr.is_null() { None } else { Some(ptr) })
+    pub fn from_js_value(env: &Env, value: Unknown<'_>) -> napi::Result<Self> {
+        Self::from_js_value_at_depth(env, value, 0)
     }
 
-    pub fn to_number(&self) -> anyhow::Result<f64> {
-        match self {
-            Self::I8(v) => Ok(*v as f64),
-            Self::U8(v) => Ok(*v as f64),
-            Self::I16(v) => Ok(*v as f64),
-            Self::U16(v) => Ok(*v as f64),
-            Self::I32(v) => Ok(*v as f64),
-            Self::U32(v) => Ok(*v as f64),
-            Self::I64(v) => crate::types::lossless_f64(i128::from(*v), "call result"),
-            Self::U64(v) => crate::types::lossless_f64(i128::from(*v), "call result"),
-            Self::F32(v) => Ok(*v as f64),
-            Self::F64(v) => Ok(*v),
-            Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
-                anyhow::bail!("Expected a numeric FfiValue, got {self:?}")
-            }
+    fn from_js_value_at_depth(env: &Env, value: Unknown<'_>, depth: usize) -> napi::Result<Self> {
+        const MAX_VALUE_DEPTH: usize = 64;
+        if depth >= MAX_VALUE_DEPTH {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "value nesting exceeds the supported depth; is the input cyclic?",
+            ));
         }
-    }
 
-    pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
-        match self {
-            Self::Callback(tv) => {
-                args.push(libffi::arg(&tv.fn_ptr));
-                args.push(libffi::arg(&tv.state_ptr));
-                if let Some(destroy_ptr) = &tv.destroy_ptr {
-                    args.push(libffi::arg(destroy_ptr));
+        let value_type = value.get_type()?;
+
+        match value_type {
+            ValueType::Number => {
+                let n = from_napi::<f64>(env, value.raw())?;
+                Ok(Self::Number(n))
+            }
+            ValueType::String => {
+                let s = from_napi::<String>(env, value.raw())?;
+                Ok(Self::String(s))
+            }
+            ValueType::Boolean => {
+                let b = from_napi::<bool>(env, value.raw())?;
+                Ok(Self::Boolean(b))
+            }
+            ValueType::Null => Ok(Self::Null),
+            ValueType::Undefined => Ok(Self::Undefined),
+            ValueType::BigInt => {
+                let big = from_napi::<BigInt>(env, value.raw())?;
+                let (int, lossless) = big.get_i128();
+                if !lossless {
+                    return Err(napi::Error::new(
+                        napi::Status::InvalidArg,
+                        "BigInt value exceeds the supported 128-bit range",
+                    ));
+                }
+                Ok(Self::BigInt(int))
+            }
+            ValueType::External => {
+                let external_ref = from_napi::<&External<Handle>>(env, value.raw())?;
+                Ok(Self::Object(Handle::from_glib_borrow(
+                    external_ref.as_ptr(),
+                )))
+            }
+            ValueType::Function => {
+                let callback = Callback::from_js_value(env, value)?;
+                Ok(Self::Callback(callback))
+            }
+            ValueType::Object => {
+                if value.is_array()? {
+                    let arr = from_napi::<Array>(env, value.raw())?;
+                    Ok(Self::Array(map_js_array(env, &arr, |env, item| {
+                        Self::from_js_value_at_depth(env, item, depth + 1)
+                    })?))
+                } else if value.is_typedarray()? {
+                    Ok(Self::BufferView(BufferView::from_typed_array(env, &value)?))
+                } else if value.is_dataview()? {
+                    Ok(Self::BufferView(BufferView::from_data_view(env, &value)?))
+                } else {
+                    let r = Ref::from_js_value_at_depth(env, value, depth + 1)?;
+                    Ok(Self::Ref(r))
                 }
             }
-            ffi_numeric_with!(Self::Ptr(_) | Self::Storage(_) | Self::Void) => {
-                args.push(self.into());
+            other => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unsupported JS value type: {other:?}"),
+            )),
+        }
+    }
+
+    pub fn to_js_value(self, env: &Env) -> napi::Result<Unknown<'_>> {
+        match self {
+            Self::Number(n) => n.into_unknown(env),
+            Self::BigInt(v) => v.into_unknown(env),
+            Self::String(s) => s.into_unknown(env),
+            Self::Boolean(b) => b.into_unknown(env),
+            Self::Object(handle) => {
+                let size_hint = handle.size_hint();
+                External::new_with_size_hint(handle, size_hint).into_unknown(env)
             }
+            Self::Array(arr) => {
+                let mut js_array = env.create_array(arr.len() as u32)?;
+                for (i, item) in arr.into_iter().enumerate() {
+                    let js_item = item.to_js_value(env)?;
+                    js_array.set(i as u32, js_item)?;
+                }
+                js_array.into_unknown(env)
+            }
+            Self::Null => Null.into_unknown(env),
+            Self::Undefined => ().into_unknown(env),
+            Self::BufferView(_) | Self::Callback(_) | Self::Ref(_) => Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unsupported Value type for JS conversion: {self:?}"),
+            )),
         }
     }
 }
 
-impl<'a> From<&'a FfiValue> for libffi::Arg<'a> {
-    fn from(arg: &'a FfiValue) -> Self {
-        match arg {
-            FfiValue::U8(value) => libffi::arg(value),
-            FfiValue::I8(value) => libffi::arg(value),
-            FfiValue::U16(value) => libffi::arg(value),
-            FfiValue::I16(value) => libffi::arg(value),
-            FfiValue::U32(value) => libffi::arg(value),
-            FfiValue::I32(value) => libffi::arg(value),
-            FfiValue::U64(value) => libffi::arg(value),
-            FfiValue::I64(value) => libffi::arg(value),
-            FfiValue::F32(value) => libffi::arg(value),
-            FfiValue::F64(value) => libffi::arg(value),
-            FfiValue::Ptr(ptr) => libffi::arg(ptr),
-            FfiValue::Storage(storage) => libffi::arg(storage.ptr_ref()),
-            FfiValue::Callback(_) => {
-                unreachable!("Callback requires append_libffi_args for multiple arguments")
-            }
-            FfiValue::Void => libffi::arg(&()),
-        }
+pub(crate) fn map_js_array<T>(
+    env: &Env,
+    array: &Array,
+    mut convert: impl FnMut(&Env, Unknown<'_>) -> napi::Result<T>,
+) -> napi::Result<Vec<T>> {
+    let len = array.len();
+    let mut items = Vec::with_capacity(len as usize);
+    for index in 0..len {
+        let item: Unknown<'_> = array.get(index)?.ok_or_else(|| {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("array element {index} is missing"),
+            )
+        })?;
+        items.push(convert(env, item)?);
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn disarm_pending_transfer_covers_every_variant_shape() {
-        let callback = CallbackValue::new(std::ptr::null_mut(), std::ptr::null_mut(), None, None);
-        FfiValue::Callback(callback).disarm_pending_transfer();
-        FfiValue::I32(1).disarm_pending_transfer();
-        FfiValue::Storage(FfiStorage::unit(std::ptr::null_mut())).disarm_pending_transfer();
-    }
+    Ok(items)
 }

@@ -2,13 +2,13 @@ import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
 import { useRef } from "react";
 import type { GObjectTarget } from "../utils/gobject-target.js";
-import { useTargetRegistration } from "../utils/use-target-registration.js";
+import { useTargetRegistration } from "./use-target-registration.js";
 
 type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
 type AnySignalHandlers = Record<string, AnySignalHandler>;
 
-export type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infer H }
+type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infer H }
     ? unknown extends H
         ? AnySignalHandlers
         : NonNullable<H>
@@ -26,17 +26,17 @@ export type SignalHandlerFor<T extends GObject.Object, S extends string> = S ext
           : AnySignalHandler
       : AnySignalHandler;
 
-export interface UseSignalOptions {
+type UseSignalOptions = {
     after?: boolean;
     immediate?: boolean;
-}
+};
 
-interface SignalSubscription {
+type SignalSubscription = {
     obj: GObject.Object;
     signal: string;
     after: boolean;
     listener: SignalHandler;
-}
+};
 
 export function useSignal<T extends GObject.Object, S extends SignalNameOf<T>>(
     target: GObjectTarget<T>,

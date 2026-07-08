@@ -1,10 +1,8 @@
-import { createRequire } from "node:module";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
+import { withErrorBoundary } from "./internal/errors.js";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../package.json") as { version: string };
+const version = packageVersion(import.meta.url);
 
 export const main = defineCommand({
     meta: {
@@ -13,13 +11,11 @@ export const main = defineCommand({
         description: "CLI for GTKX - create and develop GTK4 React applications",
     },
     subCommands: {
-        dev: () => import("./commands/dev.js").then((m) => m.dev),
-        build: () => import("./commands/build.js").then((m) => m.build),
-        codegen: () => import("./commands/codegen.js").then((m) => m.codegen),
-        create: () => import("create-gtkx").then((m) => m.createCommand),
+        dev: () => import("./commands/dev.js").then((m) => withErrorBoundary(m.dev)),
+        build: () => import("./commands/build.js").then((m) => withErrorBoundary(m.build)),
+        codegen: () => import("./commands/codegen.js").then((m) => withErrorBoundary(m.codegen)),
+        create: () => import("create-gtkx").then((m) => withErrorBoundary(m.createCommand)),
     },
 });
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-    void runMain(main);
-}
+await runMain(main);

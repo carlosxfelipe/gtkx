@@ -1,15 +1,21 @@
-import { quote, toCamelIdentifier, toLowerFirst } from "@gtkx/utils";
-import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../writers/descriptor.js";
-import type { CommandPlan, ReturnPlan } from "./ctype.js";
-import { commandJsDoc, inParamDocLine, REFPAGES_BASE } from "./jsdoc.js";
-import { buildSlots, type EmittedOut, scalarAliasOrGroup, scalarPrefixSlots, trackInto } from "./slots.js";
+import { lowerFirst, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../analysis/descriptor.js";
+import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
+import { commandJsDoc, inParamDocLine, singularJsDoc } from "./jsdoc.js";
+import type { CommandPlan, ReturnPlan } from "./plan.js";
 
 const GL_LIB_EXPRESSION = "LIB";
 
-const commandExportName = (name: string): string => {
-    const stripped = name.startsWith("gl") ? toLowerFirst(name.slice(2)) : name;
-    return /^[0-9]/.test(stripped) ? name : toCamelIdentifier(stripped);
-};
+const glBind = (name: string, argList: string, returnType: string): string =>
+    tBind({
+        libExpr: GL_LIB_EXPRESSION,
+        symbolExpr: sourceStringLiteral(name),
+        argList,
+        returnType,
+    });
+
+const commandExportName = (name: string): string =>
+    toCamelIdentifier(name.startsWith("gl") ? lowerFirst(name.slice(2)) : name);
 
 const singularize = (plural: string): string =>
     plural.endsWith("ies") ? `${plural.slice(0, -3)}y` : plural.replace(/s$/, "");
@@ -40,7 +46,7 @@ const buildEmittedReturn = (
             return { tsType: "void", descriptor: tVoid };
         case "scalar": {
             const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
-            return { tsType: alias, descriptor: plan.scalar.tExpr, expr: (call) => `${call} as ${alias}` };
+            return { tsType: alias, descriptor: plan.scalar.descriptor, expr: (call) => `${call} as ${alias}` };
         }
         case "boolean":
             return { tsType: "boolean", descriptor: tUint8, expr: (call) => `(${call} as number) !== 0` };
@@ -57,7 +63,7 @@ const buildEmittedReturn = (
     }
 };
 
-const returnTsType = (returned: EmittedReturn, outs: EmittedOut[]): string => {
+const returnTsType = (returned: EmittedReturn, outs: OutArg[]): string => {
     if (outs.length === 0) return returned.tsType;
     const outTypes = outs.map((out) => out.tsType);
     if (returned.expr === undefined) {
@@ -66,7 +72,7 @@ const returnTsType = (returned: EmittedReturn, outs: EmittedOut[]): string => {
     return `[${returned.tsType}, ${outTypes.join(", ")}]`;
 };
 
-const returnStatements = (call: string, returned: EmittedReturn, outs: EmittedOut[]): string[] => {
+const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[]): string[] => {
     if (outs.length === 0) {
         return returned.expr === undefined ? [`${call};`] : [`return ${returned.expr(call)};`];
     }
@@ -85,48 +91,27 @@ export const renderCommand = (
 ): RenderedCommand => {
     const { command } = plan;
     const exportName = commandExportName(command.name);
-    const { slots, ins, outs } = buildSlots(plan, usedTypes);
+    const { args, ins, outs } = planArgs(plan, usedTypes);
     const returned = buildEmittedReturn(plan.returnPlan, command.returnGroup, usedTypes);
-    const signature = ins.map((slot) => `${slot.name}: ${slot.tsType}`).join(", ");
-    const argNames = slots.map((slot) => (slot.out ? slot.cellName : slot.name)).join(", ");
-    const descriptors = renderDescriptorList(slots.map((slot) => slot.descriptor));
+    const signature = ins.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
+    const argNames = args.map((arg) => (arg.out ? arg.cellName : arg.name)).join(", ");
+    const descriptors = renderDescriptorList(args.map((arg) => arg.descriptor));
     const tsReturn = returnTsType(returned, outs);
     const jsDoc = commandJsDoc({ command, feature, ins, outs, returnPlan: plan.returnPlan });
     const seeds = outs.map((out) => out.seed);
-    const hasStringOut = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
-    if (hasStringOut) {
-        const bindExpression = tBind({
-            libExpr: GL_LIB_EXPRESSION,
-            symbolExpr: quote(command.name),
-            argList: descriptors,
-            returnType: returned.descriptor,
-        });
-        const body = [
-            ...seeds,
-            `const binding = ${bindExpression};`,
-            ...returnStatements(`binding(${argNames})`, returned, outs),
-        ]
-            .map((line) => `    ${line}`)
-            .join("\n");
-        return {
-            exportName,
-            declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
-        };
-    }
-    const bindingName = toCamelIdentifier(command.name);
-    const bindExpression = tBind({
-        libExpr: GL_LIB_EXPRESSION,
-        symbolExpr: quote(command.name),
-        argList: descriptors,
-        returnType: returned.descriptor,
-    });
-    const binding = `const ${bindingName} = ${bindExpression};`;
-    const body = [...seeds, ...returnStatements(`${bindingName}(${argNames})`, returned, outs)]
+    const bindExpression = glBind(command.name, descriptors, returned.descriptor);
+    const inline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
+    const bindingName = inline ? "binding" : toCamelIdentifier(command.name);
+    const body = [
+        ...seeds,
+        ...(inline ? [`const ${bindingName} = ${bindExpression};`] : []),
+        ...returnStatements(`${bindingName}(${argNames})`, returned, outs),
+    ]
         .map((line) => `    ${line}`)
         .join("\n");
     return {
         exportName,
-        binding,
+        ...(inline ? {} : { binding: `const ${bindingName} = ${bindExpression};` }),
         declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
     };
 };
@@ -148,38 +133,32 @@ export const deriveGenSingular = (
     const outParam = plan.command.params[outIndex];
     if (countPlan?.kind !== "scalar" || outPlan?.kind !== "ref-array-out") return undefined;
     if (countParam === undefined || outParam === undefined) return undefined;
-    if (outPlan.lenParamName !== countParam.name || outParam.kind === undefined) return undefined;
-    const prefix = scalarPrefixSlots(plan, usedTypes);
+    if (outPlan.lenParamName !== countParam.name || outParam.objectClass === undefined) return undefined;
+    const prefix = scalarPrefixArgs(plan, usedTypes);
     if (prefix === undefined) return undefined;
     const exportName = singularize(commandExportName(plan.command.name));
     const bindingName = `${plan.command.name}Single`;
     const descriptors = [
-        ...prefix.map((slot) => slot.descriptor),
-        `${countPlan.scalar.tExpr}`,
-        tRef(outPlan.scalar.tExpr),
+        ...prefix.map((arg) => arg.descriptor),
+        countPlan.scalar.descriptor,
+        tRef(outPlan.scalar.descriptor),
     ];
     usedTypes.add(outPlan.scalar.tsAlias);
-    const signature = prefix.map((slot) => `${slot.name}: ${slot.tsType}`).join(", ");
-    const callArgs = [...prefix.map((slot) => slot.name), "1", "out"].join(", ");
-    const jsDoc = [
-        "/**",
-        ` * Returns one ${outParam.kind} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
-        " *",
-        ` * Provided by \`${feature}\`.`,
-        ...prefix.map((slot) => inParamDocLine(plan.command, slot)),
-        ` * @returns The new ${outParam.kind} object name`,
-        ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
-        " */",
-    ].join("\n");
+    const signature = prefix.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
+    const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
+    const jsDoc = singularJsDoc({
+        commandName: plan.command.name,
+        feature,
+        summary: `Returns one ${outParam.objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
+        body: [
+            ...prefix.map((arg) => inParamDocLine(plan.command, arg)),
+            ` * @returns The new ${outParam.objectClass} object name`,
+        ],
+    });
     const body = [`    const out = { value: 0 };`, `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
         "\n",
     );
-    const binding = tBind({
-        libExpr: GL_LIB_EXPRESSION,
-        symbolExpr: quote(plan.command.name),
-        argList: renderDescriptorList(descriptors),
-        returnType: tVoid,
-    });
+    const binding = glBind(plan.command.name, renderDescriptorList(descriptors), tVoid);
     return {
         exportName,
         binding: `const ${bindingName} = ${binding};`,
@@ -198,18 +177,15 @@ export const deriveDeleteSingular = (
     const [countParam, arrayParam] = plan.command.params;
     if (countPlan?.kind !== "scalar" || arrayPlan?.kind !== "array-in") return undefined;
     if (countParam === undefined || arrayParam === undefined) return undefined;
-    if (arrayParam.len !== countParam.name || arrayParam.kind === undefined) return undefined;
+    if (arrayParam.len !== countParam.name || arrayParam.objectClass === undefined) return undefined;
     const exportName = singularize(commandExportName(plan.command.name));
     usedTypes.add(arrayPlan.scalar.tsAlias);
-    const jsDoc = [
-        "/**",
-        ` * Deletes one ${arrayParam.kind} object name via \`${plan.command.name}(1, ...)\`.`,
-        " *",
-        ` * Provided by \`${feature}\`.`,
-        ` * @param name - The ${arrayParam.kind} object name to delete`,
-        ` * @see ${REFPAGES_BASE}/${plan.command.name}.xhtml`,
-        " */",
-    ].join("\n");
+    const jsDoc = singularJsDoc({
+        commandName: plan.command.name,
+        feature,
+        summary: `Deletes one ${arrayParam.objectClass} object name via \`${plan.command.name}(1, ...)\`.`,
+        body: [` * @param name - The ${arrayParam.objectClass} object name to delete`],
+    });
     return {
         exportName,
         declaration: `${jsDoc}\nexport function ${exportName}(name: ${arrayPlan.scalar.tsAlias}): void {\n    ${plan.command.name}(1, [name]);\n}`,

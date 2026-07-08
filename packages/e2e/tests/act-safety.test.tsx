@@ -1,9 +1,10 @@
+import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown } from "@gtkx/jsx/gtk";
+
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderListView } from "./helpers/list-fixtures.js";
+import { renderListView, valueItems } from "./helpers/list-fixtures.js";
 
 interface Category {
     id: string;
@@ -27,9 +28,6 @@ const expandableExpanders = (): Gtk.TreeExpander[] =>
         .queryAllByRole(Gtk.AccessibleRole.BUTTON)
         .filter((widget): widget is Gtk.TreeExpander => widget instanceof Gtk.TreeExpander)
         .filter((widget) => widget.getListRow()?.isExpandable() ?? false);
-
-const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
-    values.map((value, index) => ({ id: String(index + 1), value }));
 
 describe("act safety", () => {
     let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -84,7 +82,7 @@ describe("act safety", () => {
         const onSelectionChanged = vi.fn();
 
         await render(
-            <GtkDropDown
+            <DropDown
                 ref={dropDownRef}
                 onSelectionChanged={onSelectionChanged}
                 items={valueItems(["Option 1", "Option 2", "Option 3"])}

@@ -1,17 +1,17 @@
-mod common;
+use test_support as helpers;
 
 use std::ffi::c_void;
 
 use libffi::middle as libffi;
 
 use native::ffi;
-use native::types::{CallbackScope, CallbackType, FfiEncoder, Type, VoidType};
-use native::value::Value;
+use native::ffi::codec::{CallbackCodec, CallbackScope, Codec, Encoder, VoidCodec};
+use native::ffi::value::Value;
 
-fn callback_type(has_destroy: bool) -> CallbackType {
-    CallbackType {
-        arg_types: Vec::new(),
-        return_type: Box::new(Type::Void(VoidType)),
+fn callback_type(has_destroy: bool) -> CallbackCodec {
+    CallbackCodec {
+        arg_codecs: Vec::new(),
+        return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy,
         user_data_index: None,
         scope: CallbackScope::Call,
@@ -19,39 +19,19 @@ fn callback_type(has_destroy: bool) -> CallbackType {
 }
 
 fn assert_null_callback(
-    codec: &CallbackType,
+    codec: &CallbackCodec,
     value: &Value,
     expected_destroy: Option<*mut c_void>,
 ) {
     let encoded = codec
         .encode(value)
         .expect("encode should build the null callback");
-    let ffi::FfiValue::Callback(tv) = encoded else {
+    let ffi::Stash::Callback(callback) = encoded else {
         panic!("expected Callback ffi value");
     };
-    assert!(tv.fn_ptr().is_null());
-    assert!(tv.state_ptr().is_null());
-    assert_eq!(tv.destroy_ptr(), expected_destroy);
-}
-
-#[test]
-fn scope_from_str_parses_known_values() {
-    assert_eq!(
-        "call".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Call
-    );
-    assert_eq!(
-        "notified".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Notified
-    );
-    assert_eq!(
-        "async".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Async
-    );
-    assert_eq!(
-        "forever".parse::<CallbackScope>().unwrap(),
-        CallbackScope::Forever
-    );
+    assert!(callback.fn_ptr().is_null());
+    assert!(callback.state_ptr().is_null());
+    assert_eq!(callback.destroy_ptr(), expected_destroy);
 }
 
 #[test]
@@ -61,7 +41,7 @@ fn scope_default_is_call() {
 
 #[test]
 fn append_ffi_arg_types_without_destroy_pushes_two_pointers() {
-    common::run(|| {
+    helpers::run(|| {
         let mut types: Vec<libffi::Type> = Vec::new();
         callback_type(false).append_ffi_arg_types(&mut types);
         assert_eq!(types.len(), 2);
@@ -70,7 +50,7 @@ fn append_ffi_arg_types_without_destroy_pushes_two_pointers() {
 
 #[test]
 fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
-    common::run(|| {
+    helpers::run(|| {
         let mut types: Vec<libffi::Type> = Vec::new();
         callback_type(true).append_ffi_arg_types(&mut types);
         assert_eq!(types.len(), 3);
@@ -79,25 +59,18 @@ fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
 
 #[test]
 fn encode_null_without_destroy_builds_callback() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_callback(&callback_type(false), &Value::Null, None);
     });
 }
 
 #[test]
 fn encode_null_with_destroy_builds_callback_with_destroy_slot() {
-    common::run(|| {
+    helpers::run(|| {
         assert_null_callback(
             &callback_type(true),
             &Value::Undefined,
             Some(std::ptr::null_mut()),
         );
-    });
-}
-
-#[test]
-fn encode_null_builds_null_callback() {
-    common::run(|| {
-        assert_null_callback(&callback_type(false), &Value::Null, None);
     });
 }

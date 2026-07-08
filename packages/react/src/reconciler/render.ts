@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
+import { log, type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-handler.js";
 import { createReconcilerRoot, type ReconcilerRoot, unmountAllReconcilerRoots } from "./reconciler-root.js";
 import { createRootElement, type RootElement } from "./root-element.js";
 import { getSignalStore } from "./signal-store.js";
@@ -18,12 +18,12 @@ export type Root = {
 
 export const createRoot = (container: RootElement = createRootElement()): Root => {
     const onUncaughtError = (error: unknown): void => {
-        getSignalStore(container).forceUnblockAll();
+        getSignalStore(container).unblock();
         throw error;
     };
     const onCaughtError = (error: unknown): void => {
-        getSignalStore(container).forceUnblockAll();
-        console.error(error);
+        getSignalStore(container).unblock();
+        log.error("caught render error", error);
     };
 
     const priorHandler = setReconcilerErrorHandler(onUncaughtError);
@@ -41,6 +41,7 @@ export const createRoot = (container: RootElement = createRootElement()): Root =
     };
 };
 
-export const quit = (): void => {
+export const quit = (): true => {
     unmountAllReconcilerRoots(teardownRoot);
+    return true;
 };

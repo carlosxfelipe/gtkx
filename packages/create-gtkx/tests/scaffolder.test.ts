@@ -1,331 +1,474 @@
-import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
-import ejs from "ejs";
 import { vol } from "memfs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PackageManager } from "../src/options.js";
-import { type CreateOptions, createScaffolder, type ScaffolderDeps } from "../src/scaffolder.js";
-import { listTemplates, type TemplateContext } from "../src/templates.js";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const clack = vi.hoisted(() => ({
+    intro: vi.fn(),
+    note: vi.fn(),
+    cancel: vi.fn(),
+    log: { info: vi.fn(), error: vi.fn() },
+    spinner: vi.fn(() => ({ start: () => undefined, stop: () => undefined })),
+    text: vi.fn(async () => ""),
+    select: vi.fn(async (opts: { initialValue?: unknown }) => opts.initialValue),
+    confirm: vi.fn(async () => true),
+    isCancel: vi.fn((_value: unknown) => false),
+}));
+
+vi.mock("@clack/prompts", () => clack);
+
+vi.mock("nypm", () => ({
+    addDependency: vi.fn(async () => undefined),
+    detectPackageManager: vi.fn(async () => ({ name: "pnpm" })),
+}));
+
+vi.mock("tinyexec", () => ({
+    x: vi.fn(async () => undefined),
+}));
+
+vi.mock("node:fs", async () => {
+    const memfs = await vi.importActual<typeof import("memfs")>("memfs");
+    return { ...memfs.fs, default: memfs.fs };
+});
+
+import { addDependency, detectPackageManager } from "nypm";
+import { x } from "tinyexec";
+import { type CreateOptions, scaffold } from "../src/scaffolder.js";
+
+const addDependencyMock = vi.mocked(addDependency);
+const detectMock = vi.mocked(detectPackageManager);
+const xMock = vi.mocked(x);
 
 const TEST_DIR = "/test-workspace";
-const TEST_GTKX_VERSION = "1.2.3";
-const TEMPLATES_DIR = join(import.meta.dirname, "..", "templates");
+const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
+const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 
-type RecordedInstall = {
-    cwd: string;
-    packageManager: PackageManager;
-    dependencies: string[];
-    dev: boolean;
-};
+const pin = (name: string): string => (name.startsWith("@gtkx/") ? `${name}@^${SELF_VERSION}` : name);
 
-type Harness = {
-    deps: ScaffolderDeps;
-    installs: RecordedInstall[];
-    installShouldThrow: boolean;
-    gitCalls: string[];
-    gitShouldThrow: boolean;
-    notes: Array<{ message: string; title: string }>;
-    logs: { info: string[]; error: string[] };
-    exit: ReturnType<typeof vi.fn<(code: number) => void>>;
-    detectedPm: PackageManager | undefined;
-};
+vi.spyOn(process, "cwd").mockReturnValue(TEST_DIR);
+const exitSpy = vi
+    .spyOn(process, "exit")
+    .mockImplementation(((_code?: string | number | null) => undefined) as (code?: string | number | null) => never);
 
-type ScaffolderFs = ScaffolderDeps["fs"];
+const templateFiles: Record<string, string> = {};
 
-const renderRealTemplate = (templateName: string, context: TemplateContext): string => {
-    const templateContent = readFileSync(join(TEMPLATES_DIR, templateName), "utf-8");
-    return ejs.render(templateContent, context);
-};
+beforeAll(async () => {
+    const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    for (const entry of realFs.readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        const absolute = join(entry.parentPath, entry.name);
+        templateFiles[absolute] = realFs.readFileSync(absolute, "utf-8");
+    }
+});
 
-const buildHarness = (overrides: Partial<Omit<Harness, "deps">> = {}): Harness => {
-    const installs: RecordedInstall[] = [];
-    const gitCalls: string[] = [];
-    const notes: Array<{ message: string; title: string }> = [];
-    const logs = { info: [] as string[], error: [] as string[] };
-    const state = {
-        installs,
-        installShouldThrow: false,
-        gitCalls,
-        gitShouldThrow: false,
-        notes,
-        logs,
-        exit: vi.fn<(code: number) => void>(),
-        detectedPm: undefined as PackageManager | undefined,
-        ...overrides,
-    };
-    const exit: ScaffolderDeps["exit"] = (code) => {
-        state.exit(code);
-        return undefined as never;
-    };
-    const fs: ScaffolderFs = {
-        existsSync: (p) => vol.existsSync(p),
-        mkdirSync: (p, opts) => {
-            vol.mkdirSync(p, opts);
-        },
-        writeFileSync: (p, content) => {
-            vol.writeFileSync(p, content);
-        },
-    };
-    const deps: ScaffolderDeps = {
-        cwd: () => TEST_DIR,
-        gtkxVersion: TEST_GTKX_VERSION,
-        fs,
-        prompts: {
-            intro: () => undefined,
-            note: (message, title) => {
-                state.notes.push({ message: message ?? "", title: title ?? "" });
-            },
-            cancel: () => undefined,
-            text: () => Promise.resolve(""),
-            select: <Value>() => Promise.resolve(undefined as Value),
-            confirm: () => Promise.resolve(true),
-            isCancel: (_value): _value is symbol => false,
-            spinner: () => ({ start: () => undefined, stop: () => undefined }),
-            log: {
-                info: (message) => {
-                    state.logs.info.push(message);
-                },
-                error: (message) => {
-                    state.logs.error.push(message);
-                },
-            },
-        },
-        listTemplates,
-        render: renderRealTemplate,
-        install: async (opts) => {
-            state.installs.push(opts);
-            if (state.installShouldThrow) throw new Error("install failed");
-        },
-        gitInit: async (cwd) => {
-            state.gitCalls.push(cwd);
-            if (state.gitShouldThrow) throw new Error("git failed");
-        },
-        detectPackageManager: async () => state.detectedPm,
-        exit,
-    };
-    return { ...state, deps };
-};
+beforeEach(() => {
+    vi.clearAllMocks();
+    clack.spinner.mockImplementation(() => ({ start: () => undefined, stop: () => undefined }));
+    clack.text.mockResolvedValue("");
+    clack.select.mockImplementation(async (opts) => opts.initialValue);
+    clack.confirm.mockResolvedValue(true);
+    clack.isCancel.mockReturnValue(false);
+    addDependencyMock.mockResolvedValue(undefined as never);
+    detectMock.mockResolvedValue({ name: "pnpm" } as never);
+    xMock.mockResolvedValue(undefined as never);
+    vol.reset();
+    vol.fromJSON(templateFiles);
+    vol.mkdirSync(TEST_DIR, { recursive: true });
+});
 
 const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
     name: "test-app",
     applicationId: "org.test.app",
     packageManager: "pnpm",
-    testing: "none",
+    includeTesting: false,
     ...overrides,
 });
 
-const setupVol = (): void => {
-    beforeEach(() => {
-        vol.reset();
-        vol.mkdirSync(TEST_DIR, { recursive: true });
-    });
-    afterEach(() => {
-        vol.reset();
-    });
-};
+const run = (overrides: Partial<CreateOptions> = {}): Promise<void> => scaffold(defaultOptions(overrides));
 
-const runScaffolder = async (
-    optionOverrides: Partial<CreateOptions> = {},
-    harnessOverrides: Partial<Omit<Harness, "deps">> = {},
-): Promise<Harness> => {
-    const harness = buildHarness(harnessOverrides);
-    await createScaffolder(harness.deps).run(defaultOptions(optionOverrides));
-    return harness;
-};
+const read = (path: string): string => vol.readFileSync(path, "utf-8") as string;
 
-describe("createScaffolder (directory structure)", () => {
-    setupVol();
+const lastNote = (): string => String(clack.note.mock.calls.at(-1)?.[0] ?? "");
 
-    it("creates the src and tests directories when testing=vitest", async () => {
-        await runScaffolder({ testing: "vitest" });
+describe("scaffold (directory structure)", () => {
+    it("creates the src and tests directories when includeTesting=true", async () => {
+        await run({ includeTesting: true });
 
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(true);
     });
 
-    it("skips the tests directory when testing=none", async () => {
-        await runScaffolder();
+    it("skips the tests directory when includeTesting=false", async () => {
+        await run();
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(false);
     });
 });
 
-describe("createScaffolder (top-level generated files)", () => {
-    setupVol();
-
+describe("scaffold (top-level generated files)", () => {
     it("writes package.json with the project name", async () => {
-        await runScaffolder({ testing: "vitest" });
+        await run({ includeTesting: true });
 
-        const content = JSON.parse(vol.readFileSync(`${TEST_DIR}/test-app/package.json`, "utf-8") as string);
+        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
         expect(content.name).toBe("test-app");
         expect(content.scripts.test).toContain("vitest");
     });
 
-    it("writes gtkx.config.ts with the default libraries", async () => {
-        await runScaffolder();
+    it("omits the test script from package.json when includeTesting=false", async () => {
+        await run({ includeTesting: false });
 
-        const content = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
+        const content = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        expect(content.scripts.test).toBeUndefined();
+    });
+
+    it("writes gtkx.config.ts with the default libraries", async () => {
+        await run();
+
+        const content = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(content).toContain('import { defineConfig } from "@gtkx/config"');
         expect(content).toContain('libraries: ["Gtk-4.0", "Adw-1"]');
     });
 
     it("writes .gitignore with node_modules and dist", async () => {
-        await runScaffolder();
+        await run();
 
-        const content = vol.readFileSync(`${TEST_DIR}/test-app/.gitignore`, "utf-8") as string;
+        const content = read(`${TEST_DIR}/test-app/.gitignore`);
         expect(content).toContain("node_modules/");
         expect(content).toContain("dist/");
     });
 });
 
-describe("createScaffolder (src/* generated files)", () => {
-    setupVol();
-
+describe("scaffold (src/* generated files)", () => {
     it("derives the app title from the project name", async () => {
-        await runScaffolder({ name: "my-cool-app" });
+        await run({ name: "my-cool-app" });
 
-        const content = vol.readFileSync(`${TEST_DIR}/my-cool-app/src/app.tsx`, "utf-8") as string;
+        const content = read(`${TEST_DIR}/my-cool-app/src/app.tsx`);
         expect(content).toContain('title="My Cool App"');
     });
 
-    it("declares the application id in gtkx.config.ts and passes it through virtual:gtkx-config", async () => {
-        await runScaffolder();
+    it("declares the application id in gtkx.config.ts and lets the application default to it", async () => {
+        await run();
 
-        const config = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
+        const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(config).toContain('applicationId: "org.test.app"');
 
-        const app = vol.readFileSync(`${TEST_DIR}/test-app/src/app.tsx`, "utf-8") as string;
-        expect(app).toContain("<GtkApplication applicationId={applicationId}>");
-        expect(app).toContain('import { applicationId } from "virtual:gtkx-config";');
+        const app = read(`${TEST_DIR}/test-app/src/app.tsx`);
+        expect(app).toContain("<GtkApplication>");
+        expect(app).not.toContain('import { applicationId } from "virtual:gtkx-config";');
     });
 
-    it("writes vitest.config.ts when testing=vitest", async () => {
-        await runScaffolder({ testing: "vitest" });
+    it("writes vitest.config.ts when includeTesting=true", async () => {
+        await run({ includeTesting: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
     });
 
-    it("references the generated schema declarations from gtkx-env.d.ts", async () => {
-        await runScaffolder();
+    it("omits vitest.config.ts when includeTesting=false", async () => {
+        await run();
+        expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(false);
+    });
 
-        const content = vol.readFileSync(`${TEST_DIR}/test-app/src/gtkx-env.d.ts`, "utf-8") as string;
+    it("references the generated schema declarations from gtkx-env.d.ts", async () => {
+        await run();
+
+        const content = read(`${TEST_DIR}/test-app/src/gtkx-env.d.ts`);
         expect(content).toContain('/// <reference path="../node_modules/.gtkx/env.d.ts" />');
     });
 
     it("writes the initial empty schema declaration file after install", async () => {
-        await runScaffolder();
+        await run();
 
-        const content = vol.readFileSync(`${TEST_DIR}/test-app/node_modules/.gtkx/env.d.ts`, "utf-8") as string;
-        expect(content).toContain("GSettings schema modules generated by GTKX");
+        const content = read(`${TEST_DIR}/test-app/node_modules/.gtkx/env.d.ts`);
+        expect(content).toContain("Generated by `gtkx codegen`, `gtkx dev`, and `gtkx build`; do not edit.");
         expect(content).not.toContain("declare module");
     });
 });
 
-describe("createScaffolder (dependency installation)", () => {
-    setupVol();
+describe("scaffold (dependency installation)", () => {
+    it("invokes install twice: pinned production deps then dev deps with silent flag", async () => {
+        await run({ includeTesting: true });
 
-    it("invokes install twice: production deps then dev deps", async () => {
-        const harness = await runScaffolder({ testing: "vitest" });
+        expect(addDependencyMock).toHaveBeenCalledTimes(2);
+        const [prodCall, devCall] = addDependencyMock.mock.calls;
+        expect(prodCall?.[0]).toEqual([
+            pin("@gtkx/css"),
+            pin("@gtkx/ffi"),
+            pin("@gtkx/native"),
+            pin("@gtkx/react"),
+            "react",
+        ]);
+        expect(prodCall?.[1]).toEqual({
+            cwd: `${TEST_DIR}/test-app`,
+            packageManager: "pnpm",
+            dev: false,
+            silent: true,
+        });
+        expect(devCall?.[1]).toMatchObject({ dev: true, silent: true });
+        expect(devCall?.[0]).toEqual(expect.arrayContaining([pin("@gtkx/cli"), "vitest", pin("@gtkx/testing")]));
+    });
 
-        expect(harness.installs).toHaveLength(2);
-        const [prod, dev] = harness.installs;
-        expect(prod?.dev).toBe(false);
-        expect(prod?.dependencies).toEqual(["@gtkx/css@^1.2.3", "@gtkx/ffi@^1.2.3", "@gtkx/react@^1.2.3", "react"]);
-        expect(dev?.dev).toBe(true);
-        expect(dev?.dependencies).toEqual(
-            expect.arrayContaining(["@gtkx/cli@^1.2.3", "vitest", "@gtkx/testing@^1.2.3"]),
-        );
+    it("pins @gtkx packages to the current create-gtkx version", () => {
+        expect(SELF_VERSION).toMatch(/^\d+\.\d+\.\d+/);
+        expect(pin("@gtkx/css")).toBe(`@gtkx/css@^${SELF_VERSION}`);
+        expect(pin("react")).toBe("react");
     });
 
     it("forwards the chosen package manager", async () => {
-        const harness = await runScaffolder({ packageManager: "npm" });
+        await run({ packageManager: "npm" });
 
-        expect(harness.installs[0]?.packageManager).toBe("npm");
-        expect(harness.installs[1]?.packageManager).toBe("npm");
+        expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "npm" });
+        expect(addDependencyMock.mock.calls[1]?.[1]).toMatchObject({ packageManager: "npm" });
     });
 
-    it("continues past an install failure and logs a manual hint", async () => {
-        const harness = await runScaffolder({}, { installShouldThrow: true });
+    it("aborts with a non-zero exit and a manual install command when installation fails", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
 
-        expect(harness.logs.error.some((m) => m.includes("install failed"))).toBe(true);
-        expect(harness.logs.info.some((m) => m.includes("cd test-app"))).toBe(true);
+        await run({ packageManager: "npm" });
+
+        expect(clack.log.error.mock.calls.some(([m]) => String(m).includes("install failed"))).toBe(true);
+        expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("cd test-app"))).toBe(true);
+        expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("npm install"))).toBe(true);
+        expect(exitSpy).toHaveBeenCalledWith(1);
     });
 });
 
-describe("createScaffolder (git initialization)", () => {
-    setupVol();
+describe("scaffold (git initialization)", () => {
+    it("runs git init, add -A, and commit in the scaffolded project", async () => {
+        await run();
 
-    it("initializes the git repository in the scaffolded project", async () => {
-        const harness = await runScaffolder();
-        expect(harness.gitCalls).toEqual([`${TEST_DIR}/test-app`]);
+        expect(xMock).toHaveBeenCalledTimes(3);
+        expect(xMock).toHaveBeenNthCalledWith(
+            1,
+            "git",
+            ["init"],
+            expect.objectContaining({ nodeOptions: { cwd: `${TEST_DIR}/test-app` } }),
+        );
+        expect(xMock).toHaveBeenNthCalledWith(2, "git", ["add", "-A"], expect.anything());
+        expect(xMock).toHaveBeenNthCalledWith(3, "git", ["commit", "-m", "Initial commit"], expect.anything());
     });
 
     it("swallows git initialization errors", async () => {
-        await expect(runScaffolder({}, { gitShouldThrow: true })).resolves.toBeDefined();
+        xMock.mockRejectedValueOnce(new Error("git failed"));
+
+        await expect(run()).resolves.toBeUndefined();
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
     });
 });
 
-describe("createScaffolder (next steps)", () => {
-    setupVol();
-
+describe("scaffold (next steps)", () => {
     it("prints the package-manager-specific dev command and the compositor note for vitest", async () => {
-        const harness = await runScaffolder({ packageManager: "npm", testing: "vitest" });
+        await run({ packageManager: "npm", includeTesting: true });
 
-        const note = harness.notes.at(-1);
-        expect(note?.message).toContain("cd test-app");
-        expect(note?.message).toContain("npm run dev");
-        expect(note?.message).toContain("weston");
+        const note = lastNote();
+        expect(note).toContain("cd test-app");
+        expect(note).toContain("npm run dev");
+        expect(note).toContain("weston");
     });
 
     it("prints the pnpm dev command", async () => {
-        const harness = await runScaffolder({ packageManager: "pnpm", testing: "none" });
-
-        expect(harness.notes.at(-1)?.message).toContain("pnpm dev");
+        await run({ packageManager: "pnpm", includeTesting: false });
+        expect(lastNote()).toContain("pnpm dev");
     });
 
     it("prints the yarn dev command", async () => {
-        const harness = await runScaffolder({ packageManager: "yarn", testing: "none" });
-
-        expect(harness.notes.at(-1)?.message).toContain("yarn dev");
+        await run({ packageManager: "yarn", includeTesting: false });
+        expect(lastNote()).toContain("yarn dev");
     });
 
-    it("omits the compositor note when testing=none", async () => {
-        const harness = await runScaffolder();
-
-        const note = harness.notes.at(-1);
-        expect(note?.message).not.toContain("weston");
+    it("omits the compositor note when includeTesting=false", async () => {
+        await run();
+        expect(lastNote()).not.toContain("weston");
     });
 });
 
-describe("createScaffolder (prompting cancellations)", () => {
-    setupVol();
-
-    it("calls the exit hook when the user cancels a prompt", async () => {
-        const harness = buildHarness();
-        harness.deps.prompts.isCancel = (value): value is symbol => value === "__CANCEL__";
-        harness.deps.prompts.text = () => Promise.resolve("__CANCEL__");
-
-        const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-        });
-
-        expect(harness.exit).toHaveBeenCalledWith(0);
+describe("scaffold (prompting)", () => {
+    const partialOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
+        applicationId: "org.test.app",
+        includeTesting: false,
+        interactive: true,
+        ...overrides,
     });
 
-    it("uses the detected package manager as the prompt initial value when none is supplied", async () => {
-        const calls: Array<{ initialValue?: PackageManager }> = [];
-        const harness = buildHarness({ detectedPm: "yarn" });
-        harness.deps.prompts.select = <Value>(opts: { initialValue?: Value }) => {
-            calls.push({ initialValue: opts.initialValue as PackageManager });
-            return Promise.resolve(opts.initialValue as Value);
-        };
+    it("cancels the operation and exits when the user cancels a prompt", async () => {
+        clack.text.mockResolvedValueOnce("__CANCEL__");
+        clack.isCancel.mockImplementationOnce((value) => value === "__CANCEL__");
 
-        const scaffolder = createScaffolder(harness.deps);
-        await scaffolder.run({ name: "test-app", applicationId: "org.test.app", testing: "none" });
+        await scaffold(partialOptions({ packageManager: "pnpm" }));
 
-        expect(calls[0]?.initialValue).toBe("yarn");
+        expect(clack.cancel).toHaveBeenCalledWith("Operation canceled");
+        expect(exitSpy).toHaveBeenCalledWith(0);
+    });
+
+    const captureInitialValue = async (detectedName: string | undefined): Promise<unknown> => {
+        detectMock.mockResolvedValueOnce(
+            detectedName === undefined ? (undefined as never) : ({ name: detectedName } as never),
+        );
+        let initialValue: unknown;
+        clack.select.mockImplementationOnce(async (opts) => {
+            initialValue = opts.initialValue;
+            return opts.initialValue;
+        });
+
+        await scaffold(partialOptions({ name: "test-app" }));
+        return initialValue;
+    };
+
+    it("uses a detected supported package manager as the prompt initial value", async () => {
+        expect(await captureInitialValue("yarn")).toBe("yarn");
+    });
+
+    it("falls back to pnpm when the detected package manager is unsupported", async () => {
+        expect(await captureInitialValue("bun")).toBe("pnpm");
+    });
+
+    it("falls back to pnpm when no package manager is detected", async () => {
+        expect(await captureInitialValue(undefined)).toBe("pnpm");
+    });
+});
+
+describe("scaffold (non-interactive and overwrite)", () => {
+    const lastError = (): string => String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
+
+    it("rejects a flag-supplied name with an invalid format", async () => {
+        await scaffold({
+            name: "Invalid_Name",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(lastError()).toContain("lowercase letters");
+    });
+
+    it("rejects a flag-supplied name whose directory is non-empty without overwrite", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/keep.txt`, "keep");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(lastError()).toContain("is not empty");
+    });
+
+    it("proceeds without prompting when the target directory exists but is empty", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+
+    it("proceeds when the target directory contains only a .git folder and preserves it", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(exitSpy).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+
+    it("preserves .git while clearing other files when --overwrite is set", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
+        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+            overwrite: true,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+
+    it("resolves defaults from a partial non-TTY invocation without prompting", async () => {
+        await scaffold({ name: "test-app", interactive: false });
+
+        expect(clack.text).not.toHaveBeenCalled();
+        expect(clack.select).not.toHaveBeenCalled();
+        expect(clack.confirm).not.toHaveBeenCalled();
+
+        const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
+        expect(config).toContain('applicationId: "com.testapp.app"');
+
+        const pkg = JSON.parse(read(`${TEST_DIR}/test-app/package.json`));
+        expect(pkg.scripts.test).toContain("vitest");
+        expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
+        expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "pnpm" });
+    });
+
+    it("empties an existing directory when --overwrite is set", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+
+        await scaffold({
+            name: "test-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+            overwrite: true,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+});
+
+describe("scaffold (directory target)", () => {
+    it("scaffolds into a nested path and derives the package name from its basename", async () => {
+        await scaffold({
+            name: "apps/my-app",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/apps/my-app/src/index.tsx`)).toBe(true);
+        const pkg = JSON.parse(read(`${TEST_DIR}/apps/my-app/package.json`));
+        expect(pkg.name).toBe("my-app");
+    });
+
+    it("scaffolds into the current directory when the target is '.'", async () => {
+        await scaffold({
+            name: ".",
+            applicationId: "org.test.app",
+            packageManager: "pnpm",
+            includeTesting: false,
+            interactive: false,
+        });
+
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
+        const pkg = JSON.parse(read(`${TEST_DIR}/package.json`));
+        expect(pkg.name).toBe("test-workspace");
+        expect(lastNote()).not.toContain("cd .");
     });
 });

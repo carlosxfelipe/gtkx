@@ -1,52 +1,34 @@
-import { WRAPPER_NODE_ELEMENT } from "@gtkx/config";
-import { constructWrapper, type GType, type GTyped } from "@gtkx/ffi";
-import type * as GObject from "@gtkx/gi/gobject";
-import { type AnyClass, omit } from "@gtkx/utils";
-import { collectConstructableProps } from "../utils/gtype.js";
-import { requireClassByName, resolveBackingClass } from "../utils/gtype-predicates.js";
+import type { WrapperKind } from "@gtkx/config";
+import * as GObject from "@gtkx/gi/gobject";
+import { collectConstructableProps, requireClassByName } from "../utils/gtype.js";
+import { constructionSkipProps } from "./element-props.js";
 import { type Node, registerState } from "./state.js";
-import type { ContainerInfo, Props } from "./types.js";
-import { createWrapperElement } from "./wrapper-element.js";
+import type { Container, Props } from "./types.js";
+import { createWrapperNode } from "./wrapper-node.js";
 
-export { WRAPPER_NODE_ELEMENT };
-
-export const CONSTRUCTION_SKIP_PROPS: Record<string, string[]> = {
-    GtkStack: ["visibleChildName"],
-    AdwViewStack: ["visibleChildName"],
-    AdwToggleGroup: ["activeName", "active"],
-};
-
-export const resolveContainerClass = (type: string): AnyClass<GTyped> | null => resolveBackingClass(type);
-
-const pickConstructProps = (gtype: GType, props: Props): Props => {
+const pickConstructProps = (gtype: bigint, props: Props): Props => {
     const constructable = collectConstructableProps(gtype);
+    const skipped = constructionSkipProps(gtype);
     const result: Props = {};
     for (const name in props) {
-        if (constructable.has(name)) result[name] = props[name];
+        if (constructable.has(name) && !skipped.has(name)) result[name] = props[name];
     }
     return result;
 };
 
-const constructBacking = (type: string, props: Props): GObject.Object => {
+const constructWrapperInstance = (type: string, props: Props): GObject.Object => {
     const cls = requireClassByName(type);
-    const skip = CONSTRUCTION_SKIP_PROPS[type];
-    const picked = pickConstructProps(cls.prototype.__gtype__, skip ? omit(props, skip) : props);
-    return constructWrapper(cls, picked) as GObject.Object;
+    return new cls(pickConstructProps(GObject.typeFromName(type), props));
 };
 
-export const createElementInstance = (
-    type: string,
-    props: Props,
-    rootContainer: ContainerInfo,
-    existing?: GObject.Object,
-): Node => {
-    const node = existing ?? constructBacking(type, props);
-    registerState(node, { name: type, props, rootContainer });
+export const createElementInstance = (type: string, props: Props, rootContainer: Container): Node => {
+    const node = constructWrapperInstance(type, props);
+    registerState(node, { props, rootContainer });
     return node;
 };
 
-export const createWrapperInstance = (kind: string, props: Props, rootContainer: ContainerInfo): Node => {
-    const node = createWrapperElement();
+export const createWrapperInstance = (kind: WrapperKind, props: Props, rootContainer: Container): Node => {
+    const node = createWrapperNode();
     registerState(node, { kind, props, rootContainer });
     return node;
 };

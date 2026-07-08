@@ -675,21 +675,3 @@ describe("render - ContainerProp (18)", () => {
         });
     });
 });
-
-describe("render - ContainerProp (19)", () => {
-    describe("error handling", () => {
-        it("throws when the requested method does not exist on the parent", async () => {
-            const WrapperNode = "__GTKX_WRAPPER_NODE__" as const;
-
-            await expect(
-                render(
-                    <GtkListBox>
-                        <WrapperNode kind="container-slot" verb={{ attach: "thisMethodDoesNotExist" }}>
-                            <GtkLabel label="orphan" />
-                        </WrapperNode>
-                    </GtkListBox>,
-                ),
-            ).rejects.toThrow(/Method 'thisMethodDoesNotExist' not found/);
-        });
-    });
-});

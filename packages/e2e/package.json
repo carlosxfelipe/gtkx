@@ -5,13 +5,16 @@
     "type": "module",
     "scripts": {
         "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
-        "build": "tsc -b"
+        "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.6.0",
+        "@codspeed/vitest-plugin": "^5.7.1",
         "@gtkx/animate": "workspace:*",
+        "@gtkx/components": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
+        "@gtkx/gl": "workspace:*",
+        "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",

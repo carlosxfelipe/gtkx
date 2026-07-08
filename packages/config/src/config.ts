@@ -1,38 +1,33 @@
-import { isValidApplicationId } from "@gtkx/utils";
-import {
-    type ArrayPropRow,
-    type ContainerPropRow,
-    type ElementMapRule,
-    type ObjectPropRow,
-    type PerElementPropRows,
-    type UserTableRows,
-    type VirtualPropRow,
-    validateArrayPropRows,
-    validateContainerPropRows,
-    validateElementMap,
-    validateObjectPropRows,
-    validateVirtualPropRows,
-} from "./table-schema.js";
+import { createDefineConfig, type DefineConfig } from "c12";
+import { defu } from "defu";
+import { z } from "zod";
+import { configError, elementPropsSchema, isRecord, rawIssue } from "./element-props.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
-export const GIR_NAMESPACE_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
+export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
-export type GtkxConfig = UserTableRows & {
-    libraries?: typeof LIBRARIES_WILDCARD | string[];
+export const DEFAULT_APPLICATION_ID = "org.gtkx.app";
 
-    girPath?: string[];
+const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
+const APPLICATION_ID_MAX_LENGTH = 255;
 
-    applicationId?: string;
-
-    reactCompiler?: boolean | ReactCompilerOptions;
+export const isValidApplicationId = (applicationId: string): boolean => {
+    if (applicationId.length === 0 || applicationId.length > APPLICATION_ID_MAX_LENGTH) {
+        return false;
+    }
+    return APPLICATION_ID_PATTERN.test(applicationId);
 };
 
-export type ReactCompilerCompilationMode = "infer" | "syntax" | "annotation" | "all";
+const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
 
-export type ReactCompilerPanicThreshold = "none" | "critical_errors" | "all_errors";
+const PANIC_THRESHOLDS = ["none", "critical_errors", "all_errors"] as const;
 
-export type ReactCompilerOptions = {
+type ReactCompilerCompilationMode = (typeof COMPILATION_MODES)[number];
+
+type ReactCompilerPanicThreshold = (typeof PANIC_THRESHOLDS)[number];
+
+type ReactCompilerOptions = {
     compilationMode?: ReactCompilerCompilationMode;
     panicThreshold?: ReactCompilerPanicThreshold;
 };
@@ -51,140 +46,118 @@ export const resolveReactCompilerOptions = (
     return { ...overrides, target: REACT_COMPILER_TARGET };
 };
 
-const validateLibraryEntry = (library: unknown): void => {
-    if (typeof library === "string" && GIR_NAMESPACE_PATTERN.test(library)) {
+const COMPILATION_MODE_SET: Set<string> = new Set(COMPILATION_MODES);
+
+const PANIC_THRESHOLD_SET: Set<string> = new Set(PANIC_THRESHOLDS);
+
+const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((ctx) => {
+    const value = ctx.value;
+    if (value === LIBRARIES_WILDCARD) return;
+    if (!Array.isArray(value) || value.length === 0) {
+        ctx.issues.push(rawIssue(value, [], `must be "${LIBRARIES_WILDCARD}", a non-empty string array, or omitted`));
         return;
     }
-    if (library === LIBRARIES_WILDCARD) {
-        throw new Error(
-            'gtkx.config.ts: to generate every library, set `libraries: "*"` as a bare string, not an array entry',
+    value.forEach((entry, index) => {
+        if (typeof entry === "string" && GIR_LIBRARY_PATTERN.test(entry)) return;
+        if (entry === LIBRARIES_WILDCARD) {
+            ctx.issues.push(
+                rawIssue(
+                    value,
+                    [index],
+                    `to generate every library, set \`libraries: "${LIBRARIES_WILDCARD}"\` as a bare string, not an array entry`,
+                    true,
+                ),
+            );
+            return;
+        }
+        ctx.issues.push(
+            rawIssue(
+                value,
+                [index],
+                `invalid library identifier "${String(entry)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
+                true,
+            ),
+        );
+    });
+});
+
+const applicationIdSchema = z.custom<string>().check((ctx) => {
+    const value = ctx.value;
+    if (typeof value !== "string" || !isValidApplicationId(value)) {
+        ctx.issues.push(
+            rawIssue(
+                value,
+                [],
+                `invalid \`applicationId\` "${String(value)}" — must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+                true,
+            ),
         );
     }
-    throw new Error(
-        `gtkx.config.ts: invalid library identifier "${String(library)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
-    );
-};
+});
 
-const validateLibraries = (libraries: GtkxConfig["libraries"]): void => {
-    if (libraries === undefined || libraries === LIBRARIES_WILDCARD) {
+const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ctx) => {
+    const value = ctx.value;
+    if (typeof value === "boolean") return;
+    if (!isRecord(value)) {
+        ctx.issues.push(rawIssue(value, [], "must be a boolean or an options object"));
         return;
     }
-    if (!Array.isArray(libraries) || libraries.length === 0) {
-        throw new Error('gtkx.config.ts: `libraries` must be "*", a non-empty string array, or omitted');
-    }
-    for (const library of libraries) {
-        validateLibraryEntry(library);
-    }
-};
-
-const validateGirPath = (girPath: GtkxConfig["girPath"]): void => {
-    if (girPath !== undefined && !Array.isArray(girPath)) {
-        throw new Error("gtkx.config.ts: `girPath` must be an array of strings if provided");
-    }
-};
-
-const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void => {
-    if (applicationId === undefined) return;
-    if (typeof applicationId !== "string" || !isValidApplicationId(applicationId)) {
-        throw new Error(
-            `gtkx.config.ts: invalid \`applicationId\` "${String(applicationId)}" — ` +
-                `must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+    const compilationMode = value.compilationMode;
+    if (
+        compilationMode !== undefined &&
+        !(typeof compilationMode === "string" && COMPILATION_MODE_SET.has(compilationMode))
+    ) {
+        ctx.issues.push(
+            rawIssue(
+                value,
+                [],
+                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}" — must be one of ${COMPILATION_MODES.join(", ")}`,
+                true,
+            ),
         );
     }
-};
-
-const REACT_COMPILER_COMPILATION_MODES: ReactCompilerCompilationMode[] = ["infer", "syntax", "annotation", "all"];
-
-const REACT_COMPILER_PANIC_THRESHOLDS: ReactCompilerPanicThreshold[] = ["none", "critical_errors", "all_errors"];
-
-const validateReactCompilerEnum = <T extends string>(value: T | undefined, allowed: T[], field: string): void => {
-    if (value !== undefined && !allowed.includes(value)) {
-        throw new Error(
-            `gtkx.config.ts: invalid \`reactCompiler.${field}\` "${String(value)}" — must be one of ${allowed.join(", ")}`,
+    const panicThreshold = value.panicThreshold;
+    if (
+        panicThreshold !== undefined &&
+        !(typeof panicThreshold === "string" && PANIC_THRESHOLD_SET.has(panicThreshold))
+    ) {
+        ctx.issues.push(
+            rawIssue(
+                value,
+                [],
+                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}" — must be one of ${PANIC_THRESHOLDS.join(", ")}`,
+                true,
+            ),
         );
     }
-};
+});
 
-const validateReactCompiler = (reactCompiler: GtkxConfig["reactCompiler"]): void => {
-    if (reactCompiler === undefined || typeof reactCompiler === "boolean") return;
-    if (typeof reactCompiler !== "object" || reactCompiler === null || Array.isArray(reactCompiler)) {
-        throw new Error("gtkx.config.ts: `reactCompiler` must be a boolean or an options object");
-    }
-    validateReactCompilerEnum(reactCompiler.compilationMode, REACT_COMPILER_COMPILATION_MODES, "compilationMode");
-    validateReactCompilerEnum(reactCompiler.panicThreshold, REACT_COMPILER_PANIC_THRESHOLDS, "panicThreshold");
-};
+const gtkxConfigSchema = z.object({
+    libraries: librariesSchema.optional(),
+    girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
+    applicationId: applicationIdSchema.optional(),
+    elementProps: elementPropsSchema.optional(),
+    reactCompiler: reactCompilerSchema.optional(),
+    codegen: z.boolean({ error: "must be a boolean" }).optional(),
+});
+
+export type GtkxConfig = z.infer<typeof gtkxConfigSchema>;
 
 export const validateGtkxConfig = (config: GtkxConfig): void => {
-    validateLibraries(config.libraries);
-    validateGirPath(config.girPath);
-    validateApplicationId(config.applicationId);
-    validateContainerPropRows(config.containerProps);
-    validateArrayPropRows(config.arrayProps);
-    validateObjectPropRows(config.objectProps);
-    validateVirtualPropRows(config.virtualProps);
-    validateElementMap(config.elementMap);
-    validateReactCompiler(config.reactCompiler);
+    const result = gtkxConfigSchema.safeParse(config);
+    if (!result.success) throw configError(result.error);
 };
 
-export type GtkxConfigEnv = {
-    mode?: string;
-};
+export const defineConfig: DefineConfig<GtkxConfig> = createDefineConfig<GtkxConfig>();
 
-export type GtkxConfigFn = (env: GtkxConfigEnv) => GtkxConfig;
-
-export type GtkxConfigFnPromise = (env: GtkxConfigEnv) => Promise<GtkxConfig>;
-
-export type GtkxConfigExport = GtkxConfig | Promise<GtkxConfig> | GtkxConfigFn | GtkxConfigFnPromise;
-
-export function defineConfig(config: GtkxConfig): GtkxConfig;
-export function defineConfig(config: Promise<GtkxConfig>): Promise<GtkxConfig>;
-export function defineConfig(config: GtkxConfigFn): GtkxConfigFn;
-export function defineConfig(config: GtkxConfigFnPromise): GtkxConfigFnPromise;
-export function defineConfig(config: GtkxConfigExport): GtkxConfigExport;
-export function defineConfig(config: GtkxConfigExport): GtkxConfigExport {
-    return config;
-}
-
-const isMergeableObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
-
-const mergeConfigValue = (base: unknown, override: unknown): unknown => {
-    if (override === undefined) return base;
-    if (base === undefined) return override;
-    if (Array.isArray(base) && Array.isArray(override)) return [...base, ...override];
-    if (isMergeableObject(base) && isMergeableObject(override)) {
-        const merged: Record<string, unknown> = { ...base };
-        for (const key of Object.keys(override)) {
-            merged[key] = mergeConfigValue(base[key], override[key]);
-        }
-        return merged;
-    }
-    return override;
-};
-
-export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig =>
-    mergeConfigValue(base, override) as GtkxConfig;
+export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig => defu(override, base);
 
 export type ResolvedGtkxConfig = {
-    libraries: typeof LIBRARIES_WILDCARD | string[];
-    girPath: string[];
-    applicationId: string | undefined;
-    containerProps: PerElementPropRows<ContainerPropRow>;
-    arrayProps: PerElementPropRows<ArrayPropRow>;
-    objectProps: PerElementPropRows<ObjectPropRow>;
-    virtualProps: PerElementPropRows<VirtualPropRow>;
-    elementMap: ElementMapRule[];
+    applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
 export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
-    libraries: config.libraries ?? [],
-    girPath: config.girPath ?? [],
-    applicationId: config.applicationId,
-    containerProps: config.containerProps ?? {},
-    arrayProps: config.arrayProps ?? {},
-    objectProps: config.objectProps ?? {},
-    virtualProps: config.virtualProps ?? {},
-    elementMap: config.elementMap ?? [],
+    applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });

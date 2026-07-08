@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
+import { GridView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
@@ -81,7 +82,7 @@ const revealCell = (index: number, currentBoard: Cell[]): Cell[] => {
 };
 
 const playGameSound = (win: boolean, soundStreamRef: React.RefObject<Gtk.MediaFile | null>) => {
-    const dataDirs = (process.env["XDG_DATA_DIRS"] ?? "/usr/local/share:/usr/share").split(":");
+    const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
     const sound = win ? "complete.oga" : "suspend-error.oga";
     const path = dataDirs
         .map((dir) => `${dir}/sounds/freedesktop/stereo/${sound}`)
@@ -177,14 +178,14 @@ const ListViewMinesweeperDemo = () => {
     const { board, handleCellClick } = useMinesweeperContext();
     return (
         <GtkBox halign={Gtk.Align.CENTER}>
-            <GtkGridView
+            <GridView
                 name="grid-view"
                 estimatedItemHeight={32}
                 minColumns={GRID_SIZE}
                 maxColumns={GRID_SIZE}
                 singleClickActivate
                 onActivate={(position) => handleCellClick(position)}
-                renderItem={(item: Cell) => (
+                renderItem={({ item }: { item: Cell }) => (
                     <GtkLabel
                         label={getCellDisplay(item)}
                         halign={Gtk.Align.CENTER}

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import Callout from "../components/Callout.vue";
-import CodeBlock from "../components/CodeBlock.vue";
-
 const appCode = `function App() {
   return (
     <AdwApplicationWindow title="Recipes">
@@ -21,7 +18,7 @@ const devOut = `gtkx dev
   <section id="how" class="how">
     <div class="how__head">
       <p class="overline">From JSX to native, in one render</p>
-      <h2 class="how__title">How gtkx works</h2>
+      <h2 class="how__title">How GTKX works</h2>
     </div>
 
     <div class="how__step">

@@ -1,3 +1,4 @@
+import { DropDown, Grid, GridView, Overlay, type RenderItemProps } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import { registerClass } from "@gtkx/ffi";
 import type { Context } from "@gtkx/gi/cairo";
@@ -9,14 +10,9 @@ import {
     GtkBox,
     GtkButton,
     GtkDrawingArea,
-    GtkDropDown,
-    GtkGrid,
-    GtkGridChild,
     GtkGridView,
     GtkHeaderBar,
     GtkLabel,
-    GtkOverlay,
-    GtkOverlayChild,
     GtkProgressBar,
     GtkRevealer,
     GtkScrolledWindow,
@@ -24,7 +20,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 
-import { createContext, memo, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
@@ -184,7 +180,7 @@ const PLACEHOLDER_COLOR_ITEM: ColorItem = createColorItem(0);
 class ColorObject extends GObject.Object {
     colorItem: ColorItem = PLACEHOLDER_COLOR_ITEM;
 }
-registerClass(ColorObject, { gtypeName: "GtkxDemoColorObject" });
+registerClass(ColorObject, { typeName: "GtkxDemoColorObject" });
 
 function createColorObject(position: number): ColorObject {
     const obj = new ColorObject();
@@ -213,58 +209,105 @@ function drawColorSwatch(
     cr.fill();
 }
 
-const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetails: boolean }) => {
-    if (showDetails) {
-        return (
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={4}
-                marginStart={2}
-                marginEnd={2}
-                marginTop={2}
-                marginBottom={2}
-                halign={Gtk.Align.CENTER}
-            >
-                <GtkDrawingArea
-                    contentWidth={48}
-                    contentHeight={48}
-                    drawFunc={(_self, cr, w, h) =>
-                        drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b })
-                    }
-                />
-                <GtkLabel
-                    label={`<b>${item.name}</b>`}
-                    useMarkup
-                    cssClasses={["caption"]}
-                    ellipsize={3}
-                    maxWidthChars={10}
-                />
-                <GtkLabel
-                    label={`<b>R:</b> ${item.r} <b>G:</b> ${item.g} <b>B:</b> ${item.b}`}
-                    useMarkup
-                    cssClasses={["dim-label", "caption", "monospace"]}
-                />
-                <GtkLabel
-                    label={`<b>H:</b> ${item.h} <b>S:</b> ${item.s} <b>V:</b> ${item.v}`}
-                    useMarkup
-                    cssClasses={["dim-label", "caption", "monospace"]}
-                />
-            </GtkBox>
-        );
-    }
+const DETAIL_LABEL_CSS = ["dim-label", "caption", "monospace"];
 
-    return (
-        <GtkDrawingArea
-            contentWidth={32}
-            contentHeight={32}
-            drawFunc={(_self, cr, w, h) =>
-                drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b })
-            }
-        />
-    );
-});
+interface DetailCell {
+    area: Gtk.DrawingArea;
+    nameLabel: Gtk.Label;
+    rgbLabel: Gtk.Label;
+    hsvLabel: Gtk.Label;
+}
 
-const renderSelectionItem = (item: ColorItem) => (
+function bindColorSwatch(area: Gtk.DrawingArea, item: ColorItem): void {
+    area.setDrawFunc((_area, cr, w, h) => {
+        drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b });
+    });
+    area.queueDraw();
+}
+
+function createSimpleColorFactory(): Gtk.SignalListItemFactory {
+    const factory = Gtk.SignalListItemFactory.new();
+    factory.on("setup", (listItem) => {
+        if (!(listItem instanceof Gtk.ListItem)) return;
+        const area = new Gtk.DrawingArea();
+        area.setContentWidth(32);
+        area.setContentHeight(32);
+        listItem.setChild(area);
+    });
+    factory.on("bind", (listItem) => {
+        if (!(listItem instanceof Gtk.ListItem)) return;
+        const area = listItem.getChild();
+        const item = listItem.getItem();
+        if (area instanceof Gtk.DrawingArea && item instanceof ColorObject) {
+            bindColorSwatch(area, item.colorItem);
+        }
+    });
+    return factory;
+}
+
+function createDetailCell(): { box: Gtk.Box; cell: DetailCell } {
+    const area = new Gtk.DrawingArea();
+    area.setContentWidth(48);
+    area.setContentHeight(48);
+    const nameLabel = new Gtk.Label();
+    nameLabel.setUseMarkup(true);
+    nameLabel.setCssClasses(["caption"]);
+    nameLabel.setEllipsize(Pango.EllipsizeMode.END);
+    nameLabel.setMaxWidthChars(10);
+    const rgbLabel = new Gtk.Label();
+    rgbLabel.setUseMarkup(true);
+    rgbLabel.setCssClasses(DETAIL_LABEL_CSS);
+    const hsvLabel = new Gtk.Label();
+    hsvLabel.setUseMarkup(true);
+    hsvLabel.setCssClasses(DETAIL_LABEL_CSS);
+    const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4 });
+    box.setHalign(Gtk.Align.CENTER);
+    box.setMarginStart(2);
+    box.setMarginEnd(2);
+    box.setMarginTop(2);
+    box.setMarginBottom(2);
+    box.append(area);
+    box.append(nameLabel);
+    box.append(rgbLabel);
+    box.append(hsvLabel);
+    return { box, cell: { area, nameLabel, rgbLabel, hsvLabel } };
+}
+
+function bindDetailCell(cell: DetailCell, item: ColorItem): void {
+    bindColorSwatch(cell.area, item);
+    cell.nameLabel.setLabel(`<b>${item.name}</b>`);
+    cell.rgbLabel.setLabel(`<b>R:</b> ${item.r} <b>G:</b> ${item.g} <b>B:</b> ${item.b}`);
+    cell.hsvLabel.setLabel(`<b>H:</b> ${item.h} <b>S:</b> ${item.s} <b>V:</b> ${item.v}`);
+}
+
+function createDetailColorFactory(): Gtk.SignalListItemFactory {
+    const cells = new WeakMap<Gtk.ListItem, DetailCell>();
+    const factory = Gtk.SignalListItemFactory.new();
+    factory.on("setup", (listItem) => {
+        if (!(listItem instanceof Gtk.ListItem)) return;
+        const { box, cell } = createDetailCell();
+        cells.set(listItem, cell);
+        listItem.setChild(box);
+    });
+    factory.on("bind", (listItem) => {
+        if (!(listItem instanceof Gtk.ListItem)) return;
+        const cell = cells.get(listItem);
+        const item = listItem.getItem();
+        if (cell !== undefined && item instanceof ColorObject) {
+            bindDetailCell(cell, item.colorItem);
+        }
+    });
+    factory.on("teardown", (listItem) => {
+        if (listItem instanceof Gtk.ListItem) cells.delete(listItem);
+    });
+    return factory;
+}
+
+function createColorFactory(showDetails: boolean): Gtk.SignalListItemFactory {
+    return showDetails ? createDetailColorFactory() : createSimpleColorFactory();
+}
+
+const renderSelectionItem = ({ item }: RenderItemProps<ColorItem>) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}
@@ -285,49 +328,58 @@ const SelectionInfoPanel = ({
     averageColor: { r: number; g: number; b: number; hex: string };
 }) => {
     return (
-        <GtkGrid marginStart={10} marginEnd={10} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
-            <GtkGridChild column={0} row={0} columnSpan={5}>
-                <GtkLabel label="Selection" hexpand cssClasses={TITLE_CSS} />
-            </GtkGridChild>
-            <GtkGridChild column={0} row={1} columnSpan={5}>
-                <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-                    <GtkGridView
-                        maxColumns={200}
-                        cssClasses={SELECTION_GRID_CSS}
-                        estimatedItemHeight={32}
-                        renderItem={renderSelectionItem}
-                        items={selectedColors.map((c) => ({ id: c.id, value: c }))}
+        <Grid marginStart={10} marginEnd={10} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
+            <Grid.Child column={0} row={0} columnSpan={5}>
+                {(ref) => <GtkLabel ref={ref} label="Selection" hexpand cssClasses={TITLE_CSS} />}
+            </Grid.Child>
+            <Grid.Child column={0} row={1} columnSpan={5}>
+                {(ref) => (
+                    <GtkScrolledWindow
+                        ref={ref}
+                        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                    >
+                        <GridView
+                            maxColumns={200}
+                            cssClasses={SELECTION_GRID_CSS}
+                            estimatedItemHeight={32}
+                            renderItem={renderSelectionItem}
+                            items={selectedColors.map((c) => ({ id: c.id, value: c }))}
+                        />
+                    </GtkScrolledWindow>
+                )}
+            </Grid.Child>
+            <Grid.Child column={0} row={2}>
+                {(ref) => <GtkLabel ref={ref} label="Size:" />}
+            </Grid.Child>
+            <Grid.Child column={1} row={2}>
+                {(ref) => <GtkLabel ref={ref} label={String(selectedColors.length)} />}
+            </Grid.Child>
+            <Grid.Child column={2} row={2}>
+                {(ref) => <GtkLabel ref={ref} label="Average:" />}
+            </Grid.Child>
+            <Grid.Child column={3} row={2}>
+                {(ref) => (
+                    <GtkDrawingArea
+                        ref={ref}
+                        contentWidth={32}
+                        contentHeight={32}
+                        drawFunc={(_self, cr, w, h) =>
+                            drawColorSwatch(cr, {
+                                width: w,
+                                height: h,
+                                r: averageColor.r,
+                                g: averageColor.g,
+                                b: averageColor.b,
+                            })
+                        }
                     />
-                </GtkScrolledWindow>
-            </GtkGridChild>
-            <GtkGridChild column={0} row={2}>
-                <GtkLabel label="Size:" />
-            </GtkGridChild>
-            <GtkGridChild column={1} row={2}>
-                <GtkLabel label={String(selectedColors.length)} />
-            </GtkGridChild>
-            <GtkGridChild column={2} row={2}>
-                <GtkLabel label="Average:" />
-            </GtkGridChild>
-            <GtkGridChild column={3} row={2}>
-                <GtkDrawingArea
-                    contentWidth={32}
-                    contentHeight={32}
-                    drawFunc={(_self, cr, w, h) =>
-                        drawColorSwatch(cr, {
-                            width: w,
-                            height: h,
-                            r: averageColor.r,
-                            g: averageColor.g,
-                            b: averageColor.b,
-                        })
-                    }
-                />
-            </GtkGridChild>
-            <GtkGridChild column={4} row={2}>
-                <GtkLabel label="" hexpand />
-            </GtkGridChild>
-        </GtkGrid>
+                )}
+            </Grid.Child>
+            <Grid.Child column={4} row={2}>
+                {(ref) => <GtkLabel ref={ref} label="" hexpand />}
+            </Grid.Child>
+        </Grid>
     );
 };
 
@@ -370,7 +422,7 @@ interface ColorsModels {
 function useColorsModels(): ColorsModels {
     const ref = useRef<ColorsModels | null>(null);
     if (ref.current === null) {
-        const baseStore = Gio.ListStore.new(ColorObject.prototype.__gtype__);
+        const baseStore = Gio.ListStore.new(ColorObject.prototype.__type__);
         const selection = new Gtk.MultiSelection({ model: baseStore });
         ref.current = { baseStore, selection, liveRefs: [] };
     }
@@ -559,10 +611,6 @@ function useColorsComputed(state: ColorsState, models: ColorsModels) {
         }
     };
 
-    const renderGridItem = (obj: GObject.Object) => (
-        <ColorGridItem item={(obj as ColorObject).colorItem} showDetails={showDetails} />
-    );
-
     return {
         selectedColors,
         averageColor,
@@ -570,7 +618,6 @@ function useColorsComputed(state: ColorsState, models: ColorsModels) {
         gridCssClasses,
         handleRefill,
         handleLimitChange,
-        renderGridItem,
     };
 }
 
@@ -627,7 +674,7 @@ const ColorsHeader = () => {
                         widthChars={8}
                         xalign={1}
                     />
-                    <GtkDropDown
+                    <DropDown
                         name="limit-dropdown"
                         selectedId={String(state.colorLimit)}
                         onSelectionChanged={computed.handleLimitChange}
@@ -639,7 +686,7 @@ const ColorsHeader = () => {
                 <>
                     <GtkBox spacing={10}>
                         <GtkLabel label="Sort by:" />
-                        <GtkDropDown
+                        <DropDown
                             name="sort-dropdown"
                             selectedId={state.sortMode}
                             onSelectionChanged={(id) => state.setSortMode(id as SortMode)}
@@ -648,7 +695,7 @@ const ColorsHeader = () => {
                     </GtkBox>
                     <GtkBox spacing={10}>
                         <GtkLabel label="Show:" />
-                        <GtkDropDown
+                        <DropDown
                             name="display-dropdown"
                             selectedId={state.displayFactory}
                             onSelectionChanged={(id) => state.setDisplayFactory(id as DisplayFactory)}
@@ -670,26 +717,36 @@ const ColorsGridOverlay = () => {
     useColorsLimitFill(models, state.colorLimit, sortModeRef);
     useColorsRefill({ models, gridView, colorLimit: state.colorLimit, sortModeRef, refillToken: state.refillToken });
     useStoreProgressBar(models.baseStore, state.colorLimit, progressBarRef);
+    const factory = useMemo(() => createColorFactory(computed.showDetails), [computed.showDetails]);
 
     return (
-        <GtkOverlay name="grid-overlay" vexpand hexpand>
+        <Overlay name="grid-overlay" vexpand hexpand>
             <GtkScrolledWindow name="grid-scrolled" vexpand hexpand>
-                <GtkGridView<ColorObject>
+                <GtkGridView
                     ref={setGridView}
                     name="color-grid"
-                    estimatedItemHeight={computed.showDetails ? 120 : 40}
                     minColumns={computed.showDetails ? 4 : 8}
                     maxColumns={computed.showDetails ? 12 : 24}
                     enableRubberband
                     cssClasses={computed.gridCssClasses}
                     model={models.selection}
-                    renderItem={computed.renderGridItem}
+                    factory={factory}
                 />
             </GtkScrolledWindow>
-            <GtkOverlayChild>
-                <GtkProgressBar ref={progressBarRef} visible={false} halign={Gtk.Align.FILL} valign={Gtk.Align.START} />
-            </GtkOverlayChild>
-        </GtkOverlay>
+            <Overlay.Child>
+                {(ref) => (
+                    <GtkProgressBar
+                        ref={(node) => {
+                            ref(node);
+                            progressBarRef.current = node;
+                        }}
+                        visible={false}
+                        halign={Gtk.Align.FILL}
+                        valign={Gtk.Align.START}
+                    />
+                )}
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

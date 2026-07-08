@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConnectionRegistry } from "../src/connection-registry.js";
-import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
+import type { Message, Request, Response } from "../src/protocol/types.js";
 import { SocketServer } from "../src/socket-server.js";
-import type { AppConnection } from "../src/transport.js";
+import type { ProtocolConnection } from "../src/transport.js";
 
 const connectClient = (path: string): Promise<net.Socket> =>
     new Promise((resolve, reject) => {
@@ -43,24 +43,30 @@ const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<v
     return { lines, promise };
 };
 
-const waitForConnection = (registry: ConnectionRegistry): Promise<AppConnection> =>
+const waitForConnection = (registry: ConnectionRegistry): Promise<ProtocolConnection> =>
     new Promise((resolve) => {
-        registry.once("connection", (connection) => resolve(connection));
+        const original = registry.register.bind(registry);
+        registry.register = (socket) => {
+            const connection = original(socket);
+            registry.register = original;
+            resolve(connection);
+            return connection;
+        };
     });
 
-interface SocketServerContext {
+type SocketServerContext = {
     tmpDir: string;
     socketPath: string;
     server: SocketServer;
     registry: ConnectionRegistry;
-}
+};
 
 const socketCtx = {} as SocketServerContext;
 
 function setupSocketServer(): void {
     beforeEach(() => {
         socketCtx.tmpDir = mkdtempSync(join(tmpdir(), "gtkx-socket-server-"));
-        socketCtx.socketPath = join(socketCtx.tmpDir, "ipc.sock");
+        socketCtx.socketPath = join(socketCtx.tmpDir, "test.sock");
         socketCtx.registry = new ConnectionRegistry();
         socketCtx.server = new SocketServer(socketCtx.registry, socketCtx.socketPath);
     });
@@ -76,7 +82,7 @@ const startWithClient = async (): Promise<net.Socket> => {
     return connectClient(socketCtx.socketPath);
 };
 
-const nextRequest = (registry: ConnectionRegistry): Promise<IpcRequest> =>
+const nextRequest = (registry: ConnectionRegistry): Promise<Request> =>
     new Promise((resolve) => {
         registry.once("request", (_conn, req) => resolve(req));
     });
@@ -142,7 +148,7 @@ describe("SocketServer lifecycle", () => {
 
 describe("SocketServer connections", () => {
     setupSocketServer();
-    it("emits connection and disconnection events", async () => {
+    it("registers a connection and emits a disconnection event", async () => {
         const { server, socketPath, registry } = socketCtx;
         await server.start();
 
@@ -151,7 +157,7 @@ describe("SocketServer connections", () => {
         const connection = await connectionPromise;
         expect(connection.id).toBeTruthy();
 
-        const disconnectionPromise = new Promise<AppConnection>((resolve) => {
+        const disconnectionPromise = new Promise<ProtocolConnection>((resolve) => {
             registry.once("disconnection", (conn) => resolve(conn));
         });
         client.end();
@@ -166,7 +172,7 @@ describe("SocketServer framing — request events", () => {
         const client = await startWithClient();
         const received = nextRequest(socketCtx.registry);
 
-        const request: IpcRequest = { id: "r-1", method: "ping", params: { a: 1 } };
+        const request: Request = { id: "r-1", method: "ping", params: { a: 1 } };
         client.write(`${JSON.stringify(request)}\n`);
 
         const got = await received;
@@ -214,7 +220,7 @@ describe("SocketServer framing — error responses", () => {
     it("returns an Invalid JSON error response for malformed lines", async () => {
         const client = await startWithClient();
 
-        const parsed = await collectFirstFrame<IpcResponse>(client, () => client.write("not-json\n"));
+        const parsed = await collectFirstFrame<Response>(client, () => client.write("not-json\n"));
         expect(parsed.id).toBe("unknown");
         expect(parsed.error?.message).toContain("Invalid JSON");
     });
@@ -222,7 +228,7 @@ describe("SocketServer framing — error responses", () => {
     it("returns an Invalid message format error for unknown shapes", async () => {
         const client = await startWithClient();
 
-        const parsed = await collectFirstFrame<IpcResponse>(client, () =>
+        const parsed = await collectFirstFrame<Response>(client, () =>
             client.write(`${JSON.stringify({ random: true })}\n`),
         );
         expect(parsed.id).toBe("unknown");
@@ -232,7 +238,7 @@ describe("SocketServer framing — error responses", () => {
     it("returns an Invalid message format error when a request payload fails schema validation", async () => {
         const client = await startWithClient();
 
-        const parsed = await collectFirstFrame<IpcResponse & { id: unknown }>(client, () =>
+        const parsed = await collectFirstFrame<Response & { id: unknown }>(client, () =>
             client.write(`${JSON.stringify({ id: 7, method: "ping" })}\n`),
         );
         expect(parsed.error?.message).toContain("Invalid message format");
@@ -243,7 +249,7 @@ describe("ConnectionRegistry send", () => {
     setupSocketServer();
     it("silently drops a message for an unknown connection id", async () => {
         await socketCtx.server.start();
-        expect(() => socketCtx.registry.send("missing", { id: "x", method: "noop" } as IpcMessage)).not.toThrow();
+        expect(() => socketCtx.registry.send("missing", { id: "x", method: "noop" } as Message)).not.toThrow();
     });
 
     it("delivers a message to the connected client", async () => {
@@ -254,8 +260,8 @@ describe("ConnectionRegistry send", () => {
         const client = await connectClient(socketPath);
         const connection = await connectionPromise;
 
-        const parsed = await collectFirstFrame<IpcMessage>(client, () =>
-            registry.send(connection.id, { id: "out-1", result: 42 } as IpcMessage),
+        const parsed = await collectFirstFrame<Message>(client, () =>
+            registry.send(connection.id, { id: "out-1", result: 42 } as Message),
         );
         expect((parsed as { id: string }).id).toBe("out-1");
     });
@@ -263,21 +269,19 @@ describe("ConnectionRegistry send", () => {
 
 describe("ConnectionRegistry shutdown", () => {
     setupSocketServer();
-    it("rejects in-flight requests when closeAll runs", async () => {
+    it("rejects in-flight requests and drains the connection when dispose runs", async () => {
         const { server, socketPath, registry } = socketCtx;
         await server.start();
 
         const connectionPromise = waitForConnection(registry);
-        const client = await connectClient(socketPath);
+        await connectClient(socketPath);
         const connection = await connectionPromise;
 
-        const pending = connection.transport.sendRequest("ping", {}, 5000);
-        registry.closeAll("Server stopping");
+        const pending = connection.send("ping", {}, 5000);
+        const disconnection = new Promise<void>((resolve) => registry.once("disconnection", () => resolve()));
+        registry.dispose("Server stopping");
 
         await expect(pending).rejects.toThrow("Server stopping");
-
-        const disconnection = new Promise<void>((resolve) => registry.once("disconnection", () => resolve()));
-        client.end();
         await disconnection;
     });
 });
@@ -286,7 +290,7 @@ describe("SocketServer errors", () => {
     setupSocketServer();
     it("rejects start and routes error to the registry when binding to an unreachable path", async () => {
         const badRegistry = new ConnectionRegistry();
-        const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "ipc.sock"));
+        const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "test.sock"));
         const errorReceived = new Promise<Error>((resolve) => {
             badRegistry.once("error", (err) => resolve(err));
         });

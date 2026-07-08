@@ -1,8 +1,9 @@
+import { bind } from "./bind.js";
 import * as helpers from "./descriptors.js";
 import { fn } from "./fn.js";
 
 type T = {
-    bind: typeof helpers.bind;
+    bind: typeof bind;
     int8: typeof helpers.int8T;
     uint8: typeof helpers.uint8T;
     int16: typeof helpers.int16T;
@@ -13,12 +14,13 @@ type T = {
     uint64: typeof helpers.uint64T;
     bigint64: typeof helpers.bigint64T;
     biguint64: typeof helpers.biguint64T;
+    gtype: typeof helpers.gtypeT;
     float32: typeof helpers.float32T;
     float64: typeof helpers.float64T;
     boolean: typeof helpers.booleanT;
     void: typeof helpers.voidT;
     unichar: typeof helpers.unicharT;
-    blob: typeof helpers.blobT;
+    buffer: typeof helpers.bufferT;
     string: typeof helpers.stringT;
     object: typeof helpers.objectT;
     boxed: typeof helpers.boxedT;
@@ -32,7 +34,7 @@ type T = {
     list: typeof helpers.listT;
     slist: typeof helpers.slistT;
     ptrArray: typeof helpers.ptrArrayT;
-    garray: typeof helpers.garrayT;
+    gArray: typeof helpers.gArrayT;
     byteArray: typeof helpers.byteArrayT;
     sizedArray: typeof helpers.sizedArrayT;
     fixedArray: typeof helpers.fixedArrayT;
@@ -41,7 +43,7 @@ type T = {
 };
 
 export const t: T = {
-    bind: helpers.bind,
+    bind,
     int8: helpers.int8T,
     uint8: helpers.uint8T,
     int16: helpers.int16T,
@@ -52,12 +54,13 @@ export const t: T = {
     uint64: helpers.uint64T,
     bigint64: helpers.bigint64T,
     biguint64: helpers.biguint64T,
+    gtype: helpers.gtypeT,
     float32: helpers.float32T,
     float64: helpers.float64T,
     boolean: helpers.booleanT,
     void: helpers.voidT,
     unichar: helpers.unicharT,
-    blob: helpers.blobT,
+    buffer: helpers.bufferT,
     string: helpers.stringT,
     object: helpers.objectT,
     boxed: helpers.boxedT,
@@ -71,7 +74,7 @@ export const t: T = {
     list: helpers.listT,
     slist: helpers.slistT,
     ptrArray: helpers.ptrArrayT,
-    garray: helpers.garrayT,
+    gArray: helpers.gArrayT,
     byteArray: helpers.byteArrayT,
     sizedArray: helpers.sizedArrayT,
     fixedArray: helpers.fixedArrayT,

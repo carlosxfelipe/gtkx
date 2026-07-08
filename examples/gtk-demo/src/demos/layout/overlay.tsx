@@ -1,14 +1,6 @@
+import { Grid, Overlay } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkEntry,
-    GtkGrid,
-    GtkGridChild,
-    GtkLabel,
-    GtkOverlay,
-    GtkOverlayChild,
-} from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay.tsx?raw";
@@ -29,46 +21,54 @@ const OverlayDemo = () => {
         for (let i = 0; i < 5; i++) {
             const num = 5 * j + i;
             buttons.push(
-                <GtkGridChild key={num} column={i} row={j}>
-                    <GtkButton label={String(num)} hexpand vexpand onClicked={() => handleNumber(num)} />
-                </GtkGridChild>,
+                <Grid.Child key={num} column={i} row={j}>
+                    {(ref) => (
+                        <GtkButton ref={ref} label={String(num)} hexpand vexpand onClicked={() => handleNumber(num)} />
+                    )}
+                </Grid.Child>,
             );
         }
     }
 
     return (
-        <GtkOverlay>
-            <GtkGrid name="number-grid">{buttons}</GtkGrid>
-            <GtkOverlayChild>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.START}
-                    canTarget={false}
-                    spacing={10}
-                >
-                    <GtkLabel
-                        name="numbers-label"
-                        label="<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"
-                        useMarkup
+        <Overlay>
+            <Grid name="number-grid">{buttons}</Grid>
+            <Overlay.Child>
+                {(ref) => (
+                    <GtkBox
+                        ref={ref}
+                        orientation={Gtk.Orientation.VERTICAL}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.START}
                         canTarget={false}
+                        spacing={10}
+                    >
+                        <GtkLabel
+                            name="numbers-label"
+                            label="<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"
+                            useMarkup
+                            canTarget={false}
+                            marginTop={8}
+                            marginBottom={8}
+                        />
+                    </GtkBox>
+                )}
+            </Overlay.Child>
+            <Overlay.Child>
+                {(ref) => (
+                    <GtkEntry
+                        ref={ref}
+                        text={value}
+                        placeholderText="Your Lucky Number"
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
                         marginTop={8}
                         marginBottom={8}
+                        onChanged={handleEntryChanged}
                     />
-                </GtkBox>
-            </GtkOverlayChild>
-            <GtkOverlayChild>
-                <GtkEntry
-                    text={value}
-                    placeholderText="Your Lucky Number"
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                    marginTop={8}
-                    marginBottom={8}
-                    onChanged={handleEntryChanged}
-                />
-            </GtkOverlayChild>
-        </GtkOverlay>
+                )}
+            </Overlay.Child>
+        </Overlay>
     );
 };
 

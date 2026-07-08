@@ -1,20 +1,18 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { resolveDataDir } from "@gtkx/config";
-import { errorMessage } from "@gtkx/utils";
+import { error, errorMessage, info } from "@gtkx/utils";
 import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
 import { compileSchemas } from "../gsettings/compile.js";
 import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../gsettings/env.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
-import { error, info } from "../internal/log.js";
-import { removeTempDir } from "../internal/remove-temp-dir.js";
-import { withStagingDir } from "../internal/staging-dir.js";
-import { createVirtualNamespace, resolveToVirtual } from "./virtual-module.js";
+import { resolveDataDir } from "../internal/data-dir.js";
+import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
+import { createVirtualNamespace } from "./virtual-module.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
-const { isVirtual, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
+const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
     `process.env.GSETTINGS_SCHEMA_DIR = [`,
@@ -42,7 +40,7 @@ type PluginContext = {
 
 const ensureSchemaDir = (state: PluginState): string => {
     if (!state.schemaDir) {
-        const runnerDir = process.env["GTKX_DEV_SCHEMA_DIR"];
+        const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
         if (runnerDir) {
             state.schemaDir = runnerDir;
             return runnerDir;
@@ -69,7 +67,7 @@ const releaseSchemaDir = (state: PluginState): void => {
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
     compileSchemas(state.schemaDir);
-    process.env["GSETTINGS_SCHEMA_DIR"] = prependSchemaDir(state.schemaDir, process.env["GSETTINGS_SCHEMA_DIR"]);
+    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
 };
 
 const syncSchemaEnv = (state: PluginState): void => {
@@ -199,7 +197,7 @@ export function gtkxGSettings(): Plugin {
 
         async resolveId(source, importer, options) {
             if (!source.endsWith(SCHEMA_SUFFIX)) return;
-            return resolveToVirtual(this, { source, importer, options }, VIRTUAL_PREFIX);
+            return resolveToVirtual(this, { source, importer, options });
         },
 
         load(id) {

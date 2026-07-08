@@ -1,8 +1,8 @@
-import { sortedAlpha, sortedAlphaBy, toIdentifier } from "@gtkx/utils";
+import { sanitizeIdentifier, sortedStrings, sortedStringsBy } from "@gtkx/utils";
 import { transpileSource } from "../transpile.js";
-import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./ctype.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
+import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./plan.js";
 import { deriveDeleteSingular, deriveGenSingular, type RenderedCommand, renderCommand } from "./render.js";
 import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
 
@@ -55,21 +55,17 @@ const PLAN_POLICY: GlPlanPolicy = {
     singleValuedQueries: SINGLE_VALUED_QUERIES,
 };
 
-export type GlExclusion = {
+type GlExclusion = {
     command: string;
     reason: GlExclusionReason;
-    detail: string;
 };
 
-export type GlGenerationReport = {
+type GlGenerationReport = {
     selection: GlSelection;
     selectedCommands: number;
     emittedCommands: number;
     derivedSingulars: number;
-    selectedEnums: number;
-    emittedEnums: number;
     exclusions: GlExclusion[];
-    skippedEnums: { name: string; reason: string }[];
 };
 
 export type GlGenerationResult = {
@@ -77,27 +73,21 @@ export type GlGenerationResult = {
     report: GlGenerationReport;
 };
 
-const enumExportName = (name: string): string => {
-    const stripped = name.startsWith("GL_") ? name.slice(3) : name;
-    return /^[0-9]/.test(stripped) ? name : toIdentifier(stripped.toUpperCase());
-};
+const enumExportName = (name: string): string =>
+    sanitizeIdentifier((name.startsWith("GL_") ? name.slice(3) : name).toUpperCase());
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 
 const enumLiteral = (token: GlEnum): string | undefined => {
     const text = token.value.trim();
-    const negative = text.startsWith("-");
-    const magnitudeText = negative ? text.slice(1) : text;
-    let magnitude: bigint;
+    let value: bigint;
     try {
-        magnitude = BigInt(magnitudeText);
+        value = BigInt(text);
     } catch {
         return undefined;
     }
-    if (magnitude > MAX_SAFE) return undefined;
-    if (/^0[xX]/.test(magnitudeText)) {
-        return `${negative ? "-" : ""}0x${magnitudeText.slice(2).toLowerCase()}`;
-    }
+    if (value > MAX_SAFE) return undefined;
+    if (/^0[xX]/.test(text)) return `0x${text.slice(2).toLowerCase()}`;
     return text;
 };
 
@@ -123,13 +113,12 @@ const collectGroupAliases = (plans: (CommandPlan & { ok: true })[]): Map<string,
     return aliases;
 };
 
-export type GlGenerationOptions = {
+type GlGenerationOptions = {
     registryPath: string;
     companionExports: Set<string>;
-    selection?: GlSelection;
 };
 
-const DEFAULT_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
+const GL_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
 
 type OkPlan = CommandPlan & { ok: true };
 
@@ -146,16 +135,16 @@ const planSelectedCommands = (
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
     const planFeatures = new Map<string, string>();
-    for (const [name, feature] of sortedAlphaBy(commandNames.entries(), ([key]) => key)) {
+    for (const [name, feature] of sortedStringsBy(commandNames.entries(), ([key]) => key)) {
         const command = registry.commands.get(name);
         if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
         if (COMPANION_OWNED.has(name)) {
-            exclusions.push({ command: name, reason: "companion-owned", detail: "owned by the companion module" });
+            exclusions.push({ command: name, reason: "companion-owned" });
             continue;
         }
         const plan = planCommand(command, PLAN_POLICY);
         if (!plan.ok) {
-            exclusions.push({ command: name, reason: plan.reason, detail: plan.detail });
+            exclusions.push({ command: name, reason: plan.reason });
             continue;
         }
         okPlans.push(plan);
@@ -171,28 +160,15 @@ type EnumRow = {
     feature: string;
 };
 
-type EnumRows = {
-    enumRows: EnumRow[];
-    skippedEnums: { name: string; reason: string }[];
-};
-
-const buildEnumRows = (
-    registry: ReturnType<typeof loadGlRegistry>,
-    enumNames: Map<string, string>,
-    api: string,
-): EnumRows => {
-    const skippedEnums: { name: string; reason: string }[] = [];
+const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRow[] => {
     const enumRows: EnumRow[] = [];
-    for (const [name, feature] of sortedAlphaBy(enumNames.entries(), ([key]) => key)) {
-        const token = resolveEnum(registry, name, api);
+    for (const [name, feature] of sortedStringsBy(enumNames.entries(), ([key]) => key)) {
+        const token = resolveEnum(registry, name);
         const literal = enumLiteral(token);
-        if (literal === undefined) {
-            skippedEnums.push({ name, reason: `value ${token.value} is outside the safe integer range` });
-            continue;
-        }
+        if (literal === undefined) continue;
         enumRows.push({ token, exportName: enumExportName(name), literal, feature });
     }
-    return { enumRows, skippedEnums };
+    return enumRows;
 };
 
 const assertExportNamesDisjoint = (
@@ -216,13 +192,13 @@ const assertExportNamesDisjoint = (
     const companionCollisions = [...exportNames.keys()].filter((name) => companionExports.has(name));
     if (companionCollisions.length > 0) {
         throw new Error(
-            `Companion module exports collide with generated exports: ${sortedAlpha(companionCollisions).join(", ")}`,
+            `Companion module exports collide with generated exports: ${sortedStrings(companionCollisions).join(", ")}`,
         );
     }
 };
 
 export const generateGlModules = (options: GlGenerationOptions): GlGenerationResult => {
-    const selection = options.selection ?? DEFAULT_SELECTION;
+    const selection = GL_SELECTION;
     const registry = loadGlRegistry(options.registryPath);
     const subset = selectSubset(registry, selection);
     const { okPlans, planFeatures, exclusions } = planSelectedCommands(registry, subset.commands);
@@ -237,7 +213,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
         if (singular !== undefined) singulars.push(singular);
     }
 
-    const { enumRows, skippedEnums } = buildEnumRows(registry, subset.enums, selection.api);
+    const enumRows = buildEnumRows(registry, subset.enums);
     assertExportNamesDisjoint(rendered, singulars, enumRows, options.companionExports);
 
     const files = new Map<string, string>([
@@ -256,10 +232,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
             selectedCommands: subset.commands.size,
             emittedCommands: rendered.length,
             derivedSingulars: singulars.length,
-            selectedEnums: subset.enums.size,
-            emittedEnums: enumRows.length,
             exclusions,
-            skippedEnums,
         },
     };
 };

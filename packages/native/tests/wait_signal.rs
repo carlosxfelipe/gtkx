@@ -1,18 +1,9 @@
-mod common;
-
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use native::dispatch::wait_signal::WaitSignal;
-
-#[test]
-fn new_creates_unsignalled_state() {
-    let signal = WaitSignal::new();
-    signal.notify();
-    signal.wait();
-}
+use native::messaging::wait_signal::WaitSignal;
 
 #[test]
 fn default_matches_new() {

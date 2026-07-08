@@ -1,10 +1,11 @@
+import { ListView } from "@gtkx/components";
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { renderListView } from "../helpers/list-fixtures.js";
+import { allExpandableIds, renderListView } from "../helpers/list-fixtures.js";
 
 const TWO_ITEMS = [
     { id: "1", value: { name: "First" } },
@@ -154,7 +155,7 @@ describe("render - ListView - selection (5)", () => {
                         hideExpander: true,
                     })),
                 })),
-                { autoexpand: true, onSelectionChanged },
+                { expandAll: true, onSelectionChanged },
             );
 
             const listView = ref.current;
@@ -212,18 +213,18 @@ function SidebarTree({
 }) {
     return (
         <GtkScrolledWindow ref={scrollRef} minContentHeight={200} maxContentHeight={200} minContentWidth={200}>
-            <GtkListView
+            <ListView
                 ref={listRef}
                 cssClasses={["navigation-sidebar"]}
-                autoexpand
+                expandedIds={allExpandableIds(toSidebarListItems(sidebarData))}
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 items={toSidebarListItems(sidebarData)}
-                selected={selectedId ? [selectedId] : []}
+                selectedIds={selectedId ? [selectedId] : []}
                 onSelectionChanged={(ids: string[]) => {
                     const id = ids[0];
                     if (id) onSelect(id);
                 }}
-                renderItem={(item: SidebarItem) => <GtkLabel label={item.name} />}
+                renderItem={({ item }) => <GtkLabel label={item.name} />}
             />
         </GtkScrolledWindow>
     );
@@ -299,9 +300,11 @@ describe("render - ListView - selection (7) > selectionMode + selected together"
             selected: ["1", "3"],
         });
 
-        const selection = (ref.current.getModel() as Gtk.MultiSelection).getSelection();
-        expect(selection.getSize()).toBe(2n);
-        expect(selection.contains(0)).toBe(true);
-        expect(selection.contains(2)).toBe(true);
+        await waitFor(() => {
+            const selection = (ref.current.getModel() as Gtk.MultiSelection).getSelection();
+            expect(selection.getSize()).toBe(2n);
+            expect(selection.contains(0)).toBe(true);
+            expect(selection.contains(2)).toBe(true);
+        });
     });
 });

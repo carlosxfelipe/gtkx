@@ -1,3 +1,4 @@
+import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import { buildCss } from "../src/build-css.js";
 
@@ -10,14 +11,12 @@ describe("buildCss", () => {
         expect(buildCss("anim", { opacity: 0.5 })).toBe(".anim { opacity: 0.5; }");
     });
 
-    it("coalesces translateX and translateY into a single translate fragment", () => {
-        expect(buildCss("anim", { translateX: 10, translateY: 20 })).toBe(
-            ".anim { transform: translate(10px, 20px); }",
-        );
+    it("coalesces x and y into a single translate fragment", () => {
+        expect(buildCss("anim", { x: 10, y: 20 })).toBe(".anim { transform: translate(10px, 20px); }");
     });
 
     it("defaults a missing translate axis to zero", () => {
-        expect(buildCss("anim", { translateX: 10 })).toBe(".anim { transform: translate(10px, 0px); }");
+        expect(buildCss("anim", { x: 10 })).toBe(".anim { transform: translate(10px, 0px); }");
     });
 
     it("lets scale shadow scaleX and scaleY", () => {
@@ -35,7 +34,7 @@ describe("buildCss", () => {
     it("orders style declarations before transform fragments in the declared order", () => {
         const css = buildCss("anim", {
             opacity: 0.5,
-            translateX: 10,
+            x: 10,
             scale: 2,
             rotate: 45,
             skewX: 5,
@@ -44,5 +43,27 @@ describe("buildCss", () => {
         expect(css).toBe(
             ".anim { opacity: 0.5; transform: translate(10px, 0px) scale(2) rotate(45deg) skewX(5deg) skewY(6deg); }",
         );
+    });
+
+    it("emits transform and opacity CSS that GTK parses without error", () => {
+        const provider = new Gtk.CssProvider();
+        const errors: string[] = [];
+        provider.on("parsing-error", (_section, error) => {
+            errors.push(error.message);
+        });
+
+        provider.loadFromString(
+            buildCss("gtkx-anim-probe", {
+                opacity: 0.5,
+                x: 10,
+                y: 5,
+                scale: 2,
+                rotate: 45,
+                skewX: 5,
+                skewY: 6,
+            }),
+        );
+
+        expect(errors).toEqual([]);
     });
 });

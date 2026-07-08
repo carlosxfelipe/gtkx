@@ -1,7 +1,12 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import { sourceResolveConfig } from "../../vitest.config.base.js";
 
-export default defineConfig({
-    test: {
-        name: "create-gtkx",
-    },
-});
+export default mergeConfig(
+    sourceResolveConfig,
+    defineConfig({
+        test: {
+            name: "create-gtkx",
+            include: ["tests/**/*.test.{ts,tsx}"],
+        },
+    }),
+);

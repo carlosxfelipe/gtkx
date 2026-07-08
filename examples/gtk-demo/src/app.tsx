@@ -1,11 +1,11 @@
 import * as path from "node:path/posix";
-import { applicationId } from "virtual:gtkx-config";
-import * as Adw from "@gtkx/gi/adw";
+import { Menu } from "@gtkx/components";
+import { Dialog } from "@gtkx/components/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog } from "@gtkx/jsx/adw";
-import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { AdwAboutDialog, AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
     GtkApplicationWindow,
@@ -118,10 +118,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                 cssClasses={currentDemo.windowCssClasses}
                 defaultWidget={defaultWidget}
                 titlebar={titlebar}
-                onCloseRequest={() => {
-                    onClose();
-                    return true;
-                }}
+                onCloseRequest={quit}
             >
                 <DemoComponent onClose={onClose} window={windowRef} />
             </GtkWindow>
@@ -129,22 +126,26 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     );
 };
 
-const showShortcutsDialog = (activeWindow: Gtk.Window) => {
-    const dialog = new Adw.ShortcutsDialog();
+interface ShortcutsDialogProps {
+    activeWindow: Gtk.Window;
+    onClose: () => void;
+}
 
-    const general = Adw.ShortcutsSection.new("General");
-    general.add(Adw.ShortcutsItem.new("Search demos", "<Control>f"));
-    general.add(Adw.ShortcutsItem.new("Open Inspector", "<Control><Shift>i"));
-    general.add(Adw.ShortcutsItem.new("Keyboard Shortcuts", "<Control>question"));
-    dialog.add(general);
-
-    const navigation = Adw.ShortcutsSection.new("Navigation");
-    navigation.add(Adw.ShortcutsItem.new("Next tab", "<Control>Page_Down"));
-    navigation.add(Adw.ShortcutsItem.new("Previous tab", "<Control>Page_Up"));
-    dialog.add(navigation);
-
-    dialog.present(activeWindow);
-};
+const ShortcutsDialog = ({ activeWindow, onClose }: ShortcutsDialogProps) => (
+    <Dialog parent={activeWindow}>
+        <AdwShortcutsDialog onClosed={onClose}>
+            <AdwShortcutsSection title="General">
+                <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
+                <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
+                <AdwShortcutsItem title="Keyboard Shortcuts" accelerator="<Control>question" />
+            </AdwShortcutsSection>
+            <AdwShortcutsSection title="Navigation">
+                <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
+                <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
+            </AdwShortcutsSection>
+        </AdwShortcutsDialog>
+    </Dialog>
+);
 
 interface AppHeaderBarProps {
     hasDemo: boolean;
@@ -181,7 +182,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
                 menuModel={
-                    <GMenu
+                    <Menu
                         items={[
                             {
                                 section: [
@@ -246,12 +247,12 @@ const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
         showBorder={false}
         enablePopup
     >
-        <GtkNotebookPage tabLabel={<GtkLabel label="_Info" useUnderline />}>
+        <GtkNotebookPage tabLabel="Info">
             <GtkScrolledWindow vexpand hexpand>
                 <InfoTab />
             </GtkScrolledWindow>
         </GtkNotebookPage>
-        <GtkNotebookPage tabLabel={<GtkLabel label="Source" />}>
+        <GtkNotebookPage tabLabel="Source">
             <SourceViewer />
         </GtkNotebookPage>
     </GtkNotebook>
@@ -263,19 +264,20 @@ interface AboutDialogProps {
 }
 
 const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) => (
-    <AdwAboutDialog
-        parent={activeWindow}
-        applicationName="GTK Demo"
-        applicationIcon={applicationIconName}
-        version="0.14.0"
-        copyright="© 2026 The GTKX Team"
-        website="https://gtkx.dev"
-        comments="Program to demonstrate GTKX widgets"
-        developerName="The GTKX Team"
-        developers={["The GTKX Team"]}
-        licenseType={Gtk.License.MPL_2_0}
-        onClosed={onClose}
-    />
+    <Dialog parent={activeWindow}>
+        <AdwAboutDialog
+            applicationName="GTK Demo"
+            applicationIcon={applicationIconName}
+            version="0.14.0"
+            copyright="© 2026 The GTKX Team"
+            website="https://gtkx.dev"
+            comments="Program to demonstrate GTKX widgets"
+            developerName="The GTKX Team"
+            developers={["The GTKX Team"]}
+            licenseType={Gtk.License.MPL_2_0}
+            onClosed={onClose}
+        />
+    </Dialog>
 );
 
 const useDemoWindows = () => {
@@ -357,6 +359,7 @@ const MainWindow = () => {
     const { currentDemo, setSearchQuery } = useDemo();
     const [searchMode, setSearchMode] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
     const { demoWindows, openWindow, closeWindow } = useDemoWindows();
     const app = useApplication();
@@ -370,8 +373,7 @@ const MainWindow = () => {
     };
 
     const handleKeyboardShortcuts = () => {
-        if (!activeWindow) return;
-        showShortcutsDialog(activeWindow);
+        setShowShortcuts(true);
     };
 
     return (
@@ -385,10 +387,7 @@ const MainWindow = () => {
                 onRun: handleRun,
                 onSearchToggle: setSearchMode,
             })}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
+            onCloseRequest={quit}
             actions={renderMainWindowActions({
                 onKeyboardShortcuts: handleKeyboardShortcuts,
                 onShowAbout: () => setShowAbout(true),
@@ -408,6 +407,9 @@ const MainWindow = () => {
             {showAbout && activeWindow && (
                 <AboutDialog activeWindow={activeWindow} onClose={() => setShowAbout(false)} />
             )}
+            {showShortcuts && activeWindow && (
+                <ShortcutsDialog activeWindow={activeWindow} onClose={() => setShowShortcuts(false)} />
+            )}
         </GtkApplicationWindow>
     );
 };
@@ -424,11 +426,10 @@ export const Demo = () => {
 
 export const App = () => (
     <GtkApplication
-        applicationId={applicationId}
         flags={Gio.ApplicationFlags.NON_UNIQUE}
         actionAccels={[
-            { action: "win.inspector", accels: ["<Control><Shift>i"] },
-            { action: "win.shortcuts", accels: ["<Control>question"] },
+            { detailedActionName: "win.inspector", accels: ["<Control><Shift>i"] },
+            { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
         ]}
     >
         <Demo />

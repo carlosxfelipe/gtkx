@@ -1,17 +1,13 @@
-import { sortedAlpha, sortedAlphaBy } from "@gtkx/utils";
-import { ModuleBuilder } from "../dsl/module.js";
-import { GL_SCALARS } from "./ctype.js";
+import { sortedStrings, sortedStringsBy } from "@gtkx/utils";
+import { ModuleBuilder } from "../writer/module.js";
 import type { GlEnum } from "./model.js";
+import { GL_SCALARS } from "./plan.js";
 import type { RenderedCommand } from "./render.js";
 
-const LIB_CONSTANT = `const LIB = "libGL.so.1";`;
+const LIB_CONSTANT = `export const LIB = "libGL.so.1";`;
 
 const GENERATED_HEADER = `/**
  * GENERATED FILE — do not edit.
- *
- * Emitted by the \`@gtkx/codegen\` Khronos generator from the vendored
- * \`registry/gl.xml\` (gl 4.6 core profile). Regenerate with
- * \`pnpm --filter @gtkx/codegen codegen:gl\`.
  */`;
 
 export const renderEnumsModule = (
@@ -29,10 +25,13 @@ export const renderEnumsModule = (
 
 export const renderTypesModule = (groupAliases: Map<string, string>): string => {
     const builder = new ModuleBuilder();
+    builder.imports.addNamed("@gtkx/native", "ExternalObject", true);
     builder.imports.addNamed("@gtkx/native", "Handle", true);
-    builder.appendDeclaration(`/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = Handle;`);
     builder.appendDeclaration(
-        `/** An opaque native pointer handle (e.g. a \`glMapBufferRange\` mapping). */\nexport type GLpointer = Handle;`,
+        `/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = ExternalObject<Handle>;`,
+    );
+    builder.appendDeclaration(
+        `/** An opaque native pointer handle (e.g. a \`glMapBufferRange\` mapping). */\nexport type GLpointer = ExternalObject<Handle>;`,
     );
     const seen = new Set<string>();
     for (const scalar of GL_SCALARS.values()) {
@@ -42,7 +41,7 @@ export const renderTypesModule = (groupAliases: Map<string, string>): string => 
             `/** The C \`${scalar.tsAlias}\` scalar. */\nexport type ${scalar.tsAlias} = number;`,
         );
     }
-    for (const [group, base] of sortedAlphaBy(groupAliases.entries(), ([key]) => key)) {
+    for (const [group, base] of sortedStringsBy(groupAliases.entries(), ([key]) => key)) {
         builder.appendDeclaration(
             `/** Registry enum group \`${group}\`; open and documentation-only, any \`${base}\` value is accepted. */\nexport type ${group} = ${base};`,
         );
@@ -59,7 +58,7 @@ export const renderCommandsModule = (
 ): string => {
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/ffi", "t");
-    for (const alias of sortedAlpha(usedTypes)) {
+    for (const alias of sortedStrings(usedTypes)) {
         if (TS_PRIMITIVES.has(alias)) continue;
         builder.imports.addNamed("./types.js", alias, true);
     }

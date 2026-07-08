@@ -1,34 +1,30 @@
-import { BUFFER_TEXT_KIND, LABEL_TEXT_KIND } from "@gtkx/config";
+import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { freeze, unfreeze } from "@gtkx/native";
-import { createContext } from "react";
+import { type Context, createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
-import { isDefaultBlockableType } from "../utils/gtype.js";
-import { classHasType } from "../utils/gtype-predicates.js";
+import { typeChainIncludes } from "../utils/gtype.js";
 import { applyAccessibleProps, isAccessibleProp } from "./accessible.js";
 import { applyProps } from "./apply-props.js";
-import { beginCommit, endCommit, runCommitFlush } from "./commit-flush.js";
-import { attachNode, detachFromParent, detachNode, resyncWrapper } from "./element-map.js";
-import {
-    createElementInstance,
-    createWrapperInstance,
-    resolveContainerClass,
-    WRAPPER_NODE_ELEMENT,
-} from "./instance.js";
+import { runCommitFlush } from "./commit-flush.js";
+import { attachNode, detachFromParent, detachNode, resyncWrapperNode } from "./dispatch.js";
+import { applyElementProps, reapplyLazyProps } from "./element-prop-appliers.js";
+import { isAppliedProp } from "./element-props.js";
+import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
-import { getDescriptors } from "./prop-descriptor-table.js";
-import { reportReconcilerError } from "./reconciler-error-sink.js";
+import { reportReconcilerError } from "./reconciler-error-handler.js";
+import { getSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
-import { isBufferContentWrapper, isLabelTextWrapper } from "./text-wrapper.js";
-import type { ContainerInfo, Props } from "./types.js";
-import { isWrapperElement } from "./wrapper-element.js";
+import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
+import type { Container, Props } from "./types.js";
+import { isWrapperNode } from "./wrapper-node.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
-type PublicInstance = Gtk.Widget | Gtk.Application;
+type PublicInstance = GObject.Object;
 
 type HostContext = {
     textHost?: "label" | "buffer";
@@ -37,7 +33,7 @@ type HostContext = {
 type HostConfig = ReactReconciler.HostConfig<
     string,
     Props,
-    ContainerInfo,
+    Container,
     Node,
     Node,
     never,
@@ -51,17 +47,7 @@ type HostConfig = ReactReconciler.HostConfig<
     number
 >;
 
-export type ReconcilerInstance = ReactReconciler.Reconciler<ContainerInfo, Node, Node, never, never, PublicInstance>;
-
-const withSignalsBlocked = <T>(instance: Node, fn: () => T): T => {
-    const { signalStore } = stateOf(instance);
-    signalStore.blockAll();
-    try {
-        return fn();
-    } finally {
-        signalStore.unblockAll();
-    }
-};
+export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Node, never, never, PublicInstance>;
 
 const link = (parent: Node, child: Node): void => {
     const { children } = stateOf(parent);
@@ -89,14 +75,14 @@ const unlink = (parent: Node, child: Node): void => {
 };
 
 const isBufferRelated = (instance: Node): boolean =>
-    isBufferContentWrapper(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
+    isBufferContentNode(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
 
 const maybeScheduleBufferRebuild = (parent: Node, child: Node): void => {
     if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
 };
 
 const maybeScheduleLabelTextRebuild = (parent: Node, child: Node): void => {
-    if (isLabelTextWrapper(child)) scheduleLabelTextRebuild(parent);
+    if (isLabelTextNode(child)) scheduleLabelTextRebuild(parent);
 };
 
 const scheduleTextRebuilds = (parent: Node, child: Node): void => {
@@ -104,17 +90,23 @@ const scheduleTextRebuilds = (parent: Node, child: Node): void => {
     maybeScheduleLabelTextRebuild(parent, child);
 };
 
+const reapplyParentLazy = (parent: Node): void => {
+    if (parent instanceof GObject.Object) reapplyLazyProps(parent, stateOf(parent).props);
+};
+
 const appendChild = (parent: Node, child: Node): void => {
     const fresh = stateOf(child).parent === null;
     link(parent, child);
     attachNode(parent, child, null, fresh);
     scheduleTextRebuilds(parent, child);
+    reapplyParentLazy(parent);
 };
 
 const insertBefore = (parent: Node, child: Node, before: Node): void => {
     linkBefore(parent, child, before);
     attachNode(parent, child, before, false);
     scheduleTextRebuilds(parent, child);
+    reapplyParentLazy(parent);
 };
 
 const removeChild = (parent: Node, child: Node): void => {
@@ -126,34 +118,42 @@ const removeChild = (parent: Node, child: Node): void => {
 const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: Props): void => {
     const state = stateOf(instance);
     state.props = newProps;
-    if (isWrapperElement(instance)) {
-        if (isBufferContentWrapper(instance)) scheduleBufferRebuild(instance);
-        else resyncWrapper(instance);
+    if (isWrapperNode(instance)) {
+        if (isBufferContentNode(instance)) scheduleBufferRebuild(instance);
+        else resyncWrapperNode(instance);
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
-    const descriptors = getDescriptors(instance);
-    if (instance instanceof Gtk.Widget) {
-        applyAccessibleProps(instance, oldProps, newProps);
-        applyProps(instance, oldProps, newProps, { descriptors, exclude: isAccessibleProp });
+    const excludeApplied = (name: string): boolean => isAppliedProp(instance.__type__, name);
+    const applyGenericAndSignals = (): void => {
+        if (instance instanceof Gtk.Accessible) {
+            applyAccessibleProps(instance, oldProps, newProps);
+            applyProps(instance, oldProps, newProps, {
+                exclude: (name) => isAccessibleProp(name) || excludeApplied(name),
+            });
+        } else {
+            applyProps(instance, oldProps, newProps, { exclude: excludeApplied });
+        }
+    };
+    if (oldProps === null) {
+        applyElementProps(instance, oldProps, newProps);
+        applyGenericAndSignals();
     } else {
-        applyProps(instance, oldProps, newProps, {
-            descriptors,
-            defaultBlockable: isDefaultBlockableType(instance.__gtype__),
-        });
+        applyGenericAndSignals();
+        applyElementProps(instance, oldProps, newProps);
     }
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
 };
 
-const needsDetachOnDelete = (backing: GObject.Object): boolean =>
-    !(backing instanceof Gtk.Widget) && !(backing instanceof Gtk.TextBuffer);
+const needsDetachOnDelete = (wrapper: GObject.Object): boolean =>
+    !(wrapper instanceof Gtk.Widget) && !(wrapper instanceof Gtk.TextBuffer);
 
 const detachInstance = (instance: Node): void => {
     const state = stateOf(instance);
     if (instance instanceof GObject.Object && needsDetachOnDelete(instance) && state.parent) {
         detachFromParent(instance, state.parent);
     }
-    state.signalStore.clear(instance);
+    if (instance instanceof GObject.Object) state.signalStore.clear(instance);
 };
 
 const createDetachGuard = (): ((instance: Node) => void) => {
@@ -214,11 +214,11 @@ const textHostKinds = new Map<string, TextHostKind>();
 const resolveTextHostKind = (type: string): TextHostKind => {
     const cached = textHostKinds.get(type);
     if (cached !== undefined) return cached;
-    const containerClass = resolveContainerClass(type);
+    const gtype = GObject.typeFromName(type);
     let kind: TextHostKind = null;
-    if (classHasType(containerClass, "GtkLabel")) kind = "label";
-    else if (classHasType(containerClass, "GtkTextBuffer")) kind = "buffer";
-    else if (classHasType(containerClass, "GtkTextTag")) kind = "tag";
+    if (typeChainIncludes(gtype, "GtkLabel")) kind = "label";
+    else if (typeChainIncludes(gtype, "GtkTextBuffer")) kind = "buffer";
+    else if (typeChainIncludes(gtype, "GtkTextTag")) kind = "tag";
     textHostKinds.set(type, kind);
     return kind;
 };
@@ -241,10 +241,16 @@ type InstanceConfig = Pick<
 >;
 
 const createInstanceConfig = (): InstanceConfig => ({
-    createInstance: (type, props, rootContainer) =>
-        type === WRAPPER_NODE_ELEMENT
-            ? createWrapperInstance(typeof props["kind"] === "string" ? props["kind"] : "", props, rootContainer)
-            : createElementInstance(type, props, rootContainer),
+    createInstance: (type, props, rootContainer) => {
+        if (type !== WRAPPER_NODE_ELEMENT) {
+            return createElementInstance(type, props, rootContainer);
+        }
+        const kind = props.kind;
+        if (!isWrapperKind(kind)) {
+            throw new Error(`Wrapper node element has an invalid kind: ${JSON.stringify(kind)}`);
+        }
+        return createWrapperInstance(kind, props, rootContainer);
+    },
     createTextInstance: (text, rootContainer, hostContext) => {
         if (hostContext.textHost === "buffer") {
             return createWrapperInstance(BUFFER_TEXT_KIND, { text }, rootContainer);
@@ -260,10 +266,13 @@ const createInstanceConfig = (): InstanceConfig => ({
         appendChild(parent, child);
     },
     finalizeInitialChildren: (instance, _type, props) => {
-        withSignalsBlocked(instance, () => commitInstanceProps(instance, null, props));
+        commitInstanceProps(instance, null, props);
         return false;
     },
-    getPublicInstance: (instance) => instance as PublicInstance,
+    getPublicInstance: (instance) => {
+        const adopted = isWrapperNode(instance) ? stateOf(instance).adoptedInstance : undefined;
+        return (adopted ?? instance) as PublicInstance;
+    },
 });
 
 type MutationConfig = Pick<
@@ -304,38 +313,37 @@ const createMutationConfig = (): MutationConfig => ({
 
 type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit">;
 
-const guardCommitStep = (step: () => void): void => {
+const catchErrors = (fn: () => void): void => {
     try {
-        step();
+        fn();
     } catch (error) {
         reportReconcilerError(error);
     }
 };
 
-const drainCommitQueue = (): void => guardCommitStep(runCommitFlush);
+const drainCommitQueue = (): void => catchErrors(runCommitFlush);
 
-const finalizeCommitAfterLayoutEffects = (): void => {
+const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
-    endCommit();
-    guardCommitStep(unfreeze);
+    getSignalStore(container).unblock();
+    catchErrors(unfreeze);
 };
 
 const createCommitConfig = (): CommitConfig => ({
-    commitUpdate: (instance, _type, oldProps, newProps) =>
-        withSignalsBlocked(instance, () => commitInstanceProps(instance, oldProps, newProps)),
+    commitUpdate: (instance, _type, oldProps, newProps) => commitInstanceProps(instance, oldProps, newProps),
     commitTextUpdate: (textInstance, _oldText, newText) => {
         stateOf(textInstance).props = { text: newText };
-        if (isBufferContentWrapper(textInstance)) scheduleBufferRebuild(textInstance);
+        if (isBufferContentNode(textInstance)) scheduleBufferRebuild(textInstance);
         else scheduleLabelTextRebuild(textInstance);
     },
-    prepareForCommit: () => {
-        freeze();
-        beginCommit();
+    prepareForCommit: (container) => {
+        catchErrors(freeze);
+        getSignalStore(container).block();
         return null;
     },
-    resetAfterCommit: () => {
+    resetAfterCommit: (container) => {
         drainCommitQueue();
-        queueMicrotask(finalizeCommitAfterLayoutEffects);
+        queueMicrotask(() => finalizeCommitAfterLayoutEffects(container));
     },
 });
 
@@ -365,7 +373,7 @@ type NoopConfig = Pick<
 const createNoopConfig = (): NoopConfig => ({
     preparePortalMount: () => {},
     NotPendingTransition: null,
-    HostTransitionContext: createContext(0) as unknown as ReactReconciler.ReactContext<number>,
+    HostTransitionContext: createContext(0) as Context<number> & ReactReconciler.ReactContext<number>,
     getInstanceFromNode: () => null,
     beforeActiveInstanceBlur: () => {},
     afterActiveInstanceBlur: () => {},

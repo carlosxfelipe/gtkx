@@ -1,70 +1,82 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { CodegenRunner } from "@gtkx/codegen";
-import {
-    type GtkxConfig,
-    GtkxConfigNotFoundError,
-    loadGtkxConfig,
-    resolveDataDir,
-    type UserTableRows,
-} from "@gtkx/config";
+import { runCodegen as runCodegenCore } from "@gtkx/codegen";
+import { type ElementProp, type GtkxConfig, loadGtkxConfig } from "@gtkx/config";
+import { info } from "@gtkx/utils";
 import { emitSchemaEnv } from "../gsettings/env.js";
+import { resolveDataDir } from "../internal/data-dir.js";
 import { GtkxError } from "../internal/errors.js";
-import { info } from "../internal/log.js";
-import { type CodegenInputs, isCodegenNeeded, resolveCodegenInputs } from "./freshness.js";
-import { type CodegenStore, findCodegenRoot, isWorkspaceRoot, resolveCodegenContext } from "./store-resolver.js";
+import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
+import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 export type RunCodegenOptions = {
     cwd?: string;
+    mode?: string | undefined;
     force?: boolean;
     inputs?: CodegenInputs;
+    resolved?: LoadedConfig;
+};
+
+type LoadedConfig = {
+    config: GtkxConfig;
+    configFile: string | undefined;
 };
 
 export type RunCodegenResult = {
     namespaces: number;
-    widgets: number;
+    intrinsicElements: number;
     duration: number;
     girPath?: string[] | undefined;
     configFile?: string | undefined;
     libraries?: string[] | undefined;
 };
 
-const tableRows = (config: GtkxConfig): UserTableRows => {
-    const { containerProps, arrayProps, objectProps, virtualProps, elementMap } = config;
-    return { containerProps, arrayProps, objectProps, virtualProps, elementMap };
+const removeSharedStoreShadow = (cwd: string): void => {
+    for (const path of [
+        resolve(cwd, "node_modules/.gtkx/gi"),
+        resolve(cwd, "node_modules/.gtkx/jsx"),
+        resolve(cwd, "node_modules/@gtkx/gi"),
+        resolve(cwd, "node_modules/@gtkx/jsx"),
+    ]) {
+        rmSync(path, { recursive: true, force: true });
+    }
 };
 
-const buildRunner = (store: CodegenStore, libraries: string[], girPath: string[], config: GtkxConfig): CodegenRunner =>
-    new CodegenRunner({
-        libraries,
-        girPath,
-        tables: tableRows(config),
-        gi: {
-            storeDir: store.giStoreDir,
-            linkDir: store.giLinkDir,
-            realFfiDir: store.realFfiDir,
-            realNativeDir: store.realNativeDir,
-            version: store.ffiVersion,
-        },
-        jsx:
-            store.react !== null && store.realReactRuntimeDir !== null
-                ? {
-                      storeDir: store.jsxStoreDir,
-                      linkDir: store.jsxLinkDir,
-                      giStoreDir: store.giStoreDir,
-                      realReactRuntimeDir: store.realReactRuntimeDir,
-                      realReactPackageDir: store.react.realDir,
-                      version: store.react.version,
-                  }
-                : undefined,
-    });
+const codegenOptions = (
+    store: CodegenStore,
+    libraries: string[],
+    girPath: string[],
+    elementProps: Record<string, ElementProp[]>,
+) => ({
+    libraries,
+    girPath,
+    elementProps,
+    gi: {
+        storeDir: store.giStoreDir,
+        linkDir: store.giLinkDir,
+        version: store.ffiVersion,
+    },
+    jsx:
+        store.react !== null
+            ? {
+                  storeDir: store.jsxStoreDir,
+                  linkDir: store.jsxLinkDir,
+                  version: store.react.version,
+              }
+            : undefined,
+});
 
 export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
-    const cwd = findCodegenRoot(options.cwd ?? process.cwd());
+    const cwd = options.cwd ?? process.cwd();
 
-    const { config, configFile } = await loadGtkxConfig(cwd);
+    const { config, configFile } = options.resolved ?? (await loadGtkxConfig(cwd, { mode: options.mode }));
 
-    const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
+    if (config.codegen === false) {
+        removeSharedStoreShadow(cwd);
+        return { namespaces: 0, intrinsicElements: 0, duration: 0, girPath: [], configFile, libraries: [] };
+    }
+
+    const { girPath, libraries, elementProps, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
 
     if (girPath.length === 0) {
         throw new GtkxError(
@@ -78,11 +90,11 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         }
     }
 
-    const result = await buildRunner(store, libraries, girPath, config).run();
+    const result = await runCodegenCore(codegenOptions(store, libraries, girPath, elementProps));
 
     return {
         namespaces: result.namespaces,
-        widgets: result.widgets,
+        intrinsicElements: result.intrinsicElements,
         duration: result.duration,
         girPath,
         configFile,
@@ -90,9 +102,19 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     };
 };
 
+export const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
+    try {
+        const { config } = await loadGtkxConfig(cwd, { mode });
+        return config.codegen === false;
+    } catch {
+        return false;
+    }
+};
+
 export const syncSchemaEnv = (cwd: string): void => {
-    if (isWorkspaceRoot(cwd)) return;
-    emitSchemaEnv(cwd, resolveDataDir(cwd));
+    const dataDir = resolveDataDir(cwd);
+    if (dataDir === null) return;
+    emitSchemaEnv(cwd, dataDir);
 };
 
 const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | null => {
@@ -103,52 +125,49 @@ const resolveInputsOrNull = (cwd: string, config: GtkxConfig): CodegenInputs | n
     }
 };
 
-export const ensureGenerated = async (cwd: string): Promise<boolean> => {
-    const context = await resolveCodegenContext(cwd);
+export const ensureGenerated = async (
+    cwd: string,
+    options: { announce?: boolean; mode?: string } = {},
+): Promise<boolean> => {
+    if (options.announce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
+        return false;
+    }
+
+    const context = await resolveCodegenContext(cwd, options.mode);
     if (!context) {
         return false;
     }
     syncSchemaEnv(cwd);
-    const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs !== null && !isCodegenNeeded(context.config, inputs)) {
+    if (context.config.codegen === false) {
+        removeSharedStoreShadow(context.root);
         return false;
     }
-    await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
-    return true;
-};
-
-export const preflightCodegen = async (cwd: string): Promise<void> => {
-    if (process.env["GTKX_DISABLE_PREFLIGHT"] === "1") {
-        return;
-    }
-
-    const context = await resolveCodegenContext(cwd);
-    if (!context) {
-        return;
-    }
-    syncSchemaEnv(cwd);
     const inputs = resolveInputsOrNull(context.root, context.config);
-    if (inputs === null || isCodegenNeeded(context.config, inputs)) {
+    if (inputs !== null && !isCodegenStale(inputs)) {
+        return false;
+    }
+    if (options.announce) {
         info("generated bindings missing; running codegen...");
-        await runCodegen(inputs === null ? { cwd: context.root } : { cwd: context.root, inputs });
     }
+    const resolved = { config: context.config, configFile: context.configFile };
+    await runCodegen(
+        inputs === null
+            ? { cwd: context.root, mode: options.mode, resolved }
+            : { cwd: context.root, mode: options.mode, inputs, resolved },
+    );
+    return true;
 };
 
 export const resolveConfigWatch = async (
     cwd: string,
+    mode?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
-    const root = findCodegenRoot(cwd);
-    try {
-        const { configFile, rootDir } = await loadGtkxConfig(root);
-        if (configFile === undefined) return undefined;
-        return {
-            paths: [resolve(rootDir, configFile)],
-            regenerate: async () => {
-                await runCodegen({ cwd: root });
-            },
-        };
-    } catch (error) {
-        if (error instanceof GtkxConfigNotFoundError) return undefined;
-        throw error;
-    }
+    const { configFile, root } = await loadGtkxConfig(cwd, { mode });
+    if (configFile === undefined) return undefined;
+    return {
+        paths: [resolve(root, configFile)],
+        regenerate: async () => {
+            await runCodegen({ cwd: root, mode });
+        },
+    };
 };

@@ -6,13 +6,13 @@ import { describe, expect, it } from "vitest";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
 import { renderChildren } from "../helpers/render-children.js";
 
-describe("render - NotebookPage > NotebookPageNode (1)", () => {
+describe("render - NotebookPage (1)", () => {
     it("adds page to Notebook", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page 1">
+                <GtkNotebookPage tabLabel="Page 1">
                     <GtkLabel label="Content 1" />
                 </GtkNotebookPage>
             </GtkNotebook>,
@@ -27,18 +27,18 @@ describe("render - NotebookPage > NotebookPageNode (1)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="My Tab">
+                <GtkNotebookPage tabLabel="My Tab">
                     <GtkLabel ref={contentRef} label="Content" />
                 </GtkNotebookPage>
             </GtkNotebook>,
         );
 
-        const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
-        expect(tabLabel?.getLabel()).toBe("My Tab");
+        const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        expect(page?.tabLabel).toBe("My Tab");
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (2)", () => {
+describe("render - NotebookPage (2)", () => {
     it("updates tab label on prop change", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
@@ -46,7 +46,7 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
         function App({ labelText }: { labelText: string }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage label={labelText}>
+                    <GtkNotebookPage tabLabel={labelText}>
                         <GtkLabel ref={contentRef} label="Content" />
                     </GtkNotebookPage>
                 </GtkNotebook>
@@ -54,12 +54,12 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
         }
 
         await render(<App labelText="Initial" />);
-        let tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
-        expect(tabLabel?.getLabel()).toBe("Initial");
+        let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        expect(page?.tabLabel).toBe("Initial");
 
         await render(<App labelText="Updated" />);
-        tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
-        expect(tabLabel?.getLabel()).toBe("Updated");
+        page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        expect(page?.tabLabel).toBe("Updated");
     });
 
     it("adds multiple pages", async () => {
@@ -67,13 +67,13 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
 
         await render(
             <GtkNotebook ref={notebookRef}>
-                <GtkNotebookPage label="Page 1">
+                <GtkNotebookPage tabLabel="Page 1">
                     <GtkLabel label="Content 1" />
                 </GtkNotebookPage>
-                <GtkNotebookPage label="Page 2">
+                <GtkNotebookPage tabLabel="Page 2">
                     <GtkLabel label="Content 2" />
                 </GtkNotebookPage>
-                <GtkNotebookPage label="Page 3">
+                <GtkNotebookPage tabLabel="Page 3">
                     <GtkLabel label="Content 3" />
                 </GtkNotebookPage>
             </GtkNotebook>,
@@ -93,7 +93,7 @@ describe("render - NotebookPage > NotebookPageNode (2)", () => {
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (3)", () => {
+describe("render - NotebookPage (3)", () => {
     it("handles page reordering", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
 
@@ -104,15 +104,15 @@ describe("render - NotebookPage > NotebookPageNode (3)", () => {
     });
 });
 
-describe("render - NotebookPage > NotebookPageNode (4)", () => {
-    it("attaches the page when content is inserted before an existing tab marker", async () => {
+describe("render - NotebookPage (4)", () => {
+    it("attaches the page when content is inserted before an existing tab wrapper element", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
 
         function App({ showContent }: { showContent: boolean }) {
             return (
                 <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage tabLabel={<GtkLabel label="Tab" />}>
+                    <GtkNotebookPage tabLabel="Tab">
                         {showContent ? <GtkLabel ref={contentRef} label="Content" /> : null}
                     </GtkNotebookPage>
                 </GtkNotebook>
@@ -124,7 +124,26 @@ describe("render - NotebookPage > NotebookPageNode (4)", () => {
 
         await render(<App showContent={true} />);
         expect(notebookRef.current?.getNPages()).toBe(1);
-        const tabLabel = notebookRef.current?.getTabLabel(contentRef.current as Gtk.Widget) as Gtk.Label;
-        expect(tabLabel?.getLabel()).toBe("Tab");
+        const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        expect(page?.tabLabel).toBe("Tab");
+    });
+});
+
+describe("render - NotebookPage (5)", () => {
+    it("applies tabExpand and tabFill page metadata", async () => {
+        const notebookRef = createRef<Gtk.Notebook>();
+        const contentRef = createRef<Gtk.Label>();
+
+        await render(
+            <GtkNotebook ref={notebookRef}>
+                <GtkNotebookPage tabLabel="Meta Tab" tabExpand tabFill={false}>
+                    <GtkLabel ref={contentRef} label="Content" />
+                </GtkNotebookPage>
+            </GtkNotebook>,
+        );
+
+        const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        expect(page?.tabExpand).toBe(true);
+        expect(page?.tabFill).toBe(false);
     });
 });

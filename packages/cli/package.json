@@ -30,16 +30,6 @@
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
-        ".": {
-            "source": "./src/index.ts",
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
-        },
-        "./builder": {
-            "source": "./src/builder.ts",
-            "types": "./dist/builder.d.ts",
-            "default": "./dist/builder.js"
-        },
         "./refresh-runtime": {
             "source": "./src/refresh-runtime.ts",
             "types": "./dist/refresh-runtime.d.ts",
@@ -63,10 +53,9 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b",
-        "check:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts --check",
-        "codegen": "node --conditions=source --import tsx src/cli.ts codegen --cwd ../..",
-        "generate:env": "node --conditions=source --import tsx scripts/generate-env-dts.ts"
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"
@@ -80,18 +69,15 @@
         "@gtkx/mcp": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "@swc/core": "^1.15.41",
+        "@swc/core": "^1.15.43",
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
         "create-gtkx": "workspace:*",
         "fast-xml-parser": "^5.9.3",
-        "picocolors": "^1.1.1",
         "react-refresh": "^0.18.0",
-        "typescript": "catalog:",
         "vite": "catalog:"
     },
     "devDependencies": {
-        "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@types/babel__core": "^7.20.5",
         "@types/react-refresh": "^0.14.7"

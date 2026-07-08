@@ -7,17 +7,17 @@ import {
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
-import { bindQueries } from "./bind-queries.js";
+import { runInAct } from "./act.js";
+import type { RenderResult } from "./bound-queries.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
-import { getConfig } from "./config.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureAndSaveScreenshot } from "./screenshot.js";
-import "./setup-runtime.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { QueryMap, RenderOptions, RenderResult, ScreenshotOptions, WindowSelector } from "./types.js";
-import { resetClipboard } from "./user-event.js";
+import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
+import { resetClipboard } from "./user-event/index.js";
+import { within } from "./within.js";
 
 let lastRenderError: Error | null = null;
 let errorHandlerInstalled = false;
@@ -33,7 +33,7 @@ const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
-    await getConfig().eventWrapper(() => {
+    await runInAct(() => {
         root.update(element);
     });
 
@@ -85,21 +85,39 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
     return { containerInfo: window, window };
 };
 
-const firstWidget = (baseElement: Container): Gtk.Widget => {
+const firstToplevelWidget = (baseElement: Container): Gtk.Widget => {
     if (baseElement instanceof Gtk.Widget) return baseElement;
     const [first] = traverse(baseElement);
     if (first) return first;
     throw new Error("render() produced no widgets: ensure the element renders visible content");
 };
 
-const resultContainer = (
+const resolveResultContainer = (
     resolved: ResolvedContainer,
     container: RenderOptions["container"],
     baseElement: Container,
 ): Gtk.Widget => {
     if (resolved.window) return resolved.window;
     if (container instanceof Gtk.Widget) return container;
-    return firstWidget(baseElement);
+    return firstToplevelWidget(baseElement);
+};
+
+const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | undefined) => ({
+    onUncaughtError: handleError,
+    onCaughtError: (error: unknown, errorInfo: ErrorInfo): void => {
+        handleError(error);
+        options?.onCaughtError?.(error, errorInfo);
+    },
+    onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
+        options?.onRecoverableError?.(error, errorInfo);
+    },
+});
+
+const applyEnableAnimations = (enabled: boolean): void => {
+    const settings = Gtk.Settings.getDefault();
+    if (settings) {
+        settings.gtkEnableAnimations = enabled;
+    }
 };
 
 export const render = async <Q extends QueryMap = Record<never, never>>(
@@ -108,23 +126,15 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
 
+    applyEnableAnimations(options?.animations === true);
+
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
-
-    const onCaughtError = (error: unknown, errorInfo: ErrorInfo): void => {
-        handleError(error);
-        options?.onCaughtError?.(error, errorInfo);
-    };
-    const onRecoverableError = (error: unknown, errorInfo: ErrorInfo): void => {
-        options?.onRecoverableError?.(error, errorInfo);
-    };
 
     const resolved = resolveContainer(options?.container);
     const root = createReconcilerRoot({
         containerInfo: resolved.containerInfo,
-        onUncaughtError: handleError,
-        onCaughtError,
-        onRecoverableError,
+        ...renderErrorHandlers(options),
     });
     const active: ActiveRender = { root, window: resolved.window };
     activeRenders.add(active);
@@ -141,11 +151,11 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     await update(wrap(element), root);
     resolved.window?.present();
 
+    const container = resolveResultContainer(resolved, options?.container, baseElement);
+
     const result: RenderResult<Q> = {
-        ...bindQueries(baseElement, options?.queries),
-        get container(): Gtk.Widget {
-            return resultContainer(resolved, options?.container, baseElement);
-        },
+        ...within(baseElement, options?.queries),
+        container,
         baseElement,
         unmount: async () => {
             await disposeActiveRender(active);

@@ -2,7 +2,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 
-export const IpcRequestSchema: z.ZodObject<
+export const RequestSchema: z.ZodObject<
     {
         id: z.ZodString;
         method: z.ZodString;
@@ -15,9 +15,9 @@ export const IpcRequestSchema: z.ZodObject<
     params: z.unknown().optional(),
 });
 
-export type IpcRequest = z.infer<typeof IpcRequestSchema>;
+export type Request = z.infer<typeof RequestSchema>;
 
-const IpcErrorSchema: z.ZodObject<
+const ErrorSchema: z.ZodObject<
     { code: z.ZodNumber; message: z.ZodString; data: z.ZodOptional<z.ZodUnknown> },
     z.core.$strip
 > = z.object({
@@ -26,20 +26,20 @@ const IpcErrorSchema: z.ZodObject<
     data: z.unknown().optional(),
 });
 
-export const IpcResponseSchema: z.ZodObject<
+export const ResponseSchema: z.ZodObject<
     {
         id: z.ZodString;
         result: z.ZodOptional<z.ZodUnknown>;
-        error: z.ZodOptional<typeof IpcErrorSchema>;
+        error: z.ZodOptional<typeof ErrorSchema>;
     },
     z.core.$strip
 > = z.object({
     id: z.string(),
     result: z.unknown().optional(),
-    error: IpcErrorSchema.optional(),
+    error: ErrorSchema.optional(),
 });
 
-export type IpcResponse = z.infer<typeof IpcResponseSchema>;
+export type Response = z.infer<typeof ResponseSchema>;
 
 export type SerializedWidget = {
     id: string;
@@ -70,7 +70,9 @@ export const RegisterParamsSchema: z.ZodObject<
 });
 
 const emptyParams: z.ZodObject<Record<string, never>, z.core.$strip> = z.object({});
-const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({ widgetId: z.string() });
+export const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({
+    widgetId: z.string(),
+});
 export const queryOptionsSchema: z.ZodObject<
     { name: z.ZodOptional<z.ZodString>; exact: z.ZodOptional<z.ZodBoolean>; timeout: z.ZodOptional<z.ZodNumber> },
     z.core.$strip
@@ -80,27 +82,27 @@ export const queryOptionsSchema: z.ZodObject<
     timeout: z.number().optional(),
 });
 
-const queryParams: z.ZodObject<
+export const queryParams: z.ZodObject<
     {
-        queryType: z.ZodEnum<{ role: "role"; text: "text"; name: "name"; labelText: "labelText" }>;
+        by: z.ZodEnum<{ role: "role"; text: "text"; name: "name"; labelText: "labelText" }>;
         value: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
         options: z.ZodOptional<typeof queryOptionsSchema>;
     },
     z.core.$strip
 > = z.object({
-    queryType: z.enum(["role", "text", "name", "labelText"]),
+    by: z.enum(["role", "text", "name", "labelText"]),
     value: z.union([z.string(), z.number()]),
     options: queryOptionsSchema.optional(),
 });
-const typeParams: z.ZodObject<
+export const typeParams: z.ZodObject<
     { widgetId: z.ZodString; text: z.ZodString; clear: z.ZodOptional<z.ZodBoolean> },
     z.core.$strip
 > = z.object({ widgetId: z.string(), text: z.string(), clear: z.boolean().optional() });
-const fireEventParams: z.ZodObject<
+export const fireEventParams: z.ZodObject<
     { widgetId: z.ZodString; signal: z.ZodString; args: z.ZodOptional<z.ZodArray<z.ZodUnknown>> },
     z.core.$strip
 > = z.object({ widgetId: z.string(), signal: z.string(), args: z.array(z.unknown()).optional() });
-const screenshotParams: z.ZodObject<{ windowId: z.ZodOptional<z.ZodString> }, z.core.$strip> = z.object({
+export const screenshotParams: z.ZodObject<{ windowId: z.ZodOptional<z.ZodString> }, z.core.$strip> = z.object({
     windowId: z.string().optional(),
 });
 
@@ -128,16 +130,12 @@ export type ServerRequestParams<Method extends keyof typeof ServerRequestParamsS
     (typeof ServerRequestParamsSchemas)[Method]
 >;
 
-export type WireParamsSchema<Output> = {
-    safeParse(value: unknown): { success: true; data: Output } | { success: false; error: { message: string } };
-};
+export type ParamsSchema<Output> = z.ZodType<Output>;
 
 export type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
 
-export type IpcMethod = ServerInitiatedMethod | "app.register" | "app.unregister";
+export type Message = Request | Response;
 
-export type IpcMessage = IpcRequest | IpcResponse;
-
-const getRuntimeDir = (): string => process.env["XDG_RUNTIME_DIR"] ?? tmpdir();
+const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
 
 export const DEFAULT_SOCKET_PATH: string = join(getRuntimeDir(), "gtkx-mcp.sock");

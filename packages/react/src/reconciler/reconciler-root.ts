@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { reconciler } from "./reconciler.js";
-import type { ContainerInfo } from "./types.js";
+import type { Container } from "./types.js";
 
 const noop = (): void => {};
 
@@ -9,14 +9,13 @@ type FiberRoot = ReturnType<typeof reconciler.createContainer>;
 type ReconcilerErrorCallback = (error: Error, info: { componentStack?: string | null }) => void;
 
 export type ReconcilerRootOptions = {
-    containerInfo: ContainerInfo;
+    containerInfo: Container;
     onUncaughtError: ReconcilerErrorCallback;
     onCaughtError: ReconcilerErrorCallback;
     onRecoverableError?: ReconcilerErrorCallback;
 };
 
 export type ReconcilerRoot = {
-    fiberRoot: FiberRoot;
     update(element: ReactNode): void;
     unmount<R>(free: (root: ReconcilerRoot) => R): R | undefined;
 };
@@ -38,7 +37,6 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
     );
 
     const root: ReconcilerRoot = {
-        fiberRoot,
         update: (element: ReactNode): void => {
             reconciler.updateContainer(element, fiberRoot, null, noop);
         },
@@ -52,8 +50,8 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
     return root;
 };
 
-export const unmountAllReconcilerRoots = <R>(free: (root: ReconcilerRoot) => R): R[] => {
+export const unmountAllReconcilerRoots = (free: (root: ReconcilerRoot) => void): void => {
     const roots = [...activeRoots];
     activeRoots.clear();
-    return roots.map(free);
+    roots.forEach(free);
 };

@@ -43,7 +43,9 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"
@@ -51,6 +53,6 @@
     "dependencies": {
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.29.0",
-        "zod": "^4.4.3"
+        "zod": "catalog:"
     }
 }

@@ -2,7 +2,6 @@
 .turbo/
 *.log
 *.tsbuildinfo
-/.gtkx
 /.pnpm-store/
 /CLAUDE.md
 coverage/
@@ -11,3 +10,5 @@ gschemas.compiled
 node_modules/
 out-tsc/
 packages/**/README.md
+.codspeed/
+packages/gl/src/generated/

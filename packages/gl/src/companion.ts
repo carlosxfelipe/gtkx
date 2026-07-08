@@ -1,5 +1,5 @@
 import { t } from "@gtkx/ffi";
-import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv } from "./generated/commands.js";
+import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
 import {
     ALREADY_SIGNALED,
     CONDITION_SATISFIED,
@@ -8,9 +8,17 @@ import {
     INFO_LOG_LENGTH,
     TIMEOUT_EXPIRED,
 } from "./generated/enums.js";
-import type { GLbitfield, GLenum, GLint, GLsync, GLuint } from "./generated/types.js";
-
-const LIB = "libGL.so.1";
+import type {
+    DebugSeverity,
+    DebugSource,
+    DebugType,
+    GLenum,
+    GLint,
+    GLsync,
+    GLuint,
+    SyncObjectMask,
+    SyncStatus,
+} from "./generated/types.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
 
@@ -41,10 +49,10 @@ export function getProgramPipelineInfoLog(pipeline: GLuint): string {
 }
 
 export type DebugMessageCallback = (
-    source: GLenum,
-    type: GLenum,
+    source: DebugSource,
+    type: DebugType,
     id: GLuint,
-    severity: GLenum,
+    severity: DebugSeverity,
     message: string,
 ) => void;
 
@@ -75,7 +83,7 @@ export function debugMessageCallback(callback: DebugMessageCallback | null): voi
 
 const MAX_WAIT_CHUNK_NS = 1_000_000_000;
 
-export function clientWaitSyncLoop(sync: GLsync, flags: GLbitfield, timeoutNs: number): GLenum {
+export function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutNs: number): SyncStatus {
     let remaining = timeoutNs;
     let currentFlags = flags;
     for (;;) {

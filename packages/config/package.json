@@ -33,6 +33,11 @@
         },
         "./env": {
             "types": "./env.d.ts"
+        },
+        "./plugin": {
+            "source": "./src/plugin.ts",
+            "types": "./dist/plugin.d.ts",
+            "default": "./dist/plugin.js"
         }
     },
     "sideEffects": false,
@@ -42,14 +47,17 @@
         "env.d.ts"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/utils": "workspace:*",
         "c12": "^3.3.4",
-        "vite": "catalog:"
+        "defu": "^6.1.7",
+        "vite": "catalog:",
+        "zod": "catalog:"
     }
 }

@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/gl",
     "version": "0.21.0",
-    "description": "Hand-written OpenGL bindings for GTKX GLArea rendering",
+    "description": "Generated OpenGL 4.6 core bindings plus companion helpers for GTKX GLArea rendering",
     "keywords": [
         "gtkx",
         "gtk",
@@ -38,7 +38,10 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "codegen": "NODE_OPTIONS=--conditions=source tsx ./scripts/codegen.ts",
+        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"
@@ -48,6 +51,7 @@
         "@gtkx/native": "workspace:*"
     },
     "devDependencies": {
-        "@gtkx/vitest": "workspace:*"
+        "@gtkx/codegen": "workspace:*",
+        "@gtkx/utils": "workspace:*"
     }
 }

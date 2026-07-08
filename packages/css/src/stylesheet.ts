@@ -1,26 +1,24 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { createLogger } from "@gtkx/utils";
 import { registerProviderForDefaultDisplay } from "./provider.js";
 
-export class Stylesheet {
+const log = createLogger("css");
+
+export class StyleSheet {
     private css = "";
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;
 
-    private ensureProvider(): void {
-        if (this.provider) return;
-        const { provider } = registerProviderForDefaultDisplay();
+    private ensureProvider(): Gtk.CssProvider {
+        if (this.provider) return this.provider;
+        const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
-        if (process.env["NODE_ENV"] !== "production") {
+        if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {
-                console.warn(`[gtkx/css] GTK rejected CSS at ${section.toString()}: ${error.message}`);
+                log.warn(`GTK rejected CSS at ${section.toString()}: ${error.message}`);
             });
         }
-    }
-
-    private updateProvider(): void {
-        if (this.provider && this.css.length > 0) {
-            this.provider.loadFromString(this.css);
-        }
+        return provider;
     }
 
     private scheduleUpdate(): void {
@@ -28,8 +26,7 @@ export class Stylesheet {
         this.updateScheduled = true;
         queueMicrotask(() => {
             this.updateScheduled = false;
-            this.ensureProvider();
-            this.updateProvider();
+            this.ensureProvider().loadFromString(this.css);
         });
     }
 

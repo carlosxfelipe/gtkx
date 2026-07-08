@@ -1,5 +1,6 @@
+import { ComboRow } from "@gtkx/components/adw";
 import type * as Adw from "@gtkx/gi/adw";
-import { AdwComboRow } from "@gtkx/jsx/adw";
+
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
@@ -13,7 +14,7 @@ const items = [
 
 const ComboProbe = ({ selectedId, comboRef }: { selectedId: string; comboRef: Ref<Adw.ComboRow> }): ReactNode => (
     <GtkListBox>
-        <AdwComboRow ref={comboRef} title="Sort Order" items={items} selectedId={selectedId} />
+        <ComboRow ref={comboRef} title="Sort Order" items={items} selectedId={selectedId} />
     </GtkListBox>
 );
 
@@ -53,22 +54,21 @@ describe("render - AdwComboRow", () => {
 
         await render(
             <GtkListBox>
-                <AdwComboRow
+                <ComboRow
                     ref={ref}
                     title="Sort Order"
-                    items={[
+                    sections={[
                         {
                             id: "ascending",
                             value: "Ascending",
-                            section: true,
-                            children: [
+                            data: [
                                 { id: "title", value: "By title" },
                                 { id: "date", value: "By date" },
                             ],
                         },
                     ]}
                     selectedId="title"
-                    renderHeader={(value: string) => <GtkLabel label={value} />}
+                    renderHeader={({ section: value }: { section: string }) => <GtkLabel label={value} />}
                 />
             </GtkListBox>,
         );
@@ -82,12 +82,12 @@ describe("render - AdwComboRow", () => {
 
         await render(
             <GtkListBox>
-                <AdwComboRow
+                <ComboRow
                     ref={ref}
                     title="Sort Order"
                     items={items}
                     selectedId="date"
-                    renderItem={(value: string) => <GtkLabel label={`Sorted ${value.toLowerCase()}`} />}
+                    renderItem={({ item: value }) => <GtkLabel label={`Sorted ${value.toLowerCase()}`} />}
                 />
             </GtkListBox>,
         );

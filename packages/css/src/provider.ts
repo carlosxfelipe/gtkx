@@ -1,36 +1,22 @@
-import type { Display } from "@gtkx/gi/gdk";
-import { DisplayManager } from "@gtkx/gi/gdk";
+import { type Display, DisplayManager } from "@gtkx/gi/gdk";
 import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk";
-
-export type DisplayProvider = {
-    provider: CssProvider;
-    dispose: () => void;
-};
-
-const attachProviderToDisplay = (provider: CssProvider, display: Display, priority: number): void => {
-    StyleContext.addProviderForDisplay(display, provider, priority);
-};
 
 export const registerProviderForDefaultDisplay = (
     priority: number = STYLE_PROVIDER_PRIORITY_APPLICATION,
-): DisplayProvider => {
+): CssProvider => {
     const provider = new CssProvider();
-    const initialDisplay = DisplayManager.get().getDefaultDisplay();
-    let display = initialDisplay;
+    const manager = DisplayManager.get();
 
+    const attach = (display: Display): void => {
+        StyleContext.addProviderForDisplay(display, provider, priority);
+    };
+
+    const initialDisplay = manager.getDefaultDisplay();
     if (initialDisplay) {
-        attachProviderToDisplay(provider, initialDisplay, priority);
+        attach(initialDisplay);
     } else {
-        DisplayManager.get().once("display-opened", (openedDisplay) => {
-            display = openedDisplay;
-            attachProviderToDisplay(provider, openedDisplay, priority);
-        });
+        manager.once("display-opened", (openedDisplay: Display): void => attach(openedDisplay));
     }
 
-    return {
-        provider,
-        dispose: () => {
-            if (display) StyleContext.removeProviderForDisplay(display, provider);
-        },
-    };
+    return provider;
 };

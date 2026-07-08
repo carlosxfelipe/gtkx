@@ -1,20 +1,20 @@
 import { getHandle } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
-import type { GType } from "@gtkx/gi/gobject";
+import type { Type } from "@gtkx/gi/gobject";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
-import { findWrapperClass, getWrapperClass, setClassGtype, wrapHandle } from "../src/registry.js";
+import { registerClassType, resolveWrapperClass, wrapHandle } from "../src/registry.js";
 
-const INVALID_GTYPE: GType = 0n;
+const INVALID_GTYPE: Type = 0n;
 
-describe("setClassGtype", () => {
+describe("registerClassType", () => {
     it("registers a class by GType", () => {
         class TestClass {}
-        const fakeGtype: GType = 123456789n;
-        setClassGtype(TestClass as AnyClass, fakeGtype);
-        expect(findWrapperClass(fakeGtype)).toBe(TestClass);
+        const fakeGtype: Type = 123456789n;
+        registerClassType(TestClass as AnyClass, fakeGtype);
+        expect(resolveWrapperClass(fakeGtype)).toBe(TestClass);
     });
 
     it("allows wrapHandle to find registered types", () => {
@@ -24,19 +24,19 @@ describe("setClassGtype", () => {
     });
 });
 
-describe("findWrapperClass", () => {
+describe("resolveWrapperClass", () => {
     it("returns exact match when type is registered", () => {
-        const cls = findWrapperClass(typeFromName("GtkButton"));
+        const cls = resolveWrapperClass(typeFromName("GtkButton"));
         expect(cls).toBe(Gtk.Button);
     });
 
     it("walks hierarchy to find a registered parent class", () => {
-        const cls = findWrapperClass(typeFromName("GtkButton"));
+        const cls = resolveWrapperClass(typeFromName("GtkButton"));
         expect(cls).not.toBeNull();
     });
 
-    it("returns null for an unregistered type via exact lookup", () => {
-        const cls = getWrapperClass(INVALID_GTYPE);
+    it("returns null for an unregistered type", () => {
+        const cls = resolveWrapperClass(INVALID_GTYPE);
         expect(cls).toBeNull();
     });
 });

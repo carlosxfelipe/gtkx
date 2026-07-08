@@ -2,16 +2,11 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ensureGenerated, preflightCodegen, runCodegen } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
 
 vi.mock("@gtkx/codegen", () => ({
-    CodegenRunner: class {
-        run() {
-            return Promise.resolve({ namespaces: 1, widgets: 0, duration: 1 });
-        }
-    },
+    runCodegen: () => Promise.resolve({ namespaces: 1, intrinsicElements: 0, duration: 1 }),
     computeFingerprint: () => "test-fingerprint",
-    serializeUserTables: () => "{}",
     FINGERPRINT_FILENAME: ".codegen-fingerprint.json",
 }));
 
@@ -32,7 +27,10 @@ const installPackage = (cwd: string, name: string) => {
     writeFileSync(join(dir, "index.js"), "");
 };
 
-const installFfiPackage = (cwd: string) => installPackage(cwd, "ffi");
+const installFfiPackage = (cwd: string) => {
+    installPackage(cwd, "ffi");
+    installPackage(cwd, "native");
+};
 
 const installReactStack = (cwd: string) => {
     installPackage(cwd, "react");
@@ -50,11 +48,9 @@ const writeGiBarrel = (cwd: string, namespace: string) => {
     mkdirSync(join(cwd, "node_modules", ".gtkx", "gi", namespace), { recursive: true });
     writeFileSync(join(cwd, "node_modules", ".gtkx", "gi", namespace, "index.js"), "");
     mkdirSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true });
-    for (const pkg of ["ffi", "gi"]) {
-        const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", pkg);
-        mkdirSync(linkDir, { recursive: true });
-        writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: `@gtkx/${pkg}`, version: "0.0.0" }));
-    }
+    const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi");
+    mkdirSync(linkDir, { recursive: true });
+    writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: "@gtkx/gi", version: "0.0.0" }));
 };
 
 const writeDefaultGiBarrels = (cwd: string) => {
@@ -71,10 +67,10 @@ const writeJsxStore = (cwd: string) => {
     mkdirSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true });
 };
 
-const preflightLogs = async (cwd: string): Promise<string> => {
+const announceLogs = async (cwd: string): Promise<string> => {
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {
-        await preflightCodegen(cwd);
+        await ensureGenerated(cwd, { announce: true });
         return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
     } finally {
         stderrSpy.mockRestore();
@@ -92,16 +88,21 @@ describe("runCodegen", () => {
         rmSync(cwd, { recursive: true, force: true });
     });
 
-    it("throws when no gtkx.config.ts is present", async () => {
+    it("generates with default settings when no gtkx.config.ts is present", async () => {
         installFfiPackage(cwd);
-        await expect(runCodegen({ cwd })).rejects.toThrow();
+        const result = await runCodegen({ cwd });
+        expect(result.configFile).toBeUndefined();
+        expect(result.namespaces).toBe(1);
     });
 
     it("falls back to process.cwd() when options.cwd is omitted", async () => {
+        installFfiPackage(cwd);
+        writeConfig(cwd);
         const originalCwd = process.cwd();
         process.chdir(cwd);
         try {
-            await expect(runCodegen()).rejects.toThrow();
+            const result = await runCodegen();
+            expect(result.configFile).toBeDefined();
         } finally {
             process.chdir(originalCwd);
         }
@@ -121,52 +122,52 @@ describe("runCodegen", () => {
     });
 });
 
-describe("preflightCodegen", () => {
+describe("ensureGenerated — announce path", () => {
     let cwd: string;
-    const originalEnv = process.env["GTKX_DISABLE_PREFLIGHT"];
+    const originalEnv = process.env.GTKX_DISABLE_PREFLIGHT;
 
     beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-preflight-"));
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-announce-"));
     });
 
     afterEach(() => {
         rmSync(cwd, { recursive: true, force: true });
         if (originalEnv === undefined) {
-            delete process.env["GTKX_DISABLE_PREFLIGHT"];
+            delete process.env.GTKX_DISABLE_PREFLIGHT;
         } else {
-            process.env["GTKX_DISABLE_PREFLIGHT"] = originalEnv;
+            process.env.GTKX_DISABLE_PREFLIGHT = originalEnv;
         }
     });
 
     it("returns silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
-        process.env["GTKX_DISABLE_PREFLIGHT"] = "1";
-        await expect(preflightCodegen(cwd)).resolves.toBeUndefined();
+        process.env.GTKX_DISABLE_PREFLIGHT = "1";
+        expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("returns silently when there is no gtkx.config.ts", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
-        await expect(preflightCodegen(cwd)).resolves.toBeUndefined();
+        expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("propagates non-NotFound config errors", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         writeConfig(cwd, `export default { libraries: [] };`);
 
-        await expect(preflightCodegen(cwd)).rejects.toThrow();
+        await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow();
     });
 
     it("runs codegen when the gi store is missing", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         writeConfig(cwd);
 
-        expect(await preflightLogs(cwd)).toContain("running codegen");
+        expect(await announceLogs(cwd)).toContain("running codegen");
     });
 
     it("skips codegen when the gi and jsx stores are present", async () => {
-        delete process.env["GTKX_DISABLE_PREFLIGHT"];
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
         installFfiPackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
@@ -174,7 +175,7 @@ describe("preflightCodegen", () => {
         writeJsxStore(cwd);
         writeFingerprint(cwd);
 
-        expect(await preflightLogs(cwd)).toBe("");
+        expect(await announceLogs(cwd)).toBe("");
     });
 });
 
@@ -250,7 +251,7 @@ describe("ensureGenerated — store links", () => {
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
-        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "ffi"), {
+        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi"), {
             recursive: true,
             force: true,
         });

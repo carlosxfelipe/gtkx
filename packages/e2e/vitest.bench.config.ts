@@ -6,9 +6,9 @@ export default defineConfig({
     plugins: [gtkx(), codspeedPlugin()],
     test: {
         name: "e2e-bench",
-        setupFiles: ["./tests/setup.ts"],
+        setupFiles: ["./tests/setup.ts", "./tests/bench-setup.ts"],
         benchmark: {
-            include: ["tests/bench/**/*.bench.{ts,tsx}"],
+            include: ["bench/**/*.bench.{ts,tsx}"],
         },
     },
 });

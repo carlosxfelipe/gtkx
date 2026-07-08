@@ -1,4 +1,3 @@
-import { applicationId } from "virtual:gtkx-config";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as WebKit from "@gtkx/gi/webkit";
@@ -112,15 +111,7 @@ const BrowserWindow = () => {
     }, []);
 
     return (
-        <AdwApplicationWindow
-            title="GTKX Browser"
-            defaultWidth={1024}
-            defaultHeight={768}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
-        >
+        <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onCloseRequest={quit}>
             <AdwToolbarView
                 topBar={
                     <AdwHeaderBar
@@ -165,7 +156,7 @@ const BrowserWindow = () => {
 };
 
 export const App = () => (
-    <AdwApplication applicationId={applicationId}>
+    <AdwApplication>
         <BrowserWindow />
     </AdwApplication>
 );

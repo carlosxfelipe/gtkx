@@ -2,10 +2,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     invalidRequestError,
     methodNotFoundError,
+    type ParamsSchema,
     type ServerInitiatedMethod,
     type ServerRequestParams,
     ServerRequestParamsSchemas,
-    type WireParamsSchema,
     widgetNotFoundError,
 } from "@gtkx/mcp";
 import { serializeWidget } from "./serialize-widget.js";
@@ -20,7 +20,7 @@ export type HandlerContext = {
 type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
 
 const validated = <Params>(
-    schema: WireParamsSchema<Params>,
+    schema: ParamsSchema<Params>,
     handler: (ctx: HandlerContext, params: Params) => Promise<unknown>,
 ): ValidatedHandler => {
     return (ctx, params) => {
@@ -55,7 +55,7 @@ const handleQuery = async (
     const testing = await loadTestingModule();
     let widgets: Gtk.Widget[] = [];
 
-    switch (params.queryType) {
+    switch (params.by) {
         case "role": {
             const roleValue =
                 typeof params.value === "string"
@@ -78,12 +78,12 @@ const handleQuery = async (
     return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing)) };
 };
 
-const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Window => {
-    const [window] = registry.toplevels();
-    if (!window) {
+const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {
+    const [toplevel] = registry.toplevels();
+    if (!toplevel) {
         throw new Error("No windows available for screenshot");
     }
-    return window;
+    return toplevel;
 };
 
 const handleScreenshot = async (
@@ -91,10 +91,8 @@ const handleScreenshot = async (
     params: ServerRequestParams<"widget.screenshot">,
 ): Promise<unknown> => {
     const testing = await loadTestingModule();
-    const targetWindow = params.windowId
-        ? (requireWidget(registry, params.windowId) as Gtk.Window)
-        : defaultScreenshotTarget(registry);
-    const result = await testing.screenshot(targetWindow);
+    const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
+    const result = await testing.screenshot(target);
     return { data: result.data, mimeType: result.mimeType };
 };
 
@@ -102,7 +100,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], async ({ registry }) => ({
         windows: registry.toplevels().map((window) => ({
             id: registry.idFor(window),
-            title: window.getTitle?.() ?? null,
+            title: window.getTitle(),
         })),
     })),
     "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }) => {

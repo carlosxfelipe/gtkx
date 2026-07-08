@@ -1,14 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { ListView, Overlay } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkHeaderBar,
     GtkInscription,
-    GtkListView,
-    GtkOverlay,
-    GtkOverlayChild,
     GtkProgressBar,
     GtkScrolledWindow,
     GtkSearchEntry,
@@ -145,16 +143,16 @@ function useFilteredWords(words: string[], searchText: string) {
 }
 
 const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[]; filterProgress: number }) => (
-    <GtkOverlay vexpand hexpand>
+    <Overlay vexpand hexpand>
         <GtkScrolledWindow vexpand hexpand>
-            <GtkListView
+            <ListView
                 name="list-view"
                 vexpand
                 hexpand
                 estimatedItemHeight={32}
                 selectionMode={Gtk.SelectionMode.NONE}
                 items={filteredWords.map((word) => ({ id: word, value: word }))}
-                renderItem={(word: string) => (
+                renderItem={({ item: word }: { item: string }) => (
                     <GtkInscription
                         text={word}
                         xalign={0}
@@ -165,11 +163,19 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
             />
         </GtkScrolledWindow>
         {filterProgress < 1 && (
-            <GtkOverlayChild>
-                <GtkProgressBar fraction={filterProgress} halign={Gtk.Align.FILL} valign={Gtk.Align.START} hexpand />
-            </GtkOverlayChild>
+            <Overlay.Child>
+                {(ref) => (
+                    <GtkProgressBar
+                        ref={ref}
+                        fraction={filterProgress}
+                        halign={Gtk.Align.FILL}
+                        valign={Gtk.Align.START}
+                        hexpand
+                    />
+                )}
+            </Overlay.Child>
         )}
-    </GtkOverlay>
+    </Overlay>
 );
 
 interface WordsContextValue {

@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import { LICENSE, REPO_URL } from "./content";
+import { REPO_URL } from "./content";
 
 type Link = { t: string; href?: string };
 const cols: { h: string; items: Link[] }[] = [
-  {
-    h: "Project",
-    items: [
-      { t: "GitHub", href: REPO_URL },
-      { t: "Examples", href: `${REPO_URL}/tree/main/examples` },
-      { t: "Issues", href: `${REPO_URL}/issues` },
-      { t: "Releases", href: `${REPO_URL}/releases` },
-    ],
-  },
-  { h: "Packages", items: [{ t: "@gtkx/react" }, { t: "@gtkx/ffi" }, { t: "@gtkx/cli" }, { t: "@gtkx/testing" }, { t: "@gtkx/mcp" }] },
-  { h: "Platform", items: [{ t: "GTK 4" }, { t: "libadwaita" }, { t: "GObject" }, { t: "GNOME" }] },
+    {
+        h: "Project",
+        items: [
+            { t: "GitHub", href: REPO_URL },
+            { t: "Examples", href: `${REPO_URL}/tree/main/examples` },
+            { t: "Issues", href: `${REPO_URL}/issues` },
+            { t: "Releases", href: `${REPO_URL}/releases` },
+        ],
+    },
+    {
+        h: "Packages",
+        items: [
+            { t: "@gtkx/react" },
+            { t: "@gtkx/ffi" },
+            { t: "@gtkx/cli" },
+            { t: "@gtkx/testing" },
+            { t: "@gtkx/mcp" },
+        ],
+    },
+    { h: "Platform", items: [{ t: "GTK 4" }, { t: "libadwaita" }, { t: "GObject" }, { t: "GNOME" }] },
 ];
 </script>
 
@@ -25,7 +34,7 @@ const cols: { h: string; items: Link[] }[] = [
         <div class="footer__brand">
           <div class="footer__lockup">
             <img src="/gtkx-mark.svg" width="32" height="32" alt="" />
-            <span class="footer__word">gtkx</span>
+            <span class="footer__word">GTKX</span>
           </div>
           <p class="footer__tag">
             The React renderer for native Linux desktop apps. Free &amp; open source.

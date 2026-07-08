@@ -1,9 +1,8 @@
 import * as net from "node:net";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
-import { errorMessage, normalizeError } from "@gtkx/utils";
-import { error, info, warn } from "../internal/log.js";
+import { DEFAULT_SOCKET_PATH, ErrorCode, ProtocolConnection, ProtocolError, type Request } from "@gtkx/mcp";
+import { error, errorMessage, info, normalizeError, warn } from "@gtkx/utils";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
@@ -17,7 +16,7 @@ const REGISTER_TIMEOUT_MS = 30000;
 
 export class McpClient {
     private socket: net.Socket | null = null;
-    private transport: JsonStreamTransport | null = null;
+    private connection: ProtocolConnection | null = null;
     private socketPath: string;
     private applicationId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
@@ -57,13 +56,13 @@ export class McpClient {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
-        this.transport?.rejectPending(new Error("Client disconnected"));
+        this.connection?.rejectPending(new Error("Client disconnected"));
         if (this.socket) {
-            this.transport?.send({ id: crypto.randomUUID(), method: "app.unregister" });
+            this.connection?.write({ id: crypto.randomUUID(), method: "app.unregister" });
             this.socket.destroy();
             this.socket = null;
         }
-        this.transport = null;
+        this.connection = null;
         this.hasConnected = false;
     }
 
@@ -90,14 +89,14 @@ export class McpClient {
                 });
         });
 
-        const transport = JsonStreamTransport.fromSocket(socket, {
+        const connection = ProtocolConnection.fromSocket(socket, {
             onClose: () => {
                 if (this.hasConnected) {
                     info("Disconnected from MCP server");
                     this.hasConnected = false;
                 }
                 this.socket = null;
-                this.transport = null;
+                this.connection = null;
                 this.scheduleReconnect();
             },
             onError: (socketError) => {
@@ -112,17 +111,17 @@ export class McpClient {
                 settle(onError, socketError);
             },
         });
-        transport.on("request", (request) => {
+        connection.on("request", (request) => {
             this.handleRequest(request).catch((cause) => {
                 error("Error handling request:", cause);
             });
         });
-        transport.on("invalid", ({ error: parseError }) => {
+        connection.on("invalid", ({ error: parseError }) => {
             warn(`Received invalid JSON from MCP server: ${parseError.message}`);
         });
 
         this.socket = socket;
-        this.transport = transport;
+        this.connection = connection;
     }
 
     private scheduleReconnect(): void {
@@ -134,10 +133,10 @@ export class McpClient {
     }
 
     private register(): Promise<unknown> {
-        if (!this.transport) {
-            return Promise.reject(new Error("Transport not initialized"));
+        if (!this.connection) {
+            return Promise.reject(new Error("Connection not initialized"));
         }
-        return this.transport.sendRequest(
+        return this.connection.send(
             "app.register",
             {
                 applicationId: this.applicationId,
@@ -147,10 +146,10 @@ export class McpClient {
         );
     }
 
-    private async handleRequest(request: IpcRequest): Promise<void> {
+    private async handleRequest(request: Request): Promise<void> {
         const { id, method, params } = request;
-        const transport = this.transport;
-        if (!transport) return;
+        const connection = this.connection;
+        if (!connection) return;
 
         try {
             const defaultApp = Gio.Application.getDefault();
@@ -159,15 +158,15 @@ export class McpClient {
             }
             this.registry.refresh();
             const result = await dispatch(method, params, { app: defaultApp, registry: this.registry });
-            transport.send({ id, result });
+            connection.write({ id, result });
         } catch (error) {
-            if (error instanceof McpError) {
-                transport.send({ id, error: error.toIpcError() });
+            if (error instanceof ProtocolError) {
+                connection.write({ id, error: error.toErrorObject() });
             } else {
-                transport.send({
+                connection.write({
                     id,
                     error: {
-                        code: McpErrorCode.INTERNAL_ERROR,
+                        code: ErrorCode.INTERNAL_ERROR,
                         message: errorMessage(error),
                     },
                 });

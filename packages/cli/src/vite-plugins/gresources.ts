@@ -2,14 +2,14 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { createGtkxConfigLoader, DATA_IMPORT_PREFIX, type GtkxConfigLoader } from "@gtkx/config";
-import { formatChildProcessError } from "@gtkx/utils";
+import { createGtkxConfigLoader, DEFAULT_APPLICATION_ID, type GtkxConfigLoader } from "@gtkx/config";
+import { error, formatChildProcessError, info } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { renderInitModule } from "../gresources/render.js";
-import { error, info } from "../internal/log.js";
+import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
+import { renderInitModule } from "./gresource-init-module.js";
 import {
     BUNDLE_FILENAME,
     escapeXml,
@@ -18,18 +18,14 @@ import {
     REL_SEPARATOR,
     toVirtualId,
     VIRTUAL_INIT,
-} from "./gresource-protocol.js";
+} from "./gresource-shared.js";
 
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
 const RESOURCE_COMPILER = "glib-compile-resources";
-const DEFAULT_RESOURCE_PREFIX = "/gtkx/app";
 const MANIFEST_PREFIX = "/";
 
-const deriveResourcePrefix = (applicationId?: string): string => {
-    if (!applicationId) return DEFAULT_RESOURCE_PREFIX;
-    return `/${applicationId.replaceAll(".", "/")}`;
-};
+const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
 
 const stripQuery = (source: string): string => {
     const queryIndex = source.indexOf("?");
@@ -178,9 +174,9 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
     server.watcher.on("add", onFileEvent);
 };
 
-export function gtkxResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
+export function gtkxGResources(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
     const state: PluginState = {
-        prefix: DEFAULT_RESOURCE_PREFIX,
+        prefix: deriveResourcePrefix(DEFAULT_APPLICATION_ID),
         isBuild: false,
         entries: new Map(),
         sourcePaths: new Set(),

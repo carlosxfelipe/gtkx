@@ -1,6 +1,7 @@
+import { DropDown, ListView, type RenderItemProps } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown, GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { expectAllVisibleOnce } from "../helpers/list-collection-render.js";
@@ -14,15 +15,15 @@ interface TextItem {
 
 const buildTextListView = (items: TextItem[]) => (
     <ScrollWrapper>
-        <GtkListView
+        <ListView
             items={items.map((item) => ({ id: item.id, value: item }))}
-            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+            renderItem={({ item }: RenderItemProps<{ text: string }>) => <GtkLabel label={item.text} />}
         />
     </ScrollWrapper>
 );
 
 const buildValueDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
-    <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />
+    <DropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />
 );
 
 describe("render - ListItem (1)", () => {
@@ -53,9 +54,9 @@ describe("render - ListItem (2)", () => {
             function App({ value }: { value: { text: string } }) {
                 return (
                     <ScrollWrapper>
-                        <GtkListView
+                        <ListView
                             items={[{ id: "dynamic", value }]}
-                            renderItem={(item) => <GtkLabel label={item.text} />}
+                            renderItem={({ item }) => <GtkLabel label={item.text} />}
                         />
                     </ScrollWrapper>
                 );
@@ -113,20 +114,20 @@ describe("render - ListItem (3)", () => {
 describe("render - ListItem (4)", () => {
     describe("ListItem in DropDown (1)", () => {
         it("renders list item in DropDown", async () => {
-            await render(<GtkDropDown items={[{ id: "item1", value: "Item Value" }]} />);
+            await render(<DropDown items={[{ id: "item1", value: "Item Value" }]} />);
 
             expect(screen.queryAllByText("Item Value").length).toBeGreaterThan(0);
         });
 
         it("handles string value", async () => {
-            await render(<GtkDropDown items={[{ id: "test", value: "Test String" }]} />);
+            await render(<DropDown items={[{ id: "test", value: "Test String" }]} />);
 
             expect(screen.queryAllByText("Test String").length).toBeGreaterThan(0);
         });
 
         it("updates value on prop change", async () => {
             function App({ value }: { value: string }) {
-                return <GtkDropDown items={[{ id: "dynamic", value }]} />;
+                return <DropDown items={[{ id: "dynamic", value }]} />;
             }
 
             const { rerender } = await render(<App value="Initial" />);
@@ -145,7 +146,7 @@ describe("render - ListItem (5)", () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown
+                <DropDown
                     ref={dropDownRef}
                     items={[
                         { id: "a", value: "First" },
@@ -157,10 +158,10 @@ describe("render - ListItem (5)", () => {
 
             await screen.findAllByText("First");
 
-            dropDownRef.current?.setSelected(1);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
             await screen.findAllByText("Second");
 
-            dropDownRef.current?.setSelected(2);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 2);
             await screen.findAllByText("Third");
         });
 
@@ -170,17 +171,17 @@ describe("render - ListItem (5)", () => {
             const { rerender } = await renderChildren(["first", "last"], buildValueDropDown(dropDownRef));
             await screen.findAllByText("first");
 
-            dropDownRef.current?.setSelected(1);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
             await screen.findAllByText("last");
 
             await rerender(["first", "middle", "last"]);
-            dropDownRef.current?.setSelected(0);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 0);
             await screen.findAllByText("first");
 
-            dropDownRef.current?.setSelected(1);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
             await screen.findAllByText("middle");
 
-            dropDownRef.current?.setSelected(2);
+            if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 2);
             await screen.findAllByText("last");
         });
     });

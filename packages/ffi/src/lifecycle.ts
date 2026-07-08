@@ -1,13 +1,17 @@
 import { quit as nativeQuit } from "@gtkx/native";
+import { blockMatchedSignalHandlers } from "./signal.js";
 
 const KEEP_ALIVE_INTERVAL = 2147483647;
 
-export type GApplication = {
+export type ApplicationLike = {
     getIsRegistered(): boolean;
     register(cancellable: null): boolean;
     activate(): void;
+    quit(): void;
+    run(argv: string[]): number;
+    getWindows?(): object[];
+    removeWindow?(window: object): void;
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
-    emit(signal: "shutdown"): void;
 };
 
 const shutdownCallbacks: (() => void)[] = [];
@@ -17,7 +21,7 @@ export const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
-const quit = (): void => {
+export const quit = (): void => {
     if (hasQuit) return;
     hasQuit = true;
 
@@ -28,7 +32,7 @@ const quit = (): void => {
 
 process.on("exit", quit);
 
-export const runApplication = (application: GApplication): void => {
+export const runApplication = (application: ApplicationLike): void => {
     let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const scheduleKeepAlive = (): void => {
@@ -38,6 +42,7 @@ export const runApplication = (application: GApplication): void => {
     application.on("activate", () => {
         if (keepAliveTimeout === null) scheduleKeepAlive();
     });
+
     application.on("shutdown", () => {
         if (keepAliveTimeout === null) return;
         clearTimeout(keepAliveTimeout);
@@ -48,6 +53,10 @@ export const runApplication = (application: GApplication): void => {
     application.activate();
 };
 
-export const quitApplication = (application: GApplication): void => {
-    application.emit("shutdown");
+export const quitApplication = (application: ApplicationLike): void => {
+    if (!application.getIsRegistered()) return;
+    for (const window of application.getWindows?.() ?? []) application.removeWindow?.(window);
+    application.on("shutdown", () => application.quit());
+    blockMatchedSignalHandlers(application, "activate");
+    application.run([]);
 };

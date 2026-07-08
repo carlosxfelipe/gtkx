@@ -1,11 +1,11 @@
-import { boxedFromNode, type GirBoxed, isVtableRecord } from "./boxed.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, childOf, childrenOf, nameAttr, type RawNode } from "./parse.js";
+import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
 import type { ParseContext, TypeId } from "./type-id.js";
-import { typeRefFromSlot } from "./type-ref.js";
+import { typeRefFromNode } from "./type-ref.js";
 
 export type GirConstant = {
     name: string;
@@ -15,6 +15,7 @@ export type GirConstant = {
 
 export type GirAlias = {
     name: string;
+    cType: string | undefined;
     target: TypeId | undefined;
     targetCType: string | undefined;
 };
@@ -24,10 +25,9 @@ export type GirNamespace = {
     name: string;
     sharedLibrary: string | undefined;
     cSymbolPrefixes: string[];
-    includes: NamespaceInclude[];
     classes: GirClass[];
     interfaces: GirClass[];
-    boxeds: GirBoxed[];
+    records: GirRecord[];
     enums: GirEnum[];
     callbacks: GirCallback[];
     functions: GirFunction[];
@@ -40,10 +40,6 @@ export const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): strin
 type NamespaceInclude = {
     name: string;
     version: string;
-};
-
-type MutableNamespace = {
-    [Key in keyof GirNamespace]: GirNamespace[Key];
 };
 
 export type NamespaceHeader = {
@@ -77,10 +73,9 @@ export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNa
     name: header.name,
     sharedLibrary: header.sharedLibrary,
     cSymbolPrefixes: header.cSymbolPrefixes,
-    includes: header.includes,
     classes: [],
     interfaces: [],
-    boxeds: [],
+    records: [],
     enums: [],
     callbacks: [],
     functions: [],
@@ -89,21 +84,21 @@ export const createNamespaceShell = (header: NamespaceHeader, id: number): GirNa
 });
 
 export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, context: ParseContext): void => {
-    const mutable: MutableNamespace = shell;
-    mutable.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
-    mutable.interfaces = childrenOf(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
-    mutable.boxeds = collectBoxeds(namespaceNode, context);
-    mutable.enums = collectEnums(namespaceNode, context);
-    mutable.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
-    mutable.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, "function", context));
-    mutable.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
+    shell.classes = childrenOf(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
+    shell.interfaces = childrenOf(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
+    shell.records = collectRecords(namespaceNode, context);
+    shell.enums = collectEnums(namespaceNode);
+    shell.callbacks = childrenOf(namespaceNode, "callback").map((callback) => callbackFromNode(callback, context));
+    shell.functions = childrenOf(namespaceNode, "function").map((fn) => functionFromNode(fn, context));
+    shell.constants = childrenOf(namespaceNode, "constant").map((constant) => ({
         name: nameAttr(constant),
         value: attr(constant, "value") ?? "",
-        type: typeRefFromSlot(constant, context),
+        type: typeRefFromNode(constant, context),
     }));
-    mutable.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
+    shell.aliases = childrenOf(namespaceNode, "alias").map((alias) => ({
         name: nameAttr(alias),
-        target: typeRefFromSlot(alias, context),
+        cType: attr(alias, "c:type"),
+        target: typeRefFromNode(alias, context),
         targetCType: attr(childOf(alias, "type"), "c:type"),
     }));
 };
@@ -111,14 +106,14 @@ export const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNod
 const splitPrefixes = (raw: string | undefined): string[] =>
     (raw ?? "").split(",").filter((prefix) => prefix.length > 0);
 
-const collectBoxeds = (namespaceNode: RawNode, context: ParseContext): GirBoxed[] => [
+const collectRecords = (namespaceNode: RawNode, context: ParseContext): GirRecord[] => [
     ...childrenOf(namespaceNode, "record").map((record) =>
-        boxedFromNode(record, isVtableRecord(record), false, context),
+        recordFromNode(record, isVtableRecord(record), false, context),
     ),
-    ...childrenOf(namespaceNode, "union").map((union) => boxedFromNode(union, isVtableRecord(union), true, context)),
+    ...childrenOf(namespaceNode, "union").map((union) => recordFromNode(union, isVtableRecord(union), true, context)),
 ];
 
-const collectEnums = (namespaceNode: RawNode, context: ParseContext): GirEnum[] => [
-    ...childrenOf(namespaceNode, "enumeration").map((enumeration) => enumFromNode(enumeration, "enumeration", context)),
-    ...childrenOf(namespaceNode, "bitfield").map((bitfield) => enumFromNode(bitfield, "bitfield", context)),
+const collectEnums = (namespaceNode: RawNode): GirEnum[] => [
+    ...childrenOf(namespaceNode, "enumeration").map((enumeration) => enumFromNode(enumeration, "enumeration")),
+    ...childrenOf(namespaceNode, "bitfield").map((bitfield) => enumFromNode(bitfield, "bitfield")),
 ];

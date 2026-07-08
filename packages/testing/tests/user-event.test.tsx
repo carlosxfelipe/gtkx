@@ -1,3 +1,4 @@
+import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -6,7 +7,6 @@ import {
     GtkButton,
     GtkCheckButton,
     GtkDragSource,
-    GtkDropDown,
     GtkDropTarget,
     GtkEntry,
     GtkGestureDrag,
@@ -151,12 +151,14 @@ describe("userEvent.type", () => {
         expectEditableText(entry, "Goodbye World");
     });
 
-    it("still types when click is skipped", async () => {
+    it("skips grabFocus when skipClick is set", async () => {
         await render(<GtkEntry />);
 
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const grabFocus = vi.spyOn(entry, "grabFocus");
         await userEvent.type(entry, "typed", { skipClick: true });
 
+        expect(grabFocus).not.toHaveBeenCalled();
         expectEditableText(entry, "typed");
     });
 
@@ -170,15 +172,18 @@ describe("userEvent.type", () => {
     });
 });
 
-describe("userEvent.setup options", () => {
-    it("applies skipClick as a default for the instance's type", async () => {
-        await render(<GtkEntry />);
+describe("userEvent.keyboard — held modifier state", () => {
+    it("retains a held modifier across calls until it is released", async () => {
+        const onActivate = vi.fn(() => true);
+        const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("<Shift>F5"), onActivate);
 
-        const user = userEvent.setup({ skipClick: true });
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        await user.type(entry, "session");
+        await userEvent.keyboard(host, "{Shift>}");
+        await userEvent.keyboard(host, "{F5}");
+        expect(onActivate).toHaveBeenCalledTimes(1);
 
-        expectEditableText(entry, "session");
+        await userEvent.keyboard(host, "{/Shift}");
+        await userEvent.keyboard(host, "{F5}");
+        expect(onActivate).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -317,7 +322,7 @@ describe("userEvent clipboard", () => {
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
         await render(
-            <GtkDropDown
+            <DropDown
                 items={[
                     { id: "a", value: "Option A" },
                     { id: "b", value: "Option B" },
@@ -347,7 +352,7 @@ describe("userEvent.selectOptions", () => {
 
         it("throws when selecting multiple options on dropdown", async () => {
             await render(
-                <GtkDropDown
+                <DropDown
                     items={[
                         { id: "a", value: "A" },
                         { id: "b", value: "B" },
@@ -373,7 +378,7 @@ describe("userEvent.deselectOptions", () => {
 
     describe("error handling", () => {
         it("throws when element is not a list box", async () => {
-            await render(<GtkDropDown items={[{ id: "a", value: "A" }]} />);
+            await render(<DropDown items={[{ id: "a", value: "A" }]} />);
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(
@@ -536,7 +541,7 @@ describe("userEvent.drag", () => {
 const renderDropZone = async (
     name: string,
     label: string,
-    gtype: GObject.GType,
+    gtype: GObject.Type,
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"],
 ): Promise<Gtk.Widget> => {
     await render(

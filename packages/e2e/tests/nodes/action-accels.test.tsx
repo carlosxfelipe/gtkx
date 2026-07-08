@@ -2,7 +2,10 @@ import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { type ActionAccel, createRootElement } from "@gtkx/react";
+import { createRootElement } from "@gtkx/react";
+
+type ActionAccel = { detailedActionName: string; accels: string[] };
+
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -41,7 +44,7 @@ describe("GtkApplication actionAccels", () => {
             <AccelsApp
                 appRef={ref}
                 appId={uniqueAppId()}
-                actionAccels={[{ action: "win.new", accels: ["<Control>n"] }]}
+                actionAccels={[{ detailedActionName: "win.new", accels: ["<Control>n"] }]}
                 windowActions={<GSimpleAction name="new" onActivate={noop} />}
             />,
             { container: createRootElement() },
@@ -57,7 +60,7 @@ describe("GtkApplication actionAccels", () => {
             <AccelsApp
                 appRef={ref}
                 appId={uniqueAppId()}
-                actionAccels={[{ action: "app.quit", accels: ["<Control>q", "<Control>w"] }]}
+                actionAccels={[{ detailedActionName: "app.quit", accels: ["<Control>q", "<Control>w"] }]}
                 appActions={<GSimpleAction name="quit" onActivate={noop} />}
             />,
             { container: createRootElement() },
@@ -74,7 +77,7 @@ describe("GtkApplication actionAccels", () => {
             <AccelsApp
                 appRef={ref}
                 appId={appId}
-                actionAccels={[{ action: "win.new", accels: ["<Control>n"] }]}
+                actionAccels={[{ detailedActionName: "win.new", accels: ["<Control>n"] }]}
                 windowActions={<GSimpleAction name="new" onActivate={noop} />}
             />,
             { container: createRootElement() },

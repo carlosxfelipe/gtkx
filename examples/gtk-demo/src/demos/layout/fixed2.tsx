@@ -1,11 +1,18 @@
+import { Fixed } from "@gtkx/components";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkFixed, GtkFixedChild, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useTickCallback } from "@gtkx/react";
 import { useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
+
+const at = (x: number, y: number, transform?: Gsk.Transform | null): Gsk.Transform | null => {
+    let composed = Gsk.Transform.new().translate(Graphene.Point.create(x, y));
+    if (transform != null && composed !== null) composed = composed.transform(transform);
+    return composed;
+};
 
 const computeFixedTransform = (
     duration: number,
@@ -53,11 +60,20 @@ const Fixed2Demo = () => {
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkFixed name="fixed" ref={fixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
-                <GtkFixedChild x={0} y={0}>
-                    <GtkLabel ref={labelRef} name="fixed-label" label="All fixed?" />
-                </GtkFixedChild>
-            </GtkFixed>
+            <Fixed name="fixed" ref={fixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
+                <Fixed.Child transform={at(0, 0)}>
+                    {(ref) => (
+                        <GtkLabel
+                            ref={(node) => {
+                                ref(node);
+                                labelRef.current = node;
+                            }}
+                            name="fixed-label"
+                            label="All fixed?"
+                        />
+                    )}
+                </Fixed.Child>
+            </Fixed>
         </GtkScrolledWindow>
     );
 };

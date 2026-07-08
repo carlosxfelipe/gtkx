@@ -1,25 +1,51 @@
+import {
+    ColumnView,
+    ColumnViewColumn,
+    GridView,
+    type ItemNode,
+    ListView,
+    type RenderItemProps,
+} from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkColumnViewColumn, GtkGridView, GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
-import type { ListItem } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+import { render as testingRender } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
+
+export type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
 
 export interface NamedValue {
     name: string;
 }
 
-export type FixtureInput<T> = string[] | ListItem<T>[];
+export const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
+    values.map((value, index) => ({ id: String(index + 1), value }));
 
-const toListItems = <T,>(items: FixtureInput<T>): ListItem<T>[] =>
+export type FixtureInput<T> = string[] | ItemNode<T>[];
+
+const toListItems = <T,>(items: FixtureInput<T>): ItemNode<T>[] =>
     items.length > 0 && typeof items[0] === "string"
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
-        : (items as ListItem<T>[]);
+        : (items as ItemNode<T>[]);
 
-const renderNamed = (item: unknown): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
+export const allExpandableIds = <T,>(items: ItemNode<T>[]): string[] => {
+    const ids: string[] = [];
+    const walk = (list: ItemNode<T>[]): void => {
+        for (const item of list) {
+            if (item.children !== undefined && item.children.length > 0) {
+                ids.push(item.id);
+                walk(item.children);
+            }
+        }
+    };
+    walk(items);
+    return ids;
+};
 
-type ListViewFixtureOptions<T> = {
-    renderItem?: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
+const renderNamed = ({ item }: { item: unknown }): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
+
+type ListViewFixtureOptions = {
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
@@ -29,11 +55,15 @@ type ListViewFixtureOptions<T> = {
     minContentWidth?: number;
 };
 
-export type RenderListViewOptions<T> = ListViewFixtureOptions<T> & {
-    autoexpand?: boolean;
+export type RenderListViewOptions<T> = ListViewFixtureOptions & {
+    renderItem?: (props: RenderItemProps<T>) => ReactNode;
+    expandedIds?: string[];
+    onExpandedChange?: (ids: string[]) => void;
+    expandAll?: boolean;
 };
 
-export type RenderGridViewOptions<T> = ListViewFixtureOptions<T> & {
+export type RenderGridViewOptions<T> = ListViewFixtureOptions & {
+    renderItem?: (props: RenderItemProps<T>) => ReactNode;
     singleClickActivate?: boolean;
 };
 
@@ -50,22 +80,25 @@ export interface GridViewFixture<T> {
 export const renderListView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderListViewOptions<T> = {},
+    render: FixtureRender = testingRender,
 ): Promise<ListViewFixture<T>> => {
     const ref = createRef<Gtk.ListView>();
     const draw = (data: FixtureInput<T>, opts: RenderListViewOptions<T>): ReactNode => {
         const { renderItem = renderNamed, minContentHeight, maxContentHeight, minContentWidth } = opts;
+        const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
         return (
             <ScrollWrapper
                 minContentHeight={minContentHeight}
                 maxContentHeight={maxContentHeight}
                 minContentWidth={minContentWidth}
             >
-                <GtkListView
+                <ListView
                     ref={ref}
                     items={toListItems(data)}
                     renderItem={renderItem}
-                    autoexpand={opts.autoexpand}
-                    selected={opts.selected}
+                    expandedIds={expandedIds}
+                    onExpandedChange={opts.onExpandedChange}
+                    selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
                     estimatedItemHeight={opts.estimatedItemHeight}
@@ -85,6 +118,7 @@ export const renderListView = async <T = NamedValue>(
 export const renderGridView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderGridViewOptions<T> = {},
+    render: FixtureRender = testingRender,
 ): Promise<GridViewFixture<T>> => {
     const ref = createRef<Gtk.GridView>();
     const draw = (data: FixtureInput<T>, opts: RenderGridViewOptions<T>): ReactNode => {
@@ -95,11 +129,11 @@ export const renderGridView = async <T = NamedValue>(
                 maxContentHeight={maxContentHeight}
                 minContentWidth={minContentWidth}
             >
-                <GtkGridView
+                <GridView
                     ref={ref}
                     items={toListItems(data)}
                     renderItem={renderItem}
-                    selected={opts.selected}
+                    selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
                     estimatedItemHeight={opts.estimatedItemHeight}
@@ -120,7 +154,7 @@ export const renderGridView = async <T = NamedValue>(
 export interface ColumnDef<T> {
     id: string;
     title: string;
-    renderCell: (item: T) => ReactNode;
+    renderItem: (props: RenderItemProps<T>) => ReactNode;
     expand?: boolean;
     sortable?: boolean;
     fixedWidth?: number;
@@ -131,6 +165,9 @@ export type RenderColumnViewOptions<T> = {
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
+    expandedIds?: string[];
+    onExpandedChange?: (ids: string[]) => void;
+    expandAll?: boolean;
     sortColumn?: string | null;
     sortOrder?: Gtk.SortType;
     onSortChanged?: (column: string | null, order: Gtk.SortType) => void;
@@ -146,35 +183,39 @@ export interface ColumnViewFixture<T> {
 export const renderColumnView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderColumnViewOptions<T> = {},
+    render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
-    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
+    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderItem: renderNamed }];
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns, minContentHeight = 500, minContentWidth } = opts;
+        const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
         return (
             <ScrollWrapper minContentHeight={minContentHeight} minContentWidth={minContentWidth}>
-                <GtkColumnView
+                <ColumnView
                     ref={ref}
                     items={toListItems(data)}
-                    selected={opts.selected}
+                    selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
+                    expandedIds={expandedIds}
+                    onExpandedChange={opts.onExpandedChange}
                     sortColumn={opts.sortColumn}
                     sortOrder={opts.sortOrder}
                     onSortChanged={opts.onSortChanged}
                 >
                     {columns.map((column) => (
-                        <GtkColumnViewColumn
+                        <ColumnViewColumn
                             key={column.id}
                             id={column.id}
                             title={column.title}
                             expand={column.expand ?? true}
                             sortable={column.sortable}
                             fixedWidth={column.fixedWidth}
-                            renderCell={column.renderCell}
+                            renderItem={column.renderItem}
                         />
                     ))}
-                </GtkColumnView>
+                </ColumnView>
             </ScrollWrapper>
         );
     };

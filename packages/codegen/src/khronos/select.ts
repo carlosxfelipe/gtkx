@@ -1,6 +1,6 @@
 import type { GlEnum, GlFeature, GlInterfaceBlock, GlRegistry } from "./model.js";
 
-export type GlProfile = "core" | "compatibility";
+type GlProfile = "core";
 
 export type GlSelection = {
     api: string;
@@ -8,16 +8,13 @@ export type GlSelection = {
     profile: GlProfile;
 };
 
-export type GlSubset = {
+type GlSubset = {
     commands: Map<string, string>;
     enums: Map<string, string>;
 };
 
-const blockApplies = (block: GlInterfaceBlock, selection: GlSelection): boolean => {
-    if (block.profile !== undefined && block.profile !== selection.profile) return false;
-    if (block.api !== undefined && block.api !== selection.api) return false;
-    return true;
-};
+const blockApplies = (block: GlInterfaceBlock, selection: GlSelection): boolean =>
+    block.profile === undefined || block.profile === selection.profile;
 
 const applyRequires = (
     feature: GlFeature,
@@ -61,15 +58,10 @@ export const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSu
     return { commands, enums };
 };
 
-export const resolveEnum = (registry: GlRegistry, name: string, api: string): GlEnum => {
-    let untagged: GlEnum | undefined;
-    for (const candidate of registry.enums) {
-        if (candidate.name !== name) continue;
-        if (candidate.api === api) return candidate;
-        if (candidate.api === undefined && untagged === undefined) untagged = candidate;
+export const resolveEnum = (registry: GlRegistry, name: string): GlEnum => {
+    const found = registry.enums.find((candidate) => candidate.name === name);
+    if (found === undefined) {
+        throw new Error(`Enum token ${name} has no definition in the registry`);
     }
-    if (untagged === undefined) {
-        throw new Error(`Enum token ${name} has no definition for api "${api}"`);
-    }
-    return untagged;
+    return found;
 };

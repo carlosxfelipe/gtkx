@@ -1,20 +1,16 @@
-import { createRequire } from "node:module";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
 import { createCommand } from "./command.js";
 
-const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
+const version = packageVersion(import.meta.url);
 
-export const main = defineCommand({
+const main = defineCommand({
     ...createCommand,
     meta: {
         name: "create-gtkx",
         version,
-        description: "Scaffold a new GTKX application",
+        description: "Scaffold a new gtkx application",
     },
 });
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-    void runMain(main);
-}
+runMain(main);

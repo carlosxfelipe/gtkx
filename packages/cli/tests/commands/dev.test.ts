@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const watchSentinel = { paths: ["/proj/gtkx.config.ts"], regenerate: async () => undefined };
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
-    preflightCodegen: vi.fn(async () => undefined),
+    ensureGenerated: vi.fn(async () => false),
     resolveConfigWatch: vi.fn(async () => watchSentinel),
 }));
 
@@ -11,11 +11,11 @@ vi.mock("../../src/dev/supervisor.js", () => ({
     runDevSupervisor: vi.fn(async () => undefined),
 }));
 
-import { preflightCodegen, resolveConfigWatch } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, resolveConfigWatch } from "../../src/codegen/run-codegen.js";
 import { dev } from "../../src/commands/dev.js";
 import { runDevSupervisor } from "../../src/dev/supervisor.js";
 
-const preflightMock = vi.mocked(preflightCodegen);
+const ensureGeneratedMock = vi.mocked(ensureGenerated);
 const resolveConfigWatchMock = vi.mocked(resolveConfigWatch);
 const runDevSupervisorMock = vi.mocked(runDevSupervisor);
 
@@ -41,11 +41,13 @@ describe("dev command", () => {
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
 
-        expect(preflightMock).toHaveBeenCalledOnce();
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "development" });
         expect(resolveConfigWatchMock).toHaveBeenCalledOnce();
+        expect(resolveConfigWatchMock).toHaveBeenCalledWith(expect.any(String), "development");
         expect(runDevSupervisorMock).toHaveBeenCalledOnce();
-        const [entryPath, watch] = runDevSupervisorMock.mock.calls[0] ?? [];
+        const [entryPath, cwd, watch] = runDevSupervisorMock.mock.calls[0] ?? [];
         expect(entryPath).toMatch(/src\/main\.tsx$/);
+        expect(typeof cwd).toBe("string");
         expect(watch).toBe(watchSentinel);
     });
 

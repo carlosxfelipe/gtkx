@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { DATA_IMPORT_PREFIX } from "@gtkx/config";
-import { sortedAlpha } from "@gtkx/utils";
-import { warn } from "../internal/log.js";
+import { sortedStrings, warn } from "@gtkx/utils";
+import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
@@ -29,9 +28,8 @@ const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "
 const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
     `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;
 
-export type SchemaEnvResult = {
+type SchemaEnvResult = {
     path: string;
-    schemaFiles: string[];
     written: boolean;
 };
 
@@ -58,7 +56,7 @@ export const findSchemaFiles = (dataDir: string): string[] => {
         }
     };
     walk(dataDir);
-    return sortedAlpha(found);
+    return sortedStrings(found);
 };
 
 export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
@@ -97,5 +95,5 @@ export const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEn
     const content = renderEnvModule(parsed);
     const path = schemaEnvPath(rootDir);
     const written = writeIfChanged(path, content);
-    return { path, schemaFiles, written };
+    return { path, written };
 };

@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const loadModule = async () => {
@@ -6,11 +6,15 @@ const loadModule = async () => {
     return import("../src/animate-presence.js");
 };
 
-describe("toKeyedChildren", () => {
+const Fixture = (): null => null;
+
+const fixture = (key?: string): ReactElement => <Fixture key={key} />;
+
+describe("onlyElements", () => {
     let warnSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
-        warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     });
 
     afterEach(() => {
@@ -19,41 +23,43 @@ describe("toKeyedChildren", () => {
     });
 
     it("extracts keyed element children in order", async () => {
-        const { toKeyedChildren } = await loadModule();
-        const a = createElement("box", { key: "a" });
-        const b = createElement("box", { key: "b" });
+        const { onlyElements, getChildKey } = await loadModule();
+        const a = fixture("a");
+        const b = fixture("b");
 
-        const result = toKeyedChildren([a, b]);
+        const result = onlyElements([a, b]);
 
-        expect(result).toEqual([
-            { key: "a", element: a },
-            { key: "b", element: b },
-        ]);
+        expect(result).toEqual([a, b]);
+        expect(result.map(getChildKey)).toEqual(["a", "b"]);
     });
 
     it("accepts a single (non-array) child", async () => {
-        const { toKeyedChildren } = await loadModule();
-        const only = createElement("box", { key: "only" });
+        const { onlyElements, getChildKey } = await loadModule();
+        const only = fixture("only");
 
-        expect(toKeyedChildren(only)).toEqual([{ key: "only", element: only }]);
+        const result = onlyElements(only);
+
+        expect(result).toEqual([only]);
+        expect(result.map(getChildKey)).toEqual(["only"]);
     });
 
     it("skips null, undefined, and primitive children", async () => {
-        const { toKeyedChildren } = await loadModule();
-        const keyed = createElement("box", { key: "keep" });
+        const { onlyElements, getChildKey } = await loadModule();
+        const keyed = fixture("keep");
 
-        const result = toKeyedChildren([null, undefined, "text", 42, false, keyed]);
+        const result = onlyElements([null, undefined, "text", 42, false, keyed]);
 
-        expect(result).toEqual([{ key: "keep", element: keyed }]);
+        expect(result).toEqual([keyed]);
+        expect(result.map(getChildKey)).toEqual(["keep"]);
     });
 
     it("warns once in development for an element child without a key", async () => {
         vi.stubEnv("NODE_ENV", "development");
-        const { toKeyedChildren } = await loadModule();
-        const unkeyed = createElement("box", {});
+        const { onlyElements } = await loadModule();
+        const unkeyed = fixture();
 
-        toKeyedChildren([unkeyed]);
-        toKeyedChildren([unkeyed]);
+        onlyElements([unkeyed]);
+        onlyElements([unkeyed]);
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("without a key"));
@@ -61,10 +67,10 @@ describe("toKeyedChildren", () => {
 
     it("does not warn in production for an element child without a key", async () => {
         vi.stubEnv("NODE_ENV", "production");
-        const { toKeyedChildren } = await loadModule();
-        const unkeyed = createElement("box", {});
+        const { onlyElements } = await loadModule();
+        const unkeyed = fixture();
 
-        toKeyedChildren([unkeyed]);
+        onlyElements([unkeyed]);
 
         expect(warnSpy).not.toHaveBeenCalled();
     });

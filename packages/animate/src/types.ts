@@ -1,10 +1,9 @@
 import type * as Adw from "@gtkx/gi/adw";
-import type { ReactNode } from "react";
 
-export type AnimatableProperties = {
+export type AnimationTarget = {
     opacity?: number;
-    translateX?: number;
-    translateY?: number;
+    x?: number;
+    y?: number;
     scale?: number;
     scaleX?: number;
     scaleY?: number;
@@ -13,29 +12,76 @@ export type AnimatableProperties = {
     skewY?: number;
 };
 
-type AnimationBaseProps = {
-    initial?: AnimatableProperties | false;
-    animate?: AnimatableProperties;
-    exit?: AnimatableProperties;
-    animateOnMount?: boolean;
+export type Easing =
+    | "linear"
+    | "easeInQuad"
+    | "easeOutQuad"
+    | "easeInOutQuad"
+    | "easeInCubic"
+    | "easeOutCubic"
+    | "easeInOutCubic"
+    | "easeInQuart"
+    | "easeOutQuart"
+    | "easeInOutQuart"
+    | "easeInQuint"
+    | "easeOutQuint"
+    | "easeInOutQuint"
+    | "easeInSine"
+    | "easeOutSine"
+    | "easeInOutSine"
+    | "easeInExpo"
+    | "easeOutExpo"
+    | "easeInOutExpo"
+    | "easeInCirc"
+    | "easeOutCirc"
+    | "easeInOutCirc"
+    | "easeInElastic"
+    | "easeOutElastic"
+    | "easeInOutElastic"
+    | "easeInBack"
+    | "easeOutBack"
+    | "easeInOutBack"
+    | "easeInBounce"
+    | "easeOutBounce"
+    | "easeInOutBounce"
+    | "ease"
+    | "easeIn"
+    | "easeOut"
+    | "easeInOut"
+    | "circIn"
+    | "circOut"
+    | "circInOut"
+    | "backIn"
+    | "backOut"
+    | "backInOut";
+
+export type RepeatType = "loop" | "reverse" | "mirror";
+
+export type Transition = {
+    type?: "tween" | "spring";
+    duration?: number;
+    ease?: Easing | Adw.Easing;
     delay?: number;
+    reverse?: boolean;
+    repeat?: number;
+    repeatType?: RepeatType;
+    followEnableAnimations?: boolean;
+    stiffness?: number;
+    damping?: number;
+    dampingRatio?: number;
+    bounce?: number;
+    visualDuration?: number;
+    mass?: number;
+    velocity?: number;
+    epsilon?: number;
+    clamp?: boolean;
+};
+
+export type AnimationProps = {
+    initial?: AnimationTarget | false;
+    animate?: AnimationTarget;
+    exit?: AnimationTarget;
+    transition?: Transition;
     onAnimationStart?: () => void;
     onAnimationComplete?: () => void;
-    children?: ReactNode;
-};
-
-export type AdwTimedAnimationProps = AnimationBaseProps & {
-    duration?: number;
-    easing?: Adw.Easing;
-    repeat?: number;
-    reverse?: boolean;
-    alternate?: boolean;
-};
-
-export type AdwSpringAnimationProps = AnimationBaseProps & {
-    damping?: number;
-    stiffness?: number;
-    mass?: number;
-    initialVelocity?: number;
-    clamp?: boolean;
 };

@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/animate",
     "version": "0.21.0",
-    "description": "Adwaita-powered animation components for GTKX: AnimatePresence, timed and spring animations",
+    "description": "Adwaita-powered animation for GTKX: the animated factory and AnimatePresence component with tween and spring transitions",
     "keywords": [
         "gtkx",
         "gtk",
@@ -38,7 +38,9 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
     },
     "engines": {
         "node": ">=24"

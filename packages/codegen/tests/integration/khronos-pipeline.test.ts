@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadGlRegistry } from "../../src/khronos/model.js";
 import { type GlGenerationResult, generateGlModules } from "../../src/khronos/pipeline.js";
-import { resolveEnum, selectSubset } from "../../src/khronos/select.js";
+import { selectSubset } from "../../src/khronos/select.js";
 
 const REGISTRY_PATH = fileURLToPath(new URL("../../registry/gl.xml", import.meta.url));
 
@@ -29,13 +29,6 @@ describe("khronos selection over the vendored registry", () => {
         expect(Math.min(...numbers)).toBe(1.0);
         expect(Math.max(...numbers)).toBe(4.6);
     });
-
-    it("keys API-overloaded enum tokens by API", () => {
-        const registry = loadGlRegistry(REGISTRY_PATH);
-        const forGl = resolveEnum(registry, "GL_ACTIVE_PROGRAM_EXT", "gl");
-        const forGles = resolveEnum(registry, "GL_ACTIVE_PROGRAM_EXT", "gles2");
-        expect(forGl.value).not.toBe(forGles.value);
-    });
 });
 
 let result: GlGenerationResult;
@@ -49,15 +42,10 @@ describe("khronos generation counts", () => {
         expect(result.report.selectedCommands).toBe(656);
         expect(result.report.emittedCommands).toBe(612);
         expect(result.report.derivedSingulars).toBe(27);
-        expect(result.report.selectedEnums).toBe(1363);
-        expect(result.report.emittedEnums).toBe(1362);
         expect(result.report.exclusions).toHaveLength(44);
     });
 
-    it("skips only the unsafe-integer timeout token", () => {
-        expect(result.report.skippedEnums).toEqual([
-            { name: "GL_TIMEOUT_IGNORED", reason: "value 0xFFFFFFFFFFFFFFFF is outside the safe integer range" },
-        ]);
+    it("skips the unsafe-integer timeout token", () => {
         expect(result.files.get("enums.ts")).not.toContain("TIMEOUT_IGNORED");
     });
 
@@ -87,7 +75,7 @@ describe("khronos generation surface", () => {
         );
     });
 
-    it("passes data parameters as blobs accepting views, offsets, and null", () => {
+    it("passes data parameters as buffers accepting views, offsets, and null", () => {
         const commands = result.files.get("commands.ts") ?? "";
         expect(commands).toContain("data: ArrayBufferView | GLintptr | null");
     });

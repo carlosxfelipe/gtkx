@@ -1,15 +1,13 @@
+import { ColumnView, ColumnViewColumn, ListView, Menu } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
-    GtkColumnView,
-    GtkColumnViewColumn,
     GtkEditableLabel,
     GtkHeaderBar,
     GtkLabel,
-    GtkListView,
     GtkPaned,
     GtkScrolledWindow,
     GtkSearchBar,
@@ -215,7 +213,7 @@ const INITIAL_COLUMN_VISIBILITY: ColumnVisibility = {
 };
 
 const columnVisibilityMenu = (
-    <GMenu
+    <Menu
         items={[
             {
                 section: TOGGLEABLE_COLUMNS.map((column) => ({
@@ -266,20 +264,33 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
     }
 };
 
-const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => (
-    <GtkScrolledWindow>
-        <GtkListView
-            name="sidebar"
-            tabBehavior={Gtk.ListTabBehavior.ITEM}
-            selectionMode={Gtk.SelectionMode.BROWSE}
-            onSelectionChanged={onSelectionChanged}
-            cssClasses={["navigation-sidebar"]}
-            autoexpand
-            renderItem={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
-            items={getSchemaTree().map(schemaNodeToItem)}
-        />
-    </GtkScrolledWindow>
-);
+const collectSchemaExpandableIds = (nodes: SchemaTreeItemData[]): string[] => {
+    const ids: string[] = [];
+    for (const node of nodes) {
+        if (node.children && node.children.length > 0) {
+            ids.push(node.id, ...collectSchemaExpandableIds(node.children));
+        }
+    }
+    return ids;
+};
+
+const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => {
+    const items = getSchemaTree().map(schemaNodeToItem);
+    return (
+        <GtkScrolledWindow>
+            <ListView
+                name="sidebar"
+                tabBehavior={Gtk.ListTabBehavior.ITEM}
+                selectionMode={Gtk.SelectionMode.BROWSE}
+                onSelectionChanged={onSelectionChanged}
+                cssClasses={["navigation-sidebar"]}
+                expandedIds={collectSchemaExpandableIds(items)}
+                renderItem={({ item: schemaId }: { item: string }) => <GtkLabel label={schemaId} xalign={0} />}
+                items={items}
+            />
+        </GtkScrolledWindow>
+    );
+};
 
 interface SettingsColumnViewProps {
     keySearchActive: boolean;
@@ -312,57 +323,57 @@ interface SettingsColumnsProps {
 
 const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps) => (
     <>
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="name"
             title="Name"
-            renderCell={(item: KeyInfo) => <GtkLabel label={item.name} xalign={0} />}
+            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.name} xalign={0} />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="value"
             title="Value"
             resizable
-            renderCell={(item: KeyInfo) => (
+            renderItem={({ item }: { item: KeyInfo }) => (
                 <GtkEditableLabel
                     text={item.value}
                     onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
                 />
             )}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="type"
             title="Type"
             resizable
             sortable
             visible={columnVisibility.type}
             headerMenu={columnVisibilityMenu}
-            renderCell={(item: KeyInfo) => <GtkLabel label={item.type} xalign={0} />}
+            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.type} xalign={0} />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="default"
             title="Default"
             resizable
             expand
             visible={columnVisibility.default}
             headerMenu={columnVisibilityMenu}
-            renderCell={(item: KeyInfo) => <GtkLabel label={item.defaultValue} xalign={0} />}
+            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.defaultValue} xalign={0} />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="summary"
             title="Summary"
             resizable
             expand
             visible={columnVisibility.summary}
             headerMenu={columnVisibilityMenu}
-            renderCell={(item: KeyInfo) => <GtkLabel label={item.summary} xalign={0} wrap />}
+            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.summary} xalign={0} wrap />}
         />
-        <GtkColumnViewColumn
+        <ColumnViewColumn
             id="description"
             title="Description"
             resizable
             expand
             visible={columnVisibility.description}
             headerMenu={columnVisibilityMenu}
-            renderCell={(item: KeyInfo) => <GtkLabel label={item.description} xalign={0} wrap />}
+            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.description} xalign={0} wrap />}
         />
     </>
 );
@@ -383,7 +394,7 @@ const SettingsColumnView = ({
                 <GtkSearchEntry name="search-entry" onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
             </GtkSearchBar>
             <GtkScrolledWindow hexpand vexpand>
-                <GtkColumnView
+                <ColumnView
                     name="column-view"
                     tabBehavior={Gtk.ListTabBehavior.CELL}
                     cssClasses={["data-table"]}
@@ -391,7 +402,7 @@ const SettingsColumnView = ({
                     actionGroups={renderColumnVisibilityActions(columnVisibility, toggleColumn)}
                 >
                     {renderSettingsColumns({ columnVisibility, onValueEdit })}
-                </GtkColumnView>
+                </ColumnView>
             </GtkScrolledWindow>
         </GtkBox>
     );

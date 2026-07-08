@@ -1,9 +1,8 @@
-import { resolve } from "node:path";
+import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
-import { ensureGenerated, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
-import { runCommand } from "../internal/errors.js";
-import { info } from "../internal/log.js";
+import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 export const codegen = defineCommand({
     meta: {
@@ -16,28 +15,30 @@ export const codegen = defineCommand({
             description: "Wipe the generated store and regenerate unconditionally (recover a corrupted store)",
             default: false,
         },
-        cwd: {
-            type: "string",
-            description: "Project root (default: current working directory)",
-        },
+        ...cwdArg,
     },
     async run({ args }) {
-        await runCommand(async () => {
-            const cwd = args.cwd ? resolve(args.cwd) : process.cwd();
+        const cwd = resolveCwd(args);
 
-            if (!args.force) {
-                const ran = await ensureGenerated(cwd);
-                info(ran ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
-                return;
-            }
-
-            const startedAt = Date.now();
-            const result = await runCodegen({ cwd, force: true });
+        if (await isCodegenDisabled(cwd)) {
+            await runCodegen({ cwd });
             syncSchemaEnv(cwd);
+            info("codegen: disabled for this project; reusing an installed binding store");
+            return;
+        }
 
-            for (const line of formatCodegenResult(result, Date.now() - startedAt)) {
-                info(line);
-            }
-        });
+        if (!args.force) {
+            const ran = await ensureGenerated(cwd);
+            info(ran ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
+            return;
+        }
+
+        const startedAt = Date.now();
+        const result = await runCodegen({ cwd, force: true });
+        syncSchemaEnv(cwd);
+
+        for (const line of formatCodegenResult(result, Date.now() - startedAt)) {
+            info(line);
+        }
     },
 });

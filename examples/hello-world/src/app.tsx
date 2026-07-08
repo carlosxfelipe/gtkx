@@ -1,4 +1,3 @@
-import { applicationId } from "virtual:gtkx-config";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
@@ -8,15 +7,7 @@ const Counter = () => {
     const [count, setCount] = useState(0);
 
     return (
-        <GtkApplicationWindow
-            title="Hello GTKX"
-            defaultWidth={400}
-            defaultHeight={300}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
-        >
+        <GtkApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}
@@ -40,7 +31,7 @@ const Counter = () => {
 };
 
 export const App = () => (
-    <GtkApplication applicationId={applicationId}>
+    <GtkApplication>
         <Counter />
     </GtkApplication>
 );

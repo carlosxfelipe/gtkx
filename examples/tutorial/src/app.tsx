@@ -1,4 +1,4 @@
-import { applicationId } from "virtual:gtkx-config";
+import { GridView, ListView, Menu } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -13,12 +13,10 @@ import {
     AdwToggleGroup,
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
-import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
-    GtkGridView,
-    GtkListView,
     GtkMenuButton,
     GtkScrolledWindow,
     GtkSearchBar,
@@ -95,16 +93,18 @@ function NoteListContent({
 }: NoteListContentProps) {
     const items = filteredNotes.map((note) => ({ id: note.id, value: note }));
     const selected = selectedId ? [selectedId] : [];
-    const renderItem = (note: Note) => <NoteCard note={note} compact={compactMode} fontSize={fontSize} />;
+    const renderItem = ({ item: note }: { item: Note }) => (
+        <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
+    );
     const onSelectionChanged = (ids: string[]) => setSelectedId(ids[0] ?? null);
 
     if (viewMode === "list") {
         return (
             <GtkScrolledWindow vexpand>
-                <GtkListView
+                <ListView
                     estimatedItemHeight={compactMode ? 50 : 80}
                     selectionMode={Gtk.SelectionMode.SINGLE}
-                    selected={selected}
+                    selectedIds={selected}
                     onSelectionChanged={onSelectionChanged}
                     items={items}
                     renderItem={renderItem}
@@ -115,11 +115,11 @@ function NoteListContent({
 
     return (
         <GtkScrolledWindow vexpand>
-            <GtkGridView
+            <GridView
                 minColumns={2}
                 maxColumns={4}
                 selectionMode={Gtk.SelectionMode.SINGLE}
-                selected={selected}
+                selectedIds={selected}
                 onSelectionChanged={onSelectionChanged}
                 items={items}
                 renderItem={renderItem}
@@ -209,7 +209,7 @@ const MainMenu = () => (
         iconName="open-menu-symbolic"
         tooltipText="Main Menu"
         menuModel={
-            <GMenu
+            <Menu
                 items={[
                     { label: "New Note", action: "win.new" },
                     {
@@ -645,10 +645,7 @@ function NotesWindow() {
             title="Notes"
             defaultWidth={900}
             defaultHeight={600}
-            onCloseRequest={() => {
-                quit();
-                return true;
-            }}
+            onCloseRequest={quit}
             actions={<NotesWindowActions notes={notes} dialogs={dialogs} onShortcuts={onShortcuts} />}
             controllers={
                 <AppShortcuts
@@ -685,11 +682,10 @@ function NotesWindow() {
 export function App() {
     return (
         <AdwApplication
-            applicationId={applicationId}
             actionAccels={[
-                { action: "win.new", accels: ["<Control>n"] },
-                { action: "win.preferences", accels: ["<Control>comma"] },
-                { action: "win.shortcuts", accels: ["<Control>question"] },
+                { detailedActionName: "win.new", accels: ["<Control>n"] },
+                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
         >
             <NotesWindow />

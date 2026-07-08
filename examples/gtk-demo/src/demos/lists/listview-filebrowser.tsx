@@ -1,17 +1,9 @@
 import { homedir } from "node:os";
+import { GridView, ListView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkGridView,
-    GtkHeaderBar,
-    GtkImage,
-    GtkLabel,
-    GtkListView,
-    GtkScrolledWindow,
-} from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 
 import { createContext, useContext, useMemo, useState } from "react";
@@ -191,7 +183,7 @@ const ListViewFilebrowserTitlebar = () => {
             name="filebrowser-header"
             start={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
             end={
-                <GtkListView
+                <ListView
                     name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}
                     cssClasses={[
@@ -204,12 +196,14 @@ const ListViewFilebrowserTitlebar = () => {
                         "viewswitcher",
                     ]}
                     valign={Gtk.Align.CENTER}
-                    selected={[viewMode]}
+                    selectedIds={[viewMode]}
                     onSelectionChanged={(ids) => {
                         const id = ids[0] as ViewMode | undefined;
                         if (id) setViewMode(id);
                     }}
-                    renderItem={(item: ViewModeItem) => <GtkImage iconName={item.icon} tooltipText={item.label} />}
+                    renderItem={({ item }: { item: ViewModeItem }) => (
+                        <GtkImage iconName={item.icon} tooltipText={item.label} />
+                    )}
                     items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
                 />
             }
@@ -221,13 +215,13 @@ const ListViewFilebrowserDemo = () => {
     const { viewMode, files, handleActivate } = useFilebrowserContext();
     return (
         <GtkScrolledWindow name="files-scrolled" vexpand hexpand>
-            <GtkGridView
+            <GridView
                 name="files-grid"
                 estimatedItemHeight={viewMode === "grid" ? 80 : 48}
                 maxColumns={15}
                 orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
                 onActivate={handleActivate}
-                renderItem={(item: FileItem) => <ListItem item={item} mode={viewMode} />}
+                renderItem={({ item }: { item: FileItem }) => <ListItem item={item} mode={viewMode} />}
                 items={files.map((file) => ({ id: file.name, value: file }))}
             />
         </GtkScrolledWindow>

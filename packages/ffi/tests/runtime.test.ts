@@ -2,35 +2,37 @@ import * as runtime from "@gtkx/ffi";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_RUNTIME_EXPORTS = [
-    "emitGobjectSignal",
-    "connectGobjectSignal",
-    "newGobjectWithProperties",
-    "getGobjectProperty",
-    "setGobjectProperty",
-    "getGvalueBoxed",
-    "setGvalueBoxed",
+    "emitSignal",
+    "connectSignal",
+    "newObjectWithProperties",
+    "getObjectProperty",
+    "setObjectProperty",
+    "getBoxedValue",
+    "setBoxedValue",
     "promisify",
     "getHandle",
-    "getInstanceGtype",
+    "getInstanceType",
     "setHandle",
     "tryGetHandle",
     "t",
     "createErrorDomain",
     "registerWrapperClass",
-    "signalBaseName",
-    "wrapValue",
+    "getSignalBaseName",
+    "fromNative",
+    "installMixins",
 ] as const;
 
 const NATIVE_TRANSPORT_PRIMITIVES = ["alloc", "call", "read", "write", "freeze", "unfreeze"] as const;
 
 const PRIVATE_MARSHALLING_INTERNALS = [
-    "toGvalue",
-    "fromGvalue",
-    "valueGetType",
-    "newValueFromFfi",
-    "outBoxedFromFfi",
-    "inoutBoxedFromFfi",
-    "signalDetailQuark",
+    "toValue",
+    "fromValue",
+    "getValueType",
+    "copyValue",
+    "newValueForDescriptor",
+    "outValueForDescriptor",
+    "outValueForBoxedDescriptor",
+    "inoutValueForBoxedDescriptor",
 ] as const;
 
 describe("runtime barrel", () => {

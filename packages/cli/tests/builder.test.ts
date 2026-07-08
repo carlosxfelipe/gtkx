@@ -19,7 +19,10 @@ const { viteBuildMock } = vi.hoisted(() => ({
     viteBuildMock: vi.fn(async (_config: ViteConfigSnapshot) => undefined),
 }));
 
-vi.mock("vite", () => ({ build: viteBuildMock }));
+vi.mock("vite", async (importActual) => {
+    const actual = await importActual<typeof import("vite")>();
+    return { ...actual, build: viteBuildMock };
+});
 
 import { build } from "../src/builder.js";
 
@@ -59,6 +62,11 @@ describe("build (core config)", () => {
     it("respects a custom outDir from user vite config", async () => {
         await build({ entry: "src/index.tsx", vite: { build: { outDir: "build" } } });
         expect(getViteConfig().build.outDir).toBe("build");
+    });
+
+    it("lets a user-supplied minify override the default without clobbering", async () => {
+        await build({ entry: "src/index.tsx", vite: { build: { minify: false } } });
+        expect(getViteConfig().build.minify).toBe(false);
     });
 
     it("forces ssr.noExternal=true regardless of user ssr config", async () => {
@@ -147,7 +155,7 @@ describe("build (define and rolldown)", () => {
         });
 
         const config = getViteConfig();
-        expect(config.define["__APP_VERSION__"]).toBe(JSON.stringify("1.2.3"));
+        expect(config.define.__APP_VERSION__).toBe(JSON.stringify("1.2.3"));
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 
@@ -159,8 +167,8 @@ describe("build (define and rolldown)", () => {
         });
 
         const output = getViteConfig().build.rolldownOptions.output as Record<string, unknown>;
-        expect(output["format"]).toBe("es");
-        expect(output["sourcemap"]).toBe(true);
-        expect(output["entryFileNames"]).toBe("bundle.js");
+        expect(output.format).toBe("es");
+        expect(output.sourcemap).toBe(true);
+        expect(output.entryFileNames).toBe("bundle.js");
     });
 });

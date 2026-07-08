@@ -1,21 +1,32 @@
 export const WRAPPER_NODE_ELEMENT = "__GTKX_WRAPPER_NODE__";
 
-export const META_OBJECT_KIND = "meta-object";
+const WRAPPER_KINDS = [
+    "lazy-element",
+    "widget-prop",
+    "container-slot",
+    "text-anchor",
+    "text-paintable",
+    "buffer-text",
+    "label-text",
+] as const;
 
-export const LAYOUT_CHILD_KIND = "layout-child";
+export type WrapperKind = (typeof WRAPPER_KINDS)[number];
 
-export const OVERLAY_KIND = "overlay";
+const WRAPPER_KIND_SET: Set<string> = new Set(WRAPPER_KINDS);
 
-export const TAB_LABEL_KIND = "tab-label";
+export const isWrapperKind = (value: unknown): value is WrapperKind =>
+    typeof value === "string" && WRAPPER_KIND_SET.has(value);
 
-export const SLOT_KIND = "slot";
+export const LAZY_ELEMENT_KIND: WrapperKind = "lazy-element";
 
-export const CONTAINER_PROP_KIND = "container-slot";
+export const WIDGET_PROP_KIND: WrapperKind = "widget-prop";
 
-export const TEXT_ANCHOR_KIND = "text-anchor";
+export const CONTAINER_SLOT_KIND: WrapperKind = "container-slot";
 
-export const TEXT_PAINTABLE_KIND = "text-paintable";
+export const TEXT_ANCHOR_KIND: WrapperKind = "text-anchor";
 
-export const BUFFER_TEXT_KIND = "text";
+export const TEXT_PAINTABLE_KIND: WrapperKind = "text-paintable";
 
-export const LABEL_TEXT_KIND = "label-text";
+export const BUFFER_TEXT_KIND: WrapperKind = "buffer-text";
+
+export const LABEL_TEXT_KIND: WrapperKind = "label-text";

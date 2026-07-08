@@ -58,8 +58,8 @@ describe("WidgetRegistry.register / get", () => {
     });
 });
 
-describe("WidgetRegistry.refresh / toplevels", () => {
-    it("clears the reverse lookup and re-registers from the live toplevels", () => {
+describe("WidgetRegistry.refresh / windows", () => {
+    it("clears the reverse lookup and re-registers from the live windows", () => {
         const stale = makeWidget();
         const fresh = makeWidget();
         const registry = new WidgetRegistry();

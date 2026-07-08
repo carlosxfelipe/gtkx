@@ -3,65 +3,51 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     registerClass as nativeRegisterClass,
 } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
-import { type GType, TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { wrapHandler } from "./handler-trampoline.js";
+import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
+import { wrapCallback } from "./callback.js";
 import {
-    getClassGtype,
+    getClassType,
     getInterfaceVfuncRegistry,
-    getParentClass,
     getVfuncRegistry,
-    setClassGtype,
+    registerClassType,
     type VfuncDescriptor,
-    walkClassChain,
 } from "./registry.js";
+import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
-export type RegisterClassOptions = {
-    gtypeName?: string;
-};
-
+type RegisterClassOptions = { typeName?: string };
 type VfuncFn = NativeRegisterClassVfunc["fn"];
-
-type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & {
-    methodName: string;
-    fn: VfuncFn;
-};
-
+type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
 type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
-
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
-
-type InterfaceVfuncBinding = {
-    gtype: GType;
-    vfuncs: DiscoveredInterfaceVfunc[];
-};
+type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[] };
 
 export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
-    const parentGtype = resolveParentGtype(klass);
-    if (parentGtype === TYPE_INVALID) {
+    const parentType = resolveParentType(klass);
+    if (parentType === TYPE_INVALID) {
         throw new TypeError(`registerClass: ${klass.name} must extend a registered wrapper class`);
     }
 
-    const name = options.gtypeName ?? klass.name;
+    const name = options.typeName ?? klass.name;
+
     if (!name) {
-        throw new Error("registerClass: cannot derive a GType name (anonymous class with no gtypeName option)");
+        throw new Error("registerClass: cannot derive a GType name (anonymous class with no typeName option)");
     }
 
     const classVfuncs = discoverClassVfuncs(klass);
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
-    const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentGtype, claimedMethodNames);
+    const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentType, claimedMethodNames);
 
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
-    const newGtype: GType = nativeRegisterClass(name, parentGtype, nativeOptions);
-    setClassGtype(klass, newGtype);
+    const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
+    registerClassType(klass, newType);
 
     return klass;
 }
 
-function resolveParentGtype(klass: AnyClass): GType {
+function resolveParentType(klass: AnyClass): bigint {
     return (
         walkClassChain(getParentClass(klass), (cls) => {
-            const gtype = getClassGtype(cls);
+            const gtype = getClassType(cls);
             return gtype !== TYPE_INVALID ? gtype : undefined;
         }) ?? TYPE_INVALID
     );
@@ -89,7 +75,11 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
         if (!descriptor) continue;
         const fn = proto[methodName];
         if (!fn) continue;
-        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes, descriptor.returnType) });
+        result.push({
+            ...descriptor,
+            methodName,
+            fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
+        });
     }
     return result;
 }
@@ -110,15 +100,15 @@ function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
 
 function wrapVfunc(
     fn: VfuncFn,
-    argTypes: NativeRegisterClassVfunc["argTypes"],
-    returnType: NativeRegisterClassVfunc["returnType"],
+    argDescriptors: NativeRegisterClassVfunc["argDescriptors"],
+    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"],
 ): VfuncFn {
-    return wrapHandler(fn, { argTypes, returnType }, "this");
+    return wrapCallback(fn as (...args: unknown[]) => unknown, { argDescriptors, returnDescriptor }, "this");
 }
 
 function discoverInheritedInterfaceVfuncs(
     klass: AnyClass,
-    parentGtype: GType,
+    parentGtype: bigint,
     claimedMethodNames: Set<string>,
 ): InterfaceVfuncBinding[] {
     const bindings: InterfaceVfuncBinding[] = [];
@@ -133,7 +123,7 @@ function discoverInheritedInterfaceVfuncs(
 
 function discoverInterfaceVfuncs(
     klass: AnyClass,
-    interfaceGtype: GType,
+    interfaceGtype: bigint,
     claimedMethodNames: Set<string>,
 ): DiscoveredInterfaceVfunc[] {
     const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
@@ -170,7 +160,7 @@ function toNativeOptions(
     if (hasClassVfuncs) options.vfuncs = [...classVfuncs];
     if (hasInterfaces) {
         options.interfaces = interfaceBindings.map((binding) => ({
-            gtype: binding.gtype,
+            type: binding.gtype,
             vfuncs: [...binding.vfuncs],
         }));
     }

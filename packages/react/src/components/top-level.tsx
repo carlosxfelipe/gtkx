@@ -1,25 +1,39 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ElementType, ReactNode, Ref } from "react";
-import { useForwardedRef } from "../hooks/use-forwarded-ref.js";
-import { type TopLevelSurface, useWindowPresentation } from "../hooks/use-window-presentation.js";
+import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
+import { useMergeRefs } from "../hooks/use-merge-refs.js";
+import { createPortal } from "../reconciler/portal.js";
+import { createRootElement } from "../reconciler/root-element.js";
 
-export interface TopLevelParentProps {
-    parent?: Gtk.Window | null;
-}
+const toplevelRoot = createRootElement();
 
-export const withTopLevel = <P extends { children?: ReactNode }>(
+const useWindowPresentation = (): ((window: Gtk.Window | null) => void) => {
+    const [toplevel, setToplevel] = useState<Gtk.Window | null>(null);
+
+    useLayoutEffect(() => {
+        if (!toplevel) return;
+        toplevel.present();
+        return () => {
+            toplevel.setDefaultWidget(null);
+            toplevel.destroy();
+        };
+    }, [toplevel]);
+
+    return setToplevel;
+};
+
+export const withWindowPresentation = <P extends { children?: ReactNode }>(
     Underlying: ElementType,
 ): ((props: P) => ReactNode) => {
-    const Element = Underlying;
     return (props: P): ReactNode => {
-        const externalRef = (props as { ref?: Ref<TopLevelSurface | null> }).ref;
-        const { children, parent, ...rest } = props as P & TopLevelParentProps;
-        const capture = useWindowPresentation(parent ?? null);
-        const [, ref] = useForwardedRef(externalRef, capture);
-        return (
-            <Element {...rest} ref={ref}>
+        const externalRef = (props as { ref?: Ref<Gtk.Window | null> }).ref;
+        const { children, ...rest } = props;
+        const capture = useWindowPresentation();
+        const ref = useMergeRefs(externalRef, capture);
+        return createPortal(
+            <Underlying {...rest} ref={ref}>
                 {children}
-            </Element>
+            </Underlying>,
+            toplevelRoot,
         );
     };
 };

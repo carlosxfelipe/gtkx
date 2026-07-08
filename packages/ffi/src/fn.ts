@@ -1,120 +1,108 @@
-import type { CallbackType, Ref, Type, Value } from "@gtkx/native";
-import { type ArgCategory, classifyArgCategory } from "./arg-category.js";
-import { LIB } from "./constants.js";
-import { bind, boxedT, refT } from "./descriptors.js";
-import { checkError } from "./gerror.js";
-import { type UserHandler, wrapHandler } from "./handler-trampoline.js";
+import type { Descriptor, Ref } from "@gtkx/native";
+import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg, isRefArg } from "./arg.js";
+import { bind } from "./bind.js";
+import { wrapCallbackValue } from "./callback.js";
+import { boxedT, refT } from "./descriptors.js";
+import { checkError } from "./error.js";
+import { LIB } from "./library.js";
+import { fromNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
-import { wrapValue } from "./wrap-value.js";
+import { packTupleResult } from "./tuple.js";
 
-const wrapCallbackValue = (spec: CallbackType, callback: unknown): Value =>
-    callback == null ? (callback as Value) : wrapHandler(callback as UserHandler, spec, "none");
-
-export type ArgType = {
-    type: Type;
-    direction?: "out" | "inout";
-    callerAllocates?: boolean;
-    consumed?: boolean;
-};
-
-export type FnSignature = {
-    args: ArgType[];
-    returns: Type;
+type FnSpec = {
+    args: Arg[];
+    returns: Descriptor;
     throws?: boolean;
 };
 
-export const tupleResult = (outs: unknown[], primary: unknown, hasPrimary: boolean): unknown => {
-    if (hasPrimary) {
-        return outs.length === 0 ? primary : [primary, ...outs];
-    }
-    if (outs.length === 0) return undefined;
-    if (outs.length === 1) return outs[0];
-    return outs;
+type ArgSpec = {
+    arg: Arg;
+    isRef: boolean;
+    isCallerAllocated: boolean;
+    consumesInput: boolean;
+    inputIndex: number;
+    isOutParam: boolean;
 };
 
-const toNativeArgTypes = (argTypes: ArgType[], throws: boolean): Type[] => {
-    const nativeArgTypes = argTypes.map((argType) =>
-        argType.direction !== undefined && argType.callerAllocates !== true ? refT(argType.type) : argType.type,
+const buildNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
+    const nativeArgTypes = args.map((argSpec) =>
+        argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
     if (throws)
-        nativeArgTypes.push(refT(boxedT("GError", { ownership: "full", library: LIB, getTypeFn: "g_error_get_type" })));
+        nativeArgTypes.push(
+            refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" })),
+        );
     return nativeArgTypes;
 };
 
-type ArgPlan = {
-    argType: ArgType;
-    category: ArgCategory;
-    consumesInput: boolean;
-    inputIndex: number;
-    isOutput: boolean;
-};
-
-const categoryOf = (argType: ArgType): ArgCategory =>
-    classifyArgCategory({ direction: argType.direction, callerAllocated: argType.callerAllocates === true });
-
-const planArgs = (argTypes: ArgType[]): ArgPlan[] => {
+const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
     let inputCursor = 0;
-    return argTypes.map((argType) => {
-        const category = categoryOf(argType);
-        const consumesInput = category.kind !== "outCell" || category.inout;
-        const isOutput = category.kind !== "plainInput" && argType.consumed !== true;
-        return { argType, category, consumesInput, inputIndex: consumesInput ? inputCursor++ : -1, isOutput };
+    return args.map((arg) => {
+        const isRef = isRefArg(arg);
+        const consumesInput = !isRef || isInoutArg(arg);
+        const isOutParam = isOutputArg(arg) && arg.consumed !== true;
+        return {
+            arg,
+            isRef,
+            isCallerAllocated: isCallerAllocatedArg(arg),
+            consumesInput,
+            inputIndex: consumesInput ? inputCursor++ : -1,
+            isOutParam,
+        };
     });
 };
 
-const toNativeValues = (plans: ArgPlan[], inputs: unknown[]): Value[] =>
-    plans.map(({ argType, category, consumesInput, inputIndex }) => {
-        if (category.kind === "callerAllocated") {
+const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
+    plans.map(({ arg, isRef, isCallerAllocated, consumesInput, inputIndex }) => {
+        if (isCallerAllocated) {
             const wrapper = inputs[inputIndex];
             return wrapper == null ? wrapper : getHandle(wrapper as object);
         }
-        if (category.kind === "outCell") {
-            return { value: consumesInput ? (inputs[inputIndex] as Value) : null };
+        if (isRef) {
+            return { value: consumesInput ? inputs[inputIndex] : null };
         }
-        if (argType.type.type === "callback") {
-            return wrapCallbackValue(argType.type, inputs[inputIndex]);
+        if (arg.type.kind === "callback") {
+            return wrapCallbackValue(arg.type, inputs[inputIndex]);
         }
-        return inputs[inputIndex] as Value;
+        return inputs[inputIndex];
     });
 
-const toOutputs = (plans: ArgPlan[], inputs: unknown[], nativeValues: Value[]): unknown[] => {
-    const outputs: unknown[] = [];
-    plans.forEach(({ argType, category, inputIndex, isOutput }, index) => {
-        if (!isOutput) return;
-        outputs.push(
-            category.kind === "callerAllocated"
-                ? inputs[inputIndex]
-                : wrapValue(argType.type, (nativeValues[index] as Ref).value),
+const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
+    const outParams: unknown[] = [];
+    plans.forEach(({ arg, isCallerAllocated, inputIndex, isOutParam }, index) => {
+        if (!isOutParam) return;
+        outParams.push(
+            isCallerAllocated ? inputs[inputIndex] : fromNative(arg.type, (nativeValues[index] as Ref).value),
         );
     });
-    return outputs;
+    return outParams;
 };
 
-export function fn(library: string, symbol: string, signature: FnSignature): (...inputs: unknown[]) => unknown {
-    const { args: argTypes, returns: returnType, throws = false } = signature;
-    const nativeArgTypes = toNativeArgTypes(argTypes, throws);
-    const nativeFn = bind(library, symbol, nativeArgTypes, returnType);
-    const hasPrimary = returnType.type !== "void";
-    const plans = planArgs(argTypes);
+export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+    const { args, returns: returnDescriptor, throws = false } = spec;
+    const nativeArgTypes = buildNativeArgTypes(args, throws);
+    const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
+    const hasPrimary = returnDescriptor.kind !== "void";
+    const plans = buildArgSpecs(args);
 
-    const shape = (inputs: unknown[], nativeValues: Value[], nativeResult: Value): unknown => {
-        const primary = hasPrimary ? wrapValue(returnType, nativeResult) : undefined;
-        return tupleResult(toOutputs(plans, inputs, nativeValues), primary, hasPrimary);
+    const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
+        const primary = hasPrimary ? fromNative(returnDescriptor, nativeResult) : undefined;
+        return packTupleResult(readOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
     if (throws) {
         return (...inputs) => {
-            const nativeValues = toNativeValues(plans, inputs);
-            const errorCell: Ref = { value: null };
-            nativeValues.push(errorCell);
+            const nativeValues = buildNativeValues(plans, inputs);
+            const errorRef: Ref = { value: null };
+            nativeValues.push(errorRef);
             const nativeResult = nativeFn(...nativeValues);
-            checkError(errorCell);
+            checkError(errorRef);
             return shape(inputs, nativeValues, nativeResult);
         };
     }
 
     return (...inputs) => {
-        const nativeValues = toNativeValues(plans, inputs);
+        const nativeValues = buildNativeValues(plans, inputs);
         return shape(inputs, nativeValues, nativeFn(...nativeValues));
     };
 }

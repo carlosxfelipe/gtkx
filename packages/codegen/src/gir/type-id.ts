@@ -13,9 +13,9 @@ export const LIST_FLAVOR_BY_NAME = {
 
 export type ListFlavor = (typeof LIST_FLAVOR_BY_NAME)[keyof typeof LIST_FLAVOR_BY_NAME];
 
-export type PrimitiveType = { kind: "primitive"; category: PrimitiveCategory };
+type PrimitiveType = { kind: "primitive"; category: PrimitiveCategory };
 
-export type VarargsType = { kind: "varargs" };
+type VarargsType = { kind: "varargs" };
 
 export type CArrayType = {
     kind: "carray";
@@ -41,9 +41,9 @@ export type StructuralType = PrimitiveType | VarargsType | CArrayType | GListTyp
 
 export type ParseContext = {
     nsId: number;
-    findOrStubType(name: string): TypeId;
-    internPrimitive(category: PrimitiveCategory): TypeId;
-    internVarargs(): TypeId;
-    internContainer(type: CArrayType | GListType | GHashTableType): TypeId;
-    internInlineCallback(node: RawNode): TypeId;
+    findType(name: string): TypeId;
+    addPrimitive(category: PrimitiveCategory): TypeId;
+    addVarargs(): TypeId;
+    addContainer(type: CArrayType | GListType | GHashTableType): TypeId;
+    addAnonymousCallback(node: RawNode): TypeId;
 };

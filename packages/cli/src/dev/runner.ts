@@ -1,8 +1,8 @@
+import { error } from "@gtkx/utils";
 import type { InlineConfig, Plugin } from "vite";
-import { error } from "../internal/log.js";
-import { RELOAD_EXIT_CODE } from "./protocol.js";
 import { createRefreshTracker } from "./refresh-tracker.js";
-import { buildConfig, type DevServer } from "./vite-dev-server.js";
+import { RESTART_EXIT_CODE } from "./supervisor.js";
+import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
 
 export type { DevServer } from "./vite-dev-server.js";
 
@@ -15,14 +15,11 @@ export type DevRunnerDeps = {
         loadAppModule: (id: string) => Promise<Record<string, unknown>>,
     ): Promise<unknown>;
     stopMcpClient(): void;
-    installApplicationLifecycle(
-        loadAppModule: (id: string) => Promise<Record<string, unknown>>,
-        onQuit: (runDefaultQuit: () => void) => void,
-    ): Promise<void>;
+    watchApplicationShutdown(onShutdown: () => void): void;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh(): void;
-    isReactRefreshBoundary(module: Record<string, unknown>): boolean;
+    isRefreshBoundary(module: Record<string, unknown>): boolean;
     plugins(): Plugin[];
     log(message: string): void;
     exit(code: number): never;
@@ -32,10 +29,10 @@ type DevRunner = {
     run(entryPath: string): Promise<void>;
 };
 
-const requestReload = async (server: DevServer, deps: DevRunnerDeps): Promise<never> => {
-    deps.log("Full reload (process restart)");
+const requestRestart = async (server: DevServer, deps: DevRunnerDeps): Promise<never> => {
+    deps.log("Full restart (process restart)");
     await server.close();
-    return deps.exit(RELOAD_EXIT_CODE);
+    return deps.exit(RESTART_EXIT_CODE);
 };
 
 const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
@@ -50,20 +47,20 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
     }
 
     const newMod = await server.ssrLoadModule(changedPath);
-    if (deps.isReactRefreshBoundary(newMod)) {
+    if (deps.isRefreshBoundary(newMod)) {
         deps.log("Fast refreshing...");
         deps.performRefresh();
         deps.log("Fast refresh complete");
         return;
     }
 
-    await requestReload(server, deps);
+    await requestRestart(server, deps);
 };
 
 export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const root = process.cwd();
-        const server = await deps.createServer(buildConfig(root, deps.plugins()));
+        const server = await deps.createServer(createDevServerConfig(root, deps.plugins()));
 
         const refreshTracker = createRefreshTracker(deps.performRefresh);
         const refreshTrackingDeps: DevRunnerDeps = { ...deps, performRefresh: refreshTracker.performRefresh };
@@ -93,20 +90,17 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
 
-        await deps.installApplicationLifecycle(
-            (id) => server.ssrLoadModule(id),
-            (runDefaultQuit) => {
-                if (isShuttingDown) return;
-                if (refreshTracker.isRefreshing()) {
-                    deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
-                    return deps.exit(RELOAD_EXIT_CODE);
-                }
-                deps.log("Application quit - stopping dev runner...");
-                shutdown(runDefaultQuit).catch((cause: unknown) => {
-                    error("Error closing server:", cause);
-                });
-            },
-        );
+        deps.watchApplicationShutdown(() => {
+            if (isShuttingDown) return;
+            if (refreshTracker.isRefreshing()) {
+                deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
+                return deps.exit(RESTART_EXIT_CODE);
+            }
+            deps.log("Application quit - stopping dev runner...");
+            shutdown(() => {}).catch((cause: unknown) => {
+                error("Error closing server:", cause);
+            });
+        });
 
         const liveApplicationId = deps.getApplicationId();
         if (liveApplicationId) {

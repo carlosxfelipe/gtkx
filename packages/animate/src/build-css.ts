@@ -1,10 +1,10 @@
-import type { AnimatableProperties } from "./types.js";
+import type { AnimationTarget } from "./types.js";
 
 type CssTarget = "style" | "transform";
 
 type PropertySerializer = {
     target: CssTarget;
-    serialize: (props: AnimatableProperties) => string | undefined;
+    serialize: (props: AnimationTarget) => string | undefined;
 };
 
 const propertySerializers: PropertySerializer[] = [
@@ -14,10 +14,8 @@ const propertySerializers: PropertySerializer[] = [
     },
     {
         target: "transform",
-        serialize: ({ translateX, translateY }) =>
-            translateX !== undefined || translateY !== undefined
-                ? `translate(${translateX ?? 0}px, ${translateY ?? 0}px)`
-                : undefined,
+        serialize: ({ x, y }) =>
+            x !== undefined || y !== undefined ? `translate(${x ?? 0}px, ${y ?? 0}px)` : undefined,
     },
     {
         target: "transform",
@@ -45,7 +43,7 @@ const propertySerializers: PropertySerializer[] = [
     },
 ];
 
-export const buildCss = (className: string, props: AnimatableProperties): string => {
+export const buildCss = (className: string, props: AnimationTarget): string => {
     const parts: string[] = [];
     const transforms: string[] = [];
 

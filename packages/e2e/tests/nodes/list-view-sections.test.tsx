@@ -1,6 +1,7 @@
+import { ListView, type SectionNode } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkListView } from "@gtkx/jsx/gtk";
-import type { ListItem } from "@gtkx/react";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -10,12 +11,11 @@ interface Row {
     name: string;
 }
 
-const sectioned: ListItem<Row, string>[] = [
+const sectioned: SectionNode<string, Row>[] = [
     {
         id: "s1",
         value: "Section One",
-        section: true,
-        children: [
+        data: [
             { id: "a", value: { name: "Alpha" } },
             { id: "b", value: { name: "Beta" } },
         ],
@@ -23,19 +23,18 @@ const sectioned: ListItem<Row, string>[] = [
     {
         id: "s2",
         value: "Section Two",
-        section: true,
-        children: [{ id: "c", value: { name: "Gamma" } }],
+        data: [{ id: "c", value: { name: "Gamma" } }],
     },
 ];
 
 const renderSectioned = async (ref: ReturnType<typeof createRef<Gtk.ListView>>) => {
     await render(
         <ScrollWrapper minContentHeight={400}>
-            <GtkListView<Row, string>
+            <ListView<Row, string>
                 ref={ref}
-                items={sectioned}
-                renderItem={(item) => <GtkLabel label={item.name} />}
-                renderHeader={(label) => <GtkLabel label={label} />}
+                sections={sectioned}
+                renderItem={({ item }) => <GtkLabel label={item.name} />}
+                renderHeader={({ section: label }: { section: string }) => <GtkLabel label={label} />}
             />
         </ScrollWrapper>,
     );

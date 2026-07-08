@@ -1,9 +1,10 @@
+import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
-import { preflightCodegen } from "../codegen/run-codegen.js";
-import { runCommand } from "../internal/errors.js";
-import { info } from "../internal/log.js";
-import { entryArg, resolveEntry } from "./entry.js";
+import { ensureGenerated } from "../codegen/run-codegen.js";
+import { entryArg, resolveEntry } from "../internal/entry-arg.js";
+
+const BUILD_MODE = "production";
 
 export const build = defineCommand({
     meta: {
@@ -18,21 +19,19 @@ export const build = defineCommand({
         },
     },
     async run({ args }) {
-        await runCommand(async () => {
-            const { cwd, entry } = resolveEntry(args);
-            info(`Building ${entry}`);
+        const { cwd, entry } = resolveEntry(args);
+        info(`Building ${entry}`);
 
-            await preflightCodegen(cwd);
+        await ensureGenerated(cwd, { announce: true, mode: BUILD_MODE });
 
-            await buildApp({
-                entry,
-                assetBase: args["asset-base"],
-                vite: {
-                    root: cwd,
-                },
-            });
-
-            info("Build complete: dist/bundle.js");
+        await buildApp({
+            entry,
+            assetBase: args["asset-base"],
+            vite: {
+                root: cwd,
+            },
         });
+
+        info("Build complete: dist/bundle.js");
     },
 });

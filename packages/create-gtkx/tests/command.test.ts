@@ -1,57 +1,73 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/create.js", () => ({
-    createApp: vi.fn(async () => undefined),
+vi.mock("../src/scaffolder.js", () => ({
+    scaffold: vi.fn(async () => undefined),
 }));
 
 import { type CreateCommandArgs, createCommand, runCreate } from "../src/command.js";
-import { createApp } from "../src/create.js";
+import { scaffold } from "../src/scaffolder.js";
 
-const createAppMock = vi.mocked(createApp);
+const scaffoldMock = vi.mocked(scaffold);
 
 describe("runCreate", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it("normalizes the raw arguments and delegates to createApp", async () => {
+    it("normalizes the raw arguments and delegates to scaffold", async () => {
         await runCreate({
             name: "my-app",
             "application-id": "com.example.myapp",
-            pm: "pnpm",
-            testing: "vitest",
+            "package-manager": "pnpm",
+            vitest: true,
         });
 
-        expect(createAppMock).toHaveBeenCalledWith({
-            name: "my-app",
-            applicationId: "com.example.myapp",
-            packageManager: "pnpm",
-            testing: "vitest",
-        });
+        expect(scaffoldMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: "my-app",
+                applicationId: "com.example.myapp",
+                packageManager: "pnpm",
+                includeTesting: true,
+            }),
+        );
     });
 
     it("passes undefined for unspecified flags", async () => {
         await runCreate({});
 
-        expect(createAppMock).toHaveBeenCalledWith({
-            name: undefined,
-            applicationId: undefined,
-            packageManager: undefined,
-            testing: undefined,
-        });
+        expect(scaffoldMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                name: undefined,
+                applicationId: undefined,
+                packageManager: undefined,
+                includeTesting: undefined,
+                overwrite: undefined,
+            }),
+        );
+    });
+
+    it("disables interactive mode when --no-interactive is set", async () => {
+        await runCreate({ name: "my-app", "no-interactive": true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ interactive: false }));
+    });
+
+    it("disables interactive mode when --yes is set", async () => {
+        await runCreate({ name: "my-app", yes: true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ interactive: false }));
+    });
+
+    it("forwards the overwrite flag", async () => {
+        await runCreate({ name: "my-app", "no-interactive": true, overwrite: true });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ overwrite: true }));
     });
 
     const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {
         await expect(runCreate(overrides)).rejects.toThrow(message);
-        expect(createAppMock).not.toHaveBeenCalled();
+        expect(scaffoldMock).not.toHaveBeenCalled();
     };
 
     it("rejects an unknown package manager before scaffolding", async () => {
-        await expectRejection({ pm: "bun" }, /Unknown package manager "bun"/);
-    });
-
-    it("rejects an unknown testing setup before scaffolding", async () => {
-        await expectRejection({ testing: "jest" }, /Unknown testing setup "jest"/);
+        await expectRejection({ "package-manager": "bun" }, /Unknown package manager "bun"/);
     });
 });
 

@@ -1,23 +1,16 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { unparentWidget } from "./container-attach.js";
 import { type Node, stateOf } from "./state.js";
-import { isAnchorWrapper, isBufferContentWrapper, isBufferTextWrapper, isPaintableWrapper } from "./text-wrapper.js";
-import { unparentWidget } from "./widget.js";
+import { isAnchorNode, isBufferContentNode, isBufferTextNode, isPaintableNode } from "./text-node.js";
 
 export class TextBufferController {
     private managesContent = false;
-    private anchoredWidgets = new Set<Gtk.Widget>();
-    private owner: Node;
+    private owner: Gtk.TextBuffer;
 
-    public boundRebuild = (): void => this.rebuild();
-
-    constructor(owner: Node) {
+    constructor(owner: Gtk.TextBuffer) {
         this.owner = owner;
-    }
-
-    private resolveBuffer(): Gtk.TextBuffer | null {
-        return this.owner instanceof Gtk.TextBuffer ? this.owner : null;
     }
 
     private resolveView(): Gtk.TextView | null {
@@ -27,35 +20,24 @@ export class TextBufferController {
     }
 
     private hasManagedChildren(): boolean {
-        return stateOf(this.owner).children.some(
-            (child) => isBufferContentWrapper(child) || child instanceof Gtk.TextTag,
-        );
+        return stateOf(this.owner).children.some((child) => isBufferContentNode(child) || child instanceof Gtk.TextTag);
     }
 
-    private rebuild(): void {
-        const buffer = this.resolveBuffer();
-        if (!buffer) return;
+    public rebuild = (): void => {
+        const buffer = this.owner;
 
         if (this.hasManagedChildren()) this.managesContent = true;
         if (!this.managesContent) return;
 
         const state = stateOf(this.owner);
-        state.signalStore.blockAll();
         buffer.beginIrreversibleAction();
         try {
-            this.detachAnchoredWidgets();
             this.clearBuffer(buffer);
             this.insertChildren(buffer, state.children);
         } finally {
             buffer.endIrreversibleAction();
-            state.signalStore.unblockAll();
         }
-    }
-
-    private detachAnchoredWidgets(): void {
-        for (const widget of this.anchoredWidgets) unparentWidget(widget);
-        this.anchoredWidgets.clear();
-    }
+    };
 
     private clearBuffer(buffer: Gtk.TextBuffer): void {
         const start = buffer.getStartIter();
@@ -75,32 +57,32 @@ export class TextBufferController {
     }
 
     private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
-        if (isBufferTextWrapper(child)) {
-            this.insertText(buffer, stateOf(child).props["text"] as string);
-        } else if (isPaintableWrapper(child)) {
-            this.insertPaintable(buffer, stateOf(child).props["paintable"] as Gdk.Paintable);
-        } else if (isAnchorWrapper(child)) {
+        if (isBufferTextNode(child)) {
+            this.insertText(buffer, stateOf(child).props.text as string);
+        } else if (isPaintableNode(child)) {
+            this.insertPaintable(buffer, stateOf(child).props.paintable as Gdk.Paintable);
+        } else if (isAnchorNode(child)) {
             this.insertAnchor(buffer, child);
         } else if (child instanceof Gtk.TextTag) {
-            this.insertTag(buffer, child, child);
+            this.insertTag(buffer, child);
         }
     }
 
-    private insertTag(buffer: Gtk.TextBuffer, element: Node, tag: Gtk.TextTag): void {
+    private insertTag(buffer: Gtk.TextBuffer, tag: Gtk.TextTag): void {
         const tagTable = buffer.getTagTable();
         if (tag.name && !tagTable.lookup(tag.name)) tagTable.add(tag);
 
         const start = buffer.getCharCount();
-        this.insertChildren(buffer, stateOf(element).children);
+        this.insertChildren(buffer, stateOf(tag).children);
         const end = buffer.getCharCount();
         if (end > start) {
             buffer.applyTag(tag, buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
         }
     }
 
-    private insertAnchor(buffer: Gtk.TextBuffer, wrapper: Node): void {
-        const child = stateOf(wrapper).children[0];
-        const replacement = stateOf(wrapper).props["replacementChar"];
+    private insertAnchor(buffer: Gtk.TextBuffer, node: Node): void {
+        const child = stateOf(node).children[0];
+        const replacement = stateOf(node).props.replacementChar;
         const anchor =
             typeof replacement === "string"
                 ? Gtk.TextChildAnchor.newWithReplacement(replacement)
@@ -110,7 +92,6 @@ export class TextBufferController {
         if (view && child instanceof Gtk.Widget) {
             unparentWidget(child);
             view.addChildAtAnchor(child, anchor);
-            this.anchoredWidgets.add(child);
         }
     }
 

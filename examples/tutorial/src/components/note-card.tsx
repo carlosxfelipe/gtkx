@@ -1,8 +1,7 @@
-import { AdwTimedAnimation, AnimatePresence } from "@gtkx/animate";
+import { AnimatePresence, animated } from "@gtkx/animate";
 import { css } from "@gtkx/css";
-import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import type { Note } from "../types.js";
 
 const baseCard = css`
@@ -47,37 +46,32 @@ export const NoteCard = ({ note, compact = false, fontSize = 14 }: NoteCardProps
 
     return (
         <AnimatePresence>
-            <AdwTimedAnimation
+            <animated.GtkBox
                 key={note.id}
-                initial={{ opacity: 0, translateY: -10 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                exit={{ opacity: 0, translateX: -50 }}
-                duration={200}
-                easing={Adw.Easing.EASE_OUT_CUBIC}
-                animateOnMount
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={compact ? 2 : 4}
+                cssClasses={[baseCard, cardStyle]}
             >
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={compact ? 2 : 4}
-                    cssClasses={[baseCard, cardStyle]}
-                >
-                    <GtkLabel label={note.title} halign={Gtk.Align.START} cssClasses={[titleStyle]} />
+                <GtkLabel label={note.title} halign={Gtk.Align.START} cssClasses={[titleStyle]} />
+                <GtkLabel
+                    label={note.body || "Empty note"}
+                    halign={Gtk.Align.START}
+                    cssClasses={[previewStyle]}
+                    ellipsize={2}
+                    lines={compact ? 1 : 2}
+                />
+                {!compact && (
                     <GtkLabel
-                        label={note.body || "Empty note"}
+                        label={note.createdAt.toLocaleDateString()}
                         halign={Gtk.Align.START}
-                        cssClasses={[previewStyle]}
-                        ellipsize={2}
-                        lines={compact ? 1 : 2}
+                        cssClasses={[dateStyle]}
                     />
-                    {!compact && (
-                        <GtkLabel
-                            label={note.createdAt.toLocaleDateString()}
-                            halign={Gtk.Align.START}
-                            cssClasses={[dateStyle]}
-                        />
-                    )}
-                </GtkBox>
-            </AdwTimedAnimation>
+                )}
+            </animated.GtkBox>
         </AnimatePresence>
     );
 };

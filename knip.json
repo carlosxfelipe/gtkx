@@ -1,102 +1,39 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": ["**/out-tsc/**"],
+    "ignore": ["packages/native/index.js"],
+    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
     "ignoreBinaries": [
         "espeak-ng",
+        "pkg-config",
         "glib-compile-resources",
         "glib-compile-schemas",
-        "pkg-config",
         "setpriv",
-        "weston"
+        "weston",
+        "wlheadless-run"
     ],
-    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
-    "ignoreWorkspaces": ["packages/native/npm/*"],
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts"],
-            "project": ["scripts/**/*.ts"]
+            "entry": ["gtkx.config.ts", "scripts/**/*.ts"],
+            "ignoreDependencies": ["@gtkx/ffi", "@gtkx/native", "@gtkx/react"]
         },
-        "packages/animate": {
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "packages/cli": {
-            "entry": ["src/global.d.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/codegen": {
-            "includeEntryExports": true,
-            "project": ["src/**/*.ts!", "scripts/**/*.ts!", "!src/templates/**"]
-        },
-        "packages/config": {
-            "includeEntryExports": true,
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/create-gtkx": {
-            "entry": ["src/cli.ts!"],
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/css": {
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
+        "website": {
+            "entry": [".vitepress/theme/**/*.{ts,vue}"]
         },
         "packages/e2e": {
-            "entry": ["gtkx.config.ts!"],
-            "project": ["tests/**/*.{ts,tsx}"]
-        },
-        "packages/ffi": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/gl": {
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/mcp": {
-            "entry": ["src/server.ts!"],
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/utils": {
-            "includeEntryExports": true,
-            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/native": {
-            "includeEntryExports": true,
-            "entry": ["types.ts!"],
-            "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
-        },
-        "packages/react": {
-            "project": ["src/**/*.{ts,tsx}!"]
+            "entry": ["gtkx.config.ts!"]
         },
         "packages/testing": {
-            "entry": ["gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
+            "entry": ["gtkx.config.ts!"]
+        },
+        "packages/cli": {
+            "entry": ["src/global.d.ts!"]
         },
         "packages/vitest": {
-            "includeEntryExports": true,
-            "entry": ["src/setup.ts!"],
-            "project": ["src/**/*.ts!"]
+            "entry": ["src/worker-preload.ts!", "src/worker-setup.ts!"]
         },
-        "examples/browser": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "examples/gtk-demo": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
-        },
-        "examples/hello-world": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!"]
-        },
-        "examples/tutorial": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
-        },
-        ".gtkx/gi": {
-            "entry": ["**/*.{js,d.ts}!"],
-            "ignoreDependencies": ["@gtkx/.*"]
-        },
-        ".gtkx/jsx": {
-            "entry": ["**/*.{js,d.ts}!"],
-            "ignoreDependencies": ["@gtkx/.*"]
+        "examples/*": {
+            "entry": ["gtkx.config.ts!", "src/gtkx-env.d.ts!", "src/app.tsx!", "src/index.tsx!"]
         }
     }
 }

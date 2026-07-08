@@ -1,4 +1,8 @@
 target
+artifacts
+coverage
 *.node
-native-binding.cjs
-native-binding.d.cts
+index.js
+index.d.ts
+*.map
+*.tsbuildinfo
