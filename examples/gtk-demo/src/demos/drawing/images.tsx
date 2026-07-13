@@ -46,7 +46,7 @@ function useGifPaintable() {
 
 const ImagesPanel = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-        <GtkLabel label={title} cssClasses={["heading"]} />
+        <GtkLabel cssClasses={["heading"]}>{title}</GtkLabel>
         <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
             {children}
         </GtkFrame>
@@ -142,7 +142,7 @@ const ImagesDemo = () => {
                         />
                     </ImagesPanel>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
+                        <GtkLabel cssClasses={["heading"]}>GtkWidgetPaintable</GtkLabel>
                         <GtkPicture
                             name="widget-paintable-picture"
                             paintable={widgetPaintable}

@@ -421,14 +421,15 @@ function getCharacterData() {
 
 const renderUcdHeader = ({ section: script }: { section: string }) => (
     <GtkLabel
-        label={script}
         halign={Gtk.Align.START}
         cssClasses={["heading"]}
         marginTop={20}
         marginBottom={10}
         marginStart={10}
         marginEnd={20}
-    />
+    >
+        {script}
+    </GtkLabel>
 );
 
 const UcdCodepointColumn = () => (
@@ -550,13 +551,9 @@ const ListViewUcdDemo = () => {
                     <UcdCombiningClassColumn />
                 </ColumnView>
             </GtkScrolledWindow>
-            <GtkLabel
-                name="selected-char"
-                label={selectedChar}
-                cssClasses={[css`font-size: 80px;`]}
-                hexpand
-                widthChars={2}
-            />
+            <GtkLabel name="selected-char" cssClasses={[css`font-size: 80px;`]} hexpand widthChars={2}>
+                {selectedChar}
+            </GtkLabel>
         </GtkBox>
     );
 };

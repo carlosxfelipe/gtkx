@@ -68,7 +68,7 @@ describe("render - AdwComboRow", () => {
                         },
                     ]}
                     selectedId="title"
-                    renderHeader={({ section: value }: { section: string }) => <GtkLabel label={value} />}
+                    renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
                 />
             </GtkListBox>,
         );
@@ -87,7 +87,7 @@ describe("render - AdwComboRow", () => {
                     title="Sort Order"
                     items={items}
                     selectedId="date"
-                    renderItem={({ item: value }) => <GtkLabel label={`Sorted ${value.toLowerCase()}`} />}
+                    renderItem={({ item: value }) => <GtkLabel>{`Sorted ${value.toLowerCase()}`}</GtkLabel>}
                 />
             </GtkListBox>,
         );

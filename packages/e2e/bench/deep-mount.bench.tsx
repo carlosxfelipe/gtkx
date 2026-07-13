@@ -6,7 +6,7 @@ import { cleanup, render } from "../tests/helpers/production-render.js";
 const DEPTHS = [25, 100];
 
 const nestBoxes = (depth: number): ReactNode =>
-    depth === 0 ? <GtkLabel label="leaf" /> : <GtkBox>{nestBoxes(depth - 1)}</GtkBox>;
+    depth === 0 ? <GtkLabel>leaf</GtkLabel> : <GtkBox>{nestBoxes(depth - 1)}</GtkBox>;
 
 describe("deep mount", () => {
     for (const depth of DEPTHS) {

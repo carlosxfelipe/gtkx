@@ -11,7 +11,7 @@ import { renderChildren } from "../helpers/render-children.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 const noop = () => {};
-const cellRenderer = () => <GtkLabel label="Cell" />;
+const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;
 
 type ColumnExtra = Omit<ComponentProps<typeof ColumnViewColumn>, "id" | "title" | "renderItem">;
 
@@ -151,19 +151,19 @@ describe("render - ColumnViewColumn (2)", () => {
                         id="col1"
                         title="Column 1"
                         expand
-                        renderItem={() => <GtkLabel label="Cell 1" />}
+                        renderItem={() => <GtkLabel>Cell 1</GtkLabel>}
                     />
                     <ColumnViewColumn
                         id="col2"
                         title="Column 2"
                         expand
-                        renderItem={() => <GtkLabel label="Cell 2" />}
+                        renderItem={() => <GtkLabel>Cell 2</GtkLabel>}
                     />
                     <ColumnViewColumn
                         id="col3"
                         title="Column 3"
                         expand
-                        renderItem={() => <GtkLabel label="Cell 3" />}
+                        renderItem={() => <GtkLabel>Cell 3</GtkLabel>}
                     />
                 </>,
             );
@@ -212,7 +212,7 @@ describe("render - ColumnViewColumn (4)", () => {
                                     id={title}
                                     title={title}
                                     expand
-                                    renderItem={() => <GtkLabel label={title} />}
+                                    renderItem={() => <GtkLabel>{title}</GtkLabel>}
                                 />
                             ))}
                         </ColumnView>
@@ -471,7 +471,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             title="Name"
             expand
             sortable
-            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel label={item.name} />}
+            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.name}</GtkLabel>}
             headerMenu={sectionedMenu("name", [sortActions("name")])}
         />
         <ColumnViewColumn
@@ -479,7 +479,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             title="Role"
             fixedWidth={100}
             sortable
-            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel label={item.role} />}
+            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.role}</GtkLabel>}
             headerMenu={sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]])}
         />
         <ColumnViewColumn
@@ -487,7 +487,7 @@ const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortCo
             title="Salary"
             fixedWidth={100}
             sortable
-            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel label={item.salary.toString()} />}
+            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.salary.toString()}</GtkLabel>}
             headerMenu={sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]])}
         />
     </>

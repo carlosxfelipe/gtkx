@@ -92,11 +92,9 @@ export const Sidebar = ({
                         }
                         suffix={
                             entry.count > 0 ? (
-                                <GtkLabel
-                                    label={String(entry.count)}
-                                    valign={Gtk.Align.CENTER}
-                                    cssClasses={["dimmed", "numeric"]}
-                                />
+                                <GtkLabel valign={Gtk.Align.CENTER} cssClasses={["dimmed", "numeric"]}>
+                                    {String(entry.count)}
+                                </GtkLabel>
                             ) : undefined
                         }
                     />

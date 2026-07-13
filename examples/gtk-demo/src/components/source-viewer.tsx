@@ -42,7 +42,7 @@ export const SourceViewer = () => {
                     halign={Gtk.Align.CENTER}
                     vexpand
                 >
-                    <GtkLabel label="No source" cssClasses={["dim-label"]} />
+                    <GtkLabel cssClasses={["dim-label"]}>No source</GtkLabel>
                 </GtkBox>
             )}
         </GtkScrolledWindow>

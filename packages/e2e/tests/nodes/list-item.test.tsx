@@ -16,7 +16,7 @@ const buildTextListView = (items: TextItem[]) => (
     <ScrollWrapper>
         <ListView
             items={items.map((item) => ({ id: item.id, value: item }))}
-            renderItem={({ item }: RenderItemProps<{ text: string }>) => <GtkLabel label={item.text} />}
+            renderItem={({ item }: RenderItemProps<{ text: string }>) => <GtkLabel>{item.text}</GtkLabel>}
         />
     </ScrollWrapper>
 );
@@ -55,7 +55,7 @@ describe("render - ListItem (2)", () => {
                     <ScrollWrapper>
                         <ListView
                             items={[{ id: "dynamic", value }]}
-                            renderItem={({ item }) => <GtkLabel label={item.text} />}
+                            renderItem={({ item }) => <GtkLabel>{item.text}</GtkLabel>}
                         />
                     </ScrollWrapper>
                 );

@@ -443,7 +443,7 @@ function drawGear(params: DrawGearParams) {
 const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; onChange: (value: number) => void }) => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-            <GtkLabel label={axis} />
+            <GtkLabel>{axis}</GtkLabel>
             <GtkScale
                 orientation={Gtk.Orientation.VERTICAL}
                 inverted
@@ -635,14 +635,9 @@ function useGearsRender(refs: GearsRefs, setError: (e: string) => void) {
 
 const GearsError = ({ error }: { error: string }) => (
     <GtkFrame marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
-        <GtkLabel
-            label={error}
-            cssClasses={["error"]}
-            marginTop={12}
-            marginBottom={12}
-            marginStart={12}
-            marginEnd={12}
-        />
+        <GtkLabel cssClasses={["error"]} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
+            {error}
+        </GtkLabel>
     </GtkFrame>
 );
 
@@ -676,13 +671,14 @@ const GearsDemo = () => {
                 {(ref) => (
                     <GtkLabel
                         ref={ref}
-                        label={state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
                         halign={Gtk.Align.START}
                         valign={Gtk.Align.START}
                         marginStart={12}
                         marginTop={12}
                         cssClasses={["app-notification"]}
-                    />
+                    >
+                        {state.fps > 0 ? `FPS: ${state.fps.toFixed(1)}` : "FPS: ---"}
+                    </GtkLabel>
                 )}
             </Overlay.Child>
         </Overlay>

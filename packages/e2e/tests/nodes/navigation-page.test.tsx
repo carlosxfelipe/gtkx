@@ -13,7 +13,7 @@ describe("render - NavigationPage (1)", () => {
         await render(
             <AdwNavigationView ref={viewRef}>
                 <AdwNavigationPage tag="home" title="Home">
-                    <GtkLabel label="Home Content" />
+                    <GtkLabel>Home Content</GtkLabel>
                 </AdwNavigationPage>
             </AdwNavigationView>,
         );
@@ -26,7 +26,7 @@ describe("render - NavigationPage (1)", () => {
         await render(
             <AdwNavigationView>
                 <AdwNavigationPage tag="main" title="Main Page">
-                    <GtkLabel label="Main Content" />
+                    <GtkLabel>Main Content</GtkLabel>
                 </AdwNavigationPage>
             </AdwNavigationView>,
         );
@@ -55,7 +55,7 @@ describe("render - NavigationPage (2)", () => {
         await render(
             <AdwNavigationView ref={viewRef}>
                 <AdwNavigationPage tag="root" title="Root" canPop={false}>
-                    <GtkLabel label="Root Page" />
+                    <GtkLabel>Root Page</GtkLabel>
                 </AdwNavigationPage>
             </AdwNavigationView>,
         );
@@ -72,11 +72,11 @@ describe("render - NavigationPage (2)", () => {
             return (
                 <AdwNavigationView ref={viewRef}>
                     <AdwNavigationPage tag="permanent" title="Permanent">
-                        <GtkLabel label="Always Here" />
+                        <GtkLabel>Always Here</GtkLabel>
                     </AdwNavigationPage>
                     {showPage && (
                         <AdwNavigationPage tag="removable" title="Removable">
-                            <GtkLabel label="Maybe Here" />
+                            <GtkLabel>Maybe Here</GtkLabel>
                         </AdwNavigationPage>
                     )}
                 </AdwNavigationView>
@@ -99,7 +99,7 @@ describe("render - NavigationPage (3)", () => {
             return (
                 <AdwNavigationView ref={viewRef}>
                     <AdwNavigationPage tag="dynamic" title={title}>
-                        <GtkLabel label="Content" />
+                        <GtkLabel>Content</GtkLabel>
                     </AdwNavigationPage>
                 </AdwNavigationView>
             );
@@ -121,7 +121,7 @@ describe("render - NavigationPage (3)", () => {
             return (
                 <AdwNavigationView ref={viewRef}>
                     <AdwNavigationPage tag="page" title="Page" canPop={canPop}>
-                        <GtkLabel label="Content" />
+                        <GtkLabel>Content</GtkLabel>
                     </AdwNavigationPage>
                 </AdwNavigationView>
             );

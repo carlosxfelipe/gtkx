@@ -33,7 +33,7 @@ describe("userEvent.scroll", () => {
         await render(
             <GtkScrolledWindow ref={ref} minContentHeight={200}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} heightRequest={2000} widthRequest={2000}>
-                    <GtkLabel label="top" />
+                    <GtkLabel>top</GtkLabel>
                 </GtkBox>
             </GtkScrolledWindow>,
         );

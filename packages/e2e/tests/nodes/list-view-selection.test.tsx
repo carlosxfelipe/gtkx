@@ -224,7 +224,7 @@ function SidebarTree({
                     const id = ids[0];
                     if (id) onSelect(id);
                 }}
-                renderItem={({ item }) => <GtkLabel label={item.name} />}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
             />
         </GtkScrolledWindow>
     );
@@ -243,7 +243,9 @@ function SidebarApp({
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
             <SidebarTree listRef={listRef} scrollRef={scrollRef} selectedId={selectedId} onSelect={setSelectedId} />
-            <GtkLabel label={selectedItem?.name ?? "None"} vexpand hexpand />
+            <GtkLabel vexpand hexpand>
+                {selectedItem?.name ?? "None"}
+            </GtkLabel>
         </GtkBox>
     );
 }

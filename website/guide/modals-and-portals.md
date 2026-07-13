@@ -37,7 +37,7 @@ const StatusArea = () => {
     return (
         <>
             <GtkBox ref={setTray} />
-            {tray && createPortal(<GtkLabel label="Synced" />, tray)}
+            {tray && createPortal(<GtkLabel>Synced</GtkLabel>, tray)}
         </>
     );
 };

@@ -148,7 +148,7 @@ function Counter() {
     const [count, setCount] = useState(0);
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkLabel label={`Count: ${count}`} />
+            <GtkLabel>{`Count: ${count}`}</GtkLabel>
             <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
         </GtkBox>
     );

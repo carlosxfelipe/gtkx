@@ -671,7 +671,11 @@ const FontRenderingControls = ({ state, onZoomIn, onZoomOut }: FontRenderingCont
         <FontRenderingExtraOverlays state={state} />
         <FontRenderingZoomButtons state={state} onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
         <Grid.Child column={8} row={0}>
-            {(ref) => <GtkLabel ref={ref} label="" hexpand />}
+            {(ref) => (
+                <GtkLabel ref={ref} hexpand>
+                    {""}
+                </GtkLabel>
+            )}
         </Grid.Child>
     </Grid>
 );
@@ -681,7 +685,11 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
     return (
         <>
             <Grid.Child column={1} row={0}>
-                {(ref) => <GtkLabel ref={ref} label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} xalign={1} marginStart={10} cssClasses={["dim-label"]}>
+                        Text
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={2} row={0}>
                 {(ref) => (
@@ -689,7 +697,11 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
                 )}
             </Grid.Child>
             <Grid.Child column={1} row={1}>
-                {(ref) => <GtkLabel ref={ref} label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} xalign={1} marginStart={10} cssClasses={["dim-label"]}>
+                        Font
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={2} row={1}>
                 {(ref) => (
@@ -743,7 +755,9 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
             <Grid.Child column={4} row={0} columnSpan={2}>
                 {(ref) => (
                     <GtkBox ref={ref} spacing={6}>
-                        <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
+                        <GtkLabel useUnderline cssClasses={["dim-label"]}>
+                            _Hinting
+                        </GtkLabel>
                         <DropDown
                             name="hinting"
                             valign={Gtk.Align.CENTER}

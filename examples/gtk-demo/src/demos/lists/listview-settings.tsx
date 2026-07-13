@@ -282,7 +282,7 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
                 onSelectionChanged={onSelectionChanged}
                 cssClasses={["navigation-sidebar"]}
                 expandedIds={collectSchemaExpandableIds(items)}
-                renderItem={({ item: schemaId }: { item: string }) => <GtkLabel label={schemaId} xalign={0} />}
+                renderItem={({ item: schemaId }: { item: string }) => <GtkLabel xalign={0}>{schemaId}</GtkLabel>}
                 items={items}
             />
         </GtkScrolledWindow>
@@ -318,13 +318,17 @@ interface SettingsColumnsProps {
     onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
 }
 
+const renderKeyInfoCell =
+    (getText: (keyInfo: KeyInfo) => string, wrap = false) =>
+    ({ item }: { item: KeyInfo }) => (
+        <GtkLabel xalign={0} wrap={wrap}>
+            {getText(item)}
+        </GtkLabel>
+    );
+
 const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps) => (
     <>
-        <ColumnViewColumn
-            id="name"
-            title="Name"
-            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.name} xalign={0} />}
-        />
+        <ColumnViewColumn id="name" title="Name" renderItem={renderKeyInfoCell((keyInfo) => keyInfo.name)} />
         <ColumnViewColumn
             id="value"
             title="Value"
@@ -343,7 +347,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             sortable
             visible={columnVisibility.type}
             headerMenu={columnVisibilityMenu}
-            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.type} xalign={0} />}
+            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.type)}
         />
         <ColumnViewColumn
             id="default"
@@ -352,7 +356,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             expand
             visible={columnVisibility.default}
             headerMenu={columnVisibilityMenu}
-            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.defaultValue} xalign={0} />}
+            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.defaultValue)}
         />
         <ColumnViewColumn
             id="summary"
@@ -361,7 +365,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             expand
             visible={columnVisibility.summary}
             headerMenu={columnVisibilityMenu}
-            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.summary} xalign={0} wrap />}
+            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.summary, true)}
         />
         <ColumnViewColumn
             id="description"
@@ -370,7 +374,7 @@ const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumn
             expand
             visible={columnVisibility.description}
             headerMenu={columnVisibilityMenu}
-            renderItem={({ item }: { item: KeyInfo }) => <GtkLabel label={item.description} xalign={0} wrap />}
+            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.description, true)}
         />
     </>
 );

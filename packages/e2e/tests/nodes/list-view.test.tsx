@@ -130,7 +130,7 @@ describe("render - ListView (2)", () => {
 describe("render - ListView (3)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel label={item.name} />);
+            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
 
             await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
 
@@ -139,11 +139,11 @@ describe("render - ListView (3)", () => {
 
         it("updates when renderItem function changes", async () => {
             const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel label={`First: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel>{`First: ${item.name}`}</GtkLabel>,
             });
 
             await rerender([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel label={`Second: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel>,
             });
 
             expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
@@ -259,7 +259,7 @@ describe("render - ListView (7)", () => {
 
         it("preserves order with frequent value updates", async () => {
             type Item = { count: number };
-            const renderItem = ({ item }: RenderItemProps<Item>) => <GtkLabel label={String(item.count)} />;
+            const renderItem = ({ item }: RenderItemProps<Item>) => <GtkLabel>{String(item.count)}</GtkLabel>;
             const itemsFor = (a: number, b: number, c: number) => [
                 { id: "1", value: { count: a } },
                 { id: "2", value: { count: b } },

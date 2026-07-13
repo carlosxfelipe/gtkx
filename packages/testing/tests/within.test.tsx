@@ -27,9 +27,9 @@ describe("within scoping", () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkFrame name="inner-frame" label="Inner">
-                    <GtkLabel label="Inside" />
+                    <GtkLabel>Inside</GtkLabel>
                 </GtkFrame>
-                <GtkLabel label="Outside" />
+                <GtkLabel>Outside</GtkLabel>
             </GtkBox>,
         );
 

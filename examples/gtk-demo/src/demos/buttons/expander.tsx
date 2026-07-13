@@ -40,8 +40,10 @@ const ExpanderDemo = () => {
             marginTop={10}
             marginBottom={10}
         >
-            <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
-            <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
+            <GtkLabel useMarkup>{"<big><b>Something went wrong</b></big>"}</GtkLabel>
+            <GtkLabel wrap={false} vexpand={false}>
+                Here are some more details but not the full story
+            </GtkLabel>
 
             <GtkExpander name="expander" label="Details:" vexpand onNotify={handleExpandedNotify}>
                 <GtkScrolledWindow

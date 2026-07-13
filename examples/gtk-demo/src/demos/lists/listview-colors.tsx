@@ -330,7 +330,11 @@ const SelectionInfoPanel = ({
     return (
         <Grid marginStart={10} marginEnd={10} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
             <Grid.Child column={0} row={0} columnSpan={5}>
-                {(ref) => <GtkLabel ref={ref} label="Selection" hexpand cssClasses={TITLE_CSS} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} hexpand cssClasses={TITLE_CSS}>
+                        Selection
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={0} row={1} columnSpan={5}>
                 {(ref) => (
@@ -350,13 +354,17 @@ const SelectionInfoPanel = ({
                 )}
             </Grid.Child>
             <Grid.Child column={0} row={2}>
-                {(ref) => <GtkLabel ref={ref} label="Size:" />}
+                {(ref) => <GtkLabel ref={ref}>Size:</GtkLabel>}
             </Grid.Child>
             <Grid.Child column={1} row={2}>
-                {(ref) => <GtkLabel ref={ref} name="selection-size" label={String(selectedColors.length)} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} name="selection-size">
+                        {String(selectedColors.length)}
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={2} row={2}>
-                {(ref) => <GtkLabel ref={ref} label="Average:" />}
+                {(ref) => <GtkLabel ref={ref}>Average:</GtkLabel>}
             </Grid.Child>
             <Grid.Child column={3} row={2}>
                 {(ref) => (
@@ -377,7 +385,11 @@ const SelectionInfoPanel = ({
                 )}
             </Grid.Child>
             <Grid.Child column={4} row={2}>
-                {(ref) => <GtkLabel ref={ref} label="" hexpand />}
+                {(ref) => (
+                    <GtkLabel ref={ref} hexpand>
+                        {""}
+                    </GtkLabel>
+                )}
             </Grid.Child>
         </Grid>
     );
@@ -667,13 +679,9 @@ const ColorsHeader = () => {
                         onToggled={(btn) => state.setShowSelectionInfo(btn.getActive())}
                     />
                     <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
-                    <GtkLabel
-                        ref={countLabelRef}
-                        label={formatItemCount(models.baseStore.getNItems())}
-                        attributes={getTnumAttrs()}
-                        widthChars={8}
-                        xalign={1}
-                    />
+                    <GtkLabel ref={countLabelRef} attributes={getTnumAttrs()} widthChars={8} xalign={1}>
+                        {formatItemCount(models.baseStore.getNItems())}
+                    </GtkLabel>
                     <DropDown
                         name="limit-dropdown"
                         selectedId={String(state.colorLimit)}
@@ -685,7 +693,7 @@ const ColorsHeader = () => {
             end={
                 <>
                     <GtkBox spacing={10}>
-                        <GtkLabel label="Sort by:" />
+                        <GtkLabel>Sort by:</GtkLabel>
                         <DropDown
                             name="sort-dropdown"
                             selectedId={state.sortMode}
@@ -694,7 +702,7 @@ const ColorsHeader = () => {
                         />
                     </GtkBox>
                     <GtkBox spacing={10}>
-                        <GtkLabel label="Show:" />
+                        <GtkLabel>Show:</GtkLabel>
                         <DropDown
                             name="display-dropdown"
                             selectedId={state.displayFactory}

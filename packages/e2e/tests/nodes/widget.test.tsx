@@ -37,7 +37,7 @@ const uniqueAppId = (): string => `org.gtkx.widgettest${nextAppId++}`;
 describe("widget - creation (1)", () => {
     describe("basic widgets", () => {
         it("creates Label widget with text", async () => {
-            await render(<GtkLabel label="Hello World" />);
+            await render(<GtkLabel>Hello World</GtkLabel>);
 
             const label = await screen.findByText("Hello World");
             expect(label).toBeDefined();
@@ -108,7 +108,7 @@ describe("widget - creation (2)", () => {
         it("provides GTK widget via ref", async () => {
             const ref = createRef<Gtk.Label>();
 
-            await render(<GtkLabel ref={ref} label="Test" />);
+            await render(<GtkLabel ref={ref}>Test</GtkLabel>);
 
             expect(ref.current).not.toBeNull();
             expect(typeof ref.current?.getLabel).toBe("function");
@@ -117,7 +117,7 @@ describe("widget - creation (2)", () => {
         it("ref.current is the actual GTK widget instance", async () => {
             const ref = createRef<Gtk.Label>();
 
-            await render(<GtkLabel ref={ref} label="Widget Instance" />);
+            await render(<GtkLabel ref={ref}>Widget Instance</GtkLabel>);
 
             expect(ref.current).toBeDefined();
             expect(ref.current?.getLabel()).toBe("Widget Instance");
@@ -182,7 +182,7 @@ describe("widget - creation (4)", () => {
         });
 
         it("uses regex for partial text matching", async () => {
-            await render(<GtkLabel label="Error: Something went wrong" />);
+            await render(<GtkLabel>Error: Something went wrong</GtkLabel>);
 
             const errorLabel = await screen.findByText(/^Error:/);
             expect(errorLabel).toBeDefined();
@@ -293,7 +293,7 @@ describe("widget - props (3)", () => {
 
             await render(
                 <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Child" />
+                    <GtkLabel>Child</GtkLabel>
                 </GtkBox>,
             );
 
@@ -784,8 +784,8 @@ describe("widget - child management > GtkBox", () => {
     it("appends children", async () => {
         await render(
             <GtkBox>
-                <GtkLabel label="First" />
-                <GtkLabel label="Second" />
+                <GtkLabel>First</GtkLabel>
+                <GtkLabel>Second</GtkLabel>
             </GtkBox>,
         );
 
@@ -798,7 +798,7 @@ describe("widget - child management > GtkBox", () => {
             return (
                 <GtkBox>
                     {Array.from({ length: count }, (_, i) => (
-                        <GtkLabel key={`label-${i}`} label={`Label ${i}`} />
+                        <GtkLabel key={`label-${i}`}>{`Label ${i}`}</GtkLabel>
                     ))}
                 </GtkBox>
             );
@@ -827,7 +827,7 @@ describe("widget - auto-wrapping (1)", () => {
 
             await render(
                 <GtkListBox ref={listBoxRef}>
-                    <GtkLabel ref={labelRef} label="Item 1" />
+                    <GtkLabel ref={labelRef}>Item 1</GtkLabel>
                 </GtkListBox>,
             );
 
@@ -840,9 +840,9 @@ describe("widget - auto-wrapping (1)", () => {
 
             await render(
                 <GtkListBox ref={listBoxRef}>
-                    <GtkLabel label="Item 1" />
-                    <GtkLabel label="Item 2" />
-                    <GtkLabel label="Item 3" />
+                    <GtkLabel>Item 1</GtkLabel>
+                    <GtkLabel>Item 2</GtkLabel>
+                    <GtkLabel>Item 3</GtkLabel>
                 </GtkListBox>,
             );
 
@@ -860,7 +860,7 @@ describe("widget - auto-wrapping (2)", () => {
                 return (
                     <GtkListBox ref={listBoxRef}>
                         {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
+                            <GtkLabel key={item}>{item}</GtkLabel>
                         ))}
                     </GtkListBox>
                 );
@@ -878,7 +878,7 @@ describe("widget - auto-wrapping (2)", () => {
                 return (
                     <GtkListBox>
                         {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
+                            <GtkLabel key={item}>{item}</GtkLabel>
                         ))}
                     </GtkListBox>
                 );
@@ -909,7 +909,7 @@ describe("widget - auto-wrapping (3)", () => {
 
             await render(
                 <GtkFlowBox ref={flowBoxRef}>
-                    <GtkLabel ref={labelRef} label="Item 1" />
+                    <GtkLabel ref={labelRef}>Item 1</GtkLabel>
                 </GtkFlowBox>,
             );
 
@@ -922,9 +922,9 @@ describe("widget - auto-wrapping (3)", () => {
 
             await render(
                 <GtkFlowBox ref={flowBoxRef}>
-                    <GtkLabel label="Item 1" />
-                    <GtkLabel label="Item 2" />
-                    <GtkLabel label="Item 3" />
+                    <GtkLabel>Item 1</GtkLabel>
+                    <GtkLabel>Item 2</GtkLabel>
+                    <GtkLabel>Item 3</GtkLabel>
                 </GtkFlowBox>,
             );
 
@@ -942,7 +942,7 @@ describe("widget - auto-wrapping (4)", () => {
                 return (
                     <GtkFlowBox ref={flowBoxRef}>
                         {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
+                            <GtkLabel key={item}>{item}</GtkLabel>
                         ))}
                     </GtkFlowBox>
                 );

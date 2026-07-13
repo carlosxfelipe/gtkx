@@ -13,7 +13,7 @@ describe("render - Overlay.Child (1)", () => {
 
         await render(
             <Overlay ref={overlayRef}>
-                <GtkLabel ref={mainRef} label="Main Content" />
+                <GtkLabel ref={mainRef}>Main Content</GtkLabel>
                 <Overlay.Child>{(ref) => <GtkButton ref={ref} label="Overlay Button" />}</Overlay.Child>
             </Overlay>,
         );
@@ -29,7 +29,7 @@ describe("render - Overlay.Child (1)", () => {
 
         await render(
             <Overlay ref={overlayRef}>
-                <GtkLabel label="Main" />
+                <GtkLabel>Main</GtkLabel>
                 <Overlay.Child measure={true}>
                     {(ref) => <GtkButton ref={ref} label="Measured Overlay" />}
                 </Overlay.Child>
@@ -48,7 +48,7 @@ describe("render - Overlay.Child (2)", () => {
 
         await render(
             <Overlay ref={overlayRef}>
-                <GtkLabel label="Main" />
+                <GtkLabel>Main</GtkLabel>
                 <Overlay.Child clipOverlay={true}>
                     {(ref) => <GtkButton ref={ref} label="Clipped Overlay" />}
                 </Overlay.Child>
@@ -68,7 +68,7 @@ describe("render - Overlay.Child (3)", () => {
         function App({ showOverlay }: { showOverlay: boolean }) {
             return (
                 <Overlay ref={overlayRef}>
-                    <GtkLabel label="Main" />
+                    <GtkLabel>Main</GtkLabel>
                     {showOverlay && (
                         <Overlay.Child>{(ref) => <GtkButton ref={ref} label="Removable Overlay" />}</Overlay.Child>
                     )}
@@ -90,7 +90,7 @@ describe("render - Overlay.Child (4)", () => {
 
         await render(
             <Overlay ref={overlayRef}>
-                <GtkLabel label="Main" />
+                <GtkLabel>Main</GtkLabel>
                 <Overlay.Child>{(ref) => <GtkButton ref={ref} label="First Overlay" />}</Overlay.Child>
                 <Overlay.Child>{(ref) => <GtkButton ref={ref} label="Second Overlay" />}</Overlay.Child>
             </Overlay>,
@@ -105,7 +105,7 @@ const renderTwoButtonOverlay = async (measure?: boolean): Promise<Gtk.Overlay> =
 
     await render(
         <Overlay ref={overlayRef}>
-            <GtkLabel label="Main" />
+            <GtkLabel>Main</GtkLabel>
             <Overlay.Child measure={measure}>{(ref) => <GtkButton ref={ref} label="First" />}</Overlay.Child>
             <Overlay.Child measure={measure}>{(ref) => <GtkButton ref={ref} label="Second" />}</Overlay.Child>
         </Overlay>,

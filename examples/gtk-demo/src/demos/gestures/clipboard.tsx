@@ -509,7 +509,9 @@ const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: S
                 />
             }
         >
-            <GtkLabel label={state.sourceFile ? (state.sourceFile.getPath() ?? "—") : "—"} xalign={0} ellipsize={1} />
+            <GtkLabel xalign={0} ellipsize={1}>
+                {state.sourceFile ? (state.sourceFile.getPath() ?? "—") : "—"}
+            </GtkLabel>
         </GtkButton>
     </GtkStackPage>
 );
@@ -524,16 +526,12 @@ interface ClipboardPasteSectionProps {
 const renderPasteStackPages = (pastedContent: PastedContent) => (
     <>
         <GtkStackPage name="Empty">
-            <GtkLabel label="" />
+            <GtkLabel>{""}</GtkLabel>
         </GtkStackPage>
         <GtkStackPage name="Text">
-            <GtkLabel
-                label={pastedContent.text ?? ""}
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                xalign={0}
-                ellipsize={3}
-            />
+            <GtkLabel halign={Gtk.Align.END} valign={Gtk.Align.CENTER} xalign={0} ellipsize={3}>
+                {pastedContent.text ?? ""}
+            </GtkLabel>
         </GtkStackPage>
         <GtkStackPage name="Image">
             {pastedContent.paintable ? (
@@ -544,7 +542,7 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
                     pixelSize={48}
                 />
             ) : (
-                <GtkLabel label="" />
+                <GtkLabel>{""}</GtkLabel>
             )}
         </GtkStackPage>
         <GtkStackPage name="Color">
@@ -560,14 +558,9 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
             />
         </GtkStackPage>
         <GtkStackPage name="File">
-            <GtkLabel
-                label={pastedContent.filePath ?? ""}
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                xalign={0}
-                hexpand
-                ellipsize={1}
-            />
+            <GtkLabel halign={Gtk.Align.END} valign={Gtk.Align.CENTER} xalign={0} hexpand ellipsize={1}>
+                {pastedContent.filePath ?? ""}
+            </GtkLabel>
         </GtkStackPage>
     </>
 );
@@ -591,7 +584,9 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
             sensitive={canPaste}
             onClicked={() => void onPaste()}
         />
-        <GtkLabel name="paste-type-label" label={pastedContent.type} xalign={0} />
+        <GtkLabel name="paste-type-label" xalign={0}>
+            {pastedContent.type}
+        </GtkLabel>
         <GtkStack
             name="paste-stack"
             visibleChildName={pastedContent.type || "Empty"}
@@ -621,13 +616,11 @@ const ClipboardDemo = () => {
             marginTop={12}
             marginBottom={12}
         >
-            <GtkLabel
-                label={
+            <GtkLabel wrap maxWidthChars={40}>
+                {
                     "“Copy” will copy the selected data the clipboard, “Paste” will show the current clipboard contents. You can also drag the data to the bottom."
                 }
-                wrap
-                maxWidthChars={40}
-            />
+            </GtkLabel>
 
             <ClipboardSourceSection
                 state={state}

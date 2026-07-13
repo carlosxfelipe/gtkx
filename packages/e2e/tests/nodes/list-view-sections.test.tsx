@@ -33,8 +33,8 @@ const renderSectioned = async (ref: ReturnType<typeof createRef<Gtk.ListView>>) 
             <ListView<Row, string>
                 ref={ref}
                 sections={sectioned}
-                renderItem={({ item }) => <GtkLabel label={item.name} />}
-                renderHeader={({ section: label }: { section: string }) => <GtkLabel label={label} />}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+                renderHeader={({ section: label }: { section: string }) => <GtkLabel>{label}</GtkLabel>}
             />
         </ScrollWrapper>,
     );

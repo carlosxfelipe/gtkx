@@ -33,14 +33,15 @@ const LabeledRow = ({ labelText, labelRef, useUnderline, activatable, mnemonicWi
         <GtkBox>
             <GtkLabel
                 ref={labelRef}
-                label={labelText}
                 useUnderline={useUnderline}
                 mnemonicWidget={mnemonicWidget ?? null}
                 xalign={0}
                 halign={Gtk.Align.START}
                 valign={Gtk.Align.CENTER}
                 hexpand
-            />
+            >
+                {labelText}
+            </GtkLabel>
             {children}
         </GtkBox>
     </GtkListBoxRow>
@@ -192,7 +193,9 @@ const ListBoxControlsDemo = () => {
                     <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
                         {(labelRef) => (
                             <>
-                                <GtkLabel label="Group 1" xalign={0} marginBottom={10} cssClasses={["title-2"]} />
+                                <GtkLabel xalign={0} marginBottom={10} cssClasses={["title-2"]}>
+                                    Group 1
+                                </GtkLabel>
                                 <Group1List
                                     labelRef={labelRef}
                                     switchRef={switchRef}
@@ -206,13 +209,9 @@ const ListBoxControlsDemo = () => {
                                     onRowActivated={handleRowActivated}
                                 />
 
-                                <GtkLabel
-                                    label="Group 2"
-                                    xalign={0}
-                                    marginTop={30}
-                                    marginBottom={10}
-                                    cssClasses={["title-2"]}
-                                />
+                                <GtkLabel xalign={0} marginTop={30} marginBottom={10} cssClasses={["title-2"]}>
+                                    Group 2
+                                </GtkLabel>
                                 <Group2List labelRef={labelRef} />
                             </>
                         )}

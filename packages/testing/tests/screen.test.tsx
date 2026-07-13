@@ -30,7 +30,7 @@ describe("screen binding", () => {
 
 describe("screen screenshot capture", () => {
     it("captures the first window when no selector is provided", async () => {
-        await render(<GtkLabel label="Snapshot" />);
+        await render(<GtkLabel>Snapshot</GtkLabel>);
 
         const result = await screen.screenshot();
 
@@ -41,7 +41,7 @@ describe("screen screenshot capture", () => {
     });
 
     it("captures the window at the requested index", async () => {
-        await render(<GtkLabel label="Indexed" />);
+        await render(<GtkLabel>Indexed</GtkLabel>);
 
         const result = await screen.screenshot(0);
 
@@ -50,7 +50,7 @@ describe("screen screenshot capture", () => {
     });
 
     it("throws when the index is out of range", async () => {
-        await render(<GtkLabel label="Bounds" />);
+        await render(<GtkLabel>Bounds</GtkLabel>);
 
         await expect(screen.screenshot(99)).rejects.toThrow(/Window at index 99 not found/);
     });
@@ -63,7 +63,7 @@ const decodePngSize = (base64Data: string): { width: number; height: number } =>
 
 describe("screen screenshot scale", () => {
     it("supersamples the capture by the requested factor", async () => {
-        await render(<GtkLabel label="Scaled" />);
+        await render(<GtkLabel>Scaled</GtkLabel>);
 
         const base = await screen.screenshot(0);
         const scaled = await screen.screenshot(0, { scale: 2 });
@@ -75,7 +75,7 @@ describe("screen screenshot scale", () => {
     });
 
     it("rejects a non-positive scale", async () => {
-        await render(<GtkLabel label="Invalid scale" />);
+        await render(<GtkLabel>Invalid scale</GtkLabel>);
 
         await expect(screen.screenshot(0, { scale: 0 })).rejects.toThrow(/positive number/);
     });
@@ -85,7 +85,7 @@ describe("screen screenshot selectors", () => {
     it("captures a window matching a title substring", async () => {
         await render(
             <GtkWindow title="Settings Window" defaultWidth={120} defaultHeight={80}>
-                <GtkLabel label="Titled" />
+                <GtkLabel>Titled</GtkLabel>
             </GtkWindow>,
             { container: rootElement },
         );
@@ -98,7 +98,7 @@ describe("screen screenshot selectors", () => {
     it("captures a window matching a title regex", async () => {
         await render(
             <GtkWindow title="Demo Pattern App" defaultWidth={120} defaultHeight={80}>
-                <GtkLabel label="Pattern" />
+                <GtkLabel>Pattern</GtkLabel>
             </GtkWindow>,
             { container: rootElement },
         );
@@ -116,7 +116,7 @@ describe("screen screenshot errors", () => {
     ])("%s", async (_title, selector) => {
         await render(
             <GtkWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
-                <GtkLabel label="Unmatched" />
+                <GtkLabel>Unmatched</GtkLabel>
             </GtkWindow>,
             { container: rootElement },
         );

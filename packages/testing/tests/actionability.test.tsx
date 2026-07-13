@@ -136,7 +136,7 @@ describe("userEvent actionability - insensitive adjustment targets", () => {
         await render(
             <GtkScrolledWindow ref={ref} sensitive={false} minContentHeight={200}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} heightRequest={2000}>
-                    <GtkLabel label="content" />
+                    <GtkLabel>content</GtkLabel>
                 </GtkBox>
             </GtkScrolledWindow>,
         );
@@ -172,7 +172,7 @@ describe("userEvent actionability - insensitive selection targets", () => {
         await render(
             <GtkListBox sensitive={false} selectionMode={Gtk.SelectionMode.MULTIPLE}>
                 <GtkListBoxRow>
-                    <GtkLabel label="Item 1" />
+                    <GtkLabel>Item 1</GtkLabel>
                 </GtkListBoxRow>
             </GtkListBox>,
         );
@@ -203,7 +203,7 @@ describe("userEvent actionability - insensitive keyboard targets", () => {
                     />
                 }
             >
-                <GtkLabel label="anchor" />
+                <GtkLabel>anchor</GtkLabel>
             </GtkBox>,
         );
 
@@ -222,12 +222,9 @@ describe("userEvent actionability - insensitive gesture targets", () => {
     it("rejects hover on an insensitive widget without emitting enter", async () => {
         const handleEnter = vi.fn();
         await render(
-            <GtkLabel
-                name="hovered"
-                label="Hover me"
-                sensitive={false}
-                controllers={<GtkEventControllerMotion onEnter={handleEnter} />}
-            />,
+            <GtkLabel name="hovered" sensitive={false} controllers={<GtkEventControllerMotion onEnter={handleEnter} />}>
+                Hover me
+            </GtkLabel>,
         );
 
         const label = await screen.findByName("hovered");
@@ -240,10 +237,11 @@ describe("userEvent actionability - insensitive gesture targets", () => {
         await render(
             <GtkLabel
                 name="long-pressed"
-                label="Long press me"
                 sensitive={false}
                 controllers={<GtkGestureLongPress onPressed={handlePressed} />}
-            />,
+            >
+                Long press me
+            </GtkLabel>,
         );
 
         const label = await screen.findByName("long-pressed");
@@ -254,12 +252,9 @@ describe("userEvent actionability - insensitive gesture targets", () => {
     it("rejects drag on an insensitive widget without emitting drag signals", async () => {
         const handleDragBegin = vi.fn();
         await render(
-            <GtkLabel
-                name="dragged"
-                label="Drag me"
-                sensitive={false}
-                controllers={<GtkGestureDrag onDragBegin={handleDragBegin} />}
-            />,
+            <GtkLabel name="dragged" sensitive={false} controllers={<GtkGestureDrag onDragBegin={handleDragBegin} />}>
+                Drag me
+            </GtkLabel>,
         );
 
         const label = await screen.findByName("dragged");
@@ -272,12 +267,13 @@ describe("userEvent actionability - insensitive gesture targets", () => {
         await render(
             <GtkLabel
                 name="drop-zone"
-                label="Drop here"
                 sensitive={false}
                 controllers={
                     <GtkDropTarget types={[GObject.TYPE_STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
                 }
-            />,
+            >
+                Drop here
+            </GtkLabel>,
         );
 
         const target = await screen.findByName("drop-zone");

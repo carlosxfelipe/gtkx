@@ -114,7 +114,7 @@ describe("waitFor error handling", () => {
 
 describe("findBy forwards waitForOptions", () => {
     it("routes a custom onTimeout through the find query", async () => {
-        const { container } = await render(<GtkLabel label="Present" />);
+        const { container } = await render(<GtkLabel>Present</GtkLabel>);
         await expect(
             findByText(container, "Missing", { timeout: 100, onTimeout: () => new Error("custom find timeout") }),
         ).rejects.toThrow("custom find timeout");
@@ -200,7 +200,7 @@ describe("waitForElementToBeRemoved widget", () => {
     });
 
     it("throws immediately when given an empty array", async () => {
-        await render(<GtkLabel label="Test" />);
+        await render(<GtkLabel>Test</GtkLabel>);
         await expect(waitForElementToBeRemoved([])).rejects.toThrow("already removed");
     });
 });
@@ -217,13 +217,13 @@ describe("waitForElementToBeRemoved timeout", () => {
 
 describe("waitForElementToBeRemoved error handling", () => {
     it("throws immediately if element is already removed", async () => {
-        await render(<GtkLabel label="Test" />);
+        await render(<GtkLabel>Test</GtkLabel>);
 
         await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
     });
 
     it("throws if callback returns null initially", async () => {
-        await render(<GtkLabel label="Test" />);
+        await render(<GtkLabel>Test</GtkLabel>);
 
         await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
     });

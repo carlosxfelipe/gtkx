@@ -27,7 +27,7 @@ const ROW = (i: number): ReactNode => {
         case 0:
             return <GtkButton key={key} label={`b-${i}`} onClicked={() => undefined} />;
         case 1:
-            return <GtkLabel key={key} label={`l-${i}`} />;
+            return <GtkLabel key={key}>{`l-${i}`}</GtkLabel>;
         case 2:
             return <GtkToggleButton key={key} label={`t-${i}`} active={i % 2 === 0} />;
         case 3:
@@ -53,7 +53,7 @@ const ROW = (i: number): ReactNode => {
         default:
             return (
                 <GtkBox key={key}>
-                    <GtkLabel label={`nested-${i}`} />
+                    <GtkLabel>{`nested-${i}`}</GtkLabel>
                 </GtkBox>
             );
     }

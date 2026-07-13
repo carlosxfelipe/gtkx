@@ -113,16 +113,16 @@ const MessageHeader = ({ message }: { message: Message }) => (
         {(ref) => (
             <GtkBox ref={ref} hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
                 <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
-                    <GtkLabel label={message.senderName} valign={Gtk.Align.BASELINE} attributes={boldAttrs} />
+                    <GtkLabel valign={Gtk.Align.BASELINE} attributes={boldAttrs}>
+                        {message.senderName}
+                    </GtkLabel>
                 </GtkButton>
-                <GtkLabel label={message.senderNick} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]} />
-                <GtkLabel
-                    label={formatShortTime(message.time)}
-                    hexpand
-                    xalign={1}
-                    valign={Gtk.Align.BASELINE}
-                    cssClasses={["dim-label"]}
-                />
+                <GtkLabel valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
+                    {message.senderNick}
+                </GtkLabel>
+                <GtkLabel hexpand xalign={1} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
+                    {formatShortTime(message.time)}
+                </GtkLabel>
             </GtkBox>
         )}
     </Grid.Child>
@@ -131,15 +131,9 @@ const MessageHeader = ({ message }: { message: Message }) => (
 const MessageBody = ({ message }: { message: Message }) => (
     <Grid.Child column={1} row={1}>
         {(ref) => (
-            <GtkLabel
-                ref={ref}
-                label={message.message}
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.START}
-                xalign={0}
-                yalign={0}
-                wrap
-            />
+            <GtkLabel ref={ref} halign={Gtk.Align.START} valign={Gtk.Align.START} xalign={0} yalign={0} wrap>
+                {message.message}
+            </GtkLabel>
         )}
     </Grid.Child>
 );
@@ -149,7 +143,7 @@ const MessageResentBy = ({ message }: { message: Message }) => (
         {(ref) => (
             <GtkBox ref={ref} visible={message.resentBy !== null}>
                 <GtkImage iconName="media-playlist-repeat" />
-                <GtkLabel label="Resent by" />
+                <GtkLabel>Resent by</GtkLabel>
                 <GtkLinkButton
                     label={message.resentBy ?? ""}
                     receivesDefault
@@ -237,19 +231,15 @@ const MessageDetails = ({ message, expanded }: { message: Message; expanded: boo
             <GtkRevealer ref={ref} name="details-revealer" revealChild={expanded}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkBox marginTop={2} marginBottom={2} spacing={8}>
-                        <GtkLabel
-                            visible={message.nReshares !== 0}
-                            useMarkup
-                            label={`<b>${message.nReshares}</b>\nReshares`}
-                        />
-                        <GtkLabel
-                            visible={message.nFavorites !== 0}
-                            useMarkup
-                            label={`<b>${message.nFavorites}</b>\nFavorites`}
-                        />
+                        <GtkLabel visible={message.nReshares !== 0} useMarkup>
+                            {`<b>${message.nReshares}</b>\nReshares`}
+                        </GtkLabel>
+                        <GtkLabel visible={message.nFavorites !== 0} useMarkup>
+                            {`<b>${message.nFavorites}</b>\nFavorites`}
+                        </GtkLabel>
                     </GtkBox>
                     <GtkBox>
-                        <GtkLabel label={formatDetailedTime(message.time)} cssClasses={["dim-label"]} />
+                        <GtkLabel cssClasses={["dim-label"]}>{formatDetailedTime(message.time)}</GtkLabel>
                         <GtkButton label="Details" receivesDefault hasFrame={false} cssClasses={["dim-label"]} />
                     </GtkBox>
                 </GtkBox>
@@ -318,7 +308,7 @@ const ListBoxDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <GtkLabel label="Messages from GTK and friends" />
+            <GtkLabel>Messages from GTK and friends</GtkLabel>
             <GtkScrolledWindow
                 name="scrolled"
                 hscrollbarPolicy={Gtk.PolicyType.NEVER}

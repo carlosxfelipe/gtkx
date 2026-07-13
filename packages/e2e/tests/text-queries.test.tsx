@@ -7,8 +7,8 @@ describe("byText", () => {
     it("returns the label rendering the text, matched exactly among siblings", async () => {
         await render(
             <GtkBox>
-                <GtkLabel label="Welcome!" />
-                <GtkLabel label="Count: 2" />
+                <GtkLabel>Welcome!</GtkLabel>
+                <GtkLabel>Count: 2</GtkLabel>
             </GtkBox>,
         );
 
@@ -20,8 +20,8 @@ describe("byText", () => {
     it("never matches a container by its children's joined text", async () => {
         await render(
             <GtkBox>
-                <GtkLabel label="Welcome!" />
-                <GtkLabel label="Count: 2" />
+                <GtkLabel>Welcome!</GtkLabel>
+                <GtkLabel>Count: 2</GtkLabel>
             </GtkBox>,
         );
 

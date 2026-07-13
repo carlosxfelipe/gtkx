@@ -39,7 +39,7 @@ describe("createPortal (1)", () => {
             return (
                 <>
                     <GtkBox ref={boxRef} orientation={GtkEnums.Orientation.VERTICAL} />
-                    {box && createPortal(<GtkLabel label="In Portal" />, box)}
+                    {box && createPortal(<GtkLabel>In Portal</GtkLabel>, box)}
                 </>
             );
         }
@@ -123,8 +123,8 @@ describe("createPortal (3)", () => {
             return (
                 <>
                     <GtkBox ref={boxRef} orientation={GtkEnums.Orientation.VERTICAL} />
-                    {box && createPortal(<GtkLabel label="First" />, box)}
-                    {box && createPortal(<GtkLabel label="Second" />, box)}
+                    {box && createPortal(<GtkLabel>First</GtkLabel>, box)}
+                    {box && createPortal(<GtkLabel>Second</GtkLabel>, box)}
                 </>
             );
         }

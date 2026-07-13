@@ -82,7 +82,9 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                     </AdwPreferencesGroup>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkLabel label="Notes" halign={Gtk.Align.START} cssClasses={["heading"]} />
+                        <GtkLabel halign={Gtk.Align.START} cssClasses={["heading"]}>
+                            Notes
+                        </GtkLabel>
                         <GtkScrolledWindow cssClasses={["card"]} heightRequest={160}>
                             <GtkTextView
                                 wrapMode={Gtk.WrapMode.WORD_CHAR}

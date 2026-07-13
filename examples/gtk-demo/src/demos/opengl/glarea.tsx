@@ -190,7 +190,9 @@ const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLA
 const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (value: number) => void }) => {
     return (
         <GtkBox spacing={12}>
-            <GtkLabel label={label} widthRequest={60} halign={Gtk.Align.START} />
+            <GtkLabel widthRequest={60} halign={Gtk.Align.START}>
+                {label}
+            </GtkLabel>
             <GtkScale
                 hexpand
                 drawValue={false}

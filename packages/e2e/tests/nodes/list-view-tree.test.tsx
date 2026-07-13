@@ -327,7 +327,7 @@ describe("render - ListView (tree) (3)", () => {
 describe("render - ListView (tree) (4)", () => {
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel label={item.name} />);
+            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
 
             await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
 
@@ -336,7 +336,7 @@ describe("render - ListView (tree) (4)", () => {
 
         it("receives depth in renderItem", async () => {
             const renderItem = vi.fn(({ item, depth }: RenderItemProps<{ name: string }>) => (
-                <GtkLabel label={`${item.name} - depth: ${depth}`} />
+                <GtkLabel>{`${item.name} - depth: ${depth}`}</GtkLabel>
             ));
 
             await renderListView(
@@ -355,11 +355,11 @@ describe("render - ListView (tree) (4)", () => {
 
         it("updates when renderItem function changes", async () => {
             const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel label={`First: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel>{`First: ${item.name}`}</GtkLabel>,
             });
 
             await rerender([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel label={`Second: ${item.name}`} />,
+                renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel>,
             });
 
             expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
@@ -1050,7 +1050,7 @@ describe("render - ListView (tree) (22)", () => {
 
         it("passes isExpanded to renderItem from expandedIds", async () => {
             const renderItem = ({ item, isExpanded }: RenderItemProps<{ name: string }>) => (
-                <GtkLabel label={`${item.name}:${isExpanded}`} />
+                <GtkLabel>{`${item.name}:${isExpanded}`}</GtkLabel>
             );
 
             await renderListView(parentTree, { expandedIds: ["parent"], renderItem });

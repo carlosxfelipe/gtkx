@@ -30,7 +30,7 @@ const counterRows = (entries: [string, string, number][]): CounterRow[] =>
     entries.map(([id, name, count]) => ({ id, value: { name, count } }));
 
 export const renderCounterCell = ({ item }: RenderItemProps<{ name: string; count: number }>): ReactNode => (
-    <GtkLabel label={`${item.name}: ${item.count}`} />
+    <GtkLabel>{`${item.name}: ${item.count}`}</GtkLabel>
 );
 
 export const RAPID_REORDER_ORDERS: string[][] = [

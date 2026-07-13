@@ -6,7 +6,7 @@ import { render, screen } from "../src/index.js";
 
 describe("jest-dom-style matchers", () => {
     it("toHaveTextContent matches a label's visible text", async () => {
-        await render(<GtkLabel label="Hello world" />);
+        await render(<GtkLabel>Hello world</GtkLabel>);
         const label = await screen.findByText("Hello world");
         expect(label).toHaveTextContent("Hello");
         expect(label).toHaveTextContent(/world/);
@@ -68,7 +68,7 @@ describe("jest-dom-style matchers", () => {
     });
 
     it("throws for a boolean state matcher on a widget without that state", async () => {
-        await render(<GtkLabel label="plain" />);
+        await render(<GtkLabel>plain</GtkLabel>);
         const label = await screen.findByText("plain");
         expect(() => expect(label).toBeChecked()).toThrow(/does not expose a checked state/);
     });

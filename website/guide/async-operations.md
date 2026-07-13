@@ -86,7 +86,7 @@ const FileContents = ({ path }: { path: string }) => {
         return () => cancellable.cancel();
     }, [path]);
 
-    return <GtkLabel label={text} />;
+    return <GtkLabel>{text}</GtkLabel>;
 };
 ```
 

@@ -40,7 +40,7 @@ const headerFactoryInstaller: FactoryInstaller<DropDownWidget> = {
 
 const defaultRenderer: CellRenderer<unknown, unknown> = (value) => {
     if (value === undefined || value === null) return null;
-    return <GtkLabel label={String(value)} />;
+    return <GtkLabel>{String(value)}</GtkLabel>;
 };
 
 const toItemRenderer = <T, S>(renderItem: DropDownItemRenderer<T> | null | undefined): CellRenderer<T, S> => {

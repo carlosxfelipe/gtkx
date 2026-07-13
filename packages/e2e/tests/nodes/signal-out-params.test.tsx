@@ -123,7 +123,7 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
 
         await render(
             <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
-                <GtkLabel label="Main Content" />
+                <GtkLabel>Main Content</GtkLabel>
                 <Overlay.Child>
                     {(ref) => <GtkBox ref={ref} name="overlay-child" widthRequest={40} heightRequest={20} />}
                 </Overlay.Child>
@@ -169,7 +169,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
 
         await render(
             <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
-                <GtkLabel label="Main" />
+                <GtkLabel>Main</GtkLabel>
                 <Overlay.Child>
                     {(ref) => <GtkBox ref={ref} name="overlay-child" widthRequest={40} heightRequest={20} />}
                 </Overlay.Child>
@@ -232,7 +232,11 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
     it("fires a notify::<property> handler only when that property changes", async () => {
         const labelRef = createRef<Gtk.Label>();
 
-        await render(<GtkLabel ref={labelRef} label="initial" xalign={0} />);
+        await render(
+            <GtkLabel ref={labelRef} xalign={0}>
+                initial
+            </GtkLabel>,
+        );
 
         const label = labelRef.current as Gtk.Label;
         const onLabelNotify = vi.fn();
@@ -251,7 +255,7 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
     it("routes a typed emit('notify::<property>', pspec) to the detailed handler", async () => {
         const labelRef = createRef<Gtk.Label>();
 
-        await render(<GtkLabel ref={labelRef} label="initial" />);
+        await render(<GtkLabel ref={labelRef}>initial</GtkLabel>);
 
         const label = labelRef.current as Gtk.Label;
         let capturedPspec: GObject.ParamSpec | undefined;

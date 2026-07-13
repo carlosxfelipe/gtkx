@@ -96,7 +96,7 @@ const buildPage1 = (
     b.trackPlaceholder();
     b.nodes.push(
         <GtkTextAnchor key="ghost-anchor" replacementChar="👻">
-            <GtkLabel label="ghost" />
+            <GtkLabel>ghost</GtkLabel>
         </GtkTextAnchor>,
     );
 

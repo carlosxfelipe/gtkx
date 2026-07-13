@@ -46,7 +46,7 @@ describe("configure suggestions", () => {
     setupConfigReset();
 
     it("includes accessible roles in error messages for failing role queries", async () => {
-        const { container } = await render(<GtkLabel label="Test" />);
+        const { container } = await render(<GtkLabel>Test</GtkLabel>);
 
         try {
             await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });
@@ -71,7 +71,7 @@ describe("configure error factory", () => {
             getElementError: (message) => new CustomError(message),
         });
 
-        const { container } = await render(<GtkLabel label="Test" />);
+        const { container } = await render(<GtkLabel>Test</GtkLabel>);
 
         try {
             await findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 });

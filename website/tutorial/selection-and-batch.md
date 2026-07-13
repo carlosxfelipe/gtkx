@@ -188,13 +188,14 @@ export const SelectionView = ({
                     marginEnd={12}
                 >
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand halign={Gtk.Align.START}>
-                        <GtkLabel label={item.title} halign={Gtk.Align.START} />
+                        <GtkLabel halign={Gtk.Align.START}>{item.title}</GtkLabel>
                         {item.due ? (
                             <GtkLabel
-                                label={formatDue(item.due) ?? ""}
                                 halign={Gtk.Align.START}
                                 cssClasses={["dimmed", "caption"]}
-                            />
+                            >
+                                {formatDue(item.due) ?? ""}
+                            </GtkLabel>
                         ) : null}
                     </GtkBox>
                     {item.important ? <GtkImage iconName="starred-symbolic" valign={Gtk.Align.CENTER} /> : null}

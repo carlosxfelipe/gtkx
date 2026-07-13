@@ -186,13 +186,9 @@ const ListViewMinesweeperDemo = () => {
                 singleClickActivate
                 onActivate={(position) => handleCellClick(position)}
                 renderItem={({ item }: { item: Cell }) => (
-                    <GtkLabel
-                        label={getCellDisplay(item)}
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        widthRequest={32}
-                        heightRequest={32}
-                    />
+                    <GtkLabel halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} widthRequest={32} heightRequest={32}>
+                        {getCellDisplay(item)}
+                    </GtkLabel>
                 )}
                 items={board.map((cell) => ({ id: cell.id, value: cell }))}
             />

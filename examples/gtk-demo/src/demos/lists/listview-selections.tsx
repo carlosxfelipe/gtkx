@@ -197,7 +197,9 @@ const renderSuggestionEntry = ({
                 >
                     {matches.map((word) => (
                         <GtkListBoxRow key={`${query}:${word}`}>
-                            <GtkLabel label={highlightMatch(word, query)} useMarkup xalign={0} hexpand />
+                            <GtkLabel useMarkup xalign={0} hexpand>
+                                {highlightMatch(word, query)}
+                            </GtkLabel>
                         </GtkListBoxRow>
                     ))}
                 </GtkListBox>
@@ -317,7 +319,9 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
 
 const renderSelectableTimeItem = (label: string, selectedId: string) => (
     <GtkBox spacing={10}>
-        <GtkLabel label={label} xalign={0} hexpand />
+        <GtkLabel xalign={0} hexpand>
+            {label}
+        </GtkLabel>
         <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
     </GtkBox>
 );
@@ -345,13 +349,9 @@ const TimesSectionedDropDown = () => {
             enableSearch
             renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
             renderHeader={({ section: value }: { section: string }) => (
-                <GtkLabel
-                    label={`<big><b>${escapeMarkup(value)}</b></big>`}
-                    useMarkup
-                    xalign={0}
-                    marginTop={10}
-                    marginBottom={10}
-                />
+                <GtkLabel useMarkup xalign={0} marginTop={10} marginBottom={10}>
+                    {`<big><b>${escapeMarkup(value)}</b></big>`}
+                </GtkLabel>
             )}
             sections={[
                 {
@@ -374,7 +374,7 @@ type Device = (typeof devices)[number];
 const renderDeviceRow = (label: string, renderDetails: (device: Device) => ReactNode) => {
     const device = devices.find((d) => d.id === label);
     if (!device) {
-        return <GtkLabel label={label} />;
+        return <GtkLabel>{label}</GtkLabel>;
     }
     return (
         <GtkBox spacing={10}>
@@ -392,14 +392,20 @@ const DevicesDropDown = () => {
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             renderItem={({ item: label }: { item: string }) =>
-                renderDeviceRow(label, (device) => <GtkLabel label={device.title} xalign={0} hexpand />)
+                renderDeviceRow(label, (device) => (
+                    <GtkLabel xalign={0} hexpand>
+                        {device.title}
+                    </GtkLabel>
+                ))
             }
             renderListItem={({ item: label }: { item: string }) =>
                 renderDeviceRow(label, (device) => (
                     <>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-                            <GtkLabel label={device.title} xalign={0} />
-                            <GtkLabel label={device.description} xalign={0} cssClasses={["dim-label"]} />
+                            <GtkLabel xalign={0}>{device.title}</GtkLabel>
+                            <GtkLabel xalign={0} cssClasses={["dim-label"]}>
+                                {device.description}
+                            </GtkLabel>
                         </GtkBox>
                         <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
                     </>
@@ -476,7 +482,9 @@ const DirectorySuggestionEntry = () => {
                                     >
                                         <GtkBox spacing={8}>
                                             <GtkImage iconName={entry.icon} />
-                                            <GtkLabel label={entry.name} halign={Gtk.Align.START} hexpand />
+                                            <GtkLabel halign={Gtk.Align.START} hexpand>
+                                                {entry.name}
+                                            </GtkLabel>
                                         </GtkBox>
                                     </GtkButton>
                                 ))}
@@ -503,7 +511,7 @@ const ListViewSelectionsDemo = () => {
     return (
         <GtkBox spacing={20} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
-                <GtkLabel label="Dropdowns" cssClasses={["title-4"]} />
+                <GtkLabel cssClasses={["title-4"]}>Dropdowns</GtkLabel>
 
                 <TimesDropDown />
 
@@ -549,7 +557,7 @@ const ListViewSelectionsDemo = () => {
             <GtkSeparator name="column-separator" orientation={Gtk.Orientation.VERTICAL} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
-                <GtkLabel label="Suggestions" cssClasses={["title-4"]} />
+                <GtkLabel cssClasses={["title-4"]}>Suggestions</GtkLabel>
 
                 <SuggestionEntry name="words-entry" words={suggestionWords} placeholder="Words with T or G…" />
 

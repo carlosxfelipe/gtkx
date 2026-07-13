@@ -43,7 +43,7 @@ export const allExpandableIds = <T,>(items: ItemNode<T>[]): string[] => {
     return ids;
 };
 
-const renderNamed = ({ item }: { item: unknown }): ReactNode => <GtkLabel label={(item as NamedValue).name} />;
+const renderNamed = ({ item }: { item: unknown }): ReactNode => <GtkLabel>{(item as NamedValue).name}</GtkLabel>;
 
 type ListViewFixtureOptions = {
     selected?: string[];

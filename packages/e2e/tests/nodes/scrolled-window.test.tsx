@@ -14,7 +14,7 @@ describe("render - ScrolledWindow (1)", () => {
 
         await render(
             <GtkScrolledWindow ref={ref}>
-                <GtkLabel label="Content" />
+                <GtkLabel>Content</GtkLabel>
             </GtkScrolledWindow>,
         );
 
@@ -27,7 +27,7 @@ describe("render - ScrolledWindow (1)", () => {
 
         await render(
             <GtkScrolledWindow ref={ref}>
-                <GtkLabel label="Content" />
+                <GtkLabel>Content</GtkLabel>
             </GtkScrolledWindow>,
         );
 
@@ -41,7 +41,7 @@ describe("render - ScrolledWindow (1)", () => {
 
         await render(
             <GtkScrolledWindow ref={ref} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <GtkLabel label="Content" />
+                <GtkLabel>Content</GtkLabel>
             </GtkScrolledWindow>,
         );
 
@@ -56,7 +56,7 @@ describe("render - ScrolledWindow (2)", () => {
 
         await render(
             <GtkScrolledWindow ref={ref} vscrollbarPolicy={Gtk.PolicyType.ALWAYS}>
-                <GtkLabel label="Content" />
+                <GtkLabel>Content</GtkLabel>
             </GtkScrolledWindow>,
         );
 
@@ -73,7 +73,7 @@ describe("render - ScrolledWindow (2)", () => {
                 hscrollbarPolicy={Gtk.PolicyType.NEVER}
                 vscrollbarPolicy={Gtk.PolicyType.ALWAYS}
             >
-                <GtkLabel label="Content" />
+                <GtkLabel>Content</GtkLabel>
             </GtkScrolledWindow>,
         );
 
@@ -90,7 +90,7 @@ describe("render - ScrolledWindow (3)", () => {
         function App({ hPolicyProp, vPolicyProp }: { hPolicyProp: Gtk.PolicyType; vPolicyProp: Gtk.PolicyType }) {
             return (
                 <GtkScrolledWindow ref={ref} hscrollbarPolicy={hPolicyProp} vscrollbarPolicy={vPolicyProp}>
-                    <GtkLabel label="Content" />
+                    <GtkLabel>Content</GtkLabel>
                 </GtkScrolledWindow>
             );
         }
@@ -109,7 +109,7 @@ describe("render - ScrolledWindow (3)", () => {
     it("contains child widget", async () => {
         await render(
             <GtkScrolledWindow>
-                <GtkLabel label="Scrollable Content" />
+                <GtkLabel>Scrollable Content</GtkLabel>
             </GtkScrolledWindow>,
         );
 
@@ -122,9 +122,9 @@ describe("render - ScrolledWindow (4)", () => {
         await render(
             <GtkScrolledWindow>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Item 1" />
-                    <GtkLabel label="Item 2" />
-                    <GtkLabel label="Item 3" />
+                    <GtkLabel>Item 1</GtkLabel>
+                    <GtkLabel>Item 2</GtkLabel>
+                    <GtkLabel>Item 3</GtkLabel>
                 </GtkBox>
             </GtkScrolledWindow>,
         );
@@ -136,7 +136,7 @@ describe("render - ScrolledWindow (4)", () => {
         function App({ text }: { text: string }) {
             return (
                 <GtkScrolledWindow>
-                    <GtkLabel label={text} />
+                    <GtkLabel>{text}</GtkLabel>
                 </GtkScrolledWindow>
             );
         }

@@ -35,15 +35,15 @@ export async function renderDragAndDropPair(options: DragAndDropPairOptions): Pr
         <GtkBox>
             <GtkLabel
                 name="drag-source"
-                label="Drag me"
                 sensitive={options.sourceSensitive ?? true}
                 controllers={
                     options.withDragSource === false ? undefined : <GtkDragSource actions={Gdk.DragAction.COPY} />
                 }
-            />
+            >
+                Drag me
+            </GtkLabel>
             <GtkLabel
                 name="drop-target"
-                label="Drop here"
                 controllers={
                     <GtkDropTarget
                         types={[GObject.TYPE_STRING]}
@@ -51,7 +51,9 @@ export async function renderDragAndDropPair(options: DragAndDropPairOptions): Pr
                         onDrop={options.onDrop}
                     />
                 }
-            />
+            >
+                Drop here
+            </GtkLabel>
         </GtkBox>,
     );
 

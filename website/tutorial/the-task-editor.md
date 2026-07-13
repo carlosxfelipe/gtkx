@@ -195,7 +195,7 @@ The single-line entry row is not enough for freeform notes, so the editor drops 
 
 ```tsx
 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-    <GtkLabel label="Notes" halign={Gtk.Align.START} cssClasses={["heading"]} />
+    <GtkLabel halign={Gtk.Align.START} cssClasses={["heading"]}>Notes</GtkLabel>
     <GtkScrolledWindow cssClasses={["card"]} heightRequest={160}>
         <GtkTextView
             wrapMode={Gtk.WrapMode.WORD_CHAR}

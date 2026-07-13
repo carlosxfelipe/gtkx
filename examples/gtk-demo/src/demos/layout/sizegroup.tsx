@@ -23,7 +23,9 @@ const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged, group
     const ref = useMergeRefs<Gtk.DropDown>(groupRef, setDropdown);
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={10}>
-            <GtkLabel label={labelText} useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdown} />
+            <GtkLabel useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdown}>
+                {labelText}
+            </GtkLabel>
             <DropDown
                 ref={ref}
                 halign={Gtk.Align.END}

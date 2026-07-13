@@ -175,8 +175,10 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
             renderItem={({ item: key }: { item: KeyItem }) => (
                 <GtkBox>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                        <GtkLabel label={key.name} xalign={0} />
-                        <GtkLabel label={key.summary} cssClasses={["dim-label"]} xalign={0} ellipsize={3} />
+                        <GtkLabel xalign={0}>{key.name}</GtkLabel>
+                        <GtkLabel cssClasses={["dim-label"]} xalign={0} ellipsize={3}>
+                            {key.summary}
+                        </GtkLabel>
                     </GtkBox>
                     <GtkEntry
                         text={keysState.current.get(key.id) ?? key.value}
@@ -186,7 +188,7 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
                     />
                 </GtkBox>
             )}
-            renderHeader={({ section: schemaId }: { section: string }) => <GtkLabel label={schemaId} xalign={0} />}
+            renderHeader={({ section: schemaId }: { section: string }) => <GtkLabel xalign={0}>{schemaId}</GtkLabel>}
             sections={filteredSchemaKeys.map((schema) => ({
                 id: schema.schemaId,
                 value: schema.schemaId,

@@ -8,7 +8,7 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 function App({ items }: { items: ItemNode<string>[] }) {
     return (
         <ScrollWrapper>
-            <ListView items={items} renderItem={() => <GtkLabel label="Item" />} />
+            <ListView items={items} renderItem={() => <GtkLabel>Item</GtkLabel>} />
         </ScrollWrapper>
     );
 }

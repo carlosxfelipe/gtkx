@@ -18,7 +18,7 @@ const buildNotebookFrom =
     );
 
 export const buildPlainNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
-    buildNotebookFrom(ref, (label) => <GtkLabel label={label} />);
+    buildNotebookFrom(ref, (label) => <GtkLabel>{label}</GtkLabel>);
 
 export const buildLabelNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
-    buildNotebookFrom(ref, (label) => <GtkLabel label={`Content: ${label}`} />);
+    buildNotebookFrom(ref, (label) => <GtkLabel>{`Content: ${label}`}</GtkLabel>);

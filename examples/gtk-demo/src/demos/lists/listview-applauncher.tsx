@@ -59,7 +59,7 @@ const ListViewApplauncherDemo = () => {
                             iconSize={Gtk.IconSize.LARGE}
                             accessibleLabel="App icon"
                         />
-                        <GtkLabel label={item.name} accessibleLabel={item.name} />
+                        <GtkLabel accessibleLabel={item.name}>{item.name}</GtkLabel>
                     </GtkBox>
                 )}
                 items={apps.map((app) => ({ id: app.id, value: app }))}

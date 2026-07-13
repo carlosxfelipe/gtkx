@@ -74,7 +74,7 @@ describe("keyboard drives real widget key bindings", () => {
                     { id: "1", value: { name: "Alpha" } },
                     { id: "2", value: { name: "Beta" } },
                 ]}
-                renderItem={({ item }) => <GtkLabel label={item.name} />}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
                 onActivate={(position) => activated.push(position)}
             />,
         );

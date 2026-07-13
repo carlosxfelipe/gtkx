@@ -154,13 +154,14 @@ const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="_Color:"
                     useUnderline
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
                     hexpand
                     mnemonicWidget={colorWidget}
-                />
+                >
+                    _Color:
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={0}>
@@ -189,13 +190,14 @@ const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="_Font:"
                     useUnderline
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
                     hexpand
                     mnemonicWidget={fontWidget}
-                />
+                >
+                    _Font:
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={1}>
@@ -226,19 +228,22 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="_File:"
                     useUnderline
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
                     hexpand
                     mnemonicWidget={fileButtonWidget}
-                />
+                >
+                    _File:
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={2}>
             {(ref) => (
                 <GtkBox ref={ref} spacing={6}>
-                    <GtkLabel label={fileState.fileName} xalign={0} ellipsize={2} hexpand />
+                    <GtkLabel xalign={0} ellipsize={2} hexpand>
+                        {fileState.fileName}
+                    </GtkLabel>
                     <GtkButton
                         name="select-file-button"
                         ref={setFileButtonWidget}
@@ -298,13 +303,14 @@ const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriR
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="_URI:"
                     useUnderline
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
                     hexpand
                     mnemonicWidget={uriButtonWidget}
-                />
+                >
+                    _URI:
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={3}>

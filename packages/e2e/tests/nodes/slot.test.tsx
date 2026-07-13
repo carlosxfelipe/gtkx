@@ -8,7 +8,7 @@ const expectPanedStartChild = async (label: string) => {
     const panedRef = createRef<Gtk.Paned>();
     const labelRef = createRef<Gtk.Label>();
 
-    await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label={label} />} />);
+    await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef}>{label}</GtkLabel>} />);
 
     expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
 };
@@ -19,7 +19,7 @@ describe("render - Slot (1)", () => {
         const titleRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef} label="Custom Title" />} />,
+            <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef}>Custom Title</GtkLabel>} />,
         );
 
         expect(headerBarRef.current?.getTitleWidget()).toBe(titleRef.current);
@@ -42,7 +42,7 @@ describe("render - Slot (1)", () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
 
         function App({ showTitle }: { showTitle: boolean }) {
-            return <GtkHeaderBar ref={headerBarRef} titleWidget={showTitle ? <GtkLabel label="Title" /> : undefined} />;
+            return <GtkHeaderBar ref={headerBarRef} titleWidget={showTitle ? <GtkLabel>Title</GtkLabel> : undefined} />;
         }
 
         await render(<App showTitle />);
@@ -67,9 +67,13 @@ describe("render - Slot (2)", () => {
                     ref={headerBarRef}
                     titleWidget={
                         first ? (
-                            <GtkLabel ref={label1Ref} key="first" label="First Title" />
+                            <GtkLabel ref={label1Ref} key="first">
+                                First Title
+                            </GtkLabel>
                         ) : (
-                            <GtkLabel ref={label2Ref} key="second" label="Second Title" />
+                            <GtkLabel ref={label2Ref} key="second">
+                                Second Title
+                            </GtkLabel>
                         )
                     }
                 />
@@ -98,7 +102,7 @@ describe("render - Slot (2)", () => {
                 ref={menuButtonRef}
                 popover={
                     <GtkPopover ref={popoverRef}>
-                        <GtkLabel label="Popover Content" />
+                        <GtkLabel>Popover Content</GtkLabel>
                     </GtkPopover>
                 }
             />,
@@ -117,8 +121,8 @@ describe("render - Slot (3)", () => {
         await render(
             <GtkPaned
                 ref={panedRef}
-                startChild={<GtkLabel ref={startRef} label="Start" />}
-                endChild={<GtkLabel ref={endRef} label="End" />}
+                startChild={<GtkLabel ref={startRef}>Start</GtkLabel>}
+                endChild={<GtkLabel ref={endRef}>End</GtkLabel>}
             />,
         );
 

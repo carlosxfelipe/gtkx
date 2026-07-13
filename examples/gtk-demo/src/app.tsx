@@ -50,7 +50,7 @@ const InfoTab = () => {
     if (!currentDemo) {
         return (
             <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} vexpand>
-                <GtkLabel label="Select a demo from the sidebar" cssClasses={["dim-label"]} />
+                <GtkLabel cssClasses={["dim-label"]}>Select a demo from the sidebar</GtkLabel>
             </GtkBox>
         );
     }
@@ -59,18 +59,16 @@ const InfoTab = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={20} marginStart={20} marginEnd={20} marginBottom={20}>
-            <GtkLabel label={displayTitle} cssClasses={["title-1"]} halign={Gtk.Align.START} />
-            <GtkLabel
-                label={currentDemo.description}
-                cssClasses={["dim-label"]}
-                halign={Gtk.Align.START}
-                marginTop={6}
-                wrap
-            />
+            <GtkLabel cssClasses={["title-1"]} halign={Gtk.Align.START}>
+                {displayTitle}
+            </GtkLabel>
+            <GtkLabel cssClasses={["dim-label"]} halign={Gtk.Align.START} marginTop={6} wrap>
+                {currentDemo.description}
+            </GtkLabel>
             {currentDemo.keywords.length > 0 && (
                 <GtkBox marginTop={6} spacing={8}>
-                    <GtkLabel label="Keywords:" cssClasses={["dim-label"]} />
-                    <GtkLabel label={currentDemo.keywords.join(", ")} cssClasses={["dim-label"]} />
+                    <GtkLabel cssClasses={["dim-label"]}>Keywords:</GtkLabel>
+                    <GtkLabel cssClasses={["dim-label"]}>{currentDemo.keywords.join(", ")}</GtkLabel>
                 </GtkBox>
             )}
         </GtkBox>

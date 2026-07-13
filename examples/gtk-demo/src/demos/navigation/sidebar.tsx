@@ -37,7 +37,7 @@ const SidebarDemo = () => {
                                 valign={Gtk.Align.CENTER}
                             />
                         ) : (
-                            <GtkLabel label={title} />
+                            <GtkLabel>{title}</GtkLabel>
                         )}
                     </GtkStackPage>
                 ))}

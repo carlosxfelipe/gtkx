@@ -14,7 +14,6 @@ const ShortcutTriggersDemo = () => {
         <GtkListBox name="list-box" marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
             <GtkLabel
                 name="label-ctrl-g"
-                label="Press Ctrl-G"
                 controllers={
                     <GtkShortcutController
                         scope={Gtk.ShortcutScope.GLOBAL}
@@ -26,10 +25,11 @@ const ShortcutTriggersDemo = () => {
                         }
                     />
                 }
-            />
+            >
+                Press Ctrl-G
+            </GtkLabel>
             <GtkLabel
                 name="label-x"
-                label="Press X"
                 controllers={
                     <GtkShortcutController
                         scope={Gtk.ShortcutScope.GLOBAL}
@@ -41,7 +41,9 @@ const ShortcutTriggersDemo = () => {
                         }
                     />
                 }
-            />
+            >
+                Press X
+            </GtkLabel>
         </GtkListBox>
     );
 };

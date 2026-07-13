@@ -196,7 +196,11 @@ const ThemesTitlebar = () => {
                     onToggled={(btn) => cycling.handleToggle(btn.getActive())}
                 />
             }
-            end={<GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />}
+            end={
+                <GtkLabel widthChars={12} attributes={cycling.fpsAttrs}>
+                    {cycling.fps}
+                </GtkLabel>
+            }
         />
     );
 };

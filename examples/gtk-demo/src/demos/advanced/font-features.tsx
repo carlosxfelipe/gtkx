@@ -725,7 +725,11 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     return (
         <>
             <Grid.Child column={0} row={3}>
-                {(ref) => <GtkLabel ref={ref} label="Foreground" xalign={0} valign={Gtk.Align.BASELINE} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} xalign={0} valign={Gtk.Align.BASELINE}>
+                        Foreground
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={1} row={3}>
                 {(ref) => (
@@ -741,7 +745,11 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
             </Grid.Child>
 
             <Grid.Child column={0} row={4}>
-                {(ref) => <GtkLabel ref={ref} label="Background" xalign={0} valign={Gtk.Align.BASELINE} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} xalign={0} valign={Gtk.Align.BASELINE}>
+                        Background
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={1} row={4}>
                 {(ref) => (
@@ -806,7 +814,11 @@ const SliderEntryRow = ({
     return (
         <>
             <Grid.Child column={0} row={row}>
-                {(ref) => <GtkLabel ref={ref} label={label} xalign={0} valign={Gtk.Align.BASELINE} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} xalign={0} valign={Gtk.Align.BASELINE}>
+                        {label}
+                    </GtkLabel>
+                )}
             </Grid.Child>
             <Grid.Child column={1} row={row}>
                 {(ref) => (
@@ -853,13 +865,9 @@ const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; h
         <GtkExpander
             name="features-expander"
             labelWidget={
-                <GtkLabel
-                    label="OpenType Features"
-                    xalign={0}
-                    marginTop={10}
-                    marginBottom={10}
-                    cssClasses={["title-4"]}
-                />
+                <GtkLabel xalign={0} marginTop={10} marginBottom={10} cssClasses={["title-4"]}>
+                    OpenType Features
+                </GtkLabel>
             }
         >
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -912,14 +920,9 @@ const FeatureGroupBox = ({
     onSelectRadio,
 }: FeatureGroupBoxProps) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.START}>
-        <GtkLabel
-            label={group.title}
-            xalign={0}
-            halign={Gtk.Align.START}
-            marginTop={10}
-            marginBottom={10}
-            cssClasses={["heading"]}
-        />
+        <GtkLabel xalign={0} halign={Gtk.Align.START} marginTop={10} marginBottom={10} cssClasses={["heading"]}>
+            {group.title}
+        </GtkLabel>
         {group.type === "radio"
             ? group.tags.map((tag) => (
                   <GtkCheckButton
@@ -967,14 +970,15 @@ const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPre
                     <GtkLabel
                         key={wfSize}
                         name="waterfall-label"
-                        label={previewText}
                         cssClasses={[createWaterfallStyle(wfSize)]}
                         wrap
                         xalign={0}
                         yalign={0}
                         valign={Gtk.Align.START}
                         selectable
-                    />
+                    >
+                        {previewText}
+                    </GtkLabel>
                 ))}
             </GtkBox>
         );
@@ -984,7 +988,6 @@ const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPre
         <GtkLabel
             name="preview-label"
             ref={previewLabelRef}
-            label={previewText}
             attributes={attributes}
             cssClasses={[previewStyle]}
             wrap
@@ -992,7 +995,9 @@ const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPre
             yalign={0}
             valign={Gtk.Align.START}
             selectable
-        />
+        >
+            {previewText}
+        </GtkLabel>
     );
 };
 
@@ -1006,7 +1011,6 @@ const FontFeaturesPreviewSettingsRow = ({
     <GtkBox spacing={10}>
         <GtkLabel
             name="settings"
-            label={styles.settingsText}
             wrap
             xalign={0}
             valign={Gtk.Align.END}
@@ -1014,7 +1018,9 @@ const FontFeaturesPreviewSettingsRow = ({
             maxWidthChars={50}
             hexpand
             cssClasses={["monospace"]}
-        />
+        >
+            {styles.settingsText}
+        </GtkLabel>
         <GtkButton label="Alphabet" onClicked={handlers.handleAlphabet} />
         <GtkButton label="Paragraph" onClicked={handlers.handleParagraph} />
     </GtkBox>
@@ -1055,7 +1061,6 @@ const FontFeaturesPreviewControlsRow = ({
     return (
         <GtkBox spacing={10}>
             <GtkLabel
-                label={styles.descriptionText}
                 wrap
                 wrapMode={Pango.WrapMode.CHAR}
                 xalign={0}
@@ -1064,7 +1069,9 @@ const FontFeaturesPreviewControlsRow = ({
                 maxWidthChars={50}
                 hexpand
                 cssClasses={["monospace"]}
-            />
+            >
+                {styles.descriptionText}
+            </GtkLabel>
             <GtkBox cssClasses={["linked"]} valign={Gtk.Align.END}>
                 <GtkToggleButton
                     ref={setPlainToggle}

@@ -143,10 +143,10 @@ interface BlendPageProps {
 const BlendPage = ({ labels, leftClass, rightClass, blendClass }: BlendPageProps) => (
     <Grid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
         <Grid.Child column={0} row={0}>
-            {(ref) => <GtkLabel ref={ref} label={labels[0]} />}
+            {(ref) => <GtkLabel ref={ref}>{labels[0]}</GtkLabel>}
         </Grid.Child>
         <Grid.Child column={1} row={0}>
-            {(ref) => <GtkLabel ref={ref} label={labels[1]} />}
+            {(ref) => <GtkLabel ref={ref}>{labels[1]}</GtkLabel>}
         </Grid.Child>
         <Grid.Child column={0} row={1}>
             {(ref) => <GtkImage ref={ref} cssClasses={[leftClass]} />}
@@ -155,7 +155,7 @@ const BlendPage = ({ labels, leftClass, rightClass, blendClass }: BlendPageProps
             {(ref) => <GtkImage ref={ref} cssClasses={[rightClass]} />}
         </Grid.Child>
         <Grid.Child column={0} row={2} columnSpan={2}>
-            {(ref) => <GtkLabel ref={ref} label="Blended picture" />}
+            {(ref) => <GtkLabel ref={ref}>Blended picture</GtkLabel>}
         </Grid.Child>
         <Grid.Child column={0} row={3} columnSpan={2}>
             {(ref) => <GtkImage ref={ref} halign={Gtk.Align.CENTER} cssClasses={[blendClass]} />}
@@ -172,10 +172,18 @@ const BlendsPage = () => <BlendPage labels={["Red", "Blue"]} leftClass="red" rig
 const CmykPage = () => (
     <Grid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand rowSpacing={6} columnSpacing={12}>
         <Grid.Child column={0} row={0}>
-            {(ref) => <GtkLabel ref={ref} label="Cyan" xalign={0} cssClasses={["dim-label"]} />}
+            {(ref) => (
+                <GtkLabel ref={ref} xalign={0} cssClasses={["dim-label"]}>
+                    Cyan
+                </GtkLabel>
+            )}
         </Grid.Child>
         <Grid.Child column={1} row={0}>
-            {(ref) => <GtkLabel ref={ref} label="Magenta" xalign={0} cssClasses={["dim-label"]} />}
+            {(ref) => (
+                <GtkLabel ref={ref} xalign={0} cssClasses={["dim-label"]}>
+                    Magenta
+                </GtkLabel>
+            )}
         </Grid.Child>
         <Grid.Child column={0} row={1}>
             {(ref) => <GtkImage ref={ref} cssClasses={["cyan"]} />}
@@ -184,10 +192,18 @@ const CmykPage = () => (
             {(ref) => <GtkImage ref={ref} cssClasses={["magenta"]} />}
         </Grid.Child>
         <Grid.Child column={0} row={2}>
-            {(ref) => <GtkLabel ref={ref} label="Yellow" xalign={0} cssClasses={["dim-label"]} />}
+            {(ref) => (
+                <GtkLabel ref={ref} xalign={0} cssClasses={["dim-label"]}>
+                    Yellow
+                </GtkLabel>
+            )}
         </Grid.Child>
         <Grid.Child column={1} row={2}>
-            {(ref) => <GtkLabel ref={ref} label="<b>Blended picture</b>" useMarkup xalign={0} />}
+            {(ref) => (
+                <GtkLabel ref={ref} useMarkup xalign={0}>
+                    {"<b>Blended picture</b>"}
+                </GtkLabel>
+            )}
         </Grid.Child>
         <Grid.Child column={0} row={3}>
             {(ref) => <GtkImage ref={ref} cssClasses={["yellow"]} />}
@@ -232,7 +248,11 @@ const CssBlendmodesDemo = () => {
             columnSpacing={12}
         >
             <Grid.Child column={0} row={0}>
-                {(ref) => <GtkLabel ref={ref} label="Blend mode:" xalign={0} cssClasses={["dim-label"]} />}
+                {(ref) => (
+                    <GtkLabel ref={ref} xalign={0} cssClasses={["dim-label"]}>
+                        Blend mode:
+                    </GtkLabel>
+                )}
             </Grid.Child>
 
             <Grid.Child column={0} row={1}>
@@ -245,7 +265,7 @@ const CssBlendmodesDemo = () => {
                         >
                             {BLEND_MODES.map((mode) => (
                                 <GtkListBoxRow key={mode.id}>
-                                    <GtkLabel label={mode.name} xalign={0} />
+                                    <GtkLabel xalign={0}>{mode.name}</GtkLabel>
                                 </GtkListBoxRow>
                             ))}
                         </GtkListBox>

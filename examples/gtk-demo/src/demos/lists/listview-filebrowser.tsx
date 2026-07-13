@@ -47,15 +47,9 @@ const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
         return (
             <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER}>
                 <GtkImage gicon={item.icon ?? undefined} iconSize={Gtk.IconSize.LARGE} />
-                <GtkLabel
-                    label={item.displayName}
-                    wrap
-                    wrapMode={2}
-                    lines={2}
-                    ellipsize={3}
-                    widthChars={10}
-                    maxWidthChars={30}
-                />
+                <GtkLabel wrap wrapMode={2} lines={2} ellipsize={3} widthChars={10} maxWidthChars={30}>
+                    {item.displayName}
+                </GtkLabel>
             </GtkBox>
         );
     }
@@ -65,13 +59,13 @@ const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
             <GtkBox>
                 <GtkImage gicon={item.icon ?? undefined} iconSize={Gtk.IconSize.LARGE} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label={item.displayName} halign={Gtk.Align.START} />
-                    <GtkLabel
-                        label={item.isDirectory ? "folder" : formatSize(item.size)}
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel label={item.contentType ?? ""} halign={Gtk.Align.START} cssClasses={["dim-label"]} />
+                    <GtkLabel halign={Gtk.Align.START}>{item.displayName}</GtkLabel>
+                    <GtkLabel halign={Gtk.Align.START} cssClasses={["dim-label"]}>
+                        {item.isDirectory ? "folder" : formatSize(item.size)}
+                    </GtkLabel>
+                    <GtkLabel halign={Gtk.Align.START} cssClasses={["dim-label"]}>
+                        {item.contentType ?? ""}
+                    </GtkLabel>
                 </GtkBox>
             </GtkBox>
         );
@@ -80,7 +74,7 @@ const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
     return (
         <GtkBox>
             <GtkImage gicon={item.icon ?? undefined} />
-            <GtkLabel label={item.displayName} halign={Gtk.Align.START} />
+            <GtkLabel halign={Gtk.Align.START}>{item.displayName}</GtkLabel>
         </GtkBox>
     );
 };

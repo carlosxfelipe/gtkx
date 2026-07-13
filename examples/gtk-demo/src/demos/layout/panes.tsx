@@ -4,7 +4,9 @@ import type { Demo } from "../types.js";
 import sourceCode from "./panes.tsx?raw";
 
 const renderLabel = (label: string) => (
-    <GtkLabel label={label} marginStart={4} marginEnd={4} marginTop={4} marginBottom={4} hexpand vexpand />
+    <GtkLabel marginStart={4} marginEnd={4} marginTop={4} marginBottom={4} hexpand vexpand>
+        {label}
+    </GtkLabel>
 );
 
 const renderInnerPaned = () => (

@@ -14,7 +14,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     }
 
     override render(): ReactNode {
-        return this.state.hasError ? <GtkLabel label="error" /> : this.props.children;
+        return this.state.hasError ? <GtkLabel>error</GtkLabel> : this.props.children;
     }
 }
 
@@ -35,7 +35,7 @@ describe("render basics", () => {
         const { findByRole, findByText } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
-                <GtkLabel label="Second" />
+                <GtkLabel>Second</GtkLabel>
             </GtkBox>,
         );
 
@@ -92,7 +92,7 @@ describe("render wrapper", () => {
         let seen = "default";
         const Probe = (): ReactNode => {
             seen = useContext(Context);
-            return <GtkLabel label="probe" />;
+            return <GtkLabel>probe</GtkLabel>;
         };
 
         await render(<Probe />, { wrapper: Provider });
@@ -107,7 +107,7 @@ describe("render wrapper", () => {
         const seen: string[] = [];
         const Probe = ({ tag }: { tag: string }): ReactNode => {
             seen.push(`${tag}:${useContext(Context)}`);
-            return <GtkLabel label={tag} />;
+            return <GtkLabel>{tag}</GtkLabel>;
         };
 
         const { rerender, findByText } = await render(<Probe tag="first" />, { wrapper: Provider });
@@ -122,10 +122,10 @@ describe("render wrapper", () => {
 
 describe("render lifecycle", () => {
     it("rerender updates content", async () => {
-        const { findByText, rerender } = await render(<GtkLabel label="Initial" />);
+        const { findByText, rerender } = await render(<GtkLabel>Initial</GtkLabel>);
 
         await findByText("Initial");
-        await rerender(<GtkLabel label="Updated" />);
+        await rerender(<GtkLabel>Updated</GtkLabel>);
 
         expect(await findByText("Updated")).toBeDefined();
     });
@@ -207,12 +207,12 @@ describe("cleanup", () => {
     });
 
     it("allows rendering again after cleanup", async () => {
-        const { findByText } = await render(<GtkLabel label="First" />);
+        const { findByText } = await render(<GtkLabel>First</GtkLabel>);
         await findByText("First");
 
         await cleanup();
 
-        const { findByText: findByText2 } = await render(<GtkLabel label="Second" />);
+        const { findByText: findByText2 } = await render(<GtkLabel>Second</GtkLabel>);
         expect(await findByText2("Second")).toBeDefined();
     });
 });

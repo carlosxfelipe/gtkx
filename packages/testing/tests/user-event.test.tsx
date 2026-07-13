@@ -36,7 +36,11 @@ const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
 };
 
 const renderGesturedLabel = async (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> => {
-    await render(<GtkLabel name={name} label={label} controllers={gesture} />);
+    await render(
+        <GtkLabel name={name} controllers={gesture}>
+            {label}
+        </GtkLabel>,
+    );
     return screen.findByName(name);
 };
 
@@ -244,10 +248,10 @@ const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<
     await render(
         <GtkListBox selectionMode={selectionMode}>
             <GtkListBoxRow>
-                <GtkLabel label="Item 1" />
+                <GtkLabel>Item 1</GtkLabel>
             </GtkListBoxRow>
             <GtkListBoxRow>
-                <GtkLabel label="Item 2" />
+                <GtkLabel>Item 2</GtkLabel>
             </GtkListBoxRow>
         </GtkListBox>,
     );
@@ -417,7 +421,7 @@ describe("userEvent.rotate", () => {
     });
 
     it("throws when the widget has no GestureRotate controller", async () => {
-        await render(<GtkLabel name="no-gesture" label="No gesture" />);
+        await render(<GtkLabel name="no-gesture">No gesture</GtkLabel>);
 
         const label = await screen.findByName("no-gesture");
         await expect(userEvent.rotate(label, 1)).rejects.toThrow(/GestureRotate/);
@@ -546,9 +550,10 @@ const renderDropZone = async (
     await render(
         <GtkLabel
             name={name}
-            label={label}
             controllers={<GtkDropTarget types={[gtype]} actions={Gdk.DragAction.COPY} onDrop={onDrop} />}
-        />,
+        >
+            {label}
+        </GtkLabel>,
     );
     return screen.findByName(name);
 };
@@ -599,7 +604,7 @@ describe("userEvent.drop — value passthrough and errors", () => {
     });
 
     it("throws when the widget has no DropTarget controller", async () => {
-        await render(<GtkLabel name="no-target" label="Nothing here" />);
+        await render(<GtkLabel name="no-target">Nothing here</GtkLabel>);
 
         const label = await screen.findByName("no-target");
         await expect(userEvent.drop(label, "x")).rejects.toThrow(/DropTarget/);
@@ -633,7 +638,7 @@ const renderShortcutHost = async (trigger: Gtk.ShortcutTrigger, onActivate: () =
                 />
             }
         >
-            <GtkLabel label="anchor" />
+            <GtkLabel>anchor</GtkLabel>
         </GtkBox>,
     );
     return screen.findByName("host");

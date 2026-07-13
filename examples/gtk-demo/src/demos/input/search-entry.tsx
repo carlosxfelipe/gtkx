@@ -76,7 +76,7 @@ const SearchEntryDemo = () => {
                 marginTop={18}
                 marginBottom={18}
             >
-                <GtkLabel label={`Searching for: ${searchText}`} xalign={0} />
+                <GtkLabel xalign={0}>{`Searching for: ${searchText}`}</GtkLabel>
             </GtkBox>
         </GtkBox>
     );

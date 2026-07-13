@@ -38,7 +38,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
     selectedIds={selectedIds}
     onSelectionChanged={setSelectedIds}
     estimatedItemHeight={56}
-    renderItem={({ item }) => <GtkLabel label={item.title} halign={Gtk.Align.START} />}
+    renderItem={({ item }) => <GtkLabel halign={Gtk.Align.START}>{item.title}</GtkLabel>}
 />
 ```
 
@@ -59,7 +59,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
     singleClickActivate
     onActivate={(position) => handleCellClick(position)}
     items={board.map((cell) => ({ id: cell.id, value: cell }))}
-    renderItem={({ item }) => <GtkLabel label={getCellDisplay(item)} />}
+    renderItem={({ item }) => <GtkLabel>{getCellDisplay(item)}</GtkLabel>}
 />
 ```
 
@@ -82,7 +82,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
         title="Name"
         expand
         sortable
-        renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel label={item.name} />}
+        renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel>{item.name}</GtkLabel>}
     />
 </ColumnView>
 ```
@@ -131,7 +131,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 <Grid columnSpacing={10} rowSpacing={10}>
     <Grid.Child column={0} row={3}>
-        {(ref) => <GtkLabel ref={ref} label="Foreground" xalign={0} />}
+        {(ref) => <GtkLabel ref={ref} xalign={0}>Foreground</GtkLabel>}
     </Grid.Child>
 </Grid>
 ```

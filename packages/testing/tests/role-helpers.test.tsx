@@ -9,7 +9,7 @@ describe("getRoles", () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="Submit" />
                 <GtkButton label="Cancel" />
-                <GtkLabel label="Hello" />
+                <GtkLabel>Hello</GtkLabel>
             </GtkBox>,
         );
 

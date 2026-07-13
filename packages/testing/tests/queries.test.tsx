@@ -122,10 +122,10 @@ describe("findByRole matchers", () => {
         const { container } = await render(
             <VBox>
                 <GtkExpander label="Collapsed">
-                    <GtkLabel label="Content" />
+                    <GtkLabel>Content</GtkLabel>
                 </GtkExpander>
                 <GtkExpander label="Expanded" expanded>
-                    <GtkLabel label="Content" />
+                    <GtkLabel>Content</GtkLabel>
                 </GtkExpander>
             </VBox>,
         );
@@ -151,7 +151,7 @@ describe("findByRole matchers", () => {
 
 describe("findByRole error handling", () => {
     it("throws when element not found with role suggestions", async () => {
-        const { container } = await render(<GtkLabel label="Test" />);
+        const { container } = await render(<GtkLabel>Test</GtkLabel>);
         await expect(
             findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "NonexistentButton", timeout: 100 }),
         ).rejects.toThrow(/Unable to find an element with role 'BUTTON'/);
@@ -176,7 +176,7 @@ describe("findAllByRole", () => {
             <VBox>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
-                <GtkLabel label="Text" />
+                <GtkLabel>Text</GtkLabel>
             </VBox>,
         );
 
@@ -186,7 +186,7 @@ describe("findAllByRole", () => {
 
     describe("error handling", () => {
         it("throws when no elements found", async () => {
-            const { container } = await render(<GtkLabel label="Test" />);
+            const { container } = await render(<GtkLabel>Test</GtkLabel>);
             await expect(findAllByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
                 /Unable to find an element with role 'BUTTON'/,
             );
@@ -196,25 +196,25 @@ describe("findAllByRole", () => {
 
 describe("findByText", () => {
     it("finds element by exact text", async () => {
-        const { container } = await render(<GtkLabel label="Hello World" />);
+        const { container } = await render(<GtkLabel>Hello World</GtkLabel>);
         const label = await findByText(container, "Hello World");
         expect(label).toBeDefined();
     });
 
     it("finds element by partial text with exact false", async () => {
-        const { container } = await render(<GtkLabel label="Hello World" />);
+        const { container } = await render(<GtkLabel>Hello World</GtkLabel>);
         const label = await findByText(container, "Hello", { exact: false });
         expect(label).toBeDefined();
     });
 
     it("normalizes whitespace by default", async () => {
-        const { container } = await render(<GtkLabel label=" Hello World " />);
+        const { container } = await render(<GtkLabel>{" Hello World "}</GtkLabel>);
         const label = await findByText(container, "Hello World");
         expect(label).toBeDefined();
     });
 
     it("supports custom normalizer", async () => {
-        const { container } = await render(<GtkLabel label="HELLO WORLD" />);
+        const { container } = await render(<GtkLabel>HELLO WORLD</GtkLabel>);
         const label = await findByText(container, "hello world", {
             normalizer: (text) => text.toLowerCase(),
         });
@@ -223,7 +223,7 @@ describe("findByText", () => {
 
     describe("error handling", () => {
         it("throws when text not found", async () => {
-            const { container } = await render(<GtkLabel label="Test" />);
+            const { container } = await render(<GtkLabel>Test</GtkLabel>);
             await expect(findByText(container, "Nonexistent", { timeout: 100 })).rejects.toThrow(
                 /Unable to find an element with text 'Nonexistent'/,
             );
@@ -255,7 +255,7 @@ describe("findByLabelText", () => {
             };
             return (
                 <VBox>
-                    <GtkLabel label="Username" mnemonicWidget={entryRef.current} />
+                    <GtkLabel mnemonicWidget={entryRef.current}>Username</GtkLabel>
                     <GtkEntry ref={ref} />
                 </VBox>
             );
@@ -282,13 +282,13 @@ describe("findAllByLabelText", () => {
         const ref2 = { current: null as Gtk.Entry | null };
         const Form = () => (
             <VBox>
-                <GtkLabel label="Field" mnemonicWidget={ref1.current} />
+                <GtkLabel mnemonicWidget={ref1.current}>Field</GtkLabel>
                 <GtkEntry
                     ref={(el) => {
                         ref1.current = el;
                     }}
                 />
-                <GtkLabel label="Field" mnemonicWidget={ref2.current} />
+                <GtkLabel mnemonicWidget={ref2.current}>Field</GtkLabel>
                 <GtkEntry
                     ref={(el) => {
                         ref2.current = el;
@@ -349,7 +349,7 @@ describe("findAllByName", () => {
     });
 
     it("matches a GtkLabel widget by its widget name", async () => {
-        const { container } = await render(<GtkLabel name="title-label" label="Hi" />);
+        const { container } = await render(<GtkLabel name="title-label">Hi</GtkLabel>);
         const label = await findByName(container, "title-label");
         expect(label).toBeInstanceOf(Gtk.Label);
     });
@@ -357,7 +357,7 @@ describe("findAllByName", () => {
 
 describe("findByRole(LABEL)", () => {
     it("matches a GtkLabel by its accessible role", async () => {
-        const { container } = await render(<GtkLabel label="visible" />);
+        const { container } = await render(<GtkLabel>visible</GtkLabel>);
         const label = await findByRole(container, Gtk.AccessibleRole.LABEL, { name: "visible" });
         expect(label).toBeInstanceOf(Gtk.Label);
     });
@@ -367,8 +367,8 @@ describe("findByText sibling labels", () => {
     it("matches each sibling label individually, never the joined text", async () => {
         const { container } = await render(
             <VBox>
-                <GtkLabel label="Searching for:" />
-                <GtkLabel label="rocket" />
+                <GtkLabel>Searching for:</GtkLabel>
+                <GtkLabel>rocket</GtkLabel>
             </VBox>,
         );
 
@@ -400,9 +400,9 @@ describe("findByRole level", () => {
     it("matches a widget by its accessibleLevel JSX prop", async () => {
         const { container } = await render(
             <VBox>
-                <GtkLabel accessibleLevel={1} label="Top" />
-                <GtkLabel accessibleLevel={2} label="Section" />
-                <GtkLabel accessibleLevel={3} label="Subsection" />
+                <GtkLabel accessibleLevel={1}>Top</GtkLabel>
+                <GtkLabel accessibleLevel={2}>Section</GtkLabel>
+                <GtkLabel accessibleLevel={3}>Subsection</GtkLabel>
             </VBox>,
         );
         const top = await findByRole(container, Gtk.AccessibleRole.LABEL, { level: 1 });
@@ -414,20 +414,20 @@ describe("findByRole level", () => {
     });
 
     it("rejects widgets whose level differs from the requested value", async () => {
-        const { container } = await render(<GtkLabel accessibleLevel={2} label="Heading" />);
+        const { container } = await render(<GtkLabel accessibleLevel={2}>Heading</GtkLabel>);
         await expect(findByRole(container, Gtk.AccessibleRole.LABEL, { level: 3 })).rejects.toThrow();
     });
 
     it("rejects widgets that declare no accessibleLevel when one is requested", async () => {
-        const { container } = await render(<GtkLabel label="No level" />);
+        const { container } = await render(<GtkLabel>No level</GtkLabel>);
         await expect(findByRole(container, Gtk.AccessibleRole.LABEL, { level: 1 })).rejects.toThrow();
     });
 
     it("combines with name to disambiguate widgets at the same level", async () => {
         const { container } = await render(
             <VBox>
-                <GtkLabel accessibleLevel={2} label="First section" />
-                <GtkLabel accessibleLevel={2} label="Second section" />
+                <GtkLabel accessibleLevel={2}>First section</GtkLabel>
+                <GtkLabel accessibleLevel={2}>Second section</GtkLabel>
             </VBox>,
         );
         const second = await findByRole(container, Gtk.AccessibleRole.LABEL, {
@@ -446,7 +446,7 @@ describe("queryByRole", () => {
     });
 
     it("returns null when not found", async () => {
-        const { container } = await render(<GtkLabel label="Test" />);
+        const { container } = await render(<GtkLabel>Test</GtkLabel>);
         const button = queryByRole(container, Gtk.AccessibleRole.BUTTON);
         expect(button).toBeNull();
     });
@@ -465,7 +465,7 @@ describe("queryAllByRole", () => {
     });
 
     it("returns empty array when none found", async () => {
-        const { container } = await render(<GtkLabel label="Test" />);
+        const { container } = await render(<GtkLabel>Test</GtkLabel>);
         const buttons = queryAllByRole(container, Gtk.AccessibleRole.BUTTON);
         expect(buttons).toEqual([]);
     });
@@ -473,13 +473,13 @@ describe("queryAllByRole", () => {
 
 describe("queryByText", () => {
     it("returns element when found", async () => {
-        const { container } = await render(<GtkLabel label="Hello" />);
+        const { container } = await render(<GtkLabel>Hello</GtkLabel>);
         const label = queryByText(container, "Hello");
         expect(label).not.toBeNull();
     });
 
     it("returns null when not found", async () => {
-        const { container } = await render(<GtkLabel label="Hello" />);
+        const { container } = await render(<GtkLabel>Hello</GtkLabel>);
         const label = queryByText(container, "Goodbye");
         expect(label).toBeNull();
     });
@@ -498,7 +498,7 @@ describe("queryAllByText", () => {
     });
 
     it("returns empty array when none found", async () => {
-        const { container } = await render(<GtkLabel label="Hello" />);
+        const { container } = await render(<GtkLabel>Hello</GtkLabel>);
         const labels = queryAllByText(container, "Nonexistent");
         expect(labels).toEqual([]);
     });
@@ -746,11 +746,12 @@ describe("getByLabelText accessible-label and accessible-labelledby", () => {
         const Form = () => (
             <VBox>
                 <GtkLabel
-                    label="Full name"
                     ref={(el) => {
                         labelRef.current = el;
                     }}
-                />
+                >
+                    Full name
+                </GtkLabel>
                 <GtkEntry accessibleLabelledBy={labelRef.current ? [labelRef.current] : []} />
             </VBox>
         );
@@ -779,27 +780,27 @@ describe("getDefaultNormalizer", () => {
     });
 
     it("composes inside a custom normalizer", async () => {
-        const { container } = await render(<GtkLabel label="HELLO   WORLD" />);
+        const { container } = await render(<GtkLabel>HELLO WORLD</GtkLabel>);
         const normalizer = (text: string) => getDefaultNormalizer()(text).toLowerCase();
         expect(getByText(container, "hello world", { normalizer })).toBeDefined();
     });
 
     it("rejects combining a custom normalizer with trim", async () => {
-        const { container } = await render(<GtkLabel label="hello" />);
+        const { container } = await render(<GtkLabel>hello</GtkLabel>);
         expect(() => queryByText(container, "hello", { normalizer: (text) => text, trim: true })).toThrow(
             /trim and collapseWhitespace are not supported with a normalizer/,
         );
     });
 
     it("rejects combining a custom normalizer with collapseWhitespace", async () => {
-        const { container } = await render(<GtkLabel label="hello" />);
+        const { container } = await render(<GtkLabel>hello</GtkLabel>);
         expect(() =>
             queryByText(container, "hello", { normalizer: (text) => text, collapseWhitespace: false }),
         ).toThrow(/trim and collapseWhitespace are not supported with a normalizer/);
     });
 
     it("accepts a custom normalizer on its own", async () => {
-        const { container } = await render(<GtkLabel label="hello" />);
+        const { container } = await render(<GtkLabel>hello</GtkLabel>);
         expect(queryByText(container, "HELLO", { normalizer: (text) => text.toUpperCase() })).not.toBeNull();
     });
 });

@@ -94,13 +94,14 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="_Details"
                     useUnderline
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
                     mnemonicWidget={detailsEntry}
-                />
+                >
+                    _Details
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={0} columnSpan={2}>
@@ -136,13 +137,14 @@ const MoreDetailsEntryRow = ({
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="More D_etails"
                     useUnderline
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
                     mnemonicWidget={moreDetailsEntry}
-                />
+                >
+                    More D_etails
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={1} columnSpan={2}>
@@ -177,13 +179,14 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
             {(ref) => (
                 <GtkLabel
                     ref={ref}
-                    label="_Level"
                     useUnderline
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
                     mnemonicWidget={levelScale}
-                />
+                >
+                    _Level
+                </GtkLabel>
             )}
         </Grid.Child>
         <Grid.Child column={1} row={2} columnSpan={2}>
@@ -217,13 +220,14 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                 {(ref) => (
                     <GtkLabel
                         ref={ref}
-                        label="_Mode"
                         useUnderline
                         halign={Gtk.Align.END}
                         valign={Gtk.Align.BASELINE}
                         cssClasses={["dim-label"]}
                         mnemonicWidget={modeSwitch}
-                    />
+                    >
+                        _Mode
+                    </GtkLabel>
                 )}
             </Grid.Child>
             <Grid.Child column={1} row={3}>
@@ -266,11 +270,12 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                                 ref(node);
                                 setErrorLabel(node);
                             }}
-                            label="Level too low"
                             halign={Gtk.Align.START}
                             valign={Gtk.Align.BASELINE}
                             cssClasses={["error"]}
-                        />
+                        >
+                            Level too low
+                        </GtkLabel>
                     )
                 }
             </Grid.Child>

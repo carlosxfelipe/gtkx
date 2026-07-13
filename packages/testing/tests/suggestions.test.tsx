@@ -26,7 +26,7 @@ describe("getSuggestedQuery", () => {
     });
 
     it("suggests getByText for a bare label", async () => {
-        const { container } = await render(<GtkLabel label="Just text" />);
+        const { container } = await render(<GtkLabel>Just text</GtkLabel>);
         const label = getByText(container, "Just text");
 
         const suggestion = getSuggestedQuery(label, "query", "Text");

@@ -19,7 +19,7 @@ const labelTexts = (box: Gtk.Box): string[] =>
 const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) => (
     <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
         {items.map((item) => (
-            <GtkLabel key={item} label={item} />
+            <GtkLabel key={item}>{item}</GtkLabel>
         ))}
     </GtkBox>
 );
@@ -38,7 +38,7 @@ describe("host-config - children (1)", () => {
         it("appends child to appendable widget (Box)", async () => {
             await render(
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Child" />
+                    <GtkLabel>Child</GtkLabel>
                 </GtkBox>,
             );
 
@@ -49,7 +49,7 @@ describe("host-config - children (1)", () => {
         it("sets child on single-child widget", async () => {
             await render(
                 <GtkFrame>
-                    <GtkLabel label="Single Child" />
+                    <GtkLabel>Single Child</GtkLabel>
                 </GtkFrame>,
             );
 
@@ -65,7 +65,7 @@ describe("host-config - children (2)", () => {
             function App({ showChild }: { showChild: boolean }) {
                 return (
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                        {showChild && <GtkLabel label="Removable" />}
+                        {showChild && <GtkLabel>Removable</GtkLabel>}
                     </GtkBox>
                 );
             }
@@ -81,7 +81,7 @@ describe("host-config - children (2)", () => {
 
         it("clears child on single-child widget", async () => {
             function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame>{showChild && <GtkLabel label="Child" />}</GtkFrame>;
+                return <GtkFrame>{showChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
             }
 
             const { rerender } = await render(<App showChild={true} />);
@@ -204,7 +204,7 @@ describe("host-config - children (6)", () => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkBox ref={containerRef}>
                         <GtkButton label="Inner Button" />
-                        <GtkLabel label="Inner Label" />
+                        <GtkLabel>Inner Label</GtkLabel>
                     </GtkBox>
                     <GtkButton label="Outer Button" />
                 </GtkBox>,

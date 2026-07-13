@@ -26,15 +26,6 @@ const LinksDemo = () => {
     return (
         <GtkLabel
             name="links-label"
-            label={
-                'Some <a href="http://en.wikipedia.org/wiki/Text" title="plain text">text</a> may be marked up ' +
-                "as hyperlinks, which can be clicked " +
-                'or activated via <a href="keynav">keynav</a> ' +
-                "and they work fine with other markup, like when " +
-                'linking to <a href="http://www.flathub.org/"><b>' +
-                '<span letter_spacing="1024" underline="none" color="pink" background="darkslategray">Flathub</span>' +
-                "</b></a>."
-            }
             useMarkup
             maxWidthChars={40}
             wrap
@@ -44,7 +35,15 @@ const LinksDemo = () => {
             marginTop={20}
             marginBottom={20}
             onActivateLink={(uri) => handleActivateLink(uri)}
-        />
+        >
+            {'Some <a href="http://en.wikipedia.org/wiki/Text" title="plain text">text</a> may be marked up ' +
+                "as hyperlinks, which can be clicked " +
+                'or activated via <a href="keynav">keynav</a> ' +
+                "and they work fine with other markup, like when " +
+                'linking to <a href="http://www.flathub.org/"><b>' +
+                '<span letter_spacing="1024" underline="none" color="pink" background="darkslategray">Flathub</span>' +
+                "</b></a>."}
+        </GtkLabel>
     );
 };
 
