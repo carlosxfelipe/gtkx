@@ -1,4 +1,4 @@
-import { sortedStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
@@ -48,6 +48,8 @@ export const implementedInterfaces = (
 
 export const glibNameOf = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
 
+export const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
+
 export const interfaceHasPropsBody = (klass: GirClass): boolean =>
     klass.properties.length > 0 || klass.signals.length > 0;
 
@@ -74,7 +76,7 @@ export const newlyImplementedInterfaces = (
     const own = implementedInterfaces(klass, namespace, library).filter(
         (iface) => interfaceHasPropsBody(iface.klass) && !inherited.has(qualifiedInterfaceKey(iface)),
     );
-    return sortedStringsBy(own, qualifiedInterfaceKey);
+    return sortStringsBy(own, qualifiedInterfaceKey);
 };
 
 export const collectInterfacePropsClasses = (
@@ -84,8 +86,8 @@ export const collectInterfacePropsClasses = (
 ): ResolvedQualifiedInterface[] => {
     const seen = new Set<string>();
     const result: ResolvedQualifiedInterface[] = [];
-    for (const widget of intrinsicElements) {
-        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+    for (const intrinsicElement of intrinsicElements) {
+        for (const iface of implementedInterfaces(intrinsicElement.klass, intrinsicElement.namespace, library)) {
             const key = qualifiedInterfaceKey(iface);
             if (seen.has(key)) continue;
             seen.add(key);
@@ -94,7 +96,7 @@ export const collectInterfacePropsClasses = (
             result.push(iface);
         }
     }
-    return sortedStringsBy(result, qualifiedInterfaceKey);
+    return sortStringsBy(result, qualifiedInterfaceKey);
 };
 
 export const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Library): string[] => {
@@ -146,5 +148,5 @@ export const collectIntrinsicElementClasses = (library: Library): GlibNamedClass
         seen.add(glibName);
         entries.push(candidate);
     }
-    return sortedStringsBy(entries, (entry) => entry.glibName);
+    return sortStringsBy(entries, (entry) => entry.glibName);
 };

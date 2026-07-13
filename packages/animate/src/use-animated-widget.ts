@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { useMergeRefs } from "@gtkx/react";
-import { shallowEqual } from "@gtkx/utils";
+import { useMergeRefs } from "@gtkx/react/internal";
+import { isShallowEqual } from "@gtkx/utils";
 import { type Ref, type RefCallback, useId, useLayoutEffect, useRef } from "react";
 import { useIsInitialPresence, usePresence } from "./animate-presence.js";
-import type { AnimationProps, AnimationTarget } from "./types.js";
+import type { AnimationProps, AnimationTarget } from "./animation-types.js";
 import { WidgetAnimator } from "./widget-animator.js";
 
 const sanitizeId = (id: string): string => `gtkx-anim-${id.replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -41,7 +41,7 @@ export const useAnimatedWidget = (
         previousAnimateRef.current = props.animate;
 
         if (!widgetRef.current || !props.animate) return;
-        if (shallowEqual(previous, props.animate)) return;
+        if (isShallowEqual(previous, props.animate)) return;
 
         animator.startAnimation(props.animate);
     }, [animator, props.animate]);
@@ -57,7 +57,7 @@ export const useAnimatedWidget = (
         if (!isPresent) {
             if (exitStartedRef.current) return;
             exitStartedRef.current = true;
-            animator.startAnimation(props.exit ?? {}, () => safeToRemove?.());
+            animator.startAnimation(props.exit ?? {}, () => safeToRemove());
             return;
         }
 

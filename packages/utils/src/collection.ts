@@ -1,3 +1,9 @@
+/**
+ * Returns the items with duplicates removed, keeping the first item for each distinct key.
+ *
+ * @param items The items to deduplicate.
+ * @param key Computes the identity string used to detect duplicates.
+ */
 export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
     const seen = new Set<string>();
     const result: T[] = [];
@@ -12,12 +18,30 @@ export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
 
 const compareStrings = (a: string, b: string): number => a.localeCompare(b);
 
-export const sortedStrings = (values: Iterable<string>): string[] => [...values].sort(compareStrings);
+/**
+ * Returns a new array of the given strings sorted with locale-aware comparison.
+ *
+ * @param values The strings to sort.
+ */
+export const sortStrings = (values: Iterable<string>): string[] => [...values].sort(compareStrings);
 
-export const sortedStringsBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
+/**
+ * Returns a new array of the given items sorted by a locale-aware comparison of their keys.
+ *
+ * @param items The items to sort.
+ * @param key Computes the string to sort each item by.
+ */
+export const sortStringsBy = <T>(items: Iterable<T>, key: (item: T) => string): T[] =>
     [...items].sort((a, b) => compareStrings(key(a), key(b)));
 
-export const shallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): boolean => {
+/**
+ * Determines whether two records have the same keys and strictly equal values.
+ *
+ * @param a The first record, or `undefined`.
+ * @param b The second record, or `undefined`.
+ * @returns `true` when both are the same reference, or both are defined with identical own keys and values.
+ */
+export const isShallowEqual = <T extends Record<string, unknown>>(a?: T, b?: T): boolean => {
     if (a === b) return true;
     if (!a || !b) return false;
 

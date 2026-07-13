@@ -7,8 +7,7 @@ import { WebKitWebView } from "@gtkx/jsx/webkit";
 import { quit } from "@gtkx/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
-const DEFAULT_URL = "https://gtkx.dev";
-const START_URL = process.argv[2] ?? DEFAULT_URL;
+const START_URL = "https://gtkx.dev";
 
 const urlBarStyle = css`
     min-width: 400px;
@@ -55,7 +54,7 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
             canGoBack: webView.canGoBack(),
             canGoForward: webView.canGoForward(),
             ...(loadEvent === WebKit.LoadEvent.STARTED && { isLoading: true, progress: 0 }),
-            ...(loadEvent === WebKit.LoadEvent.COMMITTED && { url: webView.getUri() ?? s.url }),
+            ...(loadEvent === WebKit.LoadEvent.COMMITTED && { url: webView.getUri() }),
             ...(loadEvent === WebKit.LoadEvent.FINISHED && { isLoading: false, progress: 1 }),
         }));
     };

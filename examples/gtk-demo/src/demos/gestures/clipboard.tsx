@@ -20,12 +20,12 @@ import {
     GtkStackPage,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { useProperty } from "@gtkx/react";
+import { useParentWindow, useProperty } from "@gtkx/react";
 import { useState } from "react";
 import { path as floppyBuddyPath } from "#data/demos/gestures/floppybuddy.gif";
 import { path as demo4LogoPath } from "#data/demos/gestures/org.gtk.Demo4.svg";
 import { path as portlandRosePath } from "#data/demos/gestures/portland-rose.jpg";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 
 const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void => clipboard.set(value);
@@ -68,7 +68,6 @@ const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk
 
 const applyColorFromValue = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
     const rgba = value.getBoxed<Gdk.RGBA>();
-    if (!rgba) return false;
     setPastedContent({ type: "Color", color: buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
     return true;
 };
@@ -187,7 +186,7 @@ const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) =>
         GObject.buildValue(gfileType, (v) => v.setObject(sourceFile)),
     );
 
-function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk.Window | null>) {
+function useClipboardHandlers(state: ClipboardState, parentWindow: Gtk.Window | null) {
     const { sourceType, sourceText, sourceColor, selectedImage, sourceFile, setSourceFile, setPastedContent } = state;
 
     const handleCopy = () => {
@@ -196,8 +195,7 @@ function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk
         if (sourceType === "Text") copyTextToClipboard(clipboard, sourceText);
         else if (sourceType === "Color") copyColorToClipboard(clipboard, sourceColor);
         else if (sourceType === "Image") copyImageToClipboard(clipboard, selectedImage);
-        else if ((sourceType === "File" || sourceType === "Folder") && sourceFile)
-            copyFileToClipboard(clipboard, sourceFile);
+        else if (sourceFile) copyFileToClipboard(clipboard, sourceFile);
     };
 
     const handlePaste = async () => {
@@ -215,9 +213,9 @@ function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk
         }
     };
 
-    const handleFileSelect = () => openFileDialog(window.current, "file", setSourceFile);
+    const handleFileSelect = () => openFileDialog(parentWindow, "file", setSourceFile);
 
-    const handleFolderSelect = () => openFileDialog(window.current, "folder", setSourceFile);
+    const handleFolderSelect = () => openFileDialog(parentWindow, "folder", setSourceFile);
 
     const handleDrop = (value: GObject.Value) => handleClipboardDrop(value, setPastedContent);
 
@@ -605,11 +603,12 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
     </GtkBox>
 );
 
-const ClipboardDemo = ({ window }: DemoProps) => {
+const ClipboardDemo = () => {
     const state = useClipboardState();
     const textures = useClipboardTextures();
     const providers = useDragProviders(state);
-    const clipboardHandlers = useClipboardHandlers(state, window);
+    const parentWindow = useParentWindow();
+    const clipboardHandlers = useClipboardHandlers(state, parentWindow);
     const formats = useProperty(getClipboard(), "formats");
     const canPaste = formats ? computeCanPaste(formats) : false;
 

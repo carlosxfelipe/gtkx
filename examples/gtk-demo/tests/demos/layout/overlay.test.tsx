@@ -24,18 +24,20 @@ describe("overlayDemo grid and labels", () => {
         const grid = await screen.findByName("number-grid");
         const buttons = within(grid).getAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(25);
-        const labels = buttons.map((b) => (b as Gtk.Button).getLabel());
         for (let i = 0; i < 25; i++) {
-            expect(labels).toContain(String(i));
+            expect(within(grid).getByRole(Gtk.AccessibleRole.BUTTON, { name: String(i) })).toBeTruthy();
         }
     });
 
-    it("renders the decorative 'Numbers' label as non-interactive markup", async () => {
+    it("renders the decorative 'Numbers' label as non-interactive markup inside a click-through box", async () => {
         await renderDemo(overlayDemo);
         const numbersLabel = (await screen.findByName("numbers-label")) as Gtk.Label;
         expect(numbersLabel.getUseMarkup()).toBe(true);
-        expect(numbersLabel.getLabel()).toContain("Numbers");
+        expect(numbersLabel).toHaveTextContent("Numbers");
         expect(numbersLabel.getCanTarget()).toBe(false);
+        const box = numbersLabel.getParent();
+        expect(box).toBeInstanceOf(Gtk.Box);
+        expect(box?.getCanTarget()).toBe(false);
     });
 });
 
@@ -43,8 +45,8 @@ describe("overlayDemo entry behavior", () => {
     it("renders the entry with the placeholder text 'Your Lucky Number' and empty initial value", async () => {
         await renderDemo(overlayDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
-        expect(entry.getPlaceholderText()).toBe("Your Lucky Number");
-        expect(entry.getText()).toBe("");
+        expect(entry).toHavePlaceholderText("Your Lucky Number");
+        expect(entry).toHaveDisplayValue("");
     });
 
     it("updates the entry to the clicked number when a grid button is activated", async () => {
@@ -52,13 +54,13 @@ describe("overlayDemo entry behavior", () => {
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" });
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.click(button);
-        await waitFor(() => expect(entry.getText()).toBe("13"));
+        await waitFor(() => expect(entry).toHaveDisplayValue("13"));
     });
 
     it("propagates user-typed text into the entry", async () => {
         await renderDemo(overlayDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "typed");
-        expect(entry.getText()).toBe("typed");
+        expect(entry).toHaveDisplayValue("typed");
     });
 });

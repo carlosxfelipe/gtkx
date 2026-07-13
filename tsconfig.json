@@ -4,9 +4,10 @@
         "**/scripts",
         "**/vitest.config.ts",
         "vitest.config.base.ts",
-        "gtkx.config.ts",
+        "gtkx.config.base.ts",
         ".dependency-cruiser.js"
     ],
+    "exclude": ["examples/tutorial"],
     "compilerOptions": {
         "outDir": "dist"
     }

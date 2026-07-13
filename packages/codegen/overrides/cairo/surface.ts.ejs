@@ -1,5 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/ffi";
 import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
 import { Surface } from "../cairo.js";
 import { FontOptions } from "./font-options.js";
@@ -9,7 +8,7 @@ const { bind } = t;
 const SURFACE_T = t.boxed("CairoSurface", {
     ownership: "borrowed",
     sharedLibrary: "libcairo-gobject.so.2",
-    getTypeFn: "cairo_gobject_surface_get_type",
+    getTypeFnName: "cairo_gobject_surface_get_type",
 });
 const DEVICE_T_NONE = t.boxed("CairoDevice", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
@@ -62,7 +61,7 @@ const cairoSurfaceCreateSimilar = bind(
     t.boxed("CairoSurface", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_surface_get_type",
+        getTypeFnName: "cairo_gobject_surface_get_type",
     }),
 );
 SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
@@ -76,7 +75,7 @@ const cairoSurfaceCreateSimilarImage = bind(
     t.boxed("CairoSurface", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_surface_get_type",
+        getTypeFnName: "cairo_gobject_surface_get_type",
     }),
 );
 SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
@@ -90,7 +89,7 @@ const cairoSurfaceCreateForRectangle = bind(
     t.boxed("CairoSurface", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_surface_get_type",
+        getTypeFnName: "cairo_gobject_surface_get_type",
     }),
 );
 SurfaceWithStatics.createForRectangle = (
@@ -141,7 +140,7 @@ const cairoSurfaceGetFontOptions = bind(
         t.boxed("CairoFontOptions", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_font_options_get_type",
+            getTypeFnName: "cairo_gobject_font_options_get_type",
         }),
     ],
     t.void,

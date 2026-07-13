@@ -1,11 +1,11 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type ContainerProp, type ElementProp, loadGtkxConfig } from "@gtkx/config";
+import { type ContainerProp, type ElementProp, loadConfig } from "@gtkx/config";
 import { describe, expect, it } from "vitest";
+import { BUILT_IN_ELEMENT_PROPS } from "../../src/store/react/built-ins.js";
 import { assembleElementProps } from "../../src/store/react/element-props.js";
 import { buildGirIndex } from "../../src/store/react/gir-index.js";
-import { CURATED_ELEMENT_PROPS } from "../../src/store/react/tables.js";
 import { library } from "../helpers/library.js";
 
 const girIndex = buildGirIndex(library);
@@ -37,9 +37,9 @@ describe("curated element props", () => {
     it("pass schema validation", async () => {
         const root = await mkdtemp(join(tmpdir(), "gtkx-curated-"));
         try {
-            const source = `export default { elementProps: ${JSON.stringify(CURATED_ELEMENT_PROPS)} };\n`;
+            const source = `export default { applicationId: "org.gtk.Test", elementProps: ${JSON.stringify(BUILT_IN_ELEMENT_PROPS)} };\n`;
             await writeFile(join(root, "gtkx.config.ts"), source);
-            await expect(loadGtkxConfig(root)).resolves.toMatchObject({ root });
+            await expect(loadConfig(root)).resolves.toMatchObject({ root });
         } finally {
             await rm(root, { recursive: true, force: true });
         }
@@ -48,7 +48,7 @@ describe("curated element props", () => {
     it("reference only types and methods that exist in the loaded GIR", () => {
         const known = knownTypeNames();
         const filtered: Record<string, ElementProp[]> = {};
-        for (const [parent, props] of Object.entries(CURATED_ELEMENT_PROPS)) {
+        for (const [parent, props] of Object.entries(BUILT_IN_ELEMENT_PROPS)) {
             if (!known.has(parent)) continue;
             const kept = props.filter(
                 (prop) =>
@@ -98,6 +98,40 @@ describe("assembled applied props", () => {
         expect(draw).toMatchObject({ prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" });
         const toggle = (elementProps.AdwToggleGroup ?? []).filter((prop) => prop.kind !== "container");
         expect(toggle.map((prop) => prop.prop).sort()).toEqual(["active", "activeName"]);
+    });
+
+    it("keeps single-argument value-prop shorthands as bare method names", () => {
+        const types = (elementProps.GtkDropTarget ?? []).find((prop) => prop.kind === "value");
+        expect(types).toEqual({ kind: "value", prop: "types", call: "setGtypes" });
+    });
+
+    it("expands a multi-argument value-prop shorthand into args with inferred defaults", () => {
+        const icon = (elementProps.GtkDragSource ?? []).find((prop) => prop.kind === "value");
+        expect(icon).toEqual({
+            kind: "value",
+            prop: "icon",
+            call: {
+                method: "setIcon",
+                args: [
+                    { field: "paintable", or: null },
+                    { field: "hotX", or: 0 },
+                    { field: "hotY", or: 0 },
+                ],
+            },
+        });
+    });
+
+    it("infers defaults for numeric and nullable list-item fields but not enums", () => {
+        const marks = (elementProps.GtkScale ?? []).find((prop) => prop.kind === "list");
+        expect(marks).toEqual({
+            kind: "list",
+            prop: "marks",
+            add: {
+                method: "addMark",
+                args: [{ field: "value", or: 0 }, { field: "position" }, { field: "markup", or: null }],
+            },
+            clear: "clearMarks",
+        });
     });
 });
 

@@ -1,17 +1,24 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { sortedStringsBy } from "@gtkx/utils";
+import { sortStringsBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
-import { getWidgetNodeText } from "./widget-text.js";
+import { getWidgetNodeText } from "./widget-accessible-properties.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
+/**
+ * Options controlling how a widget tree is rendered to a string by
+ * {@link prettyWidget} and {@link logWidget}.
+ */
 export type PrettyWidgetOptions = {
+    /** Truncates the output once it exceeds this many characters. */
     maxLength?: number;
+    /** Whether to apply ANSI color highlighting; defaults to the terminal capabilities. */
     highlight?: boolean;
+    /** Resolves an `id` attribute to show for each widget. */
     getId?: WidgetIdResolver;
 };
 
@@ -38,7 +45,7 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
     }
 
     const idAttrs = attrs.filter(([key]) => key === "id");
-    const otherAttrs = sortedStringsBy(
+    const otherAttrs = sortStringsBy(
         attrs.filter(([key]) => key !== "id"),
         ([key]) => key,
     );
@@ -62,7 +69,7 @@ const shouldHighlight = (): boolean => {
     if (typeof process === "undefined") return false;
     if (process.env.COLORS === "false" || process.env.NO_COLOR) return false;
     if (process.env.COLORS === "true" || process.env.FORCE_COLOR) return true;
-    return process.stdout?.isTTY ?? false;
+    return process.stdout.isTTY;
 };
 
 const createColors = (enabled: boolean): Colors => {
@@ -114,6 +121,14 @@ const formatWidget = (
     return output;
 };
 
+/**
+ * Renders a widget tree as an indented, HTML-like string showing each widget's
+ * tag, accessible attributes, and text content.
+ *
+ * @param container The scope whose widget tree is formatted.
+ * @param options Formatting options such as truncation length and highlighting.
+ * @returns The formatted representation of the tree.
+ */
 export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
     const maxLength = options.maxLength ?? envLimit;
@@ -137,6 +152,12 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     return output.trimEnd();
 };
 
+/**
+ * Prints one or more widget trees to the console using {@link prettyWidget}.
+ *
+ * @param container A single scope or an array of scopes to format and print.
+ * @param options Formatting options passed through to {@link prettyWidget}.
+ */
 export const logWidget = (container: Container | Container[], options?: PrettyWidgetOptions): void => {
     const containers: Container[] = Array.isArray(container) ? container : [container];
     for (const target of containers) {

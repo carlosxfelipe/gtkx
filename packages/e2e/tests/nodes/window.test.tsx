@@ -1,10 +1,10 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
-import { render as baseRender } from "@gtkx/testing";
+import { rootElement } from "@gtkx/react";
+import { render as baseRender, screen } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -19,7 +19,7 @@ const render = (element: ReactNode, appId: string = uniqueAppId()) =>
         <GtkApplication applicationId={appId} flags={APP_FLAGS}>
             {element}
         </GtkApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 const renderAdw = (element: ReactNode, appId: string = uniqueAppId()) =>
@@ -27,7 +27,7 @@ const renderAdw = (element: ReactNode, appId: string = uniqueAppId()) =>
         <AdwApplication applicationId={appId} flags={APP_FLAGS}>
             {element}
         </AdwApplication>,
-        { container: createRootElement() },
+        { container: rootElement },
     );
 
 describe("render - Window (1)", () => {
@@ -110,11 +110,9 @@ describe("render - Window (2)", () => {
 describe("render - Window (3)", () => {
     describe("lifecycle", () => {
         it("presents window on mount", async () => {
-            const ref = createRef<Gtk.ApplicationWindow>();
+            await render(<GtkApplicationWindow title="Present" />);
 
-            await render(<GtkApplicationWindow ref={ref} title="Present" />);
-
-            expect(ref.current?.getVisible()).toBe(true);
+            expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Present" })).toBeDefined();
         });
 
         it("destroys window on unmount", async () => {

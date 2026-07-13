@@ -8,12 +8,11 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::Request;
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::value::JsHandle;
-use crate::messaging::error_reporter::ErrorReporter;
+use crate::request::native_result;
 
 fn type_from_bigint(value: BigInt, label: &str) -> napi::Result<glib::Type> {
     let (_, type_value, lossless) = value.get_u64();
@@ -49,24 +48,36 @@ impl FromNapiValue for VfuncCallback {
     }
 }
 
+/// A single virtual function override for a registered class: which slot to patch and how its
+/// arguments and return value are marshalled to and from the JavaScript implementation.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassVfunc {
+    /// Byte offset of the vfunc slot within the class (or interface) struct.
     pub byte_offset: u32,
+    /// Descriptor for each argument passed to the JavaScript implementation.
     pub arg_descriptors: Vec<Descriptor>,
+    /// Descriptor for the value the JavaScript implementation returns.
     pub return_descriptor: Descriptor,
+    /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
     pub r#fn: VfuncCallback,
 }
 
+/// An interface a registered class implements, together with the interface vfuncs it provides.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassInterface {
+    /// GType of the interface to implement.
     pub r#type: BigInt,
+    /// Interface vfunc implementations to install.
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
 
+/// Optional configuration for `registerClass`: vfunc overrides and implemented interfaces.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassOptions {
+    /// Virtual function overrides for the class itself.
     pub vfuncs: Option<Vec<RegisterClassVfunc>>,
+    /// Interfaces the class implements, each with its own vfuncs.
     pub interfaces: Option<Vec<RegisterClassInterface>>,
 }
 
@@ -153,13 +164,11 @@ impl RawInterface {
     fn install(self, class_ptr: *mut c_void) {
         let iface_vtable =
             unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
-        if iface_vtable.is_null() {
-            ErrorReporter::global().report_str(&format!(
-                "register_class: registered type does not conform to interface {:#x}",
-                self.type_.into_glib()
-            ));
-            return;
-        }
+        assert!(
+            !iface_vtable.is_null(),
+            "register_class: conforming type is missing the vtable for interface '{}'",
+            self.type_.name()
+        );
         for vfunc in self.vfuncs {
             vfunc.install_into(iface_vtable);
         }
@@ -243,6 +252,25 @@ impl RegisterClassRequest {
         Ok(())
     }
 
+    fn validate_interfaces(&self) -> anyhow::Result<()> {
+        for iface in &self.interfaces {
+            if !iface.type_.is_a(glib::Type::INTERFACE) {
+                anyhow::bail!(
+                    "register_class: type '{}' is not an interface",
+                    iface.type_.name()
+                );
+            }
+            if !self.parent_type.is_a(iface.type_) {
+                anyhow::bail!(
+                    "register_class: parent type '{}' does not conform to interface '{}'",
+                    self.parent_type.name(),
+                    iface.type_.name()
+                );
+            }
+        }
+        Ok(())
+    }
+
     fn register_type(
         parent_type: glib::Type,
         name_ptr: *const c_char,
@@ -286,12 +314,11 @@ impl RegisterClassRequest {
     }
 }
 
-impl Request for RegisterClassRequest {
-    type Output = u64;
-
+impl RegisterClassRequest {
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
+        self.validate_interfaces()?;
 
         let class_size = query.class_size as u16;
         let instance_size = query.instance_size as u16;
@@ -307,42 +334,38 @@ impl Request for RegisterClassRequest {
 
         Ok(new_type as u64)
     }
-
-    fn error_context() -> &'static str {
-        "register_class"
-    }
 }
 
-pub mod napi_export {
-    use super::*;
-
-    #[napi(catch_unwind)]
-    pub fn register_class(
-        env: Env,
-        name: String,
-        parent_type: BigInt,
-        options: Option<RegisterClassOptions>,
-    ) -> napi::Result<BigInt> {
-        let name = glib::GString::from_string_checked(name).map_err(|err| {
-            napi::Error::new(
-                napi::Status::InvalidArg,
-                format!("register_class: invalid type name: {err}"),
-            )
-        })?;
-        let parent_type = type_from_bigint(parent_type, "parent")?;
-        let (vfuncs, interfaces) = match options {
-            Some(options) => options.into_raw()?,
-            None => (Vec::new(), Vec::new()),
-        };
-        let type_ = RegisterClassRequest {
+/// Registers a new GObject subtype named `name` deriving from `parentType`, wiring up any vfunc
+/// overrides and implemented interfaces, and returns the new GType.
+#[napi(catch_unwind)]
+pub fn register_class(
+    name: String,
+    parent_type: BigInt,
+    options: Option<RegisterClassOptions>,
+) -> napi::Result<BigInt> {
+    let name = glib::GString::from_string_checked(name).map_err(|err| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("register_class: invalid type name: {err}"),
+        )
+    })?;
+    let parent_type = type_from_bigint(parent_type, "parent")?;
+    let (vfuncs, interfaces) = match options {
+        Some(options) => options.into_raw()?,
+        None => (Vec::new(), Vec::new()),
+    };
+    let type_ = native_result(
+        "register_class",
+        RegisterClassRequest {
             name,
             parent_type,
             vfuncs,
             interfaces,
         }
-        .dispatch_output(env)?;
-        Ok(BigInt::from(type_))
-    }
+        .execute(),
+    )?;
+    Ok(BigInt::from(type_))
 }
 
 #[cfg(test)]
@@ -383,6 +406,70 @@ mod tests {
                 interfaces: Vec::new(),
             };
             assert!(request.execute().is_err());
+        });
+    }
+
+    #[test]
+    fn execute_rejects_a_non_interface_type_without_registering() {
+        test_support::run(|| {
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassNonInterfaceType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![RawInterface {
+                    type_: glib::Object::static_type(),
+                    vfuncs: Vec::new(),
+                }],
+            };
+            let error = request
+                .execute()
+                .expect_err("non-interface type must be rejected");
+            assert!(error.to_string().contains("is not an interface"));
+            assert!(glib::Type::from_name("GtkxRegisterClassNonInterfaceType").is_none());
+        });
+    }
+
+    #[test]
+    fn execute_rejects_a_nonconforming_interface_without_registering() {
+        test_support::run(|| {
+            let plugin_type =
+                unsafe { glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type()) };
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassNonConformingType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![RawInterface {
+                    type_: plugin_type,
+                    vfuncs: Vec::new(),
+                }],
+            };
+            let error = request
+                .execute()
+                .expect_err("non-conforming parent must be rejected");
+            assert!(error.to_string().contains("does not conform to interface"));
+            assert!(glib::Type::from_name("GtkxRegisterClassNonConformingType").is_none());
+        });
+    }
+
+    #[test]
+    fn execute_accepts_an_interface_the_parent_conforms_to() {
+        test_support::run(|| {
+            let plugin_type =
+                unsafe { glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type()) };
+            let request = RegisterClassRequest {
+                name: gstring("GtkxRegisterClassConformingType"),
+                parent_type: glib::TypeModule::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![RawInterface {
+                    type_: plugin_type,
+                    vfuncs: Vec::new(),
+                }],
+            };
+            let type_ = request
+                .execute()
+                .expect("conforming interface should register");
+            assert_ne!(type_, 0);
+            assert!(unsafe { glib::Type::from_glib(type_ as glib::ffi::GType) }.is_a(plugin_type));
         });
     }
 

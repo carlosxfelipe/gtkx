@@ -12,7 +12,10 @@ use super::null_terminated::{NullTerminatedArrayCodec, NullTerminatedArrayEncode
 use super::ptr_array::GPtrArrayCodec;
 use super::sized::SizedArrayCodec;
 use crate::ffi::codec::Codec;
+use crate::ffi::value::TypedView;
 
+/// Container layout used to marshal an array: a plain C `array`, a `glist`, `gslist`, `gptrarray`,
+/// `garray`, `gbytearray`, a `sized` buffer, or a `fixed`-length buffer.
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrayKind {
@@ -28,22 +31,33 @@ pub enum ArrayKind {
 
 #[enum_dispatch]
 pub(super) trait ArrayContainer {
-    fn encode(&self, codec: &ArrayCodec, array: &[value::Value]) -> anyhow::Result<ffi::Stash> {
-        codec.encode_items(&NullTerminatedArrayEncoder, array)
-    }
-
-    fn decode(&self, codec: &ArrayCodec, stash: &ffi::Stash) -> anyhow::Result<value::Value> {
-        codec.decode_null_terminated(self.name(), stash)
-    }
-
-    fn decode_with_context(
+    fn encode(
         &self,
         codec: &ArrayCodec,
+        env: &Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        codec.encode_items(env, &NullTerminatedArrayEncoder, array)
+    }
+
+    fn decode<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
+        stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
+        codec.decode_null_terminated(env, self.name(), stash)
+    }
+
+    fn decode_with_context<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
         stash: &ffi::Stash,
         _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
-    ) -> anyhow::Result<value::Value> {
-        self.decode(codec, stash)
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode(codec, env, stash)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {
@@ -53,7 +67,7 @@ pub(super) trait ArrayContainer {
     fn encode_buffer_view(
         &self,
         codec: &ArrayCodec,
-        view: &value::BufferView,
+        view: &TypedView,
     ) -> anyhow::Result<ffi::Stash> {
         match self.buffer_view_support() {
             BufferViewSupport::Contiguous(expected_length) => {

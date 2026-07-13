@@ -8,12 +8,18 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirSignal } from "../../gir/parameter.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import type { TypeId } from "../../gir/type-id.js";
-import { classExposesMethod, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
+import { renderJsDoc } from "../../writer/doc.js";
+import {
+    classExposesMethod,
+    giNamespaceAlias,
+    isIntrinsicElementClass,
+    signalHandlerName,
+} from "./intrinsic-elements.js";
 
 type IntrinsicElementPropsEntries = {
     propLines: string[];
     imports: Map<string, string>;
-    slotPropNames: string[];
+    objectPropNames: string[];
 };
 
 type IntrinsicElementPropsOptions = {
@@ -37,17 +43,17 @@ type SignalRenderOptions = {
 type PropEntryCollector = {
     propLines: string[];
     imports: Map<string, string>;
-    slotPropNames: string[];
+    objectPropNames: string[];
     acceptProperty: (property: GirProperty) => void;
     acceptSignal: (signal: GirSignal) => void;
 };
 
-const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
+const createPropEntryCollector = (owner: PropOwner): PropEntryCollector => {
     const { library } = owner;
     const imports = new Map<string, string>();
     const types: PropTypeRenderContext = { library, imports };
     const propLines: string[] = [];
-    const slotPropNames: string[] = [];
+    const objectPropNames: string[] = [];
     const seen = new Set<string>();
 
     const acceptProperty = (property: GirProperty): void => {
@@ -56,14 +62,16 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         if (seen.has(jsName)) return;
         seen.add(jsName);
         const tsType = renderReactPropType(types, property.type, false);
-        if (isSlotProperty(owner, property, jsName)) {
-            propLines.push(`${jsName}?: ${tsType} | ReactElement | null | undefined;`);
-            slotPropNames.push(jsName);
+        const doc = renderJsDoc(property.doc);
+        if (isObjectProp(owner, property, jsName)) {
+            propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
+            objectPropNames.push(jsName);
             return;
         }
-        if (isConstructableProperty(property)) propLines.push(`${jsName}?: ${tsType} | null | undefined;`);
+        const settable = isConstructableProperty(property);
+        if (settable) propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
         propLines.push(
-            `onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
+            `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
         );
     };
 
@@ -72,10 +80,10 @@ const createPropEntryCollector = (owner: SlotOwner): PropEntryCollector => {
         if (seen.has(handlerName)) return;
         seen.add(handlerName);
         const signature = renderSignalHandler({ types, signal, selfType: "Self" });
-        propLines.push(`${handlerName}?: (${signature}) | undefined;`);
+        propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
     };
 
-    return { propLines, imports, slotPropNames, acceptProperty, acceptSignal };
+    return { propLines, imports, objectPropNames, acceptProperty, acceptSignal };
 };
 
 export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
@@ -89,7 +97,7 @@ export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions):
         acceptProperty: collector.acceptProperty,
         acceptSignal: collector.acceptSignal,
     });
-    return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
+    return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
 type InterfacePropsOptions = {
@@ -103,7 +111,7 @@ export const buildInterfacePropsEntries = (options: InterfacePropsOptions): Intr
     const collector = createPropEntryCollector({ library, klass: iface, namespace });
     for (const property of iface.properties) collector.acceptProperty(property);
     for (const signal of iface.signals) collector.acceptSignal(signal);
-    return { propLines: collector.propLines, imports: collector.imports, slotPropNames: collector.slotPropNames };
+    return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
 type IntrinsicElementMemberWalk = {
@@ -133,13 +141,13 @@ const resolvesToGObjectClass = (library: Library, ref: TypeId | undefined): bool
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
-type SlotOwner = {
+type PropOwner = {
     library: Library;
     klass: GirClass;
     namespace: GirNamespace;
 };
 
-const isSlotProperty = (owner: SlotOwner, property: GirProperty, jsName: string): boolean => {
+export const isObjectProp = (owner: PropOwner, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
     if (!resolvesToGObjectClass(owner.library, property.type)) return false;
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
@@ -174,12 +182,12 @@ export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget => ({
                 ? "number"
                 : renderBaseTypeFor(context.library, reactTarget(context), resolved.value.target);
         }
-        context.imports.set(name.namespaceName, name.namespaceName);
-        return `${name.namespaceName}.${name.typeName}`;
+        context.imports.set(name.namespaceName, giNamespaceAlias(name.namespaceName));
+        return `${giNamespaceAlias(name.namespaceName)}.${name.typeName}`;
     },
     renderGtype: () => {
-        context.imports.set("GObject", "GObject");
-        return "GObject.Type";
+        context.imports.set("GObject", giNamespaceAlias("GObject"));
+        return `${giNamespaceAlias("GObject")}.Type`;
     },
 });
 

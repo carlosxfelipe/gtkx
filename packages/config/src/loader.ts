@@ -1,20 +1,35 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { loadConfig } from "c12";
-import { type GtkxConfig, type ResolvedGtkxConfig, resolveGtkxConfig, validateGtkxConfig } from "./config.js";
+import { loadConfig as loadConfigFile } from "c12";
+import { type Config, type ResolvedConfig, resolveConfig, validateConfig } from "./config.js";
 
+/**
+ * Result of loading a `gtkx.config.ts` file: the parsed configuration, the
+ * resolved config file path (`undefined` when none was found), and the project
+ * root it was loaded from.
+ */
 export type LoadedConfig = {
-    config: GtkxConfig;
+    config: Config;
     configFile: string | undefined;
     root: string;
 };
 
-export type LoadGtkxConfigOptions = {
+/**
+ * Options controlling how a configuration file is loaded.
+ */
+export type LoadConfigOptions = {
+    /** Environment mode used to select mode-specific configuration overrides. */
     mode?: string | undefined;
 };
 
-export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions = {}): Promise<LoadedConfig> => {
-    const result = await loadConfig<GtkxConfig>({
+/**
+ * Loads and validates the `gtkx.config.ts` file for a project, returning the
+ * parsed configuration together with the config file path and project root.
+ * @param cwd Directory from which to search for the configuration file.
+ * @param options Loading options, such as the environment mode.
+ */
+export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
+    const result = await loadConfigFile<Config>({
         name: "gtkx",
         cwd,
         rcFile: false,
@@ -24,10 +39,10 @@ export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions
         ...(options.mode !== undefined ? { envName: options.mode } : {}),
     });
 
-    const config = result.config ?? {};
-    validateGtkxConfig(config);
-
+    const config = result.config;
     const found = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
+
+    if (found) validateConfig(config);
 
     return {
         config,
@@ -36,15 +51,20 @@ export const loadGtkxConfig = async (cwd: string, options: LoadGtkxConfigOptions
     };
 };
 
-export type GtkxConfigLoader = (cwd: string) => Promise<ResolvedGtkxConfig>;
+/**
+ * Function that loads and resolves the configuration for a project directory,
+ * returning a {@link ResolvedConfig}.
+ */
+export type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
 
-export const createGtkxConfigLoader = (options: LoadGtkxConfigOptions = {}): GtkxConfigLoader => {
-    const cache = new Map<string, Promise<ResolvedGtkxConfig>>();
-    const loadResolved = async (root: string): Promise<ResolvedGtkxConfig> => {
-        const { config } = await loadGtkxConfig(root, options);
-        return resolveGtkxConfig(config);
+export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
+    const cache = new Map<string, Promise<ResolvedConfig>>();
+    const loadResolved = async (root: string): Promise<ResolvedConfig> => {
+        const { config } = await loadConfig(root, options);
+        validateConfig(config);
+        return resolveConfig(config);
     };
-    return (cwd: string): Promise<ResolvedGtkxConfig> => {
+    return (cwd: string): Promise<ResolvedConfig> => {
         const root = resolve(cwd);
         let pending = cache.get(root);
         if (!pending) {

@@ -13,13 +13,23 @@ import {
     GtkFontDialogButton,
     GtkLabel,
 } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
 const gfileType = Gio.File.prototype.__type__;
 
 const DIALOG_TIMEOUT_SECONDS = 20;
+
+const isCancellation = (error: unknown): boolean =>
+    (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) ||
+    (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
+
+const reportPickerError = (error: unknown): void => {
+    if (isCancellation(error)) return;
+    if (error instanceof Error) console.error(error.message);
+};
 
 function useFilePickerState() {
     const [selectedFile, setSelectedFile] = useState<Gio.File | null>(null);
@@ -54,11 +64,11 @@ const launchFile = async (selectedFile: Gio.File | null, action: (launcher: Gtk.
         const launcher = Gtk.FileLauncher.new(selectedFile);
         await action(launcher);
     } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+        reportPickerError(e);
     }
 };
 
-function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, state: FilePickerState) {
+function useDropAndOpenHandlers(parentWindow: Gtk.Window | null, state: FilePickerState) {
     const { setFile, setSelectedFile, setFileName, setIsPdf } = state;
 
     const handleFileDrop = (value: GObject.Value) => {
@@ -75,10 +85,11 @@ function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, stat
         await runWithTimeout(async (cancellable) => {
             const fileDialog = new Gtk.FileDialog();
             try {
-                const file = await fileDialog.open(window.current, cancellable);
+                const file = await fileDialog.open(parentWindow, cancellable);
                 setFile(file);
             } catch (e) {
-                if (e instanceof Error) console.error(e.message);
+                if (isCancellation(e)) return;
+                reportPickerError(e);
                 setSelectedFile(null);
                 setFileName("None");
                 setIsPdf(false);
@@ -89,17 +100,17 @@ function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, stat
     return { handleFileDrop, handleOpenFile };
 }
 
-function useFileLaunchHandlers(window: React.RefObject<Gtk.Window | null>, state: FilePickerState) {
+function useFileLaunchHandlers(parentWindow: Gtk.Window | null, state: FilePickerState) {
     const { selectedFile, isPdf } = state;
 
     const handleLaunchApp = () =>
         launchFile(selectedFile, async (l) => {
-            await l.launch(window.current, null);
+            await l.launch(parentWindow, null);
         });
 
     const handleOpenFolder = () =>
         launchFile(selectedFile, async (l) => {
-            await l.openContainingFolder(window.current, null);
+            await l.openContainingFolder(parentWindow, null);
         });
 
     const handlePrintFile = async () => {
@@ -107,9 +118,9 @@ function useFileLaunchHandlers(window: React.RefObject<Gtk.Window | null>, state
         await runWithTimeout(async (cancellable) => {
             try {
                 const printDialog = new Gtk.PrintDialog();
-                await printDialog.printFile(window.current, null, selectedFile, cancellable);
+                await printDialog.printFile(parentWindow, null, selectedFile, cancellable);
             } catch (e) {
-                if (e instanceof Error) console.error(e.message);
+                reportPickerError(e);
             }
         });
     };
@@ -117,18 +128,18 @@ function useFileLaunchHandlers(window: React.RefObject<Gtk.Window | null>, state
     const handleLaunchUri = async () => {
         try {
             const launcher = Gtk.UriLauncher.new("http://www.gtk.org");
-            await launcher.launch(window.current, null);
+            await launcher.launch(parentWindow, null);
         } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+            reportPickerError(e);
         }
     };
 
     return { handleLaunchApp, handleOpenFolder, handlePrintFile, handleLaunchUri };
 }
 
-function useFilePickerHandlers(window: React.RefObject<Gtk.Window | null>, state: FilePickerState) {
-    const dropAndOpen = useDropAndOpenHandlers(window, state);
-    const launch = useFileLaunchHandlers(window, state);
+function useFilePickerHandlers(parentWindow: Gtk.Window | null, state: FilePickerState) {
+    const dropAndOpen = useDropAndOpenHandlers(parentWindow, state);
+    const launch = useFileLaunchHandlers(parentWindow, state);
     return { ...dropAndOpen, ...launch };
 }
 
@@ -313,9 +324,10 @@ const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriR
     </>
 );
 
-const PickersDemo = ({ window }: DemoProps) => {
+const PickersDemo = () => {
+    const parentWindow = useParentWindow();
     const fileState = useFilePickerState();
-    const handlers = useFilePickerHandlers(window, fileState);
+    const handlers = useFilePickerHandlers(parentWindow, fileState);
     const [colorWidget, setColorWidget] = useState<Gtk.ColorDialogButton | null>(null);
     const [fontWidget, setFontWidget] = useState<Gtk.FontDialogButton | null>(null);
     const [fileButtonWidget, setFileButtonWidget] = useState<Gtk.Button | null>(null);

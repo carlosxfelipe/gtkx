@@ -7,6 +7,7 @@ import type { FieldSlot } from "../../gir/size.js";
 import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { refIsClassStruct } from "./class-struct-record.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
@@ -27,11 +28,11 @@ type FieldWriteSpec = {
 
 export const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
     const { descriptor, slot, targetExpr, valueExpr } = spec;
-    context.addNativeImport("write");
+    context.addRuntimeImport("write");
     if (slot.bitWidth === undefined) {
         return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${valueExpr});`;
     }
-    context.addNativeImport("read");
+    context.addRuntimeImport("read");
     const merged = mergeBitfield(
         `(read(${targetExpr}, ${descriptor}, ${slot.byteOffset}) as number)`,
         valueExpr,
@@ -53,13 +54,14 @@ export const renderRecordFieldAccessor = (
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
+    const doc = renderJsDoc(field.doc);
 
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
-    if (structArray !== undefined) return structArray;
+    if (structArray !== undefined) return `${doc}${structArray}`;
 
     if (!isAccessorEligibleType(context, field.type)) {
         const tsType = renderTsType(context, field.type, false);
-        return `declare ${jsName}: ${tsType};`;
+        return `${doc}declare ${jsName}: ${tsType};`;
     }
 
     const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
@@ -76,7 +78,7 @@ export const renderRecordFieldAccessor = (
     if (field.writable) {
         blocks.push(setterBlock(accessorOptions));
     }
-    return blocks.join("\n\n");
+    return `${doc}${blocks.join("\n\n")}`;
 };
 
 const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean => {
@@ -204,7 +206,12 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
             }
             const mask = bitMask(slot.bitWidth);
             const shift = slot.bitOffset ?? 0;
-            const merged = mergeBitfield(`read(__array, ${descriptor}, __base + ${offset})`, valueExpr, mask, shift);
+            const merged = mergeBitfield(
+                `(read(__array, ${descriptor}, __base + ${offset}) as number)`,
+                valueExpr,
+                mask,
+                shift,
+            );
             out.push(`write(__array, ${descriptor}, __base + ${offset}, ${merged});`);
         },
         nested: (jsName, nested, offset) => {
@@ -241,7 +248,7 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
     const element = renderElementReadObject(context, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
     const body = [
-        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset});`,
+        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset}) as ReturnType<typeof getHandle>;`,
         `const __result: ${tsType} = [];`,
         `for (let __index = 0; __index < ${lengthExpr}; __index++) {`,
         indent(loop, 1),
@@ -260,13 +267,11 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string => 
         valuePath: "__element",
         out: writes,
     });
-    const loop = [`const __element = __value[__index];`, `const __base = __index * ${elementSize};`, ...writes].join(
-        "\n",
-    );
+    const loop = [`const __base = __index * ${elementSize};`, ...writes].join("\n");
     const body = [
         `const __descriptor = ${elementDescriptor};`,
-        `const __array = read(getHandle(this), __descriptor, ${offset});`,
-        `for (let __index = 0; __index < __value.length; __index++) {`,
+        `const __array = read(getHandle(this), __descriptor, ${offset}) as ReturnType<typeof getHandle>;`,
+        `for (const [__index, __element] of __value.entries()) {`,
         indent(loop, 1),
         "}",
         `write(getHandle(this), __descriptor, ${offset}, __array);`,
@@ -279,6 +284,8 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
     const arrayType = context.library.typeOf(field.type);
     if (arrayType?.kind !== "carray") return undefined;
+    const elementType = context.library.typeOf(arrayType.element);
+    if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) return undefined;
     const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
     if (elementFields === undefined) return undefined;
     const lengthExpr = arrayLengthExpression(arrayType, siblingFields);
@@ -286,7 +293,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const elementSize = computeRecordFieldSlots(context, elementFields).size;
     if (elementSize === 0) return undefined;
 
-    context.addNativeImport("read");
+    context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
     context.addRuntimeImport("t");
     const options: StructArrayAccessorOptions = {
@@ -306,7 +313,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const blocks: string[] = [];
     if (field.readable) blocks.push(structArrayGetterBlock(options));
     if (field.writable) {
-        context.addNativeImport("write");
+        context.addRuntimeImport("write");
         blocks.push(structArraySetterBlock(options));
     }
     return blocks.length === 0 ? undefined : blocks.join("\n\n");
@@ -323,7 +330,7 @@ type AccessorOptions = {
 
 const getterBlock = (options: AccessorOptions): string => {
     const { context, jsName, tsType, descriptor, slot, fieldType } = options;
-    context.addNativeImport("read");
+    context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
     if (slot.bitWidth === undefined) {
         const valueExpression = `read(getHandle(this), ${descriptor}, ${slot.byteOffset})`;

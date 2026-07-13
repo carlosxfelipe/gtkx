@@ -1,7 +1,5 @@
-import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "@gtkx/config";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { freeze, unfreeze } from "@gtkx/native";
 import { type Context, createContext } from "react";
 import type ReactReconciler from "react-reconciler";
 import { DiscreteEventPriority } from "react-reconciler/constants.js";
@@ -14,13 +12,14 @@ import { applyElementProps, reapplyLazyProps } from "./element-prop-appliers.js"
 import { isAppliedProp } from "./element-props.js";
 import { createElementInstance, createWrapperInstance } from "./instance.js";
 import { scheduleLabelTextRebuild } from "./label-text-rebuild.js";
-import { reportReconcilerError } from "./reconciler-error-handler.js";
+import { catchReconcilerError } from "./reconciler-error-handler.js";
 import { getSignalStore } from "./signal-store.js";
 import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
 import { isWrapperNode } from "./wrapper-node.js";
+import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-protocol.js";
 
 const FIXED_UPDATE_PRIORITY = DiscreteEventPriority;
 
@@ -313,20 +312,11 @@ const createMutationConfig = (): MutationConfig => ({
 
 type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit">;
 
-const catchErrors = (fn: () => void): void => {
-    try {
-        fn();
-    } catch (error) {
-        reportReconcilerError(error);
-    }
-};
-
-const drainCommitQueue = (): void => catchErrors(runCommitFlush);
+const drainCommitQueue = (): void => catchReconcilerError(runCommitFlush);
 
 const finalizeCommitAfterLayoutEffects = (container: Container): void => {
     drainCommitQueue();
     getSignalStore(container).unblock();
-    catchErrors(unfreeze);
 };
 
 const createCommitConfig = (): CommitConfig => ({
@@ -337,7 +327,6 @@ const createCommitConfig = (): CommitConfig => ({
         else scheduleLabelTextRebuild(textInstance);
     },
     prepareForCommit: (container) => {
-        catchErrors(freeze);
         getSignalStore(container).block();
         return null;
     },

@@ -44,7 +44,7 @@
     "scripts": {
         "build": "tsc -b tsconfig.lib.json",
         "typecheck": "tsc -b --emitDeclarationOnly",
-        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
+        "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=24"
@@ -57,6 +57,8 @@
     "devDependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/components": "workspace:*",
-        "@gtkx/vitest": "workspace:*"
+        "@gtkx/vitest": "workspace:*",
+        "@vitest/expect": "^4.1.10",
+        "vitest": "catalog:"
     }
 }

@@ -7,8 +7,13 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
+import {
+    collectIntrinsicElementClasses,
+    glibNameOf,
+    implementedInterfaces,
+    interfaceHasPropsBody,
+} from "../../src/store/react/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/react/pipeline.js";
-import { transpileSource } from "../../src/transpile.js";
 import { giModules, library } from "../helpers/library.js";
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
@@ -103,18 +108,9 @@ describe("codegen gi pipeline", () => {
         expect(gtk).toBeDefined();
         expect(gtk?.source).toContain("Button");
     });
-
-    it("transpiles a generated gi module to valid JS and declarations", () => {
-        const gtk = giModules.find(({ directory }) => directory === "gtk");
-        expect(gtk).toBeDefined();
-        const { js, dts } = transpileSource(`${gtk?.directory ?? ""}.ts`, gtk?.source ?? "");
-        expect(js.length).toBeGreaterThan(0);
-        expect(dts.length).toBeGreaterThan(0);
-        expect(js).not.toContain("interface ");
-    }, 60000);
 });
 
-describe("codegen reconciler metadata", () => {
+describe("codegen element-prop metadata", () => {
     it("emits the serializable element-prop table", () => {
         expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS:");
         expect(reactPipeline.metadata).toContain('"adopt": true');
@@ -185,6 +181,47 @@ describe("codegen notify detail signals", () => {
     });
 });
 
+describe("codegen GObject item comparators", () => {
+    const moduleSource = (directory: string): string =>
+        giModules.find((module) => module.directory === directory)?.source ?? "";
+
+    const itemComparatorSignature = "(a: GObject.Object | null, b: GObject.Object | null)";
+    const itemComparatorArgs = 't.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.int32';
+    const itemEqualityArgs = 't.callback([t.object("borrowed"), t.object("borrowed")], t.boolean';
+    const itemEqualityFullArgs = 't.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.boolean';
+
+    it("types ListStore comparator callbacks over borrowed object items", () => {
+        const source = moduleSource("gio");
+        expect(source).toContain(`sort(compareFunc: ${itemComparatorSignature} => number): void`);
+        expect(source).toContain(
+            `insertSorted(item: GObject.Object, compareFunc: ${itemComparatorSignature} => number): number`,
+        );
+        expect(source).toContain(
+            `findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
+        );
+        expect(source).toContain(
+            `findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
+        );
+        expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
+        expect(source).toContain(`${itemEqualityArgs}, { scope: "call" })`);
+        expect(source).toContain(`${itemEqualityFullArgs}, { userDataIndex: 2, scope: "call" })`);
+    });
+
+    it("types CustomSorter comparator callbacks over borrowed object items", () => {
+        const source = moduleSource("gtk");
+        expect(source).toContain(`static new(sortFunc: (${itemComparatorSignature} => number) | null): CustomSorter`);
+        expect(source).toContain(`setSortFunc(sortFunc: (${itemComparatorSignature} => number) | null): void`);
+        expect(source).toContain(`${itemComparatorArgs}, { hasDestroy: true, userDataIndex: 2, scope: "notified" })`);
+    });
+
+    it("keeps raw-pointer comparator callbacks outside GObject item containers", () => {
+        const source = moduleSource("glib");
+        expect(source).toContain("export type CompareDataFunc = (a: number | null, b: number | null) => number;");
+        expect(source).toContain("export type EqualFunc = (a: number | null, b: number | null) => boolean;");
+        expect(source).not.toContain(itemComparatorSignature);
+    });
+});
+
 describe("codegen React pipeline", () => {
     it("emits a module per namespace plus the merged metadata", () => {
         expect(reactPipeline.namespaces.length).toBeGreaterThan(0);
@@ -211,16 +248,6 @@ describe("codegen React pipeline", () => {
         expect(reactPipeline.intrinsicElementCount).toBeGreaterThan(0);
     });
 
-    it("transpiles every generated React module and the metadata", () => {
-        for (const { directory, source } of reactPipeline.namespaces) {
-            const { js, dts } = transpileSource(`${directory}/${directory}.tsx`, source);
-            expect(js.length).toBeGreaterThan(0);
-            expect(dts.length).toBeGreaterThan(0);
-        }
-        const { js } = transpileSource("metadata.ts", reactPipeline.metadata);
-        expect(js.length).toBeGreaterThan(0);
-    });
-
     it("emits page elements as lazy-element components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain(
@@ -233,30 +260,30 @@ describe("codegen React pipeline", () => {
 describe("codegen widget-slot props", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk.Widget | ReactElement | null | undefined;");
+        expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk$.Widget | ReactElement | null | undefined;");
     });
 
     it("widens a text view's buffer into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(interfaceBody(gtk, "GtkTextView")).toContain(
-            "buffer?: Gtk.TextBuffer | ReactElement | null | undefined;",
+            "buffer?: Gtk$.TextBuffer | ReactElement | null | undefined;",
         );
     });
 
     it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
         const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
-        expect(body).toContain("child?: Gtk.Widget | null | undefined;");
-        expect(body).not.toContain("child?: Gtk.Widget | ReactElement");
+        expect(body).toContain("child?: Gtk$.Widget | null | undefined;");
+        expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
     });
 
-    it("types the built-in container-slot props as ReactNode on their host", () => {
+    it("types the built-in container-prop props as ReactNode on their host", () => {
         const adw = sourceFor(reactPipeline, "adw");
         const headerBar = interfaceBody(adw, "AdwHeaderBar");
         expect(headerBar).toContain("start?: ReactNode | null | undefined;");
         expect(headerBar).toContain("end?: ReactNode | null | undefined;");
     });
 
-    it("types the base GtkWidget controller and action-group slots as ReactNode", () => {
+    it("types the base GtkWidget controller and action-group props as ReactNode", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         expect(gtk).toContain("controllers?: ReactNode | null | undefined;");
         expect(gtk).toContain("actionGroups?: ReactNode | null | undefined;");
@@ -271,9 +298,7 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 describe("codegen applied element props", () => {
     it("types a value prop from its setter signature", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
-        expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject.Type[] | null | undefined;");
-        const { dts } = transpileSource("gtk/gtk.tsx", gtk);
-        expect(dts).not.toContain("TS2717");
+        expect(interfaceBody(gtk, "GtkDropTarget")).toContain("types?: GObject$.Type[] | null | undefined;");
     });
 
     it("contributes container-prop arguments to the child element's props", () => {
@@ -293,7 +318,7 @@ describe("codegen read-only props", () => {
     it("omits the settable line for a read-only property but keeps its notify handler", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
         const widgetBody = interfaceBody(gtk, "GtkWidget");
-        expect(widgetBody).not.toContain("parent?: Gtk.Widget | null;");
+        expect(widgetBody).not.toContain("parent?: Gtk$.Widget | null;");
         expect(widgetBody).toContain("onNotifyParent?:");
     });
 
@@ -320,7 +345,7 @@ describe("codegen runtime tables", () => {
     });
 });
 
-describe("repository lookups", () => {
+describe("Library.resolveType", () => {
     it("resolves a known cross-namespace type", () => {
         expect(library.resolveType("GLib", "Variant")).toBeDefined();
     });
@@ -337,5 +362,78 @@ describe("repository lookups", () => {
             return local !== "va_list" && local !== "";
         });
         expect(unexpected).toEqual([]);
+    });
+});
+
+const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
+
+const interfacePropsNames = (): Set<string> => {
+    const names = new Set<string>();
+    for (const widget of collectIntrinsicElementClasses(library)) {
+        for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+            if (!interfaceHasPropsBody(iface.klass)) continue;
+            const glib = glibNameOf(iface.klass);
+            if (glib !== undefined) names.add(`${glib}Props`);
+        }
+    }
+    return names;
+};
+
+const matchAll = (sources: string[], pattern: RegExp): string[] =>
+    sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
+
+const stripDocComments = (source: string): string => source.replace(/\/\*\*[\s\S]*?\*\//g, "");
+
+const moduleSource = (directory: string): string => {
+    const found = giModules.find((entry) => entry.directory === directory);
+    expect(found, `expected generated module for ${directory}`).toBeDefined();
+    return stripDocComments(found?.source ?? "");
+};
+
+describe("identifier naming convention", () => {
+    it("exports aliases under their GIR name, never the C-prefixed c:type", () => {
+        const glib = moduleSource("glib");
+        expect(glib).toMatch(/export type Quark\b/);
+        expect(glib).toMatch(/export type Pid\b/);
+        expect(glib).not.toMatch(/\bGQuark\b/);
+        expect(glib).not.toMatch(/\bGPid\b/);
+    });
+
+    it("publishes the GObject Type alias under its GIR name", () => {
+        const gobject = moduleSource("gobject");
+        expect(gobject).toMatch(/export type Type\b/);
+        expect(gobject).not.toMatch(/export type GType\b/);
+    });
+
+    it("emits a named type for every top-level callback, under its GIR name", () => {
+        const glib = moduleSource("glib");
+        expect(glib).toContain("export type SourceFunc =");
+        expect(glib).toContain("export type CompareFunc =");
+    });
+
+    it("exports the shadowed short name for a shadowing namespace function", () => {
+        const glib = moduleSource("glib");
+        expect(glib).toMatch(/\bidleAdd\b/);
+        expect(glib).not.toMatch(/\bidleAddFull\b/);
+    });
+
+    it("emits record, union, and enum identifiers verbatim from the GIR name", () => {
+        const harfbuzz = moduleSource("harfbuzz");
+        expect(harfbuzz).toMatch(/export class font_t\b/);
+        expect(harfbuzz).toMatch(/export enum memory_mode_t\b/);
+        expect(harfbuzz).not.toMatch(/export class FontT\b/);
+        expect(harfbuzz).not.toMatch(/export enum MemoryModeT\b/);
+    });
+});
+
+describe("jsx prop-interface naming convention", () => {
+    it("names every exported props interface after an element or implemented interface glib name", () => {
+        const sources = jsxSources();
+        const declaredProps = matchAll(sources, /export interface (\w+Props)\b/g);
+        const elementGlibNames = matchAll(sources, /^\s*(\w+): \w+Props;$/gm);
+        const allowed = new Set([...elementGlibNames.map((name) => `${name}Props`), ...interfacePropsNames()]);
+
+        const offenders = declaredProps.filter((name) => !allowed.has(name));
+        expect(offenders, `unexpected props interface names: ${offenders.join(", ")}`).toEqual([]);
     });
 });

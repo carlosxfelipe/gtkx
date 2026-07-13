@@ -8,8 +8,13 @@ type CompositorId = "sway" | "weston";
 
 export const DEFAULT_HEADLESS_SIZE = "1024x768";
 
+/**
+ * Settings for the per-worker headless Wayland display.
+ */
 export type HeadlessOptions = {
+    /** Output resolution as a "WIDTHxHEIGHT" string, for example "1024x768". */
     size: string;
+    /** Wayland compositor used to back the headless display. */
     compositor: CompositorId;
 };
 
@@ -47,7 +52,7 @@ let westonFakeSeatSupport: boolean | undefined;
 const westonSupportsFakeSeat = (): boolean => {
     if (westonFakeSeatSupport === undefined) {
         const help = spawnSync("weston", ["--help"], { encoding: "utf8" });
-        westonFakeSeatSupport = `${help.stdout ?? ""}${help.stderr ?? ""}`.includes("--fake-seat");
+        westonFakeSeatSupport = `${help.stdout}${help.stderr}`.includes("--fake-seat");
     }
     return westonFakeSeatSupport;
 };
@@ -231,8 +236,6 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     if (stderr !== null) {
         stderr.setEncoding("utf8");
         const logStream = createWriteStream(logPath);
-        // A fast-exiting worker can remove the runtime dir before this stream's
-        // async open resolves; the log is best-effort, so ignore write failures.
         logStream.on("error", () => {});
         stderr.on("data", (chunk: string) => {
             captured.push(chunk);
@@ -242,13 +245,6 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     return captured;
 };
 
-/**
- * When the compositor dies on its own (e.g. an OOM-killer SIGKILL) the worker's
- * in-process GDK client loses its Wayland socket and aborts, surfacing only as
- * an opaque "Worker exited unexpectedly". Teardown always runs, so if the
- * compositor has already exited by then it was not us that killed it — surface
- * its exit code/signal and captured stderr to make the cause observable.
- */
 const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: string[]): void => {
     if (child.exitCode === null && child.signalCode === null) return;
     process.stderr.write(
@@ -257,18 +253,12 @@ const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: str
     );
 };
 
-const makeTeardown = (
-    spawned: ChildProcess[],
-    compositor: ChildProcess,
-    capturedStderr: string[],
-    removeRuntime: () => void,
-): (() => void) => {
+const makeTeardown = (compositor: ChildProcess, capturedStderr: string[], removeRuntime: () => void): (() => void) => {
     let torndown = false;
     return (): void => {
         if (torndown) return;
         torndown = true;
         reportUnexpectedCompositorExit(compositor, capturedStderr);
-        for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();
     };
 };
@@ -319,7 +309,7 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
         }
 
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
-        return makeTeardown(spawned, compositor.child, capturedStderr, removeRuntime);
+        return makeTeardown(compositor.child, capturedStderr, removeRuntime);
     } catch (cause) {
         for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, screen } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDecorativeDemo } from "../../../src/demos/layout/overlay-decorative.js";
 import { renderDemo } from "../../test-utils.js";
@@ -54,10 +54,8 @@ describe("overlayDecorativeDemo scale behavior", () => {
     it("initialises the scale at 100 with a 0..100 range and step of 1", async () => {
         await renderDemo(overlayDecorativeDemo);
         const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
+        await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 100, min: 0, max: 100 } });
         const adjustment = scale.getAdjustment();
-        expect(adjustment.getValue()).toBe(100);
-        expect(adjustment.getLower()).toBe(0);
-        expect(adjustment.getUpper()).toBe(100);
         expect(adjustment.getStepIncrement()).toBe(1);
         expect(scale.getDrawValue()).toBe(false);
         const [width] = scale.getSizeRequest();
@@ -65,37 +63,32 @@ describe("overlayDecorativeDemo scale behavior", () => {
         expect(scale.getTooltipText()).toBe("Margin");
     });
 
-    it("syncs the TextView left margin when the scale value changes", async () => {
+    it("syncs the TextView left margin and top-margin tag when the scale value changes", async () => {
         await renderDemo(overlayDecorativeDemo);
         const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const topMarginTag = textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag;
         expect(textView.getLeftMargin()).toBe(100);
-        const adjustment = scale.getAdjustment();
-        await act(() => adjustment.setValue(25));
-        await fireEvent(scale, "value-changed");
+        expect(topMarginTag.pixelsAboveLines).toBe(100);
+        await userEvent.slide(scale, 25);
         expect(textView.getLeftMargin()).toBe(25);
+        expect(topMarginTag.pixelsAboveLines).toBe(25);
     });
 
-    it("rounds non-integer margins from the scale value", async () => {
+    it("rounds non-integer margins for both the left margin and the top-margin tag", async () => {
         await renderDemo(overlayDecorativeDemo);
         const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const adjustment = scale.getAdjustment();
-        await act(() => adjustment.setValue(37.7));
-        await fireEvent(scale, "value-changed");
+        const topMarginTag = textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag;
+        await userEvent.slide(scale, 37.7);
         expect(textView.getLeftMargin()).toBe(38);
+        expect(topMarginTag.pixelsAboveLines).toBe(38);
     });
 });
 
 describe("overlayDecorativeDemo text content", () => {
-    it("renders the 'Dear diary...' text inside the text view buffer", async () => {
+    it("renders the concatenated 'Dear diary...' text inside the text view buffer", async () => {
         await renderDemo(overlayDecorativeDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        const start = buffer.getStartIter();
-        const end = buffer.getEndIter();
-        const text = buffer.getText(start, end, false);
-        expect(text).toContain("Dear");
-        expect(text).toContain("diary");
+        await screen.findByDisplayValue(/Dear diary\.\.\./);
     });
 });

@@ -3,10 +3,16 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-echo "Building GTKX Tutorial Flatpak..."
+echo "Validating desktop entry and metainfo..."
+npm run flatpak:lint
 
-pnpm bundle
+if [[ ! -f flatpak/generated-sources.json ]]; then
+    echo "Error: flatpak/generated-sources.json is missing." >&2
+    echo "Run 'npm run flatpak:sources' first." >&2
+    exit 1
+fi
 
+echo "Building flatpak from source in a sandbox..."
 flatpak-builder \
     --force-clean \
     --user \
@@ -15,15 +21,7 @@ flatpak-builder \
     build-dir \
     flatpak/com.gtkx.tutorial.yaml
 
-flatpak build-bundle \
-    flatpak-repo \
-    dist/com.gtkx.tutorial.flatpak \
-    com.gtkx.tutorial
-
-echo "Flatpak built: dist/com.gtkx.tutorial.flatpak"
 echo ""
-echo "To install:"
-echo "  flatpak install --user dist/com.gtkx.tutorial.flatpak"
-echo ""
-echo "To run:"
+echo "Build complete. Install with:"
+echo "  flatpak install --user flatpak-repo com.gtkx.tutorial"
 echo "  flatpak run com.gtkx.tutorial"

@@ -1,11 +1,12 @@
 import { defineCommand } from "citty";
-import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./options.js";
+import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./package-managers.js";
 import { scaffold } from "./scaffolder.js";
 
 export type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
     "package-manager"?: string | undefined;
+    typescript?: boolean | undefined;
     vitest?: boolean | undefined;
     yes?: boolean | undefined;
     "no-interactive"?: boolean | undefined;
@@ -26,12 +27,19 @@ export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
         name: args.name,
         applicationId: args["application-id"],
         packageManager: parsePackageManager(args["package-manager"]),
+        typescript: args.typescript,
         includeTesting: args.vitest,
         interactive,
         overwrite: args.overwrite,
     });
 };
 
+/**
+ * Citty command definition for the CLI `create` subcommand. It declares the
+ * scaffolder's arguments (target name, application ID, package manager,
+ * TypeScript and Vitest toggles, prompt behavior, and overwrite) and runs the
+ * scaffolder to generate a new gtkx application.
+ */
 export const createCommand = defineCommand({
     meta: {
         name: "create",
@@ -51,6 +59,11 @@ export const createCommand = defineCommand({
             type: "string",
             alias: "pm",
             description: PACKAGE_MANAGER_FLAG_DESCRIPTION,
+        },
+        typescript: {
+            type: "boolean",
+            negativeDescription: "Scaffold the application in JavaScript instead of TypeScript",
+            description: "Scaffold the application in TypeScript",
         },
         vitest: {
             type: "boolean",

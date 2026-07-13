@@ -46,7 +46,7 @@
     "scripts": {
         "build": "tsc -b tsconfig.lib.json && rm -rf dist/templates && cp -r src/templates dist/templates",
         "typecheck": "tsc -b --emitDeclarationOnly",
-        "release": "cp ../../README.md README.md && pnpm publish --access public --no-git-checks"
+        "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=24"
@@ -63,7 +63,7 @@
     "devDependencies": {
         "@types/ejs": "catalog:",
         "@types/node": "catalog:",
-        "memfs": "^4.63.0",
+        "memfs": "^4.64.0",
         "typescript": "catalog:",
         "vitest": "catalog:"
     }

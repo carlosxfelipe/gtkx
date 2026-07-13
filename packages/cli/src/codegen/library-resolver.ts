@@ -1,13 +1,13 @@
 import { readdirSync } from "node:fs";
-import { GIR_LIBRARY_PATTERN, type GtkxConfig, LIBRARIES_WILDCARD } from "@gtkx/config";
-import { sortedStrings } from "@gtkx/utils";
-import { GtkxError } from "../internal/errors.js";
+import type { Config } from "@gtkx/config";
+import { GIR_LIBRARY_PATTERN, LIBRARIES_WILDCARD } from "@gtkx/config/internal";
+import { sortStrings } from "@gtkx/utils";
 
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
 
 const GIR_FILE_SUFFIX = ".gir";
 
-export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: string[]): string[] => {
+export const resolveLibraries = (libraries: Config["libraries"], girPath: string[]): string[] => {
     if (libraries === undefined) {
         return [...DEFAULT_LIBRARIES];
     }
@@ -15,7 +15,7 @@ export const resolveLibraries = (libraries: GtkxConfig["libraries"], girPath: st
     if (libraries === LIBRARIES_WILDCARD) {
         const discovered = discoverGirNamespaces(girPath);
         if (discovered.length === 0) {
-            throw new GtkxError(
+            throw new Error(
                 `gtkx.config.ts: \`libraries: "*"\` matched no .gir files in [${girPath.join(", ")}]. ` +
                     "Install gobject-introspection data packages, or list the libraries explicitly.",
             );
@@ -58,7 +58,7 @@ const discoverGirNamespaces = (girPath: string[]): string[] => {
         }
     }
 
-    return sortedStrings([...highestByName.values()].map(({ identifier }) => identifier));
+    return sortStrings([...highestByName.values()].map(({ identifier }) => identifier));
 };
 
 const compareVersions = (a: string, b: string): number => {

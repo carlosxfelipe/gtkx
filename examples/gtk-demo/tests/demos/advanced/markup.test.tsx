@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { markupDemo } from "../../../src/demos/advanced/markup.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -20,10 +20,7 @@ describe("markupDemo metadata", () => {
 describe("markupDemo initial state", () => {
     it("renders the 'Source' toggle that controls the visible stack page", async () => {
         await renderDemo(markupDemo);
-        const sourceToggle = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Source",
-        })) as Gtk.CheckButton;
-        expect(sourceToggle.getActive()).toBe(false);
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Source", checked: false });
     });
 
     it("starts with the 'formatted' stack page visible", async () => {
@@ -32,16 +29,20 @@ describe("markupDemo initial state", () => {
         expect(stack.getVisibleChildName()).toBe("formatted");
     });
 
-    it("populates the source text view buffer with the markup content", async () => {
+    it("populates the source text view buffer with the raw markup content", async () => {
         await renderDemo(markupDemo);
         const source = (await screen.findByName("source-view")) as Gtk.TextView;
-        expect(readBufferText(source).length).toBeGreaterThan(0);
+        expect(source).toHaveDisplayValue(/Text sizes:/);
+        expect(source).toHaveDisplayValue(/<span size="xx-small">/);
     });
 
-    it("populates the formatted view by inserting markup into its buffer", async () => {
+    it("populates the formatted view with parsed markup, stripping the raw span tags", async () => {
         await renderDemo(markupDemo);
         const formatted = (await screen.findByName("formatted-view")) as Gtk.TextView;
-        expect(readBufferText(formatted).length).toBeGreaterThan(0);
+        expect(formatted).toHaveDisplayValue(/Text sizes:/);
+        const formattedText = readBufferText(formatted);
+        expect(formattedText).not.toContain("<span");
+        expect(formattedText).toContain("Letterspacing");
     });
 });
 
@@ -68,15 +69,14 @@ describe("markupDemo toggle interaction", () => {
 
         const source = (await screen.findByName("source-view")) as Gtk.TextView;
         const formatted = (await screen.findByName("formatted-view")) as Gtk.TextView;
-        const buffer = source.getBuffer();
-        await act(() => buffer.setText("Hello <b>World</b>", -1));
+        await userEvent.clear(source);
+        await userEvent.type(source, "Hello <b>World</b>");
 
         await userEvent.click(sourceToggle);
 
         const stack = (await screen.findByName("markup-stack")) as Gtk.Stack;
         expect(stack.getVisibleChildName()).toBe("formatted");
-        const formattedText = readBufferText(formatted);
-        expect(formattedText).toContain("Hello");
-        expect(formattedText).toContain("World");
+        expect(formatted).toHaveDisplayValue(/Hello/);
+        expect(formatted).toHaveDisplayValue(/World/);
     });
 });

@@ -1,4 +1,4 @@
-import { ErrorCode, ProtocolError } from "@gtkx/mcp";
+import { ErrorCode, ProtocolError } from "@gtkx/mcp/internal";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
@@ -53,7 +53,7 @@ vi.mock("@gtkx/gi/gtk", () => ({
 
 import { dispatch } from "../../src/mcp/handlers.js";
 import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
-import { type FakeWidgetOverrides, makeFakeWidget } from "./_widget-helpers.js";
+import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 type FakeApp = {
     getWindows: () => Array<{ getTitle?: () => string | null }>;

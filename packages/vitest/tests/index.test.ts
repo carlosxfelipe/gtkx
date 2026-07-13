@@ -20,7 +20,7 @@ type WorkerConfig = {
 type ConfigHook = (config: InputConfig) => WorkerConfig;
 
 const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: Fn } | undefined): Fn => {
-    if (hook === undefined || hook === null) throw new Error("plugin hook is missing");
+    if (hook === undefined) throw new Error("plugin hook is missing");
     return typeof hook === "function" ? hook : hook.handler;
 };
 
@@ -44,7 +44,7 @@ describe("gtkx vitest plugin", () => {
         expect(plugin.load).toBeDefined();
     });
 
-    it("forces the forks pool, enables globals, and sets 20s timeouts", () => {
+    it("forces the forks pool, enables globals, and sets 30s testTimeout/hookTimeout", () => {
         const result = callConfig(gtkx(), {});
         expect(result.test?.pool).toBe("forks");
         expect(result.test?.globals).toBe(true);

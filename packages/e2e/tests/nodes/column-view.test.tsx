@@ -1,7 +1,7 @@
 import { ColumnView, ColumnViewColumn, type RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, render, screen } from "@gtkx/testing";
+import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -20,35 +20,34 @@ import {
 } from "../helpers/list-collection-render.js";
 import { type ColumnDef, renderColumnView } from "../helpers/list-fixtures.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
-import { getChildTexts } from "../helpers/widget-text.js";
 
-const getColumnViewItemTexts = (columnView: Gtk.ColumnView): string[] => {
-    let child = columnView.getFirstChild();
-    if (child) child = child.getNextSibling();
-    if (child) return getChildTexts(child);
-    return [];
+const cellText = (cell: Gtk.Widget): string => {
+    const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
+    return label ? (getWidgetNodeText(label) ?? "") : "";
 };
+
+const rowCellTexts = (row: Gtk.Widget): string[] =>
+    within(row).getAllByRole(Gtk.AccessibleRole.GRID_CELL).map(cellText);
+
+const dataRows = (columnView: Gtk.ColumnView): Gtk.Widget[] =>
+    within(columnView).getAllByRole(Gtk.AccessibleRole.ROW).slice(1);
+
+const getColumnViewItemTexts = (columnView: Gtk.ColumnView): string[] =>
+    dataRows(columnView)
+        .map((row) => rowCellTexts(row)[0])
+        .filter((text): text is string => Boolean(text));
 
 const getFirstRowCellTexts = (columnView: Gtk.ColumnView): string[] => {
-    const header = columnView.getFirstChild();
-    const rows = header?.getNextSibling();
-    const firstRow = rows?.getFirstChild();
-    return firstRow ? getChildTexts(firstRow) : [];
+    const [firstRow] = dataRows(columnView);
+    return firstRow ? rowCellTexts(firstRow) : [];
 };
 
-const collectBoxSizeRequests = (root: Gtk.Widget | null): [number, number][] => {
-    const requests: [number, number][] = [];
-    const visit = (widget: Gtk.Widget | null): void => {
-        let child = widget?.getFirstChild() ?? null;
-        while (child) {
-            if (child instanceof Gtk.Box) requests.push(child.getSizeRequest());
-            visit(child);
-            child = child.getNextSibling();
-        }
-    };
-    visit(root);
-    return requests;
-};
+const collectBoxSizeRequests = (columnView: Gtk.ColumnView): [number, number][] =>
+    within(columnView)
+        .getAllByRole(Gtk.AccessibleRole.GRID_CELL)
+        .map((cell) => cell.getFirstChild())
+        .filter((box): box is Gtk.Widget => box !== null)
+        .map((box) => box.getSizeRequest());
 
 const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderColumnView(items);
@@ -87,22 +86,14 @@ const generateEmployees = (count: number): Employee[] => {
 
 type SortColumn = "name" | "salary" | null;
 
-const getColumnById = (columnView: Gtk.ColumnView, columnId: string): Gtk.ColumnViewColumn | null => {
-    const columns = columnView.getColumns();
-    const nItems = columns.getNItems();
+const columnTitleForId = (columnId: string): string => `${columnId.charAt(0).toUpperCase()}${columnId.slice(1)}`;
 
-    for (let i = 0; i < nItems; i++) {
-        const obj = columns.getItem(i) as Gtk.ColumnViewColumn | null;
-        if (obj?.getId() === columnId) {
-            return obj;
-        }
-    }
-    return null;
-};
-
-const clickColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, order: Gtk.SortType): Promise<void> => {
-    const column = getColumnById(columnView, columnId);
-    if (column) {
+const sortByColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, order: Gtk.SortType): Promise<void> => {
+    const title = columnTitleForId(columnId);
+    const headers = within(columnView).getAllByRole(Gtk.AccessibleRole.COLUMN_HEADER);
+    const index = headers.findIndex((header) => cellText(header) === title);
+    const column = columnView.getColumns().getItem(index);
+    if (column instanceof Gtk.ColumnViewColumn) {
         await act(() => columnView.sortByColumn(column, order));
     }
 };
@@ -196,18 +187,10 @@ const renderSortableColumnView = async (count: number): Promise<SortableColumnVi
     return { ref, employees, renderOrders, latestOrder: () => renderOrders[renderOrders.length - 1] };
 };
 
-const getColumnTitles = (columnView: Gtk.ColumnView): string[] => {
-    const columns = columnView.getColumns();
-    const titles: string[] = [];
-    const nItems = columns.getNItems();
-    for (let i = 0; i < nItems; i++) {
-        const column = columns.getItem(i) as Gtk.ColumnViewColumn | null;
-        if (column) {
-            titles.push(column.getTitle() ?? "");
-        }
-    }
-    return titles;
-};
+const getColumnTitles = (columnView: Gtk.ColumnView): string[] =>
+    within(columnView)
+        .getAllByRole(Gtk.AccessibleRole.COLUMN_HEADER)
+        .map((header) => cellText(header));
 
 describe("render - ColumnView (1)", () => {
     describe("GtkColumnView", () => {
@@ -226,7 +209,7 @@ describe("render - ColumnView (2)", () => {
                 columns: titleColumns(["Column Title"]),
             });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("inserts column before existing column", async () => {
@@ -238,7 +221,7 @@ describe("render - ColumnView (2)", () => {
                 columns: titleColumns(["First", "Middle", "Last"]),
             });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("keeps cells in column order after inserting a column mid-list", async () => {
@@ -259,7 +242,7 @@ describe("render - ColumnView (2)", () => {
 
             await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["A", "C"]) });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("sets column properties (expand, fixedWidth)", async () => {
@@ -267,7 +250,7 @@ describe("render - ColumnView (2)", () => {
                 columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderItem: labelCell }],
             });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("updates column properties when props change", async () => {
@@ -277,7 +260,7 @@ describe("render - ColumnView (2)", () => {
 
             await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["Updated"]) });
 
-            expect(ref.current?.getColumns()).not.toBeNull();
+            expect(ref.current.getColumns()).not.toBeNull();
         });
     });
 });
@@ -292,7 +275,7 @@ describe("render - ColumnView (3)", () => {
                 ]),
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("inserts item before existing item", async () => {
@@ -311,7 +294,7 @@ describe("render - ColumnView (3)", () => {
                 ]),
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("removes item", async () => {
@@ -330,7 +313,7 @@ describe("render - ColumnView (3)", () => {
                 ]),
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
     });
 });
@@ -354,7 +337,7 @@ describe("render - ColumnView (5)", () => {
         it("sets sort column via sortColumn prop", async () => {
             const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], { sortColumn: "name" });
 
-            expect(ref.current?.getSorter()).not.toBeNull();
+            expect(ref.current.getSorter()).not.toBeNull();
         });
 
         it("sets sort order via sortOrder prop", async () => {
@@ -363,7 +346,7 @@ describe("render - ColumnView (5)", () => {
                 sortOrder: Gtk.SortType.DESCENDING,
             });
 
-            expect(ref.current?.getSorter()).not.toBeNull();
+            expect(ref.current.getSorter()).not.toBeNull();
         });
 
         it("calls onSortChanged when sort changes", async () => {
@@ -387,7 +370,7 @@ describe("render - ColumnView (5)", () => {
 
             await rerender([{ id: "1", value: { name: "First" } }], { columns, sortColumn: "age" });
 
-            expect(ref.current?.getSorter()).not.toBeNull();
+            expect(ref.current.getSorter()).not.toBeNull();
         });
     });
 });
@@ -403,7 +386,7 @@ describe("render - ColumnView (6)", () => {
                 { selected: ["1"] },
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
 
         it("supports multiple selection", async () => {
@@ -416,7 +399,7 @@ describe("render - ColumnView (6)", () => {
                 { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: ["1", "2"] },
             );
 
-            expect(ref.current?.getModel()).not.toBeNull();
+            expect(ref.current.getModel()).not.toBeNull();
         });
     });
 });
@@ -439,7 +422,7 @@ describe("render - ColumnView (7)", () => {
             const unsortedOrder = latestOrder();
             expect(unsortedOrder?.[0]).toBe("1");
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
 
             const sortedBySalary = latestOrder();
             expect(sortedBySalary).toBeDefined();
@@ -463,13 +446,13 @@ describe("render - ColumnView (8)", () => {
         it("sorts 200 rows descending when clicking column header with DESC order", async () => {
             const { ref, employees, latestOrder } = await renderSortableColumnView(200);
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
 
             const ascendingOrder = latestOrder();
             const firstInAsc = employees.find((e) => e.id === ascendingOrder?.[0]);
             const lastInAsc = employees.find((e) => e.id === ascendingOrder?.[199]);
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
 
             const descendingOrder = latestOrder();
             const firstInDesc = employees.find((e) => e.id === descendingOrder?.[0]);
@@ -483,11 +466,11 @@ describe("render - ColumnView (8)", () => {
         it("switches sort column when clicking different column header", async () => {
             const { ref, latestOrder } = await renderSortableColumnView(200);
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
 
             const sortedBySalary = [...(latestOrder() ?? [])];
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
 
             const sortedByName = latestOrder();
 
@@ -506,13 +489,13 @@ describe("render - ColumnView (9)", () => {
 
             expect(ref.current?.getModel()).not.toBeNull();
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
             expect(ref.current?.getModel()).not.toBeNull();
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
             expect(ref.current?.getModel()).not.toBeNull();
 
-            await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.DESCENDING);
+            await sortByColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.DESCENDING);
             expect(ref.current?.getModel()).not.toBeNull();
         });
     });

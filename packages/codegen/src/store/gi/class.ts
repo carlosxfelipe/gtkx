@@ -1,13 +1,21 @@
-import { toPascalCase } from "@gtkx/utils";
-import { collectInheritedMethods, conflictRename, type InheritedMethods } from "../../analysis/inheritance.js";
+import { toCamelIdentifier, toPascalCase } from "@gtkx/utils";
+import {
+    collectInheritedMethods,
+    collectInheritedPropertyTypes,
+    collectInterfaceMergeOmissions,
+    conflictRename,
+    type InheritedMethods,
+} from "../../analysis/inheritance.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
+    classConstructorMemberNames,
     dedupeCallables,
     generateBindings,
     indexMethodsByName,
@@ -25,6 +33,8 @@ import { renderVfuncMetadata } from "./vtable.js";
 type ImplementedRef = {
     typeRef: string;
     makerRef: string;
+    interfaceKlass: GirClass;
+    interfaceNamespace: string;
 };
 
 export const generateClass = (context: ModuleContext, klass: GirClass): void => {
@@ -39,19 +49,22 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
     generateBindings(context, callables);
 
     const parentExpression = resolveParent(context, klass);
-    const extendsClause = parentExpression === undefined ? "" : ` extends ${parentExpression}`;
+    const extendsClause = renderExtendsClause(context, parentExpression, callables);
     const implemented = resolveImplementedRefs(context, klass);
     const typeRefs = implemented.map((ref) => ref.typeRef);
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
     const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
-    context.module.appendDeclaration(`export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`);
+    context.module.appendDeclaration(
+        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+    );
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);
     }
     if (typeRefs.length > 0) {
-        context.module.appendDeclaration(`export interface ${className} extends ${typeRefs.join(", ")} {}`);
+        const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
+        context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
     }
 
     appendInstallMixins(context, className, implemented);
@@ -81,8 +94,10 @@ const renderClassMembers = (
         claimedNames,
         className,
     });
+    const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
     for (const property of klass.properties) {
-        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName });
+        const inheritedType = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
+        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName, inheritedType });
         if (block !== undefined) members.push(block);
     }
     members.push(...renderSignalMembers(context, klass));
@@ -140,6 +155,16 @@ const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<st
     return keys;
 };
 
+const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: ImplementedRef): string => {
+    const omissions = collectInterfaceMergeOmissions(context, klass, {
+        klass: ref.interfaceKlass,
+        namespaceName: ref.interfaceNamespace,
+    });
+    if (omissions.length === 0) return ref.typeRef;
+    const keys = omissions.map((name) => JSON.stringify(name)).join(" | ");
+    return `Omit<${ref.typeRef}, ${keys}>`;
+};
+
 const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): ImplementedRef[] => {
     const inherited = inheritedInterfaceKeys(context, klass);
     const refs: ImplementedRef[] = [];
@@ -151,9 +176,24 @@ const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): Implem
         refs.push({
             typeRef: context.qualify(resolved.namespace.name, pascal),
             makerRef: context.qualify(resolved.namespace.name, `make${pascal}`),
+            interfaceKlass: resolved.value,
+            interfaceNamespace: resolved.namespace.name,
         });
     }
     return refs;
+};
+
+const renderExtendsClause = (
+    context: ModuleContext,
+    parentExpression: string | undefined,
+    callables: Callables,
+): string => {
+    if (parentExpression === undefined) return "";
+    const constructorNames = classConstructorMemberNames(context, callables);
+    if (constructorNames.length === 0) return ` extends ${parentExpression}`;
+    context.addRuntimeTypeImport("StaticBase");
+    const omitted = constructorNames.map((name) => JSON.stringify(name)).join(" | ");
+    return ` extends (${parentExpression} as StaticBase<typeof ${parentExpression}, ${omitted}>)`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { log, type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-handler.js";
 import { createReconcilerRoot, type ReconcilerRoot, unmountAllReconcilerRoots } from "./reconciler-root.js";
-import { createRootElement, type RootElement } from "./root-element.js";
+import { type RootElement, rootElement } from "./root-element.js";
 import { getSignalStore } from "./signal-store.js";
 
 const priorHandlers = new WeakMap<ReconcilerRoot, ReconcilerErrorHandler | null>();
@@ -11,12 +11,21 @@ const teardownRoot = (root: ReconcilerRoot): void => {
     root.update(null);
 };
 
+/**
+ * A render root that mounts a React element tree into a container and can unmount it.
+ */
 export type Root = {
     render(element: ReactNode): void;
     unmount(): void;
 };
 
-export const createRoot = (container: RootElement = createRootElement()): Root => {
+/**
+ * Creates a render root for a container, wiring reconciler error handling to the container's signal store.
+ *
+ * @param container The root element to render into; defaults to the shared `rootElement`.
+ * @returns A root with `render` and `unmount` methods.
+ */
+export const createRoot = (container: RootElement = rootElement): Root => {
     const onUncaughtError = (error: unknown): void => {
         getSignalStore(container).unblock();
         throw error;
@@ -41,6 +50,11 @@ export const createRoot = (container: RootElement = createRootElement()): Root =
     };
 };
 
+/**
+ * Unmounts all active render roots.
+ *
+ * @returns `true` once every root has been torn down.
+ */
 export const quit = (): true => {
     unmountAllReconcilerRoots(teardownRoot);
     return true;

@@ -1,5 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
-import { getHandle, t, wrapHandle } from "@gtkx/ffi";
+import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/ffi";
 import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
 import { type PathData, parsePath } from "./context.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
@@ -8,7 +7,7 @@ const { bind } = t;
 const PATTERN_T = t.boxed("CairoPattern", {
     ownership: "borrowed",
     sharedLibrary: "libcairo-gobject.so.2",
-    getTypeFn: "cairo_gobject_pattern_get_type",
+    getTypeFnName: "cairo_gobject_pattern_get_type",
 });
 
 export type RgbaColor = {
@@ -386,7 +385,7 @@ const cairoPatternCreateRgb = bind(
     t.boxed("CairoPattern", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_pattern_get_type",
+        getTypeFnName: "cairo_gobject_pattern_get_type",
     }),
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
@@ -400,7 +399,7 @@ const cairoPatternCreateRgba = bind(
     t.boxed("CairoPattern", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_pattern_get_type",
+        getTypeFnName: "cairo_gobject_pattern_get_type",
     }),
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
@@ -414,7 +413,7 @@ const cairoPatternCreateLinear = bind(
     t.boxed("CairoPattern", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_pattern_get_type",
+        getTypeFnName: "cairo_gobject_pattern_get_type",
     }),
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
@@ -428,7 +427,7 @@ const cairoPatternCreateRadial = bind(
     t.boxed("CairoPattern", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_pattern_get_type",
+        getTypeFnName: "cairo_gobject_pattern_get_type",
     }),
 );
 PatternWithStatics.createRadial = (
@@ -449,7 +448,7 @@ const cairoPatternCreateMesh = bind(
     t.boxed("CairoPattern", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_pattern_get_type",
+        getTypeFnName: "cairo_gobject_pattern_get_type",
     }),
 );
 PatternWithStatics.createMesh = (): MeshPattern => {
@@ -463,13 +462,13 @@ const cairoPatternCreateForSurface = bind(
         t.boxed("CairoSurface", {
             ownership: "borrowed",
             sharedLibrary: "libcairo-gobject.so.2",
-            getTypeFn: "cairo_gobject_surface_get_type",
+            getTypeFnName: "cairo_gobject_surface_get_type",
         }),
     ],
     t.boxed("CairoPattern", {
         ownership: "full",
         sharedLibrary: "libcairo-gobject.so.2",
-        getTypeFn: "cairo_gobject_pattern_get_type",
+        getTypeFnName: "cairo_gobject_pattern_get_type",
     }),
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {

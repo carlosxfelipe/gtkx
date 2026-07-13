@@ -7,8 +7,6 @@ export const LIBRARIES_WILDCARD = "*";
 
 export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
-export const DEFAULT_APPLICATION_ID = "org.gtkx.app";
-
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
 
@@ -32,15 +30,17 @@ type ReactCompilerOptions = {
     panicThreshold?: ReactCompilerPanicThreshold;
 };
 
+/**
+ * React Compiler options resolved for the build, with the compilation target
+ * fixed to React 19.
+ */
 export type ResolvedReactCompilerOptions = ReactCompilerOptions & {
     target: "19";
 };
 
 const REACT_COMPILER_TARGET = "19";
 
-export const resolveReactCompilerOptions = (
-    setting: GtkxConfig["reactCompiler"],
-): ResolvedReactCompilerOptions | null => {
+export const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): ResolvedReactCompilerOptions | null => {
     if (setting === false) return null;
     const overrides = setting === undefined || setting === true ? {} : setting;
     return { ...overrides, target: REACT_COMPILER_TARGET };
@@ -74,7 +74,7 @@ const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((
             rawIssue(
                 value,
                 [index],
-                `invalid library identifier "${String(entry)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
+                `invalid library identifier "${String(entry)}", must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
                 true,
             ),
         );
@@ -88,7 +88,7 @@ const applicationIdSchema = z.custom<string>().check((ctx) => {
             rawIssue(
                 value,
                 [],
-                `invalid \`applicationId\` "${String(value)}" — must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+                `invalid \`applicationId\` "${String(value)}", must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
                 true,
             ),
         );
@@ -111,7 +111,7 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
             rawIssue(
                 value,
                 [],
-                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}" — must be one of ${COMPILATION_MODES.join(", ")}`,
+                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}", must be one of ${COMPILATION_MODES.join(", ")}`,
                 true,
             ),
         );
@@ -125,39 +125,57 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
             rawIssue(
                 value,
                 [],
-                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}" — must be one of ${PANIC_THRESHOLDS.join(", ")}`,
+                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}", must be one of ${PANIC_THRESHOLDS.join(", ")}`,
                 true,
             ),
         );
     }
 });
 
-const gtkxConfigSchema = z.object({
+const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
-    applicationId: applicationIdSchema.optional(),
+    applicationId: applicationIdSchema,
     elementProps: elementPropsSchema.optional(),
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
-export type GtkxConfig = z.infer<typeof gtkxConfigSchema>;
+/**
+ * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
+ * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
+ * custom element prop mappings, and the React Compiler and codegen settings.
+ */
+export type Config = z.infer<typeof configSchema>;
 
-export const validateGtkxConfig = (config: GtkxConfig): void => {
-    const result = gtkxConfigSchema.safeParse(config);
+export const validateConfig = (config: Config): void => {
+    const result = configSchema.safeParse(config);
     if (!result.success) throw configError(result.error);
 };
 
-export const defineConfig: DefineConfig<GtkxConfig> = createDefineConfig<GtkxConfig>();
+/**
+ * Identity helper that returns the given configuration typed as {@link Config},
+ * enabling editor autocompletion and type checking in `gtkx.config.ts`.
+ */
+export const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
 
-export const mergeConfig = (base: GtkxConfig, override: GtkxConfig): GtkxConfig => defu(override, base);
+/**
+ * Deep-merges two configurations, with `override` taking precedence over `base`.
+ * @param base The lower-priority configuration.
+ * @param override The higher-priority configuration whose values win on conflict.
+ */
+export const mergeConfig = (base: Config, override: Config): Config => defu(override, base);
 
-export type ResolvedGtkxConfig = {
+/**
+ * Configuration reduced to the values needed at runtime: the GApplication
+ * identifier and the resolved React Compiler options (`null` when disabled).
+ */
+export type ResolvedConfig = {
     applicationId: string;
     reactCompiler: ResolvedReactCompilerOptions | null;
 };
 
-export const resolveGtkxConfig = (config: GtkxConfig): ResolvedGtkxConfig => ({
-    applicationId: config.applicationId ?? DEFAULT_APPLICATION_ID,
+export const resolveConfig = (config: Config): ResolvedConfig => ({
+    applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
 });

@@ -2,10 +2,14 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { createGtkxConfigPlugin } from "@gtkx/config/plugin";
+import createConfigPlugin from "@gtkx/config/vite-plugin";
 import type { Plugin } from "vitest/config";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js";
 
+/**
+ * Options accepted by the {@link gtkx} Vitest plugin. Every headless display
+ * setting is optional and falls back to a built-in default when omitted.
+ */
 export type GtkxPluginOptions = Partial<HeadlessOptions>;
 
 const workerPreloadUrl = (): URL => {
@@ -27,8 +31,16 @@ const workerSetupPath = (): string => {
     return existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-setup.js");
 };
 
+/**
+ * Vitest plugin that runs each test worker against its own isolated headless
+ * Wayland display. It configures the forks pool, injects the worker preload and
+ * setup files, and sets the environment needed for headless GTK rendering.
+ *
+ * @param options Headless display settings (size, compositor) forwarded to each worker.
+ * @returns A Vitest config plugin.
+ */
 const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
-    createGtkxConfigPlugin({
+    createConfigPlugin({
         name: "gtkx:vitest",
         config() {
             return {

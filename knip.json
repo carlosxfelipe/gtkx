@@ -14,11 +14,14 @@
     ],
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts", "scripts/**/*.ts"],
+            "entry": ["gtkx.config.ts", "gtkx.config.base.ts", "scripts/**/*.ts"],
             "ignoreDependencies": ["@gtkx/ffi", "@gtkx/native", "@gtkx/react"]
         },
         "website": {
             "entry": [".vitepress/theme/**/*.{ts,vue}"]
+        },
+        "packages/animate": {
+            "entry": ["gtkx.config.ts!"]
         },
         "packages/e2e": {
             "entry": ["gtkx.config.ts!"]
@@ -27,7 +30,14 @@
             "entry": ["gtkx.config.ts!"]
         },
         "packages/cli": {
-            "entry": ["src/global.d.ts!"]
+            "entry": [
+                "src/global.d.ts!",
+                "tests/dev/fixtures/supervisor-harness.ts",
+                "tests/dev/fixtures/graceful-child.mjs"
+            ]
+        },
+        "packages/codegen": {
+            "ignoreDependencies": ["@types/react"]
         },
         "packages/vitest": {
             "entry": ["src/worker-preload.ts!", "src/worker-setup.ts!"]

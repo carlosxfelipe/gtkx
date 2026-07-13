@@ -9,7 +9,14 @@
     "scripts": {
         "dev": "gtkx dev",
         "build": "gtkx build",
+        "codegen": "gtkx codegen",
+<% if (typescript) { -%>
         "typecheck": "gtkx codegen && tsc --noEmit",
+<% } -%>
         "start": "node dist/bundle.js"
+    },
+    "allowScripts": {
+        "esbuild": true,
+        "@swc/core": true
     }
 }

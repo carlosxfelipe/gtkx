@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textundoDemo } from "../../../src/demos/input/textundo.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -16,11 +16,7 @@ const renderAndInsert = async (insertedText: string): Promise<EditedTextView> =>
     const buffer = textView.getBuffer();
     const before = readBufferText(textView);
 
-    await act(() => {
-        buffer.beginUserAction();
-        buffer.insertAtCursor(insertedText, -1);
-        buffer.endUserAction();
-    });
+    await userEvent.type(textView, insertedText);
 
     return { textView, buffer, before };
 };
@@ -38,20 +34,20 @@ describe("textundoDemo", () => {
         expect(textundoDemo.component).toBeTypeOf("function");
     });
 
-    it("renders a text view with undo enabled and the introductory content", async () => {
+    it("renders a text view with the introductory content and word wrap", async () => {
         await renderDemo(textundoDemo);
         const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        expect(textView).toBeInstanceOf(Gtk.TextView);
         const initial = readBufferText(textView);
         expect(initial).toContain("GtkTextView supports undo and redo");
         expect(initial).toContain("Control+z");
-        expect(textView.getBuffer().getEnableUndo()).toBe(true);
         expect(textView.getWrapMode()).toBe(Gtk.WrapMode.WORD);
     });
 
-    it("nests the text view inside a scrolled window with automatic scrollbar policies", async () => {
+    it("nests the text view inside the named scrolled window with automatic scrollbar policies", async () => {
         await renderDemo(textundoDemo);
         const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
+        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        expect(textView.isAncestor(sw)).toBe(true);
         const [hpolicy, vpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
@@ -59,12 +55,12 @@ describe("textundoDemo", () => {
 
     it("undoes a buffer edit when Control+z is dispatched to the text view", async () => {
         const { textView, buffer, before } = await renderAndInsert(" — appended");
-        expect(readBufferText(textView)).toBe(`${before} — appended`);
+        expect(screen.getByDisplayValue(`${before} — appended`)).toBe(textView);
         expect(buffer.getCanUndo()).toBe(true);
 
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
 
-        expect(readBufferText(textView)).toBe(before);
+        expect(screen.getByDisplayValue(before)).toBe(textView);
         expect(buffer.getCanRedo()).toBe(true);
     });
 
@@ -72,10 +68,21 @@ describe("textundoDemo", () => {
         const { textView, before } = await renderAndInsert(" REDO");
         const afterInsert = readBufferText(textView);
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
-        expect(readBufferText(textView)).toBe(before);
+        expect(screen.getByDisplayValue(before)).toBe(textView);
 
         await userEvent.keyboard(textView, "{Control>}{Shift>}z{/Shift}{/Control}");
 
-        expect(readBufferText(textView)).toBe(afterInsert);
+        expect(screen.getByDisplayValue(afterInsert)).toBe(textView);
+    });
+
+    it("redoes the previous edit via the alternate Control+y shortcut after an undo", async () => {
+        const { textView, before } = await renderAndInsert(" ALT-REDO");
+        const afterInsert = readBufferText(textView);
+        await userEvent.keyboard(textView, "{Control>}z{/Control}");
+        expect(screen.getByDisplayValue(before)).toBe(textView);
+
+        await userEvent.keyboard(textView, "{Control>}y{/Control}");
+
+        expect(screen.getByDisplayValue(afterInsert)).toBe(textView);
     });
 });

@@ -654,6 +654,7 @@ const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
     const { fontDesc, setFontDesc, setSize } = state;
     return (
         <GtkFontDialogButton
+            name="font-button"
             fontDesc={fontDesc ?? undefined}
             dialog={<GtkFontDialog />}
             onNotifyFontDesc={(desc) => {
@@ -730,6 +731,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                 {(ref) => (
                     <GtkColorDialogButton
                         ref={ref}
+                        name="foreground-color"
                         rgba={fgColor}
                         dialog={<GtkColorDialog />}
                         onNotifyRgba={(value) => value && setFgColor(value)}
@@ -745,6 +747,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
                 {(ref) => (
                     <GtkColorDialogButton
                         ref={ref}
+                        name="background-color"
                         rgba={bgColor}
                         dialog={<GtkColorDialog />}
                         onNotifyRgba={(value) => value && setBgColor(value)}
@@ -1117,6 +1120,7 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
                 </GtkStackPage>
                 <GtkStackPage name="entry">
                     <GtkTextView
+                        name="edit_textview"
                         ref={state.editTextViewRef}
                         cssClasses={[styles.editStyle]}
                         wrapMode={Gtk.WrapMode.WORD}
@@ -1186,7 +1190,7 @@ const FontFeaturesDemo = () => {
         if (state.viewMode !== "edit") return;
         const tv = state.editTextViewRef.current;
         if (!tv) return;
-        state.editScrolledWindowRef.current?.getVadjustment()?.setValue(0);
+        state.editScrolledWindowRef.current?.getVadjustment().setValue(0);
         tv.grabFocus();
     }, [state.viewMode, state.editTextViewRef, state.editScrolledWindowRef]);
 

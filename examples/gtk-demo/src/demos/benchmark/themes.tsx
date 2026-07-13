@@ -6,7 +6,7 @@ import * as Pango from "@gtkx/gi/pango";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
 
 interface Theme {
@@ -27,7 +27,7 @@ const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef) => {
     const original = originalSettingsRef.current;
     const settings = Gtk.Settings.getDefault();
     const styleManager = Adw.StyleManager.getDefault();
-    if (original && settings && styleManager) {
+    if (original && settings) {
         settings.gtkThemeName = original.themeName;
         styleManager.setColorScheme(original.colorScheme);
     }
@@ -41,7 +41,7 @@ const applyNextTheme = (
 ): boolean => {
     const settings = Gtk.Settings.getDefault();
     const styleManager = Adw.StyleManager.getDefault();
-    if (!settings || !styleManager) return true;
+    if (!settings) return true;
 
     const theme = THEMES[themeIndexRef.current % THEMES.length];
     if (theme) {
@@ -64,9 +64,9 @@ function useThemesLifecycle(originalSettingsRef: OriginalSettingsRef) {
     useLayoutEffect(() => {
         const settings = Gtk.Settings.getDefault();
         const styleManager = Adw.StyleManager.getDefault();
-        if (settings && styleManager) {
+        if (settings) {
             originalSettingsRef.current = {
-                themeName: settings.gtkThemeName ?? "",
+                themeName: settings.gtkThemeName,
                 colorScheme: styleManager.getColorScheme(),
             };
         }
@@ -97,14 +97,8 @@ const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => 
     </GtkBox>
 );
 
-const ThemesWarningDialog = ({
-    window,
-    onResponse,
-}: {
-    window: Gtk.Window;
-    onResponse: (response: string) => void;
-}) => (
-    <Dialog parent={window}>
+const ThemesWarningDialog = ({ onResponse }: { onResponse: (response: string) => void }) => (
+    <Dialog>
         <AlertDialog
             name="warning-dialog"
             heading="Warning"
@@ -207,14 +201,12 @@ const ThemesTitlebar = () => {
     );
 };
 
-const ThemesDemo = ({ window }: DemoProps) => {
+const ThemesDemo = () => {
     const cycling = useThemes();
     return (
         <>
             <ThemesBody boxRef={cycling.boxRef} />
-            {cycling.showWarning && window.current && (
-                <ThemesWarningDialog window={window.current} onResponse={cycling.handleWarningResponse} />
-            )}
+            {cycling.showWarning && <ThemesWarningDialog onResponse={cycling.handleWarningResponse} />}
         </>
     );
 };

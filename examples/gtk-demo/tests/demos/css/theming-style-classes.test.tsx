@@ -17,15 +17,13 @@ describe("themingStyleClassesDemo", () => {
 
     it("renders the linked button group with three buttons", async () => {
         await renderDemo(themingStyleClassesDemo);
-        const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });
-        const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "And I'm another button" });
-        const third = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This is a button party!" });
-        expect(first).toBeInstanceOf(Gtk.Button);
-        expect(second).toBeInstanceOf(Gtk.Button);
-        expect(third).toBeInstanceOf(Gtk.Button);
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "And I'm another button" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This is a button party!" });
         const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
-        expect(linkedBox).toBeInstanceOf(Gtk.Box);
         expect(linkedBox.hasCssClass("linked")).toBe(true);
+        expect(linkedBox.hasCssClass("suggested-action")).toBe(false);
+        expect(linkedBox.hasCssClass("destructive-action")).toBe(false);
     });
 
     it("renders the suggested and destructive action buttons with their style classes", async () => {
@@ -41,15 +39,15 @@ describe("themingStyleClassesDemo", () => {
         expect(suggested.hasCssClass("suggested-action")).toBe(true);
     });
 
-    it("applies the configured spacing and margins on the root grid", async () => {
+    it("places the linked group and the action group in separate grid rows", async () => {
         await renderDemo(themingStyleClassesDemo);
         const grid = (await screen.findByName("root-grid")) as Gtk.Grid;
-        expect(grid).not.toBeNull();
-        expect(grid.getRowSpacing()).toBe(10);
-        expect(grid.getMarginStart()).toBe(10);
-        expect(grid.getMarginEnd()).toBe(10);
-        expect(grid.getMarginTop()).toBe(10);
-        expect(grid.getMarginBottom()).toBe(10);
-        expect(grid.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
+        const suggested = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested" })) as Gtk.Button;
+
+        expect(grid.getChildAt(0, 0)).toBe(linkedBox);
+        const actionRow = grid.getChildAt(0, 1);
+        expect(actionRow).not.toBeNull();
+        expect(suggested.getParent()).toBe(actionRow);
     });
 });

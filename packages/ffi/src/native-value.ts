@@ -8,6 +8,14 @@ const collectionFromNative = (descriptor: ArrayDescriptor, value: unknown): unkn
     return (value as unknown[]).map((item) => fromNative(descriptor.itemDescriptor, item));
 };
 
+/**
+ * Converts a raw value returned from native code into its JavaScript form,
+ * wrapping object, struct, boxed, and fundamental handles and recursively
+ * converting arrays and hash tables according to the descriptor.
+ *
+ * @param descriptor Describes the native type of the value.
+ * @param value The raw native value to convert.
+ */
 export function fromNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object":
@@ -15,16 +23,17 @@ export function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "struct":
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
         case "boxed":
-            return wrapHandle(
-                value as ExternalObject<Handle> | null,
-                getWrapperClass(resolveDescriptorType(descriptor)),
-            );
+            return value == null
+                ? null
+                : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
         case "fundamental":
-            return wrapHandle(
-                value as ExternalObject<Handle> | null,
-                (descriptor as FundamentalDescriptor).wrapperClass ??
-                    getWrapperClass(resolveDescriptorType(descriptor)),
-            );
+            return value == null
+                ? null
+                : wrapHandle(
+                      value as ExternalObject<Handle>,
+                      (descriptor as FundamentalDescriptor).wrapperClass ??
+                          getWrapperClass(resolveDescriptorType(descriptor)),
+                  );
         case "array":
             return collectionFromNative(descriptor, value);
         case "hashtable": {

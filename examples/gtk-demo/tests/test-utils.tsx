@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createRootElement } from "@gtkx/react";
+import { rootElement } from "@gtkx/react";
 import { type RenderResult, render, screen } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";
@@ -103,8 +103,7 @@ const buildWrapper = ({
     );
 };
 
-const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo =>
-    typeof value === "object" && value !== null && "id" in value;
+const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo => typeof value === "object" && "id" in value;
 
 const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => children;
 
@@ -122,7 +121,7 @@ export const renderDemo = async (
         options.provider ?? (isDemo(componentOrDemo) ? componentOrDemo.provider : undefined) ?? PassthroughProvider;
     const demo = isDemo(componentOrDemo) ? componentOrDemo : undefined;
     return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
-        container: createRootElement(),
+        container: rootElement,
         wrapper: buildWrapper({ windowRef, onClose, Provider, Titlebar, demo }),
     });
 };
@@ -146,5 +145,24 @@ export const renderDemoAndExpectOpenButton = async (demo: Demo): Promise<void> =
 
 export const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
-    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
+};
+
+export const bufferHasTag = (view: Gtk.TextView, tagName: string): boolean => {
+    const buffer = view.getBuffer();
+    const tag = buffer.getTagTable().lookup(tagName);
+    if (!tag) return false;
+    const iter = buffer.getStartIter();
+    do {
+        if (iter.hasTag(tag)) return true;
+    } while (iter.forwardChar());
+    return false;
+};
+
+export const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
+    const children: Gtk.Widget[] = [];
+    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
+        children.push(child);
+    }
+    return children;
 };

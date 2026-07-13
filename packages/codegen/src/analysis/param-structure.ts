@@ -51,6 +51,14 @@ export const arrayLengthSources = (library: Library, fn: GirFunction): Map<numbe
     return map;
 };
 
+export const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boolean => {
+    for (const arrayIndex of arrayLengthSources(library, fn).values()) {
+        const array = fn.parameters[arrayIndex];
+        if (array !== undefined && isCallerAllocatedOut(array)) return true;
+    }
+    return false;
+};
+
 const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : library.typeOf(fn.returnValue.type);
     if (returnType?.kind !== "carray") return new Set();

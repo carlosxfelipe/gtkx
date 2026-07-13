@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { glareaDemo } from "../../../src/demos/opengl/glarea.js";
 import { renderDemo } from "../../test-utils.js";
@@ -18,53 +18,47 @@ describe("glareaDemo", () => {
     it("renders a GtkGLArea with the configured size hints", async () => {
         await renderDemo(glareaDemo);
         const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
-        expect(glArea).toBeInstanceOf(Gtk.GLArea);
         const [width, height] = glArea.getSizeRequest();
         expect(width).toBe(100);
         expect(height).toBe(200);
     });
 
-    it("renders three axis sliders and a Quit button", async () => {
+    it("renders three axis sliders and an enabled Quit button", async () => {
         await renderDemo(glareaDemo);
-        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, {
+            value: { min: 0, max: 360 },
+        })) as Gtk.Scale[];
         expect(scales).toHaveLength(3);
         for (const scale of scales) {
-            expect(scale.getAdjustment().getUpper()).toBe(360);
-            expect(scale.getAdjustment().getLower()).toBe(0);
             expect(scale.getAdjustment().getStepIncrement()).toBe(1);
             expect(scale.getDrawValue()).toBe(false);
         }
-        const quit = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" });
-        expect(quit).toBeInstanceOf(Gtk.Button);
+        const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
+        expect(quit.getSensitive()).toBe(true);
     });
 
-    it("queues a re-render of the GL area when an axis slider's value changes", async () => {
+    it("queues a re-render of the GL area when each axis slider's value changes", async () => {
         await renderDemo(glareaDemo);
         const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
-        const queueRenderSpy = vi.fn();
-        glArea.on("notify::queue-render", queueRenderSpy);
-        try {
-            const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
-            const firstScale = scales[0] as Gtk.Scale;
-            await act(() => firstScale.setValue(45));
-            await fireEvent(firstScale, "value-changed");
-            await waitFor(() => expect(firstScale.getValue()).toBe(45));
-        } finally {
-            glArea.off("notify::queue-render", queueRenderSpy);
+        const queueRenderSpy = vi.spyOn(glArea, "queueRender");
+        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+
+        for (const scale of scales) {
+            scale.grabFocus();
+            await userEvent.keyboard(scale, "{PageUp}");
+            await waitFor(() => expect(scale).toHaveValue(12));
         }
+
+        expect(queueRenderSpy).toHaveBeenCalledTimes(3);
+        queueRenderSpy.mockRestore();
     });
 
     it("destroys the host window when the Quit button is clicked", async () => {
         await renderDemo(glareaDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const destroySpy = vi.spyOn(window, "destroy").mockImplementation(() => {});
-        try {
-            const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
-            await userEvent.click(quit);
-            await waitFor(() => expect(destroySpy).toHaveBeenCalled());
-        } finally {
-            destroySpy.mockRestore();
-        }
+        await screen.findByRole(Gtk.AccessibleRole.WINDOW);
+        const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
+        await userEvent.click(quit);
+        await waitFor(() => expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW)).toBeNull());
     });
 
     it("labels the axis sliders with X / Y / Z legends", async () => {

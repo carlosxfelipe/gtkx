@@ -1,8 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { Plugin } from "vite";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
-import { main } from "../../src/dev/runner-main.js";
 import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
 
 type FakeServer = DevServer & {
@@ -200,7 +199,8 @@ describe("createDevRunner (application shutdown)", () => {
 
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
-        expect(harness.exit).not.toHaveBeenCalled();
+        await flushTick();
+        expect(harness.exit).toHaveBeenCalledWith(0);
         expect(loggedMessages(harness).some((m) => m.includes("Application quit"))).toBe(true);
     });
 
@@ -219,6 +219,7 @@ describe("createDevRunner (application shutdown)", () => {
         const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
         expect(written).toContain("[gtkx] error Error closing server:");
         expect(written).toContain(error.stack ?? error.message);
+        expect(harness.exit).toHaveBeenCalledWith(1);
         stderrSpy.mockRestore();
     });
 
@@ -256,7 +257,8 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
         onShutdown();
 
         expect(harness.server.close).toHaveBeenCalled();
-        expect(harness.exit).not.toHaveBeenCalled();
+        await flushTick();
+        expect(harness.exit).toHaveBeenCalledWith(0);
     });
 
     it("ignores application shutdowns while the runtime is shutting down", async () => {
@@ -268,7 +270,8 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
         onShutdown();
 
         expect(harness.server.close).toHaveBeenCalledTimes(1);
-        expect(harness.exit).not.toHaveBeenCalled();
+        await flushTick();
+        expect(harness.exit).toHaveBeenCalledExactlyOnceWith(0);
     });
 });
 
@@ -402,35 +405,21 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
-});
 
-describe("main (argv parsing)", () => {
-    let exitSpy: ReturnType<typeof vi.spyOn>;
-    let stderrSpy: ReturnType<typeof vi.spyOn>;
-    let originalArgv: string[];
+    it("restarts without re-executing when the loaded module is already a non-boundary", async () => {
+        const harness = buildHarness();
+        const module = { id: "/x/y.ts", importers: new Set<object>(), ssrModule: { listviewColorsDemo: {} } };
 
-    beforeEach(() => {
-        originalArgv = process.argv;
-        exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-        stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    });
+        await startRunner(harness);
+        expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
 
-    afterEach(() => {
-        process.argv = originalArgv;
-        exitSpy.mockRestore();
-        stderrSpy.mockRestore();
-    });
+        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
 
-    it("prints an error and exits 1 when no entry argument is supplied", async () => {
-        process.argv = ["node", "runner"];
-        exitSpy.mockImplementationOnce((() => {
-            throw new Error("__exit__");
-        }) as never);
+        await emitChangeAndFlush(harness, "/x/y.ts", 2);
 
-        await expect(main()).rejects.toThrow("__exit__");
-
-        const written = stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
-        expect(written).toContain("[gtkx] error Missing entry argument");
-        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(harness.server.moduleGraph.invalidateModule).not.toHaveBeenCalled();
+        expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
 });

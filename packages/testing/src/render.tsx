@@ -1,11 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { RootElement } from "@gtkx/react";
-import {
-    createReconcilerRoot,
-    isRootElement,
-    type ReconcilerRoot,
-    setReconcilerErrorHandler,
-} from "@gtkx/react/internal";
+import { createReconcilerRoot, type ReconcilerRoot, type RootElement, setReconcilerErrorHandler } from "@gtkx/react";
+import { isRootElement } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import { runInAct } from "./act.js";
 import type { RenderResult } from "./bound-queries.js";
@@ -120,6 +115,15 @@ const applyEnableAnimations = (enabled: boolean): void => {
     }
 };
 
+/**
+ * Renders a React element into a real GTK widget tree and returns queries
+ * scoped to it along with controls for rerendering and unmounting. When no
+ * container is supplied, a harness window is created and presented.
+ *
+ * @param element The React element to render.
+ * @param options Optional container, wrapper, custom queries, and other render settings.
+ * @returns A render result with bound queries, debug helpers, and lifecycle controls.
+ */
 export const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
@@ -178,6 +182,10 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     return result;
 };
 
+/**
+ * Unmounts every active render and runs all registered cleanup callbacks,
+ * resetting the screen and clipboard. Called automatically after each test.
+ */
 export const cleanup = async (): Promise<void> => {
     await runCleanup();
 };

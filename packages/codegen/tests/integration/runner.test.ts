@@ -1,11 +1,12 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
-const workDir = mkdtempSync(join(tmpdir(), "gtkx-codegen-"));
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
 
 afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
@@ -65,12 +66,33 @@ describe("runCodegen", () => {
         expect(existsSync(jsx.linkDir)).toBe(true);
     });
 
-    it("overwrites a pre-existing store on a second run", async () => {
+    it("skips regeneration when the store fingerprint is still fresh", async () => {
         const { gi } = giOptions("rerun");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        expect((await runCodegen(options)).regenerated).toBe(true);
+        const second = await runCodegen(options);
+        expect(second.regenerated).toBe(false);
+        expect(second.namespaces).toBe(0);
+    });
+
+    it("regenerates when forced", async () => {
+        const { gi } = giOptions("forced");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await runCodegen(options);
-        const result = await runCodegen(options);
+        const result = await runCodegen({ ...options, force: true });
+        expect(result.regenerated).toBe(true);
         expect(result.namespaces).toBeGreaterThan(0);
         expect(existsSync(join(gi.storeDir, "glib", "glib.js"))).toBe(true);
+    });
+
+    it("regenerates when the fingerprint no longer matches", async () => {
+        const { gi } = giOptions("stale-fp");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        writeFileSync(
+            join(gi.storeDir, ".codegen-fingerprint.json"),
+            JSON.stringify({ value: "stale", girFiles: [], libraries: ["GLib-2.0"] }),
+        );
+        expect((await runCodegen(options)).regenerated).toBe(true);
     });
 });

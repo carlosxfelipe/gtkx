@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
@@ -36,6 +36,12 @@ type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProp
         renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
     };
 
+/**
+ * Props for {@link ListView}. Combines the underlying Gtk.ListView props with
+ * declarative collection props: flat items or grouped sections, a per-row renderItem,
+ * an optional section header renderer, controlled selection and expansion, and
+ * estimated item sizing.
+ */
 export type ListViewProps<T = unknown, S = unknown> = Omit<
     GtkListViewProps,
     "model" | "factory" | "headerFactory" | keyof ListViewDeclarativeProps<T, S>
@@ -102,6 +108,10 @@ type NormalizedListViewProps<T, S> = ListViewDeclarativeProps<T, S> & {
     [key: string]: unknown;
 };
 
+/**
+ * Renders a Gtk.ListView: a scrollable, single-column list backed by a collection
+ * model, with each row drawn by renderItem and optional section headers.
+ */
 export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNode => {
     const {
         ref,

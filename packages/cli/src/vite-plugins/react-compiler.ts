@@ -1,20 +1,17 @@
 /// <reference path="../babel-modules.d.ts" />
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
-import {
-    createGtkxConfigLoader,
-    type GtkxConfigLoader,
-    type ResolvedReactCompilerOptions,
-    resolveReactCompilerOptions,
-} from "@gtkx/config";
+import type { ResolvedReactCompilerOptions } from "@gtkx/config";
+import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 
 const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetTypescriptNs;
 const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
 
-const SOURCE_EXTENSION = /\.tsx?$/;
-const JSX_EXTENSION = /\.tsx$/;
+const SOURCE_EXTENSION = /\.[jt]sx?$/;
+const TYPESCRIPT_EXTENSION = /\.tsx?$/;
+const TYPE_ONLY_EXTENSION = /\.ts$/;
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 
 type ReactCompilerState = {
@@ -29,10 +26,10 @@ const isProjectSource = (root: string, id: string): boolean => {
     return true;
 };
 
-export function gtkxReactCompiler(loadConfig: GtkxConfigLoader = createGtkxConfigLoader()): Plugin {
+export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: ReactCompilerState = {
         root: "",
-        options: resolveReactCompilerOptions(true),
+        options: null,
     };
 
     return {
@@ -58,8 +55,8 @@ export function gtkxReactCompiler(loadConfig: GtkxConfigLoader = createGtkxConfi
                 babelrc: false,
                 configFile: false,
                 sourceMaps: true,
-                parserOpts: { plugins: JSX_EXTENSION.test(id) ? ["jsx"] : [] },
-                presets: [babelPresetTypescript],
+                parserOpts: { plugins: TYPE_ONLY_EXTENSION.test(id) ? [] : ["jsx"] },
+                presets: TYPESCRIPT_EXTENSION.test(id) ? [babelPresetTypescript] : [],
                 plugins: [[babelPluginReactCompiler, options]],
             });
 
