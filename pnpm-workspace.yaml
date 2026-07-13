@@ -33,7 +33,9 @@ allowBuilds:
 overrides:
   vite: ^8.1.4
   uuid: ^14.0.1
-  '@docsearch/react': ^3.9.0
+  '@docsearch/react': ^4.6.3
+  qs: ^6.15.3
+  js-yaml: ^4.3.0
 
 patchedDependencies:
   dependency-cruiser: patches/dependency-cruiser.patch
