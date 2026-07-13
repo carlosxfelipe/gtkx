@@ -352,8 +352,8 @@ describe("buildTools — gtkx_take_screenshot", () => {
 type MainSetup = {
     errorSpy: ReturnType<typeof vi.spyOn>;
     exitSpy: ReturnType<typeof vi.spyOn>;
-    prevSigInt: NodeJS.SignalsListener[];
-    prevSigTerm: NodeJS.SignalsListener[];
+    prevSigInt: ((signal: "SIGINT") => void)[];
+    prevSigTerm: ((signal: "SIGTERM") => void)[];
 };
 
 function resetMainMocks(): void {

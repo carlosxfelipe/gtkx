@@ -8,8 +8,7 @@ export default {
     extends: defaultStrictRulesPath,
     options: {
         includeOnly: "packages/[^/]+/src/",
-        tsConfig: { fileName: "tsconfig.base.json" },
-        tsPreCompilationDeps: true,
+        parser: "swc",
         enhancedResolveOptions: {
             exportsFields: ["exports"],
             conditionNames: ["source", "import", "require", "default"],

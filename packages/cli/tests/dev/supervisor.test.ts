@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { FSWatcher } from "node:fs";
 import { watch as watchFs } from "node:fs";
+import type { ProcessEventMap } from "node:process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importActual) => {
@@ -77,20 +78,18 @@ function captureConfigWatcher(): { fireConfigChange: () => void } {
     return { fireConfigChange: () => fire() };
 }
 
-type SignalListener = NodeJS.SignalsListener;
+type WatchedSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
+type SignalListener<S extends WatchedSignal> = (...args: ProcessEventMap[S]) => void;
 
 type SupervisorContext = {
     stderrSpy: ReturnType<typeof vi.spyOn>;
     exitSpy: ReturnType<typeof vi.spyOn>;
-    prevSigInt: SignalListener[] | undefined;
-    prevSigTerm: SignalListener[] | undefined;
-    prevSigHup: SignalListener[] | undefined;
+    prevSigInt: SignalListener<"SIGINT">[] | undefined;
+    prevSigTerm: SignalListener<"SIGTERM">[] | undefined;
+    prevSigHup: SignalListener<"SIGHUP">[] | undefined;
 };
 
-const cleanupSignalListeners = (
-    name: "SIGINT" | "SIGTERM" | "SIGHUP",
-    previous: SignalListener[] | undefined,
-): void => {
+const cleanupSignalListeners = <S extends WatchedSignal>(name: S, previous: SignalListener<S>[] | undefined): void => {
     const current = process.listeners(name);
     for (const listener of current) {
         if (!previous?.includes(listener)) {

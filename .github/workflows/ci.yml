@@ -324,7 +324,7 @@ jobs:
         shell: bash
         run: |
           corepack enable
-          corepack prepare pnpm@11.10.0 --activate
+          corepack prepare pnpm@11.12.0 --activate
 
       - name: Set up Rust
         shell: bash
@@ -339,7 +339,7 @@ jobs:
           pnpm build
 
       - name: Run the TypeScript benchmarks under CodSpeed
-        uses: CodSpeedHQ/action@9f3a37ece7abc84992501a7fcd54d1704f3458fa # v4.18.4
+        uses: CodSpeedHQ/action@f99becdce5e5d51fd556489ebef684f4ecfd6286 # v4.18.5
         with:
           mode: walltime
           run: pnpm --filter @gtkx/e2e bench

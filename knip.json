@@ -15,7 +15,7 @@
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts", "gtkx.config.base.ts", "scripts/**/*.ts"],
-            "ignoreDependencies": ["@gtkx/ffi", "@gtkx/native", "@gtkx/react"]
+            "ignoreDependencies": ["@gtkx/ffi", "@gtkx/native", "@gtkx/react", "@swc/core"]
         },
         "website": {
             "entry": [".vitepress/theme/**/*.{ts,vue}"]
