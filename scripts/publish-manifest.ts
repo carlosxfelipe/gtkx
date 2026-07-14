@@ -4,11 +4,17 @@ export type ExportsField = string | { [key: string]: ExportsField };
 
 export type PackageManifest = {
     name?: string;
+    version?: string;
     private?: boolean;
     files?: string[];
     bin?: string | { [command: string]: string };
     exports?: ExportsField;
     [field: string]: unknown;
+};
+
+export const distTagForVersion = (version: string): string => {
+    const identifier = version.match(/-([a-zA-Z][a-zA-Z0-9]*)/)?.[1];
+    return identifier ?? "latest";
 };
 
 const isDevSource = (entry: string): boolean => entry === "src" || entry.startsWith("src/");

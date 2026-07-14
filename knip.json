@@ -8,6 +8,7 @@
         "pkg-config",
         "glib-compile-resources",
         "glib-compile-schemas",
+        "napi",
         "setpriv",
         "weston",
         "wlheadless-run"

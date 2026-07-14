@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { type PackageManifest, stripDevArtifacts } from "./publish-manifest.js";
+import { distTagForVersion, type PackageManifest, stripDevArtifacts } from "./publish-manifest.js";
 
 const findRepoRoot = (start: string): string => {
     let dir = start;
@@ -23,9 +23,10 @@ const releasePackage = (): void => {
     const original = readFileSync(manifestPath, "utf8");
     const manifest = JSON.parse(original) as PackageManifest;
     writeFileSync(manifestPath, `${JSON.stringify(stripDevArtifacts(manifest), null, 4)}\n`);
+    const tag = distTagForVersion(manifest.version ?? "");
 
     try {
-        const result = spawnSync("pnpm", ["publish", "--access", "public", "--no-git-checks"], {
+        const result = spawnSync("pnpm", ["publish", "--access", "public", "--no-git-checks", "--tag", tag], {
             cwd: packageDir,
             stdio: "inherit",
         });
