@@ -95,18 +95,61 @@ interface InteractiveDialogProps {
     onResponse: (response: string) => void;
 }
 
+const InteractiveFields = ({
+    entry1Text,
+    setEntry1Text,
+    entry2Text,
+    setEntry2Text,
+}: Omit<InteractiveDialogProps, "onResponse">) => {
+    const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
+    const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
+    return (
+        <Grid rowSpacing={6} columnSpacing={6} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            <Grid.Child column={0} row={0}>
+                {(ref) => <GtkLabel ref={ref} label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />}
+            </Grid.Child>
+            <Grid.Child column={1} row={0}>
+                {(ref) => (
+                    <GtkEntry
+                        name="dialog-entry-1"
+                        ref={(node) => {
+                            ref(node);
+                            setDialogEntry1Widget(node);
+                        }}
+                        text={entry1Text}
+                        onChanged={(e) => setEntry1Text(e.getText())}
+                    />
+                )}
+            </Grid.Child>
+            <Grid.Child column={0} row={1}>
+                {(ref) => <GtkLabel ref={ref} label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />}
+            </Grid.Child>
+            <Grid.Child column={1} row={1}>
+                {(ref) => (
+                    <GtkEntry
+                        name="dialog-entry-2"
+                        ref={(node) => {
+                            ref(node);
+                            setDialogEntry2Widget(node);
+                        }}
+                        text={entry2Text}
+                        onChanged={(e) => setEntry2Text(e.getText())}
+                    />
+                )}
+            </Grid.Child>
+        </Grid>
+    );
+};
+
 const InteractiveDialog = ({
     entry1Text,
     setEntry1Text,
     entry2Text,
     setEntry2Text,
     onResponse,
-}: InteractiveDialogProps) => {
-    const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
-    const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
-    return (
-        <Dialog>
-            {(ref) => (
+}: InteractiveDialogProps) => (
+    <Dialog>
+        {(ref) => (
             <AlertDialog
                 ref={ref}
                 name="interactive-dialog"
@@ -115,60 +158,20 @@ const InteractiveDialog = ({
                 closeResponse="cancel"
                 onResponse={onResponse}
                 extraChild={
-                    <Grid
-                        rowSpacing={6}
-                        columnSpacing={6}
-                        hexpand
-                        vexpand
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                    >
-                        <Grid.Child column={0} row={0}>
-                            {(ref) => (
-                                <GtkLabel ref={ref} label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />
-                            )}
-                        </Grid.Child>
-                        <Grid.Child column={1} row={0}>
-                            {(ref) => (
-                                <GtkEntry
-                                    name="dialog-entry-1"
-                                    ref={(node) => {
-                                        ref(node);
-                                        setDialogEntry1Widget(node);
-                                    }}
-                                    text={entry1Text}
-                                    onChanged={(e) => setEntry1Text(e.getText())}
-                                />
-                            )}
-                        </Grid.Child>
-                        <Grid.Child column={0} row={1}>
-                            {(ref) => (
-                                <GtkLabel ref={ref} label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />
-                            )}
-                        </Grid.Child>
-                        <Grid.Child column={1} row={1}>
-                            {(ref) => (
-                                <GtkEntry
-                                    name="dialog-entry-2"
-                                    ref={(node) => {
-                                        ref(node);
-                                        setDialogEntry2Widget(node);
-                                    }}
-                                    text={entry2Text}
-                                    onChanged={(e) => setEntry2Text(e.getText())}
-                                />
-                            )}
-                        </Grid.Child>
-                    </Grid>
+                    <InteractiveFields
+                        entry1Text={entry1Text}
+                        setEntry1Text={setEntry1Text}
+                        entry2Text={entry2Text}
+                        setEntry2Text={setEntry2Text}
+                    />
                 }
             >
                 <AlertDialog.Response id="cancel" label="_Cancel" />
                 <AlertDialog.Response id="ok" label="_OK" />
             </AlertDialog>
-            )}
-        </Dialog>
-    );
-};
+        )}
+    </Dialog>
+);
 
 function useDialogDemoState() {
     const [clickCount, setClickCount] = useState(0);

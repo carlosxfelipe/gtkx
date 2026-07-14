@@ -290,36 +290,36 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
     return (
         <Dialog onClose={() => onClose?.()}>
             {(ref) => (
-            <AdwDialog ref={ref} title="Error States" canClose followsContentSize>
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
-                    <Grid
-                        rowSpacing={10}
-                        columnSpacing={10}
-                        marginStart={20}
-                        marginEnd={20}
-                        marginTop={20}
-                        marginBottom={20}
-                    >
-                        <DetailsEntryRow
-                            detailsEntry={state.detailsEntry}
-                            setDetailsEntry={state.setDetailsEntry}
-                            onChange={handlers.handleDetailsChange}
-                        />
-                        <MoreDetailsEntryRow
-                            moreDetailsEntry={state.moreDetailsEntry}
-                            setMoreDetailsEntry={state.setMoreDetailsEntry}
-                            moreDetailsError={state.moreDetailsError}
-                            onChange={handlers.handleMoreDetailsChange}
-                        />
-                        <LevelScaleRow
-                            levelScale={state.levelScale}
-                            setLevelScale={state.setLevelScale}
-                            onValueChanged={handlers.handleLevelChange}
-                        />
-                        <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
-                    </Grid>
-                </AdwToolbarView>
-            </AdwDialog>
+                <AdwDialog ref={ref} title="Error States" canClose followsContentSize>
+                    <AdwToolbarView topBar={<AdwHeaderBar />}>
+                        <Grid
+                            rowSpacing={10}
+                            columnSpacing={10}
+                            marginStart={20}
+                            marginEnd={20}
+                            marginTop={20}
+                            marginBottom={20}
+                        >
+                            <DetailsEntryRow
+                                detailsEntry={state.detailsEntry}
+                                setDetailsEntry={state.setDetailsEntry}
+                                onChange={handlers.handleDetailsChange}
+                            />
+                            <MoreDetailsEntryRow
+                                moreDetailsEntry={state.moreDetailsEntry}
+                                setMoreDetailsEntry={state.setMoreDetailsEntry}
+                                moreDetailsError={state.moreDetailsError}
+                                onChange={handlers.handleMoreDetailsChange}
+                            />
+                            <LevelScaleRow
+                                levelScale={state.levelScale}
+                                setLevelScale={state.setLevelScale}
+                                onValueChanged={handlers.handleLevelChange}
+                            />
+                            <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
+                        </Grid>
+                    </AdwToolbarView>
+                </AdwDialog>
             )}
         </Dialog>
     );
