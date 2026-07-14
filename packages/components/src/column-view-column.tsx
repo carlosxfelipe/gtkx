@@ -1,18 +1,18 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gtk";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
-import { useColumnViewContext } from "./column-view-context.js";
+import { type CellRenderer, CellRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useHeaderMenu } from "./hooks/use-header-menu.js";
 import type { RenderItemProps } from "./types.js";
+import type { ItemResolver } from "./utils/item-resolver.js";
 
 const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     install: (column, factory) => column.setFactory(factory),
     uninstall: (column) => column.setFactory(null),
 };
 
-type ColumnViewColumnDeclarativeProps<T = unknown> = {
+type ColumnDefDeclarativeProps<T = unknown> = {
     title: string;
     expand?: boolean | undefined;
     resizable?: boolean | undefined;
@@ -20,27 +20,33 @@ type ColumnViewColumnDeclarativeProps<T = unknown> = {
     id: string;
     sortable?: boolean | undefined;
     visible?: boolean | undefined;
-    renderItem: (props: RenderItemProps<T>) => ReactNode;
+    renderCell: (props: RenderItemProps<T>) => ReactNode;
     headerMenu?: ReactNode;
 };
 
-/**
- * Props for {@link ColumnViewColumn}. Combines the underlying Gtk.ColumnViewColumn
- * props with declarative fields: a title, an id, a per-cell renderItem, an optional
- * sortable flag, and an optional headerMenu shown from the column header.
- */
-export type ColumnViewColumnProps<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
-    ColumnViewColumnDeclarativeProps<T>;
+export type ColumnDef<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter"> &
+    ColumnDefDeclarativeProps<T>;
 
-/**
- * Declares one column of a {@link ColumnView}, driving a Gtk.ColumnViewColumn and
- * rendering each cell through its renderItem callback.
- */
+type ColumnViewColumnProps<T = unknown> = ColumnDef<T> & {
+    resolver: ItemResolver<unknown, unknown>;
+    tree: TreeRenderContext;
+    estimatedItemHeight?: number | undefined;
+    onInstance: (id: string, column: Gtk.ColumnViewColumn | null) => void;
+};
+
 export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode => {
-    const { id, title, sortable, renderItem, headerMenu, ...intrinsicProps } = props as ColumnViewColumnProps<T> & {
-        [key: string]: unknown;
-    };
-    const context = useColumnViewContext();
+    const {
+        id,
+        title,
+        sortable,
+        renderCell,
+        headerMenu,
+        resolver,
+        tree,
+        estimatedItemHeight,
+        onInstance,
+        ...intrinsicProps
+    } = props as ColumnViewColumnProps<T> & { [key: string]: unknown };
     const [column, setColumn] = useState<Gtk.ColumnViewColumn | null>(null);
 
     const captureColumn = useRef((value: Gtk.ColumnViewColumn | null) => {
@@ -50,31 +56,29 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
     const store = useCellContainers<Gtk.ColumnViewColumn>({
         target: column,
         installer: factoryInstaller,
-        estimatedHeight: context.estimatedItemHeight,
+        estimatedHeight: estimatedItemHeight,
     });
 
-    const registerRef = useRef(context.register);
-    registerRef.current = context.register;
-    const unregisterRef = useRef(context.unregister);
-    unregisterRef.current = context.unregister;
+    const onInstanceRef = useRef(onInstance);
+    onInstanceRef.current = onInstance;
 
     useLayoutEffect(() => {
         if (column === null) return;
-        registerRef.current({ id, column, sortable: sortable ?? false });
-        return () => unregisterRef.current(id);
-    }, [column, id, sortable]);
+        onInstanceRef.current(id, column);
+        return () => onInstanceRef.current(id, null);
+    }, [column, id]);
 
     const headerMenuPortal = useHeaderMenu(column, headerMenu);
 
     const cellRenderer: CellRenderer<unknown, unknown> = itemRenderer<unknown, unknown>(
-        (props) => renderItem({ ...props, item: props.item as T }),
-        context.tree,
+        (cellProps) => renderCell({ ...cellProps, item: cellProps.item as T }),
+        tree,
     );
 
     return (
         <>
             <GtkColumnViewColumn {...intrinsicProps} id={id} title={title} ref={captureColumn} />
-            <CellRenderHost store={store} resolver={context.resolver} render={cellRenderer} />
+            <CellRenderHost store={store} resolver={resolver} render={cellRenderer} />
             {headerMenuPortal}
         </>
     );

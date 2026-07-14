@@ -1,5 +1,4 @@
-export { ColumnView, type ColumnViewApi, type ColumnViewProps } from "./column-view.js";
-export { ColumnViewColumn, type ColumnViewColumnProps } from "./column-view-column.js";
+export { type ColumnDef, ColumnView, type ColumnViewProps } from "./column-view.js";
 export { ConstraintLayout, type ConstraintLayoutProps } from "./constraint-layout.js";
 export type { ConstraintGuideProps, ConstraintProps, ConstraintVflProps } from "./constraint-layout-apply.js";
 export { DropDown, type DropDownProps } from "./drop-down.js";

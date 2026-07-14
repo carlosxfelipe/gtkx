@@ -1,4 +1,4 @@
-import { ColumnView, ColumnViewColumn, type RenderItemProps } from "@gtkx/components";
+import { ColumnView, type RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
@@ -57,13 +57,13 @@ const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Pr
 const labelCell = ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>;
 
 const titleColumns = (titles: string[]): ColumnDef<{ name: string }>[] =>
-    titles.map((title) => ({ id: title, title, renderItem: labelCell }));
+    titles.map((title) => ({ id: title, title, renderCell: labelCell }));
 
 const orderedColumns = (ids: string[]): ColumnDef<{ name: string }>[] =>
     ids.map((id) => ({
         id,
         title: id,
-        renderItem: ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
+        renderCell: ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
     }));
 
 interface Employee {
@@ -144,22 +144,23 @@ function SortableColumnView({
                 sortOrder={sortOrder}
                 onSortChanged={handleSortChange}
                 items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
-            >
-                <ColumnViewColumn
-                    id="name"
-                    title="Name"
-                    expand
-                    sortable
-                    renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel>{item.name}</GtkLabel>}
-                />
-                <ColumnViewColumn
-                    id="salary"
-                    title="Salary"
-                    expand
-                    sortable
-                    renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel>{`$${item.salary}`}</GtkLabel>}
-                />
-            </ColumnView>
+                columns={[
+                    {
+                        id: "name",
+                        title: "Name",
+                        expand: true,
+                        sortable: true,
+                        renderCell: ({ item }: RenderItemProps<Employee>) => <GtkLabel>{item.name}</GtkLabel>,
+                    },
+                    {
+                        id: "salary",
+                        title: "Salary",
+                        expand: true,
+                        sortable: true,
+                        renderCell: ({ item }: RenderItemProps<Employee>) => <GtkLabel>{`$${item.salary}`}</GtkLabel>,
+                    },
+                ]}
+            />
         </ScrollWrapper>
     );
 }
@@ -247,7 +248,7 @@ describe("render - ColumnView (2)", () => {
 
         it("sets column properties (expand, fixedWidth)", async () => {
             const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderItem: labelCell }],
+                columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderCell: labelCell }],
             });
 
             expect(ref.current.getColumns()).not.toBeNull();
@@ -324,7 +325,7 @@ describe("render - ColumnView (4)", () => {
             const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
 
             await renderColumnView([{ id: "1", value: { name: "Test" } }], {
-                columns: [{ id: "name", title: "Name", renderItem }],
+                columns: [{ id: "name", title: "Name", renderCell: renderItem }],
             });
 
             expect(renderItem).toHaveBeenCalledWith({ item: { name: "Test" }, index: 0 });
@@ -359,8 +360,8 @@ describe("render - ColumnView (5)", () => {
 
         it("updates sort indicator when props change", async () => {
             const columns: ColumnDef<{ name: string }>[] = [
-                { id: "name", title: "Name", renderItem: labelCell },
-                { id: "age", title: "Age", renderItem: labelCell },
+                { id: "name", title: "Name", renderCell: labelCell },
+                { id: "age", title: "Age", renderCell: labelCell },
             ];
 
             const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
@@ -580,13 +581,13 @@ describe("render - ColumnView (13)", () => {
                     id: "name",
                     title: "Name",
                     sortable: true,
-                    renderItem: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
+                    renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
                 },
                 {
                     id: "salary",
                     title: "Salary",
                     sortable: true,
-                    renderItem: ({ item }) => <GtkLabel>{String(item.salary)}</GtkLabel>,
+                    renderCell: ({ item }) => <GtkLabel>{String(item.salary)}</GtkLabel>,
                 },
             ];
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
@@ -644,7 +645,7 @@ describe("render - ColumnView (14)", () => {
                 {
                     id: "name",
                     title: "Name",
-                    renderItem: ({ item }) => <GtkLabel>{`${item.name}: ${item.count}`}</GtkLabel>,
+                    renderCell: ({ item }) => <GtkLabel>{`${item.name}: ${item.count}`}</GtkLabel>,
                 },
             ];
 
@@ -722,14 +723,14 @@ describe("render - ColumnView (16)", () => {
     });
 });
 
-describe("render - ColumnView (render-prop children)", () => {
+describe("render - ColumnView (columns with inferred item type)", () => {
     interface Person {
         id: string;
         name: string;
         role: string;
     }
 
-    it("renders columns from a function child with an inferred item type", async () => {
+    it("renders columns from the columns prop with an inferred item type", async () => {
         const people: Person[] = [
             { id: "1", name: "Ada", role: "Engineer" },
             { id: "2", name: "Alan", role: "Mathematician" },
@@ -737,22 +738,13 @@ describe("render - ColumnView (render-prop children)", () => {
 
         await render(
             <ScrollWrapper minContentHeight={200}>
-                <ColumnView<Person> items={people.map((p) => ({ id: p.id, value: p }))}>
-                    {({ Column }) => (
-                        <>
-                            <Column
-                                id="name"
-                                title="Name"
-                                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
-                            />
-                            <Column
-                                id="role"
-                                title="Role"
-                                renderItem={({ item }) => <GtkLabel>{item.role}</GtkLabel>}
-                            />
-                        </>
-                    )}
-                </ColumnView>
+                <ColumnView<Person>
+                    items={people.map((p) => ({ id: p.id, value: p }))}
+                    columns={[
+                        { id: "name", title: "Name", renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel> },
+                        { id: "role", title: "Role", renderCell: ({ item }) => <GtkLabel>{item.role}</GtkLabel> },
+                    ]}
+                />
             </ScrollWrapper>,
         );
 
@@ -772,9 +764,12 @@ describe("render - ColumnView (estimated item size)", () => {
         const ref = createRef<Gtk.ColumnView>();
         await render(
             <ScrollWrapper minContentHeight={200}>
-                <ColumnView ref={ref} items={items} estimatedItemHeight={estimatedItemHeight}>
-                    <ColumnViewColumn id="name" title="Name" renderItem={() => null} />
-                </ColumnView>
+                <ColumnView
+                    ref={ref}
+                    items={items}
+                    estimatedItemHeight={estimatedItemHeight}
+                    columns={[{ id: "name", title: "Name", renderCell: () => null }]}
+                />
             </ScrollWrapper>,
         );
         const columnView = ref.current;

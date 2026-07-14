@@ -1,11 +1,4 @@
-import {
-    ColumnView,
-    ColumnViewColumn,
-    GridView,
-    type ItemNode,
-    ListView,
-    type RenderItemProps,
-} from "@gtkx/components";
+import { type ColumnDef, ColumnView, GridView, type ItemNode, ListView, type RenderItemProps } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
@@ -151,14 +144,7 @@ export const renderGridView = async <T = NamedValue>(
     };
 };
 
-export interface ColumnDef<T> {
-    id: string;
-    title: string;
-    renderItem: (props: RenderItemProps<T>) => ReactNode;
-    expand?: boolean;
-    sortable?: boolean;
-    fixedWidth?: number;
-}
+export type { ColumnDef } from "@gtkx/components";
 
 export type RenderColumnViewOptions<T> = {
     columns?: ColumnDef<T>[];
@@ -186,7 +172,7 @@ export const renderColumnView = async <T = NamedValue>(
     render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
-    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderItem: renderNamed }];
+    const defaultColumns: ColumnDef<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns, minContentHeight = 500, minContentWidth } = opts;
         const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
@@ -195,6 +181,7 @@ export const renderColumnView = async <T = NamedValue>(
                 <ColumnView
                     ref={ref}
                     items={toListItems(data)}
+                    columns={columns.map((column) => ({ expand: true, ...column }))}
                     selectedIds={opts.selected}
                     selectionMode={opts.selectionMode}
                     onSelectionChanged={opts.onSelectionChanged}
@@ -203,19 +190,7 @@ export const renderColumnView = async <T = NamedValue>(
                     sortColumn={opts.sortColumn}
                     sortOrder={opts.sortOrder}
                     onSortChanged={opts.onSortChanged}
-                >
-                    {columns.map((column) => (
-                        <ColumnViewColumn
-                            key={column.id}
-                            id={column.id}
-                            title={column.title}
-                            expand={column.expand ?? true}
-                            sortable={column.sortable}
-                            fixedWidth={column.fixedWidth}
-                            renderItem={column.renderItem}
-                        />
-                    ))}
-                </ColumnView>
+                />
             </ScrollWrapper>
         );
     };

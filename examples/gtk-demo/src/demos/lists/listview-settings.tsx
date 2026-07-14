@@ -1,4 +1,4 @@
-import { ColumnView, ColumnViewColumn, ListView, Menu } from "@gtkx/components";
+import { type ColumnDef, ColumnView, ListView, Menu } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -327,58 +327,56 @@ const renderKeyInfoCell =
         </GtkLabel>
     );
 
-const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps) => (
-    <>
-        <ColumnViewColumn id="name" title="Name" renderItem={renderKeyInfoCell((keyInfo) => keyInfo.name)} />
-        <ColumnViewColumn
-            id="value"
-            title="Value"
-            resizable
-            renderItem={({ item }: { item: KeyInfo }) => (
-                <GtkEditableLabel
-                    text={item.value}
-                    onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
-                />
-            )}
-        />
-        <ColumnViewColumn
-            id="type"
-            title="Type"
-            resizable
-            sortable
-            visible={columnVisibility.type}
-            headerMenu={columnVisibilityMenu}
-            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.type)}
-        />
-        <ColumnViewColumn
-            id="default"
-            title="Default"
-            resizable
-            expand
-            visible={columnVisibility.default}
-            headerMenu={columnVisibilityMenu}
-            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.defaultValue)}
-        />
-        <ColumnViewColumn
-            id="summary"
-            title="Summary"
-            resizable
-            expand
-            visible={columnVisibility.summary}
-            headerMenu={columnVisibilityMenu}
-            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.summary, true)}
-        />
-        <ColumnViewColumn
-            id="description"
-            title="Description"
-            resizable
-            expand
-            visible={columnVisibility.description}
-            headerMenu={columnVisibilityMenu}
-            renderItem={renderKeyInfoCell((keyInfo) => keyInfo.description, true)}
-        />
-    </>
-);
+const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps): ColumnDef<KeyInfo>[] => [
+    { id: "name", title: "Name", renderCell: renderKeyInfoCell((keyInfo) => keyInfo.name) },
+    {
+        id: "value",
+        title: "Value",
+        resizable: true,
+        renderCell: ({ item }: { item: KeyInfo }) => (
+            <GtkEditableLabel
+                text={item.value}
+                onChanged={(label: Gtk.EditableLabel) => onValueEdit(item, label.getText(), label)}
+            />
+        ),
+    },
+    {
+        id: "type",
+        title: "Type",
+        resizable: true,
+        sortable: true,
+        visible: columnVisibility.type,
+        headerMenu: columnVisibilityMenu,
+        renderCell: renderKeyInfoCell((keyInfo) => keyInfo.type),
+    },
+    {
+        id: "default",
+        title: "Default",
+        resizable: true,
+        expand: true,
+        visible: columnVisibility.default,
+        headerMenu: columnVisibilityMenu,
+        renderCell: renderKeyInfoCell((keyInfo) => keyInfo.defaultValue),
+    },
+    {
+        id: "summary",
+        title: "Summary",
+        resizable: true,
+        expand: true,
+        visible: columnVisibility.summary,
+        headerMenu: columnVisibilityMenu,
+        renderCell: renderKeyInfoCell((keyInfo) => keyInfo.summary, true),
+    },
+    {
+        id: "description",
+        title: "Description",
+        resizable: true,
+        expand: true,
+        visible: columnVisibility.description,
+        headerMenu: columnVisibilityMenu,
+        renderCell: renderKeyInfoCell((keyInfo) => keyInfo.description, true),
+    },
+];
 
 const SettingsColumnView = ({
     keySearchActive,
@@ -402,9 +400,8 @@ const SettingsColumnView = ({
                     cssClasses={["data-table"]}
                     items={filteredKeyInfos.map((k) => ({ id: k.name, value: k }))}
                     actionGroups={renderColumnVisibilityActions(columnVisibility, toggleColumn)}
-                >
-                    {renderSettingsColumns({ columnVisibility, onValueEdit })}
-                </ColumnView>
+                    columns={renderSettingsColumns({ columnVisibility, onValueEdit })}
+                />
             </GtkScrolledWindow>
         </GtkBox>
     );

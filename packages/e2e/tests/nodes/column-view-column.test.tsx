@@ -1,10 +1,10 @@
-import { ColumnView, ColumnViewColumn, Menu, type MenuEntry, type RenderItemProps } from "@gtkx/components";
+import { type ColumnDef, ColumnView, Menu, type MenuEntry, type RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
 import { render } from "@gtkx/testing";
-import type { ComponentProps, ReactElement, ReactNode, RefObject } from "react";
+import type { ReactElement, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -13,11 +13,15 @@ import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 const noop = () => {};
 const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;
 
-type ColumnExtra = Omit<ComponentProps<typeof ColumnViewColumn>, "id" | "title" | "renderItem">;
+type ColumnExtra = Omit<ColumnDef, "id" | "title" | "renderCell">;
 
-const DefaultColumn = ({ id, title, ...extra }: { id: string; title: string } & ColumnExtra) => (
-    <ColumnViewColumn id={id} title={title} expand renderItem={cellRenderer} {...extra} />
-);
+const defaultColumn = (id: string, title: string, extra?: ColumnExtra): ColumnDef<unknown> => ({
+    id,
+    title,
+    expand: true,
+    renderCell: cellRenderer,
+    ...extra,
+});
 
 interface ActionSpec {
     id: string;
@@ -45,12 +49,12 @@ const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement =
 
 const renderColumns = async (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
-    columns: ReactNode,
+    columns: ColumnDef<unknown>[],
     actionGroups?: ReactNode,
 ): Promise<void> => {
     await render(
         <ScrollWrapper actionGroups={actionGroups}>
-            <ColumnView ref={columnViewRef}>{columns}</ColumnView>
+            <ColumnView ref={columnViewRef} columns={columns} />
         </ScrollWrapper>,
     );
 };
@@ -87,10 +91,10 @@ const renderNameAndRoleColumns = async (
 ): Promise<void> => {
     await renderColumns(
         columnViewRef,
-        <>
-            <DefaultColumn id="name" title="Name" headerMenu={nameMenu} />
-            <DefaultColumn id="role" title="Role" headerMenu={roleMenu} />
-        </>,
+        [
+            defaultColumn("name", "Name", { headerMenu: nameMenu }),
+            defaultColumn("role", "Role", { headerMenu: roleMenu }),
+        ],
         actionGroups,
     );
 };
@@ -100,7 +104,7 @@ describe("render - ColumnViewColumn (1)", () => {
         it("adds column to ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(columnViewRef, <DefaultColumn id="name" title="Name" />);
+            await renderColumns(columnViewRef, [defaultColumn("name", "Name")]);
 
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
         });
@@ -108,7 +112,7 @@ describe("render - ColumnViewColumn (1)", () => {
         it("sets column title", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(columnViewRef, <DefaultColumn id="col" title="My Column" />);
+            await renderColumns(columnViewRef, [defaultColumn("col", "My Column")]);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getTitle()).toBe("My Column");
@@ -117,10 +121,9 @@ describe("render - ColumnViewColumn (1)", () => {
         it("sets column expand property", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <ColumnViewColumn id="expand" title="Expandable" expand={true} renderItem={cellRenderer} />,
-            );
+            await renderColumns(columnViewRef, [
+                { id: "expand", title: "Expandable", expand: true, renderCell: cellRenderer },
+            ]);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getExpand()).toBe(true);
@@ -133,10 +136,9 @@ describe("render - ColumnViewColumn (2)", () => {
         it("sets column property", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <ColumnViewColumn id="resize" title="Resizable" expand resizable renderItem={cellRenderer} />,
-            );
+            await renderColumns(columnViewRef, [
+                { id: "resize", title: "Resizable", expand: true, resizable: true, renderCell: cellRenderer },
+            ]);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getResizable()).toBe(true);
@@ -145,29 +147,11 @@ describe("render - ColumnViewColumn (2)", () => {
         it("adds multiple columns", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <>
-                    <ColumnViewColumn
-                        id="col1"
-                        title="Column 1"
-                        expand
-                        renderItem={() => <GtkLabel>Cell 1</GtkLabel>}
-                    />
-                    <ColumnViewColumn
-                        id="col2"
-                        title="Column 2"
-                        expand
-                        renderItem={() => <GtkLabel>Cell 2</GtkLabel>}
-                    />
-                    <ColumnViewColumn
-                        id="col3"
-                        title="Column 3"
-                        expand
-                        renderItem={() => <GtkLabel>Cell 3</GtkLabel>}
-                    />
-                </>,
-            );
+            await renderColumns(columnViewRef, [
+                { id: "col1", title: "Column 1", expand: true, renderCell: () => <GtkLabel>Cell 1</GtkLabel> },
+                { id: "col2", title: "Column 2", expand: true, renderCell: () => <GtkLabel>Cell 2</GtkLabel> },
+                { id: "col3", title: "Column 3", expand: true, renderCell: () => <GtkLabel>Cell 3</GtkLabel> },
+            ]);
 
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(3);
         });
@@ -182,9 +166,10 @@ describe("render - ColumnViewColumn (3)", () => {
             function App({ title }: { title: string }) {
                 return (
                     <ScrollWrapper>
-                        <ColumnView ref={columnViewRef}>
-                            <ColumnViewColumn id="col" title={title} expand renderItem={cellRenderer} />
-                        </ColumnView>
+                        <ColumnView
+                            ref={columnViewRef}
+                            columns={[{ id: "col", title, expand: true, renderCell: cellRenderer }]}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -206,17 +191,15 @@ describe("render - ColumnViewColumn (4)", () => {
             function App({ columns }: { columns: string[] }) {
                 return (
                     <ScrollWrapper>
-                        <ColumnView ref={columnViewRef}>
-                            {columns.map((title) => (
-                                <ColumnViewColumn
-                                    key={title}
-                                    id={title}
-                                    title={title}
-                                    expand
-                                    renderItem={() => <GtkLabel>{title}</GtkLabel>}
-                                />
-                            ))}
-                        </ColumnView>
+                        <ColumnView
+                            ref={columnViewRef}
+                            columns={columns.map((title) => ({
+                                id: title,
+                                title,
+                                expand: true,
+                                renderCell: () => <GtkLabel>{title}</GtkLabel>,
+                            }))}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -234,17 +217,14 @@ describe("render - ColumnViewColumn (5)", () => {
     describe("header menu slot", () => {
         it("installs a header menu from the headerMenu slot", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-            await renderColumns(
-                columnViewRef,
-                <DefaultColumn
-                    id="name"
-                    title="Name"
-                    headerMenu={flatMenu("name", [
+            await renderColumns(columnViewRef, [
+                defaultColumn("name", "Name", {
+                    headerMenu: flatMenu("name", [
                         { id: "sort-asc", label: "Sort A-Z" },
                         { id: "sort-desc", label: "Sort Z-A" },
-                    ])}
-                />,
-            );
+                    ]),
+                }),
+            ]);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getHeaderMenu()?.getNItems()).toBe(2);
@@ -252,27 +232,24 @@ describe("render - ColumnViewColumn (5)", () => {
 
         it("has no header menu without the slot", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-            await renderColumns(columnViewRef, <DefaultColumn id="name" title="Name" />);
+            await renderColumns(columnViewRef, [defaultColumn("name", "Name")]);
 
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).toBeNull();
         });
 
         it("supports sections in the header menu", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-            await renderColumns(
-                columnViewRef,
-                <DefaultColumn
-                    id="name"
-                    title="Name"
-                    headerMenu={sectionedMenu("name", [
+            await renderColumns(columnViewRef, [
+                defaultColumn("name", "Name", {
+                    headerMenu: sectionedMenu("name", [
                         [
                             { id: "sort-asc", label: "Sort A-Z" },
                             { id: "sort-desc", label: "Sort Z-A" },
                         ],
                         [{ id: "hide", label: "Hide Column" }],
-                    ])}
-                />,
-            );
+                    ]),
+                }),
+            ]);
 
             expect(
                 getColumn(columnViewRef.current as Gtk.ColumnView, 0)
@@ -287,16 +264,17 @@ describe("render - ColumnViewColumn (6)", () => {
     describe("header menu updates", () => {
         const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
             <ScrollWrapper>
-                <ColumnView ref={columnViewRef}>
-                    <DefaultColumn
-                        id="name"
-                        title="Name"
-                        headerMenu={flatMenu(
-                            "name",
-                            items.map((label) => ({ id: label, label })),
-                        )}
-                    />
-                </ColumnView>
+                <ColumnView
+                    ref={columnViewRef}
+                    columns={[
+                        defaultColumn("name", "Name", {
+                            headerMenu: flatMenu(
+                                "name",
+                                items.map((label) => ({ id: label, label })),
+                            ),
+                        }),
+                    ]}
+                />
             </ScrollWrapper>
         );
 
@@ -346,15 +324,16 @@ describe("render - ColumnViewColumn (7)", () => {
             function App({ showMenu }: { showMenu: boolean }) {
                 return (
                     <ScrollWrapper>
-                        <ColumnView ref={columnViewRef}>
-                            <DefaultColumn
-                                id="name"
-                                title="Name"
-                                headerMenu={
-                                    showMenu ? flatMenu("name", [{ id: "action", label: "Action" }]) : undefined
-                                }
-                            />
-                        </ColumnView>
+                        <ColumnView
+                            ref={columnViewRef}
+                            columns={[
+                                defaultColumn("name", "Name", {
+                                    headerMenu: showMenu
+                                        ? flatMenu("name", [{ id: "action", label: "Action" }])
+                                        : undefined,
+                                }),
+                            ]}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -373,25 +352,18 @@ describe("render - ColumnViewColumn (8)", () => {
         it("supports multiple columns with independent menus", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <>
-                    <DefaultColumn
-                        id="name"
-                        title="Name"
-                        headerMenu={flatMenu("name", [{ id: "sort", label: "Sort" }])}
-                    />
-                    <DefaultColumn
-                        id="age"
-                        title="Age"
-                        headerMenu={flatMenu("age", [
-                            { id: "sort", label: "Sort" },
-                            { id: "filter", label: "Filter" },
-                        ])}
-                    />
-                    <DefaultColumn id="email" title="Email" />
-                </>,
-            );
+            await renderColumns(columnViewRef, [
+                defaultColumn("name", "Name", {
+                    headerMenu: flatMenu("name", [{ id: "sort", label: "Sort" }]),
+                }),
+                defaultColumn("age", "Age", {
+                    headerMenu: flatMenu("age", [
+                        { id: "sort", label: "Sort" },
+                        { id: "filter", label: "Filter" },
+                    ]),
+                }),
+                defaultColumn("email", "Email"),
+            ]);
 
             expectHeaderMenuItemCounts(columnViewRef, [1, 2, null]);
         });
@@ -406,16 +378,19 @@ describe("render - ColumnViewColumn (9)", () => {
             function App({ showColumn }: { showColumn: boolean }) {
                 return (
                     <ScrollWrapper>
-                        <ColumnView ref={columnViewRef}>
-                            {showColumn && (
-                                <DefaultColumn
-                                    id="name"
-                                    title="Name"
-                                    headerMenu={flatMenu("name", [{ id: "action", label: "Action" }])}
-                                />
-                            )}
-                            <DefaultColumn id="other" title="Other" />
-                        </ColumnView>
+                        <ColumnView
+                            ref={columnViewRef}
+                            columns={[
+                                ...(showColumn
+                                    ? [
+                                          defaultColumn("name", "Name", {
+                                              headerMenu: flatMenu("name", [{ id: "action", label: "Action" }]),
+                                          }),
+                                      ]
+                                    : []),
+                                defaultColumn("other", "Other"),
+                            ]}
+                        />
                     </ScrollWrapper>
                 );
             }
@@ -465,34 +440,36 @@ const ShowcaseActionGroups = ({ sortActions }: { sortActions: (column: ShowcaseS
     </>
 );
 
-const ShowcaseColumns = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
-    <>
-        <ColumnViewColumn
-            id="name"
-            title="Name"
-            expand
-            sortable
-            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.name}</GtkLabel>}
-            headerMenu={sectionedMenu("name", [sortActions("name")])}
-        />
-        <ColumnViewColumn
-            id="role"
-            title="Role"
-            fixedWidth={100}
-            sortable
-            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.role}</GtkLabel>}
-            headerMenu={sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]])}
-        />
-        <ColumnViewColumn
-            id="salary"
-            title="Salary"
-            fixedWidth={100}
-            sortable
-            renderItem={({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.salary.toString()}</GtkLabel>}
-            headerMenu={sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]])}
-        />
-    </>
-);
+const ShowcaseColumns = ({
+    sortActions,
+}: {
+    sortActions: (column: ShowcaseSortColumn) => ActionSpec[];
+}): ColumnDef<ShowcasePerson>[] => [
+    {
+        id: "name",
+        title: "Name",
+        expand: true,
+        sortable: true,
+        renderCell: ({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.name}</GtkLabel>,
+        headerMenu: sectionedMenu("name", [sortActions("name")]),
+    },
+    {
+        id: "role",
+        title: "Role",
+        fixedWidth: 100,
+        sortable: true,
+        renderCell: ({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.role}</GtkLabel>,
+        headerMenu: sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]]),
+    },
+    {
+        id: "salary",
+        title: "Salary",
+        fixedWidth: 100,
+        sortable: true,
+        renderCell: ({ item }: RenderItemProps<ShowcasePerson>) => <GtkLabel>{item.salary.toString()}</GtkLabel>,
+        headerMenu: sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]]),
+    },
+];
 
 function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.ColumnView | null> }) {
     const [sortColumn, setSortColumn] = useState<ShowcaseSortColumn>(null);
@@ -518,9 +495,8 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
                 sortOrder={sortOrder}
                 onSortChanged={handleSortChange}
                 items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
-            >
-                <ShowcaseColumns sortActions={sortActions} />
-            </ColumnView>
+                columns={ShowcaseColumns({ sortActions })}
+            />
         </ScrollWrapper>
     );
 }
