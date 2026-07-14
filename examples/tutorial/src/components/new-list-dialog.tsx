@@ -1,6 +1,7 @@
-import { AlertDialog, Dialog } from "@gtkx/components/adw";
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkEntry, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import { listDot } from "../styles.js";
@@ -20,11 +21,15 @@ export const NewListDialog = ({
     return (
         <Dialog>
             {(ref) => (
-                <AlertDialog
+                <AdwAlertDialog
                     ref={ref}
                     heading="New List"
                     defaultResponse="add"
                     closeResponse="cancel"
+                    responses={[
+                        { id: "cancel", label: "Cancel" },
+                        { id: "add", label: "Add", appearance: Adw.ResponseAppearance.SUGGESTED },
+                    ]}
                     onResponse={(id) => {
                         if (id === "add") onAdd(name, color);
                         else onCancel();
@@ -55,9 +60,7 @@ export const NewListDialog = ({
                             ))}
                         </GtkBox>
                     </GtkBox>
-                    <AlertDialog.Response id="cancel" label="Cancel" />
-                    <AlertDialog.Response id="add" label="Add" appearance={Adw.ResponseAppearance.SUGGESTED} />
-                </AlertDialog>
+                </AdwAlertDialog>
             )}
         </Dialog>
     );

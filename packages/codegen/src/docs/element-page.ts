@@ -159,7 +159,12 @@ const overlayNote = (overlays: ElementProp[], name: string): string | undefined 
     for (const overlay of overlays) {
         if (overlay.kind === "container" || overlay.prop !== name) continue;
         if (overlay.kind === "value") return `Applied with \`${callName(overlay.call)}()\`.`;
-        if (overlay.kind === "list") return `Array prop; items are applied with \`${callName(overlay.add)}()\`.`;
+        if (overlay.kind === "list") {
+            const applied = (Array.isArray(overlay.add) ? overlay.add : [overlay.add])
+                .map((call) => `\`${callName(call)}()\``)
+                .join(", ");
+            return `Array prop; items are applied with ${applied}.`;
+        }
         if (overlay.kind === "controlled-text") {
             return "Controlled: the element is synced to the prop value whenever that value changes; text the user has typed is preserved rather than reverted on every render.";
         }

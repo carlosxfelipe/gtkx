@@ -51,20 +51,45 @@ const optionalLine = (prop: string, type: string): string => {
     return `${prop}?: ${withNull} | undefined;`;
 };
 
-const callFieldsType = (context: GirIndex, imports: TypeImports, type: string, call: Call): string => {
-    if (typeof call === "string") {
-        const method = findMethod(context, type, call);
-        return renderParamType(context, imports, method?.params[0]);
-    }
+type FieldLine = { field: string; text: string };
+
+const callFieldLines = (context: GirIndex, imports: TypeImports, type: string, call: Call): FieldLine[] => {
+    if (typeof call === "string") return [];
     const method = findMethod(context, type, call.method);
-    const fieldLines: string[] = [];
+    const lines: FieldLine[] = [];
     call.args.forEach((arg, positionIndex) => {
         if (typeof arg !== "object" || !("field" in arg)) return;
         const param = method?.params[positionIndex];
         const optional = "or" in arg || param?.nullable === true || param?.optional === true;
-        fieldLines.push(`${arg.field}${optional ? "?" : ""}: ${renderParamType(context, imports, param)};`);
+        lines.push({
+            field: arg.field,
+            text: `${arg.field}${optional ? "?" : ""}: ${renderParamType(context, imports, param)};`,
+        });
     });
-    if (fieldLines.length > 0) return `{ ${fieldLines.join(" ")} }`;
+    return lines;
+};
+
+const mergedFieldsType = (lines: FieldLine[]): string => {
+    const seen = new Set<string>();
+    const texts: string[] = [];
+    for (const line of lines) {
+        if (seen.has(line.field)) continue;
+        seen.add(line.field);
+        texts.push(line.text);
+    }
+    return `{ ${texts.join(" ")} }`;
+};
+
+const callFieldsType = (context: GirIndex, imports: TypeImports, type: string, call: Call | Call[]): string => {
+    if (Array.isArray(call))
+        return mergedFieldsType(call.flatMap((entry) => callFieldLines(context, imports, type, entry)));
+    if (typeof call === "string") {
+        const method = findMethod(context, type, call);
+        return renderParamType(context, imports, method?.params[0]);
+    }
+    const lines = callFieldLines(context, imports, type, call);
+    if (lines.length > 0) return mergedFieldsType(lines);
+    const method = findMethod(context, type, call.method);
     return renderParamType(context, imports, method?.params[0]);
 };
 

@@ -95,8 +95,9 @@ If the task is already in Trash (`task.deleted`), there is nothing left to soft-
 `delete-confirmation.tsx` is short and worth reading whole:
 
 ```tsx
-import { AlertDialog, Dialog } from "@gtkx/components/adw";
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
 export const DeleteConfirmation = ({
     taskTitle,
@@ -110,31 +111,32 @@ export const DeleteConfirmation = ({
     return (
         <Dialog>
             {(ref) => (
-                <AlertDialog
+                <AdwAlertDialog
                     ref={ref}
                     heading="Delete Task?"
                     body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
                     defaultResponse="cancel"
                     closeResponse="cancel"
+                    responses={[
+                        { id: "cancel", label: "Cancel" },
+                        { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                    ]}
                     onResponse={(id) => {
                         if (id === "delete") onConfirm();
                         else onCancel();
                     }}
-                >
-                    <AlertDialog.Response id="cancel" label="Cancel" />
-                    <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-                </AlertDialog>
+                />
             )}
         </Dialog>
     );
 };
 ```
 
-`AlertDialog` (from `@gtkx/components/adw`) wraps the `AdwAlertDialog` widget. Its responses (the buttons) are declared as `<AlertDialog.Response>` children rather than an imperative `addResponse` call:
+`AdwAlertDialog` (the raw widget from `@gtkx/jsx/adw`, presented through `Dialog`) declares its responses (the buttons) through the `responses` prop rather than an imperative `addResponse` call. Each entry is an object:
 
 - **`id`** is what comes back to `onResponse`. Here `"delete"` runs `onConfirm`, everything else runs `onCancel`.
 - **`label`** is the button text. Use a specific verb ("Delete"), not "OK", so the button reads clearly on its own.
-- **`appearance={Adw.ResponseAppearance.DESTRUCTIVE}`** paints the Delete button red. `SUGGESTED` (used by New List below) paints it as the accent affirmative; leaving it unset gives a neutral button.
+- **`appearance: Adw.ResponseAppearance.DESTRUCTIVE`** paints the Delete button red. `SUGGESTED` (used by New List below) paints it as the accent affirmative; leaving it unset gives a neutral button.
 
 Two safety properties keep the destructive button from firing by accident:
 
@@ -219,7 +221,7 @@ Everything presentable this way (`AdwAlertDialog`, `AdwAboutDialog`, `AdwPrefere
 
 ## The New List dialog: a form in an alert dialog
 
-An alert dialog is not limited to a heading and body text. Any non-`Response` child becomes the dialog body, so `new-list-dialog.tsx` puts an entry and a row of color swatches inside the same `AlertDialog` used for confirmation:
+An alert dialog is not limited to a heading and body text. Its children become the dialog body, so `new-list-dialog.tsx` puts an entry and a row of color swatches inside the same `AdwAlertDialog` used for confirmation:
 
 ```tsx
 const PALETTE = ["#3584e4", "#2ec27e", "#e66100", "#9141ac", "#e01b24", "#f5c211"];
@@ -237,11 +239,15 @@ export const NewListDialog = ({
     return (
         <Dialog>
             {(ref) => (
-                <AlertDialog
+                <AdwAlertDialog
                     ref={ref}
                     heading="New List"
                     defaultResponse="add"
                     closeResponse="cancel"
+                    responses={[
+                        { id: "cancel", label: "Cancel" },
+                        { id: "add", label: "Add", appearance: Adw.ResponseAppearance.SUGGESTED },
+                    ]}
                     onResponse={(id) => {
                         if (id === "add") onAdd(name, color);
                         else onCancel();
@@ -268,9 +274,7 @@ export const NewListDialog = ({
                             ))}
                         </GtkBox>
                     </GtkBox>
-                    <AlertDialog.Response id="cancel" label="Cancel" />
-                    <AlertDialog.Response id="add" label="Add" appearance={Adw.ResponseAppearance.SUGGESTED} />
-                </AlertDialog>
+                </AdwAlertDialog>
             )}
         </Dialog>
     );

@@ -58,7 +58,7 @@ The reconciler was rewritten from roughly sixty hand-written per-widget node cla
 
 ## Higher-level building blocks
 
-Hand-written high-level widgets moved out of the renderer into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog`, `AlertDialog`, and `ComboRow`. `@gtkx/animate` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through libadwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
+Hand-written high-level widgets moved out of the renderer into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog` and `ComboRow`. `@gtkx/animate` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through libadwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
 

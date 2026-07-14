@@ -74,8 +74,10 @@ const validateUserElementProp = (context: GirIndex, type: string, path: string, 
     }
 };
 
+const addCalls = (add: ListProp["add"]): Call[] => (Array.isArray(add) ? add : [add]);
+
 const listCalls = (prop: ListProp): Call[] => {
-    const calls = [prop.add];
+    const calls = addCalls(prop.add);
     if (prop.remove !== undefined) calls.push(prop.remove);
     if (prop.clear !== undefined) calls.push(prop.clear);
     return calls;
@@ -114,10 +116,13 @@ const expandCall = (context: GirIndex, type: string, call: Call, scalar: boolean
 };
 
 const expandListProp = (context: GirIndex, type: string, prop: ListProp): ListProp => {
-    const scalar = callArity(context, type, prop.add) === 1;
+    const scalar = !Array.isArray(prop.add) && callArity(context, type, prop.add) === 1;
+    const add = Array.isArray(prop.add)
+        ? prop.add.map((call) => expandCall(context, type, call, false))
+        : expandCall(context, type, prop.add, scalar);
     return {
         ...prop,
-        add: expandCall(context, type, prop.add, scalar),
+        add,
         remove: prop.remove === undefined ? undefined : expandCall(context, type, prop.remove, scalar),
     };
 };

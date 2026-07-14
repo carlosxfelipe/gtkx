@@ -1,26 +1,48 @@
-import type { AppliedProp, ControlledTextProp, LazyProp, ListProp, ValueProp } from "@gtkx/config";
+import type { AppliedProp, Call, ControlledTextProp, LazyProp, ListProp, ValueProp } from "@gtkx/config";
 import type { TypedClass } from "@gtkx/ffi";
-import { callMethod } from "@gtkx/utils";
+import { callMethod, isShallowEqual } from "@gtkx/utils";
 import { appliedPropsFor, runCall } from "./element-props.js";
 import type { Props } from "./types.js";
 
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+
+const itemsEqual = (a: unknown, b: unknown): boolean => {
+    if (a === b) return true;
+    return isRecord(a) && isRecord(b) && isShallowEqual(a, b);
+};
+
+const listValuesEqual = (oldValue: unknown, newValue: unknown): boolean => {
+    if (oldValue === newValue) return true;
+    const a = asArray(oldValue);
+    const b = asArray(newValue);
+    return a.length === b.length && a.every((item, index) => itemsEqual(item, b[index]));
+};
+
+const runAdd = (instance: object, add: Call | Call[], item: unknown): void => {
+    if (Array.isArray(add)) {
+        for (const call of add) runCall(instance, call, [item], { item });
+        return;
+    }
+    runCall(instance, add, [item], { item });
+};
+
 const applyList = (instance: object, prop: ListProp, oldValue: unknown, newValue: unknown): void => {
-    if (oldValue === newValue) return;
+    if (listValuesEqual(oldValue, newValue)) return;
     const newItems = asArray(newValue);
     if (prop.clear !== undefined) {
         runCall(instance, prop.clear, [], {});
-        for (const item of newItems) runCall(instance, prop.add, [item], { item });
+        for (const item of newItems) runAdd(instance, prop.add, item);
         return;
     }
     if (prop.remove !== undefined) {
         for (const item of asArray(oldValue)) runCall(instance, prop.remove, [item], { item });
-        for (const item of newItems) runCall(instance, prop.add, [item], { item });
+        for (const item of newItems) runAdd(instance, prop.add, item);
         return;
     }
     if (asArray(oldValue).length !== 0) return;
-    for (const item of newItems) runCall(instance, prop.add, [item], { item });
+    for (const item of newItems) runAdd(instance, prop.add, item);
 };
 
 const applyValue = (instance: object, prop: ValueProp, oldValue: unknown, newValue: unknown): void => {

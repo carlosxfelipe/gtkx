@@ -1,5 +1,5 @@
 ---
-description: "How gtkx renders GTK surfaces that live outside the widget tree: createPortal, the rootElement container, the Dialog and AlertDialog components, and extra windows."
+description: "How gtkx renders GTK surfaces that live outside the widget tree: createPortal, the rootElement container, the Dialog component and AdwAlertDialog responses, and extra windows."
 ---
 
 # Modals and Portals
@@ -131,11 +131,12 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => (
 
 ## Alert dialogs
 
-`Adw.AlertDialog` is the message-and-buttons modal: a heading, a body, and a set of responses. Its native API adds responses with `addResponse` and styles them with `setResponseAppearance`. The `AlertDialog` component from `@gtkx/components/adw` makes the responses declarative children instead:
+`Adw.AlertDialog` is the message-and-buttons modal: a heading, a body, and a set of responses. Its native API adds responses with `addResponse` and styles them with `setResponseAppearance`. Rendering `AdwAlertDialog` (from `@gtkx/jsx/adw`) makes the responses a declarative array instead, with no wrapper component:
 
 ```tsx
-import { AlertDialog, Dialog } from "@gtkx/components/adw";
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
 export const DeleteConfirmation = ({
     taskTitle,
@@ -148,28 +149,29 @@ export const DeleteConfirmation = ({
 }) => (
     <Dialog>
         {(ref) => (
-            <AlertDialog
+            <AdwAlertDialog
                 ref={ref}
                 heading="Delete Task?"
                 body={`"${taskTitle}" will be permanently deleted. This cannot be undone.`}
                 defaultResponse="cancel"
                 closeResponse="cancel"
+                responses={[
+                    { id: "cancel", label: "Cancel" },
+                    { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                ]}
                 onResponse={(id) => {
                     if (id === "delete") onConfirm();
                     else onCancel();
                 }}
-            >
-                <AlertDialog.Response id="cancel" label="Cancel" />
-                <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-            </AlertDialog>
+            />
         )}
     </Dialog>
 );
 ```
 
-`AlertDialog` accepts every `AdwAlertDialog` prop (`heading`, `body`, `defaultResponse`, `closeResponse`, `onResponse`, and the rest). Each `AlertDialog.Response` declares one button: `id` is the string handed to `onResponse` when it is chosen, `label` is the button text, `appearance` takes an `Adw.ResponseAppearance` (`SUGGESTED` for the accent affirmative, `DESTRUCTIVE` for red), and `enabled` can disable a response while, say, a form inside the dialog is incomplete. `defaultResponse` binds a response to Return and `closeResponse` is what Escape resolves to, so pointing both at `"cancel"` keeps a destructive action from firing by accident.
+Each entry in `responses` declares one button: `id` is the string handed to `onResponse` when it is chosen, `label` is the button text, `appearance` takes an `Adw.ResponseAppearance` (`SUGGESTED` for the accent affirmative, `DESTRUCTIVE` for red), and `enabled` can disable a response while, say, a form inside the dialog is incomplete. `defaultResponse` binds a response to Return and `closeResponse` is what Escape resolves to, so pointing both at `"cancel"` keeps a destructive action from firing by accident.
 
-Responses are not the only children an alert dialog can have. Any non-`Response` child becomes the dialog's body widget, which turns `AlertDialog` into a compact form container: the tutorial's [New List dialog](/tutorial/feedback-and-dialogs#the-new-list-dialog-a-form-in-an-alert-dialog) puts a `GtkEntry` and a row of color swatches inside one.
+Responses are declared separately from the body, so any children become the dialog's body widget, which turns the alert dialog into a compact form container: the tutorial's [New List dialog](/tutorial/feedback-and-dialogs#the-new-list-dialog-a-form-in-an-alert-dialog) puts a `GtkEntry` and a row of color swatches inside one.
 
 ## Finding the parent window
 

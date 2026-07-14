@@ -241,4 +241,16 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         },
     ],
     GtkAboutDialog: [{ kind: "list", prop: "creditSections", add: "addCreditSection" }],
+    AdwAlertDialog: [
+        {
+            kind: "list",
+            prop: "responses",
+            add: [
+                "addResponse",
+                { method: "setResponseAppearance", args: [{ field: "id" }, { field: "appearance", or: 0 }] },
+                { method: "setResponseEnabled", args: [{ field: "id" }, { field: "enabled", or: true }] },
+            ],
+            remove: "removeResponse",
+        },
+    ],
 });

@@ -201,24 +201,26 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 **`Dialog`** turns dialog visibility into ordinary conditional rendering. Adw dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` takes a render function (`children: (ref) => ReactNode`), portals the widget you attach the ref to at the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. Its `onClose` prop, wired to the widget's `closed` signal, fires when the user dismisses the dialog (Escape, the close button, a swipe) so you can clear that state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
 
-**`AlertDialog`** wraps `Adw.AlertDialog`, whose response buttons are normally added with `addResponse`/`setResponseAppearance` calls. Declare them as `AlertDialog.Response` children (`id`, `label`, optional `appearance` and `enabled`); any other children form the dialog body, and `onResponse` receives the chosen id:
+**Alert dialogs** need no wrapper: render `AdwAlertDialog` (from `@gtkx/jsx/adw`) directly inside a `Dialog`. Its response buttons, normally added with `addResponse`/`setResponseAppearance` calls, are declared through the `responses` prop (an array of `{ id, label, appearance?, enabled? }`); children form the dialog body, and `onResponse` receives the chosen id:
 
 ```tsx
-import { AlertDialog, Dialog } from "@gtkx/components/adw";
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
 <Dialog>
     {(ref) => (
-        <AlertDialog
+        <AdwAlertDialog
             ref={ref}
             heading="Delete Task?"
             body="This cannot be undone."
             closeResponse="cancel"
+            responses={[
+                { id: "cancel", label: "Cancel" },
+                { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+            ]}
             onResponse={(id) => (id === "delete" ? onConfirm() : onCancel())}
-        >
-            <AlertDialog.Response id="cancel" label="Cancel" />
-            <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-        </AlertDialog>
+        />
     )}
 </Dialog>
 ```

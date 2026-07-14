@@ -1,10 +1,14 @@
-import { AlertDialog, Dialog } from "@gtkx/components/adw";
+import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
+import { AdwAlertDialog, type AdwAlertDialogProps } from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefCallback, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
+
+type ResponseDef = NonNullable<AdwAlertDialogProps["responses"]>[number];
 
 const options = () => ({ container: rootElement });
 
@@ -25,26 +29,18 @@ const captureBoth = (
     return composed;
 };
 
-type Response = { id: string; label: string };
-
-const buildAlertDialog = (ref: RefObject<Adw.AlertDialog | null>) => (responses: Response[]) => (
+const buildAlertDialog = (ref: RefObject<Adw.AlertDialog | null>) => (responses: ResponseDef[]) => (
     <Dialog>
-        {(dialogRef) => (
-            <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                {responses.map((response) => (
-                    <AlertDialog.Response key={response.id} id={response.id} label={response.label} />
-                ))}
-            </AlertDialog>
-        )}
+        {(dialogRef) => <AdwAlertDialog ref={captureBoth(dialogRef, ref)} heading="Test" responses={responses} />}
     </Dialog>
 );
 
-describe("render - AlertDialogResponse (1)", () => {
+describe("render - AlertDialog responses (1)", () => {
     it("creates AlertDialog without responses", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
-            <Dialog>{(dialogRef) => <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test" />}</Dialog>,
+            <Dialog>{(dialogRef) => <AdwAlertDialog ref={captureBoth(dialogRef, ref)} heading="Test" />}</Dialog>,
             options(),
         );
 
@@ -58,10 +54,14 @@ describe("render - AlertDialogResponse (1)", () => {
         await render(
             <Dialog>
                 {(dialogRef) => (
-                    <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                        <AlertDialog.Response id="cancel" label="Cancel" />
-                        <AlertDialog.Response id="confirm" label="Confirm" />
-                    </AlertDialog>
+                    <AdwAlertDialog
+                        ref={captureBoth(dialogRef, ref)}
+                        heading="Test"
+                        responses={[
+                            { id: "cancel", label: "Cancel" },
+                            { id: "confirm", label: "Confirm" },
+                        ]}
+                    />
                 )}
             </Dialog>,
             options(),
@@ -77,9 +77,11 @@ describe("render - AlertDialogResponse (1)", () => {
         await render(
             <Dialog>
                 {(dialogRef) => (
-                    <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                        <AlertDialog.Response id="ok" label="OK Button" />
-                    </AlertDialog>
+                    <AdwAlertDialog
+                        ref={captureBoth(dialogRef, ref)}
+                        heading="Test"
+                        responses={[{ id: "ok", label: "OK Button" }]}
+                    />
                 )}
             </Dialog>,
             options(),
@@ -87,28 +89,46 @@ describe("render - AlertDialogResponse (1)", () => {
 
         expect(ref.current?.getResponseLabel("ok")).toBe("OK Button");
     });
+
+    it("renders body children alongside responses", async () => {
+        const ref = createRef<Adw.AlertDialog>();
+
+        await render(
+            <Dialog>
+                {(dialogRef) => (
+                    <AdwAlertDialog
+                        ref={captureBoth(dialogRef, ref)}
+                        heading="Test"
+                        responses={[{ id: "ok", label: "OK" }]}
+                    >
+                        <GtkLabel label="Body content" />
+                    </AdwAlertDialog>
+                )}
+            </Dialog>,
+            options(),
+        );
+
+        expect(ref.current?.hasResponse("ok")).toBe(true);
+        expect(ref.current?.getChild()).not.toBeNull();
+    });
 });
 
-describe("render - AlertDialogResponse (2)", () => {
+describe("render - AlertDialog responses (2)", () => {
     it("sets response appearance", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
             <Dialog>
                 {(dialogRef) => (
-                    <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                        <AlertDialog.Response id="default" label="Default" />
-                        <AlertDialog.Response
-                            id="suggested"
-                            label="Suggested"
-                            appearance={Adw.ResponseAppearance.SUGGESTED}
-                        />
-                        <AlertDialog.Response
-                            id="destructive"
-                            label="Delete"
-                            appearance={Adw.ResponseAppearance.DESTRUCTIVE}
-                        />
-                    </AlertDialog>
+                    <AdwAlertDialog
+                        ref={captureBoth(dialogRef, ref)}
+                        heading="Test"
+                        responses={[
+                            { id: "default", label: "Default" },
+                            { id: "suggested", label: "Suggested", appearance: Adw.ResponseAppearance.SUGGESTED },
+                            { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                        ]}
+                    />
                 )}
             </Dialog>,
             options(),
@@ -125,10 +145,14 @@ describe("render - AlertDialogResponse (2)", () => {
         await render(
             <Dialog>
                 {(dialogRef) => (
-                    <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                        <AlertDialog.Response id="enabled" label="Enabled" />
-                        <AlertDialog.Response id="disabled" label="Disabled" enabled={false} />
-                    </AlertDialog>
+                    <AdwAlertDialog
+                        ref={captureBoth(dialogRef, ref)}
+                        heading="Test"
+                        responses={[
+                            { id: "enabled", label: "Enabled" },
+                            { id: "disabled", label: "Disabled", enabled: false },
+                        ]}
+                    />
                 )}
             </Dialog>,
             options(),
@@ -139,7 +163,7 @@ describe("render - AlertDialogResponse (2)", () => {
     });
 });
 
-describe("render - AlertDialogResponse (3)", () => {
+describe("render - AlertDialog responses (3)", () => {
     it("updates response label", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
@@ -147,9 +171,11 @@ describe("render - AlertDialogResponse (3)", () => {
             return (
                 <Dialog>
                     {(dialogRef) => (
-                        <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                            <AlertDialog.Response id="test" label={label} />
-                        </AlertDialog>
+                        <AdwAlertDialog
+                            ref={captureBoth(dialogRef, ref)}
+                            heading="Test"
+                            responses={[{ id: "test", label }]}
+                        />
                     )}
                 </Dialog>
             );
@@ -169,9 +195,11 @@ describe("render - AlertDialogResponse (3)", () => {
             return (
                 <Dialog>
                     {(dialogRef) => (
-                        <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                            <AlertDialog.Response id="test" label="Test" appearance={appearance} />
-                        </AlertDialog>
+                        <AdwAlertDialog
+                            ref={captureBoth(dialogRef, ref)}
+                            heading="Test"
+                            responses={[{ id: "test", label: "Test", appearance }]}
+                        />
                     )}
                 </Dialog>
             );
@@ -191,9 +219,11 @@ describe("render - AlertDialogResponse (3)", () => {
             return (
                 <Dialog>
                     {(dialogRef) => (
-                        <AlertDialog ref={captureBoth(dialogRef, ref)} heading="Test">
-                            <AlertDialog.Response id="test" label="Test" enabled={enabled} />
-                        </AlertDialog>
+                        <AdwAlertDialog
+                            ref={captureBoth(dialogRef, ref)}
+                            heading="Test"
+                            responses={[{ id: "test", label: "Test", enabled }]}
+                        />
                     )}
                 </Dialog>
             );
@@ -207,7 +237,7 @@ describe("render - AlertDialogResponse (3)", () => {
     });
 });
 
-describe("render - AlertDialogResponse (4)", () => {
+describe("render - AlertDialog responses (4)", () => {
     it("removes responses when list shrinks", async () => {
         const ref = createRef<Adw.AlertDialog>();
 

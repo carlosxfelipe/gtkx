@@ -151,7 +151,7 @@ const lazySchema = z.strictObject({
 const listSchema = z.strictObject({
     kind: z.literal("list"),
     prop: nameSchema,
-    add: callSchema,
+    add: z.union([callSchema, z.array(callSchema).min(1)]),
     remove: callSchema.optional(),
     clear: callSchema.optional(),
 });
@@ -199,7 +199,8 @@ export type ControlledTextProp = z.infer<typeof controlledTextSchema>;
 export type LazyProp = z.infer<typeof lazySchema>;
 
 /**
- * Rule mapping an array prop to method calls: `add` runs per added item, `remove`
+ * Rule mapping an array prop to method calls: `add` runs per added item (a single
+ * call, or a sequence of calls applied in order when one item needs several), `remove`
  * per removed item, and `clear` empties the collection before re-adding.
  */
 export type ListProp = z.infer<typeof listSchema>;

@@ -1,6 +1,7 @@
 import { Grid } from "@gtkx/components";
-import { AlertDialog, Dialog } from "@gtkx/components/adw";
+import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
@@ -71,18 +72,19 @@ const DialogEntryRow = ({
 const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: () => void }) => (
     <Dialog>
         {(ref) => (
-            <AlertDialog
+            <AdwAlertDialog
                 ref={ref}
                 name="message-dialog"
                 heading="Test message"
                 body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
                 defaultResponse="ok"
                 closeResponse="cancel"
+                responses={[
+                    { id: "cancel", label: "_Cancel" },
+                    { id: "ok", label: "_OK" },
+                ]}
                 onResponse={onClose}
-            >
-                <AlertDialog.Response id="cancel" label="_Cancel" />
-                <AlertDialog.Response id="ok" label="_OK" />
-            </AlertDialog>
+            />
         )}
     </Dialog>
 );
@@ -150,12 +152,16 @@ const InteractiveDialog = ({
 }: InteractiveDialogProps) => (
     <Dialog>
         {(ref) => (
-            <AlertDialog
+            <AdwAlertDialog
                 ref={ref}
                 name="interactive-dialog"
                 heading="Interactive Dialog"
                 defaultResponse="ok"
                 closeResponse="cancel"
+                responses={[
+                    { id: "cancel", label: "_Cancel" },
+                    { id: "ok", label: "_OK" },
+                ]}
                 onResponse={onResponse}
                 extraChild={
                     <InteractiveFields
@@ -165,10 +171,7 @@ const InteractiveDialog = ({
                         setEntry2Text={setEntry2Text}
                     />
                 }
-            >
-                <AlertDialog.Response id="cancel" label="_Cancel" />
-                <AlertDialog.Response id="ok" label="_OK" />
-            </AlertDialog>
+            />
         )}
     </Dialog>
 );
