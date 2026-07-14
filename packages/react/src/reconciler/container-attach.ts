@@ -28,11 +28,11 @@ export function detachChild(child: Gtk.Widget, container: GObject.Object): void 
             if (holder === child) runCall(container, cp.remove, [child], scopeFor(child));
             return;
         }
-        if (container instanceof Gtk.Widget && child.getParent() !== container) return;
+        if (container instanceof Gtk.Widget && !isDescendantOf(child, container)) return;
         runCall(container, cp.remove, [child], scopeFor(child));
         return;
     }
-    if (child.getParent() === container) child.unparent();
+    if (container instanceof Gtk.Widget && isDescendantOf(child, container)) child.unparent();
 }
 
 export function unparentWidget(widget: Gtk.Widget): void {
