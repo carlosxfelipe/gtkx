@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     assertPublishedShape,
     collectExportTargets,
+    distTagForVersion,
     exportsContainSource,
     type PackageManifest,
     stripDevArtifacts,
@@ -60,6 +61,34 @@ describe("stripDevArtifacts", () => {
         stripDevArtifacts(manifest);
         expect(manifest.files).toEqual(["dist", "src"]);
         expect(manifest.exports).toEqual({ ".": { source: "./src/index.ts" } });
+    });
+});
+
+describe("distTagForVersion", () => {
+    it("uses the prerelease identifier as the tag", () => {
+        expect(distTagForVersion("1.0.0-rc.1")).toBe("rc");
+        expect(distTagForVersion("1.0.0-beta.2")).toBe("beta");
+        expect(distTagForVersion("2.0.0-alpha")).toBe("alpha");
+        expect(distTagForVersion("1.0.0-next.5")).toBe("next");
+    });
+
+    it("returns latest for a stable release", () => {
+        expect(distTagForVersion("1.0.0")).toBe("latest");
+        expect(distTagForVersion("2.3.4")).toBe("latest");
+    });
+
+    it("ignores build metadata", () => {
+        expect(distTagForVersion("1.0.0+build-abc")).toBe("latest");
+        expect(distTagForVersion("1.0.0-rc.1+build.5")).toBe("rc");
+    });
+
+    it("falls back to next for a numeric-first prerelease identifier", () => {
+        expect(distTagForVersion("1.0.0-0")).toBe("next");
+        expect(distTagForVersion("0.0.0-20240714120000")).toBe("next");
+    });
+
+    it("returns latest for an empty version", () => {
+        expect(distTagForVersion("")).toBe("latest");
     });
 });
 

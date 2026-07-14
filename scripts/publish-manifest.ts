@@ -13,8 +13,11 @@ export type PackageManifest = {
 };
 
 export const distTagForVersion = (version: string): string => {
-    const identifier = version.match(/-([a-zA-Z][a-zA-Z0-9]*)/)?.[1];
-    return identifier ?? "latest";
+    const core = version.split("+")[0] ?? "";
+    const dashIndex = core.indexOf("-");
+    if (dashIndex === -1) return "latest";
+    const identifier = core.slice(dashIndex + 1).split(".")[0] ?? "";
+    return identifier === "" || /^\d+$/.test(identifier) ? "next" : identifier;
 };
 
 const isDevSource = (entry: string): boolean => entry === "src" || entry.startsWith("src/");
