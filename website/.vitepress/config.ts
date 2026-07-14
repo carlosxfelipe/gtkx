@@ -152,13 +152,20 @@ export default defineConfig({
             { text: "Guide", link: "/guide/why-gtkx" },
             { text: "Tutorial", link: "/tutorial/" },
             { text: "Reference", link: "/reference/" },
+            { text: "Blog", link: "/blog/" },
             { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
-            { text: "1.0 RC", link: "https://github.com/gtkx-org/gtkx#status" },
+            { text: "1.0 RC", link: "/blog/gtkx-1-0-rc-1" },
         ],
         sidebar: {
             "/guide/": sidebarItems,
             "/tutorial/": sidebarItems,
             "/reference/": [{ text: "Overview", link: "/reference/" }, ...typedocSidebar],
+            "/blog/": [
+                {
+                    text: "Blog",
+                    items: [{ text: "GTKX 1.0 RC1", link: "/blog/gtkx-1-0-rc-1" }],
+                },
+            ],
         },
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
         editLink: {

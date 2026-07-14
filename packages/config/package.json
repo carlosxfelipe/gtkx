@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/config",
-    "version": "0.21.0",
+    "version": "1.0.0-rc.1",
     "description": "gtkx.config.ts schema, validation, and loader shared by the GTKX toolchain",
     "keywords": [
         "gtkx",

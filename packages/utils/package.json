@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/utils",
-    "version": "0.21.0",
+    "version": "1.0.0-rc.1",
     "description": "Cross-package utilities shared by GTKX runtime entry points",
     "homepage": "https://gtkx.dev",
     "bugs": {

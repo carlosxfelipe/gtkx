@@ -22,15 +22,15 @@
         "flatpak:build": "bash flatpak/build.sh"
     },
     "dependencies": {
-        "@gtkx/animate": "^0.21.0",
-        "@gtkx/components": "^0.21.0",
-        "@gtkx/css": "^0.21.0",
-        "@gtkx/react": "^0.21.0",
+        "@gtkx/animate": "^1.0.0-rc.1",
+        "@gtkx/components": "^1.0.0-rc.1",
+        "@gtkx/css": "^1.0.0-rc.1",
+        "@gtkx/react": "^1.0.0-rc.1",
         "react": "^19.2.7"
     },
     "devDependencies": {
-        "@gtkx/cli": "^0.21.0",
-        "@gtkx/config": "^0.21.0",
+        "@gtkx/cli": "^1.0.0-rc.1",
+        "@gtkx/config": "^1.0.0-rc.1",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6"
     },

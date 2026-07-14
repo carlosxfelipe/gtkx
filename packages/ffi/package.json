@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/ffi",
-    "version": "0.21.0",
+    "version": "1.0.0-rc.1",
     "description": "Hand-written FFI runtime for GTKX: GObject lifecycle, GValue marshalling, signals, and the class registry the generated bindings call into",
     "keywords": [
         "gtkx",
