@@ -47,6 +47,22 @@ const docItems = sidebarItems.flatMap((item) =>
 
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
 
+const isProdBuild = process.argv.includes("build");
+const fontPreloads: HeadConfig[] = isProdBuild
+    ? ["red-hat-display", "red-hat-text", "red-hat-mono"].map(
+          (family): HeadConfig => [
+              "link",
+              {
+                  rel: "preload",
+                  href: `/fonts/${family}-normal-latin.woff2`,
+                  as: "font",
+                  type: "font/woff2",
+                  crossorigin: "",
+              },
+          ],
+      )
+    : [];
+
 export default defineConfig({
     title,
     description,
@@ -70,36 +86,7 @@ export default defineConfig({
         ["link", { rel: "apple-touch-icon", href: "/apple-touch-icon.png" }],
         ["link", { rel: "manifest", href: "/site.webmanifest" }],
         ["meta", { name: "theme-color", content: "#e03a3e" }],
-        [
-            "link",
-            {
-                rel: "preload",
-                href: "/fonts/red-hat-display-normal-latin.woff2",
-                as: "font",
-                type: "font/woff2",
-                crossorigin: "",
-            },
-        ],
-        [
-            "link",
-            {
-                rel: "preload",
-                href: "/fonts/red-hat-text-normal-latin.woff2",
-                as: "font",
-                type: "font/woff2",
-                crossorigin: "",
-            },
-        ],
-        [
-            "link",
-            {
-                rel: "preload",
-                href: "/fonts/red-hat-mono-normal-latin.woff2",
-                as: "font",
-                type: "font/woff2",
-                crossorigin: "",
-            },
-        ],
+        ...fontPreloads,
         ["meta", { property: "og:type", content: "website" }],
         ["meta", { property: "og:site_name", content: title }],
         ["meta", { property: "og:image", content: ogImage }],
