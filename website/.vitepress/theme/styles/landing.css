@@ -84,6 +84,10 @@
 .tok-punct {
     color: var(--text-2);
 }
+.tok-comment {
+    color: var(--text-3);
+    font-style: italic;
+}
 
 .l-code {
     font-family: var(--font-mono);

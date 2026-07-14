@@ -51,13 +51,13 @@ html:has(.landing) {
     margin: 0;
 }
 
-.landing a {
+.landing a:not(.btn) {
     color: var(--text-brand);
     text-decoration: none;
     transition: var(--transition-colors);
 }
 
-.landing a:hover {
+.landing a:not(.btn):hover {
     color: var(--brand-hover);
 }
 

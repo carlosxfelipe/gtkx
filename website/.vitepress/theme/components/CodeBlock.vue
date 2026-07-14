@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { tokenizeCode } from "../highlight";
 import Icon from "./Icon.vue";
 
 const props = withDefaults(
@@ -15,6 +16,7 @@ const props = withDefaults(
 
 const isTerminal = computed(() => props.variant === "terminal");
 const lines = computed(() => (props.code != null ? String(props.code).replace(/\n$/, "").split("\n") : null));
+const tokenLines = computed(() => (!isTerminal.value && props.code != null ? tokenizeCode(props.code) : null));
 const hasHead = computed(() => isTerminal.value || props.title != null);
 
 const copied = ref(false);
@@ -60,7 +62,7 @@ const copy = async (): Promise<void> => {
       </button>
     </div>
     <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
-    <pre class="cb__pre"><code class="cb__code"><template v-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
+    <pre class="cb__pre"><code class="cb__code"><template v-if="tokenLines"><div v-for="(ln, i) in tokenLines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span class="cb__txt"><span v-for="(tk, j) in ln" :key="j" :class="tk.c ? `tok-${tk.c}` : undefined">{{ tk.t }}</span></span></div></template><template v-else-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
   </div>
 </template>
 
@@ -171,6 +173,7 @@ const copy = async (): Promise<void> => {
 }
 .cb__line {
   display: flex;
+  min-height: 1.6em;
 }
 .cb__ln {
   width: 2.2em;
