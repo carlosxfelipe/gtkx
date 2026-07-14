@@ -10,7 +10,7 @@ The file defines two components. `App` is the exported application root and the 
 
 ## The application root
 
-The outermost element is `<AdwApplication>`. It is a real component from `@gtkx/jsx/adw`, not a wrapper you configure imperatively: mounting it calls `adw_init`, owns the `AdwStyleManager`, and provides the `Gtk.Application` that `useApplication()` reads from anywhere in the tree.
+The outermost element is `<AdwApplication>`. It is a real component from `@gtkx/jsx/adw`, not a wrapper you configure imperatively. Importing the libadwaita bindings runs `adw_init` at module load, which sets up the global `AdwStyleManager`; the component itself starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
 
 ```tsx
 export function App() {
@@ -22,21 +22,25 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
+            actions={
+                <>
+                    <GSimpleAction
+                        name="complete-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            if (parameter) notify.current.complete(parameter.getString()[0]);
+                        }}
+                    />
+                    <GSimpleAction
+                        name="open-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            if (parameter) notify.current.open(parameter.getString()[0]);
+                        }}
+                    />
+                </>
+            }
         >
-            <GSimpleAction
-                name="complete-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    if (parameter) notify.current.complete(parameter.getString()[0]);
-                }}
-            />
-            <GSimpleAction
-                name="open-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    if (parameter) notify.current.open(parameter.getString()[0]);
-                }}
-            />
             <TasksWindow notify={notify} />
         </AdwApplication>
     );
@@ -45,7 +49,7 @@ export function App() {
 
 `actionAccels` is a declarative list prop. Each entry is `{ detailedActionName, accels }` and becomes one `gtk_application_set_accels_for_action` call, binding a keyboard accelerator to an action by name. The `win.` prefix means these accelerators fire actions installed on the **window** (`<GSimpleAction name="new">`, `preferences`, `shortcuts` live in the window's `actions` slot, covered on the actions page). So `Ctrl+N` triggers `win.new`, `Ctrl+,` opens preferences, `Ctrl+?` opens the shortcuts window, all wired from this one array.
 
-The two `<GSimpleAction>` children of `<AdwApplication>` are different: placed directly under the application, they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the running app. Each declares `parameterType={GLib.VariantType.new("s")}`, meaning it takes a single string (a task id), which the handler pulls out with `parameter.getString()[0]`.
+The two `<GSimpleAction>` elements in the application's `actions` slot are different: mounted on the application itself, they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the running app. Each declares `parameterType={GLib.VariantType.new("s")}`, meaning it takes a single string (a task id), which the handler pulls out with `parameter.getString()[0]`.
 
 Because the actions live at the application level but need to mutate window state, they route through a `notify` ref instead of calling into `TasksWindow` directly. `App` creates the ref, the two handlers read `notify.current.complete` / `notify.current.open`, and `TasksWindow` keeps `notify.current` pointed at live closures over its own state. This bridge is explained in full on the reminders/notifications page.
 
@@ -75,7 +79,7 @@ A few things worth calling out for a GTK newcomer:
 - **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). It is the target for the window-size bindings below.
 - **`widthRequest={360}` and `heightRequest={294}`** set the minimum window size. This is the GNOME phone-form-factor floor: the app is guaranteed to work down to a 360x294 window, which is what forces the layout to prove it collapses gracefully.
 - **`breakpoints`** is a slot that attaches an `<AdwBreakpoint>` to the window, covered below.
-- **`actions`** and **`controllers`** are `ReactNode` slots present on every window/widget. `actions` holds `<GSimpleAction>` elements (the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed on the actions and shortcuts page.
+- **`actions`** and **`controllers`** are `ReactNode` slots. `controllers` is present on every widget; `actions` on anything that is a GTK action map, which includes the application and application windows (`AdwApplicationWindow` / `GtkApplicationWindow`), but not a plain `GtkWindow`. `actions` holds `<GSimpleAction>` elements (here the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed on the actions and shortcuts page.
 
 ### Persisting window size
 
@@ -132,13 +136,9 @@ The body of the window is a single `<AdwNavigationSplitView>`. This is the adapt
     }
     content={
         <AdwNavigationPage title={titleFor(selection, lists)}>
-            <AdwToolbarView
-                topBar={topBar}
-                bottomBar={selecting ? selectionActionBar : undefined}
-                revealBottomBars={selecting}
-            >
-                {contentBody}
-            </AdwToolbarView>
+            <NavigationView popOnEscape={false} onPop={/* clear the open task */}>
+                {/* a list page, plus a pushed task page when one is open */}
+            </NavigationView>
         </AdwNavigationPage>
     }
 />
@@ -151,7 +151,7 @@ The two props that make it adaptive are `collapsed` and `showContent`, both cont
 - **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It is driven by the breakpoint below.
 - **`showContent`** only matters when collapsed: it decides whether the visible column is the sidebar or the content. `onNotifyShowContent` mirrors the widget's own changes (a swipe-back, for instance) back into React state with `(value) => setShowContent(value ?? false)`, so the two never drift. When a task or a sidebar entry is opened while collapsed, the handlers set `setShowContent(true)` to push the content into view.
 
-Each pane wraps its content in an `<AdwToolbarView>`, which gives you a header bar pinned to the top (`topBar`) and, on the content side, an optional action bar pinned to the bottom (`bottomBar`, revealed via `revealBottomBars` during selection mode). The content pane's `AdwNavigationPage` title is computed from the current selection with `titleFor(selection, lists)`, so the header reads "Today", "Important", or a user list's name.
+The sidebar wraps its content in an `<AdwToolbarView>`, which gives you a header bar pinned to the top (`topBar`); on the content side, the `<NavigationView>`'s pages each wrap in their own `<AdwToolbarView>`, and the list page adds an action bar pinned to the bottom (`bottomBar`, revealed via `revealBottomBars` during selection mode). The content pane's `AdwNavigationPage` title is computed from the current selection with `titleFor(selection, lists)`, so the header reads "Today", "Important", or a user list's name. The content stack itself is covered below.
 
 ## The breakpoint
 
@@ -175,44 +175,50 @@ The split view collapses at a threshold, and that threshold is an `AdwBreakpoint
 
 The condition uses `sp` units rather than raw pixels. `sp` (scalable pixels) tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. Below 500sp the layout goes single-column; above it, side by side.
 
-## The controlled content swap
+## The content stack
 
-The content pane never pushes or pops pages. Its `AdwNavigationPage` is fixed; what changes is the `topBar` and the body inside the toolbar view, both selected from state.
+The content pane holds a `<NavigationView>`, from `@gtkx/components/adw`. It drives an `AdwNavigationView` purely from JSX: every mounted `<NavigationView.Page tag=…>` is one entry on the stack, so mounting a page is a push and unmounting the top page is a pop. The mounted pages are the stack, and React state decides which pages are mounted.
 
 ```tsx
-const contentBody = selectedTask ? (
-    <TaskDetail key={selectedTask.id} task={selectedTask} /* ... */ />
-) : selecting ? (
-    <SelectionView tasks={visible} selectedIds={selectedIds} onSelectionChanged={setSelectedIds} />
-) : (
-    <TaskList tasks={visible} /* ...search, row handlers, empty state... */ />
-);
-
-const topBar = detailHeader ?? (selecting ? selectionHeader : listHeader);
+<NavigationView
+    popOnEscape={false}
+    onPop={(tag) => {
+        if (tag === "task") setSelectedTaskId(null);
+    }}
+>
+    <NavigationView.Page tag="list" title={titleFor(selection, lists)}>
+        <AdwToolbarView
+            topBar={selecting ? selectionHeader : listHeader}
+            bottomBar={selecting ? selectionActionBar : undefined}
+            revealBottomBars={selecting}
+        >
+            {listBody}
+        </AdwToolbarView>
+    </NavigationView.Page>
+    {selectedTask ? (
+        <NavigationView.Page tag="task" title={selectedTask.title}>
+            <AdwToolbarView topBar={detailHeader}>
+                <TaskDetail key={selectedTask.id} task={selectedTask} /* ... */ />
+            </AdwToolbarView>
+        </NavigationView.Page>
+    ) : null}
+</NavigationView>
 ```
 
-Three states, three bodies: a task is open (the editor), selection mode is active (the batch-select list), or neither (the ordinary task list). The header is chosen the same way, and always in lockstep with the body, `detailHeader` when a task is open, the selection header when selecting, the list header otherwise. The detail header is a plain `AdwHeaderBar` with a `go-previous-symbolic` back button that just calls `setSelectedTaskId(null)`:
+The two changes the pane can show split cleanly by kind, and that split is the whole point:
+
+- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real pushed page: `<NavigationView.Page tag="task">` mounts only when `selectedTask` is set. The component pushes it with an animation, and the pushed page gets a back button, an edge-swipe, and (with `popOnEscape`) Escape handling for free.
+- **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, just with checkable rows and a different header. It is not deeper, so it stays on one page (`tag="list"`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the `tag` never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed page would be the wrong shape.
+
+The pane's `AdwHeaderBar`, actions, and body all come from the same `selectedTask` / `selecting` state, so they can never disagree. `listBody` is `selecting ? <SelectionView /> : <TaskList />`, and each page carries its own header inside its `AdwToolbarView`. The detail header is a plain `AdwHeaderBar` with the Important toggle and Delete button in `end`, and no back button, because the pushed page supplies one:
 
 ```tsx
 const detailHeader = selectedTask ? (
-    <AdwHeaderBar
-        start={
-            <GtkButton
-                iconName="go-previous-symbolic"
-                tooltipText="Back"
-                onClicked={() => setSelectedTaskId(null)}
-            />
-        }
-        end={/* important toggle + delete */}
-    />
+    <AdwHeaderBar end={/* important toggle + delete */} />
 ) : null;
 ```
 
-This is a deliberate design choice. GTK offers `AdwNavigationView`, which manages its own page stack and would give you a back button, Escape handling, and edge-swipe for free. The shell does not use it inside the content pane. The reason is state ownership: an `AdwNavigationView` keeps the "which page is showing" truth **inside the widget**, so its own back gestures, Escape, and swipes mutate that stack behind React's back. You would then have to mirror every `pushed` / `popped` back into React state to keep the rest of the UI (headers, actions, the selection mode) consistent, and reconcile the two whenever they disagree.
-
-The controlled swap sidesteps all of that. `selectedTaskId` and `selecting` are ordinary React state and the single source of truth. `contentBody` and `topBar` are pure functions of that state, recomputed together on every render, so the header can never show the detail bar while the body shows the list. Opening a task is `setSelectedTaskId(id)`; going back is `setSelectedTaskId(null)`. The result is reliable and easy to reason about, at the cost of hand-rolling one back button.
-
-Note this is not a wholesale rejection of GTK navigation: the sidebar-to-content transition when collapsed still uses `AdwNavigationSplitView`'s built-in two-pane navigation, driven through the controlled `showContent` prop. The shell leans on GTK's navigation where it is a clean two-state toggle, and hand-controls the three-way content swap where an imperative stack would fight React.
+React stays the single source of truth. Opening a task is `setSelectedTaskId(id)`; a programmatic back is `setSelectedTaskId(null)`, which unmounts the task page and pops it. When the pop is instead driven by the widget itself (the back button, an edge-swipe, or Escape), `onPop(tag)` fires and the handler clears `selectedTaskId`, so React unmounts the page to match. There is no desync and no hand-written mirroring of a widget stack, because reconciling the declared pages against the widget's live stack is exactly what `<NavigationView>` does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through `AdwNavigationSplitView`'s controlled `showContent` prop.
 
 ## Next
 

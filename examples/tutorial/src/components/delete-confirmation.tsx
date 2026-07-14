@@ -12,19 +12,22 @@ export const DeleteConfirmation = ({
 }) => {
     return (
         <Dialog>
-            <AlertDialog
-                heading="Delete Task?"
-                body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
-                defaultResponse="cancel"
-                closeResponse="cancel"
-                onResponse={(id) => {
-                    if (id === "delete") onConfirm();
-                    else onCancel();
-                }}
-            >
-                <AlertDialog.Response id="cancel" label="Cancel" />
-                <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-            </AlertDialog>
+            {(ref) => (
+                <AlertDialog
+                    ref={ref}
+                    heading="Delete Task?"
+                    body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
+                    defaultResponse="cancel"
+                    closeResponse="cancel"
+                    onResponse={(id) => {
+                        if (id === "delete") onConfirm();
+                        else onCancel();
+                    }}
+                >
+                    <AlertDialog.Response id="cancel" label="Cancel" />
+                    <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
+                </AlertDialog>
+            )}
         </Dialog>
     );
 };

@@ -18,7 +18,7 @@ It writes three things to `dist/`:
 
 - `bundle.js`, the whole app as one JavaScript file,
 - `gtkx.node`, the native addon that bridges to GTK,
-- `gschemas.compiled`, the compiled GSettings schema (emitted automatically because the project has a `.gschema.xml`).
+- `gschemas.compiled`, the compiled GSettings schema (emitted automatically because the app imports a `.gschema.xml`).
 
 At this point you can already run the app with `node dist/bundle.js`, provided GTK 4 and libadwaita are installed on the machine.
 

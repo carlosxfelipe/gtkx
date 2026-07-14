@@ -103,7 +103,7 @@ The first argument to `sendNotification` is a notification **id**, and it is key
 
 ## Installing the app-scoped actions
 
-The two actions the notification targets are declared as `<GSimpleAction>` children of `<AdwApplication>` in the top-level `App` component:
+The two actions the notification targets are declared in the `actions` slot of `<AdwApplication>` in the top-level `App` component:
 
 ```tsx
 export function App() {
@@ -115,21 +115,25 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
+            actions={
+                <>
+                    <GSimpleAction
+                        name="complete-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            if (parameter) notify.current.complete(parameter.getString()[0]);
+                        }}
+                    />
+                    <GSimpleAction
+                        name="open-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            if (parameter) notify.current.open(parameter.getString()[0]);
+                        }}
+                    />
+                </>
+            }
         >
-            <GSimpleAction
-                name="complete-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    if (parameter) notify.current.complete(parameter.getString()[0]);
-                }}
-            />
-            <GSimpleAction
-                name="open-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    if (parameter) notify.current.open(parameter.getString()[0]);
-                }}
-            />
             <TasksWindow notify={notify} />
         </AdwApplication>
     );

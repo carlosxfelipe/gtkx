@@ -266,7 +266,7 @@ const deleteSelected = (): void => {
 };
 ```
 
-It snapshots the ids into a local `const ids = [...selectedIds]` first, because `cancelSelection()` clears `selectedIds` moments later and the toast's Undo callback fires long after that. The toast message pluralizes inline (`task` vs `tasks`), the `button-clicked` handler restores each id, and the toast is pushed onto the same `AdwToastOverlay` (`toastOverlayRef`) that the single-item delete uses. Batch delete and swipe-to-delete therefore share one recovery path.
+It snapshots the ids into a local `const ids = [...selectedIds]` first, because `cancelSelection()` clears `selectedIds` moments later and the toast's Undo callback fires long after that. The toast message pluralizes inline (`task` vs `tasks`), the `button-clicked` handler restores each id, and the toast is pushed onto the same `AdwToastOverlay` (`toastOverlayRef`) that the single-item delete uses. Batch delete and single-item delete (the row's trash button and the Delete shortcut) therefore share one recovery path.
 
 ::: info
 `api.completeMany`, `api.moveToList`, and `api.trashMany` are thin array operations in `hooks/use-tasks.ts`: each maps over the task list and updates only the tasks whose id is in the passed array. `restore` simply flips a task's `deleted` flag back to `false`. Nothing about batching touches a widget imperatively; it is all state in, re-render out.

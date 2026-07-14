@@ -17,48 +17,50 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
 
     return (
-        <Dialog>
-            <AdwPreferencesDialog title="Preferences" onClosed={onClose}>
-                <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
-                    <AdwPreferencesGroup title="Appearance">
-                        <ComboRow<string>
-                            title="Theme"
-                            items={[
-                                { id: "default", value: "Follow system" },
-                                { id: "light", value: "Light" },
-                                { id: "dark", value: "Dark" },
-                            ]}
-                            selectedId={scheme}
-                            onSelectionChanged={(id) => {
-                                if (isScheme(id)) setScheme(id);
-                            }}
-                        />
-                    </AdwPreferencesGroup>
-                    <AdwPreferencesGroup title="Tasks">
-                        <ComboRow<string>
-                            title="Sort order"
-                            items={[
-                                { id: "manual", value: "Manual" },
-                                { id: "due-date", value: "Due date" },
-                                { id: "title", value: "Title" },
-                                { id: "created", value: "Date created" },
-                            ]}
-                            selectedId={sortOrder}
-                            onSelectionChanged={(id) => {
-                                if (isSort(id)) setSortOrder(id);
-                            }}
-                        />
-                        <AdwSpinRow
-                            title="Reminder lead time"
-                            subtitle="Minutes before a task is due"
-                            adjustment={
-                                <GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />
-                            }
-                            onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
-                        />
-                    </AdwPreferencesGroup>
-                </AdwPreferencesPage>
-            </AdwPreferencesDialog>
+        <Dialog onClose={onClose}>
+            {(ref) => (
+                <AdwPreferencesDialog ref={ref} title="Preferences">
+                    <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
+                        <AdwPreferencesGroup title="Appearance">
+                            <ComboRow<string>
+                                title="Theme"
+                                items={[
+                                    { id: "default", value: "Follow system" },
+                                    { id: "light", value: "Light" },
+                                    { id: "dark", value: "Dark" },
+                                ]}
+                                selectedId={scheme}
+                                onSelectionChanged={(id) => {
+                                    if (isScheme(id)) setScheme(id);
+                                }}
+                            />
+                        </AdwPreferencesGroup>
+                        <AdwPreferencesGroup title="Tasks">
+                            <ComboRow<string>
+                                title="Sort order"
+                                items={[
+                                    { id: "manual", value: "Manual" },
+                                    { id: "due-date", value: "Due date" },
+                                    { id: "title", value: "Title" },
+                                    { id: "created", value: "Date created" },
+                                ]}
+                                selectedId={sortOrder}
+                                onSelectionChanged={(id) => {
+                                    if (isSort(id)) setSortOrder(id);
+                                }}
+                            />
+                            <AdwSpinRow
+                                title="Reminder lead time"
+                                subtitle="Minutes before a task is due"
+                                adjustment={
+                                    <GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />
+                                }
+                                onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
+                            />
+                        </AdwPreferencesGroup>
+                    </AdwPreferencesPage>
+                </AdwPreferencesDialog>
+            )}
         </Dialog>
     );
 };

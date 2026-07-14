@@ -68,7 +68,7 @@ A few GTK-isms to unpack for a React reader:
 </GtkSearchBar>
 ```
 
-`GtkSearchBar` is the sliding container that reveals or hides the search field. Its `search-mode-enabled` GObject property controls whether the bar is open. gtkx exposes every GObject property in two halves, and here you see both:
+`GtkSearchBar` is the sliding container that reveals or hides the search field. Its `search-mode-enabled` GObject property controls whether the bar is open. gtkx exposes writable scalar GObject properties in two halves, a value prop and a notify handler, and since `search-mode-enabled` is writable you see both here:
 
 - `searchModeEnabled={search.mode}` is the **setter** side. React drives the bar open or closed.
 - `onNotifySearchModeEnabled` is the **notify** side. GTK fires `notify::search-mode-enabled` whenever the property changes (including when the user presses Escape to dismiss the bar), and gtkx surfaces that as an `onNotify<Prop>` handler. The value can be `null`, so the code coalesces with `enabled ?? false`.

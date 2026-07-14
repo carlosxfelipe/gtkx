@@ -13,7 +13,7 @@ Tasks uses this everywhere its commands need more than one entry point. The hamb
 Every action string carries a scope prefix. Tasks uses both:
 
 - **`win.*`** actions belong to the window. They are the app's real commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
-- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires ("Mark Complete", "Open"), because a notification is delivered to the whole application, not to any particular window, and may arrive when no window is even open. They live as children of `<AdwApplication>`.
+- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires ("Mark Complete", "Open"), because a notification is delivered to the whole application, not to any particular window, and may arrive when no window is even open. They live in the `actions` slot of `<AdwApplication>`.
 
 The scope prefix is not cosmetic: it selects *which* action map GTK looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
 
@@ -97,26 +97,32 @@ Not every action needs an accelerator. `win.select` and `win.about` are reachabl
 
 ## Application actions for notifications
 
-The two `app.*` actions are direct children of `<AdwApplication>`, which routes them into the application's own action map. They exist so a desktop notification has something to invoke:
+The two `app.*` actions go in the `actions` slot of `<AdwApplication>`, which routes them into the application's own action map. It is the same `actions` slot the window exposes, just mounted one level up on the application. They exist so a desktop notification has something to invoke:
 
 ```tsx
 import * as GLib from "@gtkx/gi/glib";
 
-<AdwApplication actionAccels={/* ... */}>
-    <GSimpleAction
-        name="complete-task"
-        parameterType={GLib.VariantType.new("s")}
-        onActivate={(parameter) => {
-            if (parameter) notify.current.complete(parameter.getString()[0]);
-        }}
-    />
-    <GSimpleAction
-        name="open-task"
-        parameterType={GLib.VariantType.new("s")}
-        onActivate={(parameter) => {
-            if (parameter) notify.current.open(parameter.getString()[0]);
-        }}
-    />
+<AdwApplication
+    actionAccels={/* ... */}
+    actions={
+        <>
+            <GSimpleAction
+                name="complete-task"
+                parameterType={GLib.VariantType.new("s")}
+                onActivate={(parameter) => {
+                    if (parameter) notify.current.complete(parameter.getString()[0]);
+                }}
+            />
+            <GSimpleAction
+                name="open-task"
+                parameterType={GLib.VariantType.new("s")}
+                onActivate={(parameter) => {
+                    if (parameter) notify.current.open(parameter.getString()[0]);
+                }}
+            />
+        </>
+    }
+>
     <TasksWindow notify={notify} />
 </AdwApplication>
 ```
@@ -278,26 +284,28 @@ import { Dialog } from "@gtkx/components/adw";
 import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
 
 export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
-    <Dialog>
-        <AdwShortcutsDialog onClosed={onClose}>
-            <AdwShortcutsSection title="General">
-                <AdwShortcutsItem title="New task" accelerator="<Control>n" />
-                <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
-                <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
-                <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
-            </AdwShortcutsSection>
-            <AdwShortcutsSection title="Tasks">
-                <AdwShortcutsItem title="Delete task" accelerator="Delete" />
-                <AdwShortcutsItem title="Close task" accelerator="Escape" />
-            </AdwShortcutsSection>
-        </AdwShortcutsDialog>
+    <Dialog onClose={onClose}>
+        {(ref) => (
+            <AdwShortcutsDialog ref={ref}>
+                <AdwShortcutsSection title="General">
+                    <AdwShortcutsItem title="New task" accelerator="<Control>n" />
+                    <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
+                    <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
+                    <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
+                </AdwShortcutsSection>
+                <AdwShortcutsSection title="Tasks">
+                    <AdwShortcutsItem title="Delete task" accelerator="Delete" />
+                    <AdwShortcutsItem title="Close task" accelerator="Escape" />
+                </AdwShortcutsSection>
+            </AdwShortcutsDialog>
+        )}
     </Dialog>
 );
 ```
 
 Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, so keep them in sync with the real bindings: `<Control>n`, `<Control>f`, `<Control>comma`, and `<Control>question` come from `actionAccels` and the search shortcut, while `Delete` and `Escape` come from the `GtkShortcutController`.
 
-`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. The action handler just flips a state flag:
+`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes a render function that hands you the ref to attach to `AdwShortcutsDialog`, and its `onClose` clears `showShortcuts` when the user dismisses the window. The action handler just flips a state flag:
 
 ```tsx
 onShortcuts={() => setShowShortcuts(true)}

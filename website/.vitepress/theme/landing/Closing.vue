@@ -12,7 +12,7 @@ import { LICENSE, REPO_URL } from "./content";
         <p class="overline">Free and open source</p>
         <h2 class="oss__title">Built in the open, on the GNOME stack</h2>
         <p class="oss__body">
-          gtkx is {{ LICENSE }}-licensed and developed in public. Bring your widgets,
+          GTKX is {{ LICENSE }}-licensed and developed in public. Bring your widgets,
           file an issue, ship a PR.
         </p>
       </div>
@@ -34,7 +34,7 @@ import { LICENSE, REPO_URL } from "./content";
     <div class="cta__inner">
       <h2 class="cta__title">Start building native Linux apps today</h2>
       <p class="cta__sub">
-        One command scaffolds everything: typed widgets, HMR, tests, and production bundling.
+        One command scaffolds everything: typed widgets, Fast Refresh, tests, and production bundling.
       </p>
       <div class="cta__actions">
         <Button size="lg" href="/guide/getting-started">

@@ -36,7 +36,7 @@ const cols: { h: string; items: Link[] }[] = [
     {
         h: "Platform",
         items: [
-            { t: "GTK 4", href: "https://www.gtk.org" },
+            { t: "GTK4", href: "https://www.gtk.org" },
             { t: "libadwaita", href: "https://gnome.pages.gitlab.gnome.org/libadwaita/" },
             { t: "GObject", href: "https://docs.gtk.org/gobject/" },
             { t: "GNOME", href: "https://www.gnome.org" },
@@ -69,8 +69,7 @@ const cols: { h: string; items: Link[] }[] = [
         </div>
       </div>
       <div class="footer__bar">
-        <span>© 2026 gtkx contributors · {{ LICENSE }} licensed</span>
-        <span>Native GTK4 &amp; libadwaita, driven by React.</span>
+        <span>© 2026 GTKX contributors · {{ LICENSE }} licensed</span>
       </div>
     </div>
   </footer>

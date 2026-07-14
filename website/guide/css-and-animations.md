@@ -133,7 +133,7 @@ Under the hood this is libadwaita, not a JavaScript timer loop. A tween builds a
 
 `transition.type` selects between the two, and defaults to `"tween"`:
 
-- **Tween**: `duration` in seconds (default 0.3), `ease` as one of forty-one named curves (`"linear"`, `"easeOut"` is the default, `"easeInOutCubic"`, `"backOut"`, and so on, each resolving to an `Adw.Easing` value, which you can also pass directly), `delay` in seconds, `reverse`, `repeat` (additional repetitions, a non-finite value repeats forever), and `repeatType` (`"loop"`, `"reverse"`, or `"mirror"`).
+- **Tween**: `duration` in seconds (default 0.3), `ease` as one of many named curves (`"linear"`, `"easeOut"` is the default, `"easeInOutCubic"`, `"backOut"`, and so on, each resolving to an `Adw.Easing` value, which you can also pass directly), `delay` in seconds, `reverse`, `repeat` (additional repetitions, a non-finite value repeats forever), and `repeatType` (`"loop"`, `"reverse"`, or `"mirror"`).
 - **Spring**: physics parameters `stiffness`, `damping`, and `mass` (defaults 100, 10, 1), or a `dampingRatio`, or the perceptual pair `visualDuration` and `bounce` from which the physics are derived, plus `velocity`, `epsilon`, and `clamp`, which prevents overshoot.
 
 Both kinds honor the system's "enable animations" accessibility setting by default; pass `followEnableAnimations: false` to opt an animation out when its motion is essential.

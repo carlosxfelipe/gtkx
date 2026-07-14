@@ -5,37 +5,37 @@ const features = [
     {
         icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
         title: "Real native widgets",
-        body: "Your JSX becomes live GObject instances: actual GtkButton, AdwHeaderBar, real libadwaita. Not a webview, not a canvas.",
+        body: "Every element is a real GObject: an actual GtkButton, a real AdwHeaderBar. Your app is built from the same widgets GNOME ships.",
         href: "/tutorial/app-shell",
     },
     {
         icon: "M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3",
         title: "Powered by Rust",
-        body: "A napi addon owns the single GLib main loop and every libffi call into GTK. One thread, zero data races.",
+        body: "A Rust core calls into the native libraries directly. Memory-safe from JSX to the native boundary, with no garbage-collector pauses in your UI.",
         href: "/guide/why-gtkx",
     },
     {
         icon: "M13 2 3 14h7l-1 8 10-12h-7z",
         title: "Hot reload, for desktop",
-        body: "Edit a component and watch the running native window update instantly: Vite Fast Refresh, no restart, no state loss.",
+        body: "Fast Refresh patches the running window as you save. Changes it cannot patch trigger an automatic, supervised restart.",
         href: "/guide/getting-started",
     },
     {
         icon: "M4 17l6-6-6-6M12 19h8",
         title: "Typed end to end",
-        body: "Every widget, signal, and property is generated from GObject-Introspection. Autocomplete the entire GTK surface.",
+        body: "Every class, signal, and property is generated from GObject-Introspection. Autocomplete any library on your system.",
         href: "/guide/why-gtkx",
     },
     {
         icon: "M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
         title: "Testing, built in",
-        body: "A Testing-Library harness over real GObjects: accessibility-first queries, userEvent, screenshots, all inside React act().",
+        body: "Query and drive real widgets in your tests, with no display server to wrangle. It ships in the box, zero config.",
         href: "/guide/testing",
     },
     {
         icon: "M12 8V4M9 4h6M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2M9 14h.01M15 14h.01",
         title: "Agentic MCP server",
-        body: "Expose your live app to AI agents over a socket: inspect, query, and drive your UI the way Playwright MCP drives the browser.",
+        body: "A built-in Model Context Protocol (MCP) server lets AI agents inspect and drive your live app, with no extra wiring.",
         href: "/guide/mcp",
     },
 ];

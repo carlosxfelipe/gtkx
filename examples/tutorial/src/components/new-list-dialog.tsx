@@ -19,39 +19,46 @@ export const NewListDialog = ({
 
     return (
         <Dialog>
-            <AlertDialog
-                heading="New List"
-                defaultResponse="add"
-                closeResponse="cancel"
-                onResponse={(id) => {
-                    if (id === "add") onAdd(name, color);
-                    else onCancel();
-                }}
-            >
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
-                    <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
-                    <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                        {PALETTE.map((swatch) => (
-                            <GtkToggleButton
-                                key={swatch}
-                                active={color === swatch}
-                                cssClasses={["flat"]}
-                                accessibleLabel={`Color ${swatch}`}
-                                onClicked={() => setColor(swatch)}
-                            >
-                                <GtkBox
-                                    widthRequest={22}
-                                    heightRequest={22}
-                                    cssClasses={[listDot(swatch)]}
-                                    accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                                />
-                            </GtkToggleButton>
-                        ))}
+            {(ref) => (
+                <AlertDialog
+                    ref={ref}
+                    heading="New List"
+                    defaultResponse="add"
+                    closeResponse="cancel"
+                    onResponse={(id) => {
+                        if (id === "add") onAdd(name, color);
+                        else onCancel();
+                    }}
+                >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
+                        <GtkEntry
+                            placeholderText="List name"
+                            activatesDefault
+                            onChanged={(self) => setName(self.text)}
+                        />
+                        <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
+                            {PALETTE.map((swatch) => (
+                                <GtkToggleButton
+                                    key={swatch}
+                                    active={color === swatch}
+                                    cssClasses={["flat"]}
+                                    accessibleLabel={`Color ${swatch}`}
+                                    onClicked={() => setColor(swatch)}
+                                >
+                                    <GtkBox
+                                        widthRequest={22}
+                                        heightRequest={22}
+                                        cssClasses={[listDot(swatch)]}
+                                        accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                                    />
+                                </GtkToggleButton>
+                            ))}
+                        </GtkBox>
                     </GtkBox>
-                </GtkBox>
-                <AlertDialog.Response id="cancel" label="Cancel" />
-                <AlertDialog.Response id="add" label="Add" appearance={Adw.ResponseAppearance.SUGGESTED} />
-            </AlertDialog>
+                    <AlertDialog.Response id="cancel" label="Cancel" />
+                    <AlertDialog.Response id="add" label="Add" appearance={Adw.ResponseAppearance.SUGGESTED} />
+                </AlertDialog>
+            )}
         </Dialog>
     );
 };

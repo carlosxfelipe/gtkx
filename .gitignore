@@ -2,6 +2,7 @@
 .turbo/
 *.log
 *.tsbuildinfo
+/.playwright-mcp
 /.pnpm-store/
 /CLAUDE.md
 coverage/

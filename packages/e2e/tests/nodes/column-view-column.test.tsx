@@ -26,11 +26,12 @@ interface ActionSpec {
 }
 
 const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
-    <GSimpleActionGroup prefix={prefix}>
-        {specs.map((spec) => (
+    <GSimpleActionGroup
+        prefix={prefix}
+        actions={specs.map((spec) => (
             <GSimpleAction key={spec.id} name={spec.id} onActivate={spec.onActivate ?? noop} />
         ))}
-    </GSimpleActionGroup>
+    />
 );
 
 const menuEntries = (prefix: string, specs: ActionSpec[]): MenuEntry[] =>

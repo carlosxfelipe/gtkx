@@ -7,6 +7,7 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
+import { BUILT_IN_ELEMENT_PROPS } from "../../src/store/react/built-ins.js";
 import {
     collectIntrinsicElementClasses,
     glibNameOf,
@@ -146,6 +147,58 @@ describe("codegen return-value convention", () => {
             "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
         );
         expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
+    });
+});
+
+describe("codegen async promisification", () => {
+    const gioSource = (): string => giModules.find(({ directory }) => directory === "gio")?.source ?? "";
+
+    it("promisifies a module-level async function against its finish sibling", () => {
+        const source = gioSource();
+        expect(source).toContain(
+            "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {",
+        );
+        expect(source).toContain("return promisify(gBusGet, busGetFinish, cancellable, busType);");
+        expect(source).toContain("export function busGetFinish(res: AsyncResult): DBusConnection {");
+    });
+
+    it("promisifies a static async constructor against its static finish", () => {
+        const source = gioSource();
+        expect(source).toContain(
+            "static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, observer: DBusAuthObserver | null, cancellable?: Cancellable | null): Promise<DBusConnection> {",
+        );
+        expect(source).toContain(
+            "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, getHandle(stream), guid, flags, tryGetHandle(observer));",
+        );
+        expect(source).toContain("static newFinish(res: AsyncResult): DBusConnection {");
+    });
+
+    it("leaves a function callback-based when its finish needs more than the async result", () => {
+        const gtk = giModules.find(({ directory }) => directory === "gtk");
+        const source = gtk?.source ?? "";
+        expect(source).toContain(
+            "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void {",
+        );
+        expect(source).not.toContain(
+            "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable?: Gio.Cancellable | null): Promise",
+        );
+    });
+
+    it("does not promisify a synchronous method that only carries a progress callback", () => {
+        const source = gioSource();
+        expect(source).toContain(
+            "copy(destination: File, flags: FileCopyFlags, cancellable: Cancellable | null, progressCallback: FileProgressCallback | null): boolean;",
+        );
+        expect(source).not.toContain(
+            "copy(destination: File, flags: FileCopyFlags, cancellable?: Cancellable | null): Promise",
+        );
+    });
+
+    it("does not promisify a static async op that also takes a non-async callback", () => {
+        const source = gioSource();
+        expect(source).toContain(
+            "static new(connection: DBusConnection, flags: DBusObjectManagerClientFlags, name: string, objectPath: string, getProxyTypeFunc: DBusProxyTypeFunc | null, cancellable: Cancellable | null, callback: AsyncReadyCallback | null): void {",
+        );
     });
 });
 
@@ -367,11 +420,20 @@ describe("Library.resolveType", () => {
 
 const jsxSources = (): string[] => generateJsxFiles(library).namespaces.map((entry) => entry.source);
 
+const namedContainerPropTypes = new Set<string>(
+    Object.entries(BUILT_IN_ELEMENT_PROPS)
+        .filter(([, props]) => props.some((prop) => prop.kind === "container" && prop.prop !== "children"))
+        .map(([type]) => type),
+);
+
+const hasNamedContainerProps = (glibName: string | undefined): boolean =>
+    glibName !== undefined && namedContainerPropTypes.has(glibName);
+
 const interfacePropsNames = (): Set<string> => {
     const names = new Set<string>();
     for (const widget of collectIntrinsicElementClasses(library)) {
         for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
-            if (!interfaceHasPropsBody(iface.klass)) continue;
+            if (!interfaceHasPropsBody(iface.klass, hasNamedContainerProps)) continue;
             const glib = glibNameOf(iface.klass);
             if (glib !== undefined) names.add(`${glib}Props`);
         }

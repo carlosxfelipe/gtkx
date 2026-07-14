@@ -288,8 +288,9 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
     const handlers = useErrorStatesHandlers(state);
 
     return (
-        <Dialog>
-            <AdwDialog title="Error States" canClose followsContentSize onClosed={() => onClose?.()}>
+        <Dialog onClose={() => onClose?.()}>
+            {(ref) => (
+            <AdwDialog ref={ref} title="Error States" canClose followsContentSize>
                 <AdwToolbarView topBar={<AdwHeaderBar />}>
                     <Grid
                         rowSpacing={10}
@@ -319,6 +320,7 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
                     </Grid>
                 </AdwToolbarView>
             </AdwDialog>
+            )}
         </Dialog>
     );
 };

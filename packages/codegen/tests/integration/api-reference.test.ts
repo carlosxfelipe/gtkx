@@ -98,6 +98,23 @@ describe("ApiReference — lookup", () => {
         );
     });
 
+    it("renders promisified static async members on class pages", () => {
+        const page = pageFor("Gio.DBusConnection");
+        expect(page).toContain(
+            "new(stream: Gio.IOStream, guid: string | null, flags: Gio.DBusConnectionFlags, observer: Gio.DBusAuthObserver | null, cancellable?: Gio.Cancellable | null): Promise<Gio.DBusConnection>",
+        );
+        expect(page).toContain("newFinish(res: Gio.AsyncResult): Gio.DBusConnection");
+    });
+
+    it("renders promisified module-level async functions on function pages", () => {
+        const page = pageFor("Gio.busGet");
+        expect(page).toContain(
+            "function busGet(busType: Gio.BusType, cancellable?: Gio.Cancellable | null): Promise<Gio.DBusConnection>",
+        );
+        const finishPage = pageFor("Gio.busGetFinish");
+        expect(finishPage).toContain("function busGetFinish(res: Gio.AsyncResult): Gio.DBusConnection");
+    });
+
     it("renders an interface page with prerequisites", () => {
         const page = pageFor("Gtk.Orientable");
         expect(page).toContain("# Gtk.Orientable");

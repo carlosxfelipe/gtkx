@@ -7,7 +7,7 @@ import { render, screen, userEvent } from "@gtkx/testing";
 import { Counter } from "./Counter";
 
 test("increments on click", async () => {
-  render(<Counter />);
+  await render(<Counter />);
   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
   await userEvent.click(button);
   expect(await screen.findByText("Count: 1")).toBeInstanceOf(Gtk.Label);
@@ -18,7 +18,7 @@ test("increments on click", async () => {
   <section id="testing" class="diff">
     <div class="diff__head section-head">
       <p class="overline">Two things no JS-desktop tool ships</p>
-      <h2 class="diff__title section-title">Tested like the web. <span class="accent">Driveable by agents.</span></h2>
+      <h2 class="diff__title section-title">Tested like the web. <span class="accent">Drivable by agents.</span></h2>
     </div>
     <div class="diff__grid">
       <div class="diff__card">
@@ -42,9 +42,9 @@ test("increments on click", async () => {
         <CodeBlock variant="terminal">
           <div class="mcp-com"># Claude drives your live app over MCP</div>
           <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_query_widgets { by: "role", value: "button" }</div>
-          <div class="mcp-out"><span aria-hidden="true">←</span> 2 matches: "Save" (id 12), "Cancel" (id 13)</div>
-          <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_click { widgetId: 12 }</div>
-          <div class="mcp-ok"><span aria-hidden="true">✓</span> toast "Recipe saved" appeared</div>
+          <div class="mcp-out"><span aria-hidden="true">←</span> 2 matches: "Save" (id "12"), "Cancel" (id "13")</div>
+          <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_click { widgetId: "12" }</div>
+          <div class="mcp-ok"><span aria-hidden="true">✓</span> toast "Task saved" appeared</div>
         </CodeBlock>
       </div>
     </div>

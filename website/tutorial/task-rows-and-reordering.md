@@ -38,7 +38,7 @@ export const TaskRow = ({ task, reorderable, onToggleDone, onToggleImportant, on
 
 ## The strikethrough title uses Pango markup, not CSS
 
-There is no `text-decoration` in GTK CSS. To strike out a completed task's title you wrap it in Pango markup, GTK's inline text-formatting syntax (`<s>` for strikethrough, `<b>`, `<i>`, `<span foreground="...">`, and so on), then tell the label to parse it:
+GTK CSS supports `text-decoration-line`, but you can't easily target an `AdwActionRow`'s internal title label to apply it. To strike out a completed task's title you wrap it in Pango markup, GTK's inline text-formatting syntax (`<s>` for strikethrough, `<b>`, `<i>`, `<span foreground="...">`, and so on), then tell the label to parse it:
 
 ```tsx
 const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
@@ -102,7 +102,7 @@ suffix={
 }
 ```
 
-The star is a `GtkToggleButton` (a button that stays pressed), so like the checkbox it is controlled by `active={task.important}` and reads `self.active` back on toggle. Its icon swaps between the named system icons `starred-symbolic` and `non-starred-symbolic`. `cssClasses={["flat"]}` applies libadwaita's `flat` button style, which drops the button's background so it reads as an inline row control rather than a raised button.
+The star is a `GtkToggleButton` (a button that stays pressed), so like the checkbox it is controlled by `active={task.important}` and reads `self.active` back on toggle. Its icon swaps between the named system icons `starred-symbolic` and `non-starred-symbolic`. `cssClasses={["flat"]}` applies GTK's `flat` button style class, which drops the button's background so it reads as an inline row control rather than a raised button.
 
 Delete is a plain `GtkButton` whose `onClicked` hands the whole `task` object to `onDelete`, which in the app raises an undo toast rather than deleting immediately.
 

@@ -301,8 +301,9 @@ const renderColumnVisibilityActions = (
     columnVisibility: ColumnVisibility,
     toggleColumn: (id: ToggleableColumnId) => void,
 ) => (
-    <GSimpleActionGroup prefix="columnview">
-        {TOGGLEABLE_COLUMNS.map((column) => (
+    <GSimpleActionGroup
+        prefix="columnview"
+        actions={TOGGLEABLE_COLUMNS.map((column) => (
             <GSimpleAction
                 key={column.id}
                 name={column.action}
@@ -310,7 +311,7 @@ const renderColumnVisibilityActions = (
                 onActivate={() => toggleColumn(column.id)}
             />
         ))}
-    </GSimpleActionGroup>
+    />
 );
 
 interface SettingsColumnsProps {

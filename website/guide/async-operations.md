@@ -4,32 +4,35 @@ description: "How GTKX turns GIO's callback-and-finish async convention into Pro
 
 # Async Operations
 
-GNOME's platform libraries share one asynchronous convention. An operation starts with a method that takes a `Gio.AsyncReadyCallback`, and a sibling `_finish` method extracts the result (or the error) once the callback fires. In C that means threading a callback and a `GAsyncResult` through every async call. In GTKX you never see that machinery: codegen detects every callback-and-finish pair on a class and generates a single method that returns a `Promise`, so reading a file, opening a file dialog, or querying the clipboard is an ordinary `await`.
+GNOME's platform libraries share one asynchronous convention. An operation starts with a call that takes a `Gio.AsyncReadyCallback`, and a sibling `_finish` call extracts the result (or the error) once the callback fires. In C that means threading a callback and a `GAsyncResult` through every async call. In GTKX you never see that machinery: codegen detects every callback-and-finish pair, whether it is an instance method, a static method, or a module-level function, and generates a single call that returns a `Promise`, so reading a file, opening a file dialog, or connecting to the session bus is an ordinary `await`.
 
-This works because the generator reads the same GObject-Introspection data that defines the C API. A method is promisified when it either ends in `_async` with a matching `_finish` sibling (the classic GIO shape, like `g_file_load_contents_async` plus `g_file_load_contents_finish`) or takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix (the GTK4 dialog shape, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`). Methods ending in `_finish` are never promisified themselves.
+This works because the generator reads the same GObject-Introspection data that defines the C API. A call is promisified when it either ends in `_async` with a matching `_finish` sibling (the classic GIO shape, like `g_file_load_contents_async` plus `g_file_load_contents_finish`) or takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix (the GTK4 dialog shape, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`). The rule is the same wherever the pair lives, on an instance, on a class as a static, or at module level. Two conditions keep it honest: the initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter, and the `_finish` sibling must consume only the `GAsyncResult` the callback delivers so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
 
-The method keeps its own camelCase name. There is no renaming and no suffix stripping: `load_contents_async` becomes `loadContentsAsync`, and `Gtk.FileDialog`'s `open` is just `open`. If you know the C API or the GJS one, you already know what the method is called here.
+The call keeps its own camelCase name. There is no renaming and no suffix stripping: `load_contents_async` becomes `loadContentsAsync`, `Gtk.FileDialog`'s `open` is just `open`, and `g_bus_get` is `Gio.busGet`. If you know the C API or the GJS one, you already know what the call is named here.
 
 ## What the signatures look like
 
-Promisification reshapes the signature in three ways. The callback parameter disappears, since the promise replaces it. The `Gio.Cancellable` parameter survives but becomes a trailing optional, so you only mention it when you need cancellation. And the return type is a `Promise` of whatever the `_finish` method returns, with C out-parameters folded into a tuple. These are the generated signatures, verbatim from `@gtkx/gi`:
+Promisification reshapes the signature in three ways. The callback parameter disappears, since the promise replaces it. The `Gio.Cancellable` parameter survives but becomes a trailing optional, so you only mention it when you need cancellation. And the return type is a `Promise` of whatever the `_finish` call returns, with C out-parameters folded into a tuple. These are the generated signatures, verbatim from `@gtkx/gi`:
 
 ```ts
-// Gio.File
+// Gio.File (instance method)
 loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string]>;
 queryInfoAsync(attributes: string, flags: FileQueryInfoFlags, ioPriority: number, cancellable?: Cancellable | null): Promise<FileInfo>;
 
-// Gtk.FileDialog
+// Gtk.FileDialog (instance method)
 open(parent: Window | null, cancellable?: Gio.Cancellable | null): Promise<Gio.File>;
 
-// Adw.AlertDialog
+// Adw.AlertDialog (instance method)
 choose(parent: Gtk.Widget | null, cancellable?: Gio.Cancellable | null): Promise<string>;
 
-// Gdk.Clipboard
-readTextAsync(cancellable?: Gio.Cancellable | null): Promise<string | null>;
+// Gio.DBusConnection (static method)
+static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, observer: DBusAuthObserver | null, cancellable?: Cancellable | null): Promise<DBusConnection>;
+
+// Gio (module-level function)
+function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection>;
 ```
 
-`loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills two out-parameters (the contents and an etag), so the promise resolves to all three at once. `choose` resolves to the response ID string you registered on the alert dialog. The `_finish` methods (`loadContentsFinish`, `openFinish`, and so on) are still generated alongside the promise-returning ones, but there is no reason to call them yourself.
+`loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills two out-parameters (the contents and an etag), so the promise resolves to all three at once. `choose` resolves to the response ID string you registered on the alert dialog. The static `Gio.DBusConnection.new` and the module-level `Gio.busGet` both start an async connection and resolve to the `Gio.DBusConnection`, reusing the same static and module-level `_finish` calls under the hood. The `_finish` calls (`loadContentsFinish`, `openFinish`, `newFinish`, `busGetFinish`, and so on) are still generated alongside the promise-returning ones, but there is no reason to call them yourself.
 
 ## Awaiting in components
 
@@ -129,20 +132,9 @@ const isCancellation = (error: unknown): boolean =>
 
 ## What stays callback-based
 
-Promisification applies to instance methods with a genuine `AsyncReadyCallback` finish pair. Two categories keep their raw callback shape.
+Promisification covers every callback-and-finish pair whose initiator takes a single `AsyncReadyCallback` and whose `_finish` sibling consumes only the `GAsyncResult`, wherever the pair lives. A few shapes fall outside that and keep their raw callback form.
 
-Module-level and static functions are generated as-is, callback and finish function both:
-
-```ts
-import * as Gio from "@gtkx/gi/gio";
-
-Gio.busGet(Gio.BusType.SESSION, null, (source, result) => {
-    const connection = Gio.busGetFinish(result);
-    // ...
-});
-```
-
-Functions whose callback is not an `AsyncReadyCallback` are also left alone, because there is no finish step to fold into a promise. `Gtk.printRunPageSetupDialogAsync` takes a `PageSetupDoneFunc` that receives the resulting page setup directly, so you call it with a plain callback:
+Callbacks that are not an `AsyncReadyCallback` have no finish step to fold into a promise, so they stay callbacks. This also covers synchronous calls that merely take a progress callback next to a `_finish` sibling, like `Gio.File.copy`. `Gtk.printRunPageSetupDialogAsync` takes a `PageSetupDoneFunc` that receives the resulting page setup directly, so you call it with a plain callback:
 
 ```tsx
 const settings = new Gtk.PrintSettings();
@@ -151,8 +143,19 @@ Gtk.printRunPageSetupDialogAsync(parentWindow, null, settings, (pageSetup) => {
 });
 ```
 
+A pair whose `_finish` needs more than the `GAsyncResult` also stays callback-based, because the promise has only the async result to hand back. `Gtk.showUriFull` is one: its `Gtk.showUriFullFinish(parent, result)` wants the parent window as well, so the call keeps its callback and the finish keeps its two arguments:
+
+```ts
+Gtk.showUriFull(parentWindow, "https://example.com", 0, null, (source, result) => {
+    const opened = Gtk.showUriFullFinish(parentWindow, result);
+    // ...
+});
+```
+
+Finally, a call that carries a second callback beside its `AsyncReadyCallback` stays callback-based, because the promise can only supply the one completion callback. `Gio.DBusObjectManagerClient.new` takes a `get_proxy_type_func` alongside its ready callback, so it keeps the raw shape and you call `Gio.DBusObjectManagerClient.newFinish(result)` yourself.
+
 ::: info
-The suffix in that name comes from GTK, not from the promisification rule. Whether a method returns a promise is determined by the callback-and-finish pair, and the generated TypeScript signature always tells you: a `Promise<...>` return means `await`, a `void` return with a callback parameter means callback.
+Whether a call returns a promise is determined by the callback-and-finish pair, and the generated TypeScript signature always tells you: a `Promise<...>` return means `await`, a `void` return with a callback parameter means callback.
 :::
 
 ## Rejections are GLib errors

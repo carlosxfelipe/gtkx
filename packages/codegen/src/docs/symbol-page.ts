@@ -14,12 +14,18 @@ import type { GirRecord } from "../gir/record.js";
 import {
     dedupeCallables,
     indexMethodsByName,
+    matchStaticFinishFunction,
     renderInstanceMethodSignature,
     renderStaticSignature,
 } from "../store/gi/callables.js";
 import { constantLiteral } from "../store/gi/constant.js";
 import { enumMemberKey } from "../store/gi/enum.js";
-import { methodExportName, renderMethodReturnType, renderMethodSignature } from "../store/gi/method.js";
+import {
+    methodExportName,
+    renderMethodReturnType,
+    renderMethodSignature,
+    renderPromisifiedSignature,
+} from "../store/gi/method.js";
 import { type ResolvedAccessor, resolveAccessor } from "../store/gi/property-accessor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
@@ -131,13 +137,17 @@ type StaticSectionOptions = {
     intro: string;
     context: ModuleContext;
     callables: GirFunction[];
+    siblings: GirFunction[];
     returnTypeOverride?: string;
 };
 
 const staticSection = (options: StaticSectionOptions): string[] => {
     const rendered: { name: string; block: string }[] = [];
     for (const callable of dedupeCallables(options.callables)) {
-        const signature = renderStaticSignature(options.context, callable, options.returnTypeOverride);
+        const signature = renderStaticSignature(options.context, callable, {
+            returnTypeOverride: options.returnTypeOverride,
+            siblings: options.siblings,
+        });
         if (signature === undefined) continue;
         rendered.push({
             name: signature.name,
@@ -276,6 +286,7 @@ const classPage = (
     const docsContext = docsSignatureContext(entry.namespace, library);
     const constructorsIntro = `Constructors are called on the class: \`${qualified}.new(...)\`.`;
     const staticIntro = `Static methods are called on the class: \`${qualified}.<method>(...)\`.`;
+    const staticSiblings = [...entry.klass.constructors, ...entry.klass.functions];
     return joinSections([
         ...pageHeader(entry, entry.kind),
         ...elementNote(entry, options),
@@ -285,6 +296,7 @@ const classPage = (
             intro: constructorsIntro,
             context: docsContext,
             callables: entry.klass.constructors,
+            siblings: staticSiblings,
             returnTypeOverride: qualified,
         }),
         ...staticSection({
@@ -292,6 +304,7 @@ const classPage = (
             intro: staticIntro,
             context: docsContext,
             callables: entry.klass.functions,
+            siblings: staticSiblings,
         }),
         ...propertiesSection(entry, library),
         ...signalsSection(entry, library),
@@ -336,6 +349,7 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
     const staticIntro = `Static methods are called on the class: \`${qualified}.<method>(...)\`.`;
     const methodEntries = recordInstanceEntries(docsContext, entry.record);
     const claimedNames = new Set(methodEntries.map((item) => item.name));
+    const staticSiblings = [...entry.record.constructors, ...entry.record.functions];
     return joinSections([
         ...pageHeader(entry, entry.record.isUnion ? "union" : "record"),
         ...staticSection({
@@ -343,6 +357,7 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
             intro: constructorsIntro,
             context: docsContext,
             callables: entry.record.constructors,
+            siblings: staticSiblings,
             returnTypeOverride: qualified,
         }),
         ...staticSection({
@@ -350,6 +365,7 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
             intro: staticIntro,
             context: docsContext,
             callables: entry.record.functions,
+            siblings: staticSiblings,
         }),
         ...fieldsSection(entry.record, docsContext, claimedNames),
         ...methodsSectionBlocks(methodEntries, "Methods are called on instances."),
@@ -403,9 +419,18 @@ const aliasPage = (entry: GiSymbolBase & { kind: "alias"; alias: GirAlias }, lib
     return joinSections([...pageHeader(entry, "alias"), `\`\`\`ts\ntype ${entry.name} = ${target}\n\`\`\``]);
 };
 
+const functionSignature = (context: ModuleContext, name: string, fn: GirFunction, siblings: GirFunction[]): string => {
+    const finishFn = matchStaticFinishFunction(context, fn, siblings);
+    if (finishFn !== undefined) {
+        const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
+        return `function ${name}(${signature}): ${returnType}`;
+    }
+    return `function ${name}(${renderMethodSignature(context, fn)}): ${renderMethodReturnType(context, fn)}`;
+};
+
 const functionPage = (entry: GiSymbolBase & { kind: "function"; fn: GirFunction }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
-    const signature = `function ${entry.name}(${renderMethodSignature(docsContext, entry.fn)}): ${renderMethodReturnType(docsContext, entry.fn)}`;
+    const signature = functionSignature(docsContext, entry.name, entry.fn, entry.namespace.functions);
     return joinSections([...pageHeader(entry, "function"), `\`\`\`ts\n${signature}\n\`\`\``]);
 };
 

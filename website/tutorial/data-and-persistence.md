@@ -73,7 +73,7 @@ const encode = (value: string): number[] => Array.from(new TextEncoder().encode(
 const decode = (bytes: number[]): string => new TextDecoder().decode(new Uint8Array(bytes));
 ```
 
-`TextEncoder`/`TextDecoder` are web platform globals, available here because gtkx runs your app on a bundled Node runtime.
+`TextEncoder`/`TextDecoder` are web platform globals, available here because gtkx runs your app on Node (which you provide, version 24 or newer).
 
 ## First run: the seed
 
@@ -443,7 +443,7 @@ Two things worth calling out in the schema format:
 Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered on the Preferences and Theming page.
 
 ::: info node:fs is available, but GLib keeps I/O dependency-free
-Because gtkx bundles a Node runtime, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node's streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
+Because gtkx runs your app on Node, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node's streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
 :::
 
 ## Next

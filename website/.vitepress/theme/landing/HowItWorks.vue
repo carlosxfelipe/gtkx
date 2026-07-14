@@ -4,17 +4,13 @@ import CodeBlock from "../components/CodeBlock.vue";
 
 const appCode = `function App() {
   return (
-    <AdwApplicationWindow title="Recipes">
-      <AdwHeaderBar />
-      <GtkLabel label="Hello 👋" />
+    <AdwApplicationWindow title="Tasks">
+      <AdwToolbarView topBar={<AdwHeaderBar />}>
+        <GtkLabel>Hello 👋</GtkLabel>
+      </AdwToolbarView>
     </AdwApplicationWindow>
   )
 }`;
-
-const devOut = `gtkx dev
-✓ dev server ready in 412 ms
-✓ watching src/, Fast Refresh on the live window
-~ edited App.tsx → window updated, state kept`;
 </script>
 
 <template>
@@ -27,10 +23,11 @@ const devOut = `gtkx dev
     <div class="how__step">
       <div class="how__text">
         <span class="how__num">01</span>
-        <h3 class="how__name">Write widgets as JSX</h3>
+        <h3 class="how__name">Write your UI as JSX</h3>
         <p class="how__body">
-          Element types are GTK and libadwaita widget names. Props are their real
-          properties; <code class="l-code">on*</code> handlers are their signals. If you know React,
+          Element types are GObject class names, like <code class="l-code">GtkButton</code> or
+          <code class="l-code">AdwHeaderBar</code>. Props are their real properties;
+          <code class="l-code">on*</code> handlers are their signals. If you know React,
           you already know the API.
         </p>
       </div>
@@ -43,19 +40,20 @@ const devOut = `gtkx dev
         <h3 class="how__name">The reconciler maps your tree to live GObjects</h3>
         <p class="how__body">
           A custom react-reconciler turns each element into a real GObject instance and
-          keeps it in sync, with no virtual DOM diffing a browser. Your component tree
-          <em>is</em> the widget tree.
+          keeps it in sync, with no browser engine and no HTML emulating widgets. Your
+          component tree <em>is</em> the widget tree.
         </p>
         <Callout type="tip">
-          A Rust napi addon owns the single GLib main-loop thread and performs every
-          libffi call into GTK, so all native mutation stays on one thread.
+          Because every element is a real GObject, even non-widget objects compose as
+          JSX: a scale takes its adjustment inline as
+          <code class="l-code">adjustment={&lt;GtkAdjustment /&gt;}</code>. If it is a
+          GObject, you can write it in JSX.
         </Callout>
       </div>
       <CodeBlock variant="terminal">
-        <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> gtkx build</div>
-        <div class="tdim">› react-reconciler → GObject instances</div>
-        <div class="tdim">› @gtkx/native → libffi → GTK</div>
-        <div class="tout"><span class="tmark" aria-hidden="true">✓</span> dist/bundle.js: single file, assets bundled</div>
+        <div class="tdim">App.tsx → react-reconciler</div>
+        <div class="tdim">→ GObject instances: GtkButton, AdwHeaderBar</div>
+        <div class="tout"><span class="tmark" aria-hidden="true">✓</span> @gtkx/native → libffi → native libraries</div>
       </CodeBlock>
     </div>
 
@@ -69,7 +67,11 @@ const devOut = `gtkx dev
           lost state.
         </p>
       </div>
-      <CodeBlock variant="terminal" :code="devOut" />
+      <CodeBlock variant="terminal">
+        <div class="tdim">[gtkx] File changed: src/App.tsx</div>
+        <div class="tdim">[gtkx] Fast refreshing...</div>
+        <div class="tout">[gtkx] Fast refresh complete</div>
+      </CodeBlock>
     </div>
   </section>
 </template>

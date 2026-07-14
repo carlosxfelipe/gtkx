@@ -5,7 +5,7 @@ import typedocSidebar from "../reference/typedoc-sidebar.json";
 
 const title = "GTKX";
 const description =
-    "Write declarative JSX. GTKX renders real native GTK4 and libadwaita widgets (no webview, no Electron) backed by a Rust GObject runtime.";
+    "Write declarative JSX. GTKX renders it to real, native GObjects (no webview, no Electron) on a Rust runtime, with first-class GTK4 and libadwaita support.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 

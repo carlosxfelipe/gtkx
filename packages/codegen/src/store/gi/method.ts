@@ -79,7 +79,7 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
 export const renderPromisifiedBody = (
     context: ModuleContext,
     asyncFn: GirFunction,
-    finishMember: string,
+    finishExpression: string,
     bindingExpression: string,
 ): string => {
     context.addRuntimeImport("promisify");
@@ -106,8 +106,10 @@ export const renderPromisifiedBody = (
         leadingExpressions.push(promisifiedArgument(promisifyContext, parameter, index, sawOptional));
     });
     const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
-    return `return promisify(${bindingExpression}, this.${finishMember}.bind(this), ${cancellableExpression}${leadingArguments});`;
+    return `return promisify(${bindingExpression}, ${finishExpression}, ${cancellableExpression}${leadingArguments});`;
 };
+
+export const boundFinishExpression = (finishFn: GirFunction): string => `this.${methodExportName(finishFn)}.bind(this)`;
 
 type PromisifyContext = {
     context: ModuleContext;

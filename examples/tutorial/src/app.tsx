@@ -1,3 +1,4 @@
+import { NavigationView } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -284,13 +285,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
 
     const detailHeader = selectedTask ? (
         <AdwHeaderBar
-            start={
-                <GtkButton
-                    iconName="go-previous-symbolic"
-                    tooltipText="Back"
-                    onClicked={() => setSelectedTaskId(null)}
-                />
-            }
             end={
                 <>
                     <GtkToggleButton
@@ -378,14 +372,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
         />
     );
 
-    const contentBody = selectedTask ? (
-        <TaskDetail
-            key={selectedTask.id}
-            task={selectedTask}
-            onUpdate={(fields) => api.updateTask(selectedTask.id, fields)}
-            onSetImportant={(important) => api.setImportant(selectedTask.id, important)}
-        />
-    ) : selecting ? (
+    const listBody = selecting ? (
         <SelectionView tasks={visible} selectedIds={selectedIds} onSelectionChanged={setSelectedIds} />
     ) : (
         <TaskList
@@ -403,8 +390,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
             row={rowHandlers}
         />
     );
-
-    const topBar = detailHeader ?? (selecting ? selectionHeader : listHeader);
 
     return (
         <AdwApplicationWindow
@@ -473,13 +458,36 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
                     }
                     content={
                         <AdwNavigationPage title={titleFor(selection, lists)}>
-                            <AdwToolbarView
-                                topBar={topBar}
-                                bottomBar={selecting ? selectionActionBar : undefined}
-                                revealBottomBars={selecting}
+                            <NavigationView
+                                popOnEscape={false}
+                                onPop={(tag) => {
+                                    if (tag === "task") setSelectedTaskId(null);
+                                }}
                             >
-                                {contentBody}
-                            </AdwToolbarView>
+                                <NavigationView.Page tag="list" title={titleFor(selection, lists)}>
+                                    <AdwToolbarView
+                                        topBar={selecting ? selectionHeader : listHeader}
+                                        bottomBar={selecting ? selectionActionBar : undefined}
+                                        revealBottomBars={selecting}
+                                    >
+                                        {listBody}
+                                    </AdwToolbarView>
+                                </NavigationView.Page>
+                                {selectedTask ? (
+                                    <NavigationView.Page tag="task" title={selectedTask.title}>
+                                        <AdwToolbarView topBar={detailHeader}>
+                                            <TaskDetail
+                                                key={selectedTask.id}
+                                                task={selectedTask}
+                                                onUpdate={(fields) => api.updateTask(selectedTask.id, fields)}
+                                                onSetImportant={(important) =>
+                                                    api.setImportant(selectedTask.id, important)
+                                                }
+                                            />
+                                        </AdwToolbarView>
+                                    </NavigationView.Page>
+                                ) : null}
+                            </NavigationView>
                         </AdwNavigationPage>
                     }
                 />
@@ -517,21 +525,25 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
+            actions={
+                <>
+                    <GSimpleAction
+                        name="complete-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            if (parameter) notify.current.complete(parameter.getString()[0]);
+                        }}
+                    />
+                    <GSimpleAction
+                        name="open-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            if (parameter) notify.current.open(parameter.getString()[0]);
+                        }}
+                    />
+                </>
+            }
         >
-            <GSimpleAction
-                name="complete-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    if (parameter) notify.current.complete(parameter.getString()[0]);
-                }}
-            />
-            <GSimpleAction
-                name="open-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    if (parameter) notify.current.open(parameter.getString()[0]);
-                }}
-            />
             <TasksWindow notify={notify} />
         </AdwApplication>
     );

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const stack = ["GTK 4", "libadwaita", "GNOME", "React", "TypeScript", "Vite", "Rust"];
+const stack = ["GObject", "GTK4", "libadwaita", "GNOME", "React", "TypeScript", "Vite", "Rust"];
 </script>
 
 <template>

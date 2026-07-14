@@ -11,6 +11,7 @@ import {
     type GlibNamedClass,
     giNamespaceAlias,
     glibNameOf,
+    type HasContainerProps,
     interfaceHasPropsBody,
     newlyImplementedInterfaces,
     type ResolvedQualifiedInterface,
@@ -74,15 +75,9 @@ export const generateJsxSection = (
     addReactBuiltin(imports, "ReactNode");
     addReactBuiltin(imports, "Ref");
 
-    let needsReactElement = false;
-    const propBlocks: string[] = [];
-
-    for (const iface of collectInterfacePropsClasses(library, intrinsicElements, targetNamespace.name)) {
-        if (glibNameOf(iface.klass) === undefined) continue;
-        const { block, objectPropNames } = renderInterfacePropsBlock(library, iface, targetNamespace.name, imports);
-        if (objectPropNames.length > 0) needsReactElement = true;
-        propBlocks.push(block);
-    }
+    const interfaceResult = renderInterfacePropBlocks(library, targetNamespace.name, options);
+    let needsReactElement = interfaceResult.needsReactElement;
+    const propBlocks: string[] = [...interfaceResult.blocks];
 
     const blockContext: RenderPropBlockContext = {
         isIntrinsicElementAncestor,
@@ -90,6 +85,7 @@ export const generateJsxSection = (
         targetNamespaceName: targetNamespace.name,
         imports,
         typegen,
+        hasContainerProps: interfaceResult.hasContainerProps,
     };
     for (const entry of namespaceElements) {
         const { block, objectPropNames } = renderPropBlock(library, entry, blockContext);
@@ -106,6 +102,39 @@ export const generateJsxSection = (
         renderJsxAugmentation(namespaceElements),
     ].join("\n");
     return { source, intrinsicCount: intrinsicElementConsts.length };
+};
+
+type InterfaceBlockContext = {
+    library: Library;
+    targetNamespaceName: string;
+    imports: ImportsBuilder;
+    typegen: ElementPropTypegen;
+    hasContainerProps: HasContainerProps;
+};
+
+const renderInterfacePropBlocks = (
+    library: Library,
+    targetNamespaceName: string,
+    options: GenerateJsxOptions,
+): { blocks: string[]; needsReactElement: boolean; hasContainerProps: HasContainerProps } => {
+    const { imports, typegen, intrinsicElements } = options;
+    const hasContainerProps: HasContainerProps = (glibName) =>
+        glibName !== undefined && typegen.containerPropNamesFor(glibName).length > 0;
+    const context: InterfaceBlockContext = { library, targetNamespaceName, imports, typegen, hasContainerProps };
+    const blocks: string[] = [];
+    let needsReactElement = false;
+    for (const iface of collectInterfacePropsClasses(
+        library,
+        intrinsicElements,
+        targetNamespaceName,
+        hasContainerProps,
+    )) {
+        if (glibNameOf(iface.klass) === undefined) continue;
+        const { block, objectPropNames } = renderInterfacePropsBlock(iface, context);
+        if (objectPropNames.length > 0) needsReactElement = true;
+        blocks.push(block);
+    }
+    return { blocks, needsReactElement, hasContainerProps };
 };
 
 const registerCrossNsProps = (
@@ -129,17 +158,13 @@ const interfacePropsRef = (
     return `${glib}Props<Self>`;
 };
 
-const interfacePrerequisiteExtends = (
-    library: Library,
-    iface: ResolvedQualifiedInterface,
-    targetNamespaceName: string,
-    imports: ImportsBuilder,
-): string[] => {
+const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context: InterfaceBlockContext): string[] => {
+    const { library, targetNamespaceName, imports, hasContainerProps } = context;
     const refs: string[] = [];
     for (const prerequisiteName of iface.klass.prerequisites) {
         const resolved = library.resolveType(iface.namespace.name, prerequisiteName);
         if (resolved === undefined || resolved.kind !== "interface") continue;
-        if (!interfaceHasPropsBody(resolved.value)) continue;
+        if (!interfaceHasPropsBody(resolved.value, hasContainerProps)) continue;
         const ref = interfacePropsRef(
             { klass: resolved.value, namespace: resolved.namespace },
             targetNamespaceName,
@@ -151,11 +176,10 @@ const interfacePrerequisiteExtends = (
 };
 
 const renderInterfacePropsBlock = (
-    library: Library,
     iface: ResolvedQualifiedInterface,
-    targetNamespaceName: string,
-    imports: ImportsBuilder,
+    context: InterfaceBlockContext,
 ): { block: string; objectPropNames: string[] } => {
+    const { library, imports, typegen } = context;
     const glib = glibNameOf(iface.klass);
     const {
         propLines,
@@ -167,8 +191,10 @@ const renderInterfacePropsBlock = (
         namespace: iface.namespace,
     });
     for (const [namespace, alias] of propImports) addGiNamespace(imports, namespace, alias);
-    const ownerLines = [...propLines];
-    const prerequisiteExtends = interfacePrerequisiteExtends(library, iface, targetNamespaceName, imports);
+    const containerPropNames = glib === undefined ? [] : typegen.containerPropNamesFor(glib);
+    const containerPropLines = containerPropNames.map((propName) => `${propName}?: ReactNode | null | undefined;`);
+    const ownerLines = dedupePropLines([...propLines, ...containerPropLines]);
+    const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
     if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) {
         imports.addNamed("@gtkx/react", ACCESSIBLE_PROPS_NAME, true);
         prerequisiteExtends.push(ACCESSIBLE_PROPS_NAME);
@@ -196,6 +222,7 @@ type RenderPropBlockContext = {
     targetNamespaceName: string;
     imports: ImportsBuilder;
     typegen: ElementPropTypegen;
+    hasContainerProps: (glibName: string | undefined) => boolean;
 };
 
 const renderPropBlock = (
@@ -242,7 +269,7 @@ const resolveElementExtends = (library: Library, entry: GlibNamedClass, context:
     const extendsList: string[] = [];
     const parentRef = resolveParentPropsRef(library, entry, context);
     if (parentRef !== undefined) extendsList.push(parentRef);
-    for (const iface of newlyImplementedInterfaces(entry.klass, entry.namespace, library)) {
+    for (const iface of newlyImplementedInterfaces(entry.klass, entry.namespace, library, context.hasContainerProps)) {
         const ref = interfacePropsRef(iface, context.targetNamespaceName, context.imports);
         if (ref !== undefined) extendsList.push(ref);
     }

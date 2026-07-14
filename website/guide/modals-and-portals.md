@@ -81,14 +81,16 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
 
 export const About = ({ onClose }: { onClose: () => void }) => (
-    <Dialog>
-        <AdwAboutDialog
-            applicationName="Tasks"
-            developerName="GTKX"
-            version="1.0.0"
-            licenseType={Gtk.License.MPL_2_0}
-            onClosed={onClose}
-        />
+    <Dialog onClose={onClose}>
+        {(ref) => (
+            <AdwAboutDialog
+                ref={ref}
+                applicationName="Tasks"
+                developerName="GTKX"
+                version="1.0.0"
+                licenseType={Gtk.License.MPL_2_0}
+            />
+        )}
     </Dialog>
 );
 ```
@@ -99,13 +101,14 @@ Showing it is a conditional render, the same as any other component:
 {showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
 ```
 
-`Dialog` takes a single child element that accepts a ref to a `DialogInstance`: a widget with `present(parent)` and `forceClose()` methods, which is to say `Adw.Dialog` and every subclass (`AdwAboutDialog`, `AdwPreferencesDialog`, `AdwShortcutsDialog`, `AdwAlertDialog`). Internally it does three things:
+`Dialog` takes a render function as its child: `children: (ref) => ReactNode`. It hands you a `ref` that you attach to the dialog widget, which must be an `Adw.Dialog` or any subclass (`AdwAboutDialog`, `AdwPreferencesDialog`, `AdwShortcutsDialog`, `AdwAlertDialog`). Passing a render function instead of the element directly means `Dialog` never has to clone your element to inject the ref. Internally it does four things:
 
-1. Renders the child through `createPortal(..., rootElement)`, so the dialog widget is created top-level rather than inside your layout.
+1. Renders `children(ref)` through `createPortal(..., rootElement)`, so the dialog widget is created top-level rather than inside your layout.
 2. In a layout effect, calls `present(parent)` on mount and `forceClose()` on unmount. `forceClose` bypasses any close confirmation, which is correct when React state, not the widget, owns whether the dialog is open.
 3. Resolves `parent` for you: the optional `parent` prop (`Gtk.Window | null`) anchors the dialog explicitly, and when omitted it defaults to the nearest enclosing window from `useParentWindow()`. Pass `parent={null}` to present a dialog with no anchor.
+4. Wires its own `onClose` prop to the widget's `closed` signal, so a user-initiated dismissal reports back to React without you touching the inner widget.
 
-The one piece of glue you supply is closing the loop when the *user* dismisses the dialog (Escape, the close button). Every `Adw.Dialog` emits `closed`, so handle `onClosed` and clear the state that mounted the dialog, as `About` does above. Without it, React would still consider the dialog open after GTK has closed it.
+Closing the loop when the *user* dismisses the dialog (Escape, the close button, a swipe) is handled by `Dialog` itself. Pass `onClose` and it fires whenever the widget emits `closed`, so you clear the state that mounted the dialog, as `About` does above. A `closingFromReact` guard makes sure the `forceClose()` from React's own unmount does not re-fire `onClose`. Without wiring `onClose`, React would still consider the dialog open after GTK has closed it.
 
 The same wrapper covers full preference surfaces. The tutorial's preferences dialog is an `AdwPreferencesDialog` with pages, groups, and rows as ordinary children, driven by [GSettings-backed state](/tutorial/preferences-and-theming):
 
@@ -114,12 +117,14 @@ import { Dialog } from "@gtkx/components/adw";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx/adw";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => (
-    <Dialog>
-        <AdwPreferencesDialog title="Preferences" onClosed={onClose}>
-            <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
-                <AdwPreferencesGroup title="Appearance">{/* rows */}</AdwPreferencesGroup>
-            </AdwPreferencesPage>
-        </AdwPreferencesDialog>
+    <Dialog onClose={onClose}>
+        {(ref) => (
+            <AdwPreferencesDialog ref={ref} title="Preferences">
+                <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
+                    <AdwPreferencesGroup title="Appearance">{/* rows */}</AdwPreferencesGroup>
+                </AdwPreferencesPage>
+            </AdwPreferencesDialog>
+        )}
     </Dialog>
 );
 ```
@@ -142,19 +147,22 @@ export const DeleteConfirmation = ({
     onCancel: () => void;
 }) => (
     <Dialog>
-        <AlertDialog
-            heading="Delete Task?"
-            body={`"${taskTitle}" will be permanently deleted. This cannot be undone.`}
-            defaultResponse="cancel"
-            closeResponse="cancel"
-            onResponse={(id) => {
-                if (id === "delete") onConfirm();
-                else onCancel();
-            }}
-        >
-            <AlertDialog.Response id="cancel" label="Cancel" />
-            <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-        </AlertDialog>
+        {(ref) => (
+            <AlertDialog
+                ref={ref}
+                heading="Delete Task?"
+                body={`"${taskTitle}" will be permanently deleted. This cannot be undone.`}
+                defaultResponse="cancel"
+                closeResponse="cancel"
+                onResponse={(id) => {
+                    if (id === "delete") onConfirm();
+                    else onCancel();
+                }}
+            >
+                <AlertDialog.Response id="cancel" label="Cancel" />
+                <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
+            </AlertDialog>
+        )}
     </Dialog>
 );
 ```

@@ -20,10 +20,12 @@ import schema from "#data/com.gtkx.tutorial.gschema.xml";
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     // ...
     return (
-        <Dialog>
-            <AdwPreferencesDialog title="Preferences" onClosed={onClose}>
-                {/* pages */}
-            </AdwPreferencesDialog>
+        <Dialog onClose={onClose}>
+            {(ref) => (
+                <AdwPreferencesDialog ref={ref} title="Preferences">
+                    {/* pages */}
+                </AdwPreferencesDialog>
+            )}
         </Dialog>
     );
 };
@@ -31,22 +33,30 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 
 `AdwPreferencesDialog` is an `Adw.Dialog` subclass, not an `Adw.Window`. An Adw.Dialog is not shown by adding it to a tree: you call `present(parent)` on it, and it renders as an adaptive sheet (a centered floating dialog on desktop, a bottom sheet when the window is narrow). That imperative lifecycle is exactly what the `Dialog` wrapper from `@gtkx/components/adw` automates.
 
-`Dialog` takes a single child that exposes a ref to something presentable, portals it to the root, and brackets its lifetime with the two dialog methods:
+`Dialog` takes a render function that receives a ref, attaches it to the presentable widget you render, portals that to the root, and brackets its lifetime with the two dialog methods:
 
 ```tsx
 // packages/components/src/dialog.tsx
 useLayoutEffect(() => {
     if (!dialog) return;
+    closingFromReact.current = false;
     dialog.present(resolvedParent);
-    return () => dialog.forceClose();
+    return () => {
+        closingFromReact.current = true;
+        dialog.forceClose();
+    };
 }, [dialog, resolvedParent]);
+
+useSignal(dialog, "closed", () => {
+    if (!closingFromReact.current) onClose?.();
+});
 // ...
-return createPortal(cloneElement(element, { ref: mergedRef }), rootElement);
+return createPortal(children(setDialog), rootElement);
 ```
 
 So mounting `<Dialog>` calls `present` on the parent window (resolved automatically via `useParentWindow`), and unmounting calls `forceClose`, which dismisses the dialog without triggering any close confirmation. The `createPortal(..., rootElement)` part matters: the dialog is rendered at the top level of the render tree, not nested inside whatever component happens to be showing it, which is how detached windows and dialogs are meant to mount in gtkx.
 
-The `onClosed={onClose}` handler closes the React loop. When you press Escape or click away, `AdwPreferencesDialog` emits `closed`, `onClosed` fires, and `onClose` sets `showPreferences` back to `false`. That unmounts `<Preferences>`, and the cleanup above runs `forceClose` for good measure.
+The `onClose` prop closes the React loop. When you press Escape or click away, `AdwPreferencesDialog` emits `closed`, `Dialog` forwards it to `onClose`, and `onClose` sets `showPreferences` back to `false`. That unmounts `<Preferences>`, and the cleanup above runs `forceClose` for good measure. The `closingFromReact` guard makes sure that React-driven `forceClose` does not loop back through `onClose`.
 
 ::: info AdwDialog vs AdwWindow
 Older libadwaita code used `AdwPreferencesWindow` and `AdwWindow` subclasses that you toggled with a `visible` prop or `transient-for`. The `Adw.Dialog` family (since libadwaita 1.5) replaced that: dialogs are adaptive by default and are driven with `present`/`close`, which is why gtkx wraps them in a lifecycle component rather than a visibility prop.

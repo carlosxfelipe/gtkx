@@ -99,17 +99,20 @@ const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => 
 
 const ThemesWarningDialog = ({ onResponse }: { onResponse: (response: string) => void }) => (
     <Dialog>
-        <AlertDialog
-            name="warning-dialog"
-            heading="Warning"
-            body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
-            defaultResponse="ok"
-            closeResponse="cancel"
-            onResponse={onResponse}
-        >
-            <AlertDialog.Response id="cancel" label="_Cancel" />
-            <AlertDialog.Response id="ok" label="_OK" />
-        </AlertDialog>
+        {(ref) => (
+            <AlertDialog
+                ref={ref}
+                name="warning-dialog"
+                heading="Warning"
+                body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
+                defaultResponse="ok"
+                closeResponse="cancel"
+                onResponse={onResponse}
+            >
+                <AlertDialog.Response id="cancel" label="_Cancel" />
+                <AlertDialog.Response id="ok" label="_OK" />
+            </AlertDialog>
+        )}
     </Dialog>
 );
 

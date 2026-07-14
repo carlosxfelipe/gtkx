@@ -50,8 +50,14 @@ export const glibNameOf = (klass: GirClass): string | undefined => klass.glibTyp
 
 export const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
 
-export const interfaceHasPropsBody = (klass: GirClass): boolean =>
-    klass.properties.length > 0 || klass.signals.length > 0;
+export type HasContainerProps = (glibName: string | undefined) => boolean;
+
+const noContainerProps: HasContainerProps = () => false;
+
+export const interfaceHasPropsBody = (
+    klass: GirClass,
+    hasContainerProps: HasContainerProps = noContainerProps,
+): boolean => klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(glibNameOf(klass));
 
 const qualifiedInterfaceKey = (iface: ResolvedQualifiedInterface): string =>
     `${iface.namespace.name}.${iface.klass.name}`;
@@ -71,10 +77,12 @@ export const newlyImplementedInterfaces = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
+    hasContainerProps: HasContainerProps = noContainerProps,
 ): ResolvedQualifiedInterface[] => {
     const inherited = parentImplementedInterfaceKeys(klass, namespace, library);
     const own = implementedInterfaces(klass, namespace, library).filter(
-        (iface) => interfaceHasPropsBody(iface.klass) && !inherited.has(qualifiedInterfaceKey(iface)),
+        (iface) =>
+            interfaceHasPropsBody(iface.klass, hasContainerProps) && !inherited.has(qualifiedInterfaceKey(iface)),
     );
     return sortStringsBy(own, qualifiedInterfaceKey);
 };
@@ -83,6 +91,7 @@ export const collectInterfacePropsClasses = (
     library: Library,
     intrinsicElements: GlibNamedClass[],
     targetNamespaceName: string,
+    hasContainerProps: HasContainerProps = noContainerProps,
 ): ResolvedQualifiedInterface[] => {
     const seen = new Set<string>();
     const result: ResolvedQualifiedInterface[] = [];
@@ -91,7 +100,7 @@ export const collectInterfacePropsClasses = (
             const key = qualifiedInterfaceKey(iface);
             if (seen.has(key)) continue;
             seen.add(key);
-            if (!interfaceHasPropsBody(iface.klass)) continue;
+            if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) continue;
             if (iface.namespace.name !== targetNamespaceName) continue;
             result.push(iface);
         }

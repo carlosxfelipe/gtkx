@@ -12,7 +12,7 @@ The system has two halves that find each other through a Unix domain socket.
 
 The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your MCP client launches it as an ordinary stdio MCP server. On startup it also opens a socket at `$XDG_RUNTIME_DIR/gtkx-mcp.sock` (falling back to the system temporary directory) and waits for apps to register. Because the socket path is fixed, one server serves your whole session; a second instance refuses to start while the first is alive.
 
-The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process that connects to that same socket and registers with the app's application ID, process ID, and project root. If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server at the same time; every tool except `gtkx_list_apps` accepts an optional `applicationId` and defaults to the first connected app.
+The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process that connects to that same socket and registers with the app's application ID, process ID, and project root. If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server at the same time; every tool that targets a running app accepts an optional `applicationId` and defaults to the first connected app, while `gtkx_list_apps` and the API-reference tools take none.
 
 Interactions are not reimplemented for MCP. Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`. That means `@gtkx/testing` must be in your dev dependencies for every widget tool to work (of the app-facing tools, only `gtkx_list_apps` gets by without it; the API reference tools never touch the app). Projects scaffolded with the testing option already have it; otherwise install it:
 
@@ -47,7 +47,7 @@ The binary takes no arguments and has no configuration of its own; there is noth
 
 ## The tools
 
-The server exposes eleven tools: five for inspection, three for interaction, and three for the API reference:
+The server exposes tools in three groups: inspection, interaction, and the API reference:
 
 | Tool | Kind | What it does |
 |---|---|---|

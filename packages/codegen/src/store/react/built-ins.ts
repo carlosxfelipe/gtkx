@@ -168,8 +168,7 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         }),
         container("children", "GtkWidget", { remove: "remove" }),
     ],
-    GActionMap: [container("children", "GAction", ACTION_METHODS)],
-    GtkApplicationWindow: [container("actions", "GAction", ACTION_METHODS)],
+    GActionMap: [container("actions", "GAction", ACTION_METHODS)],
     GtkColumnView: [
         container("children", "GtkColumnViewColumn", {
             append: "appendColumn",

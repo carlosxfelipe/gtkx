@@ -11,14 +11,12 @@ const CMDS: Record<string, string> = {
     npm: "npm create gtkx@latest",
     pnpm: "pnpm create gtkx",
     yarn: "yarn create gtkx",
-    bun: "bun create gtkx",
 };
 const cmd = computed(() => CMDS[pm.value]);
 const pms = [
     { value: "npm", label: "npm" },
     { value: "pnpm", label: "pnpm" },
     { value: "yarn", label: "yarn" },
-    { value: "bun", label: "bun" },
 ];
 
 type Tok = { t: string; c?: string };
@@ -36,6 +34,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
     { indent: 1, toks: [{ c: "tag", t: "AdwApplication" }, { t: "," }] },
     { indent: 1, toks: [{ c: "tag", t: "AdwApplicationWindow" }, { t: "," }] },
     { indent: 1, toks: [{ c: "tag", t: "AdwHeaderBar" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "AdwToolbarView" }, { t: "," }] },
     {
         toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/adw"' }],
     },
@@ -50,15 +49,6 @@ const code: { indent?: number; toks: Tok[] }[] = [
             { c: "str", t: '"@gtkx/jsx/gtk"' },
         ],
     },
-    {
-        toks: [
-            { c: "kw", t: "import" },
-            { t: " { applicationId } " },
-            { c: "kw", t: "from" },
-            { t: " " },
-            { c: "str", t: '"virtual:gtkx-config"' },
-        ],
-    },
     { toks: [] },
     { toks: [{ c: "kw", t: "function" }, { t: " " }, { c: "fn", t: "App" }, { t: "() {" }] },
     { indent: 1, toks: [{ c: "kw", t: "return" }, { t: " (" }] },
@@ -67,7 +57,6 @@ const code: { indent?: number; toks: Tok[] }[] = [
         toks: [
             { c: "punct", t: "<" },
             { c: "tag", t: "AdwApplication" },
-            { t: " applicationId={applicationId}" },
             { c: "punct", t: ">" },
         ],
     },
@@ -77,19 +66,40 @@ const code: { indent?: number; toks: Tok[] }[] = [
             { c: "punct", t: "<" },
             { c: "tag", t: "AdwApplicationWindow" },
             { t: " title=" },
-            { c: "str", t: '"Recipes"' },
+            { c: "str", t: '"Tasks"' },
             { c: "punct", t: ">" },
         ],
     },
-    { indent: 4, toks: [{ c: "punct", t: "<" }, { c: "tag", t: "AdwHeaderBar" }, { t: " />" }] },
     {
         indent: 4,
         toks: [
             { c: "punct", t: "<" },
+            { c: "tag", t: "AdwToolbarView" },
+            { t: " topBar={" },
+            { c: "punct", t: "<" },
+            { c: "tag", t: "AdwHeaderBar" },
+            { t: " />}" },
+            { c: "punct", t: ">" },
+        ],
+    },
+    {
+        indent: 5,
+        toks: [
+            { c: "punct", t: "<" },
             { c: "tag", t: "GtkLabel" },
-            { t: " label=" },
-            { c: "str", t: '"Hello from React 👋"' },
-            { t: " />" },
+            { c: "punct", t: ">" },
+            { t: "Hello from GTKX 👋" },
+            { c: "punct", t: "</" },
+            { c: "tag", t: "GtkLabel" },
+            { c: "punct", t: ">" },
+        ],
+    },
+    {
+        indent: 4,
+        toks: [
+            { c: "punct", t: "</" },
+            { c: "tag", t: "AdwToolbarView" },
+            { c: "punct", t: ">" },
         ],
     },
     {
@@ -130,15 +140,15 @@ const code: { indent?: number; toks: Tok[] }[] = [
     <span class="glow" />
     <div class="hero__grid stack-md">
       <div class="hero__col">
-        <p class="overline hero__eyebrow">// React · GTK4 · libadwaita · TypeScript</p>
+        <p class="overline hero__eyebrow">// React · Linux · GTK4 · libadwaita · TypeScript</p>
         <h1 class="hero__title">
-          Linux desktop application development for the
+          Linux app development for the
           <span class="gtkx-gradient-text">modern age</span>
         </h1>
         <p class="hero__lede">
-          Write declarative JSX. GTKX renders real native
-          <strong>GTK4 &amp; libadwaita</strong> widgets (no webview, no Electron),
-          backed by a Rust GObject runtime.
+          Write declarative JSX. GTKX renders it to real, native
+          <strong>GObjects</strong> (no webview, no Electron) powered by a native Rust core,
+          with first-class GTK4 &amp; libadwaita support.
         </p>
         <div class="hero__cta">
           <Button size="lg" href="/guide/getting-started">
@@ -156,7 +166,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
             <CodeBlock variant="terminal" :code="cmd" />
           </div>
           <p class="hero__note">
-            Scaffolds a typed GTK4 + React app with HMR, testing, and production bundling wired up.
+            Scaffolds a complete, typed GTK4 + React app, ready to run.
           </p>
         </div>
       </div>

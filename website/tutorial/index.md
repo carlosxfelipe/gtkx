@@ -29,15 +29,15 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
+            actions={/* app-scoped actions for notification buttons */}
         >
-            {/* app-scoped actions for notification buttons */}
             <TasksWindow notify={notify} />
         </AdwApplication>
     );
 }
 ```
 
-`<AdwApplication>` is the GTK application object (it calls `adw_init` and owns the libadwaita style manager). Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the split view, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
+`<AdwApplication>` provides the GTK application object. Importing the libadwaita bindings runs `adw_init` at module load, which sets up the libadwaita style manager. Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the split view, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
 
 ```tsx
 <AdwApplicationWindow ref={windowRef} title="Tasks" /* ... */>

@@ -90,7 +90,15 @@ describe("explicit top-level parenting", () => {
             <ParentedTree parentRef={parentRef}>
                 {(parent) => (
                     <Dialog parent={parent}>
-                        <AlertDialog ref={dialogRef} heading="Parented" />
+                        {(ref) => (
+                            <AlertDialog
+                                ref={(widget) => {
+                                    ref(widget);
+                                    dialogRef.current = widget;
+                                }}
+                                heading="Parented"
+                            />
+                        )}
                     </Dialog>
                 )}
             </ParentedTree>,

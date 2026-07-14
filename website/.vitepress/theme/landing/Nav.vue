@@ -20,9 +20,9 @@ const links = [
 
 <template>
   <header class="nav" @keydown.escape="menuOpen = false">
-    <a class="nav__brand" href="#top" aria-label="gtkx home">
+    <a class="nav__brand" href="#top" aria-label="GTKX home">
       <img src="/gtkx-mark.svg" width="30" height="30" alt="" />
-      <span class="nav__word">gtkx</span>
+      <span class="nav__word">GTKX</span>
       <Badge tone="neutral" variant="outline">1.0 RC</Badge>
     </a>
     <nav class="nav__links" aria-label="Main">
@@ -32,7 +32,7 @@ const links = [
       <IconButton label="Dark theme" :aria-pressed="isDark" @click="toggle">
         <Icon :name="isDark ? 'sun' : 'moon'" />
       </IconButton>
-      <IconButton label="gtkx on GitHub" :href="REPO_URL"><Icon name="github" /></IconButton>
+      <IconButton label="GTKX on GitHub" :href="REPO_URL"><Icon name="github" /></IconButton>
       <IconButton
         class="nav__burger"
         :label="menuOpen ? 'Close menu' : 'Open menu'"

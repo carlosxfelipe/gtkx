@@ -213,10 +213,15 @@ const MessageActions = ({
                             />
                         }
                         actionGroups={
-                            <GSimpleActionGroup prefix="msg">
-                                <GSimpleAction name="email" onActivate={() => {}} />
-                                <GSimpleAction name="embed" onActivate={() => {}} />
-                            </GSimpleActionGroup>
+                            <GSimpleActionGroup
+                                prefix="msg"
+                                actions={
+                                    <>
+                                        <GSimpleAction name="email" onActivate={() => {}} />
+                                        <GSimpleAction name="embed" onActivate={() => {}} />
+                                    </>
+                                }
+                            />
                         }
                     />
                 </GtkBox>

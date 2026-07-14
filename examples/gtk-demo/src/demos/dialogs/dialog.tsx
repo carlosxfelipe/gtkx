@@ -70,17 +70,20 @@ const DialogEntryRow = ({
 
 const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: () => void }) => (
     <Dialog>
-        <AlertDialog
-            name="message-dialog"
-            heading="Test message"
-            body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
-            defaultResponse="ok"
-            closeResponse="cancel"
-            onResponse={onClose}
-        >
-            <AlertDialog.Response id="cancel" label="_Cancel" />
-            <AlertDialog.Response id="ok" label="_OK" />
-        </AlertDialog>
+        {(ref) => (
+            <AlertDialog
+                ref={ref}
+                name="message-dialog"
+                heading="Test message"
+                body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
+                defaultResponse="ok"
+                closeResponse="cancel"
+                onResponse={onClose}
+            >
+                <AlertDialog.Response id="cancel" label="_Cancel" />
+                <AlertDialog.Response id="ok" label="_OK" />
+            </AlertDialog>
+        )}
     </Dialog>
 );
 
@@ -103,7 +106,9 @@ const InteractiveDialog = ({
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return (
         <Dialog>
+            {(ref) => (
             <AlertDialog
+                ref={ref}
                 name="interactive-dialog"
                 heading="Interactive Dialog"
                 defaultResponse="ok"
@@ -160,6 +165,7 @@ const InteractiveDialog = ({
                 <AlertDialog.Response id="cancel" label="_Cancel" />
                 <AlertDialog.Response id="ok" label="_OK" />
             </AlertDialog>
+            )}
         </Dialog>
     );
 };

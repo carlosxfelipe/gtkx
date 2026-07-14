@@ -33,10 +33,6 @@ pnpm create gtkx
 yarn create gtkx
 ```
 
-```bash [bun]
-bun create gtkx
-```
-
 :::
 
 It prompts for a few things:
@@ -84,7 +80,7 @@ You will not find a `@gtkx/gi` or `@gtkx/jsx` folder checked in anywhere. Those 
 
 ## Configuration: `gtkx.config.ts`
 
-The whole config for the Tasks app is six lines:
+The whole config for the Tasks app is just a few lines:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
@@ -97,7 +93,7 @@ export default defineConfig({
 
 `applicationId` is the only required field. It's your reverse-DNS app ID, and it does double duty: it becomes the default for the top-level `<AdwApplication>` (you never pass the ID again in your JSX), and it's the identity GNOME, GSettings, and notifications key off.
 
-`libraries` is a list of GObject-Introspection namespaces in `Name-Version` form. `"Gtk-4.0"` and `"Adw-1"` (GTK 4 and libadwaita 1) are what every app in this tutorial needs. The CLI reads the GIR typelibs for exactly these libraries and generates the bindings you import, so this list determines which widgets exist under `@gtkx/jsx/*` and `@gtkx/gi/*`. Add a namespace here (say `"WebKit-6.0"`) and its classes become available after the next codegen.
+`libraries` is a list of GObject-Introspection namespaces in `Name-Version` form. `"Gtk-4.0"` and `"Adw-1"` (GTK 4 and libadwaita 1) are what every app in this tutorial needs. The CLI reads the GIR typelibs for these libraries and the namespaces they depend on, so this list determines which widgets exist under `@gtkx/jsx/*`, while `@gtkx/gi/*` also picks up the pulled-in dependency namespaces (GLib, Gio, GObject, Gdk, and so on) that GTK and libadwaita require. Add a namespace here (say `"WebKit-6.0"`) and its classes become available after the next codegen.
 
 ## The entry point: `src/index.tsx`
 
@@ -110,7 +106,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component. The counter starter wrapped its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in libadwaita. Constructing that `Adw.Application` calls `adw_init` and sets up the libadwaita style manager, and it picks up the `applicationId` from your config automatically.
+`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component. The counter starter wrapped its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in libadwaita. Importing those libadwaita bindings runs `adw_init` at module load, which sets up the libadwaita style manager, and `<AdwApplication>` picks up the `applicationId` from your config automatically.
 
 ::: info
 Note the `./app.js` import specifier even though the file is `app.tsx`. The project uses `"module": "NodeNext"`, which follows Node's ESM resolution: you write the `.js` extension the compiler emits, and it resolves the `.tsx` source.
@@ -180,7 +176,7 @@ Standard modern TypeScript, with `react-jsx` so you don't import React in every 
 
 The runtime dependencies map onto the pieces you'll use throughout the tutorial:
 
-- **`@gtkx/react`** ships the reconciler and the hooks (`createRoot`, `useApplication`, `useSetting`, `useSignal`, `createPortal`, `quit`, ...).
+- **`@gtkx/react`** ships the reconciler plus hooks and helpers (`createRoot`, `useApplication`, `useSetting`, `useSignal`, `createPortal`, `quit`, ...).
 - **`@gtkx/components`** provides higher-level React components over the harder GTK APIs, notably the model-view widgets `ListView`, `ColumnView`, `GridView`, `DropDown`, and `Menu`.
 - **`@gtkx/css`** is CSS-in-JS for GTK's CSS (a `css` tagged template that feeds a widget's `cssClasses`).
 - **`@gtkx/animate`** adds declarative enter/exit animations backed by libadwaita's animation engine.

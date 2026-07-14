@@ -4,7 +4,7 @@ description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informati
 
 # Feedback and Dialogs
 
-Deleting a task in Tasks does not pop a "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate. GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back. This page walks the whole feedback hierarchy in the app, from the lightest touch (a toast) to the heaviest (a destructive alert dialog), plus the two informational dialogs (New List, About) and the one gtkx mechanism that makes any of them appear on screen.
+Deleting a task in Tasks does not pop a "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate. GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back. This page walks the whole feedback hierarchy in the app, from the lightest touch (a toast) to the heaviest (a destructive alert dialog), plus the informational dialogs (New List, About, Preferences) and the one gtkx mechanism that makes any of them appear on screen.
 
 ## The undo-first hierarchy
 
@@ -109,19 +109,22 @@ export const DeleteConfirmation = ({
 }) => {
     return (
         <Dialog>
-            <AlertDialog
-                heading="Delete Task?"
-                body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
-                defaultResponse="cancel"
-                closeResponse="cancel"
-                onResponse={(id) => {
-                    if (id === "delete") onConfirm();
-                    else onCancel();
-                }}
-            >
-                <AlertDialog.Response id="cancel" label="Cancel" />
-                <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-            </AlertDialog>
+            {(ref) => (
+                <AlertDialog
+                    ref={ref}
+                    heading="Delete Task?"
+                    body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
+                    defaultResponse="cancel"
+                    closeResponse="cancel"
+                    onResponse={(id) => {
+                        if (id === "delete") onConfirm();
+                        else onCancel();
+                    }}
+                >
+                    <AlertDialog.Response id="cancel" label="Cancel" />
+                    <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
+                </AlertDialog>
+            )}
         </Dialog>
     );
 };
@@ -179,27 +182,38 @@ const confirmDelete = (): void => {
 
 Mounting the component shows the dialog; unmounting it closes the dialog. That is the whole contract, and the `<Dialog>` wrapper is what makes it true.
 
-A GTK dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a single dialog child, renders it through a **portal to the top-level root** (not into the surrounding widget tree), and drives present/close from an effect:
+A GTK dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a render function, `children: (ref) => ReactNode`, hands you a ref to attach to the dialog widget, renders the result through a **portal to the top-level root** (not into the surrounding widget tree), and drives present/close from an effect:
 
 ```tsx
-export const Dialog = ({ parent, children }: DialogProps): ReactNode => {
+export const Dialog = ({ parent, onClose, children }: DialogProps): ReactNode => {
     const parentWindow = useParentWindow();
     const resolvedParent = parent === undefined ? parentWindow : parent;
+    const [dialog, setDialog] = useState<Adw.Dialog | null>(null);
+    const closingFromReact = useRef(false);
     // ...
     useLayoutEffect(() => {
         if (!dialog) return;
+        closingFromReact.current = false;
         dialog.present(resolvedParent);
-        return () => dialog.forceClose();
+        return () => {
+            closingFromReact.current = true;
+            dialog.forceClose();
+        };
     }, [dialog, resolvedParent]);
 
-    if (element === null) return null;
-    return createPortal(cloneElement(element, { ref: mergedRef }), rootElement);
+    useSignal(dialog, "closed", () => {
+        if (!closingFromReact.current) onClose?.();
+    });
+
+    return createPortal(children(setDialog), rootElement);
 };
 ```
 
+- **`children(setDialog)`** is the render function you pass. Instead of cloning your element to inject a ref, `Dialog` gives the ref to you and you attach it, so any dialog widget works without `Dialog` reaching into its props.
 - **`createPortal(..., rootElement)`** mounts the dialog at the application root instead of inline. A dialog is a detached top-level surface, so it must not live inside the split view's widget hierarchy; the portal puts it where GTK expects it.
 - **`useParentWindow()`** finds the enclosing `AdwApplicationWindow` so the dialog can be presented transient-for it (correct positioning, modality, focus). You can override the anchor with the `parent` prop, but omitting it, as every dialog in this app does, anchors to the current window.
 - **`present` on mount, `forceClose` on the effect cleanup.** When React mounts `<DeleteConfirmation>`, the effect runs and the dialog presents. When `setTaskToDelete(null)` unmounts it, the cleanup runs `forceClose()` and the dialog disappears. `forceClose` bypasses any close confirmation, which is what you want when React state, not the widget, owns whether the dialog is open.
+- **`onClose` mirrors user-initiated closes back to React.** Escape, the close button, and a swipe all make the widget emit `closed`; `Dialog` forwards that to your `onClose` so you can clear the state that mounted it. The `closingFromReact` guard skips the `closed` that its own `forceClose()` emits during unmount, so a React-driven close never re-fires `onClose`.
 
 Everything presentable this way (`AdwAlertDialog`, `AdwAboutDialog`, `AdwPreferencesDialog`) extends `Adw.Dialog`, so it satisfies the `present`/`forceClose` contract `<Dialog>` requires. Preferences uses the identical pattern: `preferences.tsx` wraps an `AdwPreferencesDialog` in the same `<Dialog>`, presented and closed by the same `showPreferences` state toggle. One wrapper covers every modal in the app.
 
@@ -222,39 +236,42 @@ export const NewListDialog = ({
 
     return (
         <Dialog>
-            <AlertDialog
-                heading="New List"
-                defaultResponse="add"
-                closeResponse="cancel"
-                onResponse={(id) => {
-                    if (id === "add") onAdd(name, color);
-                    else onCancel();
-                }}
-            >
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
-                    <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
-                    <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                        {PALETTE.map((swatch) => (
-                            <GtkToggleButton
-                                key={swatch}
-                                active={color === swatch}
-                                cssClasses={["flat"]}
-                                accessibleLabel={`Color ${swatch}`}
-                                onClicked={() => setColor(swatch)}
-                            >
-                                <GtkBox
-                                    widthRequest={22}
-                                    heightRequest={22}
-                                    cssClasses={[listDot(swatch)]}
-                                    accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                                />
-                            </GtkToggleButton>
-                        ))}
+            {(ref) => (
+                <AlertDialog
+                    ref={ref}
+                    heading="New List"
+                    defaultResponse="add"
+                    closeResponse="cancel"
+                    onResponse={(id) => {
+                        if (id === "add") onAdd(name, color);
+                        else onCancel();
+                    }}
+                >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
+                        <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
+                        <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
+                            {PALETTE.map((swatch) => (
+                                <GtkToggleButton
+                                    key={swatch}
+                                    active={color === swatch}
+                                    cssClasses={["flat"]}
+                                    accessibleLabel={`Color ${swatch}`}
+                                    onClicked={() => setColor(swatch)}
+                                >
+                                    <GtkBox
+                                        widthRequest={22}
+                                        heightRequest={22}
+                                        cssClasses={[listDot(swatch)]}
+                                        accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                                    />
+                                </GtkToggleButton>
+                            ))}
+                        </GtkBox>
                     </GtkBox>
-                </GtkBox>
-                <AlertDialog.Response id="cancel" label="Cancel" />
-                <AlertDialog.Response id="add" label="Add" appearance={Adw.ResponseAppearance.SUGGESTED} />
-            </AlertDialog>
+                    <AlertDialog.Response id="cancel" label="Cancel" />
+                    <AlertDialog.Response id="add" label="Add" appearance={Adw.ResponseAppearance.SUGGESTED} />
+                </AlertDialog>
+            )}
         </Dialog>
     );
 };
@@ -277,28 +294,30 @@ import { AdwAboutDialog } from "@gtkx/jsx/adw";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
     return (
-        <Dialog>
-            <AdwAboutDialog
-                applicationName="Tasks"
-                applicationIcon="com.gtkx.tutorial"
-                version="1.0.0"
-                developerName="GTKX"
-                website="https://gtkx.dev"
-                issueUrl="https://github.com/gtkx-org/gtkx/issues"
-                copyright="© 2026 GTKX Contributors"
-                licenseType={Gtk.License.MPL_2_0}
-                developers={["GTKX Contributors"]}
-                comments="A task manager built with GTKX to showcase React, GTK4, and libadwaita."
-                onClosed={onClose}
-            />
+        <Dialog onClose={onClose}>
+            {(ref) => (
+                <AdwAboutDialog
+                    ref={ref}
+                    applicationName="Tasks"
+                    applicationIcon="com.gtkx.tutorial"
+                    version="1.0.0"
+                    developerName="GTKX"
+                    website="https://gtkx.dev"
+                    issueUrl="https://github.com/gtkx-org/gtkx/issues"
+                    copyright="© 2026 GTKX Contributors"
+                    licenseType={Gtk.License.MPL_2_0}
+                    developers={["GTKX Contributors"]}
+                    comments="A task manager built with GTKX to showcase React, GTK4, and libadwaita."
+                />
+            )}
         </Dialog>
     );
 };
 ```
 
-`applicationIcon="com.gtkx.tutorial"` is the app id, which resolves to the installed icon. `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClosed` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
+`applicationIcon="com.gtkx.tutorial"` is the app id, which resolves to the installed icon. `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
 
-Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClosed` on About (just signals dismissal). About has no responses to choose, only a close, so there is nothing to branch on.
+Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (just signals dismissal). About has no responses to choose, only a close, so there is nothing to branch on.
 
 ## Next
 

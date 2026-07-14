@@ -4,11 +4,12 @@ import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
-import { matchAsyncFinishName } from "./async.js";
+import { matchAsyncFinish } from "./async.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
+    boundFinishExpression,
     methodExportName,
     renderMethodBody,
     renderMethodReturnType,
@@ -51,7 +52,7 @@ export const generateBindings = (context: ModuleContext, callables: Callables): 
 type CallableMemberOptions = {
     resolveName: (callable: GirFunction) => string | undefined;
     isStatic: boolean;
-    returnTypeOverride?: string;
+    returnTypeOverride?: string | undefined;
     allowRuntimeOverride?: boolean;
 };
 
@@ -80,19 +81,29 @@ const renderCallableMember = (
     return `${doc}${renderBlock(`${options.isStatic ? "static " : ""}${name}(${signature}): ${returnType}`, body)}`;
 };
 
-const renderConstructorStatic = (
+type StaticEntryOptions = {
+    resolveName: (callable: GirFunction) => string | undefined;
+    returnTypeOverride?: string | undefined;
+};
+
+const renderStaticEntry = (
     context: ModuleContext,
     callable: GirFunction,
-    ownerClassName: string,
-): string | undefined =>
-    renderCallableMember(context, callable, {
-        resolveName: (member) => constructorMemberName(member.name),
+    siblings: GirFunction[],
+    options: StaticEntryOptions,
+): string | undefined => {
+    const finishFn = matchStaticFinishFunction(context, callable, siblings);
+    if (finishFn !== undefined) {
+        const name = options.resolveName(callable);
+        if (name === undefined || name === "constructor") return undefined;
+        return renderPromisifiedCallable(context, callable, finishFn, { name, isStatic: true });
+    }
+    return renderCallableMember(context, callable, {
+        resolveName: options.resolveName,
         isStatic: true,
-        returnTypeOverride: ownerClassName,
+        returnTypeOverride: options.returnTypeOverride,
     });
-
-const renderStaticMember = (context: ModuleContext, callable: GirFunction): string | undefined =>
-    renderCallableMember(context, callable, { resolveName: (member) => toCamelCase(member.name), isStatic: true });
+};
 
 const renderInstanceMethod = (
     context: ModuleContext,
@@ -156,7 +167,7 @@ export const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMem
 export const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
         finishFn !== undefined
-            ? renderPromisifiedMember(context, callable, finishFn, name)
+            ? renderPromisifiedCallable(context, callable, finishFn, { name, isStatic: false })
             : renderInstanceMethod(context, callable, name),
 );
 
@@ -164,24 +175,36 @@ const matchFinishFunction = (
     context: ModuleContext,
     callable: GirFunction,
     siblings: Map<string, GirFunction>,
+): GirFunction | undefined => matchAsyncFinish(context.library, callable, [...siblings.values()]);
+
+export const matchStaticFinishFunction = (
+    context: ModuleContext,
+    callable: GirFunction,
+    siblings: GirFunction[],
 ): GirFunction | undefined => {
-    const finishName = matchAsyncFinishName(context.library, callable, [...siblings.values()]);
-    if (finishName === undefined) return undefined;
-    return siblings.get(finishName);
+    if (!isEmittableCallable(context, callable)) return undefined;
+    const finishFn = matchAsyncFinish(context.library, callable, siblings);
+    if (finishFn === undefined || !isEmittableCallable(context, finishFn)) return undefined;
+    return finishFn;
 };
 
-const renderPromisifiedMember = (
+const renderPromisifiedCallable = (
     context: ModuleContext,
     callable: GirFunction,
     finishFn: GirFunction,
-    name: string,
+    member: { name: string; isStatic: boolean },
 ): string | undefined => {
     const cIdentifier = callable.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
-    const finishMember = methodExportName(finishFn);
-    const body = renderPromisifiedBody(context, callable, finishMember, toCamelIdentifier(cIdentifier));
-    return `${renderJsDoc(callable.doc)}${renderBlock(`${name}(${signature}): ${returnType}`, body)}`;
+    const body = renderPromisifiedBody(
+        context,
+        callable,
+        boundFinishExpression(finishFn),
+        toCamelIdentifier(cIdentifier),
+    );
+    const prefix = member.isStatic ? "static " : "";
+    return `${renderJsDoc(callable.doc)}${renderBlock(`${prefix}${member.name}(${signature}): ${returnType}`, body)}`;
 };
 
 export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
@@ -206,13 +229,19 @@ const constructorMemberName = (girName: string): string | undefined => {
 export const renderStaticSignature = (
     context: ModuleContext,
     callable: GirFunction,
-    returnTypeOverride?: string,
+    options?: { returnTypeOverride?: string | undefined; siblings?: GirFunction[] | undefined },
 ): { name: string; signature: string } | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
     const name = constructorMemberName(callable.name);
     if (name === undefined) return undefined;
+    const finishFn =
+        options?.siblings === undefined ? undefined : matchStaticFinishFunction(context, callable, options.siblings);
+    if (finishFn !== undefined) {
+        const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
+        return { name, signature: `${name}(${signature}): ${returnType}` };
+    }
     const parameters = renderMethodSignature(context, callable);
-    const returnType = returnTypeOverride ?? renderMethodReturnType(context, callable);
+    const returnType = options?.returnTypeOverride ?? renderMethodReturnType(context, callable);
     return { name, signature: `${name}(${parameters}): ${returnType}` };
 };
 
@@ -227,13 +256,19 @@ export const classConstructorMemberNames = (context: ModuleContext, callables: C
 };
 
 export const renderStaticHead = (context: ModuleContext, callables: Callables, ownerClassName: string): string[] => {
+    const siblings = [...callables.constructors, ...callables.functions];
     const blocks: string[] = [];
     for (const callable of callables.constructors) {
-        const block = renderConstructorStatic(context, callable, ownerClassName);
+        const block = renderStaticEntry(context, callable, siblings, {
+            resolveName: (member) => constructorMemberName(member.name),
+            returnTypeOverride: ownerClassName,
+        });
         if (block !== undefined) blocks.push(block);
     }
     for (const callable of callables.functions) {
-        const block = renderStaticMember(context, callable);
+        const block = renderStaticEntry(context, callable, siblings, {
+            resolveName: (member) => toCamelCase(member.name),
+        });
         if (block !== undefined) blocks.push(block);
     }
     return blocks;

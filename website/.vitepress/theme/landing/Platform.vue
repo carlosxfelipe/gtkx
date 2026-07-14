@@ -10,25 +10,25 @@ const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: st
         label: "create",
         blurb: "Scaffold a typed app in seconds.",
         cmd: "npm create gtkx@latest",
-        out: ["scaffolded recipes/ — typed widgets, tests, HMR", "installed @gtkx/react, @gtkx/ffi, @gtkx/css"],
+        out: ["◇ Project structure created!", "◇ Dependencies installed!", "◇ Git repository initialized!"],
     },
     dev: {
         label: "dev",
-        blurb: "Hot-reloading dev server with Fast Refresh.",
+        blurb: "Hot-reloading dev server, patched in place.",
         cmd: "gtkx dev",
-        out: ["dev server ready in 412 ms", "Fast Refresh on the live native window"],
+        out: ["[gtkx] HMR enabled - watching for changes..."],
     },
     build: {
         label: "build",
-        blurb: "Single-file production bundle, GTK assets and all.",
+        blurb: "Single-file production bundle, native assets and all.",
         cmd: "gtkx build",
-        out: ["dist/bundle.js: one file", "bundled gtkx.node, gresources, compiled schemas"],
+        out: ["[gtkx] Building src/index.tsx", "[gtkx] Build complete: dist/bundle.js"],
     },
     codegen: {
         label: "codegen",
         blurb: "Regenerate typed bindings from your GIR libraries.",
         cmd: "gtkx codegen",
-        out: ["read GObject-Introspection for Gtk, Adw, Gio…", "@gtkx/gi + @gtkx/jsx stores refreshed"],
+        out: ["[gtkx] codegen: regenerated stale bindings"],
     },
 };
 
@@ -48,7 +48,7 @@ const active = computed(() => STEPS[tab.value]);
       <div id="platform-cmd" role="tabpanel" :aria-label="`gtkx ${tab}`" class="platform__tabpanel">
         <CodeBlock variant="terminal">
           <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> {{ active.cmd }}</div>
-          <div v-for="(o, i) in active.out" :key="i" class="tout"><span class="tmark" aria-hidden="true">✓</span> {{ o }}</div>
+          <div v-for="(o, i) in active.out" :key="i" class="tdim">{{ o }}</div>
         </CodeBlock>
       </div>
     </div>

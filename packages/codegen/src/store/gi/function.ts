@@ -6,12 +6,15 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
+import { matchAsyncFinish } from "./async.js";
 import { callableReferencesClassStruct } from "./class-struct-record.js";
 import {
     planCallArgs,
     renderMethodBody,
     renderMethodReturnType,
     renderMethodSignature,
+    renderPromisifiedBody,
+    renderPromisifiedSignature,
     renderReturnDescriptor,
 } from "./method.js";
 
@@ -25,11 +28,15 @@ export const renderFnExpression = (context: ModuleContext, fn: GirFunction): str
     return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
+const namespaceFunctionEmittable = (context: ModuleContext, fn: GirFunction): boolean =>
+    fn.introspectable &&
+    fn.shadowedBy === undefined &&
+    fn.cIdentifier !== undefined &&
+    !callableReferencesClassStruct(context, fn) &&
+    !hasCallerAllocatedArrayLength(context.library, fn);
+
 export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!fn.introspectable) return;
-    if (fn.shadowedBy !== undefined) return;
-    if (callableReferencesClassStruct(context, fn)) return;
-    if (hasCallerAllocatedArrayLength(context.library, fn)) return;
+    if (!namespaceFunctionEmittable(context, fn)) return;
     const expression = renderFnExpression(context, fn);
     if (expression === undefined) return;
     const cIdentifier = fn.cIdentifier;
@@ -38,12 +45,32 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
 
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
+    const declaration = renderNamespaceFunctionDeclaration(context, fn, exportName, bindingName);
+    context.module.appendDeclaration(`${renderJsDoc(fn.doc)}${declaration}`);
+};
+
+const renderNamespaceFunctionDeclaration = (
+    context: ModuleContext,
+    fn: GirFunction,
+    exportName: string,
+    bindingName: string,
+): string => {
+    const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
+    const finishCIdentifier = finishFn?.cIdentifier;
+    if (finishFn !== undefined && finishCIdentifier !== undefined && namespaceFunctionEmittable(context, finishFn)) {
+        const finishExport = namespaceFunctionExportName(
+            finishCIdentifier,
+            finishFn.name,
+            context.namespace.cSymbolPrefixes,
+        );
+        const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
+        const body = renderPromisifiedBody(context, fn, finishExport, bindingName);
+        return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
+    }
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
-    context.module.appendDeclaration(
-        `${renderJsDoc(fn.doc)}${renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body)}`,
-    );
+    return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
 };
 
 export const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {

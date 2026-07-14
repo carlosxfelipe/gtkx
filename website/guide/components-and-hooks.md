@@ -199,7 +199,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 `@gtkx/components/adw` holds the components that depend on libadwaita.
 
-**`Dialog`** turns dialog visibility into ordinary conditional rendering. Adw dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` portals its single child to the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
+**`Dialog`** turns dialog visibility into ordinary conditional rendering. Adw dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` takes a render function (`children: (ref) => ReactNode`), portals the widget you attach the ref to at the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. Its `onClose` prop, wired to the widget's `closed` signal, fires when the user dismisses the dialog (Escape, the close button, a swipe) so you can clear that state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
 
 **`AlertDialog`** wraps `Adw.AlertDialog`, whose response buttons are normally added with `addResponse`/`setResponseAppearance` calls. Declare them as `AlertDialog.Response` children (`id`, `label`, optional `appearance` and `enabled`); any other children form the dialog body, and `onResponse` receives the chosen id:
 
@@ -208,15 +208,18 @@ import { AlertDialog, Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 
 <Dialog>
-    <AlertDialog
-        heading="Delete Task?"
-        body="This cannot be undone."
-        closeResponse="cancel"
-        onResponse={(id) => (id === "delete" ? onConfirm() : onCancel())}
-    >
-        <AlertDialog.Response id="cancel" label="Cancel" />
-        <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
-    </AlertDialog>
+    {(ref) => (
+        <AlertDialog
+            ref={ref}
+            heading="Delete Task?"
+            body="This cannot be undone."
+            closeResponse="cancel"
+            onResponse={(id) => (id === "delete" ? onConfirm() : onCancel())}
+        >
+            <AlertDialog.Response id="cancel" label="Cancel" />
+            <AlertDialog.Response id="delete" label="Delete" appearance={Adw.ResponseAppearance.DESTRUCTIVE} />
+        </AlertDialog>
+    )}
 </Dialog>
 ```
 
@@ -224,7 +227,7 @@ import * as Adw from "@gtkx/gi/adw";
 
 ## Hooks from @gtkx/react
 
-`@gtkx/react` exports seven hooks. All of the object-observing ones accept a `GObjectTarget<T>`: a live instance, a React ref to one, or `null`/`undefined`, so you can pass a `useRef` directly and the hook attaches when the widget mounts and detaches when it goes away.
+`@gtkx/react` exports a set of hooks for talking to live GObjects. All of the object-observing ones accept a `GObjectTarget<T>`: a live instance, a React ref to one, or `null`/`undefined`, so you can pass a `useRef` directly and the hook attaches when the widget mounts and detaches when it goes away.
 
 **`useApplication(): Gtk.Application`** returns the running application object from the nearest application element, and throws when called outside one. Use it for application-level imperative calls such as `sendNotification` or `addAction`.
 
