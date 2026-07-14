@@ -66,7 +66,7 @@ const detachAutowrapped = (widget: Gtk.Widget): void => {
     if (wrapperParent !== null) detachChild(wrapper, wrapperParent);
 };
 
-function* gtkChildren(container: Gtk.Widget): IterableIterator<Gtk.Widget> {
+function* childWidgetsOf(container: Gtk.Widget): IterableIterator<Gtk.Widget> {
     let child = container.getFirstChild();
     while (child) {
         yield child;
@@ -74,7 +74,7 @@ function* gtkChildren(container: Gtk.Widget): IterableIterator<Gtk.Widget> {
     }
 }
 
-const unwrapGtkChild = (child: Gtk.Widget): Gtk.Widget | null => {
+const unwrapChildWidget = (child: Gtk.Widget): Gtk.Widget | null => {
     if ("getChild" in child && typeof child.getChild === "function") {
         const inner: unknown = child.getChild();
         return inner instanceof Gtk.Widget ? inner : null;
@@ -85,8 +85,8 @@ const unwrapGtkChild = (child: Gtk.Widget): Gtk.Widget | null => {
 const findWrappedPosition = (container: Gtk.Widget, anchor: Gtk.Widget, wrapper: string): number | null => {
     const anchorIsWrapper = typeChainIncludes(anchor.__type__, wrapper);
     let position = 0;
-    for (const current of gtkChildren(container)) {
-        const compare = anchorIsWrapper ? current : unwrapGtkChild(current);
+    for (const current of childWidgetsOf(container)) {
+        const compare = anchorIsWrapper ? current : unwrapChildWidget(current);
         if (compare && compare === anchor) return position;
         position++;
     }
@@ -95,7 +95,7 @@ const findWrappedPosition = (container: Gtk.Widget, anchor: Gtk.Widget, wrapper:
 
 const findInsertPosition = (container: Gtk.Widget, anchor: Gtk.Widget): number => {
     let position = 0;
-    for (const current of gtkChildren(container)) {
+    for (const current of childWidgetsOf(container)) {
         if (current === anchor) return position;
         position++;
     }
@@ -103,7 +103,7 @@ const findInsertPosition = (container: Gtk.Widget, anchor: Gtk.Widget): number =
 };
 
 const findPrevSibling = (container: Gtk.Widget, anchor: Gtk.Widget): Gtk.Widget | undefined => {
-    for (const child of gtkChildren(container)) {
+    for (const child of childWidgetsOf(container)) {
         if (child === anchor) return child.getPrevSibling() ?? undefined;
     }
     return undefined;
@@ -190,17 +190,15 @@ const removeWidget = (container: GObject.Object, widget: Gtk.Widget): void => {
     }
 };
 
-export const containerMapping: ElementMapping = {
-    matches: (child, parent) => childWidget(child) !== null && parent instanceof GObject.Object,
-    attach: (child, parent, anchor, fresh) => {
-        const widget = childWidget(child);
-        if (!(parent instanceof GObject.Object) || !widget) return;
-        if (!(parent instanceof Gtk.Widget) && containerPropFor(parent, widget) === null) return;
-        if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, parent, widget, anchor);
-        else appendWidget(parent, widget, fresh === true);
-    },
-    detach: (child, parent) => {
-        const widget = childWidget(child);
-        if (parent instanceof GObject.Object && widget) removeWidget(parent, widget);
-    },
+export const containerMapping: ElementMapping = (child, parent) => {
+    const widget = childWidget(child);
+    if (widget === null || !(parent instanceof GObject.Object)) return null;
+    if (!(parent instanceof Gtk.Widget) && containerPropFor(parent, widget) === null) return null;
+    return {
+        attach: (anchor, fresh) => {
+            if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, parent, widget, anchor);
+            else appendWidget(parent, widget, fresh === true);
+        },
+        detach: () => removeWidget(parent, widget),
+    };
 };

@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { containerMapping } from "./container-attach.js";
-import { type ElementMapping, type Node, stateOf } from "./state.js";
+import { type ElementHandler, type ElementMapping, type Node, stateOf } from "./state.js";
 import { containerChildMapping, containerPropMapping, lazyElementMapping, objectPropMapping } from "./wrapper-apply.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
@@ -12,15 +12,20 @@ const ELEMENT_MAP: ElementMapping[] = [
     containerMapping,
 ];
 
-const resolveMapping = (child: Node, parent: Node): ElementMapping | undefined =>
-    ELEMENT_MAP.find((mapping) => mapping.matches(child, parent));
+const resolveHandler = (child: Node, parent: Node): ElementHandler | null => {
+    for (const mapping of ELEMENT_MAP) {
+        const handler = mapping(child, parent);
+        if (handler !== null) return handler;
+    }
+    return null;
+};
 
 const attachToParent = (child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void => {
-    resolveMapping(child, parent)?.attach(child, parent, anchor, fresh);
+    resolveHandler(child, parent)?.attach(anchor, fresh);
 };
 
 export const detachFromParent = (child: Node, parent: Node): void => {
-    resolveMapping(child, parent)?.detach(child, parent);
+    resolveHandler(child, parent)?.detach();
 };
 
 export const resyncWrapperNode = (node: Node): void => {

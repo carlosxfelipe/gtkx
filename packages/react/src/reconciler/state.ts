@@ -7,11 +7,12 @@ import type { WrapperKind } from "./wrapper-protocol.js";
 
 export type Node = GObject.Object | WrapperNode | RootElement;
 
-export type ElementMapping = {
-    matches(child: Node, parent: Node): boolean;
-    attach(child: Node, parent: Node, anchor?: GObject.Object | null, fresh?: boolean): void;
-    detach(child: Node, parent: Node): void;
+export type ElementHandler = {
+    attach(anchor?: GObject.Object | null, fresh?: boolean): void;
+    detach(): void;
 };
+
+export type ElementMapping = (child: Node, parent: Node) => ElementHandler | null;
 
 export type State = {
     kind?: WrapperKind | undefined;
