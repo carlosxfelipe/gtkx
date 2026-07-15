@@ -17,6 +17,7 @@ import {
     useRef,
     useState,
 } from "react";
+import { sameIds } from "./utils/same-ids.js";
 
 type PageRegistry = {
     register(tag: string, page: Adw.NavigationPage): void;
@@ -91,9 +92,6 @@ export type NavigationViewProps = Omit<
 const isPage = (node: ReactNode): node is ReactElement<NavigationPageProps> =>
     isValidElement(node) && node.type === NavigationViewPage;
 
-const arraysEqual = (a: string[], b: string[]): boolean =>
-    a.length === b.length && a.every((value, index) => value === b[index]);
-
 const isPrefix = (prefix: string[], full: string[]): boolean =>
     prefix.length <= full.length && prefix.every((value, index) => value === full[index]);
 
@@ -123,7 +121,7 @@ const resolvePages = (desired: string[], registry: PageRegistry): Adw.Navigation
 
 const applyStackDiff = (view: Adw.NavigationView, desired: string[], registry: PageRegistry): void => {
     const live = readLiveTags(view);
-    if (arraysEqual(live, desired)) return;
+    if (sameIds(live, desired)) return;
     const desiredTop = desired[desired.length - 1];
 
     if (desiredTop !== undefined && desired.length === live.length + 1 && isPrefix(live, desired)) {

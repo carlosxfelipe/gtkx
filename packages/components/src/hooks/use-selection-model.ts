@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
+import { sameIds } from "../utils/same-ids.js";
 
 type SelectionModelOptions<T, S> = {
     base: Gio.ListModel;
@@ -70,14 +71,6 @@ const idsToPositions = <T, S>(ids: string[] | null | undefined, resolver: ItemRe
         if (position >= 0) positions.push(position);
     }
     return positions;
-};
-
-const sameIds = (a: string[], b: string[]): boolean => {
-    if (a.length !== b.length) return false;
-    for (let index = 0; index < a.length; index++) {
-        if (a[index] !== b[index]) return false;
-    }
-    return true;
 };
 
 export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): Gtk.SelectionModel => {

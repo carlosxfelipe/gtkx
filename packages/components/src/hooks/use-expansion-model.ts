@@ -3,20 +3,13 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
 import { useLayoutEffect, useRef } from "react";
 import { type RowValue, rowIdOf } from "../utils/item-resolver.js";
+import { sameIds } from "../utils/same-ids.js";
 
 type ExpansionModelOptions<T> = {
     treeModel: Gtk.TreeListModel | null;
     rowValues: WeakMap<GObject.Object, RowValue<T>>;
     expandedIds: string[] | null | undefined;
     onExpandedChange: ((ids: string[]) => void) | null | undefined;
-};
-
-const sameIds = (a: string[], b: string[]): boolean => {
-    if (a.length !== b.length) return false;
-    for (let index = 0; index < a.length; index++) {
-        if (a[index] !== b[index]) return false;
-    }
-    return true;
 };
 
 const readExpandedIds = <T>(model: Gtk.TreeListModel, rowValues: WeakMap<GObject.Object, RowValue<T>>): string[] => {
