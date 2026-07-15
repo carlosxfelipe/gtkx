@@ -135,20 +135,16 @@ interface ShortcutsDialogProps {
 }
 
 const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
-    <Dialog onClose={onClose}>
-        {(ref) => (
-            <AdwShortcutsDialog ref={ref}>
-                <AdwShortcutsSection title="General">
-                    <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
-                    <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
-                    <AdwShortcutsItem title="Keyboard Shortcuts" accelerator="<Control>question" />
-                </AdwShortcutsSection>
-                <AdwShortcutsSection title="Navigation">
-                    <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
-                    <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
-                </AdwShortcutsSection>
-            </AdwShortcutsDialog>
-        )}
+    <Dialog component={AdwShortcutsDialog} onClose={onClose}>
+        <AdwShortcutsSection title="General">
+            <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
+            <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
+            <AdwShortcutsItem title="Keyboard Shortcuts" accelerator="<Control>question" />
+        </AdwShortcutsSection>
+        <AdwShortcutsSection title="Navigation">
+            <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
+            <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
+        </AdwShortcutsSection>
     </Dialog>
 );
 
@@ -269,22 +265,19 @@ interface AboutDialogProps {
 }
 
 const AboutDialog = ({ onClose }: AboutDialogProps) => (
-    <Dialog onClose={onClose}>
-        {(ref) => (
-            <AdwAboutDialog
-                ref={ref}
-                applicationName="GTK Demo"
-                applicationIcon={applicationIconName}
-                version="0.14.0"
-                copyright="© 2026 The GTKX Team"
-                website="https://gtkx.dev"
-                comments="Program to demonstrate GTKX widgets"
-                developerName="The GTKX Team"
-                developers={["The GTKX Team"]}
-                licenseType={Gtk.License.MPL_2_0}
-            />
-        )}
-    </Dialog>
+    <Dialog
+        component={AdwAboutDialog}
+        onClose={onClose}
+        applicationName="GTK Demo"
+        applicationIcon={applicationIconName}
+        version="0.14.0"
+        copyright="© 2026 The GTKX Team"
+        website="https://gtkx.dev"
+        comments="Program to demonstrate GTKX widgets"
+        developerName="The GTKX Team"
+        developers={["The GTKX Team"]}
+        licenseType={Gtk.License.MPL_2_0}
+    />
 );
 
 const useDemoWindows = () => {

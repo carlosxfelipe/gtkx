@@ -163,17 +163,13 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
             />
         </GtkScrolledWindow>
         {filterProgress < 1 && (
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkProgressBar
-                        ref={ref}
-                        fraction={filterProgress}
-                        halign={Gtk.Align.FILL}
-                        valign={Gtk.Align.START}
-                        hexpand
-                    />
-                )}
-            </Overlay.Child>
+            <Overlay.Child
+                component={GtkProgressBar}
+                fraction={filterProgress}
+                halign={Gtk.Align.FILL}
+                valign={Gtk.Align.START}
+                hexpand
+            />
         )}
     </Overlay>
 );

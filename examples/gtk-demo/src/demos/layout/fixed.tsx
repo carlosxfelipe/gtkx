@@ -98,24 +98,18 @@ const FixedDemo = () => {
                 valign={Gtk.Align.CENTER}
                 overflow={Gtk.Overflow.VISIBLE}
             >
-                <Fixed.Child transform={at(0, 0)}>
-                    {(ref) => (
-                        <Fixed ref={ref} name="inner-fixed" overflow={Gtk.Overflow.VISIBLE}>
-                            {faceTransforms.map(({ face, transform }) => (
-                                <Fixed.Child key={face.name} transform={at(0, 0, transform)}>
-                                    {(ref) => (
-                                        <GtkFrame
-                                            ref={ref}
-                                            name={`cube-face-${face.name}`}
-                                            widthRequest={FACE_SIZE}
-                                            heightRequest={FACE_SIZE}
-                                            cssClasses={[face.name]}
-                                        />
-                                    )}
-                                </Fixed.Child>
-                            ))}
-                        </Fixed>
-                    )}
+                <Fixed.Child component={Fixed} transform={at(0, 0)} name="inner-fixed" overflow={Gtk.Overflow.VISIBLE}>
+                    {faceTransforms.map(({ face, transform }) => (
+                        <Fixed.Child
+                            key={face.name}
+                            component={GtkFrame}
+                            transform={at(0, 0, transform)}
+                            name={`cube-face-${face.name}`}
+                            widthRequest={FACE_SIZE}
+                            heightRequest={FACE_SIZE}
+                            cssClasses={[face.name]}
+                        />
+                    ))}
                 </Fixed.Child>
             </Fixed>
         </GtkScrolledWindow>

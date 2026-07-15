@@ -14,21 +14,17 @@ interface ScaleRowProps {
 
 const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
     <>
-        <Grid.Child column={0} row={row}>
-            {(ref) => <GtkLabel ref={ref} label={label} xalign={0} />}
-        </Grid.Child>
-        <Grid.Child column={1} row={row}>
-            {(ref) => (
-                <GtkScale
-                    ref={ref}
-                    widthRequest={200}
-                    drawValue={false}
-                    hexpand
-                    adjustment={<GtkAdjustment value={2} upper={4} stepIncrement={0.1} pageIncrement={1} />}
-                    {...scaleProps}
-                />
-            )}
-        </Grid.Child>
+        <Grid.Child component={GtkLabel} column={0} row={row} label={label} xalign={0} />
+        <Grid.Child
+            component={GtkScale}
+            column={1}
+            row={row}
+            widthRequest={200}
+            drawValue={false}
+            hexpand
+            adjustment={<GtkAdjustment value={2} upper={4} stepIncrement={0.1} pageIncrement={1} />}
+            {...scaleProps}
+        />
     </>
 );
 

@@ -61,18 +61,15 @@ const Fixed2Demo = () => {
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
             <Fixed name="fixed" ref={fixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
-                <Fixed.Child transform={at(0, 0)}>
-                    {(ref) => (
-                        <GtkLabel
-                            ref={(node) => {
-                                ref(node);
-                                labelRef.current = node;
-                            }}
-                            name="fixed-label"
-                            label="All fixed?"
-                        />
-                    )}
-                </Fixed.Child>
+                <Fixed.Child
+                    component={GtkLabel}
+                    transform={at(0, 0)}
+                    ref={(node) => {
+                        labelRef.current = node;
+                    }}
+                    name="fixed-label"
+                    label="All fixed?"
+                />
             </Fixed>
         </GtkScrolledWindow>
     );

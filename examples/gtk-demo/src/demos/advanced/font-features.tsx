@@ -724,60 +724,47 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     const { fgColor, setFgColor, bgColor, setBgColor } = state;
     return (
         <>
-            <Grid.Child column={0} row={3}>
-                {(ref) => (
-                    <GtkLabel ref={ref} xalign={0} valign={Gtk.Align.BASELINE}>
-                        Foreground
-                    </GtkLabel>
-                )}
+            <Grid.Child component={GtkLabel} column={0} row={3} xalign={0} valign={Gtk.Align.BASELINE}>
+                Foreground
             </Grid.Child>
-            <Grid.Child column={1} row={3}>
-                {(ref) => (
-                    <GtkColorDialogButton
-                        ref={ref}
-                        name="foreground-color"
-                        rgba={fgColor}
-                        dialog={<GtkColorDialog />}
-                        onNotifyRgba={(value) => value && setFgColor(value)}
-                        valign={Gtk.Align.BASELINE}
-                    />
-                )}
-            </Grid.Child>
+            <Grid.Child
+                component={GtkColorDialogButton}
+                column={1}
+                row={3}
+                name="foreground-color"
+                rgba={fgColor}
+                dialog={<GtkColorDialog />}
+                onNotifyRgba={(value) => value && setFgColor(value)}
+                valign={Gtk.Align.BASELINE}
+            />
 
-            <Grid.Child column={0} row={4}>
-                {(ref) => (
-                    <GtkLabel ref={ref} xalign={0} valign={Gtk.Align.BASELINE}>
-                        Background
-                    </GtkLabel>
-                )}
+            <Grid.Child component={GtkLabel} column={0} row={4} xalign={0} valign={Gtk.Align.BASELINE}>
+                Background
             </Grid.Child>
-            <Grid.Child column={1} row={4}>
-                {(ref) => (
-                    <GtkColorDialogButton
-                        ref={ref}
-                        name="background-color"
-                        rgba={bgColor}
-                        dialog={<GtkColorDialog />}
-                        onNotifyRgba={(value) => value && setBgColor(value)}
-                        valign={Gtk.Align.BASELINE}
-                    />
-                )}
-            </Grid.Child>
+            <Grid.Child
+                component={GtkColorDialogButton}
+                column={1}
+                row={4}
+                name="background-color"
+                rgba={bgColor}
+                dialog={<GtkColorDialog />}
+                onNotifyRgba={(value) => value && setBgColor(value)}
+                valign={Gtk.Align.BASELINE}
+            />
 
-            <Grid.Child column={2} row={3} rowSpan={2}>
-                {(ref) => (
-                    <GtkButton
-                        ref={ref}
-                        name="swap-colors"
-                        iconName="object-flip-vertical-symbolic"
-                        halign={Gtk.Align.START}
-                        valign={Gtk.Align.CENTER}
-                        cssClasses={["circular"]}
-                        tooltipText="Swap colors"
-                        onClicked={handlers.swapColors}
-                    />
-                )}
-            </Grid.Child>
+            <Grid.Child
+                component={GtkButton}
+                column={2}
+                row={3}
+                rowSpan={2}
+                name="swap-colors"
+                iconName="object-flip-vertical-symbolic"
+                halign={Gtk.Align.START}
+                valign={Gtk.Align.CENTER}
+                cssClasses={["circular"]}
+                tooltipText="Swap colors"
+                onClicked={handlers.swapColors}
+            />
         </>
     );
 };
@@ -813,48 +800,40 @@ const SliderEntryRow = ({
 }: SliderEntryRowProps) => {
     return (
         <>
-            <Grid.Child column={0} row={row}>
-                {(ref) => (
-                    <GtkLabel ref={ref} xalign={0} valign={Gtk.Align.BASELINE}>
-                        {label}
-                    </GtkLabel>
-                )}
+            <Grid.Child component={GtkLabel} column={0} row={row} xalign={0} valign={Gtk.Align.BASELINE}>
+                {label}
             </Grid.Child>
-            <Grid.Child column={1} row={row}>
-                {(ref) => (
-                    <GtkScale
-                        ref={ref}
-                        hexpand
-                        widthRequest={100}
-                        valign={Gtk.Align.BASELINE}
-                        adjustment={
-                            <GtkAdjustment
-                                value={value}
-                                lower={lower}
-                                upper={upper}
-                                stepIncrement={stepIncrement}
-                                pageIncrement={pageIncrement}
-                            />
-                        }
-                        onValueChanged={(scale) => onValueChanged(scale.getValue())}
-                        sensitive={sensitive}
+            <Grid.Child
+                component={GtkScale}
+                column={1}
+                row={row}
+                hexpand
+                widthRequest={100}
+                valign={Gtk.Align.BASELINE}
+                adjustment={
+                    <GtkAdjustment
+                        value={value}
+                        lower={lower}
+                        upper={upper}
+                        stepIncrement={stepIncrement}
+                        pageIncrement={pageIncrement}
                     />
-                )}
-            </Grid.Child>
-            <Grid.Child column={2} row={row}>
-                {(ref) => (
-                    <GtkEntry
-                        ref={ref}
-                        name={entryName}
-                        widthChars={4}
-                        maxWidthChars={4}
-                        valign={Gtk.Align.BASELINE}
-                        text={displayText}
-                        onActivate={onEntryActivate}
-                        sensitive={sensitive}
-                    />
-                )}
-            </Grid.Child>
+                }
+                onValueChanged={(scale) => onValueChanged(scale.getValue())}
+                sensitive={sensitive}
+            />
+            <Grid.Child
+                component={GtkEntry}
+                column={2}
+                row={row}
+                name={entryName}
+                widthChars={4}
+                maxWidthChars={4}
+                valign={Gtk.Align.BASELINE}
+                text={displayText}
+                onActivate={onEntryActivate}
+                sensitive={sensitive}
+            />
         </>
     );
 };

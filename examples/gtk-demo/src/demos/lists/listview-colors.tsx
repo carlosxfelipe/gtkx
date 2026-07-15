@@ -329,67 +329,52 @@ const SelectionInfoPanel = ({
 }) => {
     return (
         <Grid marginStart={10} marginEnd={10} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
-            <Grid.Child column={0} row={0} columnSpan={5}>
-                {(ref) => (
-                    <GtkLabel ref={ref} hexpand cssClasses={TITLE_CSS}>
-                        Selection
-                    </GtkLabel>
-                )}
+            <Grid.Child component={GtkLabel} column={0} row={0} columnSpan={5} hexpand cssClasses={TITLE_CSS}>
+                Selection
             </Grid.Child>
-            <Grid.Child column={0} row={1} columnSpan={5}>
-                {(ref) => (
-                    <GtkScrolledWindow
-                        ref={ref}
-                        hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                    >
-                        <GridView
-                            maxColumns={200}
-                            cssClasses={SELECTION_GRID_CSS}
-                            estimatedItemHeight={32}
-                            renderItem={renderSelectionItem}
-                            items={selectedColors.map((c) => ({ id: c.id, value: c }))}
-                        />
-                    </GtkScrolledWindow>
-                )}
+            <Grid.Child
+                component={GtkScrolledWindow}
+                column={0}
+                row={1}
+                columnSpan={5}
+                hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            >
+                <GridView
+                    maxColumns={200}
+                    cssClasses={SELECTION_GRID_CSS}
+                    estimatedItemHeight={32}
+                    renderItem={renderSelectionItem}
+                    items={selectedColors.map((c) => ({ id: c.id, value: c }))}
+                />
             </Grid.Child>
-            <Grid.Child column={0} row={2}>
-                {(ref) => <GtkLabel ref={ref}>Size:</GtkLabel>}
+            <Grid.Child component={GtkLabel} column={0} row={2}>
+                Size:
             </Grid.Child>
-            <Grid.Child column={1} row={2}>
-                {(ref) => (
-                    <GtkLabel ref={ref} name="selection-size">
-                        {String(selectedColors.length)}
-                    </GtkLabel>
-                )}
+            <Grid.Child component={GtkLabel} column={1} row={2} name="selection-size">
+                {String(selectedColors.length)}
             </Grid.Child>
-            <Grid.Child column={2} row={2}>
-                {(ref) => <GtkLabel ref={ref}>Average:</GtkLabel>}
+            <Grid.Child component={GtkLabel} column={2} row={2}>
+                Average:
             </Grid.Child>
-            <Grid.Child column={3} row={2}>
-                {(ref) => (
-                    <GtkDrawingArea
-                        ref={ref}
-                        contentWidth={32}
-                        contentHeight={32}
-                        drawFunc={(_self, cr, w, h) =>
-                            drawColorSwatch(cr, {
-                                width: w,
-                                height: h,
-                                r: averageColor.r,
-                                g: averageColor.g,
-                                b: averageColor.b,
-                            })
-                        }
-                    />
-                )}
-            </Grid.Child>
-            <Grid.Child column={4} row={2}>
-                {(ref) => (
-                    <GtkLabel ref={ref} hexpand>
-                        {""}
-                    </GtkLabel>
-                )}
+            <Grid.Child
+                component={GtkDrawingArea}
+                column={3}
+                row={2}
+                contentWidth={32}
+                contentHeight={32}
+                drawFunc={(_self, cr, w, h) =>
+                    drawColorSwatch(cr, {
+                        width: w,
+                        height: h,
+                        r: averageColor.r,
+                        g: averageColor.g,
+                        b: averageColor.b,
+                    })
+                }
+            />
+            <Grid.Child component={GtkLabel} column={4} row={2} hexpand>
+                {""}
             </Grid.Child>
         </Grid>
     );
@@ -741,19 +726,15 @@ const ColorsGridOverlay = () => {
                     factory={factory}
                 />
             </GtkScrolledWindow>
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkProgressBar
-                        ref={(node) => {
-                            ref(node);
-                            progressBarRef.current = node;
-                        }}
-                        visible={false}
-                        halign={Gtk.Align.FILL}
-                        valign={Gtk.Align.START}
-                    />
-                )}
-            </Overlay.Child>
+            <Overlay.Child
+                component={GtkProgressBar}
+                ref={(node) => {
+                    progressBarRef.current = node;
+                }}
+                visible={false}
+                halign={Gtk.Align.FILL}
+                valign={Gtk.Align.START}
+            />
         </Overlay>
     );
 };

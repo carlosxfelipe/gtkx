@@ -14,29 +14,23 @@ const ThemingStyleClassesDemo = () => (
         marginBottom={10}
         orientation={Gtk.Orientation.VERTICAL}
     >
-        <Grid.Child column={0} row={0}>
-            {(ref) => (
-                <GtkBox
-                    ref={ref}
-                    name="linked-buttons"
-                    cssClasses={["linked"]}
-                    valign={Gtk.Align.CENTER}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <GtkButton label="Hi, I am a button" receivesDefault />
-                    <GtkButton label="And I'm another button" receivesDefault />
-                    <GtkButton label="This is a button party!" receivesDefault />
-                </GtkBox>
-            )}
+        <Grid.Child
+            component={GtkBox}
+            column={0}
+            row={0}
+            name="linked-buttons"
+            cssClasses={["linked"]}
+            valign={Gtk.Align.CENTER}
+            halign={Gtk.Align.CENTER}
+        >
+            <GtkButton label="Hi, I am a button" receivesDefault />
+            <GtkButton label="And I'm another button" receivesDefault />
+            <GtkButton label="This is a button party!" receivesDefault />
         </Grid.Child>
-        <Grid.Child column={0} row={1}>
-            {(ref) => (
-                <GtkBox ref={ref} spacing={10}>
-                    <GtkButton label="Plain" halign={Gtk.Align.END} hexpand />
-                    <GtkButton label="Destructive" cssClasses={["destructive-action"]} />
-                    <GtkButton label="Suggested" cssClasses={["suggested-action"]} />
-                </GtkBox>
-            )}
+        <Grid.Child component={GtkBox} column={0} row={1} spacing={10}>
+            <GtkButton label="Plain" halign={Gtk.Align.END} hexpand />
+            <GtkButton label="Destructive" cssClasses={["destructive-action"]} />
+            <GtkButton label="Suggested" cssClasses={["suggested-action"]} />
         </Grid.Child>
     </Grid>
 );

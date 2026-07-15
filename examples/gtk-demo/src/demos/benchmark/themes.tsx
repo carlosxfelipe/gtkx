@@ -99,23 +99,19 @@ const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => 
 );
 
 const ThemesWarningDialog = ({ onResponse }: { onResponse: (response: string) => void }) => (
-    <Dialog>
-        {(ref) => (
-            <AdwAlertDialog
-                ref={ref}
-                name="warning-dialog"
-                heading="Warning"
-                body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
-                defaultResponse="ok"
-                closeResponse="cancel"
-                responses={[
-                    { id: "cancel", label: "_Cancel" },
-                    { id: "ok", label: "_OK" },
-                ]}
-                onResponse={onResponse}
-            />
-        )}
-    </Dialog>
+    <Dialog
+        component={AdwAlertDialog}
+        name="warning-dialog"
+        heading="Warning"
+        body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
+        defaultResponse="ok"
+        closeResponse="cancel"
+        responses={[
+            { id: "cancel", label: "_Cancel" },
+            { id: "ok", label: "_OK" },
+        ]}
+        onResponse={onResponse}
+    />
 );
 
 function useFpsAttrs() {

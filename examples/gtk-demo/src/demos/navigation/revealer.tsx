@@ -58,22 +58,21 @@ const RevealerDemo = () => {
     return (
         <Grid name="revealer-grid" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
             {revealerConfigs.map((config, index) => (
-                <Grid.Child key={`${config.column}-${config.row}`} column={config.column} row={config.row}>
-                    {(ref) => (
-                        <GtkRevealer
-                            ref={ref}
-                            name={`revealer-${index}`}
-                            transitionDuration={TRANSITION_DURATION}
-                            transitionType={config.transition}
-                            revealChild={revealed[index]}
-                            onNotifyChildRevealed={(_childRevealed, self) => {
-                                if (!self.getMapped()) return;
-                                handleChildRevealed(index);
-                            }}
-                        >
-                            <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />
-                        </GtkRevealer>
-                    )}
+                <Grid.Child
+                    key={`${config.column}-${config.row}`}
+                    component={GtkRevealer}
+                    column={config.column}
+                    row={config.row}
+                    name={`revealer-${index}`}
+                    transitionDuration={TRANSITION_DURATION}
+                    transitionType={config.transition}
+                    revealChild={revealed[index]}
+                    onNotifyChildRevealed={(_childRevealed, self) => {
+                        if (!self.getMapped()) return;
+                        handleChildRevealed(index);
+                    }}
+                >
+                    <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />
                 </Grid.Child>
             ))}
         </Grid>

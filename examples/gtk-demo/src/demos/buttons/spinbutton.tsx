@@ -97,27 +97,29 @@ const SpinRow = ({ row, label, spinName, value, setValue, adjustment, spin }: Sp
 
     return (
         <>
-            <Grid.Child column={0} row={row}>
-                {(ref) => <GtkLabel ref={ref} label={label} useUnderline xalign={1} mnemonicWidget={spinWidget} />}
-            </Grid.Child>
-            <Grid.Child column={1} row={row}>
-                {(ref) => (
-                    <GtkSpinButton
-                        ref={(node) => {
-                            ref(node);
-                            setSpinWidget(node);
-                        }}
-                        name={spinName}
-                        halign={Gtk.Align.START}
-                        adjustment={<GtkAdjustment {...adjustment} value={value} />}
-                        onValueChanged={(widget) => setValue(widget.getValue())}
-                        {...spin}
-                    />
-                )}
-            </Grid.Child>
-            <Grid.Child column={2} row={row}>
-                {(ref) => <GtkLabel ref={ref} label={String(value)} widthChars={10} xalign={1} />}
-            </Grid.Child>
+            <Grid.Child
+                component={GtkLabel}
+                column={0}
+                row={row}
+                label={label}
+                useUnderline
+                xalign={1}
+                mnemonicWidget={spinWidget}
+            />
+            <Grid.Child
+                component={GtkSpinButton}
+                column={1}
+                row={row}
+                ref={(node) => {
+                    setSpinWidget(node);
+                }}
+                name={spinName}
+                halign={Gtk.Align.START}
+                adjustment={<GtkAdjustment {...adjustment} value={value} />}
+                onValueChanged={(widget) => setValue(widget.getValue())}
+                {...spin}
+            />
+            <Grid.Child component={GtkLabel} column={2} row={row} label={String(value)} widthChars={10} xalign={1} />
         </>
     );
 };

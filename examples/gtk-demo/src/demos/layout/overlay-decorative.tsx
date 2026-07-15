@@ -10,21 +10,27 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { type ReactNode, type RefCallback, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { path as decor1Path } from "#data/demos/layout/decor1.png";
 import { path as decor2Path } from "#data/demos/layout/decor2.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
 type DecorPictureOptions = {
-    ref: RefCallback<Gtk.Widget>;
     name: string;
     paintable: Gdk.Texture;
     align: Gtk.Align;
 };
 
-const decorPicture = ({ ref, name, paintable, align }: DecorPictureOptions): ReactNode => (
-    <GtkPicture ref={ref} name={name} paintable={paintable} halign={align} valign={align} canTarget={false} />
+const decorPicture = ({ name, paintable, align }: DecorPictureOptions): ReactNode => (
+    <Overlay.Child
+        component={GtkPicture}
+        name={name}
+        paintable={paintable}
+        halign={align}
+        valign={align}
+        canTarget={false}
+    />
 );
 
 const OverlayDecorativeDemo = () => {
@@ -55,33 +61,23 @@ const OverlayDecorativeDemo = () => {
                     }
                 />
             </GtkScrolledWindow>
-            <Overlay.Child>
-                {(ref) => decorPicture({ ref, name: "picture-start", paintable: decor1, align: Gtk.Align.START })}
-            </Overlay.Child>
-            <Overlay.Child>
-                {(ref) => decorPicture({ ref, name: "picture-end", paintable: decor2, align: Gtk.Align.END })}
-            </Overlay.Child>
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkScale
-                        ref={ref}
-                        name="margin-scale"
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        drawValue={false}
-                        widthRequest={120}
-                        halign={Gtk.Align.START}
-                        valign={Gtk.Align.END}
-                        marginStart={20}
-                        marginEnd={20}
-                        marginBottom={20}
-                        tooltipText="Margin"
-                        adjustment={
-                            <GtkAdjustment value={margin} lower={0} upper={100} stepIncrement={1} pageIncrement={1} />
-                        }
-                        onValueChanged={(scale) => setMargin(scale.getValue())}
-                    />
-                )}
-            </Overlay.Child>
+            {decorPicture({ name: "picture-start", paintable: decor1, align: Gtk.Align.START })}
+            {decorPicture({ name: "picture-end", paintable: decor2, align: Gtk.Align.END })}
+            <Overlay.Child
+                component={GtkScale}
+                name="margin-scale"
+                orientation={Gtk.Orientation.HORIZONTAL}
+                drawValue={false}
+                widthRequest={120}
+                halign={Gtk.Align.START}
+                valign={Gtk.Align.END}
+                marginStart={20}
+                marginEnd={20}
+                marginBottom={20}
+                tooltipText="Margin"
+                adjustment={<GtkAdjustment value={margin} lower={0} upper={100} stepIncrement={1} pageIncrement={1} />}
+                onValueChanged={(scale) => setMargin(scale.getValue())}
+            />
         </Overlay>
     );
 };

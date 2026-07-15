@@ -162,37 +162,29 @@ const CssMultiplebgsDemo = () => {
     return (
         <Overlay name="overlay">
             <GtkDrawingArea name="canvas" hexpand vexpand />
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkButton
-                        ref={ref}
-                        name="bricks-button"
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        widthRequest={250}
-                        heightRequest={84}
-                    />
-                )}
-            </Overlay.Child>
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkPaned
-                        ref={ref}
-                        name="paned"
-                        orientation={Gtk.Orientation.VERTICAL}
-                        startChild={<GtkBox />}
-                        endChild={
-                            <GtkScrolledWindow>
-                                <GtkTextView
-                                    name="text-view"
-                                    ref={textViewRef}
-                                    buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
-                                />
-                            </GtkScrolledWindow>
-                        }
-                    />
-                )}
-            </Overlay.Child>
+            <Overlay.Child
+                component={GtkButton}
+                name="bricks-button"
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                widthRequest={250}
+                heightRequest={84}
+            />
+            <Overlay.Child
+                component={GtkPaned}
+                name="paned"
+                orientation={Gtk.Orientation.VERTICAL}
+                startChild={<GtkBox />}
+                endChild={
+                    <GtkScrolledWindow>
+                        <GtkTextView
+                            name="text-view"
+                            ref={textViewRef}
+                            buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
+                        />
+                    </GtkScrolledWindow>
+                }
+            />
         </Overlay>
     );
 };

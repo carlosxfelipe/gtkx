@@ -21,11 +21,16 @@ const OverlayDemo = () => {
         for (let i = 0; i < 5; i++) {
             const num = 5 * j + i;
             buttons.push(
-                <Grid.Child key={num} column={i} row={j}>
-                    {(ref) => (
-                        <GtkButton ref={ref} label={String(num)} hexpand vexpand onClicked={() => handleNumber(num)} />
-                    )}
-                </Grid.Child>,
+                <Grid.Child
+                    key={num}
+                    component={GtkButton}
+                    column={i}
+                    row={j}
+                    label={String(num)}
+                    hexpand
+                    vexpand
+                    onClicked={() => handleNumber(num)}
+                />,
             );
         }
     }
@@ -33,36 +38,28 @@ const OverlayDemo = () => {
     return (
         <Overlay>
             <Grid name="number-grid">{buttons}</Grid>
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkBox
-                        ref={ref}
-                        orientation={Gtk.Orientation.VERTICAL}
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.START}
-                        canTarget={false}
-                        spacing={10}
-                    >
-                        <GtkLabel name="numbers-label" useMarkup canTarget={false} marginTop={8} marginBottom={8}>
-                            {"<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"}
-                        </GtkLabel>
-                    </GtkBox>
-                )}
+            <Overlay.Child
+                component={GtkBox}
+                orientation={Gtk.Orientation.VERTICAL}
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.START}
+                canTarget={false}
+                spacing={10}
+            >
+                <GtkLabel name="numbers-label" useMarkup canTarget={false} marginTop={8} marginBottom={8}>
+                    {"<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"}
+                </GtkLabel>
             </Overlay.Child>
-            <Overlay.Child>
-                {(ref) => (
-                    <GtkEntry
-                        ref={ref}
-                        text={value}
-                        placeholderText="Your Lucky Number"
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        marginTop={8}
-                        marginBottom={8}
-                        onChanged={handleEntryChanged}
-                    />
-                )}
-            </Overlay.Child>
+            <Overlay.Child
+                component={GtkEntry}
+                text={value}
+                placeholderText="Your Lucky Number"
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                marginTop={8}
+                marginBottom={8}
+                onChanged={handleEntryChanged}
+            />
         </Overlay>
     );
 };
