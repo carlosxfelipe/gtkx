@@ -16,6 +16,7 @@ const tutorialItems = [
     { text: "The Sidebar", link: "/tutorial/the-sidebar" },
     { text: "The Task List", link: "/tutorial/the-task-list" },
     { text: "Task Rows and Drag-to-Reorder", link: "/tutorial/task-rows-and-reordering" },
+    { text: "Animations", link: "/tutorial/animations" },
     { text: "The Task Editor", link: "/tutorial/the-task-editor" },
     { text: "Actions, Menus, and Shortcuts", link: "/tutorial/actions-menus-shortcuts" },
     { text: "Selection Mode", link: "/tutorial/selection-and-batch" },

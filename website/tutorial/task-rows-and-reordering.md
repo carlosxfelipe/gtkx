@@ -205,4 +205,4 @@ Dragging is off when a sort order is imposed (the array position would be meanin
 
 ## Next
 
-Continue to **The Task Editor**.
+Continue to **Animations** to give the empty state a subtle fade, and to see where hand-written motion belongs in a GNOME app.
