@@ -28,21 +28,35 @@ const runAdd = (instance: object, add: Call | Call[], item: unknown): void => {
     runCall(instance, add, [item], { item });
 };
 
-const applyList = (instance: object, prop: ListProp, oldValue: unknown, newValue: unknown): void => {
-    if (listValuesEqual(oldValue, newValue)) return;
+const snapshotItems = (items: unknown[]): unknown[] => items.map((item) => (isRecord(item) ? { ...item } : item));
+
+const appliedLists = new WeakMap<object, Map<string, unknown[]>>();
+
+const rememberAppliedList = (instance: object, prop: string, items: unknown[]): void => {
+    const byProp = appliedLists.get(instance) ?? new Map<string, unknown[]>();
+    byProp.set(prop, snapshotItems(items));
+    appliedLists.set(instance, byProp);
+};
+
+const applyList = (instance: object, prop: ListProp, newValue: unknown): void => {
+    const applied = appliedLists.get(instance)?.get(prop.prop);
     const newItems = asArray(newValue);
+    if (applied !== undefined && listValuesEqual(applied, newItems)) return;
     if (prop.clear !== undefined) {
         runCall(instance, prop.clear, [], {});
         for (const item of newItems) runAdd(instance, prop.add, item);
+        rememberAppliedList(instance, prop.prop, newItems);
         return;
     }
     if (prop.remove !== undefined) {
-        for (const item of asArray(oldValue)) runCall(instance, prop.remove, [item], { item });
+        for (const item of asArray(applied)) runCall(instance, prop.remove, [item], { item });
         for (const item of newItems) runAdd(instance, prop.add, item);
+        rememberAppliedList(instance, prop.prop, newItems);
         return;
     }
-    if (asArray(oldValue).length !== 0) return;
+    if (asArray(applied).length !== 0) return;
     for (const item of newItems) runAdd(instance, prop.add, item);
+    rememberAppliedList(instance, prop.prop, newItems);
 };
 
 const applyValue = (instance: object, prop: ValueProp, oldValue: unknown, newValue: unknown): void => {
@@ -84,7 +98,7 @@ const applyProp = (instance: object, prop: AppliedProp, oldProps: Props | null, 
             applyLazy(instance, prop, newProps);
             return;
         case "list":
-            applyList(instance, prop, oldValue, newValue);
+            applyList(instance, prop, newValue);
             return;
     }
 };
