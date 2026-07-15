@@ -11,12 +11,8 @@ describe("render - Grid", () => {
 
         await render(
             <Grid ref={gridRef} columnSpacing={6} rowSpacing={4}>
-                <Grid.Child column={0} row={0}>
-                    {(ref) => <GtkLabel ref={ref} label="A" />}
-                </Grid.Child>
-                <Grid.Child column={1} row={1}>
-                    {(ref) => <GtkLabel ref={ref} label="B" />}
-                </Grid.Child>
+                <Grid.Child component={GtkLabel} column={0} row={0} label="A" />
+                <Grid.Child component={GtkLabel} column={1} row={1} label="B" />
             </Grid>,
         );
 
@@ -32,9 +28,7 @@ describe("render - Grid", () => {
 
         await render(
             <Grid ref={gridRef}>
-                <Grid.Child column={0} row={0} columnSpan={2} rowSpan={2}>
-                    {(ref) => <GtkLabel ref={ref} label="wide" />}
-                </Grid.Child>
+                <Grid.Child component={GtkLabel} column={0} row={0} columnSpan={2} rowSpan={2} label="wide" />
             </Grid>,
         );
 
@@ -50,9 +44,7 @@ describe("render - Grid", () => {
         function App({ column }: { column: number }) {
             return (
                 <Grid ref={gridRef}>
-                    <Grid.Child column={column} row={0}>
-                        {(ref) => <GtkLabel ref={ref} label="movable" />}
-                    </Grid.Child>
+                    <Grid.Child component={GtkLabel} column={column} row={0} label="movable" />
                 </Grid>
             );
         }
@@ -71,13 +63,7 @@ describe("render - Grid", () => {
 
         function App({ show }: { show: boolean }) {
             return (
-                <Grid ref={gridRef}>
-                    {show && (
-                        <Grid.Child column={0} row={0}>
-                            {(ref) => <GtkLabel ref={ref} label="A" />}
-                        </Grid.Child>
-                    )}
-                </Grid>
+                <Grid ref={gridRef}>{show && <Grid.Child component={GtkLabel} column={0} row={0} label="A" />}</Grid>
             );
         }
 

@@ -90,17 +90,14 @@ describe("explicit top-level parenting", () => {
         await render(
             <ParentedTree parentRef={parentRef}>
                 {(parent) => (
-                    <Dialog parent={parent}>
-                        {(ref) => (
-                            <AdwAlertDialog
-                                ref={(widget) => {
-                                    ref(widget);
-                                    dialogRef.current = widget;
-                                }}
-                                heading="Parented"
-                            />
-                        )}
-                    </Dialog>
+                    <Dialog
+                        component={AdwAlertDialog}
+                        parent={parent}
+                        ref={(widget) => {
+                            dialogRef.current = widget;
+                        }}
+                        heading="Parented"
+                    />
                 )}
             </ParentedTree>,
             { container: rootElement },

@@ -34,17 +34,13 @@ describe("Dialog - render prop and lifecycle", () => {
 
         await render(
             <InApp>
-                <Dialog>
-                    {(ref) => (
-                        <AdwAlertDialog
-                            ref={(widget) => {
-                                ref(widget);
-                                dialogRef.current = widget;
-                            }}
-                            heading="Presented"
-                        />
-                    )}
-                </Dialog>
+                <Dialog
+                    component={AdwAlertDialog}
+                    ref={(widget) => {
+                        dialogRef.current = widget;
+                    }}
+                    heading="Presented"
+                />
             </InApp>,
         );
 
@@ -59,17 +55,14 @@ describe("Dialog - render prop and lifecycle", () => {
 
         await render(
             <InApp>
-                <Dialog onClose={onClose}>
-                    {(ref) => (
-                        <AdwAlertDialog
-                            ref={(widget) => {
-                                ref(widget);
-                                dialogRef.current = widget;
-                            }}
-                            heading="Closable"
-                        />
-                    )}
-                </Dialog>
+                <Dialog
+                    component={AdwAlertDialog}
+                    onClose={onClose}
+                    ref={(widget) => {
+                        dialogRef.current = widget;
+                    }}
+                    heading="Closable"
+                />
             </InApp>,
         );
 
@@ -84,11 +77,7 @@ describe("Dialog - render prop and lifecycle", () => {
         const onClose = vi.fn();
 
         const App = ({ open }: { open: boolean }) => (
-            <InApp>
-                {open ? (
-                    <Dialog onClose={onClose}>{(ref) => <AdwAlertDialog ref={ref} heading="Unmounted" />}</Dialog>
-                ) : null}
-            </InApp>
+            <InApp>{open ? <Dialog component={AdwAlertDialog} onClose={onClose} heading="Unmounted" /> : null}</InApp>
         );
 
         const { rerender } = await render(<App open={true} />);

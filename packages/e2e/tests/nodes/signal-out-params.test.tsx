@@ -124,9 +124,7 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
         await render(
             <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel>Main Content</GtkLabel>
-                <Overlay.Child>
-                    {(ref) => <GtkBox ref={ref} name="overlay-child" widthRequest={40} heightRequest={20} />}
-                </Overlay.Child>
+                <Overlay.Child component={GtkBox} name="overlay-child" widthRequest={40} heightRequest={20} />
             </Overlay>,
         );
 
@@ -170,9 +168,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
         await render(
             <Overlay ref={overlayRef} widthRequest={200} heightRequest={200}>
                 <GtkLabel>Main</GtkLabel>
-                <Overlay.Child>
-                    {(ref) => <GtkBox ref={ref} name="overlay-child" widthRequest={40} heightRequest={20} />}
-                </Overlay.Child>
+                <Overlay.Child component={GtkBox} name="overlay-child" widthRequest={40} heightRequest={20} />
             </Overlay>,
         );
 
