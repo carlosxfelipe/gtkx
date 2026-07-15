@@ -19,49 +19,41 @@ export const NewListDialog = ({
     const [color, setColor] = useState(PALETTE[0]);
 
     return (
-        <Dialog>
-            {(ref) => (
-                <AdwAlertDialog
-                    ref={ref}
-                    heading="New List"
-                    defaultResponse="add"
-                    closeResponse="cancel"
-                    responses={[
-                        { id: "cancel", label: "Cancel" },
-                        { id: "add", label: "Add", appearance: Adw.ResponseAppearance.SUGGESTED },
-                    ]}
-                    onResponse={(id) => {
-                        if (id === "add") onAdd(name, color);
-                        else onCancel();
-                    }}
-                >
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
-                        <GtkEntry
-                            placeholderText="List name"
-                            activatesDefault
-                            onChanged={(self) => setName(self.text)}
-                        />
-                        <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                            {PALETTE.map((swatch) => (
-                                <GtkToggleButton
-                                    key={swatch}
-                                    active={color === swatch}
-                                    cssClasses={["flat"]}
-                                    accessibleLabel={`Color ${swatch}`}
-                                    onClicked={() => setColor(swatch)}
-                                >
-                                    <GtkBox
-                                        widthRequest={22}
-                                        heightRequest={22}
-                                        cssClasses={[listDot(swatch)]}
-                                        accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                                    />
-                                </GtkToggleButton>
-                            ))}
-                        </GtkBox>
-                    </GtkBox>
-                </AdwAlertDialog>
-            )}
+        <Dialog
+            component={AdwAlertDialog}
+            heading="New List"
+            defaultResponse="add"
+            closeResponse="cancel"
+            responses={[
+                { id: "cancel", label: "Cancel" },
+                { id: "add", label: "Add", appearance: Adw.ResponseAppearance.SUGGESTED },
+            ]}
+            onResponse={(id) => {
+                if (id === "add") onAdd(name, color);
+                else onCancel();
+            }}
+        >
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
+                <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
+                <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
+                    {PALETTE.map((swatch) => (
+                        <GtkToggleButton
+                            key={swatch}
+                            active={color === swatch}
+                            cssClasses={["flat"]}
+                            accessibleLabel={`Color ${swatch}`}
+                            onClicked={() => setColor(swatch)}
+                        >
+                            <GtkBox
+                                widthRequest={22}
+                                heightRequest={22}
+                                cssClasses={[listDot(swatch)]}
+                                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                            />
+                        </GtkToggleButton>
+                    ))}
+                </GtkBox>
+            </GtkBox>
         </Dialog>
     );
 };

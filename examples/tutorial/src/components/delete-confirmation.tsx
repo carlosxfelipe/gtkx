@@ -12,24 +12,20 @@ export const DeleteConfirmation = ({
     onCancel: () => void;
 }) => {
     return (
-        <Dialog>
-            {(ref) => (
-                <AdwAlertDialog
-                    ref={ref}
-                    heading="Delete Task?"
-                    body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
-                    defaultResponse="cancel"
-                    closeResponse="cancel"
-                    responses={[
-                        { id: "cancel", label: "Cancel" },
-                        { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
-                    ]}
-                    onResponse={(id) => {
-                        if (id === "delete") onConfirm();
-                        else onCancel();
-                    }}
-                />
-            )}
-        </Dialog>
+        <Dialog
+            component={AdwAlertDialog}
+            heading="Delete Task?"
+            body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
+            defaultResponse="cancel"
+            closeResponse="cancel"
+            responses={[
+                { id: "cancel", label: "Cancel" },
+                { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+            ]}
+            onResponse={(id) => {
+                if (id === "delete") onConfirm();
+                else onCancel();
+            }}
+        />
     );
 };

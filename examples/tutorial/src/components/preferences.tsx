@@ -1,5 +1,6 @@
-import { ComboRow, Dialog } from "@gtkx/components/adw";
-import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
+import { DropDown } from "@gtkx/components";
+import { Dialog } from "@gtkx/components/adw";
+import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
@@ -17,50 +18,46 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
 
     return (
-        <Dialog onClose={onClose}>
-            {(ref) => (
-                <AdwPreferencesDialog ref={ref} title="Preferences">
-                    <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
-                        <AdwPreferencesGroup title="Appearance">
-                            <ComboRow<string>
-                                title="Theme"
-                                items={[
-                                    { id: "default", value: "Follow system" },
-                                    { id: "light", value: "Light" },
-                                    { id: "dark", value: "Dark" },
-                                ]}
-                                selectedId={scheme}
-                                onSelectionChanged={(id) => {
-                                    if (isScheme(id)) setScheme(id);
-                                }}
-                            />
-                        </AdwPreferencesGroup>
-                        <AdwPreferencesGroup title="Tasks">
-                            <ComboRow<string>
-                                title="Sort order"
-                                items={[
-                                    { id: "manual", value: "Manual" },
-                                    { id: "due-date", value: "Due date" },
-                                    { id: "title", value: "Title" },
-                                    { id: "created", value: "Date created" },
-                                ]}
-                                selectedId={sortOrder}
-                                onSelectionChanged={(id) => {
-                                    if (isSort(id)) setSortOrder(id);
-                                }}
-                            />
-                            <AdwSpinRow
-                                title="Reminder lead time"
-                                subtitle="Minutes before a task is due"
-                                adjustment={
-                                    <GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />
-                                }
-                                onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
-                            />
-                        </AdwPreferencesGroup>
-                    </AdwPreferencesPage>
-                </AdwPreferencesDialog>
-            )}
+        <Dialog component={AdwPreferencesDialog} onClose={onClose} title="Preferences">
+            <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
+                <AdwPreferencesGroup title="Appearance">
+                    <DropDown
+                        component={AdwComboRow}
+                        title="Theme"
+                        items={[
+                            { id: "default", value: "Follow system" },
+                            { id: "light", value: "Light" },
+                            { id: "dark", value: "Dark" },
+                        ]}
+                        selectedId={scheme}
+                        onSelectionChanged={(id) => {
+                            if (isScheme(id)) setScheme(id);
+                        }}
+                    />
+                </AdwPreferencesGroup>
+                <AdwPreferencesGroup title="Tasks">
+                    <DropDown
+                        component={AdwComboRow}
+                        title="Sort order"
+                        items={[
+                            { id: "manual", value: "Manual" },
+                            { id: "due-date", value: "Due date" },
+                            { id: "title", value: "Title" },
+                            { id: "created", value: "Date created" },
+                        ]}
+                        selectedId={sortOrder}
+                        onSelectionChanged={(id) => {
+                            if (isSort(id)) setSortOrder(id);
+                        }}
+                    />
+                    <AdwSpinRow
+                        title="Reminder lead time"
+                        subtitle="Minutes before a task is due"
+                        adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
+                        onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
+                    />
+                </AdwPreferencesGroup>
+            </AdwPreferencesPage>
         </Dialog>
     );
 };
