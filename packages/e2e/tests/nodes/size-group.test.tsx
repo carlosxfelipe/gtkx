@@ -2,7 +2,7 @@ import { SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, within } from "@gtkx/testing";
-import type { ReactNode, RefCallback } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 const NARROW_WIDTH = 24;
@@ -14,37 +14,23 @@ const naturalWidth = (widget: Gtk.Widget): number => widget.measure(Gtk.Orientat
 
 const naturalHeight = (widget: Gtk.Widget): number => widget.measure(Gtk.Orientation.VERTICAL, -1)[1];
 
-const MeasuredLabel = ({
-    groupRef,
-    label,
-    widthRequest,
-    heightRequest,
-}: {
-    groupRef: RefCallback<Gtk.Widget>;
-    label: string;
-    widthRequest: number;
-    heightRequest?: number;
-}) => <GtkLabel ref={groupRef} label={label} widthRequest={widthRequest} heightRequest={heightRequest} />;
-
 const GroupedLabels = ({ count, mode }: { count: 0 | 1 | 2; mode?: Gtk.SizeGroupMode }) => (
     <GtkBox>
         <SizeGroup mode={mode}>
-            {(ref) => (
-                <>
-                    {count >= 1 && <MeasuredLabel groupRef={ref} label="A" widthRequest={NARROW_WIDTH} />}
-                    {count >= 2 && <MeasuredLabel groupRef={ref} label="B" widthRequest={WIDE_WIDTH} />}
-                </>
-            )}
+            {count >= 1 && <SizeGroup.Child component={GtkLabel} label="A" widthRequest={NARROW_WIDTH} />}
+            {count >= 2 && <SizeGroup.Child component={GtkLabel} label="B" widthRequest={WIDE_WIDTH} />}
         </SizeGroup>
     </GtkBox>
 );
 
-const renderGroupOfTwo = async () => {
-    const { rerender } = await render(<GroupedLabels count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
+const expectGroupedWide = async (app: ReactElement) => {
+    const result = await render(app);
     expect(naturalWidth(screen.getByText("A"))).toBe(WIDE_WIDTH);
     expect(naturalWidth(screen.getByText("B"))).toBe(WIDE_WIDTH);
-    return { rerender };
+    return result;
 };
+
+const renderGroupOfTwo = () => expectGroupedWide(<GroupedLabels count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
 
 describe("SizeGroup members", () => {
     it("stretches every member to the widest member's natural size", async () => {
@@ -73,22 +59,18 @@ describe("SizeGroup mode", () => {
         const GroupedLabelsWithMode = ({ mode }: { mode: Gtk.SizeGroupMode }): ReactNode => (
             <GtkBox>
                 <SizeGroup mode={mode}>
-                    {(ref) => (
-                        <>
-                            <MeasuredLabel
-                                groupRef={ref}
-                                label="A"
-                                widthRequest={NARROW_WIDTH}
-                                heightRequest={TALL_HEIGHT}
-                            />
-                            <MeasuredLabel
-                                groupRef={ref}
-                                label="B"
-                                widthRequest={WIDE_WIDTH}
-                                heightRequest={SHORT_HEIGHT}
-                            />
-                        </>
-                    )}
+                    <SizeGroup.Child
+                        component={GtkLabel}
+                        label="A"
+                        widthRequest={NARROW_WIDTH}
+                        heightRequest={TALL_HEIGHT}
+                    />
+                    <SizeGroup.Child
+                        component={GtkLabel}
+                        label="B"
+                        widthRequest={WIDE_WIDTH}
+                        heightRequest={SHORT_HEIGHT}
+                    />
                 </SizeGroup>
             </GtkBox>
         );
@@ -109,26 +91,43 @@ describe("SizeGroup across subtrees", () => {
         const App = () => (
             <GtkBox>
                 <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-                    {(ref) => (
-                        <>
-                            <GtkFrame label="Frame A">
-                                <MeasuredLabel groupRef={ref} label="A" widthRequest={NARROW_WIDTH} />
-                            </GtkFrame>
-                            <GtkFrame label="Frame B">
-                                <MeasuredLabel groupRef={ref} label="B" widthRequest={WIDE_WIDTH} />
-                            </GtkFrame>
-                        </>
-                    )}
+                    <GtkFrame label="Frame A">
+                        <SizeGroup.Child component={GtkLabel} label="A" widthRequest={NARROW_WIDTH} />
+                    </GtkFrame>
+                    <GtkFrame label="Frame B">
+                        <SizeGroup.Child component={GtkLabel} label="B" widthRequest={WIDE_WIDTH} />
+                    </GtkFrame>
                 </SizeGroup>
             </GtkBox>
         );
 
-        await render(<App />);
-
-        expect(naturalWidth(screen.getByText("A"))).toBe(WIDE_WIDTH);
-        expect(naturalWidth(screen.getByText("B"))).toBe(WIDE_WIDTH);
+        await expectGroupedWide(<App />);
 
         expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame A/ })).getByText("A")).toBeDefined();
         expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame B/ })).getByText("B")).toBeDefined();
+    });
+});
+
+describe("SizeGroup.Child", () => {
+    it("forwards the caller's ref while registering the widget", async () => {
+        const externalRef: { current: Gtk.Label | null } = { current: null };
+
+        const App = () => (
+            <GtkBox>
+                <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
+                    <SizeGroup.Child component={GtkLabel} ref={externalRef} label="A" widthRequest={NARROW_WIDTH} />
+                    <SizeGroup.Child component={GtkLabel} label="B" widthRequest={WIDE_WIDTH} />
+                </SizeGroup>
+            </GtkBox>
+        );
+
+        await expectGroupedWide(<App />);
+        expect(externalRef.current).toBe(screen.getByText("A"));
+    });
+
+    it("throws when used outside a <SizeGroup>", async () => {
+        const Orphan = () => <SizeGroup.Child component={GtkLabel} label="orphan" />;
+
+        await expect(render(<Orphan />)).rejects.toThrow("<SizeGroup.Child> must be a child of <SizeGroup>");
     });
 });

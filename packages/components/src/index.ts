@@ -8,5 +8,5 @@ export { GridView, type GridViewProps } from "./grid-view.js";
 export { ListView, type ListViewProps } from "./list-view.js";
 export { Menu, type MenuProps } from "./menu.js";
 export { Overlay, type OverlayChildProps, type OverlayProps } from "./overlay.js";
-export { SizeGroup, type SizeGroupProps } from "./size-group.js";
+export { SizeGroup, type SizeGroupChildProps, type SizeGroupProps, useSizeGroupItem } from "./size-group.js";
 export type { ItemNode, MenuEntry, RenderItemProps, SectionNode } from "./types.js";

@@ -1,8 +1,8 @@
-import { DropDown, SizeGroup } from "@gtkx/components";
+import { DropDown, SizeGroup, useSizeGroupItem } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
-import { type RefCallback, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
 
@@ -15,11 +15,11 @@ interface DropdownRowProps {
     selectedId: string;
     options: string[];
     onSelectionChanged: (id: string) => void;
-    groupRef: RefCallback<Gtk.Widget>;
 }
 
-const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged, groupRef }: DropdownRowProps) => {
+const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged }: DropdownRowProps) => {
     const [dropdown, setDropdown] = useState<Gtk.DropDown | null>(null);
+    const groupRef = useSizeGroupItem();
     const ref = useMergeRefs<Gtk.DropDown>(groupRef, setDropdown);
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={10}>
@@ -43,10 +43,9 @@ interface ColorFrameProps {
     background: string;
     onForeground: (id: string) => void;
     onBackground: (id: string) => void;
-    groupRef: RefCallback<Gtk.Widget>;
 }
 
-const renderColorFrame = ({ foreground, background, onForeground, onBackground, groupRef }: ColorFrameProps) => (
+const renderColorFrame = ({ foreground, background, onForeground, onBackground }: ColorFrameProps) => (
     <GtkFrame name="color-options-frame" label="Color Options">
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -61,14 +60,12 @@ const renderColorFrame = ({ foreground, background, onForeground, onBackground, 
                 selectedId={foreground}
                 options={COLOR_OPTIONS}
                 onSelectionChanged={onForeground}
-                groupRef={groupRef}
             />
             <DropdownRow
                 labelText="_Background"
                 selectedId={background}
                 options={COLOR_OPTIONS}
                 onSelectionChanged={onBackground}
-                groupRef={groupRef}
             />
         </GtkBox>
     </GtkFrame>
@@ -79,10 +76,9 @@ interface LineFrameProps {
     lineEnd: string;
     onDashing: (id: string) => void;
     onLineEnd: (id: string) => void;
-    groupRef: RefCallback<Gtk.Widget>;
 }
 
-const renderLineFrame = ({ dashing, lineEnd, onDashing, onLineEnd, groupRef }: LineFrameProps) => (
+const renderLineFrame = ({ dashing, lineEnd, onDashing, onLineEnd }: LineFrameProps) => (
     <GtkFrame name="line-options-frame" label="Line Options">
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -97,14 +93,12 @@ const renderLineFrame = ({ dashing, lineEnd, onDashing, onLineEnd, groupRef }: L
                 selectedId={dashing}
                 options={DASH_OPTIONS}
                 onSelectionChanged={onDashing}
-                groupRef={groupRef}
             />
             <DropdownRow
                 labelText="_Line ends"
                 selectedId={lineEnd}
                 options={END_OPTIONS}
                 onSelectionChanged={onLineEnd}
-                groupRef={groupRef}
             />
         </GtkBox>
     </GtkFrame>
@@ -131,24 +125,18 @@ const SizeGroupDemo = () => {
             marginBottom={5}
         >
             <SizeGroup mode={mode}>
-                {(groupRef) => (
-                    <>
-                        {renderColorFrame({
-                            foreground,
-                            background,
-                            onForeground: setForeground,
-                            onBackground: setBackground,
-                            groupRef,
-                        })}
-                        {renderLineFrame({
-                            dashing,
-                            lineEnd,
-                            onDashing: setDashing,
-                            onLineEnd: setLineEnd,
-                            groupRef,
-                        })}
-                    </>
-                )}
+                {renderColorFrame({
+                    foreground,
+                    background,
+                    onForeground: setForeground,
+                    onBackground: setBackground,
+                })}
+                {renderLineFrame({
+                    dashing,
+                    lineEnd,
+                    onDashing: setDashing,
+                    onLineEnd: setLineEnd,
+                })}
             </SizeGroup>
             <GtkCheckButton
                 name="enable-grouping-check"
