@@ -1,4 +1,35 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { ComponentProps, ComponentPropsWithRef, ElementType, Ref } from "react";
+
+/** The widget instance a component exposes through its ref prop. */
+export type WidgetOf<C extends ElementType> =
+    ComponentProps<C> extends { ref?: Ref<infer W | null> | undefined } ? W : never;
+
+type PolymorphicBody<C extends ElementType, Own, ExtraOmit extends string> = Own &
+    Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
+
+export type PolymorphicChildProps<C extends ElementType, Own = unknown> =
+    WidgetOf<C> extends Gtk.Widget
+        ? { component: C } & PolymorphicBody<C, Own, never>
+        : "component must render a Gtk.Widget";
+
+export type PolymorphicComponentProps<
+    C extends ElementType,
+    Widget extends Gtk.Widget,
+    Own,
+    Message extends string,
+    ExtraOmit extends string = never,
+> = WidgetOf<C> extends Widget ? { component?: C } & PolymorphicBody<C, Own, ExtraOmit> : Message;
+
+export type PolymorphicRuntimeProps<Own = unknown, W extends Gtk.Widget = Gtk.Widget> = Own & {
+    component: ElementType;
+    ref?: Ref<W | null> | undefined;
+    [key: string]: unknown;
+};
+
+export const asPolymorphicProps = <Own = unknown, W extends Gtk.Widget = Gtk.Widget>(
+    props: unknown,
+): PolymorphicRuntimeProps<Own, W> => props as PolymorphicRuntimeProps<Own, W>;
 
 /**
  * A single item in a collection model, identified by a stable id and holding an

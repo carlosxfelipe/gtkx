@@ -1,8 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkGrid, type GtkGridProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
-import { Children, type ReactNode, type Ref, useRef } from "react";
-import { createParentContext, type PlacedChildRender, usePlacedChild } from "./hooks/use-placed-child.js";
+import { Children, type ElementType, type ReactNode, type Ref, useRef } from "react";
+import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
+import { asPolymorphicProps, type PolymorphicChildProps } from "./types.js";
 
 const { Context: GridContext, useParentRef: useGridRef } = createParentContext<Gtk.Grid>(
     "<Grid.Child> must be a child of <Grid>",
@@ -11,10 +12,7 @@ const { Context: GridContext, useParentRef: useGridRef } = createParentContext<G
 /** Props for {@link Grid}. */
 export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
 
-/** Places a single child inside a {@link Grid} at a column and row, optionally spanning multiple cells. */
-export type GridChildProps = {
-    /** Render function receiving a ref callback to attach to the placed child widget. */
-    children: PlacedChildRender<Gtk.Widget>;
+type GridPlacement = {
     column?: number | null | undefined;
     row?: number | null | undefined;
     /** Number of columns the child spans (defaults to 1). */
@@ -23,9 +21,12 @@ export type GridChildProps = {
     rowSpan?: number | null | undefined;
 };
 
+/** Places a single child inside a {@link Grid} at a column and row, optionally spanning multiple cells. */
+export type GridChildProps<C extends ElementType> = PolymorphicChildProps<C, GridPlacement>;
+
 type Placement = { column: number; row: number; columnSpan: number; rowSpan: number };
 
-const placementOf = (props: GridChildProps): Placement => ({
+const placementOf = (props: GridPlacement): Placement => ({
     column: props.column ?? 0,
     row: props.row ?? 0,
     columnSpan: props.columnSpan ?? 1,
@@ -35,11 +36,14 @@ const placementOf = (props: GridChildProps): Placement => ({
 const samePlacement = (a: Placement, b: Placement): boolean =>
     a.column === b.column && a.row === b.row && a.columnSpan === b.columnSpan && a.rowSpan === b.rowSpan;
 
-const GridChild = (props: GridChildProps): ReactNode => {
+const GridChild = <C extends ElementType>(props: GridChildProps<C>): ReactNode => {
     const gridRef = useGridRef();
+    const { component, column, row, columnSpan, rowSpan, ref, ...rest } = asPolymorphicProps<GridPlacement>(props);
+    const Component = component;
     return usePlacedChild<Gtk.Widget, Placement>({
-        render: props.children,
-        placement: placementOf(props),
+        render: (placeRef) => <Component {...rest} ref={placeRef} />,
+        ref,
+        placement: placementOf({ column, row, columnSpan, rowSpan }),
         samePlacement,
         place: (widget, placement, previous) => {
             const grid = gridRef.current;
@@ -60,7 +64,9 @@ const GridChild = (props: GridChildProps): ReactNode => {
  * Renders a Gtk.Grid whose children are attached at explicit column/row positions via
  * {@link Grid.Child}.
  */
-export const Grid: ((props: GridProps) => ReactNode) & { Child: (props: GridChildProps) => ReactNode } = Object.assign(
+export const Grid: ((props: GridProps) => ReactNode) & {
+    Child: <C extends ElementType>(props: GridChildProps<C>) => ReactNode;
+} = Object.assign(
     ({ children, ref, ...rest }: GridProps): ReactNode => {
         const gridRef = useRef<Gtk.Grid | null>(null);
         const mergedRef = useMergeRefs<Gtk.Grid>(ref, gridRef);

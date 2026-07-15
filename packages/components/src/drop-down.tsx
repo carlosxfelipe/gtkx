@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkDropDown, type GtkDropDownProps, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
 import { type ElementType, type ReactNode, type Ref, useCallback, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer } from "./cell.js";
@@ -8,7 +8,13 @@ import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-conta
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import type { ItemNode, RenderItemProps, SectionNode } from "./types.js";
+import {
+    asPolymorphicProps,
+    type ItemNode,
+    type PolymorphicComponentProps,
+    type RenderItemProps,
+    type SectionNode,
+} from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
@@ -62,7 +68,7 @@ const createSelectionResolver = <T, S>(resolver: ItemResolver<T, S>, selectedPos
     resolve: (_position, treeRow) => resolver.resolve(selectedPosition, treeRow),
 });
 
-/** Declarative props shared by {@link DropDown} and {@link ComboRow} for their backing collection and cell rendering. */
+/** Declarative props for {@link DropDown}'s backing collection and cell rendering. */
 export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
     items?: ItemNode<T>[] | undefined;
     sections?: SectionNode<S, T>[] | undefined;
@@ -76,17 +82,21 @@ export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
     renderHeader?: ((info: { section: S }) => ReactNode) | null | undefined;
 };
 
-/** Props for {@link DropDown}, combining Gtk.DropDown props with {@link DropDownDeclarativeProps}. */
-export type DropDownProps<T = unknown, S = unknown> = Omit<
-    GtkDropDownProps,
-    keyof DropDownDeclarativeProps<T, S> | "model" | "factory" | "listFactory" | "headerFactory"
-> &
-    DropDownDeclarativeProps<T, S>;
-
-interface DropDownBodyProps<T, S, W extends DropDownWidget> {
-    element: ElementType;
-    props: DropDownDeclarativeProps<T, S> & { ref?: Ref<W | null> | undefined };
-}
+/**
+ * Props for {@link DropDown}. The backing widget is chosen through the `component` prop, defaulting to
+ * GtkDropDown, and its own props combine with {@link DropDownDeclarativeProps}.
+ */
+export type DropDownProps<
+    T = unknown,
+    S = unknown,
+    C extends ElementType = typeof GtkDropDown,
+> = PolymorphicComponentProps<
+    C,
+    DropDownWidget,
+    DropDownDeclarativeProps<T, S>,
+    "component must render a Gtk.DropDown-like widget",
+    "model" | "factory" | "listFactory" | "headerFactory"
+>;
 
 interface NormalizedDropDownProps<T, S, W extends DropDownWidget> {
     ref: Ref<W | null> | undefined;
@@ -158,11 +168,16 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
     };
 };
 
-export const DropDownBody = <T, S, W extends DropDownWidget>({
-    element,
-    props,
-}: DropDownBodyProps<T, S, W>): ReactNode => {
+/**
+ * Renders a drop-down widget (Gtk.DropDown by default, or the widget given as `component`) backed by a
+ * collection model, with customizable rendering for the selected item, the popup list rows, and section
+ * headers.
+ */
+export const DropDown = <T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown>(
+    props: DropDownProps<T, S, C>,
+): ReactNode => {
     const {
+        component,
         ref,
         items,
         sections,
@@ -172,16 +187,14 @@ export const DropDownBody = <T, S, W extends DropDownWidget>({
         selectedId,
         onSelectionChanged,
         ...intrinsicProps
-    } = props as DropDownDeclarativeProps<T, S> & {
-        ref?: Ref<W | null>;
-        [key: string]: unknown;
-    };
+    } = asPolymorphicProps<DropDownDeclarativeProps<T, S>, DropDownWidget>(props);
+    const Component = component ?? GtkDropDown;
 
     const renderItemFn = renderItem as DropDownItemRenderer<T> | null | undefined;
     const renderListItemFn = renderListItem as DropDownItemRenderer<T> | null | undefined;
     const renderHeaderFn = renderHeader as ((info: { section: S }) => ReactNode) | null | undefined;
 
-    const wiring = useDropDownWiring<T, S, W>({
+    const wiring = useDropDownWiring<T, S, DropDownWidget>({
         ref,
         items: items as ItemNode<T>[] | undefined,
         sections: sections as SectionNode<S, T>[] | undefined,
@@ -190,11 +203,9 @@ export const DropDownBody = <T, S, W extends DropDownWidget>({
         renderHeader: renderHeaderFn,
     });
 
-    const Element = element;
-
     return (
         <>
-            <Element {...intrinsicProps} ref={wiring.setRef} />
+            <Component {...intrinsicProps} ref={wiring.setRef} />
             <CellRenderHost
                 store={wiring.selectionStore}
                 resolver={wiring.selectionResolver}
@@ -214,11 +225,3 @@ export const DropDownBody = <T, S, W extends DropDownWidget>({
         </>
     );
 };
-
-/**
- * Renders a Gtk.DropDown backed by a collection model, with customizable rendering
- * for the selected item, the popup list rows, and section headers.
- */
-export const DropDown = <T = unknown, S = unknown>(props: DropDownProps<T, S>): ReactNode => (
-    <DropDownBody<T, S, Gtk.DropDown> element={GtkDropDown} props={props} />
-);
