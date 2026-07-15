@@ -2,11 +2,12 @@ export {
     API_SYMBOL_KINDS,
     type ApiLookupResult,
     type ApiNamespaceSummary,
-    ApiReference,
+    type ApiReference,
     type ApiReferenceOptions,
     type ApiSearchOptions,
     type ApiSymbol,
     type ApiSymbolKind,
+    loadApiReference,
 } from "./docs/api-reference.js";
 export {
     type DocsElementLink,

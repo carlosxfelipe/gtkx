@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import { resolve } from "node:path";
-import { ApiReference, type ApiSymbol, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
+import { type ApiReference, type ApiSymbol, loadApiReference, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
@@ -56,7 +56,7 @@ const loadReference = async (root: string): Promise<LoadedReference> => {
         );
     }
     const libraries = resolveLibraries(config.libraries, girPath);
-    const reference = ApiReference.load({ libraries, girPath, elementProps: config.elementProps ?? {} });
+    const reference = loadApiReference({ libraries, girPath, elementProps: config.elementProps ?? {} });
     const watched = [
         ...(configFile === undefined ? [] : [watchFile(resolve(root, configFile))]),
         ...reference.girFiles.map(watchFile),

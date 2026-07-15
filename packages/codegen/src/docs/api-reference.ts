@@ -82,7 +82,7 @@ const DEFAULT_SEARCH_LIMIT = 20;
 
 const compareNames = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-export class ApiReference {
+class ApiReference {
     private library: Library;
     private libraries: string[];
     private elementContext: ElementPageContext;
@@ -92,15 +92,11 @@ export class ApiReference {
     private byNamespace = new Map<string, SymbolEntry[]>();
     private elementsByClass = new Map<string, string>();
 
-    private constructor(options: ApiReferenceOptions) {
+    constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
         this.library = Library.load(options.libraries, options.girPath);
         this.elementContext = createElementPageContext(this.library, options.elementProps ?? {}, () => undefined);
         this.buildIndex();
-    }
-
-    static load(options: ApiReferenceOptions): ApiReference {
-        return new ApiReference(options);
     }
 
     get girFiles(): string[] {
@@ -295,6 +291,10 @@ export class ApiReference {
         return lines.join("\n");
     }
 }
+
+export type { ApiReference };
+
+export const loadApiReference = (options: ApiReferenceOptions): ApiReference => new ApiReference(options);
 
 const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     const entries: GiSymbolEntry[] = [];

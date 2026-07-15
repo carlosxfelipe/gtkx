@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { ApiReference } from "../../src/index.js";
+import { type ApiReference, loadApiReference } from "../../src/index.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 
 let reference: ApiReference;
 
 beforeAll(() => {
-    reference = ApiReference.load({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
+    reference = loadApiReference({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
 });
 
 const pageFor = (query: string): string => {

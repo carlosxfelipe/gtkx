@@ -6,15 +6,15 @@ import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { apiLoadMock, loadConfigMock, resolveGirPathMock, resolveLibrariesMock } = vi.hoisted(() => ({
-    apiLoadMock: vi.fn(),
+const { loadApiReferenceMock, loadConfigMock, resolveGirPathMock, resolveLibrariesMock } = vi.hoisted(() => ({
+    loadApiReferenceMock: vi.fn(),
     loadConfigMock: vi.fn(),
     resolveGirPathMock: vi.fn(() => ["/usr/share/gir-1.0"]),
     resolveLibrariesMock: vi.fn(() => ["Gtk-4.0"]),
 }));
 
 vi.mock("@gtkx/codegen", () => ({
-    ApiReference: { load: apiLoadMock },
+    loadApiReference: loadApiReferenceMock,
     resolveGirPath: resolveGirPathMock,
     resolveLibraries: resolveLibrariesMock,
 }));
@@ -80,7 +80,7 @@ describe("createReferenceProvider", () => {
 
     it("loads the reference once per project root and caches it", async () => {
         loadConfigMock.mockResolvedValue({ config: { elementProps: { GtkFixed: [] } } });
-        apiLoadMock.mockReturnValue(fakeReference);
+        loadApiReferenceMock.mockReturnValue(fakeReference);
         const cached = createReferenceProvider(() => "/project");
 
         await cached.get();
@@ -88,7 +88,7 @@ describe("createReferenceProvider", () => {
 
         expect(loadConfigMock).toHaveBeenCalledExactlyOnceWith("/project");
         expect(resolveLibrariesMock).toHaveBeenCalledWith(undefined, ["/usr/share/gir-1.0"]);
-        expect(apiLoadMock).toHaveBeenCalledExactlyOnceWith({
+        expect(loadApiReferenceMock).toHaveBeenCalledExactlyOnceWith({
             libraries: ["Gtk-4.0"],
             girPath: ["/usr/share/gir-1.0"],
             elementProps: { GtkFixed: [] },
@@ -97,14 +97,14 @@ describe("createReferenceProvider", () => {
 
     it("loads separately when the resolved root changes", async () => {
         loadConfigMock.mockResolvedValue({ config: {} });
-        apiLoadMock.mockReturnValue(fakeReference);
+        loadApiReferenceMock.mockReturnValue(fakeReference);
         const roots = ["/one", "/two"];
         const changing = createReferenceProvider(() => roots.shift() ?? "/two");
 
         await changing.get();
         await changing.get();
 
-        expect(apiLoadMock).toHaveBeenCalledTimes(2);
+        expect(loadApiReferenceMock).toHaveBeenCalledTimes(2);
         expect(loadConfigMock).toHaveBeenNthCalledWith(1, "/one");
         expect(loadConfigMock).toHaveBeenNthCalledWith(2, "/two");
     });
@@ -112,7 +112,7 @@ describe("createReferenceProvider", () => {
     it("rejects when codegen is disabled and retries after the backoff window", async () => {
         loadConfigMock.mockResolvedValueOnce({ config: { codegen: false } });
         loadConfigMock.mockResolvedValueOnce({ config: {} });
-        apiLoadMock.mockReturnValue(fakeReference);
+        loadApiReferenceMock.mockReturnValue(fakeReference);
         const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
         try {
             const failing = createReferenceProvider(() => "/project");
@@ -144,17 +144,17 @@ describe("createReferenceProvider", () => {
         try {
             const girFile = join(dir, "Gtk-4.0.gir");
             writeFileSync(girFile, "before");
-            apiLoadMock.mockReturnValue({ ...fakeReference, girFiles: [girFile] });
+            loadApiReferenceMock.mockReturnValue({ ...fakeReference, girFiles: [girFile] });
             const watching = createReferenceProvider(() => "/project");
 
             await watching.get();
             writeFileSync(girFile, "after-with-different-size");
             await watching.get();
-            expect(apiLoadMock).toHaveBeenCalledTimes(1);
+            expect(loadApiReferenceMock).toHaveBeenCalledTimes(1);
 
             nowSpy.mockReturnValue(10_000);
             await watching.get();
-            expect(apiLoadMock).toHaveBeenCalledTimes(2);
+            expect(loadApiReferenceMock).toHaveBeenCalledTimes(2);
         } finally {
             nowSpy.mockRestore();
             rmSync(dir, { recursive: true, force: true });
