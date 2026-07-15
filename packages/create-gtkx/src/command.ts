@@ -38,12 +38,12 @@ export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
  * Citty command definition for the CLI `create` subcommand. It declares the
  * scaffolder's arguments (target name, application ID, package manager,
  * TypeScript and Vitest toggles, prompt behavior, and overwrite) and runs the
- * scaffolder to generate a new gtkx application.
+ * scaffolder to generate a new GTKX application.
  */
 export const createCommand = defineCommand({
     meta: {
         name: "create",
-        description: "Create a new gtkx application",
+        description: "Create a new GTKX application",
     },
     args: {
         name: {

@@ -9,7 +9,7 @@ const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const cliBin = join(dirname(require.resolve("@gtkx/cli/package.json")), "bin", "gtkx.js");
 
 const BOOT_TIMEOUT_MS = 90_000;
-const MOUNTED = /Connected application id|HMR enabled/;
+const MOUNTED = /Connected application ID|HMR enabled/;
 const PIPELINE_ERROR = /\[gtkx(?::[^\]]+)?\] (?:Fatal:|error |warn )|\[vite\][^\n]*\bError\b|\bERR_[A-Z_]+\b/;
 
 const killTree = (child: ChildProcess): void => {

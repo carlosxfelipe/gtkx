@@ -45,7 +45,8 @@ useLayoutEffect(() => {
 }, [dialog, resolvedParent]);
 
 useSignal(dialog, "closed", () => {
-    if (!closingFromReact.current) onClose?.();
+    if (closingFromReact.current) return;
+    onCloseRef.current?.();
 });
 // ...
 return createPortal(<Component {...rest} ref={setRef} />, rootElement);
@@ -176,7 +177,7 @@ Two ways to constrain a string key are on display here, and the tutorial uses bo
 - **Enum key** (`sort-order`): references a top-level `<enum>` through `enum="..."`. The `<value>` entries pair a `nick` (the string that round-trips) with an integer. The `<default>` must be one of the nicks, single-quoted.
 - **Inline choices** (`color-scheme`): lists allowed values inline with `<choices>`. No separate enum declaration, no integer mapping.
 
-Both forms produce a key whose underlying GVariant type is `s` (a string), and GTKX narrows both to a literal string union in the generated types. So `color-scheme` becomes `"default" | "light" | "dark"` and `sort-order` becomes `"manual" | "due-date" | "title" | "created"`, and the values round-trip as raw strings (through `get_string`/`set_string`, not `get_enum`). That union is precisely what the `isScheme`/`isSort` guards narrow into.
+Both forms produce a key whose underlying GVariant type is `s` (a string), and GTKX narrows both to a literal string union in the generated types. So `color-scheme` becomes `"default" | "light" | "dark"` and `sort-order` becomes `"manual" | "due-date" | "title" | "created"`, and the values round-trip as raw strings (through `getString`/`setString`, not `getEnum`). That union is precisely what the `isScheme`/`isSort` guards narrow into.
 
 `reminder-minutes` is `type="i"` with a `<range>`, so it types as a plain `number`, which is why its setter takes the adjustment's numeric `value`.
 
@@ -231,6 +232,14 @@ export const listDot = (color: string): string => css`
     background: ${color};
 `;
 
+export const addRow = css`
+    background: alpha(@accent_bg_color, 0.08);
+`;
+
+export const dueLabel = css`
+    font-size: 0.9em;
+`;
+
 export const detailNotes = css`
     padding: 6px;
     min-height: 160px;
@@ -247,7 +256,7 @@ export const detailNotes = css`
 />
 ```
 
-When you need to merge or conditionally combine classes, `@gtkx/css` also exports `cx`: it drops falsy entries and returns a `string[]` ready to spread into `cssClasses`, for example `cssClasses={cx(base, active && activeStyle)}`.
+When you need to merge or conditionally combine classes, `@gtkx/css` also exports `cx`: it drops falsy entries and returns a `string[]` you pass directly as `cssClasses`, for example `cssClasses={cx(base, active && activeStyle)}`.
 
 Two GTK4-specific idioms are worth knowing when you write these rules:
 

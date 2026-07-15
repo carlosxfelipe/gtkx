@@ -39,7 +39,7 @@ const animatedFactory = <P extends object>(Component: (props: P) => ReactNode): 
 type Animated = typeof animatedFactory & { create: typeof animatedFactory } & AnimatedIntrinsics;
 
 /**
- * Wraps GTK widgets so they accept {@link AnimationProps} and drive their own enter, update, and
+ * Wraps GTK4 widgets so they accept {@link AnimationProps} and drive their own enter, update, and
  * exit animations. Access an intrinsic element by name (`animated.Box`) to get an animated version
  * of it, or call `animated(Component)` (also `animated.create(Component)`) to wrap a custom
  * widget component. Results are cached per component.

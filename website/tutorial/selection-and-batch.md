@@ -10,7 +10,7 @@ Nothing gets torn down and rebuilt: the `AdwToolbarView` that already frames the
 
 ## Entering via the `win.select` action
 
-Selection mode is toggled on by a `GSimpleAction`. In `app.tsx` the window's actions are declared in a small component, and each one is just a named action with an `onActivate` handler:
+Selection mode is toggled on by a `GSimpleAction`. In `app.tsx` the window's actions are declared in a small component, and each one is a named action with an `onActivate` handler:
 
 ```tsx
 const WindowActions = ({ onNew, onSelect, /* ... */ }: { /* ... */ }) => (
@@ -237,7 +237,7 @@ A boxed list materializes one widget per item. That is perfect for a small, stat
 
 `SelectionView` swaps in `ListView`, which recycles a small pool of row widgets and reuses them as you scroll, so the widget count stays roughly constant no matter how many tasks exist. That is the trade the two lists make concrete: the boxed `GtkListBox` for the everyday small list, the recycled `ListView` for the potentially large batch-selection list. It also happens to be where multi-selection lives naturally, since `ListView` exposes `selectionMode`/`selectedIds` as first-class props while a boxed list is `Gtk.SelectionMode.NONE`.
 
-Both are fed the identical `visible` array, so switching into selection mode shows the same tasks, just rendered through a scalable model-view stack.
+Both are fed the identical `visible` array, so switching into selection mode shows the same tasks, rendered through a scalable model-view stack.
 
 ## Batch actions and the shared undo flow
 
@@ -273,7 +273,7 @@ const deleteSelected = (): void => {
 It snapshots the ids into a local `const ids = [...selectedIds]` first, because `cancelSelection()` clears `selectedIds` moments later and the toast's Undo callback fires long after that. The toast message pluralizes inline (`task` vs `tasks`), the `button-clicked` handler restores each id, and the toast is pushed onto the same `AdwToastOverlay` (`toastOverlayRef`) that the single-item delete uses. Batch delete and single-item delete (the row's trash button and the Delete shortcut) therefore share one recovery path.
 
 ::: info
-`api.completeMany`, `api.moveToList`, and `api.trashMany` are thin array operations in `hooks/use-tasks.ts`: each maps over the task list and updates only the tasks whose id is in the passed array. `restore` flips a task's `deleted` flag back to `false`. Nothing about batching touches a widget imperatively; it is all state in, re-render out.
+`api.completeMany`, `api.moveToList`, and `api.trashMany` are thin array operations in `hooks/use-tasks.ts`: each maps over the task list and updates only the tasks whose id is in the passed array. `restore` flips a task's `deleted` flag back to `false`. None of these data operations touches a widget imperatively; they are all state in, re-render out.
 :::
 
 ## Next

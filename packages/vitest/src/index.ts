@@ -34,7 +34,7 @@ const workerSetupPath = (): string => {
 /**
  * Vitest plugin that runs each test worker against its own isolated headless
  * Wayland display. It configures the forks pool, injects the worker preload and
- * setup files, and sets the environment needed for headless GTK rendering.
+ * setup files, and sets the environment needed for headless GTK4 rendering.
  *
  * @param options Headless display settings (size, compositor) forwarded to each worker.
  * @returns A Vitest config plugin.

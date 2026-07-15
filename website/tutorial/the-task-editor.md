@@ -28,7 +28,7 @@ The editor is a pushed page. The content pane holds a `<NavigationView>` (covere
 The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees (the text cursor and undo stack, the notes scroll position, the month the calendar has navigated to) would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
 ::: info WHY REMOUNT INSTEAD OF DIFF
-GTK4 widgets hold their own internal state that React doesn't track. A `GtkTextView` remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
+GTK4 widgets hold their own internal state that React doesn't track. A `GtkTextView`'s buffer remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
 :::
 
 ## The detail header
@@ -81,7 +81,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
 };
 ```
 
-`AdwClamp` is a Adwaita container with one job: cap the child's width at `maximumSize` (600px here) and center it, no matter how wide the window gets. It is the standard way to keep a form readable on a large monitor. Without it, the entry rows would stretch edge to edge. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
+`AdwClamp` is an Adwaita container with one job: cap the child's width at `maximumSize` (600px here) and center it, no matter how wide the window gets. It is the standard way to keep a form readable on a large monitor. Without it, the entry rows would stretch edge to edge. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
 
 `GtkScrolledWindow` with `vexpand` lets the whole form scroll when the notes push it past the window height. Both `AdwClamp` and `GtkScrolledWindow` are single-child containers, so their one child is passed as JSX children and placed via `set_child` under the hood.
 
@@ -109,9 +109,9 @@ The first section is an `AdwPreferencesGroup`, which renders its rows as a singl
 </AdwPreferencesGroup>
 ```
 
-`AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` adds a checkmark button that appears once you edit the text, and it commits on two events: clicking that button fires `apply` (`onApply`), and pressing Enter in the field fires `entry-activated` (`onEntryActivated`). Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
+`AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` adds a checkmark button that appears once you edit the text, and it commits on two paths: clicking that button, or pressing Enter while it is shown, fires `apply` (`onApply`); pressing Enter with no pending edit fires `entry-activated` (`onEntryActivated`). Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
 
-`AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch and toggle state in GTKX: read the boolean out of the `notify` on the property, not a custom event.
+`AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch state in GTKX: read the boolean out of the `notify` on the property, not a custom event.
 
 ## The due date: a calendar in a popover
 

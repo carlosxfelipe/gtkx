@@ -57,7 +57,7 @@ try {
 }
 ```
 
-These domain objects exist in every namespace you bind. A few you will actually meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK4. Each looks like a plain enum:
+These domain objects are generated in any namespace whose library registers error domains. A few you will actually meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK4. Each looks like a plain enum:
 
 ```ts
 Gtk.DialogError.FAILED;    // 0

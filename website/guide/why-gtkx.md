@@ -37,4 +37,4 @@ At runtime, the Rust N-API addon owns the single GLib main loop and calls straig
 
 ## Next
 
-The [tutorial](/tutorial/) builds a complete GNOME Tasks app from scaffolding to Flathub submission, or you can jump straight to [Getting Started](/guide/getting-started) and scaffold an app of your own.
+The [tutorial](/tutorial/) walks through a complete GNOME Tasks app, from the application shell to Flathub submission, or you can jump straight to [Getting Started](/guide/getting-started) and scaffold an app of your own.

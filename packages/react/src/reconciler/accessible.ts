@@ -4,7 +4,7 @@ import { deleteAccessibleMetadata, setAccessibleMetadata } from "../utils/access
 import type { Props } from "./types.js";
 
 /**
- * Accessibility props available on every widget. Each member maps to a GTK accessible attribute
+ * Accessibility props available on every widget. Each member maps to a GTK4 accessible attribute
  * (a `Gtk.AccessibleProperty`, `Gtk.AccessibleState`, or `Gtk.AccessibleRelation`) and is applied
  * to the widget's accessible interface; setting a member to `undefined` resets that attribute to its default.
  */

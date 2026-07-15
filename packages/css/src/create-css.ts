@@ -19,7 +19,7 @@ type CxToken = string | boolean | undefined | null;
 export type Css = {
     /**
      * Serializes the given style interpolations, inserts the resulting rules
-     * into the shared stylesheet, and returns the generated GTK CSS class name.
+     * into the shared stylesheet, and returns the generated GTK4 CSS class name.
      * @param args Style interpolations, as a tagged template or object styles.
      */
     css: (...args: CSSInterpolation[]) => string;

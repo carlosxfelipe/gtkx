@@ -4,7 +4,7 @@ description: "The boxed task list pane, with search, a rounded card of rows, an 
 
 # The Task List
 
-The middle pane of the app is the boxed task list: a search bar, a rounded "card" of rows, an inline add field, and a friendly empty state when there is nothing to show. It lives in `components/task-list.tsx` and is a pure view. It owns exactly one piece of local state (a ref to the add-entry) and takes everything else as props from `app.tsx`.
+The content pane of the app is the boxed task list: a search bar, a rounded "card" of rows, an inline add field, and a friendly empty state when there is nothing to show. It lives in `components/task-list.tsx` and is a pure view. It owns exactly one piece of local state (a ref to the add-entry) and takes everything else as props from `app.tsx`.
 
 Here is the whole prop surface it accepts:
 
@@ -171,6 +171,8 @@ This row only renders when there are tasks. When the list is empty the inline ad
 ) : null}
 ```
 
+In the shipped `task-list.tsx` this status page is rendered as `animated.AdwStatusPage` inside `<AnimatePresence initial={false}>`; the [Animations](./animations) chapter walks through that addition, so this section shows the block before it.
+
 `AdwStatusPage` is Adwaita's centered "big icon + title + description" placeholder, the same widget GNOME apps use for empty trash, no search results, and so on. The `.compact` style class shrinks it to fit inside the list pane rather than filling a whole window.
 
 Its content is fully data-driven from the `empty` prop, which `app.tsx` computes based on *why* the list is empty:
@@ -191,7 +193,7 @@ const emptyFor = (selection: Selection, query: string): EmptyState => {
 };
 ```
 
-So an empty Trash, an empty Today, and a fruitless search each get their own icon and copy. The `TaskList` component stays dumb; it just renders whatever `empty` it is handed.
+So an empty Trash, an empty Today, and a fruitless search each get their own icon and copy. The `TaskList` component stays dumb; it renders whatever `empty` it is handed.
 
 ## The filter toggle
 
@@ -227,7 +229,7 @@ titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
 
 ## Where filtering actually happens: `select.ts`
 
-GTK4 ships `GtkFilterListModel` and `GtkSortListModel` for filtering and sorting inside the widget layer. **This app uses neither.** All of it is plain JavaScript over the `Task[]` array, in `select.ts`. The `TaskList` component receives the finished list and just renders it.
+GTK4 ships `GtkFilterListModel` and `GtkSortListModel` for filtering and sorting inside the widget layer. **This app uses neither.** All of it is plain JavaScript over the `Task[]` array, in `select.ts`. The `TaskList` component receives the finished list and renders it.
 
 The single entry point is `visibleTasks`:
 
@@ -277,7 +279,7 @@ const matchesFilter = (task: Task, filter: Filter): boolean => {
 };
 ```
 
-`inSelection` handles the sidebar choice (a smart view or a user list). `matchesQuery` is the free-text search across title and notes. `matchesFilter` is the All / Open / Done toggle. They are independent, so a search inside the "Today" view with the "Open" filter just ANDs all three.
+`inSelection` handles the sidebar choice (a smart view or a user list). `matchesQuery` is the free-text search across title and notes. `matchesFilter` is the All / Open / Done toggle. They are independent, so a search inside the "Today" view with the "Open" filter ANDs all three.
 
 Sorting is likewise a JS comparator, chosen by the persisted `sort-order` setting:
 
@@ -310,7 +312,7 @@ const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sor
 <TaskList tasks={visible} reorderable={reorderable} /* ... */ />
 ```
 
-Doing filtering and sorting in React state, not in a GTK4 list model, is the whole architectural bet of GTKX: your data transformations are just functions over arrays, exactly as they would be in a web React app, and the reconciler turns the resulting list into real GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
+Doing filtering and sorting in React state, not in a GTK4 list model, is the whole architectural bet of GTKX: your data transformations are plain functions over arrays, exactly as they would be in a web React app, and the reconciler turns the resulting list into real GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
 
 ::: info
 Because the list is derived, `visibleTasks` recomputes on every render. For a personal task list that is trivially cheap. If you ever needed to, you would memoize it with `useMemo`, the same React tool you already know, not a GTK4 model.

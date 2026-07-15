@@ -4,7 +4,7 @@ description: "How the Tasks app builds its adaptive frame with AdwApplicationWin
 
 # The Application Shell
 
-Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state. This page walks that frame top to bottom: how the application and window are declared, how window size is persisted on close, how the layout collapses to a phone-width single column, and why the detail/list/selection swap is driven by state rather than by Adwaita's own navigation stack.
+Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state. This page walks that frame top to bottom: how the application and window are declared, how window size is persisted through a GSettings binding, how the layout collapses to a phone-width single column, and why the detail/list/selection swap is driven by state rather than by Adwaita's own navigation stack.
 
 The file is organized around two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
@@ -55,7 +55,7 @@ Because the actions live at the application level but need to mutate window stat
 
 ## The window
 
-`TasksWindow` renders a single `<AdwApplicationWindow>`. This is a Adwaita window: freeform (no separate title bar; the header bars live inside the content), and it takes its child content through the `content` object prop, which the children here route into automatically.
+`TasksWindow` renders a single `<AdwApplicationWindow>`. This is an Adwaita window: freeform (no separate title bar; the header bars live inside the content), and it takes its child content through the `content` object prop, which the children here route into automatically.
 
 ```tsx
 return (
@@ -113,7 +113,7 @@ Immediately inside the window is an `<AdwToastOverlay>`. It wraps the entire lay
 </AdwToastOverlay>
 ```
 
-Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works, for example when a task is trashed the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered on the feedback and dialogs page.
+Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works: when a task is trashed, the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered on the feedback and dialogs page.
 
 ## The adaptive split view
 
@@ -151,7 +151,7 @@ The two props that make it adaptive are `collapsed` and `showContent`, both cont
 - **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It is driven by the breakpoint below.
 - **`showContent`** only matters when collapsed: it decides whether the visible column is the sidebar or the content. `onNotifyShowContent` mirrors the widget's own changes (a swipe-back, for instance) back into React state with `(value) => setShowContent(value ?? false)`, so the two never drift. When a task or a sidebar entry is opened while collapsed, the handlers set `setShowContent(true)` to push the content into view.
 
-The sidebar wraps its content in an `<AdwToolbarView>`, which gives you a header bar pinned to the top (`topBar`); on the content side, the `<NavigationView>`'s pages each wrap in their own `<AdwToolbarView>`, and the list page adds an action bar pinned to the bottom (`bottomBar`, revealed via `revealBottomBars` during selection mode). The content pane's `AdwNavigationPage` title is computed from the current selection with `titleFor(selection, lists)`, so the header reads "Today", "Important", or a user list's name. The content stack itself is covered below.
+The sidebar wraps its content in an `<AdwToolbarView>`, which gives you a header bar pinned to the top (`topBar`); on the content side, the `<NavigationView>`'s pages each wrap in their own `<AdwToolbarView>`, and the list page adds an action bar pinned to the bottom (`bottomBar`, revealed via `revealBottomBars` during selection mode). The content pane's `AdwNavigationPage` title is computed from the current selection with `titleFor(selection, lists)`, so the page is named "Today", "Important", or a user list's name; the list header itself shows the filter toggles as its title widget rather than this text. The content stack itself is covered below.
 
 ## The breakpoint
 
@@ -208,7 +208,7 @@ The content pane holds a `<NavigationView>`, from `@gtkx/components/adw`. It dri
 The two changes the pane can show split cleanly by kind, and that split is the whole point:
 
 - **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real pushed page: `<NavigationView.Page tag="task">` mounts only when `selectedTask` is set. The component pushes it with an animation, and the pushed page gets a back button, an edge-swipe, and (with `popOnEscape`) Escape handling for free.
-- **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, just with checkable rows and a different header. It is not deeper, so it stays on one page (`tag="list"`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the `tag` never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed page would be the wrong shape.
+- **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one page (`tag="list"`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the `tag` never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed page would be the wrong shape.
 
 The pane's `AdwHeaderBar`, actions, and body all come from the same `selectedTask` / `selecting` state, so they can never disagree. `listBody` is `selecting ? <SelectionView /> : <TaskList />`, and each page carries its own header inside its `AdwToolbarView`. The detail header is a plain `AdwHeaderBar` with the Important toggle and Delete button in `end`, and no back button, because the pushed page supplies one:
 

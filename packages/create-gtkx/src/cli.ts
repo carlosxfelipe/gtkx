@@ -9,7 +9,7 @@ const main = defineCommand({
     meta: {
         name: "create-gtkx",
         version,
-        description: "Scaffold a new gtkx application",
+        description: "Scaffold a new GTKX application",
     },
 });
 

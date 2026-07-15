@@ -3,6 +3,6 @@
     "entryPoints": ["dist/index.d.ts", "dist/adw.d.ts"],
     "tsconfig": "../../website/tsconfig.typedoc.json",
     "skipErrorChecking": true,
-    "intentionallyNotExported": ["DropDownWidget"],
+    "intentionallyNotExported": ["DropDownWidget", "ValidComponent"],
     "readme": "none"
 }

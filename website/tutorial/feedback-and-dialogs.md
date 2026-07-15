@@ -53,11 +53,11 @@ const handleDelete = (task: Task): void => {
 Four things are happening:
 
 1. **`Adw.Toast.new(title)`** constructs the toast with its message. `Adw.Toast` comes from `@gtkx/gi/adw`, the raw GI namespace, because a toast is not a widget you place, it is an object you build.
-2. **`toast.buttonLabel = "Undo"`** adds the action button. Setting `buttonLabel` is what makes the toast show a button at all. An informational toast with no button just leaves it unset.
+2. **`toast.buttonLabel = "Undo"`** adds the action button. Setting `buttonLabel` is what makes the toast show a button at all. An informational toast with no button leaves it unset.
 3. **`toast.once("button-clicked", ...)`** connects the restore callback. `once` (not `on`) fires it at most one time, which is exactly right: the user can click Undo once, and after that the toast is done. The callback calls back into the task API to restore the trashed task.
 4. **`toastOverlayRef.current?.addToast(toast)`** hands the finished toast to the overlay, which animates it in, queues it if another is showing, and dismisses it after its timeout.
 
-The batch case in `deleteSelected` is the same shape, just restoring a list of ids and pluralizing the message:
+The batch case in `deleteSelected` is the same shape, restoring a list of ids and pluralizing the message:
 
 ```tsx
 const deleteSelected = (): void => {
@@ -313,7 +313,7 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 
 `applicationIcon="com.gtkx.tutorial"` is the application ID, which resolves to the installed icon. `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
 
-Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (just signals dismissal). About has no responses to choose, only a close, so there is nothing to branch on.
+Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (signals dismissal only). About has no responses to choose, only a close, so there is nothing to branch on.
 
 ## Next
 

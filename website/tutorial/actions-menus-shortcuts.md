@@ -1,5 +1,5 @@
 ---
-description: "GActions in a React app: declare named commands once, then drive them from menus, keyboard accelerators, and toolbar buttons."
+description: "GActions in a React app: declare named commands once, then drive them from menus, keyboard accelerators, and desktop notifications."
 ---
 
 # Actions, Menus, and Shortcuts
@@ -69,7 +69,7 @@ The scope prefix comes from *where* you mount these, not from the `name`. `AdwAp
 >
 ```
 
-Because the handlers close over the window component's state setters (`setShowPreferences`, `setShowAbout`, ...), firing `win.preferences` from *any* source (menu click, accelerator, a future button) just flips React state. The action is the single seam between "a command was requested" and "here is what that does".
+Because the handlers close over the window component's state setters (`setShowPreferences`, `setShowAbout`, ...), firing `win.preferences` from *any* source (menu click, accelerator, a future button) flips React state. The action is the single seam between "a command was requested" and "here is what that does".
 
 ::: tip
 The `onActivate` handler receives `(parameter, self)`, where `parameter` is a `GLib.Variant | null`. The five window actions here are parameterless, so they ignore it. The two application actions below use it.
@@ -97,7 +97,7 @@ Not every action needs an accelerator. `win.select` and `win.about` are reachabl
 
 ## Application actions for notifications
 
-The two `app.*` actions go in the `actions` slot of `<AdwApplication>`, which routes them into the application's own action map. It is the same `actions` slot the window exposes, just mounted one level up on the application. They exist so a desktop notification has something to invoke:
+The two `app.*` actions go in the `actions` slot of `<AdwApplication>`, which routes them into the application's own action map. It is the same `actions` slot the window exposes, mounted one level up on the application. They exist so a desktop notification has something to invoke:
 
 ```tsx
 import * as GLib from "@gtkx/gi/glib";
@@ -134,6 +134,8 @@ The notification itself is built in `notifications.ts` and names those actions b
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import { formatDateTime } from "./format.js";
+import type { Task } from "./types.js";
 
 export const buildReminder = (task: Task): Gio.Notification => {
     const notification = Gio.Notification.new(task.title);
@@ -301,7 +303,7 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
 
 Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, so keep them in sync with the real bindings: `<Control>n`, `<Control>f`, `<Control>comma`, and `<Control>question` come from `actionAccels` and the search shortcut, while `Delete` and `Escape` come from the `GtkShortcutController`.
 
-`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the window. The action handler just flips a state flag:
+`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the window. The action handler flips a state flag:
 
 ```tsx
 onShortcuts={() => setShowShortcuts(true)}

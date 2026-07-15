@@ -7,7 +7,7 @@ import type { RenderedCommand } from "./render.js";
 const LIB_CONSTANT = `export const LIB = "libGL.so.1";`;
 
 const GENERATED_HEADER = `/**
- * GENERATED FILE — do not edit.
+ * GENERATED FILE: do not edit.
  */`;
 
 export const renderEnumsModule = (
@@ -17,7 +17,7 @@ export const renderEnumsModule = (
     for (const { token, exportName, literal, feature } of tokens) {
         const groupNote = token.groups.length > 0 ? ` Groups: ${token.groups.map((g) => `\`${g}\``).join(", ")}.` : "";
         builder.appendDeclaration(
-            `/** \`${token.name}\` — provided by \`${feature}\`.${groupNote} */\nexport const ${exportName} = ${literal};`,
+            `/** \`${token.name}\`, provided by \`${feature}\`.${groupNote} */\nexport const ${exportName} = ${literal};`,
         );
     }
     return `${GENERATED_HEADER}\n\n${builder.toSource()}`;

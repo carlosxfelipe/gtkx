@@ -49,7 +49,7 @@ cd my-app
 npm run dev
 ```
 
-A window opens. The generated starter is a tiny counter, its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK4 button. This tutorial builds the Tasks app on top of that same skeleton, so the structure below is what you'll be working in.
+A window opens. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK4 button. This tutorial builds the Tasks app on top of that same skeleton, so the structure below is what you'll be working in.
 
 ::: tip
 The finished Tasks app you'll study lives at `examples/tutorial` in the GTKX repository. Every snippet in this tutorial is copied from that source, sometimes trimmed to the parts each chapter needs. You can run it, read ahead, or diff your work against it at any point.
@@ -61,7 +61,7 @@ A GTKX project is small. Here is the shape the Tasks app uses:
 
 ```
 tutorial/
-├─ gtkx.config.ts        # app id + which native libraries to bind
+├─ gtkx.config.ts        # application ID + which native libraries to bind
 ├─ package.json          # scripts, deps, the #data/* import
 ├─ tsconfig.json
 ├─ data/
@@ -80,7 +80,7 @@ You will not find a `@gtkx/gi` or `@gtkx/jsx` folder checked in anywhere. Those 
 
 ## Configuration: `gtkx.config.ts`
 
-The whole config for the Tasks app is just a few lines:
+The whole config for the Tasks app is a few lines:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
@@ -93,7 +93,7 @@ export default defineConfig({
 
 `applicationId` is the only required field. It's your reverse-domain application ID, and it does double duty: it becomes the default for the top-level `<AdwApplication>` (you never pass the ID again in your JSX), and it's the identity GNOME, GSettings, and notifications key off.
 
-`libraries` is a list of GObject-Introspection namespaces in `Name-Version` form. `"Gtk-4.0"` and `"Adw-1"` (GTK4 and Adwaita 1) are what every app in this tutorial needs. The CLI reads the GIR files for these libraries and the namespaces they depend on, so this list determines which widgets exist under `@gtkx/jsx/*`, while `@gtkx/gi/*` also picks up the pulled-in dependency namespaces (GLib, Gio, GObject, Gdk, and so on) that GTK4 and Adwaita require. Add a namespace here (say `"WebKit-6.0"`) and its classes become available after the next codegen.
+`libraries` is a list of GObject-Introspection namespaces in `Name-Version` form. `"Gtk-4.0"` and `"Adw-1"` (GTK4 and Adwaita 1) are what every app in this tutorial needs. The CLI reads the GIR files for these libraries and the namespaces they depend on, so this list determines which widgets exist under `@gtkx/jsx/*`. Both trees also pick up the pulled-in dependency namespaces that GTK4 and Adwaita require: `@gtkx/gi/*` covers all of them (GLib, Gio, GObject, Gdk, and so on), and `@gtkx/jsx/*` includes the ones that contain GObject-derived classes, such as `@gtkx/jsx/gio`. Add a namespace here (say `"WebKit-6.0"`) and its classes become available after the next codegen.
 
 ## The entry point: `src/index.tsx`
 
@@ -214,7 +214,7 @@ You rarely run `codegen` by hand: `gtkx dev` and `gtkx build` regenerate the bin
 ```
 
 ::: tip
-If your editor can't resolve `@gtkx/jsx/gtk` or `#data/...` right after cloning, run `npm run codegen` (or just `npm run dev` once) to populate `node_modules/.gtkx`, then restart the TypeScript server.
+If your editor can't resolve `@gtkx/jsx/gtk` or `#data/...` right after cloning, run `npm run codegen` (or `npm run dev` once) to populate `node_modules/.gtkx`, then restart the TypeScript server.
 :::
 
 With the project scaffolded and the dev loop running, you're ready to build the real UI.

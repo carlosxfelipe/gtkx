@@ -97,7 +97,7 @@ The surface, grouped by what it drives:
 - **Pointer**: `pointer(widget, input)` supports left-button tokens only (`"click"`, `"down"`, `"up"`, and their `[MouseLeft]` forms). Pointer input goes through `GestureClick` controller signals rather than real `GdkEvent`s, so coordinates, motion, and other buttons cannot be synthesized headless.
 - **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The last five drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads real pointer coordinates; use `slide(range, value)` or `keyboard` for sliders.
 - **Drag and drop**: `drop(widget, content)` and `dragAndDrop(source, target, content)` deliver a `GObject.Value` (strings, numbers, and booleans are wrapped automatically) to the target's `GtkDropTarget`; `dragAndDrop` also verifies the source carries a `GtkDragSource`.
-- **Scrolling and selection**: `scroll(widget, { x, y })` adjusts the nearest scrollable's adjustments, `slide(range, value)` jumps a range, and `selectOptions`/`deselectOptions` select by index in `ListView`, `GridView`, `ColumnView`, `DropDown`, `ComboBox`, and `GtkListBox` (list views through their selection models).
+- **Scrolling and selection**: `scroll(widget, { x, y })` adjusts the nearest scrollable's adjustments, `slide(range, value)` jumps a range, and `selectOptions` selects by index in `ListView`, `GridView`, `ColumnView`, `DropDown`, `ComboBox`, and `GtkListBox` (list views through their selection models); `deselectOptions` deselects in the list views and `GtkListBox`.
 
 ## fireEvent, act, and waitFor
 

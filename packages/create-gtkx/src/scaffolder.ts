@@ -321,7 +321,7 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
     try {
         await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
         await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), dev: true });
-        spinner.stop("Dependencies installed!");
+        spinner.stop("Dependencies installed");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
         p.log.error(`Failed to install dependencies: ${errorMessage(error)}`);
@@ -344,7 +344,7 @@ const initializeGitRepo = async (root: string): Promise<void> => {
         await x("git", ["init"], opts);
         await x("git", ["add", "-A"], opts);
         await x("git", ["commit", "-m", "Initial commit"], opts);
-        spinner.stop("Git repository initialized!");
+        spinner.stop("Git repository initialized");
     } catch {
         spinner.stop("Failed to initialize git repository");
     }
@@ -364,7 +364,7 @@ const printNextSteps = (resolved: ResolvedOptions): void => {
 };
 
 export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
-    p.intro("Create gtkx App");
+    p.intro("Create GTKX App");
 
     const resolved = await resolveOptions(options);
     const root = resolve(process.cwd(), resolved.target);
@@ -373,7 +373,7 @@ export const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const projectSpinner = p.spinner();
     projectSpinner.start("Creating project structure...");
     scaffoldProject(root, resolved);
-    projectSpinner.stop("Project structure created!");
+    projectSpinner.stop("Project structure created");
 
     await installAllDependencies({
         root,

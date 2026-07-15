@@ -54,9 +54,9 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
 
     const newMod = await server.ssrLoadModule(changedPath);
     if (deps.isRefreshBoundary(newMod)) {
-        deps.log("Fast refreshing...");
+        deps.log("Running Fast Refresh...");
         deps.performRefresh();
-        deps.log("Fast refresh complete");
+        deps.log("Fast Refresh complete");
         return;
     }
 
@@ -115,10 +115,10 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         const liveApplicationId = deps.getApplicationId();
         if (liveApplicationId) {
             const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
-            deps.log(`Connected application id: ${applicationId}`);
+            deps.log(`Connected application ID: ${applicationId}`);
             await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
         } else {
-            deps.log("Entry did not mount an application — MCP client not started.");
+            deps.log("Entry did not mount an application - MCP client not started.");
         }
 
         deps.log("HMR enabled - watching for changes...");

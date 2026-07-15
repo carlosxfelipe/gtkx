@@ -94,7 +94,6 @@ export type DropDownProps<
     C,
     DropDownWidget,
     DropDownDeclarativeProps<T, S>,
-    "component must render a Gtk.DropDown-like widget",
     "model" | "factory" | "listFactory" | "headerFactory"
 >;
 

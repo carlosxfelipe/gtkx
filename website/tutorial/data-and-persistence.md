@@ -4,13 +4,13 @@ description: "The Tasks data layer, with JSON in the XDG data directory through 
 
 # Data Model and Persistence
 
-Tasks keeps two entirely separate stores, and the split is deliberate. The task list itself, everything the user creates and edits, lives as one JSON file in the XDG data directory, loaded once at startup and written back through GLib's own file API. The handful of small UI preferences (filter, sort order, color scheme, window size) live in GSettings, the GNOME settings database. React state is the single source of truth while the app runs; both stores are just where that state is serialized to and rehydrated from.
+Tasks keeps two entirely separate stores, and the split is deliberate. The task list itself, everything the user creates and edits, lives as one JSON file in the XDG data directory, loaded once at startup and written back through GLib's own file API. The handful of small UI preferences (filter, sort order, color scheme, window size) live in GSettings, the GNOME settings database. React state is the single source of truth while the app runs; both stores are where that state is serialized to and rehydrated from.
 
 If you come from the web, the surprising part is not React. It is that the byte-level I/O runs through `@gtkx/gi/glib` instead of `node:fs`, and that "the settings system" (GSettings) is a real, schema-validated key store that GNOME ships, not something you build. This page walks the real data layer of the app: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
 
 ## The shapes
 
-`src/types.ts` is the whole domain model. A `Task` is a flat, JSON-friendly record. A `TaskList` is an id, a display name, and a color string used for the sidebar dot. Notice there are no live GTK4 objects here, and no `Date` instances: `due`, `createdAt`, and `completedAt` are ISO-8601 strings (or `null`) so the record survives `JSON.stringify` untouched.
+`src/types.ts` is the whole domain model. A `Task` is a flat, JSON-friendly record. A `TaskList` is an id, a display name, and a color string used for the sidebar dot. Notice there are no live GTK4 objects here, and no `Date` instances: `due`, `createdAt`, and `completedAt` are ISO-8601 strings (`due` and `completedAt` may be `null`) so the record survives `JSON.stringify` untouched.
 
 ```ts
 export type TaskList = {
@@ -66,14 +66,14 @@ export type PersistedState = {
 
 `GLib.getUserDataDir()` returns `$XDG_DATA_HOME`, defaulting to `~/.local/share`, so the file lands at `~/.local/share/com.gtkx.tutorial/tasks.json`. `GLib.buildFilenamev(parts: string[])` joins path segments with the platform separator. `PersistedState` is the exact JSON envelope: a `version` number for migration, plus the `lists` and `tasks` arrays.
 
-GLib's file functions marshal bytes as a plain `number[]` (an array of byte values), not a Node `Buffer` or a `Uint8Array`. So the two ends convert through the standard web encoders:
+GLib's file functions marshal bytes as a plain `number[]` (an array of byte values), not a Node.js `Buffer` or a `Uint8Array`. So the two ends convert through the standard web encoders:
 
 ```ts
 const encode = (value: string): number[] => Array.from(new TextEncoder().encode(value));
 const decode = (bytes: number[]): string => new TextDecoder().decode(new Uint8Array(bytes));
 ```
 
-`TextEncoder`/`TextDecoder` are web platform globals, available here because GTKX runs your app on Node (which you provide, version 24 or newer).
+`TextEncoder`/`TextDecoder` are web platform globals, available here because GTKX runs your app on Node.js (which you provide, version 24 or newer).
 
 ## First run: the seed
 
@@ -119,7 +119,7 @@ const seed = (): PersistedState => {
 };
 ```
 
-The color values (`#3584e4`, `#2ec27e`, `#e66100`) are GNOME's standard palette accent colors, so the seeded lists match the platform look.
+The color values (`#3584e4`, `#2ec27e`, `#e66100`) are from GNOME's standard color palette, so the seeded lists match the platform look.
 
 ## Loading: seed, corruption, and version guard in one function
 
@@ -306,7 +306,7 @@ const trashMany = (ids: string[]): void =>
 
 ### Reorder with reindex
 
-Drag-to-reorder moves a task from its current slot to just before the drop target, then rewrites every `position` to match the new array order. `reindex` (defined at the top of the file) is what makes `position` a live, persisted value rather than dead state.
+Drag-to-reorder moves a task from its current slot to the drop target's index, then rewrites every `position` to match the new array order. `reindex` (defined at the top of the file) is what makes `position` a live, persisted value rather than dead state.
 
 ```ts
 const reorder = (draggedId: string, targetId: string): void =>
@@ -443,7 +443,7 @@ Two things worth calling out in the schema format:
 Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered on the Preferences and Theming page.
 
 ::: info node:fs is available, but GLib keeps I/O dependency-free
-Because GTKX runs your app on Node, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK4 app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node's streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
+Because GTKX runs your app on Node.js, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node.js program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK4 app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node.js streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
 :::
 
 ## Next

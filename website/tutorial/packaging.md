@@ -4,7 +4,7 @@ description: "Ship the Tasks app: gtkx build, a self-contained binary, a Flatpak
 
 # Packaging and Shipping
 
-A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the GTK4 metadata into something a user can install. This chapter turns the Tasks app into a self-contained binary and a Flatpak.
+A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the compiled GSettings schema into something a user can install. This chapter turns the Tasks app into a self-contained binary and a Flatpak.
 
 ## Building
 

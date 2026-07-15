@@ -15,7 +15,7 @@ export class StyleSheet {
         this.provider = provider;
         if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {
-                log.warn(`GTK rejected CSS at ${section.toString()}: ${error.message}`);
+                log.warn(`GTK4 rejected CSS at ${section.toString()}: ${error.message}`);
             });
         }
         return provider;

@@ -146,7 +146,7 @@ const listApiTool = (provider: ReferenceProvider): Tool =>
         title: "List API reference",
         kind: "readOnly",
         description:
-            "List the project's generated GTK bindings API (`@gtkx/gi` and `@gtkx/jsx`). Without a namespace, returns every namespace with symbol counts; with a namespace, lists all of its symbols grouped by kind.",
+            "List the project's generated GTK4 bindings API (`@gtkx/gi` and `@gtkx/jsx`). Without a namespace, returns every namespace with symbol counts; with a namespace, lists all of its symbols grouped by kind.",
         inputSchema: listApiShape,
         handler: async ({ namespace }) => {
             const reference = await provider.get();
@@ -169,7 +169,7 @@ const searchApiTool = (provider: ReferenceProvider): Tool =>
         title: "Search API reference",
         kind: "readOnly",
         description:
-            "Search the project's generated GTK bindings API by symbol name. Returns matching symbols with their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
+            "Search the project's generated GTK4 bindings API by symbol name. Returns matching symbols with their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
         inputSchema: searchApiShape,
         handler: async ({ query, namespace, kind, limit }) => {
             const reference = await provider.get();
@@ -192,7 +192,7 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
         title: "Get API docs",
         kind: "readOnly",
         description:
-            "Get the full reference page for one symbol of the project's generated GTK bindings: JSX elements (props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, functions, and constants.",
+            "Get the full reference page for one symbol of the project's generated GTK4 bindings: JSX elements (props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, functions, and constants.",
         inputSchema: getApiDocsShape,
         handler: async ({ symbol, kind }) => {
             const reference = await provider.get();
@@ -250,7 +250,7 @@ const registerIndexResource = (server: ResourceServer, provider: ReferenceProvid
         "gtkx://reference/index",
         {
             title: "GTKX API reference index",
-            description: "Namespaces of the project's generated GTK bindings, with symbol and JSX element counts.",
+            description: "Namespaces of the project's generated GTK4 bindings, with symbol and JSX element counts.",
             mimeType: "text/markdown",
         },
         async (uri) => markdownResource(uri, (await provider.get()).overview()),
@@ -278,7 +278,7 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
         }),
         {
             title: "GTKX namespace reference",
-            description: "All symbols of one namespace of the project's generated GTK bindings, grouped by kind.",
+            description: "All symbols of one namespace of the project's generated GTK4 bindings, grouped by kind.",
             mimeType: "text/markdown",
         },
         async (uri, variables) => {
@@ -314,7 +314,7 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
         {
             title: "GTKX symbol reference",
             description:
-                "Reference page for one symbol of the project's generated GTK bindings: a JSX element or a class, interface, record, enum, callback, alias, function, or constant.",
+                "Reference page for one symbol of the project's generated GTK4 bindings: a JSX element or a class, interface, record, enum, callback, alias, function, or constant.",
             mimeType: "text/markdown",
         },
         async (uri, variables) => {

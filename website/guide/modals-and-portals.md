@@ -168,7 +168,7 @@ Responses are declared separately from the body, so any children become the dial
 
 ## Multiple windows
 
-Windows carry their lifecycle in the element itself: on mount a window element calls `present()`, and on unmount it destroys the window. So a second window is nothing special, just another conditionally rendered element. Render it as a sibling of your main window under the application, or portal it from wherever the owning state lives:
+Windows carry their lifecycle in the element itself: on mount a window element calls `present()`, and on unmount it destroys the window. So a second window is another conditionally rendered element. Render it as a sibling of your main window under the application, or portal it from wherever the owning state lives:
 
 ```tsx
 import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
@@ -181,6 +181,6 @@ const MirrorWindow = ({ open }: { open: boolean }) => {
 };
 ```
 
-Targeting the `Gtk.Application` object and targeting `rootElement` both produce a top-level window; use `transientFor` when the extra window should stay stacked above another one, and handle `onCloseRequest` or the window's state toggle to keep React in charge of when it goes away. Each window provides its own `useParentWindow()` context, so dialogs opened inside a secondary window anchor to that window automatically.
+Targeting the `Gtk.Application` object and targeting `rootElement` both produce a top-level window; use `transientFor` when the extra window should stay stacked above another one, and wire `onCloseRequest` to clear the state that mounted the window, so React stays in charge of when it goes away. Each window provides its own `useParentWindow()` context, so dialogs opened inside a secondary window anchor to that window automatically.
 
 Every dialog and window element, along with its full prop surface, is covered by the element reference `gtkx docs` generates for your project.

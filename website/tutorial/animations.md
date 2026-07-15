@@ -8,7 +8,7 @@ Most of the motion in Tasks is not ours. Adwaita already animates the things tha
 
 So the question this chapter answers is narrow: given a native toolkit that already animates the important transitions, where is a *hand-written* animation actually worth adding? The GNOME Human Interface Guidelines set the bar. There is no dedicated "motion" page in the current HIG; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle, "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change *legible*, when it tells you that one thing gave way to another instead of hard-cutting between them. Motion that merely decorates an update you already understood is exactly the distraction that principle warns against.
 
-In Tasks there is one screen that fails that test today, and one only.
+In Tasks there is one screen that would fail that test without the animation this chapter adds, and one only.
 
 ## The gap: a hard cut between the list and the empty state
 

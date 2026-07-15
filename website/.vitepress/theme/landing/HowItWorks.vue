@@ -69,8 +69,8 @@ const appCode = `function App() {
       </div>
       <CodeBlock variant="terminal">
         <div class="tdim">[gtkx] File changed: src/App.tsx</div>
-        <div class="tdim">[gtkx] Fast refreshing...</div>
-        <div class="tout">[gtkx] Fast refresh complete</div>
+        <div class="tdim">[gtkx] Running Fast Refresh...</div>
+        <div class="tout">[gtkx] Fast Refresh complete</div>
       </CodeBlock>
     </div>
   </section>

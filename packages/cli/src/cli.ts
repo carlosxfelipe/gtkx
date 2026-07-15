@@ -8,7 +8,7 @@ export const main = defineCommand({
     meta: {
         name: "gtkx",
         version,
-        description: "CLI for GTKX - create and develop GTK4 React applications",
+        description: "CLI for GTKX: create and develop GTK4 React applications",
     },
     subCommands: {
         dev: () => import("./commands/dev.js").then((m) => withErrorBoundary(m.dev)),

@@ -46,7 +46,7 @@ export const TaskRow = ({ task, reorderable, onToggleDone, onToggleImportant, on
 };
 ```
 
-`activatable` makes the whole row body clickable, and `onActivated` (the `activated` signal, which GTK4 emits on click or Enter) opens the task in the editor. The controls in the prefix and suffix sit *on top of* that activatable body: clicking the checkbox toggles done without opening the editor, because GTK4 routes the click to the inner widget first.
+`activatable` makes the whole row body clickable, and `onActivated` (the `activated` signal, which the row emits on click or Enter) opens the task in the editor. The controls in the prefix and suffix sit *on top of* that activatable body: clicking the checkbox toggles done without opening the editor, because GTK4 routes the click to the inner widget first.
 
 `subtitle` shows a humanized due date. `formatDue` returns `string | null`: a formatted date when the task has a due date, or `null` when it does not. The `?? undefined` normalizes that empty case to `undefined`, so a task with no due date has no subtitle line.
 
@@ -201,7 +201,7 @@ That single state update is all it takes, because the rows are keyed children of
 When `reorder` returns a new array with the same keys in a new order, React diffs by key and sees every row as the *same* existing element that merely changed position. The reconciler therefore issues a single in-place move within the parent container instead of unmounting and rebuilding rows. The real `GtkWidget` (and its focus, state, and any in-flight animation) survives the reorder untouched.
 
 ::: info Container move primitives
-How the reconciler performs that move depends on the container. A `GtkBox` exposes a dedicated `reorderChildAfter(child, sibling)` for exactly this, so a box moves the widget with one call. The `boxed-list` here is a `GtkListBox`, which auto-wraps each child in a `GtkListBoxRow` and moves it via an indexed `insert`. Either way the widget is repositioned, never recreated.
+How the reconciler performs that move depends on the container. A `GtkBox` exposes a dedicated `reorderChildAfter(child, sibling)` for exactly this, so a box moves the widget with one call. The `boxed-list` here is a `GtkListBox`, which auto-wraps any child that is not already a `GtkListBoxRow` and moves it via an indexed `insert`. Either way the widget is repositioned, never recreated.
 :::
 
 The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it and calls `onReorder` -> `reorder` re-splices the array and re-derives `position` -> keyed reconcile moves the real widget in place.** State stays the single source of truth from end to end.

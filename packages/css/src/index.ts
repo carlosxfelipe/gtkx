@@ -4,7 +4,7 @@ const instance = createCss();
 
 /**
  * Serializes the given style interpolations, inserts the resulting rules into
- * the default stylesheet, and returns the generated GTK CSS class name.
+ * the default stylesheet, and returns the generated GTK4 CSS class name.
  */
 export const css: Css["css"] = instance.css;
 /**

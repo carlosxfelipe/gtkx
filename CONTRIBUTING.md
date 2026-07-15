@@ -88,6 +88,7 @@ Fix memory leak in signal handler cleanup
 - Ensure all packages build: `pnpm build`
 - Ensure all tests pass: `pnpm test`
 - Ensure linting passes: `pnpm lint`
+- Ensure type checking passes: `pnpm typecheck`
 - Update documentation if needed
 
 2. **Create the pull request:**
@@ -136,8 +137,9 @@ Search existing issues before creating new ones to avoid duplicates.
 The documentation site lives in `website/` and uses VitePress:
 
 ```bash
-cd website && pnpm build # Build documentation
-cd website && pnpm dev # Local preview
+cd website
+pnpm build # Build documentation
+pnpm dev # Local preview
 ```
 
 ### Examples

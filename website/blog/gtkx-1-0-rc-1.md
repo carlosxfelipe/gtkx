@@ -11,7 +11,7 @@ head:
 
 <p style="opacity: 0.7; margin-top: -0.5rem;">July 14, 2026</p>
 
-GTKX 1.0.0-rc.1 is a ground-up rework of the framework since v0.21.0. What started as a React renderer for a curated set of GTK4 widgets is now a general platform for driving GLib and GObject from TypeScript: real GObject instances, the entire introspected API surface of the libraries installed on your machine, and the React programming model on top.
+GTKX 1.0.0-rc.1 is a ground-up rework of the framework since v0.21.0. What started as a React reconciler for a curated set of GTK4 widgets is now a general platform for driving GLib and GObject from TypeScript: real GObject instances, the entire introspected API surface of the libraries installed on your machine, and the React programming model on top.
 
 This is a release candidate. The API described here is what we intend to ship as 1.0, and we are looking for feedback before the final release.
 
@@ -54,11 +54,11 @@ createRoot().render(
 );
 ```
 
-The reconciler was rewritten from roughly sixty hand-written per-widget node classes into a single generic reconciler that instantiates real GObject classes by type and drives child attachment from generated metadata. Because every element is a real GObject, JSX composes in ways it could not before: any element passed as a prop value is mounted and assigned to that property, so a text view can take `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale can take `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative children. Signals are typed end to end, including `notify::<property>` details, and there are new hooks (`useSignal`, `useTickCallback`, `useProperty`, and typed `useSetting` backed by imported GSettings schemas).
+The reconciler was rewritten from roughly sixty hand-written per-widget node classes into a single generic reconciler that instantiates real GObject classes by type and drives child attachment from generated metadata. Because every element is a real GObject, JSX composes in ways it could not before: any element passed as a prop value is mounted and assigned to that property, so a text view can take `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale can take `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative children. Signals are typed end to end, including `notify::<property>` details, there are new hooks (`useSignal` and `useTickCallback`), and `useSetting` is now typed against imported GSettings schemas.
 
 ## Higher-level building blocks
 
-Hand-written high-level widgets moved out of the reconciler into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog`. `@gtkx/animate` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through Adwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
+Hand-written high-level widgets moved out of the reconciler into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog` and `NavigationView`. `@gtkx/animate` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through Adwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
 

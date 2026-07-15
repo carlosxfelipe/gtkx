@@ -178,7 +178,7 @@ The badge only renders when `entry.count > 0`, otherwise the `suffix` slot recei
 
 ```ts
 import { isToday } from "./format.js";
-import type { Task, TaskList } from "./types.js";
+import type { Selection, Task, TaskList } from "./types.js";
 
 export type SidebarCounts = {
     all: number;

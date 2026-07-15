@@ -1,7 +1,7 @@
 {
     "name": "create-gtkx",
     "version": "1.0.0-rc.1",
-    "description": "Scaffold a new native GTK4 + React desktop application with gtkx",
+    "description": "Scaffold a new native GTK4 + React desktop application with GTKX",
     "keywords": [
         "gtkx",
         "gtk",

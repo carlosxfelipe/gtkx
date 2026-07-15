@@ -121,7 +121,7 @@ const applyEnableAnimations = (enabled: boolean): void => {
 };
 
 /**
- * Renders a React element into a real GTK widget tree and returns queries
+ * Renders a React element into a real GTK4 widget tree and returns queries
  * scoped to it along with controls for rerendering and unmounting. When no
  * container is supplied, a harness window is created and presented.
  *

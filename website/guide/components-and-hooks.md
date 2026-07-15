@@ -19,7 +19,7 @@ The model-backed components (`ListView`, `GridView`, `ColumnView`, and `DropDown
 - `RenderItemProps<T>` is what every `renderItem` callback receives: `{ item, index, depth?, isExpanded? }`. The last two are populated for tree rows.
 - Selection is controlled, keyed by id: `selectedIds: string[]` and `onSelectionChanged: (ids: string[]) => void`, with `selectionMode` choosing single or multiple selection (`DropDown` is single-select, so it uses `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
 - Expansion is controlled the same way for trees in `ListView` and `ColumnView`: `expandedIds: string[]` and `onExpandedChange: (ids: string[]) => void`.
-- `estimatedItemHeight` (and `estimatedItemWidth` where widths vary) gives the recycler a size hint before cells have rendered, which keeps scrollbars stable in long lists.
+- On `ListView`, `GridView`, and `ColumnView`, `estimatedItemHeight` (plus `estimatedItemWidth` on `ListView` and `GridView`, where widths vary) gives the recycler a size hint before cells have rendered, which keeps scrollbars stable in long lists; `DropDown` takes no size hints.
 
 The stable ids are what make this work across updates: selection, expansion, and cell identity survive any reordering or filtering of your arrays because they track ids, not positions.
 
@@ -158,7 +158,7 @@ The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Ch
 
 ## SizeGroup
 
-`SizeGroup` manages a `Gtk.SizeGroup`, which keeps widgets scattered across the tree at a common width, height, or both (`mode: Gtk.SizeGroupMode`). Each `SizeGroup.Child` names the widget to add to the group; membership follows the React tree, so children nested anywhere under the `SizeGroup` join it:
+`SizeGroup` manages a `Gtk.SizeGroup`, which keeps widgets scattered across the tree at a common width, height, or both (`mode: Gtk.SizeGroupMode`). Each `SizeGroup.Child` names the widget to add to the group; membership follows the React tree, so a `SizeGroup.Child` nested anywhere under the `SizeGroup` joins it:
 
 ```tsx
 <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
@@ -262,4 +262,4 @@ Generated JSX elements already expose signals as `on*` props; `useSignal` is for
 
 **`useTickCallback(target, callback)`** registers a frame-clock callback on a widget via `addTickCallback`, running once per frame while the widget is mounted. Return `false` from the callback to remove it. Pass `null` as the target to pause: the gtk-demo benchmarks use `useTickCallback(isRunning ? window : null, ...)` to start and stop a frame loop from state. For property animations, [`@gtkx/css` and `@gtkx/animate`](/guide/css-and-animations) are usually the better fit; a tick callback is the tool for genuinely per-frame work such as custom drawing or transforms.
 
-The remaining exports (`createRoot`, `quit`, `createPortal`, `rootElement`, and the reconciler utilities) belong to the mounting story rather than day-to-day component code: `createRoot` and `quit` are covered in [Getting Started](/guide/getting-started), and `createPortal` in [Modals and Portals](/guide/modals-and-portals).
+The remaining exports (`createRoot`, `quit`, `createPortal`, and `rootElement`) belong to the mounting story rather than day-to-day component code: `createRoot` and `quit` are covered in [Getting Started](/guide/getting-started), and `createPortal` in [Modals and Portals](/guide/modals-and-portals).

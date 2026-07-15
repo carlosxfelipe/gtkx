@@ -102,7 +102,7 @@ injectGlobal`
 
 Importing a plain `.css` file works too: the GTKX CLI compiles the import into an `injectGlobal` call with the file's content, so a hand-written stylesheet and template-literal styles end up in the same provider.
 
-The last export, `registerProviderForDefaultDisplay(priority?)`, is the primitive both packages use internally: it creates a `Gtk.CssProvider`, attaches it to the default display (or to the first display that opens), and returns it. Reach for it only when you need your own provider at a custom priority.
+`registerProviderForDefaultDisplay(priority?)`, exported from `@gtkx/css/internal`, is the primitive both packages use internally: it creates a `Gtk.CssProvider`, attaches it to the default display (or to the first display that opens), and returns it. Reach for it only when you need your own provider at a custom priority.
 
 ## Animating widgets with `animated`
 

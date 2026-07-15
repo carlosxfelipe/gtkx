@@ -31,8 +31,7 @@ export type DialogOwnProps = {
 export type DialogProps<C extends ElementType = typeof AdwDialog> = PolymorphicComponentProps<
     C,
     DialogInstance,
-    DialogOwnProps,
-    "component must render an Adw.Dialog"
+    DialogOwnProps
 >;
 
 /**

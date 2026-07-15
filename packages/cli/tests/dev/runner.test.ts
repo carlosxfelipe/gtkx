@@ -128,7 +128,7 @@ const startRunnerAndExpectMcpConnected = async (harness: Harness, applicationId:
     await startRunner(harness);
     expect(harness.startMcp).toHaveBeenCalledWith(applicationId, expect.any(Function));
     const messages = loggedMessages(harness);
-    expect(messages.some((m) => m.includes(`Connected application id: ${applicationId}`))).toBe(true);
+    expect(messages.some((m) => m.includes(`Connected application ID: ${applicationId}`))).toBe(true);
 };
 
 describe("createDevRunner (vite config)", () => {

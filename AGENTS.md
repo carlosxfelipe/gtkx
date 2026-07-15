@@ -1,6 +1,6 @@
 # AGENTS.md
 
-GTKX is a framework for building native GTK4/Adwaita desktop applications with React, TypeScript, and JSX. App authors write declarative JSX whose element types are GTK4 widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust napi addon drives the default GLib main context on the Node.js/libuv event loop and performs every libffi call into GTK4. A build-time generator turns GObject-Introspection (GIR) XML into the typed bindings, JSX element types, and reconciler metadata the runtime consumes, and a Vite-based CLI provides scaffolding, hot-reloading dev, single-file production bundling, and GTK4-asset integration.
+GTKX is a framework for building native GTK4/Adwaita desktop applications with React, TypeScript, and JSX. App authors write declarative JSX whose element types are GTK4 widget names; a custom react-reconciler maps that tree to live GObject instances, while a Rust N-API addon drives the default GLib main context on the Node.js/libuv event loop and performs every libffi call into GTK4. A build-time generator turns GObject-Introspection (GIR) XML into the typed bindings, JSX element types, and reconciler metadata the runtime consumes, and a Vite-based CLI provides scaffolding, hot-reloading dev, single-file production bundling, and GTK4-asset integration.
 
 Homepage: https://gtkx.dev
 
@@ -8,7 +8,7 @@ Homepage: https://gtkx.dev
 
 | Package | Role |
 | --- | --- |
-| `@gtkx/native` | Rust napi addon: drives the default GLib main context on the Node.js/libuv event loop, performs all libffi C calls into GTK4/GObject, marshals values via the Type descriptor contract, registers JS-backed subclasses/vfuncs, binds wrapper lifetime to native GObjects. |
+| `@gtkx/native` | Rust N-API addon: drives the default GLib main context on the Node.js/libuv event loop, performs all libffi C calls into GTK4/GObject, marshals values via the Type descriptor contract, registers JS-backed subclasses/vfuncs, binds wrapper lifetime to native GObjects. |
 | `@gtkx/ffi` | Hand-written TypeScript runtime over the addon: GObject construction, value marshaling, signals and trampolines, subclass registration, the GType-to-class registry and wrapper identity, and the Type descriptor vocabulary the generated bindings target. |
 | `@gtkx/react` | Custom react-reconciler host config mapping JSX to GObject instances, plus the GObject-aware hooks; drives prop application, child attachment, and the commit signal-block strategy. |
 | `@gtkx/components` | Hand-written higher-level component families (list, grid, grid-view, fixed, overlay, column, drop-down, menu, size-group, dialog, navigation-view, constraint layout) over the generated bindings. |

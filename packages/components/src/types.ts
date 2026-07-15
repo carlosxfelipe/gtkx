@@ -8,18 +8,24 @@ export type WidgetOf<C extends ElementType> =
 export type PolymorphicBody<C extends ElementType, Own, ExtraOmit extends string> = Own &
     Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
 
-export type PolymorphicChildProps<C extends ElementType, Own = unknown> =
-    WidgetOf<C> extends Gtk.Widget
-        ? { component: C } & PolymorphicBody<C, Own, never>
-        : "component must render a Gtk.Widget";
+type ValidComponent<C extends ElementType, Widget extends Gtk.Widget> = [WidgetOf<C>] extends [never]
+    ? never
+    : WidgetOf<C> extends Widget
+      ? C
+      : never;
+
+export type PolymorphicChildProps<C extends ElementType, Own = unknown> = {
+    component: ValidComponent<C, Gtk.Widget>;
+} & PolymorphicBody<C, Own, never>;
 
 export type PolymorphicComponentProps<
     C extends ElementType,
     Widget extends Gtk.Widget,
     Own,
-    Message extends string,
     ExtraOmit extends string = never,
-> = WidgetOf<C> extends Widget ? { component?: C } & PolymorphicBody<C, Own, ExtraOmit> : Message;
+> = {
+    component?: ValidComponent<C, Widget>;
+} & PolymorphicBody<C, Own, ExtraOmit>;
 
 export type PolymorphicRuntimeProps<Own = unknown, W extends Gtk.Widget = Gtk.Widget> = Own & {
     component: ElementType;

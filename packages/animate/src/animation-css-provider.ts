@@ -36,7 +36,7 @@ class AnimationStyleSheet {
         this.provider = provider;
         if (process.env.NODE_ENV !== "production") {
             provider.on("parsing-error", (section, error) => {
-                log.warn(`GTK rejected animation CSS at ${section.toString()}: ${error.message}`);
+                log.warn(`GTK4 rejected animation CSS at ${section.toString()}: ${error.message}`);
             });
         }
         return provider;

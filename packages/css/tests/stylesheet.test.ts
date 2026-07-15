@@ -18,14 +18,14 @@ describe("StyleSheet", () => {
         }).not.toThrow();
     });
 
-    it("warns when GTK rejects a declaration", async () => {
+    it("warns when GTK4 rejects a declaration", async () => {
         const warn = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
         try {
             const stylesheet = new StyleSheet();
             stylesheet.insert(".bad { not-a-real-property: 1; }");
             await new Promise<void>((resolve) => queueMicrotask(resolve));
             expect(warn).toHaveBeenCalledWith(expect.stringContaining("[gtkx:css]"));
-            expect(warn).toHaveBeenCalledWith(expect.stringContaining("GTK rejected CSS"));
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("GTK4 rejected CSS"));
         } finally {
             warn.mockRestore();
         }

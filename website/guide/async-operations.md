@@ -8,7 +8,7 @@ GNOME's platform libraries share one asynchronous convention. An operation start
 
 This works because the generator reads the same GObject-Introspection data that defines the C API. A call is promisified when it either ends in `_async` with a matching `_finish` sibling (the classic GIO shape, like `g_file_load_contents_async` plus `g_file_load_contents_finish`) or takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix (the GTK4 dialog shape, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`). The rule is the same wherever the pair lives, on an instance, on a class as a static, or at module level. Two conditions keep it honest: the initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter, and the `_finish` sibling must consume only the `GAsyncResult` the callback delivers so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
 
-The call keeps its own camelCase name. There is no renaming and no suffix stripping: `load_contents_async` becomes `loadContentsAsync`, `Gtk.FileDialog`'s `open` is just `open`, and `g_bus_get` is `Gio.busGet`. If you know the C API or the GJS one, you already know what the call is named here.
+The call keeps its own camelCase name. There is no renaming and no suffix stripping: `load_contents_async` becomes `loadContentsAsync`, `Gtk.FileDialog`'s `open` stays `open`, and `g_bus_get` is `Gio.busGet`. If you know the C API or the GJS one, you already know what the call is named here.
 
 ## What the signatures look like
 
@@ -152,7 +152,7 @@ Gtk.showUriFull(parentWindow, "https://example.com", 0, null, (source, result) =
 });
 ```
 
-Finally, a call that carries a second callback beside its `AsyncReadyCallback` stays callback-based, because the promise can only supply the one completion callback. `Gio.DBusObjectManagerClient.new` takes a `get_proxy_type_func` alongside its ready callback, so it keeps the raw shape and you call `Gio.DBusObjectManagerClient.newFinish(result)` yourself.
+Finally, a call that carries a second callback beside its `AsyncReadyCallback` stays callback-based, because the promise can only supply the one completion callback. `Gio.DBusObjectManagerClient.new` takes a `getProxyTypeFunc` callback alongside its ready callback, so it keeps the raw shape and you call `Gio.DBusObjectManagerClient.newFinish(result)` yourself.
 
 ::: info
 Whether a call returns a promise is determined by the callback-and-finish pair, and the generated TypeScript signature always tells you: a `Promise<...>` return means `await`, a `void` return with a callback parameter means callback.

@@ -30,7 +30,7 @@
 GTKX generates fully typed bindings for the entire GTK4 and Adwaita surface directly from GObject-Introspection. On top of those bindings you get the React programming model: components and hooks driving real GObject instances, with Fast Refresh while you develop.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: a Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
+  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
 </p>
 
 <p align="center">

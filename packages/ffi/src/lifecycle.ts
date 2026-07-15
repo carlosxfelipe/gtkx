@@ -2,7 +2,7 @@ import { keepAlive, quit as nativeQuit } from "@gtkx/native";
 import { blockMatchedSignalHandlers } from "./signal.js";
 
 /**
- * Minimal structural interface of a GTK/GIO application needed to register, run,
+ * Minimal structural interface of a GTK4/GIO application needed to register, run,
  * and shut it down, plus the signals its lifecycle helpers connect to.
  */
 export type ApplicationLike = {

@@ -53,7 +53,7 @@ export function App() {
             }
         />
     </AdwToastOverlay>
-    {/* Preferences, About, NewListDialog, DeleteConfirmation dialogs */}
+    {/* Preferences, About, Shortcuts, NewListDialog, DeleteConfirmation dialogs */}
 </AdwApplicationWindow>
 ```
 
@@ -107,6 +107,7 @@ The guide moves from the outside of the app inward, then out to shipping:
 
 - **The shell**: the application object, the window, and the adaptive `AdwNavigationSplitView` that frames everything.
 - **Data and state**: the task model, the JSON store behind `useTasks`, and how `useSetting` bridges React state to `GSettings`.
+- **The sidebar**: the navigation list of smart views and user lists, and how the `Selection` state drives the content pane.
 - **The task list**: boxed lists, rows, inline add, filtering, search, drag-to-reorder, and animating state changes with `@gtkx/animate`.
 - **The editor and dialogs**: the detail form, preferences, and the undo/confirm patterns.
 - **Selection, shortcuts, and notifications**: batch actions, keyboard accelerators, and desktop reminders.

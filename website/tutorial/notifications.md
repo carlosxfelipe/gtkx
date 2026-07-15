@@ -82,7 +82,7 @@ The mechanics:
 - **`notified` is a `useRef<Set<string>>`, not state.** It records which task ids have already fired so a task is not re-notified on every 60-second tick. It is a ref because writing to it must not trigger a re-render, and it must persist across renders without being a dependency.
 - **`leadMs` comes from `reminderMinutes`**, the `reminder-minutes` GSettings preference read in the window (see below). A task fires when it is due within the lead window.
 - **The window is `remaining <= leadMs && remaining > -86_400_000`.** So a reminder fires from `reminderMinutes` before the due time up to 24 hours (`86_400_000` ms) after it. Tasks overdue by more than a day are skipped, avoiding a burst of stale notifications the first time the app opens after being off for a while.
-- **`sweep()` runs once immediately, then every 60 seconds** via `setInterval`. The effect returns `clearInterval(handle)` so the timer is torn down when dependencies change or the component unmounts. This is an ordinary React timer effect driven by the same single-thread runloop that drives GTK4.
+- **`sweep()` runs once immediately, then every 60 seconds** via `setInterval`. The effect returns a cleanup function that calls `clearInterval(handle)` so the timer is torn down when dependencies change or the component unmounts. This is an ordinary React timer effect driven by the same single-thread runloop that drives GTK4.
 
 ## Wiring the sweep to the application
 
@@ -187,7 +187,7 @@ X-GNOME-UsesNotifications=true
 DBusActivatable=true
 ```
 
-- **`X-GNOME-UsesNotifications=true`** lists the app in Settings, Notifications so the user can toggle its notifications on and off.
+- **`X-GNOME-UsesNotifications=true`** lists the app in GNOME Settings under Notifications so the user can toggle its notifications on and off.
 - **`DBusActivatable=true`** lets the shell D-Bus-activate the app to deliver an action. This is the key that makes "tap a reminder while the app is closed" launch the process and fire `app.open-task`, rather than doing nothing.
 
 ::: tip Flatpak needs no extra permission

@@ -57,7 +57,7 @@ const typeShape = {
 
 const fireEventShape = {
     ...widgetIdShape,
-    signal: fireEventParams.shape.signal.describe("GTK signal name to emit"),
+    signal: fireEventParams.shape.signal.describe("GTK4 signal name to emit"),
     args: fireEventParams.shape.args.describe("Arguments to pass to the signal"),
 };
 
@@ -196,7 +196,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             name: "gtkx_fire_event",
             title: "Fire event",
             kind: "action",
-            description: "Emit a GTK signal on a widget. Use this for custom interactions.",
+            description: "Emit a GTK4 signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.fireEvent", params);
