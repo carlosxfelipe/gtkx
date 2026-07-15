@@ -11,8 +11,9 @@ Every GNOME app ships a Preferences dialog, and Tasks is no exception: a `<Ctrl>
 The whole surface is one component. It mounts when `app.tsx` flips `showPreferences` to `true` and renders `<Preferences onClose={...} />`:
 
 ```tsx
-import { ComboRow, Dialog } from "@gtkx/components/adw";
-import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
+import { DropDown } from "@gtkx/components";
+import { Dialog } from "@gtkx/components/adw";
+import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
@@ -20,12 +21,8 @@ import schema from "#data/com.gtkx.tutorial.gschema.xml";
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     // ...
     return (
-        <Dialog onClose={onClose}>
-            {(ref) => (
-                <AdwPreferencesDialog ref={ref} title="Preferences">
-                    {/* pages */}
-                </AdwPreferencesDialog>
-            )}
+        <Dialog component={AdwPreferencesDialog} onClose={onClose} title="Preferences">
+            {/* pages */}
         </Dialog>
     );
 };
@@ -33,7 +30,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 
 `AdwPreferencesDialog` is an `Adw.Dialog` subclass, not an `Adw.Window`. An Adw.Dialog is not shown by adding it to a tree: you call `present(parent)` on it, and it renders as an adaptive sheet (a centered floating dialog on desktop, a bottom sheet when the window is narrow). That imperative lifecycle is exactly what the `Dialog` wrapper from `@gtkx/components/adw` automates.
 
-`Dialog` takes a render function that receives a ref, attaches it to the presentable widget you render, portals that to the root, and brackets its lifetime with the two dialog methods:
+`Dialog` takes a `component` prop (the presentable widget, defaulting to `AdwDialog`), attaches the ref to it internally, portals it to the root, and brackets its lifetime with the two dialog methods:
 
 ```tsx
 // packages/components/src/dialog.tsx
@@ -51,7 +48,7 @@ useSignal(dialog, "closed", () => {
     if (!closingFromReact.current) onClose?.();
 });
 // ...
-return createPortal(children(setDialog), rootElement);
+return createPortal(<Component {...rest} ref={setRef} />, rootElement);
 ```
 
 So mounting `<Dialog>` calls `present` on the parent window (resolved automatically via `useParentWindow`), and unmounting calls `forceClose`, which dismisses the dialog without triggering any close confirmation. The `createPortal(..., rootElement)` part matters: the dialog is rendered at the top level of the render tree, not nested inside whatever component happens to be showing it, which is how detached windows and dialogs are meant to mount in gtkx.
@@ -69,10 +66,10 @@ Inside the dialog the structure is the standard three-level Adwaita preferences 
 ```tsx
 <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
     <AdwPreferencesGroup title="Appearance">
-        <ComboRow<string> title="Theme" /* ... */ />
+        <DropDown component={AdwComboRow} title="Theme" /* ... */ />
     </AdwPreferencesGroup>
     <AdwPreferencesGroup title="Tasks">
-        <ComboRow<string> title="Sort order" /* ... */ />
+        <DropDown component={AdwComboRow} title="Sort order" /* ... */ />
         <AdwSpinRow title="Reminder lead time" /* ... */ />
     </AdwPreferencesGroup>
 </AdwPreferencesPage>
@@ -92,10 +89,11 @@ const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minut
 
 Reading is live and writing persists: `setScheme("dark")` writes through `Gio.Settings` to dconf, and because the hook also subscribes to the key's `changed::color-scheme` signal, any writer (this dialog, another window, even `gsettings set` on the command line) re-renders every component that reads the key. Nothing else in the app has to be told the value changed.
 
-The `ComboRow` for the theme wires its selection straight to the setter:
+The `DropDown` for the theme wires its selection straight to the setter:
 
 ```tsx
-<ComboRow<string>
+<DropDown
+    component={AdwComboRow}
     title="Theme"
     items={[
         { id: "default", value: "Follow system" },
@@ -109,7 +107,7 @@ The `ComboRow` for the theme wires its selection straight to the setter:
 />
 ```
 
-`ComboRow` (from `@gtkx/components/adw`) is the declarative wrapper over `AdwComboRow`: instead of building a `Gio.ListModel` and a `GtkListItemFactory` by hand, you pass `items` as `{ id, value }` nodes. The `id` is the stable key persisted to the setting; the `value` is what shows in the row (here a plain string, rendered as a label by default). `selectedId={scheme}` makes it controlled, and `onSelectionChanged` hands back the selected `id`.
+`DropDown` with `component={AdwComboRow}` (from `@gtkx/jsx/adw`) is the declarative wrapper over `AdwComboRow`, the preferences-style row with an embedded drop-down: instead of building a `Gio.ListModel` and a `GtkListItemFactory` by hand, you pass `items` as `{ id, value }` nodes. The `id` is the stable key persisted to the setting; the `value` is what shows in the row (here a plain string, rendered as a label by default). `selectedId={scheme}` makes it controlled, and `onSelectionChanged` hands back the selected `id`.
 
 That `id` arrives typed as a bare `string`, which is why the type guards exist:
 

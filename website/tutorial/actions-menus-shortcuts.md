@@ -284,28 +284,24 @@ import { Dialog } from "@gtkx/components/adw";
 import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
 
 export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
-    <Dialog onClose={onClose}>
-        {(ref) => (
-            <AdwShortcutsDialog ref={ref}>
-                <AdwShortcutsSection title="General">
-                    <AdwShortcutsItem title="New task" accelerator="<Control>n" />
-                    <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
-                    <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
-                    <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
-                </AdwShortcutsSection>
-                <AdwShortcutsSection title="Tasks">
-                    <AdwShortcutsItem title="Delete task" accelerator="Delete" />
-                    <AdwShortcutsItem title="Close task" accelerator="Escape" />
-                </AdwShortcutsSection>
-            </AdwShortcutsDialog>
-        )}
+    <Dialog component={AdwShortcutsDialog} onClose={onClose}>
+        <AdwShortcutsSection title="General">
+            <AdwShortcutsItem title="New task" accelerator="<Control>n" />
+            <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
+            <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
+            <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
+        </AdwShortcutsSection>
+        <AdwShortcutsSection title="Tasks">
+            <AdwShortcutsItem title="Delete task" accelerator="Delete" />
+            <AdwShortcutsItem title="Close task" accelerator="Escape" />
+        </AdwShortcutsSection>
     </Dialog>
 );
 ```
 
 Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, so keep them in sync with the real bindings: `<Control>n`, `<Control>f`, `<Control>comma`, and `<Control>question` come from `actionAccels` and the search shortcut, while `Delete` and `Escape` come from the `GtkShortcutController`.
 
-`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes a render function that hands you the ref to attach to `AdwShortcutsDialog`, and its `onClose` clears `showShortcuts` when the user dismisses the window. The action handler just flips a state flag:
+`<Dialog>` (from `@gtkx/components/adw`) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the window. The action handler just flips a state flag:
 
 ```tsx
 onShortcuts={() => setShowShortcuts(true)}

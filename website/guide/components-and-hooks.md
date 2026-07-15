@@ -8,16 +8,16 @@ Almost everything you render in a gtkx app is a generated host component: one ty
 
 ## Why @gtkx/components exists
 
-GTK's list widgets are built around a model/factory split: you hand `Gtk.ListView` a `Gio.ListModel` of items, a `Gtk.SignalListItemFactory` that fires `setup`/`bind`/`unbind` signals for cell recycling, and a selection-model wrapper around the whole thing. Trees add `Gtk.TreeListModel`, sortable tables add per-column `Gtk.Sorter` objects, and none of it is declarative. The same goes for `Gtk.Grid.attach()`, `Gtk.Overlay.addOverlay()`, `Gtk.SizeGroup.addWidget()`, and `Gio.Menu` construction: they are imperative calls with no natural JSX shape. `@gtkx/components` gives each of these a React vocabulary (plain arrays, `renderItem` callbacks, and render-prop children) while keeping the recycling, sorting, and selection machinery of the underlying widget intact. The package has two entry points: `@gtkx/components` for the GTK-level components and `@gtkx/components/adw` for the libadwaita ones.
+GTK's list widgets are built around a model/factory split: you hand `Gtk.ListView` a `Gio.ListModel` of items, a `Gtk.SignalListItemFactory` that fires `setup`/`bind`/`unbind` signals for cell recycling, and a selection-model wrapper around the whole thing. Trees add `Gtk.TreeListModel`, sortable tables add per-column `Gtk.Sorter` objects, and none of it is declarative. The same goes for `Gtk.Grid.attach()`, `Gtk.Overlay.addOverlay()`, `Gtk.SizeGroup.addWidget()`, and `Gio.Menu` construction: they are imperative calls with no natural JSX shape. `@gtkx/components` gives each of these a React vocabulary (plain arrays, `renderItem` callbacks, and `component`-injecting children) while keeping the recycling, sorting, and selection machinery of the underlying widget intact. The package has two entry points: `@gtkx/components` for the GTK-level components and `@gtkx/components/adw` for the libadwaita ones.
 
 ## The collection vocabulary
 
-The model-backed components (`ListView`, `GridView`, `ColumnView`, `DropDown`, and `ComboRow`) share one set of types:
+The model-backed components (`ListView`, `GridView`, `ColumnView`, and `DropDown`) share one set of types:
 
 - `ItemNode<T>` is `{ id, value }`: a stable string id plus your data. Giving an item `children: ItemNode<T>[]` turns the collection into a tree; `hideExpander`, `indentForDepth`, and `indentForIcon` tune how tree rows are drawn.
 - `SectionNode<S, T>` is `{ id, value, data }`: a group of items rendered under a shared header. Every component accepts a flat `items` array; all but `GridView` also accept a `sections` array, with a `renderHeader={({ section }) => ...}` callback for the headers.
 - `RenderItemProps<T>` is what every `renderItem` callback receives: `{ item, index, depth?, isExpanded? }`. The last two are populated for tree rows.
-- Selection is controlled, keyed by id: `selectedIds: string[]` and `onSelectionChanged: (ids: string[]) => void`, with `selectionMode` choosing single or multiple selection (`DropDown` and `ComboRow` are single-select, so they use `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
+- Selection is controlled, keyed by id: `selectedIds: string[]` and `onSelectionChanged: (ids: string[]) => void`, with `selectionMode` choosing single or multiple selection (`DropDown` is single-select, so it uses `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
 - Expansion is controlled the same way for trees in `ListView` and `ColumnView`: `expandedIds: string[]` and `onExpandedChange: (ids: string[]) => void`.
 - `estimatedItemHeight` (and `estimatedItemWidth` where widths vary) gives the recycler a size hint before cells have rendered, which keeps scrollbars stable in long lists.
 
@@ -63,31 +63,34 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-## ColumnView and ColumnView.Column
+## ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared as `ColumnView.Column` children, each with a required `id` and `title`, its own `renderItem`, and optional `sortable`, `expand`, `resizable`, `fixedWidth`, `visible`, and `headerMenu` props. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view never disagrees with your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional `sortable`, `expand`, `resizable`, `fixedWidth`, `visible`, and `headerMenu` props. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view never disagrees with your data:
 
 ```tsx
-import { ColumnView, type RenderItemProps } from "@gtkx/components";
+import { ColumnView, type ColumnDef } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
+
+const columns: ColumnDef<Employee>[] = [
+    {
+        id: "name",
+        title: "Name",
+        expand: true,
+        sortable: true,
+        renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
+    },
+];
 
 <ColumnView
     sortColumn={sortColumn}
     sortOrder={sortOrder}
     onSortChanged={handleSortChange}
     items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
->
-    <ColumnView.Column
-        id="name"
-        title="Name"
-        expand
-        sortable
-        renderItem={({ item }: RenderItemProps<Employee>) => <GtkLabel>{item.name}</GtkLabel>}
-    />
-</ColumnView>
+    columns={columns}
+/>
 ```
 
-When you want the column's `renderItem` typed to the view's item type without annotating each callback, use the render-prop form: `children={(api) => <api.Column id="name" ... />}` receives a `ColumnViewApi<T>` whose `Column` component is already bound to `T`.
+Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
 
 ## DropDown
 
@@ -123,20 +126,20 @@ Actions and the `"app."`/`"win."` prefixes are covered in the tutorial's [action
 
 ## Grid and Grid.Child
 
-`Grid` wraps `Gtk.Grid`, whose placement API is `attach(child, column, row, width, height)`. `Grid.Child` expresses one placement declaratively: `column`, `row`, `columnSpan`, and `rowSpan` (spans default to 1), with a render-prop child that hands you the ref to attach to the placed widget:
+`Grid` wraps `Gtk.Grid`, whose placement API is `attach(child, column, row, width, height)`. `Grid.Child` expresses one placement declaratively: `column`, `row`, `columnSpan`, and `rowSpan` (spans default to 1). Name the placed widget with the `component` prop and pass its props inline:
 
 ```tsx
 import { Grid } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
 <Grid columnSpacing={10} rowSpacing={10}>
-    <Grid.Child column={0} row={3}>
-        {(ref) => <GtkLabel ref={ref} xalign={0}>Foreground</GtkLabel>}
+    <Grid.Child component={GtkLabel} column={0} row={3} xalign={0}>
+        Foreground
     </Grid.Child>
 </Grid>
 ```
 
-The render-prop-with-ref pattern recurs in every placement component below: the wrapper needs the real widget instance for its imperative GTK call, and the ref callback is how you hand it over while keeping full control of what you render.
+The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Child` below: you name the widget to place and the wrapper attaches the ref for its imperative GTK call internally.
 
 ## Overlay and Overlay.Child
 
@@ -145,9 +148,7 @@ The render-prop-with-ref pattern recurs in every placement component below: the 
 ```tsx
 <Overlay>
     <Grid>{buttons}</Grid>
-    <Overlay.Child>
-        {(ref) => <GtkEntry ref={ref} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />}
-    </Overlay.Child>
+    <Overlay.Child component={GtkEntry} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
 </Overlay>
 ```
 
@@ -157,18 +158,16 @@ The render-prop-with-ref pattern recurs in every placement component below: the 
 
 ## SizeGroup
 
-`SizeGroup` manages a `Gtk.SizeGroup`, which keeps widgets scattered across the tree at a common width, height, or both (`mode: Gtk.SizeGroupMode`). Its children render prop receives a single ref callback; attach it to every widget that should share the size:
+`SizeGroup` manages a `Gtk.SizeGroup`, which keeps widgets scattered across the tree at a common width, height, or both (`mode: Gtk.SizeGroupMode`). Each `SizeGroup.Child` names the widget to add to the group; membership follows the React tree, so children nested anywhere under the `SizeGroup` join it:
 
 ```tsx
 <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-    {(groupRef) => (
-        <>
-            <GtkButton ref={groupRef} label="Short" />
-            <GtkButton ref={groupRef} label="A much longer label" />
-        </>
-    )}
+    <SizeGroup.Child component={GtkButton} label="Short" />
+    <SizeGroup.Child component={GtkButton} label="A much longer label" />
 </SizeGroup>
 ```
+
+`SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example).
 
 ## ConstraintLayout
 
@@ -199,33 +198,29 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 `@gtkx/components/adw` holds the components that depend on libadwaita.
 
-**`Dialog`** turns dialog visibility into ordinary conditional rendering. Adw dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` takes a render function (`children: (ref) => ReactNode`), portals the widget you attach the ref to at the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. Its `onClose` prop, wired to the widget's `closed` signal, fires when the user dismisses the dialog (Escape, the close button, a swipe) so you can clear that state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
+**`Dialog`** turns dialog visibility into ordinary conditional rendering. Adw dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` takes a `component` prop (the dialog widget, defaulting to `AdwDialog`) with the widget's own props passed inline, portals that widget at the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. Its `onClose` prop, wired to the widget's `closed` signal, fires when the user dismisses the dialog (Escape, the close button, a swipe) so you can clear that state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
 
-**Alert dialogs** need no wrapper: render `AdwAlertDialog` (from `@gtkx/jsx/adw`) directly inside a `Dialog`. Its response buttons, normally added with `addResponse`/`setResponseAppearance` calls, are declared through the `responses` prop (an array of `{ id, label, appearance?, enabled? }`); children form the dialog body, and `onResponse` receives the chosen id:
+**Alert dialogs** pass `AdwAlertDialog` (from `@gtkx/jsx/adw`) as `Dialog`'s `component`. Its response buttons, normally added with `addResponse`/`setResponseAppearance` calls, are declared through the `responses` prop (an array of `{ id, label, appearance?, enabled? }`); children form the dialog body, and `onResponse` receives the chosen id:
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
-<Dialog>
-    {(ref) => (
-        <AdwAlertDialog
-            ref={ref}
-            heading="Delete Task?"
-            body="This cannot be undone."
-            closeResponse="cancel"
-            responses={[
-                { id: "cancel", label: "Cancel" },
-                { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
-            ]}
-            onResponse={(id) => (id === "delete" ? onConfirm() : onCancel())}
-        />
-    )}
-</Dialog>
+<Dialog
+    component={AdwAlertDialog}
+    heading="Delete Task?"
+    body="This cannot be undone."
+    closeResponse="cancel"
+    responses={[
+        { id: "cancel", label: "Cancel" },
+        { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+    ]}
+    onResponse={(id) => (id === "delete" ? onConfirm() : onCancel())}
+/>
 ```
 
-**`ComboRow`** applies the `DropDown` model (`items`, `selectedId`, `onSelectionChanged`, the same renderer props) to `Adw.ComboRow`, the preferences-style row with an embedded drop-down. The Tasks app's theme and sort-order pickers in [Preferences and Theming](/tutorial/preferences-and-theming) are `ComboRow`s.
+**`DropDown` as a combo row**: pass `component={AdwComboRow}` to apply the `DropDown` model (`items`, `selectedId`, `onSelectionChanged`, the same renderer props) to `Adw.ComboRow`, the preferences-style row with an embedded drop-down. The Tasks app's theme and sort-order pickers in [Preferences and Theming](/tutorial/preferences-and-theming) use it.
 
 ## Hooks from @gtkx/react
 
