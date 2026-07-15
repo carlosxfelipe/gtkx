@@ -5,7 +5,7 @@ import typedocSidebar from "../reference/typedoc-sidebar.json";
 
 const title = "GTKX";
 const description =
-    "Write declarative JSX. GTKX renders it to real, native GObjects (no webview, no Electron) on a Rust runtime, with first-class GTK4 and libadwaita support.";
+    "Write declarative JSX. GTKX renders it to real, native GObjects (no webview, no Electron) powered by a native Rust core, with first-class GTK4 and Adwaita support.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 
@@ -162,7 +162,7 @@ export default defineConfig({
         },
         footer: {
             message: "Released under the MPL-2.0 License.",
-            copyright: "Copyright © 2026 gtkx contributors",
+            copyright: "Copyright © 2026 GTKX contributors",
         },
     },
 });

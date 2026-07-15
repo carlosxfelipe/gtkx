@@ -10,6 +10,7 @@ Fixes #
 
 - [ ] Bug fix
 - [ ] New feature
+- [ ] Refactoring
 - [ ] Breaking change
 - [ ] Documentation update
 
@@ -17,5 +18,6 @@ Fixes #
 
 - [ ] I have tested these changes locally
 - [ ] I have updated documentation if needed
+- [ ] All packages build (`pnpm build`)
 - [ ] All tests pass (`pnpm test`)
 - [ ] Linting passes (`pnpm lint`)

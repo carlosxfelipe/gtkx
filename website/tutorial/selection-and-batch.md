@@ -6,7 +6,7 @@ description: "Implement GNOME's selection mode pattern, with a transformed heade
 
 Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated pattern for this, and it is worth learning because it is not a React idiom. You enter a distinct *selection mode* from a "Select" control, the header bar transforms into a selection header (a Cancel button plus a heading that counts what you have picked), and the batch actions live in an action bar pinned to the bottom of the window. The HIG reserves this pattern for cases with at least three batch actions, which is why Tasks ships Complete, Move, and Delete rather than just Complete/Delete.
 
-The elegant part is that nothing gets torn down and rebuilt. The `AdwToolbarView` that already frames the task list simply swaps its top bar and reveals a bottom bar, both driven by a single `selecting` boolean in React state. Let's follow that state from the action that flips it through to the recycled list it renders.
+Nothing gets torn down and rebuilt: the `AdwToolbarView` that already frames the task list swaps its top bar and reveals a bottom bar, both driven by a single `selecting` boolean in React state. Let's follow that state from the action that flips it through to the recycled list it renders.
 
 ## Entering via the `win.select` action
 
@@ -47,11 +47,13 @@ Entering clears any open task editor (`selectedTaskId`) so the content pane is f
 
 ## Swapping the header bar
 
-The content pane picks its top bar from three candidates in priority order. A task editor wins if one is open; otherwise selection mode wins; otherwise the normal list header shows:
+The list page's toolbar view picks its top bar from two candidates: selection mode wins, otherwise the normal list header shows:
 
 ```tsx
-const topBar = detailHeader ?? (selecting ? selectionHeader : listHeader);
+topBar={selecting ? selectionHeader : listHeader}
 ```
+
+The task editor's header never enters this choice. As **The Application Shell** and **The Task Editor** established, `detailHeader` is the top bar of a separate `NavigationView.Page` that is pushed on top of the list page, so selection mode only ever competes with the list header.
 
 The `selectionHeader` is a plain `AdwHeaderBar`, but configured to stop looking like the normal chrome:
 
@@ -67,15 +69,15 @@ const selectionHeader = (
 );
 ```
 
-Three things to notice, all GTK/Adwaita specifics rather than React:
+Three things to notice, all GTK4/Adwaita specifics rather than React:
 
-- `showStartTitleButtons={false}` and `showEndTitleButtons={false}` hide the window's own controls (close, minimize) so the header reads as a modal selection surface, not the normal titlebar. Cancel is the only way out.
+- `showStartTitleButtons={false}` and `showEndTitleButtons={false}` hide the window's own controls (close, minimize) so the header reads as a modal selection surface, not the normal titlebar. Cancel (or the Escape key) exits.
 - `titleWidget` takes a full widget instead of a plain string. An `AdwWindowTitle` renders the HIG-mandated count, `"3 selected"`, and re-renders automatically because `selectedIds.length` is React state.
 - `Select All` writes every currently visible id into `selectedIds`. It uses `visible`, the same filtered/searched/sorted array the list is showing, so "select all" respects the active filter rather than grabbing every task in the store.
 
 ## The bottom action bar (`revealBottomBars`)
 
-The batch actions live in a `GtkActionBar`. This is a GTK widget (there is no `AdwActionBar`) with `start` and `end` slots and a `revealed` prop that animates it in and out:
+The batch actions live in a `GtkActionBar`. This is a GTK4 widget (there is no `AdwActionBar`) with `start` and `end` slots and a `revealed` prop that animates it in and out:
 
 ```tsx
 const selectionActionBar = (
@@ -121,18 +123,20 @@ const selectionActionBar = (
 );
 ```
 
-The two style classes are the standard GTK accent roles: `suggested-action` paints Complete in the accent color (the primary batch action), and `destructive-action` paints Delete red. Every button is gated with `sensitive={selectedIds.length > 0}`, so with nothing selected the bar is visible but inert. Move is a `GtkMenuButton`: its `popover` prop takes a `GtkPopover` whose body is a vertical `GtkBox` of one flat `GtkButton` per user list, each calling `moveSelected(list.id)`.
+The two style classes are the standard GTK4 accent roles: `suggested-action` paints Complete in the accent color (the primary batch action), and `destructive-action` paints Delete red. Every button is gated with `sensitive={selectedIds.length > 0}`, so with nothing selected the bar is visible but inert. Move is a `GtkMenuButton`: its `popover` prop takes a `GtkPopover` whose body is a vertical `GtkBox` of one flat `GtkButton` per user list, each calling `moveSelected(list.id)`.
 
 That bar is mounted into the toolbar view's `bottomBar` slot, and `revealBottomBars` drives the reveal animation:
 
 ```tsx
-<AdwToolbarView
-    topBar={topBar}
-    bottomBar={selecting ? selectionActionBar : undefined}
-    revealBottomBars={selecting}
->
-    {contentBody}
-</AdwToolbarView>
+<NavigationView.Page tag="list" title={titleFor(selection, lists)}>
+    <AdwToolbarView
+        topBar={selecting ? selectionHeader : listHeader}
+        bottomBar={selecting ? selectionActionBar : undefined}
+        revealBottomBars={selecting}
+    >
+        {listBody}
+    </AdwToolbarView>
+</NavigationView.Page>
 ```
 
 ::: tip
@@ -141,19 +145,19 @@ The bar's own `revealed={selecting}` and the toolbar view's `revealBottomBars={s
 
 ## The selectable list: a recycled `ListView`
 
-When `selecting` is true (and no task editor is open), the content body renders the `SelectionView`:
+When `selecting` is true, the list page's body renders the `SelectionView`:
 
 ```tsx
-const contentBody = selectedTask ? (
-    <TaskDetail /* ... */ />
-) : selecting ? (
+const listBody = selecting ? (
     <SelectionView tasks={visible} selectedIds={selectedIds} onSelectionChanged={setSelectedIds} />
 ) : (
     <TaskList /* ... */ />
 );
 ```
 
-`SelectionView` (in `components/selection-view.tsx`) is where gtkx's high-level `ListView` from `@gtkx/components` earns its keep:
+The task editor never appears in this ternary. `TaskDetail` lives on its own pushed `NavigationView.Page`, so `listBody` only ever switches between the selectable list and the normal one.
+
+`SelectionView` (in `components/selection-view.tsx`) is where GTKX's high-level `ListView` from `@gtkx/components` earns its keep:
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -208,11 +212,11 @@ export const SelectionView = ({
 
 How the pieces map:
 
-- `items` is your data lifted into `{ id, value }` nodes. The `id` is the stable identity gtkx uses to track a row across updates and to key the selection; `value` is the `Task` object handed back to `renderItem` as `item`.
-- `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells gtkx to back the list with a `Gtk.MultiSelection` model (the default is `SINGLE`, a `Gtk.SingleSelection`). This is what lets the user tick more than one row.
+- `items` is your data lifted into `{ id, value }` nodes. The `id` is the stable identity GTKX uses to track a row across updates and to key the selection; `value` is the `Task` object handed back to `renderItem` as `item`.
+- `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells GTKX to back the list with a `Gtk.MultiSelection` model (the default is `SINGLE`, a `Gtk.SingleSelection`). This is what lets the user tick more than one row.
 - Selection is **controlled**, exactly like a controlled input in React. `selectedIds` is the source of truth passed down, and `onSelectionChanged` reports the new array back up. Tasks routes `onSelectionChanged` straight into `setSelectedIds`, so a click on a row and a click on "Select All" both flow into the same state, which then drives the header count, the action bar's `sensitive` gating, and the batch handlers.
-- `renderItem` is a normal React render function returning gtkx JSX. Here it builds a horizontal box: title stacked over a dimmed due-date caption, with a star icon on the trailing edge for important tasks.
-- `estimatedItemHeight={56}` is a hint gtkx uses to size the virtualized viewport before rows are measured.
+- `renderItem` is a normal React render function returning GTKX JSX. Here it builds a horizontal box: title stacked over a dimmed due-date caption, with a star icon on the trailing edge for important tasks.
+- `estimatedItemHeight={56}` is a hint GTKX uses to size the virtualized viewport before rows are measured.
 
 ## Recycled versus boxed: why a second kind of list
 
@@ -269,7 +273,7 @@ const deleteSelected = (): void => {
 It snapshots the ids into a local `const ids = [...selectedIds]` first, because `cancelSelection()` clears `selectedIds` moments later and the toast's Undo callback fires long after that. The toast message pluralizes inline (`task` vs `tasks`), the `button-clicked` handler restores each id, and the toast is pushed onto the same `AdwToastOverlay` (`toastOverlayRef`) that the single-item delete uses. Batch delete and single-item delete (the row's trash button and the Delete shortcut) therefore share one recovery path.
 
 ::: info
-`api.completeMany`, `api.moveToList`, and `api.trashMany` are thin array operations in `hooks/use-tasks.ts`: each maps over the task list and updates only the tasks whose id is in the passed array. `restore` simply flips a task's `deleted` flag back to `false`. Nothing about batching touches a widget imperatively; it is all state in, re-render out.
+`api.completeMany`, `api.moveToList`, and `api.trashMany` are thin array operations in `hooks/use-tasks.ts`: each maps over the task list and updates only the tasks whose id is in the passed array. `restore` flips a task's `deleted` flag back to `false`. Nothing about batching touches a widget imperatively; it is all state in, re-render out.
 :::
 
 ## Next

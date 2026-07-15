@@ -6,7 +6,7 @@
 
 <p align="center">
   Linux app development for the modern age.<br />
-  Build native GTK4 and libadwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
+  Build native GTK4 and Adwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
 </p>
 
 <p align="center">
@@ -20,26 +20,26 @@
 
 <p align="center">
   <a href="https://gtkx.dev">Homepage</a> &middot;
-  <a href="https://gtkx.dev/guide/">Documentation</a> &middot;
+  <a href="https://gtkx.dev/guide/why-gtkx">Documentation</a> &middot;
   <a href="https://github.com/gtkx-org/gtkx/tree/main/examples">Examples</a> &middot;
   <a href="https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
 
-GTKX generates fully typed bindings for the entire GTK4 and libadwaita surface directly from GObject-Introspection. On top of those bindings you get the React programming model: components and hooks driving real GObject instances, with Fast Refresh while you develop.
+GTKX generates fully typed bindings for the entire GTK4 and Adwaita surface directly from GObject-Introspection. On top of those bindings you get the React programming model: components and hooks driving real GObject instances, with Fast Refresh while you develop.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: a libadwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
+  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: a Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
 </p>
 
 <p align="center">
-  <em>The Tasks app you build in the <a href="https://gtkx.dev/guide/">tutorial</a>.</em>
+  <em>The Tasks app you build in the <a href="https://gtkx.dev/tutorial/">tutorial</a>.</em>
 </p>
 
 ## Demo
 
-The JSX element types are real GTK widgets, and ordinary React hooks and events drive them:
+The JSX element types are real GTK4 widgets, and ordinary React hooks and events drive them:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -96,28 +96,28 @@ This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/
 
 GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing re-renders that interface when your application state changes, and nothing hot-reloads it as you work. GTKX adds that missing layer, and the tooling around it, on top of the stack you already know:
 
-- a React renderer that exposes every GObject as a JSX element,
+- a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
 - CSS-in-JS styling, spring and tween animations, and higher-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-### The full power of GNOME, not a portable subset
+### All of GNOME, not a portable subset
 
-React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes GTK4, libadwaita, and any other GObject-Introspection library on your system, and is Linux-only by design.
+React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes GTK4, Adwaita, and any other GObject-Introspection library on your system, and is Linux-only by design.
 
-### Why Node, and why generated bindings
+### Why Node.js, and why generated bindings
 
-GTKX runs on Node.js. The two established ways to reach GTK from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
+GTKX runs on Node.js. The two established ways to reach GTK4 from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
 
-GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime from Node, it cuts you off from native modules and from the npm packages and tooling built for Node's APIs.
+GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime from Node.js, it cuts you off from native modules and from the npm packages and tooling built for Node.js APIs.
 
-node-gtk does run on Node, but it is lightly maintained. Its native addon is C++ on the older nan/V8 ABI rather than N-API, and its documentation and examples still center on GTK3.
+node-gtk does run on Node.js, but it is lightly maintained. Its native addon is C++ on the older nan/V8 ABI rather than N-API, and its documentation and examples still center on GTK3.
 
-GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back, and they cover the whole GTK4 and libadwaita surface rather than a hand-picked subset.
+GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back, and they cover the whole GTK4 and Adwaita surface rather than a hand-picked subset.
 
-At runtime, the Rust N-API addon calls straight into the system GTK libraries through libffi, without loading libgirepository at all.
+At runtime, the Rust N-API addon calls straight into the system GTK4, Adwaita, and GLib libraries through libffi, without loading libgirepository at all.
 
 ## Quick start
 
@@ -136,19 +136,19 @@ cd my-app
 npm run dev
 ```
 
-To go further, follow the [tutorial](https://gtkx.dev/guide/).
+To go further, follow the [tutorial](https://gtkx.dev/tutorial/).
 
 ## Documentation
 
-The documentation at **[gtkx.dev](https://gtkx.dev)** is a step-by-step tutorial that builds a complete GNOME app, from scaffolding to packaging and shipping.
+The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tutorial that builds a complete GNOME app, from scaffolding to packaging and shipping, plus guides and a full API reference.
 
-**[Read the docs &rarr;](https://gtkx.dev/guide/)**
+**[Read the docs &rarr;](https://gtkx.dev/guide/why-gtkx)**
 
 ## Requirements
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4, libadwaita, and GLib development libraries
+- Linux with the GTK4, Adwaita, and GLib development libraries
 - Node.js 24 or later
 
 The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.

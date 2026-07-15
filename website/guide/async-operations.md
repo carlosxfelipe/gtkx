@@ -93,7 +93,7 @@ const FileContents = ({ path }: { path: string }) => {
 };
 ```
 
-Everything resolves on the one JavaScript thread your components run on. GTKX drives the GLib main context from Node's event loop, GIO posts async completions back to that context, and the promise settles in the same tick the completion dispatches. There is no worker thread and no cross-thread marshaling, so an `await` continuation can call `setState` or touch widget refs directly.
+Everything resolves on the one JavaScript thread your components run on. GTKX drives the GLib main context from the Node.js event loop, GIO posts async completions back to that context, and the promise settles in the same tick the completion dispatches. There is no worker thread and no cross-thread marshaling, so an `await` continuation can call `setState` or touch widget refs directly.
 
 ## Cancellation with Gio.Cancellable
 
@@ -122,7 +122,7 @@ await runWithTimeout(async (cancellable) => {
 });
 ```
 
-Cancellation and dismissal are distinct rejections: canceling via the cancellable produces `Gio.IOErrorEnum.CANCELLED`, while the user closing a GTK dialog produces `Gtk.DialogError.DISMISSED`. Code that treats both as "the user changed their mind" checks for either:
+Cancellation and dismissal are distinct rejections: canceling via the cancellable produces `Gio.IOErrorEnum.CANCELLED`, while the user closing a GTK4 dialog produces `Gtk.DialogError.DISMISSED`. Code that treats both as "the user changed their mind" checks for either:
 
 ```ts
 const isCancellation = (error: unknown): boolean =>

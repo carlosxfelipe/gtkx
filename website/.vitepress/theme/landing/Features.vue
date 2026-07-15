@@ -11,7 +11,7 @@ const features = [
     {
         icon: "M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3",
         title: "Powered by Rust",
-        body: "A Rust core calls into the native libraries directly. Memory-safe from JSX to the native boundary, with no garbage-collector pauses in your UI.",
+        body: "A native Rust core calls into the native libraries directly. Memory-safe from JSX to the native boundary, with widgets living in native memory instead of the JS heap.",
         href: "/guide/why-gtkx",
     },
     {
@@ -46,7 +46,7 @@ const features = [
     <div class="features__head section-head">
       <p class="overline">Why GTKX</p>
       <h2 class="section-title">Native. Declarative. <span class="accent">Typed.</span></h2>
-      <p class="section-sub">Everything a desktop app needs, and nothing a browser drags along.</p>
+      <p class="section-sub">Native widgets, generated typed bindings, hot reload, built-in testing, and an MCP server, with no browser engine in the process.</p>
     </div>
     <div class="features__grid">
       <Card v-for="f in features" :key="f.title" :href="f.href" interactive glow padding="1.6rem">

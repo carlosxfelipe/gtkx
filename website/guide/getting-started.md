@@ -4,16 +4,16 @@ description: "Scaffold a GTKX app with npm create gtkx, meet the CLI and the dev
 
 # Getting Started
 
-Before we open a single component, let's set up the project the Tasks app lives in and get comfortable with the loop you'll run for the rest of the tutorial: edit a `.tsx` file, save, watch a real GTK4 window update. gtkx apps are ordinary Node projects. There is no webview, no Electron main/renderer split, and no bundler config to hand-write. The `gtkx` CLI wraps Vite, reads GObject-Introspection for GTK and libadwaita, and hands you typed React bindings for the entire native widget set.
+Before we open a single component, let's set up the project the Tasks app lives in and get comfortable with the loop you'll run for the rest of the tutorial: edit a `.tsx` file, save, watch a real GTK4 window update. GTKX apps are ordinary Node.js projects. There is no webview, no Electron main/renderer split, and no bundler config to hand-write. The `gtkx` CLI wraps Vite, reads GObject-Introspection for GTK4 and Adwaita, and hands you typed React bindings for the entire native widget set.
 
 ## What you need
 
-gtkx is Linux-only, because it renders through the system's real GTK4 and libadwaita. You need:
+GTKX is Linux-only, because it renders through the system's real GTK4 and Adwaita. You need:
 
-- Linux with the GTK4, libadwaita, and GLib development libraries installed
+- Linux with the GTK4, Adwaita, and GLib development libraries installed
 - Node.js 24 or later
 
-The native addon (`@gtkx/native`) ships prebuilt for the common Linux architectures. On anything else it compiles from source, which needs a Rust toolchain.
+The native addon (`@gtkx/native`) ships prebuilt binaries for x64 and arm64 glibc Linux. On other platforms the install has no usable binary; you can build the addon from the GTKX repository yourself, which needs a Rust toolchain.
 
 ## Scaffolding a new app
 
@@ -49,15 +49,15 @@ cd my-app
 npm run dev
 ```
 
-A window opens. The generated starter is a tiny counter, its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK button. This tutorial builds the Tasks app on top of that same skeleton, so the structure below is what you'll be working in.
+A window opens. The generated starter is a tiny counter, its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK4 button. This tutorial builds the Tasks app on top of that same skeleton, so the structure below is what you'll be working in.
 
 ::: tip
-The finished Tasks app you'll study lives at `examples/tutorial` in the gtkx repository. Every snippet in this tutorial is copied from that source. You can run it, read ahead, or diff your work against it at any point.
+The finished Tasks app you'll study lives at `examples/tutorial` in the GTKX repository. Every snippet in this tutorial is copied from that source, sometimes trimmed to the parts each chapter needs. You can run it, read ahead, or diff your work against it at any point.
 :::
 
 ## Project structure
 
-A gtkx project is small. Here is the shape the Tasks app uses:
+A GTKX project is small. Here is the shape the Tasks app uses:
 
 ```
 tutorial/
@@ -91,13 +91,13 @@ export default defineConfig({
 });
 ```
 
-`applicationId` is the only required field. It's your reverse-DNS app ID, and it does double duty: it becomes the default for the top-level `<AdwApplication>` (you never pass the ID again in your JSX), and it's the identity GNOME, GSettings, and notifications key off.
+`applicationId` is the only required field. It's your reverse-domain application ID, and it does double duty: it becomes the default for the top-level `<AdwApplication>` (you never pass the ID again in your JSX), and it's the identity GNOME, GSettings, and notifications key off.
 
-`libraries` is a list of GObject-Introspection namespaces in `Name-Version` form. `"Gtk-4.0"` and `"Adw-1"` (GTK 4 and libadwaita 1) are what every app in this tutorial needs. The CLI reads the GIR typelibs for these libraries and the namespaces they depend on, so this list determines which widgets exist under `@gtkx/jsx/*`, while `@gtkx/gi/*` also picks up the pulled-in dependency namespaces (GLib, Gio, GObject, Gdk, and so on) that GTK and libadwaita require. Add a namespace here (say `"WebKit-6.0"`) and its classes become available after the next codegen.
+`libraries` is a list of GObject-Introspection namespaces in `Name-Version` form. `"Gtk-4.0"` and `"Adw-1"` (GTK4 and Adwaita 1) are what every app in this tutorial needs. The CLI reads the GIR files for these libraries and the namespaces they depend on, so this list determines which widgets exist under `@gtkx/jsx/*`, while `@gtkx/gi/*` also picks up the pulled-in dependency namespaces (GLib, Gio, GObject, Gdk, and so on) that GTK4 and Adwaita require. Add a namespace here (say `"WebKit-6.0"`) and its classes become available after the next codegen.
 
 ## The entry point: `src/index.tsx`
 
-Mounting a gtkx tree looks exactly like React DOM, minus the DOM node:
+Mounting a GTKX tree looks exactly like React DOM, minus the DOM node:
 
 ```tsx
 import { createRoot } from "@gtkx/react";
@@ -106,15 +106,15 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component. The counter starter wrapped its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in libadwaita. Importing those libadwaita bindings runs `adw_init` at module load, which sets up the libadwaita style manager, and `<AdwApplication>` picks up the `applicationId` from your config automatically.
+`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component. The counter starter wrapped its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita. Importing those Adwaita bindings runs `adw_init` at module load, which sets up the Adwaita style manager, and `<AdwApplication>` picks up the `applicationId` from your config automatically.
 
 ::: info
-Note the `./app.js` import specifier even though the file is `app.tsx`. The project uses `"module": "NodeNext"`, which follows Node's ESM resolution: you write the `.js` extension the compiler emits, and it resolves the `.tsx` source.
+Note the `./app.js` import specifier even though the file is `app.tsx`. The project uses `"module": "NodeNext"`, which follows Node.js ESM resolution: you write the `.js` extension the compiler emits, and it resolves the `.tsx` source.
 :::
 
 ## Ambient types: `src/gtkx-env.d.ts`
 
-This file wires up the types for things that aren't plain modules, asset imports and your generated GSettings schemas:
+This file wires up the types for things that aren't plain modules: asset imports and your generated GSettings schemas.
 
 ```ts
 /// <reference types="@gtkx/cli/env" />
@@ -125,7 +125,7 @@ The first reference pulls in `vite/client` plus type declarations for every asse
 
 ## `tsconfig.json`
 
-Standard modern TypeScript, with `react-jsx` so you don't import React in every file:
+A standard TypeScript configuration, with `react-jsx` so you don't import React in every file:
 
 ```json
 {
@@ -177,10 +177,10 @@ Standard modern TypeScript, with `react-jsx` so you don't import React in every 
 The runtime dependencies map onto the pieces you'll use throughout the tutorial:
 
 - **`@gtkx/react`** ships the reconciler plus hooks and helpers (`createRoot`, `useApplication`, `useSetting`, `useSignal`, `createPortal`, `quit`, ...).
-- **`@gtkx/components`** provides higher-level React components over the harder GTK APIs, notably the model-view widgets `ListView`, `ColumnView`, `GridView`, `DropDown`, and `Menu`.
-- **`@gtkx/css`** is CSS-in-JS for GTK's CSS (a `css` tagged template that feeds a widget's `cssClasses`).
-- **`@gtkx/animate`** adds declarative enter/exit animations backed by libadwaita's animation engine.
-- **`react`** is plain React 19. gtkx is a custom renderer, not a fork.
+- **`@gtkx/components`** provides higher-level React components over the harder GTK4 APIs, notably the model-view widgets `ListView`, `ColumnView`, `GridView`, `DropDown`, and `Menu`.
+- **`@gtkx/css`** is CSS-in-JS for GTK4's CSS (a `css` tagged template that feeds a widget's `cssClasses`).
+- **`@gtkx/animate`** adds declarative enter/exit animations backed by Adwaita's animation engine.
+- **`react`** is plain React 19. GTKX is a custom reconciler, not a fork.
 
 `@gtkx/cli` and `@gtkx/config` are dev-only: the CLI is the `gtkx` binary, and `@gtkx/config` provides `defineConfig`.
 
@@ -196,16 +196,16 @@ gtkx build      # production bundle in dist/
 gtkx codegen    # (re)generate the native bindings
 ```
 
-**`gtkx dev`** is what you'll run while building the app. It starts a Vite dev server wired to a supervisor that launches your GTK app and hot-reloads it. Edit a component, save, and the running window updates in place with React Fast Refresh: your `useState` survives the reload, so you don't lose the task you were mid-edit on. It also watches `gtkx.config.ts` and your schemas.
+**`gtkx dev`** is what you'll run while building the app. It starts a Vite dev server wired to a supervisor that launches your GTK4 app and hot-reloads it. Edit a component, save, and the running window updates in place with React Fast Refresh: your `useState` survives the reload, so you don't lose the task you were mid-edit on. It also watches `gtkx.config.ts` and your schemas.
 
 **`gtkx build`** produces a self-contained `dist/bundle.js`, alongside the native addon (`dist/gtkx.node`) and, when you have GSettings schemas, a compiled `dist/gschemas.compiled`. `npm start` (`node dist/bundle.js`) runs that bundle directly.
 
-**`gtkx codegen`** is the piece that makes gtkx feel native-typed. It reads the GObject-Introspection data for every library in `gtkx.config.ts` and emits, in one pass:
+**`gtkx codegen`** is the piece that makes GTKX feel native-typed. It reads the GObject-Introspection data for every library in `gtkx.config.ts` and emits, in one pass:
 
 - **`@gtkx/gi/<lib>`** (into `node_modules/.gtkx/gi`): the raw GI classes, enums, and functions, for example `import * as Gtk from "@gtkx/gi/gtk"`, used for refs, enums like `Gtk.Orientation.VERTICAL`, and imperative calls.
 - **`@gtkx/jsx/<lib>`** (into `node_modules/.gtkx/jsx`): the React host components, one PascalCase export per widget, for example `import { GtkBox, GtkButton } from "@gtkx/jsx/gtk"` and `import { AdwApplication } from "@gtkx/jsx/adw"`.
 
-Because the same generator emits the TypeScript types and the underlying FFI calls together, from one GIR, the types can't drift from the calls they back, and they cover the whole GTK4 and libadwaita surface rather than a hand-picked subset.
+Because the same generator emits the TypeScript types and the underlying FFI calls together, from one GIR, the types can't drift from the calls they back, and they cover the whole GTK4 and Adwaita surface rather than a hand-picked subset.
 
 You rarely run `codegen` by hand: `gtkx dev` and `gtkx build` regenerate the bindings automatically when they're stale (a fingerprint check skips it when nothing changed). The one place it's explicit is typechecking, where the bindings must exist before `tsc` runs:
 

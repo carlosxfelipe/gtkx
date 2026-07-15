@@ -4,13 +4,13 @@ description: "How the Tasks app builds its adaptive frame with AdwApplicationWin
 
 # The Application Shell
 
-Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state. This page walks that frame top to bottom: how the GTK application and window are declared, how window size is persisted on close, how the layout collapses to a phone-width single column, and why the detail/list/selection swap is driven by state rather than by GTK's own navigation stack.
+Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state. This page walks that frame top to bottom: how the application and window are declared, how window size is persisted on close, how the layout collapses to a phone-width single column, and why the detail/list/selection swap is driven by state rather than by Adwaita's own navigation stack.
 
-The file defines two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
+The file is organized around two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
 ## The application root
 
-The outermost element is `<AdwApplication>`. It is a real component from `@gtkx/jsx/adw`, not a wrapper you configure imperatively. Importing the libadwaita bindings runs `adw_init` at module load, which sets up the global `AdwStyleManager`; the component itself starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
+The outermost element is `<AdwApplication>`. It is a real component from `@gtkx/jsx/adw`, not a wrapper you configure imperatively. Importing the Adwaita bindings runs `adw_init` at module load, which sets up the global `AdwStyleManager`; the component itself starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
 
 ```tsx
 export function App() {
@@ -55,7 +55,7 @@ Because the actions live at the application level but need to mutate window stat
 
 ## The window
 
-`TasksWindow` renders a single `<AdwApplicationWindow>`. This is an Adwaita window: freeform (no separate title bar; the header bars live inside the content), and it takes its child content through the `content` object prop, which the children here route into automatically.
+`TasksWindow` renders a single `<AdwApplicationWindow>`. This is a Adwaita window: freeform (no separate title bar; the header bars live inside the content), and it takes its child content through the `content` object prop, which the children here route into automatically.
 
 ```tsx
 return (
@@ -74,12 +74,12 @@ return (
 );
 ```
 
-A few things worth calling out for a GTK newcomer:
+A few things worth calling out for a GTK4 newcomer:
 
 - **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). It is the target for the window-size bindings below.
 - **`widthRequest={360}` and `heightRequest={294}`** set the minimum window size. This is the GNOME phone-form-factor floor: the app is guaranteed to work down to a 360x294 window, which is what forces the layout to prove it collapses gracefully.
 - **`breakpoints`** is a slot that attaches an `<AdwBreakpoint>` to the window, covered below.
-- **`actions`** and **`controllers`** are `ReactNode` slots. `controllers` is present on every widget; `actions` on anything that is a GTK action map, which includes the application and application windows (`AdwApplicationWindow` / `GtkApplicationWindow`), but not a plain `GtkWindow`. `actions` holds `<GSimpleAction>` elements (here the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed on the actions and shortcuts page.
+- **`actions`** and **`controllers`** are `ReactNode` slots. `controllers` is present on every widget; `actions` on anything that is an action map (`Gio.ActionMap`), which includes the application and application windows (`AdwApplicationWindow` / `GtkApplicationWindow`), but not a plain `GtkWindow`. `actions` holds `<GSimpleAction>` elements (here the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed on the actions and shortcuts page.
 
 ### Persisting window size
 
@@ -90,7 +90,7 @@ useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-`useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). On startup it seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
+`useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced on the data model and persistence page. On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
 
 That leaves the close handler doing only what is genuinely close-time work: flushing unsaved tasks and quitting.
 
@@ -101,7 +101,7 @@ const handleClose = (): boolean => {
 };
 ```
 
-`onCloseRequest` maps to the GTK `close-request` signal. `api.flush()` writes any pending task changes to disk, and `quit()` from `@gtkx/react` unmounts every active render root, which disposes the window and ends the app.
+`onCloseRequest` maps to the GTK4 `close-request` signal. `api.flush()` writes any pending task changes to disk; `api` is the task-store API returned by `useTasks`, covered in the next chapter. `quit()` from `@gtkx/react` unmounts every active render root, which disposes the window and ends the app.
 
 ## The toast overlay
 
@@ -113,7 +113,7 @@ Immediately inside the window is an `<AdwToastOverlay>`. It wraps the entire lay
 </AdwToastOverlay>
 ```
 
-Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works, for example when a task is trashed the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered on the task-list page.
+Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works, for example when a task is trashed the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered on the feedback and dialogs page.
 
 ## The adaptive split view
 
@@ -155,7 +155,7 @@ The sidebar wraps its content in an `<AdwToolbarView>`, which gives you a header
 
 ## The breakpoint
 
-The split view collapses at a threshold, and that threshold is an `AdwBreakpoint`. In pure GTK a breakpoint is added to a window and, when its condition matches, emits `apply` / `unapply` (and can apply property setters). gtkx exposes this declaratively: the window's `breakpoints` slot takes one or more `<AdwBreakpoint>` children, each with a `condition` and `onApply` / `onUnapply` handlers.
+The split view collapses at a threshold, and that threshold is an `AdwBreakpoint`. In plain Adwaita a breakpoint is added to a window and, when its condition matches, emits `apply` / `unapply` (and can apply property setters). GTKX exposes this declaratively: the window's `breakpoints` slot takes one or more `<AdwBreakpoint>` children, each with a `condition` and `onApply` / `onUnapply` handlers.
 
 ```tsx
 <AdwApplicationWindow
@@ -171,7 +171,7 @@ The split view collapses at a threshold, and that threshold is an `AdwBreakpoint
 >
 ```
 
-`condition` is parsed once with `Adw.BreakpointCondition.parse`. When the window's width drops below the threshold, `onApply` fires; when it grows back, `onUnapply` fires. Both flip the `collapsed` state, which flows into the split view's `collapsed` prop: GTK reports the layout threshold, React owns whether the app is in its collapsed mode.
+`condition` is parsed once with `Adw.BreakpointCondition.parse`. When the window's width drops below the threshold, `onApply` fires; when it grows back, `onUnapply` fires. Both flip the `collapsed` state, which flows into the split view's `collapsed` prop: Adwaita reports the layout threshold, React owns whether the app is in its collapsed mode.
 
 The condition uses `sp` units rather than raw pixels. `sp` (scalable pixels) tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. Below 500sp the layout goes single-column; above it, side by side.
 
@@ -218,8 +218,8 @@ const detailHeader = selectedTask ? (
 ) : null;
 ```
 
-React stays the single source of truth. Opening a task is `setSelectedTaskId(id)`; a programmatic back is `setSelectedTaskId(null)`, which unmounts the task page and pops it. When the pop is instead driven by the widget itself (the back button, an edge-swipe, or Escape), `onPop(tag)` fires and the handler clears `selectedTaskId`, so React unmounts the page to match. There is no desync and no hand-written mirroring of a widget stack, because reconciling the declared pages against the widget's live stack is exactly what `<NavigationView>` does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through `AdwNavigationSplitView`'s controlled `showContent` prop.
+React stays the single source of truth. Opening a task is `setSelectedTaskId(id)`; a programmatic back is `setSelectedTaskId(null)`, which unmounts the task page and pops it. When the pop is instead driven by the widget itself (the back button or an edge-swipe), `onPop(tag)` fires and the handler clears `selectedTaskId`, so React unmounts the page to match. Escape takes the programmatic path: because `popOnEscape` is `false`, the global shortcut controller handles it and clears `selectedTaskId` directly. There is no desync and no hand-written mirroring of a widget stack, because reconciling the declared pages against the widget's live stack is exactly what `<NavigationView>` does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through `AdwNavigationSplitView`'s controlled `showContent` prop.
 
 ## Next
 
-Continue to **The Sidebar**.
+Continue to **Data Model and Persistence**, which introduces the types, the store, and the `useTasks` hook this chapter already leans on.

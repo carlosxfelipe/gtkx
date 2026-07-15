@@ -4,7 +4,7 @@ description: "Ship the Tasks app: gtkx build, a self-contained binary, a Flatpak
 
 # Packaging and Shipping
 
-A GTKX app is a Node program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the GTK metadata into something a user can install. This chapter turns the Tasks app into a self-contained binary and a Flatpak.
+A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the GTK4 metadata into something a user can install. This chapter turns the Tasks app into a self-contained binary and a Flatpak.
 
 ## Building
 
@@ -17,14 +17,14 @@ npm run build   # gtkx build
 It writes three things to `dist/`:
 
 - `bundle.js`, the whole app as one JavaScript file,
-- `gtkx.node`, the native addon that bridges to GTK,
+- `gtkx.node`, the native addon that bridges to GTK4,
 - `gschemas.compiled`, the compiled GSettings schema (emitted automatically because the app imports a `.gschema.xml`).
 
-At this point you can already run the app with `node dist/bundle.js`, provided GTK 4 and libadwaita are installed on the machine.
+At this point you can already run the app with `node dist/bundle.js`, provided GTK4 and Adwaita are installed on the machine.
 
 ## A single executable
 
-To ship a binary that does not depend on a system Node, the tutorial bundles the app into a [Node Single Executable Application](https://nodejs.org/api/single-executable-applications.html) (SEA). The `package.json` wires this up:
+To ship a binary that does not depend on a system Node.js, the tutorial bundles the app into a [Node.js Single Executable Application](https://nodejs.org/api/single-executable-applications.html) (SEA). The `package.json` wires this up:
 
 ```json
 "scripts": {
@@ -36,7 +36,7 @@ To ship a binary that does not depend on a system Node, the tutorial bundles the
 
 - `scripts/bundle.ts` re-bundles `dist/bundle.js` into a CommonJS file (`dist/bundle.cjs`) with a small shim that resolves `gtkx.node` next to the executable at runtime.
 - `scripts/bundle-postject.ts` (the `bundle:postject` script) bundles the `postject` CLI into `vendor/postject.cjs`, so the sandboxed Flatpak build can inject the blob offline without fetching anything.
-- `sea-config.json` tells Node what to embed:
+- `sea-config.json` tells Node.js what to embed:
 
 ```json
 {
@@ -47,7 +47,7 @@ To ship a binary that does not depend on a system Node, the tutorial bundles the
 }
 ```
 
-- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary with `dist/gtkx.node` beside it. The Flatpak build below installs that same binary as `gtkx-tutorial`.
+- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary with `dist/gtkx.node` beside it. The Flatpak build below produces its own SEA binary the same way, injecting the blob into the SDK's `node` inside the sandbox, and installs it as `gtkx-tutorial`.
 
 ::: warning
 The SEA blob is appended to the `node` binary as an ELF section. Stripping the binary would corrupt the embedded app, so any packaging step must leave it unstripped.
@@ -55,7 +55,7 @@ The SEA blob is appended to the `node` binary as an ELF section. Stripping the b
 
 ## Flatpak
 
-Flatpak is the standard way to distribute a GNOME app. The manifest at `flatpak/com.gtkx.tutorial.yaml` builds against the GNOME runtime and the Node SDK extension:
+Flatpak is the standard way to distribute a GNOME app. The manifest at `flatpak/com.gtkx.tutorial.yaml` builds against the GNOME runtime and the Node.js SDK extension:
 
 ```yaml
 id: com.gtkx.tutorial
@@ -72,9 +72,9 @@ finish-args:
   - --device=dri
 ```
 
-The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. File access happens through XDG desktop portals, and notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
+The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. The tasks store writes to the app's private XDG data directory, which every Flatpak can access without permissions. User-selected files would arrive through XDG desktop portals, and notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
 
-The `build-options` point npm at the SDK's Node and, crucially, turn off stripping so the SEA-injected binary stays intact:
+The `build-options` point npm at the SDK's Node.js and, crucially, turn off stripping so the SEA-injected binary stays intact:
 
 ```yaml
 build-options:
@@ -94,7 +94,7 @@ build-commands:
   - npm run bundle:postject
   - node --experimental-sea-config sea-config.json
   - cp /usr/lib/sdk/node24/bin/node app
-  - node vendor/postject.cjs app NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_...
+  - node vendor/postject.cjs app NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
   - install -Dm755 app /app/bin/gtkx-tutorial
   - install -Dm755 dist/gtkx.node /app/bin/gtkx.node
   - install -Dm644 data/com.gtkx.tutorial.gschema.xml /app/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml
@@ -128,7 +128,7 @@ DBusActivatable=true
 
 `X-GNOME-UsesNotifications=true` surfaces the app in GNOME Settings under Notifications, and `DBusActivatable=true` lets the shell activate the app to deliver a reminder action even when it is not running.
 
-The AppStream `metainfo.xml` provides the store listing: name, summary, description, screenshots, license, releases, and a content rating. Its `id` must match the app id, and its `launchable` must point at the `.desktop` file.
+The AppStream `metainfo.xml` provides the store listing: name, summary, description, screenshots, license, releases, and a content rating. Its `id` must match the application ID, and its `launchable` must point at the `.desktop` file.
 
 Validate both before shipping:
 
@@ -142,7 +142,7 @@ npm run flatpak:lint
 
 To publish, vendor the npm dependencies for the offline build with [flatpak-node-generator](https://github.com/flatpak/flatpak-builder-tools) (`npm run flatpak:sources`), build locally with `npm run flatpak:build`, then open a pull request against the [flathub/flathub](https://github.com/flathub/flathub) repository that swaps the local `dir` source for a pinned `git` source.
 
-That is the whole pipeline: `gtkx build` for the bundle, a Node SEA for a standalone binary, and a Flatpak manifest for a sandboxed, installable GNOME app.
+That is the whole pipeline: `gtkx build` for the bundle, a Node.js SEA for a standalone binary, and a Flatpak manifest for a sandboxed, installable GNOME app.
 
 ## Next
 

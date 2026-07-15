@@ -140,7 +140,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
     <span class="glow" />
     <div class="hero__grid stack-md">
       <div class="hero__col">
-        <p class="overline hero__eyebrow">// React · Linux · GTK4 · libadwaita · TypeScript</p>
+        <p class="overline hero__eyebrow">// React · Linux · GTK4 · Adwaita · TypeScript</p>
         <h1 class="hero__title">
           Linux app development for the
           <span class="gtkx-gradient-text">modern age</span>
@@ -148,7 +148,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
         <p class="hero__lede">
           Write declarative JSX. GTKX renders it to real, native
           <strong>GObjects</strong> (no webview, no Electron) powered by a native Rust core,
-          with first-class GTK4 &amp; libadwaita support.
+          with first-class GTK4 &amp; Adwaita support.
         </p>
         <div class="hero__cta">
           <Button size="lg" href="/guide/getting-started">

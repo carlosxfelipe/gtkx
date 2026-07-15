@@ -12,7 +12,7 @@ const { Context: OverlayContext, useParentRef: useOverlayRef } = createParentCon
 /** Props for {@link Overlay}. */
 export type OverlayProps = GtkOverlayProps & { ref?: Ref<Gtk.Overlay | null> };
 
-type OverlayPlacementProps = {
+export type OverlayPlacementProps = {
     /** Whether this overlay contributes to the Overlay's measured size. */
     measure?: boolean | null | undefined;
     /** Whether the overlay is clipped to the main child's allocation. */

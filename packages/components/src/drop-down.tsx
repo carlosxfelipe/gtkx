@@ -27,7 +27,7 @@ interface DropDownWidget extends Gtk.Widget {
     setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
 }
 
-type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
+export type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
 
 const itemFactoryInstaller: FactoryInstaller<DropDownWidget> = {
     install: (widget, factory) => widget.setFactory(factory),

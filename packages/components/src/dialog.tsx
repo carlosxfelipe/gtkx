@@ -17,7 +17,7 @@ import { asPolymorphicProps, type PolymorphicComponentProps } from "./types.js";
 /** A widget presented as a dialog and force-closed by {@link Dialog}, such as an Adw.Dialog. */
 export type DialogInstance = Adw.Dialog;
 
-type DialogOwnProps = {
+export type DialogOwnProps = {
     /** Widget to anchor the dialog to, defaulting to the enclosing window when omitted. */
     parent?: Gtk.Window | null | undefined;
     /** Fires when the user closes the dialog through Escape, the close button, or a swipe, not when React unmounts it. */

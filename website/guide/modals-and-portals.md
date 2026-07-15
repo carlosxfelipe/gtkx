@@ -1,16 +1,16 @@
 ---
-description: "How gtkx renders GTK surfaces that live outside the widget tree: createPortal, the rootElement container, the Dialog component and AdwAlertDialog responses, and extra windows."
+description: "How GTKX renders GTK4 surfaces that live outside the widget tree: createPortal, the rootElement container, the Dialog component and AdwAlertDialog responses, and extra windows."
 ---
 
 # Modals and Portals
 
-A React tree normally mirrors a containment hierarchy: each JSX child becomes a child widget of its JSX parent. GTK has surfaces that refuse to fit that shape. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` that gets *presented* against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view, not by you. In every one of these cases you still want React state to decide what exists and what it looks like. Portals are the bridge: they let a component render children into a container other than its JSX parent, while the component keeps owning those children's state, props, and lifetime.
+A React tree normally mirrors a containment hierarchy: each JSX child becomes a child widget of its JSX parent. GTK4 has surfaces that refuse to fit that shape. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` that gets *presented* against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view, not by you. In every one of these cases you still want React state to decide what exists and what it looks like. Portals are the bridge: they let a component render children into a container other than its JSX parent, while the component keeps owning those children's state, props, and lifetime.
 
 This page describes the general model. For a worked walkthrough of toasts, confirmations, and form dialogs in a real app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
 
 ## createPortal
 
-`createPortal` from `@gtkx/react` has the same shape as its React DOM namesake, with GTK containers in place of DOM nodes:
+`createPortal` from `@gtkx/react` has the same shape as its React DOM namesake, with GTK4 containers in place of DOM nodes:
 
 ```ts
 import { createPortal } from "@gtkx/react";
@@ -22,7 +22,7 @@ A `Container` is either any live `GObject.Object` or the special `rootElement` m
 
 - **A widget you hold a ref to.** The children are attached to that widget exactly as if they had been written as its JSX children, using the same generated container logic (append, insert, reorder) that regular children use.
 - **The `Gtk.Application` object** from `useApplication()`, the natural home for extra windows.
-- **`rootElement`**, the top-level container, for anything that should exist with no GTK parent at all.
+- **`rootElement`**, the top-level container, for anything that should exist with no GTK4 parent at all.
 
 Portaling into a widget looks like this. The container has to exist before the portal can target it, so capture it in state rather than a plain ref, which makes the portal render as soon as the widget is created:
 
@@ -46,14 +46,14 @@ const StatusArea = () => {
 Everything you know about portals from React DOM carries over: the children stay in the *React* tree of the component that rendered them, so context, state, and effects flow from where the portal is written, not where the widgets land. Multiple portals can target the same container, portal contents update when props change, and removing the portal unmounts and destroys its widgets.
 
 ::: info
-gtkx uses this mechanism internally. The `ListView`, `GridView`, and `ColumnView` components in `@gtkx/components` render your `renderItem` output through portals into the cell containers that GTK's list item factories create on demand. That is why fully declarative, stateful list cells work at all: each cell is a portal target.
+GTKX uses this mechanism internally. The `ListView`, `GridView`, and `ColumnView` components in `@gtkx/components` render your `renderItem` (or, for `ColumnView` columns, `renderCell`) output through portals into the cell containers that GTK4's list item factories create on demand. That is why fully declarative, stateful list cells work at all: each cell is a portal target.
 :::
 
 ## The root element
 
-`rootElement`, exported from `@gtkx/react`, is a singleton marker object, not a widget. It is the default container of `createRoot()`, which is why the entry point of a gtkx app passes no argument: the "root" of a native app is not an element in a page.
+`rootElement`, exported from `@gtkx/react`, is a singleton marker object, not a widget. It is the default container of `createRoot()`, which is why the entry point of a GTKX app passes no argument: the "root" of a native app is not an element in a page.
 
-Portaling to `rootElement` means "mount this with no GTK parent." No attach call is made on the native side; the widget is simply created top-level. That is exactly what windows and dialogs need, since GTK forbids them from being parented into a layout. Relationships between top-level windows are expressed with window properties instead, chiefly `transientFor`:
+Portaling to `rootElement` means "mount this with no GTK4 parent." No attach call is made on the native side; the widget is created top-level. That is exactly what windows and dialogs need, since GTK4 forbids them from being parented into a layout. Relationships between top-level windows are expressed with window properties instead, chiefly `transientFor`:
 
 ```tsx
 import { GtkWindow } from "@gtkx/jsx/gtk";
@@ -73,7 +73,7 @@ The portaled window has no widget parent (`getParent()` returns `null`), but `tr
 
 ## Declarative dialogs
 
-Adw dialogs have an imperative API: you call `dialog.present(parent)` to show one and `dialog.forceClose()` to dismiss it. The `Dialog` component from `@gtkx/components/adw` converts that protocol into the React contract you actually want: **mounting the component presents the dialog, unmounting it closes the dialog.**
+Adwaita dialogs have an imperative API: you call `dialog.present(parent)` to show one and `dialog.forceClose()` to dismiss it. The `Dialog` component from `@gtkx/components/adw` converts that protocol into the React contract you actually want: **mounting the component presents the dialog, unmounting it closes the dialog.**
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
@@ -105,7 +105,7 @@ Showing it is a conditional render, the same as any other component:
 3. Resolves `parent` for you: the optional `parent` prop (`Gtk.Window | null`) anchors the dialog explicitly, and when omitted it defaults to the nearest enclosing window from `useParentWindow()`. Pass `parent={null}` to present a dialog with no anchor.
 4. Wires its own `onClose` prop to the widget's `closed` signal, so a user-initiated dismissal reports back to React without you touching the inner widget.
 
-Closing the loop when the *user* dismisses the dialog (Escape, the close button, a swipe) is handled by `Dialog` itself. Pass `onClose` and it fires whenever the widget emits `closed`, so you clear the state that mounted the dialog, as `About` does above. A `closingFromReact` guard makes sure the `forceClose()` from React's own unmount does not re-fire `onClose`. Without wiring `onClose`, React would still consider the dialog open after GTK has closed it.
+Closing the loop when the *user* dismisses the dialog (Escape, the close button, a swipe) is handled by `Dialog` itself. Pass `onClose` and it fires whenever the widget emits `closed`, so you clear the state that mounted the dialog, as `About` does above. A `closingFromReact` guard makes sure the `forceClose()` from React's own unmount does not re-fire `onClose`. Without wiring `onClose`, React would still consider the dialog open after GTK4 has closed it.
 
 The same wrapper covers full preference surfaces. The tutorial's preferences dialog is an `AdwPreferencesDialog` with pages, groups, and rows as ordinary children, driven by [GSettings-backed state](/tutorial/preferences-and-theming):
 
@@ -164,7 +164,7 @@ Responses are declared separately from the body, so any children become the dial
 
 ## Finding the parent window
 
-`useParentWindow()` from `@gtkx/react` returns the `Gtk.Window` provided by the nearest window ancestor in the React tree, or `null` when there is none. Every window element (anything gtkx wraps as a window, such as `GtkWindow`, `GtkApplicationWindow`, and `AdwApplicationWindow`) provides this context to its children. Because the context follows the *React* tree, it survives portals: a dialog portaled to `rootElement` from deep inside a window's subtree still resolves that window as its parent, which is precisely how `Dialog` anchors itself without being told where it is.
+`useParentWindow()` from `@gtkx/react` returns the `Gtk.Window` provided by the nearest window ancestor in the React tree, or `null` when there is none. Every window element (anything GTKX wraps as a window, such as `GtkWindow`, `GtkApplicationWindow`, and `AdwApplicationWindow`) provides this context to its children. Because the context follows the *React* tree, it survives portals: a dialog portaled to `rootElement` from deep inside a window's subtree still resolves that window as its parent, which is precisely how `Dialog` anchors itself without being told where it is.
 
 ## Multiple windows
 

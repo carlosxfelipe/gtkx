@@ -8,7 +8,7 @@ import Icon from "../components/Icon.vue";
       <p class="overline">A real GNOME app</p>
       <h2 class="show__title section-title">Built with GTKX, in the tutorial</h2>
       <p class="section-sub">
-        The docs walk you through Tasks, a complete libadwaita app: adaptive split view, GSettings,
+        The docs walk you through Tasks, a complete Adwaita app: adaptive split view, GSettings,
         notifications, and a Flatpak. Every widget in it is native.
       </p>
     </div>
@@ -20,7 +20,7 @@ import Icon from "../components/Icon.vue";
           width="900"
           height="600"
           loading="lazy"
-          alt="The Tasks app built in the tutorial: an adaptive libadwaita window with a sidebar of smart views and colored lists next to a boxed task list."
+          alt="The Tasks app built in the tutorial: an adaptive Adwaita window with a sidebar of smart views and colored lists next to a boxed task list."
         />
       </picture>
       <span class="show__cta">Follow the tutorial <Icon name="arrow" :size="15" /></span>

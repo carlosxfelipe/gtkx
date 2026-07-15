@@ -13,7 +13,7 @@ const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
     uninstall: (widget: Gtk.GridView) => widget.setFactory(null),
 };
 
-type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
+export type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
     ControlledSelectionProps & {
         items?: ItemNode<T>[] | undefined;
         renderItem: (props: RenderItemProps<T>) => ReactNode;

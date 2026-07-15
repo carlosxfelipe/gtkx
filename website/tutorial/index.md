@@ -1,14 +1,14 @@
 ---
-description: "Tour a complete GNOME Tasks app built with GTKX, where real GTK4 and libadwaita widgets are rendered from the React components you already know."
+description: "Tour a complete GNOME Tasks app built with GTKX, where real GTK4 and Adwaita widgets are rendered from the React components you already know."
 ---
 
 # Build a Tasks App with GTKX
 
-This guide walks through a complete, real GNOME application built with GTKX: **Tasks**, a task manager (app id `com.gtkx.tutorial`). It looks and behaves like a native GNOME app because it *is* one. Every list, row, header bar, and dialog you see is a real GTK4 or libadwaita widget, driven from React components you already know how to write.
+This guide walks through a complete, real GNOME application built with GTKX: **Tasks**, a task manager (application ID `com.gtkx.tutorial`). It looks and behaves like a native GNOME app because it *is* one. Every list, row, header bar, and dialog you see is a real GTK4 or Adwaita widget, driven from React components you already know how to write.
 
 <picture>
   <source srcset="/tasks-screenshot.webp" type="image/webp" />
-  <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive libadwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
+  <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
 The app is already written. Rather than building it file by file, this guide tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwNavigationSplitView`, `GtkListBox`, and friends.
@@ -37,7 +37,7 @@ export function App() {
 }
 ```
 
-`<AdwApplication>` provides the GTK application object. Importing the libadwaita bindings runs `adw_init` at module load, which sets up the libadwaita style manager. Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the split view, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
+`<AdwApplication>` provides the GTK4 application object. Importing the Adwaita bindings runs `adw_init` at module load, which sets up the Adwaita style manager. Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the split view, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
 
 ```tsx
 <AdwApplicationWindow ref={windowRef} title="Tasks" /* ... */>
@@ -89,17 +89,17 @@ Every one of these is real, working code in `examples/tutorial/src`. Nothing is 
 
 ## What GTKX is
 
-GTKX is a React renderer that targets native GTK4 and libadwaita instead of the DOM. You write declarative JSX; a Rust GObject runtime instantiates and updates real GTK widgets underneath. There is no webview, no Electron, no HTML or CSS-in-a-browser. Every component you import from `@gtkx/jsx/adw`, `@gtkx/jsx/gtk`, and `@gtkx/jsx/gio` maps one-to-one onto a GObject class (`AdwHeaderBar` is `Adw.HeaderBar`, `GtkButton` is `Gtk.Button`), so anything you can find in the GTK4 or libadwaita documentation is reachable from React. Because it runs on a Node runtime, you also keep the full JavaScript ecosystem: `crypto.randomUUID` for ids, `TextEncoder` / `TextDecoder` for the JSON store, and any npm package that does not need the DOM.
+GTKX is a React reconciler that targets native GTK4 and Adwaita instead of the DOM. You write declarative JSX; a native Rust core instantiates and updates real GTK4 widgets underneath. There is no webview, no Electron, no HTML or CSS-in-a-browser. Every component you import from `@gtkx/jsx/adw`, `@gtkx/jsx/gtk`, and `@gtkx/jsx/gio` maps one-to-one onto a GObject class (`AdwHeaderBar` is `Adw.HeaderBar`, `GtkButton` is `Gtk.Button`), so anything you can find in the GTK4 or Adwaita documentation is reachable from React. Because it runs on Node.js, you also keep the full JavaScript ecosystem: `crypto.randomUUID` for ids, `TextEncoder` / `TextDecoder` for the JSON store, and any npm package that does not need the DOM.
 
 ::: info React knowledge transfers directly
-State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK side: which widget does what, how libadwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This guide leads with those.
+State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK4 side: which widget does what, how Adwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This guide leads with those.
 :::
 
 ## Prerequisites
 
-- **Linux** with **GTK 4** and **libadwaita** installed (both ship with any current GNOME desktop; on other environments install your distribution's `gtk4` and `libadwaita` runtime packages).
+- **Linux** with the **GTK4**, **Adwaita**, and **GLib** development libraries installed (the runtime libraries ship with any current GNOME desktop; add your distribution's development packages for all three).
 - **Node.js 24 or newer.**
-- Working familiarity with **React** and **TypeScript**. You do not need any prior GTK, GObject, or C experience.
+- Working familiarity with **React** and **TypeScript**. You do not need any prior GTK4, GObject, or C experience.
 
 ## How this guide is organized
 
@@ -107,13 +107,14 @@ The guide moves from the outside of the app inward, then out to shipping:
 
 - **The shell**: the application object, the window, and the adaptive `AdwNavigationSplitView` that frames everything.
 - **Data and state**: the task model, the JSON store behind `useTasks`, and how `useSetting` bridges React state to `GSettings`.
-- **The task list**: boxed lists, rows, inline add, filtering, search, and drag-to-reorder.
+- **The task list**: boxed lists, rows, inline add, filtering, search, drag-to-reorder, and animating state changes with `@gtkx/animate`.
 - **The editor and dialogs**: the detail form, preferences, and the undo/confirm patterns.
 - **Selection, shortcuts, and notifications**: batch actions, keyboard accelerators, and desktop reminders.
+- **Testing**: driving the real widget tree with `@gtkx/testing` and Vitest.
 - **Theming and packaging**: styling with `@gtkx/css`, and building a shippable app.
 
 You can read it straight through or jump to whichever feature you need. Every page quotes the actual source, so you can always open the matching file under `examples/tutorial/src` and follow along.
 
 ## Next
 
-Continue to [Getting Started](/guide/getting-started) to scaffold the project and get the edit, save, watch-it-update loop running. From there, [The Application Shell](./app-shell) breaks down how the application, window, and adaptive split view fit together.
+Continue to **The Application Shell** to see how the application, window, and adaptive split view fit together. To scaffold the project and get the edit, save, watch-it-update loop running first, see [Getting Started](/guide/getting-started).

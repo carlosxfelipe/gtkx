@@ -1,10 +1,10 @@
 # Contributing to GTKX
 
-Thank you for your interest in contributing to GTKX! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to GTKX. This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
-This project follows the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). By participating, you are expected to uphold this code. Please report unacceptable behavior via GitHub issues.
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md), based on [version 2.0 of the Contributor Covenant](https://www.contributor-covenant.org/version/2/0/code_of_conduct/). By participating, you are expected to uphold this code. Please report unacceptable behavior to eugeniodepalo@gmail.com.
 
 ## Getting Started
 
@@ -12,9 +12,8 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 
 - **Node.js** 24 or later
 - **pnpm**
-- **turbo**
 - **Rust** stable toolchain
-- **Linux** with GTK4 development libraries
+- **Linux** with the GTK4, Adwaita, and GLib development libraries
 
 ### System Dependencies
 
@@ -30,13 +29,13 @@ git clone https://github.com/YOUR_USERNAME/gtkx.git
 cd gtkx
 ```
 
-1. **Install dependencies:**
+2. **Install dependencies:**
 
 ```bash
 pnpm install
 ```
 
-1. **Build all packages:**
+3. **Build all packages:**
 
 ```bash
 pnpm build
@@ -52,7 +51,7 @@ pnpm build
 git checkout -b feature/your-feature-name
 ```
 
-1. Use descriptive branch names:
+2. Use descriptive branch names:
 
 - `feature/` for new features
 - `fix/` for bug fixes
@@ -149,8 +148,8 @@ Examples in `examples/` serve as both documentation and integration tests. When 
 
 - **Questions:** Open a [GitHub Discussion](https://github.com/gtkx-org/gtkx/discussions)
 - **Bugs:** Open a [GitHub Issue](https://github.com/gtkx-org/gtkx/issues)
-- **Security:** Email eugeniodepalo@gmail.com directly — do not open a public issue (see SECURITY.md)
+- **Security:** Email eugeniodepalo@gmail.com directly; do not open a public issue (see SECURITY.md)
 
 ---
 
-Thank you for contributing to GTKX!
+Thank you for contributing to GTKX.

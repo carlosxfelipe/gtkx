@@ -1,10 +1,10 @@
 ---
-description: "Build the navigation sidebar as one GtkListBox of AdwActionRows, derived from props, with selection synced both ways between React and GTK."
+description: "Build the navigation sidebar as one GtkListBox of AdwActionRows, derived from props, with selection synced both ways between React and GTK4."
 ---
 
 # The Sidebar
 
-The sidebar is the left pane of the adaptive `AdwNavigationSplitView`: a single scrolling list of "smart views" (All Tasks, Today, Important), then the user's colored task lists, then Trash. In GTK terms it is one `GtkListBox` wearing the `.navigation-sidebar` style class, and every row is an `AdwActionRow`. There is no per-row component and no imperative widget code in the hot path: the whole thing is derived from props, and selection is a controlled value synced in both directions between React state and the live `GtkListBox`.
+The sidebar is the left pane of the adaptive `AdwNavigationSplitView`: a single scrolling list of "smart views" (All Tasks, Today, Important), then the user's colored task lists, then Trash. In GTK4 terms it is one `GtkListBox` wearing the `.navigation-sidebar` style class, and every row is an `AdwActionRow`. There is no per-row component and no imperative widget code in the hot path: the whole thing is derived from props, and selection is a controlled value synced in both directions between React state and the live `GtkListBox`.
 
 Here is the entire file's import block and the shape of one row entry, straight from `components/sidebar.tsx`:
 
@@ -26,7 +26,7 @@ type Entry = {
 };
 ```
 
-Two things worth flagging for a React reader. Every widget is a named PascalCase import from `@gtkx/jsx/<lib>` (there are no lowercase intrinsics like `<div>`); `AdwActionRow` comes from the libadwaita namespace, the `Gtk*` primitives from the GTK one. And `@gtkx/gi/gtk` (imported as `Gtk`) is a separate thing from `@gtkx/jsx/gtk`: it gives you the raw GI classes and enums (`Gtk.ListBox` for the ref type, `Gtk.Align`, `Gtk.AccessibleRole`), not JSX components.
+Two things worth flagging for a React reader. Every widget is a named PascalCase import from `@gtkx/jsx/<lib>` (there are no lowercase intrinsics like `<div>`); `AdwActionRow` comes from the Adwaita namespace, the `Gtk*` primitives from the GTK4 one. And `@gtkx/gi/gtk` (imported as `Gtk`) is a separate thing from `@gtkx/jsx/gtk`: it gives you the raw GI classes and enums (`Gtk.ListBox` for the ref type, `Gtk.Align`, `Gtk.AccessibleRole`), not JSX components.
 
 ## One data model, one key function
 
@@ -98,13 +98,13 @@ return (
 );
 ```
 
-There is no `className` in gtkx; you attach style classes through `cssClasses`, which is always a `string[]`. `.navigation-sidebar` is a stock libadwaita class that restyles a `GtkListBox` into the flat, tinted sidebar look (no card borders, hover/selection styled for a nav rail). The list box uses its default single-selection behavior, which is exactly what a navigation rail wants: one active destination at a time.
+There is no `className` in GTKX; you attach style classes through `cssClasses`, which is always a `string[]`. `.navigation-sidebar` is a stock Adwaita class that restyles a `GtkListBox` into the flat, tinted sidebar look (no card borders, hover/selection styled for a nav rail). The list box uses its default single-selection behavior, which is exactly what a navigation rail wants: one active destination at a time.
 
-Note the children are plain `AdwActionRow`s, not `GtkListBoxRow`s. When you drop non-row children into a `GtkListBox`, the reconciler wraps each one in a `GtkListBoxRow` for you, so `row.getIndex()` inside `onRowSelected` lines up with the index into `entries`.
+The children are `AdwActionRow`s, and `AdwActionRow` subclasses `GtkListBoxRow` (via `AdwPreferencesRow`), so the reconciler appends each one to the list box directly and `row.getIndex()` inside `onRowSelected` maps one-to-one onto the index into `entries`. Only a non-row child, such as a bare `GtkLabel`, would get wrapped in a `GtkListBoxRow` before insertion.
 
 ## Rows: prefix and suffix slots
 
-`AdwActionRow` exposes two named `ReactNode` slots, `prefix` and `suffix`, that map to libadwaita's `add_prefix`/`add_suffix`. The sidebar uses `prefix` for the leading icon-or-dot and `suffix` for the trailing count badge:
+`AdwActionRow` exposes two named `ReactNode` slots, `prefix` and `suffix`, that map to Adwaita's `add_prefix`/`add_suffix`. The sidebar uses `prefix` for the leading icon-or-dot and `suffix` for the trailing count badge:
 
 ```tsx
 <AdwActionRow
@@ -134,11 +134,11 @@ Note the children are plain `AdwActionRow`s, not `GtkListBoxRow`s. When you drop
 />
 ```
 
-Passing `title` as a prop (not children) is the libadwaita convention: `AdwActionRow` is a preferences-style row where the title text is a first-class property, and gtkx surfaces it as a plain string prop.
+Passing `title` as a prop (not children) is the Adwaita convention: `AdwActionRow` is a preferences-style row where the title text is a first-class property, and GTKX surfaces it as a plain string prop.
 
 ### Colored list dots
 
-A user list's color is rendered as a small circular `GtkBox`. GTK has no "circle" widget, so the dot is pure CSS: `listDot(color)` in `styles.ts` returns a generated class name that sizes and rounds an empty box and fills it with the list's color.
+A user list's color is rendered as a small circular `GtkBox`. GTK4 has no "circle" widget, so the dot is pure CSS: `listDot(color)` in `styles.ts` returns a generated class name that sizes and rounds an empty box and fills it with the list's color.
 
 ```ts
 import { css } from "@gtkx/css";
@@ -171,12 +171,23 @@ The trailing number is a `GtkLabel` styled with two stock classes:
 `.numeric` switches the label to tabular (fixed-width) figures so counts stay aligned as they change. `.dimmed` de-emphasizes the text.
 
 ::: tip `.dimmed`, not `.dim-label`
-libadwaita deprecated `.dim-label` in favor of `.dimmed`. Reach for `.dimmed` in new code; they achieve the same visual muting.
+Adwaita deprecated `.dim-label` in favor of `.dimmed`. Reach for `.dimmed` in new code; they achieve the same visual muting.
 :::
 
-The badge only renders when `entry.count > 0`, otherwise the `suffix` slot receives `undefined` and the row shows no trailing number. The counts come from the `sidebarCounts` selector in `select.ts`, which is a pure derivation over the task array:
+The badge only renders when `entry.count > 0`, otherwise the `suffix` slot receives `undefined` and the row shows no trailing number. The counts come from the `sidebarCounts` selector in `select.ts`, which is a pure derivation over the task array. The snippet below includes the file's imports and the `SidebarCounts` type that `sidebar.tsx` imports:
 
 ```ts
+import { isToday } from "./format.js";
+import type { Task, TaskList } from "./types.js";
+
+export type SidebarCounts = {
+    all: number;
+    today: number;
+    important: number;
+    trash: number;
+    lists: Record<string, number>;
+};
+
 export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts => {
     const active = tasks.filter((task) => !task.deleted && !task.done);
     return {
@@ -188,6 +199,17 @@ export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts =
             lists.map((list) => [list.id, active.filter((task) => task.listId === list.id).length]),
         ),
     };
+};
+```
+
+`isToday` is a small date helper that lives in `src/format.ts`:
+
+```ts
+const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+export const isToday = (iso: string | null): boolean => {
+    if (!iso) return false;
+    return startOfDay(new Date(iso)) === startOfDay(new Date());
 };
 ```
 
@@ -215,7 +237,7 @@ export const Sidebar = ({
     // ...
 ```
 
-A `GtkListBox` has its own native selection, so keeping it in agreement with a React prop is a two-way problem: user clicks must flow out to `onSelect`, and prop changes (for example, a keyboard shortcut jumping to Trash) must flow back into the widget. gtkx wires both directions explicitly.
+A `GtkListBox` has its own native selection, so keeping it in agreement with a React prop is a two-way problem: user clicks must flow out to `onSelect`, and prop changes (for example, a keyboard shortcut jumping to Trash) must flow back into the widget. GTKX wires both directions explicitly.
 
 **Widget to React** happens in `onRowSelected`, the JSX form of the GtkListBox `row-selected` signal. Its first argument is the newly selected `Gtk.ListBoxRow` (or `null`):
 
@@ -238,7 +260,7 @@ useEffect(() => {
 }, [activeIndex]);
 ```
 
-`listRef` is a `useRef<Gtk.ListBox | null>(null)`; because `ref` on a gtkx component resolves to the live GI instance, `listRef.current` is a real `Gtk.ListBox` and you can call GTK methods on it directly (`getRowAtIndex`, `selectRow`). The effect keys off `activeIndex`, which is recomputed each render by matching `keyOf` against the incoming `selection` prop.
+`listRef` is a `useRef<Gtk.ListBox | null>(null)`; because `ref` on a GTKX component resolves to the live GI instance, `listRef.current` is a real `Gtk.ListBox` and you can call GTK4 methods on it directly (`getRowAtIndex`, `selectRow`). The effect keys off `activeIndex`, which is recomputed each render by matching `keyOf` against the incoming `selection` prop.
 
 ::: info Breaking the echo
 These two directions form a loop: the effect calls `selectRow`, which makes the list box emit `row-selected`, which runs the `onRowSelected` handler. Without a guard that would fire `onSelect` right back with the value that just arrived. The guard `keyOf(entry.selection) !== keyOf(selection)` is what stops it: when the row that got selected already matches the current `selection` prop, the handler returns without calling `onSelect`. Real user clicks land on a *different* row, so `keyOf` differs and the update propagates; the programmatic echo lands on the same row, so `keyOf` matches and it is swallowed.

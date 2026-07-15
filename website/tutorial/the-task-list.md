@@ -45,12 +45,13 @@ export const TaskList = ({ tasks, reorderable, addPlaceholder, onAddTask, empty,
             </GtkScrolledWindow>
         </GtkBox>
     );
+};
 ```
 
-A few GTK-isms to unpack for a React reader:
+A few GTK4-isms to unpack for a React reader:
 
 - `orientation={Gtk.Orientation.VERTICAL}` is how a `GtkBox` stacks children. `Gtk.Orientation` is a real GI enum imported from `@gtkx/gi/gtk`; you pass the enum member, not a string. `vexpand` (a bare boolean) tells the box to claim all leftover vertical space, so the list fills the pane.
-- **`AdwClamp`** is the libadwaita widget that caps content width and centers it. `maximumSize={640}` means "never let the list grow past 640px wide, no matter how wide the monitor is." This is the standard GNOME reading-width treatment: on a wide screen the boxed list sits centered instead of stretching edge to edge. The `margin*` props (universal on every widget) inset it from the pane edges.
+- **`AdwClamp`** is the Adwaita widget that caps content width and centers it. `maximumSize={640}` means "never let the list grow past 640px wide, no matter how wide the monitor is." This is the standard GNOME reading-width treatment: on a wide screen the boxed list sits centered instead of stretching edge to edge. The `margin*` props (universal on every widget) inset it from the pane edges.
 - `GtkScrolledWindow` with `vexpand` wraps the clamp so a long list scrolls.
 
 ## Search: two controlled GObject properties
@@ -68,18 +69,18 @@ A few GTK-isms to unpack for a React reader:
 </GtkSearchBar>
 ```
 
-`GtkSearchBar` is the sliding container that reveals or hides the search field. Its `search-mode-enabled` GObject property controls whether the bar is open. gtkx exposes writable scalar GObject properties in two halves, a value prop and a notify handler, and since `search-mode-enabled` is writable you see both here:
+`GtkSearchBar` is the sliding container that reveals or hides the search field. Its `search-mode-enabled` GObject property controls whether the bar is open. GTKX exposes writable scalar GObject properties in two halves, a value prop and a notify handler, and since `search-mode-enabled` is writable you see both here:
 
 - `searchModeEnabled={search.mode}` is the **setter** side. React drives the bar open or closed.
-- `onNotifySearchModeEnabled` is the **notify** side. GTK fires `notify::search-mode-enabled` whenever the property changes (including when the user presses Escape to dismiss the bar), and gtkx surfaces that as an `onNotify<Prop>` handler. The value can be `null`, so the code coalesces with `enabled ?? false`.
+- `onNotifySearchModeEnabled` is the **notify** side. GTK4 fires `notify::search-mode-enabled` whenever the property changes (including when the user presses Escape to dismiss the bar), and GTKX surfaces that as an `onNotify<Prop>` handler. The value can be `null`, so the code coalesces with `enabled ?? false`.
 
-Wiring both halves back to the same state (`search.mode` / `search.onModeChange`) is what makes it a controlled component, exactly like a controlled `<input>` in React. This is the general gtkx pattern for two-way binding any GObject property.
+Wiring both halves back to the same state (`search.mode` / `search.onModeChange`) is what makes it a controlled component, exactly like a controlled `<input>` in React. This is the general GTKX pattern for two-way binding any GObject property.
 
 ::: tip
-The setter prop and the notify handler are named mechanically from the GObject property `search-mode-enabled`: kebab-case becomes camelCase for the value prop (`searchModeEnabled`), and the notify handler is `onNotify` + PascalCase (`onNotifySearchModeEnabled`). Every property in gtkx follows this rule, so you can predict the names without looking them up.
+The setter prop and the notify handler are named mechanically from the GObject property `search-mode-enabled`: kebab-case becomes camelCase for the value prop (`searchModeEnabled`), and the notify handler is `onNotify` + PascalCase (`onNotifySearchModeEnabled`). Every property in GTKX follows this rule, so you can predict the names without looking them up.
 :::
 
-`GtkSearchEntry` is the actual text field. Its `text` is controlled the same way (`text={search.query}`), and `onSearchChanged` fires on a debounced keystroke. The handler receives `self`, the live `Gtk.SearchEntry` instance, so `self.text` reads the current value straight off the widget. Every gtkx signal handler ends with this `self` argument.
+`GtkSearchEntry` is the actual text field. Its `text` is controlled the same way (`text={search.query}`), and `onSearchChanged` fires on a debounced keystroke. The handler receives `self`, the live `Gtk.SearchEntry` instance, so `self.text` reads the current value straight off the widget. Every GTKX `on*` signal prop handler ends with this `self` argument; handlers connected with `useSignal` or `.on` receive only the signal's own arguments.
 
 The search field is toggled from the header bar's search button in `app.tsx`, which flips the same `searchMode` state this component reads:
 
@@ -106,12 +107,12 @@ onClicked={() => setSearchMode((mode) => !mode)}
 </GtkBox>
 ```
 
-Two things make this the idiomatic libadwaita list rather than a plain one:
+Two things make this the idiomatic Adwaita list rather than a plain one:
 
-- **`cssClasses={["boxed-list"]}`** applies the `.boxed-list` style class, which turns a bare `GtkListBox` into the rounded, bordered card group you see all over GNOME Settings. There is no `className` prop in gtkx; you always pass a string array to `cssClasses`.
+- **`cssClasses={["boxed-list"]}`** applies the `.boxed-list` style class, which turns a bare `GtkListBox` into the rounded, bordered card group you see all over GNOME Settings. There is no `className` prop in GTKX; you always pass a string array to `cssClasses`.
 - **`selectionMode={Gtk.SelectionMode.NONE}`** disables row selection. Boxed lists are not "pick one of these" lists; each row carries its own controls (a checkbox, a star, a delete button), so selecting the whole row would be meaningless. `Gtk.SelectionMode.NONE` is the enum value that switches selection off.
 
-Children of a `GtkListBox` are appended in order. The rows here are, top to bottom: the inline add entry, one `TaskRow` per task, and (only when there are tasks) a trailing add button. React's `key={task.id}` gives each `TaskRow` a stable identity so the reconciler can move, insert, and remove real GTK widgets in place instead of rebuilding the list.
+Children of a `GtkListBox` are appended in order. The rows here are, top to bottom: the inline add entry, one `TaskRow` per task, and (only when there are tasks) a trailing add button. React's `key={task.id}` gives each `TaskRow` a stable identity so the reconciler can move, insert, and remove real GTK4 widgets in place instead of rebuilding the list.
 
 ## The inline add row
 
@@ -126,7 +127,7 @@ Children of a `GtkListBox` are appended in order. The rows here are, top to bott
 />
 ```
 
-`AdwEntryRow` is a list row that *is* a text field, with a floating label. Its `title` (here `"Add a task…"`, passed down as `addPlaceholder`) is that label. When you type a task and press Enter, GTK emits the `entry-activated` signal, which gtkx delivers as `onEntryActivated`.
+`AdwEntryRow` is a list row that *is* a text field, with a floating label. Its `title` (here `"Add a task…"`, passed down as `addPlaceholder`) is that label. When you type a task and press Enter, the row emits the `entry-activated` signal, which GTKX delivers as `onEntryActivated`.
 
 Note what the handler does with `self`, the live `Adw.EntryRow`:
 
@@ -135,7 +136,7 @@ onAddTask(self.text);   // read the typed text, hand it up to app.tsx
 self.text = "";          // then clear the field imperatively
 ```
 
-Assigning `self.text = ""` writes the GObject `text` property directly on the widget. This is a deliberate escape hatch: the field's text is not bound to a React prop, so clearing it means mutating the instance in place. Reaching for the live widget through the `self` argument (or a ref) is the normal way to do the small imperative things GTK expects, without threading extra state through React.
+Assigning `self.text = ""` writes the GObject `text` property directly on the widget. This is a deliberate escape hatch: the field's text is not bound to a React prop, so clearing it means mutating the instance in place. Reaching for the live widget through the `self` argument (or a ref) is the normal way to do the small imperative things GTK4 expects, without threading extra state through React.
 
 `ref={entryRef}` captures that same widget for the button below.
 
@@ -153,7 +154,7 @@ Assigning `self.text = ""` writes the GObject `text` property directly on the wi
 
 `AdwButtonRow` is a list row styled as a button, with an optional leading icon (`startIconName`). `"list-add-symbolic"` is a stock GNOME symbolic icon name, resolved from the icon theme at runtime; you never ship the asset yourself.
 
-Its `onActivated` handler calls `entryRef.current?.grabFocus()`. `grabFocus` is the standard GTK method that moves keyboard focus to a widget, so tapping this button at the bottom of a long list jumps you straight back up to the add field, ready to type. `entryRef.current` is the live `Adw.EntryRow` captured above (the optional chain guards the mount/unmount window where the ref is still `null`).
+Its `onActivated` handler calls `entryRef.current?.grabFocus()`. `grabFocus` is the standard GTK4 method that moves keyboard focus to a widget, so tapping this button at the bottom of a long list jumps you straight back up to the add field, ready to type. `entryRef.current` is the live `Adw.EntryRow` captured above (the optional chain guards the mount/unmount window where the ref is still `null`).
 
 This row only renders when there are tasks. When the list is empty the inline add row is already right there, so a second add affordance would be redundant.
 
@@ -170,7 +171,7 @@ This row only renders when there are tasks. When the list is empty the inline ad
 ) : null}
 ```
 
-`AdwStatusPage` is libadwaita's centered "big icon + title + description" placeholder, the same widget GNOME apps use for empty trash, no search results, and so on. The `.compact` style class shrinks it to fit inside the list pane rather than filling a whole window.
+`AdwStatusPage` is Adwaita's centered "big icon + title + description" placeholder, the same widget GNOME apps use for empty trash, no search results, and so on. The `.compact` style class shrinks it to fit inside the list pane rather than filling a whole window.
 
 Its content is fully data-driven from the `empty` prop, which `app.tsx` computes based on *why* the list is empty:
 
@@ -212,9 +213,9 @@ const FilterToggle = ({ filter, onChange }: { filter: Filter; onChange: (value: 
 );
 ```
 
-`AdwToggleGroup` is the libadwaita segmented control (one button visibly pressed at a time). Each `AdwToggle` carries a `name` and a `label`. Rather than track which *index* is active, you drive it by name: `activeName` selects the pressed toggle, and `onNotifyActiveName` reports the new name when the user clicks. The guard (`name === "all" || ...`) narrows the incoming string to the `Filter` union before passing it up. The `.round` style class gives it the pill shape.
+`AdwToggleGroup` is the Adwaita segmented control (one button visibly pressed at a time). Each `AdwToggle` carries a `name` and a `label`. Rather than track which *index* is active, you drive it by name: `activeName` selects the pressed toggle, and `onNotifyActiveName` reports the new name when the user clicks. The guard (`name === "all" || ...`) narrows the incoming string to the `Filter` union before passing it up. The `.round` style class gives it the pill shape.
 
-What makes the filter *sticky* across launches is where its state lives. `app.tsx` reads and writes it through `useSetting`, gtkx's GSettings hook:
+What makes the filter *sticky* across launches is where its state lives. `app.tsx` reads and writes it through `useSetting`, GTKX's GSettings hook:
 
 ```tsx
 const [filter, setFilter] = useSetting(schema, "filter");
@@ -226,7 +227,7 @@ titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
 
 ## Where filtering actually happens: `select.ts`
 
-GTK ships `GtkFilterListModel` and `GtkSortListModel` for filtering and sorting inside the widget layer. **This app uses neither.** All of it is plain JavaScript over the `Task[]` array, in `select.ts`. The `TaskList` component receives the finished list and just renders it.
+GTK4 ships `GtkFilterListModel` and `GtkSortListModel` for filtering and sorting inside the widget layer. **This app uses neither.** All of it is plain JavaScript over the `Task[]` array, in `select.ts`. The `TaskList` component receives the finished list and just renders it.
 
 The single entry point is `visibleTasks`:
 
@@ -309,10 +310,10 @@ const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sor
 <TaskList tasks={visible} reorderable={reorderable} /* ... */ />
 ```
 
-Doing filtering and sorting in React state, not in a GTK list model, is the whole architectural bet of gtkx: your data transformations are just functions over arrays, exactly as they would be in a web React app, and the reconciler turns the resulting list into real GTK widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
+Doing filtering and sorting in React state, not in a GTK4 list model, is the whole architectural bet of GTKX: your data transformations are just functions over arrays, exactly as they would be in a web React app, and the reconciler turns the resulting list into real GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
 
 ::: info
-Because the list is derived, `visibleTasks` recomputes on every render. For a personal task list that is trivially cheap. If you ever needed to, you would memoize it with `useMemo`, the same React tool you already know, not a GTK model.
+Because the list is derived, `visibleTasks` recomputes on every render. For a personal task list that is trivially cheap. If you ever needed to, you would memoize it with `useMemo`, the same React tool you already know, not a GTK4 model.
 :::
 
 ## Next

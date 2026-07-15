@@ -5,7 +5,7 @@ import { type ReactNode, type Ref, useLayoutEffect, useRef } from "react";
 import { applyMenuItems, menuItemsEqual } from "./menu-items.js";
 import type { MenuEntry } from "./types.js";
 
-type MenuItemsProps = {
+export type MenuItemsProps = {
     items?: MenuEntry[] | null | undefined;
 };
 

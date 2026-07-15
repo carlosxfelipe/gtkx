@@ -17,7 +17,7 @@ test("increments on click", async () => {
 <template>
   <section id="testing" class="diff">
     <div class="diff__head section-head">
-      <p class="overline">Two things no JS-desktop tool ships</p>
+      <p class="overline">Testing and agent tooling, built in</p>
       <h2 class="diff__title section-title">Tested like the web. <span class="accent">Drivable by agents.</span></h2>
     </div>
     <div class="diff__grid">
@@ -25,7 +25,7 @@ test("increments on click", async () => {
         <h3 class="diff__name">Test real widgets</h3>
         <p class="diff__body">
           A Testing-Library harness over real GObjects: accessibility-first queries,
-          <code class="l-code">userEvent</code> through real GTK controllers, and screenshots, all inside
+          <code class="l-code">userEvent</code> through real GTK4 event controllers, and screenshots, all inside
           React <code class="l-code">act()</code>, on a per-worker headless display.
         </p>
         <CodeBlock title="Counter.test.tsx" :code="testCode" />

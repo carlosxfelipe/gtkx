@@ -4,7 +4,7 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 # MCP
 
-An AI coding agent working on a web app can open the page and read the DOM. A native GTK window gives it nothing: no HTML to parse, no DevTools to attach. `@gtkx/mcp` closes that gap. It is an MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to your live GTKX app. Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent can look up the exact props, signals, and method signatures it is coding against instead of guessing at them. Combined with the Fast Refresh loop of `gtkx dev`, this gives an agent the same edit, look, verify cycle you have as a human developer.
+An AI coding agent working on a web app can open the page and read the DOM. A native GTK4 window gives it nothing: no HTML to parse, no DevTools to attach. `@gtkx/mcp` closes that gap. It is an MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to your live GTKX app. Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent can look up the exact props, signals, and method signatures it is coding against instead of guessing at them. Combined with the Fast Refresh loop of `gtkx dev`, this gives an agent the same edit, look, verify cycle you have as a human developer.
 
 ## How it connects
 
@@ -58,7 +58,7 @@ The server exposes tools in three groups: inspection, interaction, and the API r
 | `gtkx_take_screenshot` | Inspection | Capture a window as a PNG |
 | `gtkx_click` | Interaction | Click a widget |
 | `gtkx_type` | Interaction | Type into an editable widget |
-| `gtkx_fire_event` | Interaction | Emit an arbitrary GTK signal |
+| `gtkx_fire_event` | Interaction | Emit an arbitrary GTK4 signal |
 | `gtkx_list_api` | Reference | List the bindings' namespaces, or one namespace's symbols |
 | `gtkx_search_api` | Reference | Search the bindings' symbols by name |
 | `gtkx_get_api_docs` | Reference | Get the full reference page for one symbol |
@@ -115,7 +115,7 @@ The three mutating tools carry the `destructiveHint` annotation, so clients that
 
 **`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first, which is how you replace a value instead of appending to it.
 
-**`gtkx_fire_event`** emits an arbitrary GTK `signal` on a widget, with an optional `args` array, for interactions the higher-level tools do not cover: emitting `close-request` on a window, or a custom signal your code connects to. Each argument can be a raw value or a `{ type, value }` object, in which case the `value` is passed through.
+**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions the higher-level tools do not cover: emitting `close-request` on a window, or a custom signal your code connects to. Each argument can be a raw value or a `{ type, value }` object, in which case the `value` is passed through.
 
 ::: info
 Every widget tool call, inspection or interaction, is routed to the app with a 30 second timeout, so a hung app surfaces as a tool error rather than a stuck agent.
@@ -131,7 +131,7 @@ The three reference tools answer from the same GObject-Introspection data your b
 
 **`gtkx_get_api_docs`** returns the full reference page for one symbol as markdown. It accepts a qualified name (`Gtk.Button`, `Gtk.Orientation`, `GLib.idleAdd`), a JSX element name (`GtkButton`), or a bare name when it is unambiguous; if several symbols share a name, the error lists the candidates and a `kind` parameter disambiguates. Element pages are the same pages `gtkx docs` generates, covering props, signal handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest of the surface: a class page lists its hierarchy, constructors, static methods, properties, signals, and instance methods with exact TypeScript signatures; enum pages list members and values; record, callback, alias, function, and constant pages follow suit.
 
-The server resolves which project to document from the connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries and `elementProps`. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached for the life of the server, so the first reference call takes a moment and the rest are instant.
+The server resolves which project to document from the connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries and `elementProps`. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call takes a moment and later ones are instant.
 
 The same pages are also published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page, with completion wired up for both namespace and symbol names.
 

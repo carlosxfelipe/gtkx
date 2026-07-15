@@ -8,7 +8,7 @@ Clicking a task in the list opens the editor: a title field, an Important switch
 
 ## The pushed detail page
 
-The editor is a pushed page. The content pane holds a `<NavigationView>` (covered in **The App Shell**), and the task detail is a `<NavigationView.Page tag="task">` that mounts only when a task is open. `selectedTask` is derived from a `selectedTaskId` state value; when it becomes non-null, the page mounts and `<NavigationView>` pushes it over the list, with an animation and an automatic back button. When it becomes null again, the page unmounts and pops. From `app.tsx`:
+The editor is a pushed page. The content pane holds a `<NavigationView>` (covered in **The Application Shell**), and the task detail is a `<NavigationView.Page tag="task">` that mounts only when a task is open. `selectedTask` is derived from a `selectedTaskId` state value; when it becomes non-null, the page mounts and `<NavigationView>` pushes it over the list, with an animation and an automatic back button. When it becomes null again, the page unmounts and pops. From `app.tsx`:
 
 ```tsx
 {selectedTask ? (
@@ -25,10 +25,10 @@ The editor is a pushed page. The content pane holds a `<NavigationView>` (covere
 ) : null}
 ```
 
-The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK state React never sees (the text cursor and undo stack, the notes scroll position, the month the calendar has navigated to) would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
+The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees (the text cursor and undo stack, the notes scroll position, the month the calendar has navigated to) would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
 ::: info WHY REMOUNT INSTEAD OF DIFF
-GTK widgets hold their own internal state that React doesn't track. A `GtkTextView` remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
+GTK4 widgets hold their own internal state that React doesn't track. A `GtkTextView` remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
 :::
 
 ## The detail header
@@ -57,9 +57,9 @@ const detailHeader = selectedTask ? (
 ) : null;
 ```
 
-`AdwHeaderBar` exposes `start` and `end` as slot props (they map to libadwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back) pops the widget, which fires the `NavigationView`'s `onPop`; the handler calls `setSelectedTaskId(null)`, so `selectedTask` becomes null and the task page unmounts to match. Going back programmatically is the same `setSelectedTaskId(null)`, which unmounts the page and pops it.
+`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back) pops the widget, which fires the `NavigationView`'s `onPop`; the handler calls `setSelectedTaskId(null)`, so `selectedTask` becomes null and the task page unmounts to match. Going back programmatically is the same `setSelectedTaskId(null)`, which unmounts the page and pops it.
 
-`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK instance.
+`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash and shows an undo toast; it is covered in **Feedback and Dialogs**.
 
 ## The editor shell: scroll, clamp, box
 
@@ -81,7 +81,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
 };
 ```
 
-`AdwClamp` is a libadwaita container with one job: cap the child's width at `maximumSize` (600px here) and center it, no matter how wide the window gets. It is the standard way to keep a form readable on a large monitor. Without it, the entry rows would stretch edge to edge. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
+`AdwClamp` is a Adwaita container with one job: cap the child's width at `maximumSize` (600px here) and center it, no matter how wide the window gets. It is the standard way to keep a form readable on a large monitor. Without it, the entry rows would stretch edge to edge. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
 
 `GtkScrolledWindow` with `vexpand` lets the whole form scroll when the notes push it past the window height. Both `AdwClamp` and `GtkScrolledWindow` are single-child containers, so their one child is passed as JSX children and placed via `set_child` under the hood.
 
@@ -111,11 +111,11 @@ The first section is an `AdwPreferencesGroup`, which renders its rows as a singl
 
 `AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` adds a checkmark button that appears once you edit the text, and it commits on two events: clicking that button fires `apply` (`onApply`), and pressing Enter in the field fires `entry-activated` (`onEntryActivated`). Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
 
-`AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch and toggle state in gtkx: read the boolean out of the `notify` on the property, not a custom event.
+`AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch and toggle state in GTKX: read the boolean out of the `notify` on the property, not a custom event.
 
 ## The due date: a calendar in a popover
 
-The Due row shows GTK's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenuButton`. This is the entire due-date picker:
+The Due row shows GTK4's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenuButton`. This is the entire due-date picker:
 
 ```tsx
 <AdwActionRow
@@ -159,7 +159,7 @@ The Due row shows GTK's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenuB
 
 `AdwActionRow` gives you `prefix` and `suffix` slots (mapping to `add_prefix` / `add_suffix`). The whole picker lives in `suffix`: a small `GtkBox` holding an optional clear button and the menu button. The clear button only renders when there is a date to clear, and it writes `due: null`.
 
-`GtkMenuButton` shows a `popover` and toggles it on click. Its `label` is the formatted due date (`formatDue` turns the ISO string into "Today at 3:00 PM", "Tomorrow at ...", a weekday name, and so on), falling back to "Set date". `popover` is an object slot: you hand it a `GtkPopover` element and gtkx wires it in as the button's popover. Inside, `GtkPopover` is a single-child container holding the calendar.
+`GtkMenuButton` shows a `popover` and toggles it on click. Its `label` is the formatted due date (`formatDue` turns the ISO string into "Today at 3:00 PM", "Tomorrow at ...", a weekday name, and so on), falling back to "Set date". `popover` is an object slot: you hand it a `GtkPopover` element and GTKX wires it in as the button's popover. Inside, `GtkPopover` is a single-child container holding the calendar.
 
 ### Reading the calendar with GLib.DateTime
 
@@ -176,12 +176,12 @@ onUpdate({ due: picked.toISOString() });
 `getYear` / `getMonth` / `getDayOfMonth` are `GLib.DateTime` accessors. Using them plus `getDate()` is deliberate.
 
 ::: warning DON'T USE select_day
-The older calendar API (`select_day`, plus the integer `day` / `month` / `year` properties) is deprecated since GTK 4.20. The non-deprecated path is the `date` property (a `GLib.DateTime`) for setting and `get_date()` for reading, which is exactly what this editor uses. The generated `@gtkx/gi/gtk` typings still expose the deprecated members because they strip GTK's deprecation annotations, so it is on you to reach for `date` / `getDate` rather than `selectDay`.
+The older calendar API (`select_day`, plus the integer `day` / `month` / `year` properties) is deprecated since GTK 4.20. The non-deprecated path is the `date` property (a `GLib.DateTime`) for setting and `get_date()` for reading, which is exactly what this editor uses. The generated `@gtkx/gi/gtk` typings still expose the deprecated members because they strip GTK4's deprecation annotations, so it is on you to reach for `date` / `getDate` rather than `selectDay`.
 :::
 
 ## Notes: a GtkTextView backed by a buffer
 
-The single-line entry row is not enough for freeform notes, so the editor drops down to GTK's multiline `GtkTextView` and its `GtkTextBuffer`:
+The single-line entry row is not enough for freeform notes, so the editor drops down to GTK4's multiline `GtkTextView` and its `GtkTextBuffer`:
 
 ```tsx
 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
@@ -211,9 +211,9 @@ The single-line entry row is not enough for freeform notes, so the editor drops 
 </GtkBox>
 ```
 
-In GTK, a text view is a view onto a separate `GtkTextBuffer` model: the buffer holds the text and the undo stack, the view renders it. In gtkx that separation is explicit. `buffer` is an object slot on `GtkTextView`, and you pass a `GtkTextBuffer` element into it. The buffer's initial text is its children (`{task.notes}`), because `GtkTextBuffer` is a text container.
+In GTK4, a text view is a view onto a separate `GtkTextBuffer` model: the buffer holds the text and the undo stack, the view renders it. In GTKX that separation is explicit. `buffer` is an object slot on `GtkTextView`, and you pass a `GtkTextBuffer` element into it. The buffer's initial text is its children (`{task.notes}`), because `GtkTextBuffer` is a text container.
 
-`enableUndo` turns on the buffer's built-in undo/redo (Ctrl+Z works with no extra code). `onChanged` fires on every edit, and the handler pulls the current text out by reading from the start iterator to the end iterator: `getText(startIter, endIter, false)`. Iterators are GTK's cursors into buffer positions; `getStartIter()` and `getEndIter()` bracket the whole document, and the trailing `false` means "don't include invisible characters." The full string is pushed up through `onUpdate` so notes persist as you type.
+`enableUndo` turns on the buffer's built-in undo/redo (Ctrl+Z works with no extra code). `onChanged` fires on every edit, and the handler pulls the current text out by reading from the start iterator to the end iterator: `getText(startIter, endIter, false)`. Iterators are GTK4's cursors into buffer positions; `getStartIter()` and `getEndIter()` bracket the whole document, and the trailing `false` means "don't include invisible characters." The full string is pushed up through `onUpdate` so notes persist as you type.
 
 The view wraps at word and character boundaries (`Gtk.WrapMode.WORD_CHAR`) and sits inside a `GtkScrolledWindow` carrying the `.card` style class, which draws the rounded bordered box around the notes area. `detailNotes` is a `@gtkx/css` generated class adding padding and a minimum height. The `.heading` class on the `GtkLabel` gives the "Notes" caption the bold section-heading style.
 

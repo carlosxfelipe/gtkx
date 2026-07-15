@@ -4,7 +4,7 @@ description: "GActions in a React app: declare named commands once, then drive t
 
 # Actions, Menus, and Shortcuts
 
-In a React web app, a click handler is wired straight to a button. GTK pulls those two apart. A **GAction** is a named, addressable command ("new", "preferences", "open-task") that lives in an *action map*, and buttons, menu items, keyboard accelerators, and even desktop notifications all reference that command by a string name. Define the behavior once, trigger it from anywhere.
+In a React web app, a click handler is wired straight to a button. GTK4 pulls those two apart. A **GAction** is a named, addressable command ("new", "preferences", "open-task") that lives in an *action map*, and buttons, menu items, keyboard accelerators, and even desktop notifications all reference that command by a string name. Define the behavior once, trigger it from anywhere.
 
 Tasks uses this everywhere its commands need more than one entry point. The hamburger menu item and the `Ctrl+N` accelerator both resolve the same `win.new` action, and the "New Task" toolbar button calls the very handler that action wraps. This page walks through how the app declares those actions, gives them keyboard shortcuts, builds the menu, and layers on view-local shortcuts that a GAction would be the wrong tool for.
 
@@ -15,11 +15,11 @@ Every action string carries a scope prefix. Tasks uses both:
 - **`win.*`** actions belong to the window. They are the app's real commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
 - **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires ("Mark Complete", "Open"), because a notification is delivered to the whole application, not to any particular window, and may arrive when no window is even open. They live in the `actions` slot of `<AdwApplication>`.
 
-The scope prefix is not cosmetic: it selects *which* action map GTK looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
+The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
 
 ## Window actions: `<GSimpleAction>` in the `actions` slot
 
-`GSimpleAction` is the concrete GAction you instantiate. In gtkx it is a declarative host component from `@gtkx/jsx/gio`, so you mount actions as JSX and let them come and go with your component tree. Each one takes a `name` and an `onActivate` handler that runs when the action fires.
+`GSimpleAction` is the concrete GAction you instantiate. In GTKX it is a declarative host component from `@gtkx/jsx/gio`, so you mount actions as JSX and let them come and go with your component tree. Each one takes a `name` and an `onActivate` handler that runs when the action fires.
 
 Tasks groups the five window commands into one `WindowActions` component:
 
@@ -77,7 +77,7 @@ The `onActivate` handler receives `(parameter, self)`, where `parameter` is a `G
 
 ## Accelerators: `actionAccels` on `<AdwApplication>`
 
-An action has no keyboard shortcut until you register an accelerator for it. That registration is application-global, so it lives on `<AdwApplication>`, not on the window. gtkx surfaces it as the declarative `actionAccels` prop: an array mapping a `detailedActionName` to a list of accelerator strings.
+An action has no keyboard shortcut until you register an accelerator for it. That registration is application-global, so it lives on `<AdwApplication>`, not on the window. GTKX surfaces it as the declarative `actionAccels` prop: an array mapping a `detailedActionName` to a list of accelerator strings.
 
 ```tsx
 <AdwApplication
@@ -91,9 +91,9 @@ An action has no keyboard shortcut until you register an accelerator for it. Tha
 </AdwApplication>
 ```
 
-Note that these `detailedActionName`s are `win.*`: the accelerator is registered at the application level but points at a window-scoped action, so the shortcut only fires while a window owning a `new` / `preferences` / `shortcuts` action is focused. The accelerator strings use GTK's parser syntax: `<Control>`, `<Shift>`, `<Alt>`, plus a key name (`comma`, `question`, `n`). `<Control>question` is the conventional GNOME "keyboard shortcuts" binding.
+Note that these `detailedActionName`s are `win.*`: the accelerator is registered at the application level but points at a window-scoped action, so the shortcut only fires while a window owning a `new` / `preferences` / `shortcuts` action is focused. The accelerator strings use GTK4's parser syntax: `<Control>`, `<Shift>`, `<Alt>`, plus a key name (`comma`, `question`, `n`). `<Control>question` is the conventional GNOME "keyboard shortcuts" binding.
 
-Not every action needs an accelerator. `win.select` and `win.about` are reachable only from the menu, so they are simply absent from `actionAccels`.
+Not every action needs an accelerator. `win.select` and `win.about` are reachable only from the menu, so they are absent from `actionAccels`.
 
 ## Application actions for notifications
 
@@ -127,7 +127,7 @@ import * as GLib from "@gtkx/gi/glib";
 </AdwApplication>
 ```
 
-Unlike the window actions, these declare a `parameterType` of `"s"` (a `GLib.VariantType` for a string): the action carries a task id as its payload. `onActivate` reads it back with `parameter.getString()[0]` and hands it to the live window through a ref (`notify.current`), because the notification may arrive while React state lives inside the window subtree.
+Unlike the window actions, these declare a `parameterType` of `"s"` (a `GLib.VariantType` for a string): the action carries a task id as its payload. `onActivate` reads it back with `parameter.getString()[0]` and hands it to the live window through a ref (`notify.current`), because these actions are declared on the application, above the window component, while the state they need to change lives inside the window subtree.
 
 The notification itself is built in `notifications.ts` and names those actions by their fully scoped strings:
 
@@ -156,7 +156,7 @@ This is the whole reason `app.*` exists in this app: a notification button must 
 
 ## The primary menu: `<GtkMenuButton>` + declarative `<Menu>`
 
-The hamburger button in the header bar is a `GtkMenuButton` whose popup is a `GMenu` model, not a tree of widgets. A GMenu is a pure data model of labels and action names; GTK renders it into the actual popover for you. gtkx's `Menu` component (from `@gtkx/components`) builds that `Gio.Menu` from a plain array, and you hand it to the button's `menuModel` slot:
+The hamburger button in the header bar is a `GtkMenuButton` whose popup is a `GMenu` model, not a tree of widgets. A GMenu is a pure data model of labels and action names; GTK4 renders it into the actual popover for you. GTKX's `Menu` component (from `@gtkx/components`) builds that `Gio.Menu` from a plain array, and you hand it to the button's `menuModel` slot:
 
 ```tsx
 import { Menu } from "@gtkx/components";
@@ -190,7 +190,7 @@ export const MainMenu = () => (
 );
 ```
 
-Each entry pairs a `label` with an `action` string, and those strings are exactly the scoped action names declared earlier. There is no `onClick` here: choosing "Preferences" activates `win.preferences`, which reaches the same `setShowPreferences(true)` as the accelerator does. The `section` wrapping groups items into visually separated blocks (GTK draws a divider between sections), which is how the standard GNOME primary menu is organized.
+Each entry pairs a `label` with an `action` string, and those strings are exactly the scoped action names declared earlier. There is no `onClick` here: choosing "Preferences" activates `win.preferences`, which reaches the same `setShowPreferences(true)` as the accelerator does. The `section` wrapping groups items into visually separated blocks (GTK4 draws a divider between sections), which is how the standard GNOME primary menu is organized.
 
 Two `GtkMenuButton` props matter for a primary menu: `iconName="open-menu-symbolic"` is the conventional hamburger icon, and `primary` marks this as *the* window menu, which lets `F10` open it. `MainMenu` is dropped into the header bar's `end` slot:
 
@@ -248,9 +248,9 @@ const AppShortcuts = ({
 );
 ```
 
-A few gtkx-specific details:
+A few GTKX-specific details:
 
-- **`trigger`** and **`action`** are object-typed props: you pass live GI instances, not JSX. `Gtk.ShortcutTrigger.parseString("<Control>f")` parses an accelerator string into a trigger; `Gtk.CallbackAction.new(cb)` wraps a JS callback as the shortcut action. The callback returns `true` to signal the key was handled and stop further propagation.
+- **`trigger`** and **`action`** are object-typed props: here you pass live GI instances rather than JSX. `Gtk.ShortcutTrigger.parseString("<Control>f")` parses an accelerator string into a trigger; `Gtk.CallbackAction.new(cb)` wraps a JS callback as the shortcut action. The callback returns `true` to signal the key was handled and stop further propagation.
 - **`scope={Gtk.ShortcutScope.GLOBAL}`** means the shortcut fires no matter which descendant widget has focus inside the window, which is what you want for window-wide keys like search and delete.
 - **Gating with `NeverTrigger`.** Rather than adding and removing shortcuts as state changes, `makeShortcut` keeps every shortcut permanently in the list and swaps its *trigger*: when `enabled` is false it uses `Gtk.NeverTrigger.get()`, a trigger that matches no key at all. So `Delete` is inert until a task is open, without churning the controller's shortcut list.
 
@@ -323,4 +323,4 @@ Meanwhile `Ctrl+F` / `Escape` / `Delete` stay out of the action system entirely,
 
 ## Next
 
-Continue with **Selection Mode** to follow where the `win.select` action leads: a distinct mode for completing, moving, and deleting many tasks at once.
+Continue to **Selection Mode** to follow where the `win.select` action leads: a distinct mode for completing, moving, and deleting many tasks at once.

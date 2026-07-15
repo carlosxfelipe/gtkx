@@ -28,7 +28,7 @@ try {
 Because it is a real `Error` subclass, it behaves like one everywhere: `String(error)` and `console.error(error)` print the message instead of an opaque object, and rethrowing or wrapping it works as expected. On top of the standard `Error` surface, a `GLib.Error` exposes the three fields of the underlying C struct:
 
 - **`message`** is the human-readable description, the same string GLib produced.
-- **`domain`** is the error domain as a numeric GQuark (`GLib.Quark` is `number`). Each library registers its own domains: file errors, GIO I/O errors, GTK dialog errors, and so on.
+- **`domain`** is the error domain as a numeric GQuark (`GLib.Quark` is `number`). Each library registers its own domains: file errors, GIO I/O errors, GTK4 dialog errors, and so on.
 - **`code`** is the domain-specific error code, a plain number.
 
 Its `name` is `"GLib.Error"`, and it carries a `stack` captured at the point of the failing call, so an uncaught GError in your terminal reads like any other JavaScript stack trace.
@@ -57,7 +57,7 @@ try {
 }
 ```
 
-These domain objects exist in every namespace you bind. A few you will actually meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK. Each looks like a plain enum:
+These domain objects exist in every namespace you bind. A few you will actually meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK4. Each looks like a plain enum:
 
 ```ts
 Gtk.DialogError.FAILED;    // 0
@@ -106,7 +106,7 @@ Note what the `catch` covers here: `GLib.fileGetContents` throws a `GLib.Error` 
 
 ## Asynchronous calls: rejected promises
 
-Promisified methods reject with the same `GLib.Error` objects. The most common place you will handle one is a dialog, because GTK reports "the user dismissed it" as an error in the `Gtk.DialogError` domain. This is adapted from the pickers demo in `examples/gtk-demo`:
+Promisified methods reject with the same `GLib.Error` objects. The most common place you will handle one is a dialog, because GTK4 reports "the user dismissed it" as an error in the `Gtk.DialogError` domain. This is adapted from the pickers demo in `examples/gtk-demo`:
 
 ```tsx
 import * as Gio from "@gtkx/gi/gio";

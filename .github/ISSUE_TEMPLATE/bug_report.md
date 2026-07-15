@@ -28,7 +28,7 @@ What actually happened.
 
 - GTKX version:
 - Node.js version:
-- GTK version:
+- GTK4 version:
 - OS:
 
 ## Additional Context

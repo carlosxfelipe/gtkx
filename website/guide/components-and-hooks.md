@@ -1,14 +1,14 @@
 ---
-description: "A map of the two hand-written runtime packages: the higher-level components in @gtkx/components and the hooks exported by @gtkx/react."
+description: "A map of the higher-level components in @gtkx/components and the hooks exported by @gtkx/react."
 ---
 
 # Components and Hooks
 
-Almost everything you render in a gtkx app is a generated host component: one typed export per GTK or libadwaita widget, produced by codegen from GObject-Introspection. Two packages are written by hand on top of that layer. `@gtkx/components` wraps the GTK APIs that do not translate cleanly into props and children, and `@gtkx/react` ships the reconciler plus a small set of hooks for talking to live GObjects. This page is a map of both. Most of these components keep every intrinsic prop of the widget they wrap and forward `ref` to the raw GTK object; run `gtkx docs` in your project for exhaustive per-element prop tables, and see the [API reference](/reference/) for the packages themselves.
+Almost everything you render in a GTKX app is a generated host component: one typed export per GTK4 or Adwaita widget, produced by codegen from GObject-Introspection. Two of the hand-written packages sit directly on top of that layer. `@gtkx/components` wraps the GTK4 APIs that do not translate cleanly into props and children, and `@gtkx/react` ships the reconciler plus a small set of hooks for talking to live GObjects. This page is a map of both. Most of these components keep every intrinsic prop of the widget they wrap and forward `ref` to the raw GTK4 object; run `gtkx docs` in your project for exhaustive per-element prop tables, and see the [API reference](/reference/) for the packages themselves.
 
 ## Why @gtkx/components exists
 
-GTK's list widgets are built around a model/factory split: you hand `Gtk.ListView` a `Gio.ListModel` of items, a `Gtk.SignalListItemFactory` that fires `setup`/`bind`/`unbind` signals for cell recycling, and a selection-model wrapper around the whole thing. Trees add `Gtk.TreeListModel`, sortable tables add per-column `Gtk.Sorter` objects, and none of it is declarative. The same goes for `Gtk.Grid.attach()`, `Gtk.Overlay.addOverlay()`, `Gtk.SizeGroup.addWidget()`, and `Gio.Menu` construction: they are imperative calls with no natural JSX shape. `@gtkx/components` gives each of these a React vocabulary (plain arrays, `renderItem` callbacks, and `component`-injecting children) while keeping the recycling, sorting, and selection machinery of the underlying widget intact. The package has two entry points: `@gtkx/components` for the GTK-level components and `@gtkx/components/adw` for the libadwaita ones.
+GTK4's list widgets are built around a model/factory split: you hand `Gtk.ListView` a `Gio.ListModel` of items, a `Gtk.SignalListItemFactory` that fires `setup`/`bind`/`unbind` signals for cell recycling, and a selection-model wrapper around the whole thing. Trees add `Gtk.TreeListModel`, sortable tables add per-column `Gtk.Sorter` objects, and none of it is declarative. The same goes for `Gtk.Grid.attach()`, `Gtk.Overlay.addOverlay()`, `Gtk.SizeGroup.addWidget()`, and `Gio.Menu` construction: they are imperative calls with no natural JSX shape. `@gtkx/components` gives each of these a React vocabulary (plain arrays, `renderItem` callbacks, and `component`-injecting children) while keeping the recycling, sorting, and selection machinery of the underlying widget intact. The package has two entry points: `@gtkx/components` for the GTK4-level components and `@gtkx/components/adw` for the Adwaita ones.
 
 ## The collection vocabulary
 
@@ -94,7 +94,7 @@ Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to
 
 ## DropDown
 
-`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK requires a model plus up to three factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection; `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
+`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus up to three factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection; `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
 
 ```tsx
 <DropDown
@@ -139,7 +139,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 </Grid>
 ```
 
-The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Child` below: you name the widget to place and the wrapper attaches the ref for its imperative GTK call internally.
+The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Child` below: you name the widget to place and the wrapper attaches the ref for its imperative GTK4 call internally.
 
 ## Overlay and Overlay.Child
 
@@ -167,7 +167,7 @@ The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Ch
 </SizeGroup>
 ```
 
-`SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example).
+`SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example). When a member is rendered by a high-level component rather than a host element, call `useSizeGroupItem()` inside the `SizeGroup` and attach the returned ref callback to the widget.
 
 ## ConstraintLayout
 
@@ -194,11 +194,11 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 </GtkBox>
 ```
 
-## The libadwaita entry point: @gtkx/components/adw
+## The Adwaita entry point: @gtkx/components/adw
 
-`@gtkx/components/adw` holds the components that depend on libadwaita.
+`@gtkx/components/adw` holds the components that depend on Adwaita.
 
-**`Dialog`** turns dialog visibility into ordinary conditional rendering. Adw dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` takes a `component` prop (the dialog widget, defaulting to `AdwDialog`) with the widget's own props passed inline, portals that widget at the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. Its `onClose` prop, wired to the widget's `closed` signal, fires when the user dismisses the dialog (Escape, the close button, a swipe) so you can clear that state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
+**`Dialog`** turns dialog visibility into ordinary conditional rendering. Adwaita dialogs are presented imperatively (`dialog.present(parent)`) rather than parented in the widget tree, so `Dialog` takes a `component` prop (the dialog widget, defaulting to `AdwDialog`) with the widget's own props passed inline, portals that widget at the root, presents it on mount (anchored to an explicit `parent` or the enclosing window from `useParentWindow()`), and force-closes it on unmount. Render `{showAbout ? <About /> : null}` and the dialog appears and disappears with your state. Its `onClose` prop, wired to the widget's `closed` signal, fires when the user dismisses the dialog (Escape, the close button, a swipe) so you can clear that state. The mounting model behind this is explained in [Modals and Portals](/guide/modals-and-portals).
 
 **Alert dialogs** pass `AdwAlertDialog` (from `@gtkx/jsx/adw`) as `Dialog`'s `component`. Its response buttons, normally added with `addResponse`/`setResponseAppearance` calls, are declared through the `responses` prop (an array of `{ id, label, appearance?, enabled? }`); children form the dialog body, and `onResponse` receives the chosen id:
 
@@ -219,6 +219,8 @@ import { AdwAlertDialog } from "@gtkx/jsx/adw";
     onResponse={(id) => (id === "delete" ? onConfirm() : onCancel())}
 />
 ```
+
+**`NavigationView`** drives an `Adw.NavigationView` stack from JSX. Each mounted `NavigationView.Page` is a stack entry, identified by a stable `tag` and carrying an optional `title` and `canPop`; the mounted order is the stack order, with the first page as the root and the last one visible. Rendering a page pushes it and unmounting it pops it, and when the widget pops a page on its own (a swipe, Escape, or the back button) `onPop` receives the popped page's tag so you can remove it from state. The tutorial's [The Application Shell](/tutorial/app-shell) chapter builds the Tasks app's navigation with it.
 
 **`DropDown` as a combo row**: pass `component={AdwComboRow}` to apply the `DropDown` model (`items`, `selectedId`, `onSelectionChanged`, the same renderer props) to `Adw.ComboRow`, the preferences-style row with an embedded drop-down. The Tasks app's theme and sort-order pickers in [Preferences and Theming](/tutorial/preferences-and-theming) use it.
 

@@ -12,7 +12,7 @@ const { Context: GridContext, useParentRef: useGridRef } = createParentContext<G
 /** Props for {@link Grid}. */
 export type GridProps = GtkGridProps & { ref?: Ref<Gtk.Grid | null>; children?: ReactNode };
 
-type GridPlacement = {
+export type GridPlacement = {
     column?: number | null | undefined;
     row?: number | null | undefined;
     /** Number of columns the child spans (defaults to 1). */

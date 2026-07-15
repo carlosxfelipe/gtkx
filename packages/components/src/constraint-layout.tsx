@@ -75,8 +75,8 @@ const useDeferredContribution = (apply: (layout: Gtk.ConstraintLayout) => () => 
 
 /**
  * Installs a Gtk.ConstraintLayout on a host widget and exposes child components to
- * populate it: {@link ConstraintLayout.Constraint} for individual constraints,
- * {@link ConstraintLayout.Guide} for spacing guides, and {@link ConstraintLayout.Vfl}
+ * populate it: {@link ConstraintProps | ConstraintLayout.Constraint} for individual constraints,
+ * {@link ConstraintGuideProps | ConstraintLayout.Guide} for spacing guides, and {@link ConstraintVflProps | ConstraintLayout.Vfl}
  * for constraints authored in the Visual Format Language.
  */
 export const ConstraintLayout: ((props: ConstraintLayoutProps) => ReactNode) & {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-const stack = ["GObject", "GTK4", "libadwaita", "GNOME", "React", "TypeScript", "Vite", "Rust"];
+const stack = ["GObject", "GTK4", "Adwaita", "GNOME", "React", "TypeScript", "Vite", "Rust"];
 </script>
 
 <template>
   <section class="eco">
-    <p class="eco__label">Built on the platform you already trust</p>
+    <p class="eco__label">Built on the GNOME stack and standard web tooling</p>
     <ul class="eco__row">
       <li v-for="s in stack" :key="s">{{ s }}</li>
     </ul>

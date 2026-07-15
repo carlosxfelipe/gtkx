@@ -4,7 +4,7 @@ description: "Give the empty state a subtle fade with @gtkx/animate, and learn w
 
 # Animations
 
-Most of the motion in Tasks is not ours. libadwaita already animates the things that should move: `AdwNavigationView` slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
+Most of the motion in Tasks is not ours. Adwaita already animates the things that should move: `AdwNavigationView` slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
 
 So the question this chapter answers is narrow: given a native toolkit that already animates the important transitions, where is a *hand-written* animation actually worth adding? The GNOME Human Interface Guidelines set the bar. There is no dedicated "motion" page in the current HIG; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle, "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change *legible*, when it tells you that one thing gave way to another instead of hard-cutting between them. Motion that merely decorates an update you already understood is exactly the distraction that principle warns against.
 
@@ -28,14 +28,14 @@ Back in [The Task List](./the-task-list) the content pane showed either the boxe
 Because nothing here is a `GtkStack`, that mount and unmount has no transition whatsoever. Delete your last task and the placeholder snaps into existence; add the first one back and it vanishes on the same frame the row appears. It reads as a glitch, and it is the textbook case the HIG describes: a real state change (populated becomes empty, and back) presented as a jarring swap.
 
 ::: info Why not `AdwViewStack`?
-libadwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `enable-transitions`. It does not fit here, because it assumes the two states are *mutually exclusive stacked views*. In this layout the list never goes away: it keeps showing its add-entry row even at zero tasks, and the status page is an additional sibling below it. There is no second view to crossfade against, so the right tool is an enter/exit animation on the status page alone.
+Adwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `enable-transitions`. It does not fit here, because it assumes the two states are *mutually exclusive stacked views*. In this layout the list never goes away: it keeps showing its add-entry row even at zero tasks, and the status page is an additional sibling below it. There is no second view to crossfade against, so the right tool is an enter/exit animation on the status page alone.
 :::
 
 ## The fix: `AnimatePresence` and `animated.AdwStatusPage`
 
 `@gtkx/animate` is the Framer-Motion-style layer covered in [CSS and Animations](/guide/css-and-animations). Two pieces of it solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animate` is already a dependency of the tutorial, so this is two edits to one file.
 
-First the imports. The status page becomes an animated one, so it moves out of the `@gtkx/jsx/adw` import (it was the file's only use of it) and `@gtkx/animate` comes in:
+First the imports. The status page becomes an animated one, so `AdwStatusPage` moves out of the `@gtkx/jsx/adw` import (the file uses it nowhere else, so the name drops from the import list) and `@gtkx/animate` comes in:
 
 ```tsx
 import { AnimatePresence, animated } from "@gtkx/animate";
@@ -65,13 +65,13 @@ Then the empty-state block itself, wrapped in `AnimatePresence` and rendered thr
 
 The animation props read like their web counterparts. `initial` is the state the widget starts from, `animate` is where it settles once present, and `exit` is where it goes on the way out. A target is opacity plus CSS transforms; here it is a plain opacity fade from `0` to `1` and back. A `transition` of `0.2` seconds makes it a short timed tween on the default `easeOut` curve. That is the whole animation.
 
-Under the hood there is no JavaScript timer: `@gtkx/animate` builds an `Adw.TimedAnimation`, drives an `Adw.CallbackAnimationTarget`, and writes the interpolated `opacity` as scoped GTK CSS on the widget. It is libadwaita animating a real widget, reached declaratively.
+Under the hood there is no JavaScript timer: `@gtkx/animate` builds an `Adw.TimedAnimation`, drives an `Adw.CallbackAnimationTarget`, and writes the interpolated `opacity` as scoped GTK4 CSS on the widget. It is Adwaita animating a real widget, reached declaratively.
 
 ## `AnimatePresence` is what makes `exit` possible
 
 Without `AnimatePresence` there would be no exit fade. React removes a widget from the tree the instant its condition goes false, which leaves no frame in which to animate it leaving. `AnimatePresence` intercepts that: when `tasks.length === 0` flips to `false`, it holds the status page mounted, plays its `exit` target, and only then lets React drop it. That is the entire reason the wrapper exists, and it is why the leave fade works while the enter fade would have worked on its own.
 
-The one rule it imposes is a stable `key` on the child. `AnimatePresence` tracks presence by key; a child without one is dropped from its output with a development warning, and the exit never plays. Note that the key is a constant `"empty"`, not derived from the placeholder's contents. The same status page shows several messages depending on where you are (`No Tasks Yet`, `Trash Is Empty`, `No Results` while searching), all through the `empty` prop. Keeping the key constant across all of them is deliberate: switching from one empty message to another, for example typing in the search box while the results stay at zero, is a *prop update* on the same present widget, not a remount, so it does not re-fade. Only the populated-to-empty boundary animates, which is exactly the restraint the HIG asks for. Change the key to `empty.title` and every no-results keystroke would flash the placeholder out and back in.
+The one rule it imposes is a stable `key` on the child. `AnimatePresence` tracks presence by key; a child without one is dropped from its output with a development warning, and the exit never plays. Note that the key is a constant `"empty"`, not derived from the placeholder's contents. The same status page shows several messages depending on where you are (`No Tasks Yet`, `Trash Is Empty`, `No Results` while searching), all through the `empty` prop. Keeping the key constant across all of them is deliberate: switching from one empty message to another, for example typing in the search box while the results stay at zero, is a *prop update* on the same present widget, not a remount, so it does not re-fade. Only the populated-to-empty boundary animates, which is exactly the restraint the HIG asks for. Change the key to `empty.description`, which embeds the query text, and every no-results keystroke would flash the placeholder out and back in.
 
 ## First paint should not animate
 
@@ -79,9 +79,9 @@ The one rule it imposes is a stable `key` on the child. `AnimatePresence` tracks
 
 ## Reduce motion is handled for you
 
-Because the fade is an `Adw.Animation`, it honors the system "enable animations" accessibility setting automatically, with no code of ours. When a user turns on Reduce Motion, libadwaita skips the animation to its final value: the status page appears and disappears instantly, and the `exit` still completes so the widget still unmounts cleanly. The swap simply becomes the hard cut it was before, which is the correct behavior for someone who asked for less motion.
+Because the fade is an `Adw.Animation`, it honors the system "enable animations" accessibility setting automatically, with no code of ours. When a user turns on Reduce Motion, Adwaita skips the animation to its final value: the status page appears and disappears instantly, and the `exit` still completes so the widget still unmounts cleanly. The swap becomes the hard cut it was before, which is the correct behavior for someone who asked for less motion.
 
-This is free only because we left `followEnableAnimations` at its default. Building UI state changes on a raw timer would bypass the accessibility setting entirely; building them on libadwaita's animation primitives, as `@gtkx/animate` does, means Reduce Motion is respected by construction. You would set `followEnableAnimations: false` on the transition only to force an animation to always run because its motion carries essential meaning, which a decorative fade never does.
+This is free only because we left `followEnableAnimations` at its default. Building UI state changes on a raw timer would bypass the accessibility setting entirely; building them on Adwaita's animation primitives, as `@gtkx/animate` does, means Reduce Motion is respected by construction. You would set `followEnableAnimations: false` on the transition only to force an animation to always run because its motion carries essential meaning, which a decorative fade never does.
 
 ## Why a tween here, and not a spring
 

@@ -55,6 +55,7 @@
                 "production",
                 "^build",
                 "@gtkx/animate#build",
+                "@gtkx/components#build",
                 "@gtkx/config#build",
                 "@gtkx/css#build",
                 "@gtkx/ffi#build",

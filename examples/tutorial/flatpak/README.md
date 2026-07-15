@@ -22,6 +22,7 @@ in automatically by `flatpak-builder`.
 npm install                 # install app dependencies
 npm run flatpak:sources     # vendor deps into flatpak/generated-sources.json
 npm run flatpak:build       # build the flatpak in a sandbox
+flatpak install --user flatpak-repo com.gtkx.tutorial
 flatpak run com.gtkx.tutorial
 ```
 
@@ -46,12 +47,15 @@ and are regenerated whenever dependencies change.
 3. Commit `package.json`, `package-lock.json` and `generated-sources.json`, then
    push so the manifest's `git` source resolves.
 4. Open a pull request against [flathub/flathub](https://github.com/flathub/flathub)
-   with the manifest, `generated-sources.json`, and the desktop/metainfo files.
+   with the manifest and `generated-sources.json`; the desktop and metainfo
+   files ship in your app repository and are installed by the manifest's
+   build commands.
 
 ## Adapting for your own app
 
-The application ID `com.gtkx.tutorial` appears in the manifest (`id`, `command`),
-the `.desktop` and `.metainfo.xml` files and their names, the gschema filename
-under `data/`, and the install paths above. Replace it throughout with your own
-reverse-DNS ID, and update the identity fields in the metainfo (developer,
-homepage, screenshots) to point at your project.
+The application ID `com.gtkx.tutorial` appears in the manifest's `id`, the
+`.desktop` and `.metainfo.xml` files and their names, the gschema filename
+under `data/`, and the install paths in the manifest's build commands. Replace
+it throughout with your own reverse-DNS ID, rename the manifest's `command`
+(currently `gtkx-tutorial`) for your app, and update the identity fields in the
+metainfo (developer, homepage, screenshots) to point at your project.

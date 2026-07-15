@@ -12,7 +12,7 @@ const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
     uninstall: (column) => column.setFactory(null),
 };
 
-type ColumnDefDeclarativeProps<T = unknown> = {
+export type ColumnDefDeclarativeProps<T = unknown> = {
     title: string;
     expand?: boolean | undefined;
     resizable?: boolean | undefined;

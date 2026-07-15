@@ -10,7 +10,7 @@ If you come from the web, the surprising part is not React. It is that the byte-
 
 ## The shapes
 
-`src/types.ts` is the whole domain model. A `Task` is a flat, JSON-friendly record. A `TaskList` is an id, a display name, and a color string used for the sidebar dot. Notice there are no live GTK objects here, and no `Date` instances: `due`, `createdAt`, and `completedAt` are ISO-8601 strings (or `null`) so the record survives `JSON.stringify` untouched.
+`src/types.ts` is the whole domain model. A `Task` is a flat, JSON-friendly record. A `TaskList` is an id, a display name, and a color string used for the sidebar dot. Notice there are no live GTK4 objects here, and no `Date` instances: `due`, `createdAt`, and `completedAt` are ISO-8601 strings (or `null`) so the record survives `JSON.stringify` untouched.
 
 ```ts
 export type TaskList = {
@@ -73,7 +73,7 @@ const encode = (value: string): number[] => Array.from(new TextEncoder().encode(
 const decode = (bytes: number[]): string => new TextDecoder().decode(new Uint8Array(bytes));
 ```
 
-`TextEncoder`/`TextDecoder` are web platform globals, available here because gtkx runs your app on Node (which you provide, version 24 or newer).
+`TextEncoder`/`TextDecoder` are web platform globals, available here because GTKX runs your app on Node (which you provide, version 24 or newer).
 
 ## First run: the seed
 
@@ -198,7 +198,7 @@ useEffect(() => {
 }, [state]);
 ```
 
-Because `state` is in the dependency array, every mutation reschedules the timer: the cleanup clears the previous `setTimeout` and a new one starts. A burst of edits collapses into a single disk write 500ms after the user stops. This is the crash safety net, at most half a second of work is ever at risk.
+Because `state` is in the dependency array, every mutation reschedules the timer: the cleanup clears the previous `setTimeout` and a new one starts. A burst of edits collapses into a single disk write 500ms after the user stops. This is the crash safety net: the write lands 500ms after the last change, so a crash loses only the edits made since the last completed write.
 
 ### Two helpers behind the actions
 
@@ -376,7 +376,7 @@ const handleClose = (): boolean => {
 
 ## The other store: GSettings for UI preferences
 
-Task data is JSON; UI preferences are GSettings. GSettings is GNOME's schema-defined settings database (backed by dconf), and it is the right home for small, discrete values that GTK and libadwaita already know how to bind to. It is the wrong home for the task list: dconf is not meant for large or frequently-churned blobs.
+Task data is JSON; UI preferences are GSettings. GSettings is GNOME's schema-defined settings database (backed by dconf), and it is the right home for small, discrete values that GTK4 and Adwaita already know how to bind to. It is the wrong home for the task list: dconf is not meant for large or frequently-churned blobs.
 
 The preference keys are declared in `data/com.gtkx.tutorial.gschema.xml`. Each key has a type, an optional constraint, a default, and human-readable summary/description text.
 
@@ -443,7 +443,7 @@ Two things worth calling out in the schema format:
 Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered on the Preferences and Theming page.
 
 ::: info node:fs is available, but GLib keeps I/O dependency-free
-Because gtkx runs your app on Node, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node's streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
+Because GTKX runs your app on Node, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK4 app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node's streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
 :::
 
 ## Next

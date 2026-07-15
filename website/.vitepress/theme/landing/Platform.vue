@@ -20,7 +20,7 @@ const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: st
     },
     build: {
         label: "build",
-        blurb: "Single-file production bundle, native assets and all.",
+        blurb: "One JS bundle in dist/, with the native addon and compiled schemas alongside.",
         cmd: "gtkx build",
         out: ["[gtkx] Building src/index.tsx", "[gtkx] Build complete: dist/bundle.js"],
     },

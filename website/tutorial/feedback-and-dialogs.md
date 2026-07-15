@@ -4,7 +4,7 @@ description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informati
 
 # Feedback and Dialogs
 
-Deleting a task in Tasks does not pop a "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate. GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back. This page walks the whole feedback hierarchy in the app, from the lightest touch (a toast) to the heaviest (a destructive alert dialog), plus the informational dialogs (New List, About, Preferences) and the one gtkx mechanism that makes any of them appear on screen.
+Deleting a task in Tasks does not pop an "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate. GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back. This page walks the whole feedback hierarchy in the app, from the lightest touch (a toast) to the heaviest (a destructive alert dialog), plus the informational dialogs (New List, About, Preferences) and the one GTKX mechanism that makes any of them appear on screen.
 
 ## The undo-first hierarchy
 
@@ -14,7 +14,7 @@ Three surfaces, three weights:
 - **Destructive alert dialog** for the one irreversible action: emptying a task permanently out of Trash. Here undo is impossible, so a modal confirm is warranted.
 - **Informational dialogs** (New List, About, Preferences) for input and metadata, not for destruction.
 
-The payoff for a React developer is that the first two map onto two very different gtkx idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes. Getting the distinction is most of this page.
+The payoff for a React developer is that the first two map onto two very different GTKX idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes. Getting the distinction is most of this page.
 
 ## Undo toasts
 
@@ -33,7 +33,7 @@ const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 </AdwToastOverlay>
 ```
 
-You do not render toasts as JSX children. There is no `<AdwToast>` in the tree. A toast appears in response to an event, times out, and is gone, so gtkx exposes `AdwToastOverlay` through a `ref` and you add toasts imperatively. Here is the single-task delete handler:
+You do not render toasts as JSX children. There is no `<AdwToast>` in the tree. A toast appears in response to an event, times out, and is gone, so GTKX exposes `AdwToastOverlay` through a `ref` and you add toasts imperatively. Here is the single-task delete handler:
 
 ```tsx
 const handleDelete = (task: Task): void => {
@@ -152,7 +152,7 @@ const confirmDelete = (): void => {
 };
 ```
 
-`deleteForever` actually removes it; `setTaskToDelete(null)` unmounts the dialog. `onCancel` simply does `setTaskToDelete(null)`, unmounting without deleting.
+`deleteForever` actually removes it; `setTaskToDelete(null)` unmounts the dialog. `onCancel` does `setTaskToDelete(null)`, unmounting without deleting.
 
 ## How a dialog gets on screen
 
@@ -180,7 +180,7 @@ const confirmDelete = (): void => {
 
 Mounting the component shows the dialog; unmounting it closes the dialog. That is the whole contract, and the `<Dialog>` wrapper is what makes it true.
 
-A GTK dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop (the dialog widget, defaulting to `AdwDialog`), attaches the ref to it itself, renders it through a **portal to the top-level root** (not into the surrounding widget tree), and drives present/close from an effect:
+A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop (the dialog widget, defaulting to `AdwDialog`), attaches the ref to it itself, renders it through a **portal to the top-level root** (not into the surrounding widget tree), and drives present/close from an effect:
 
 ```tsx
 export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogProps<C>): ReactNode => {
@@ -211,7 +211,7 @@ export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogPr
 ```
 
 - **`<Component {...rest} ref={setRef} />`** renders the widget named by `component` (default `AdwDialog`) with the props you passed inline, and `Dialog` attaches the ref itself (merged with any ref you pass), so any dialog widget works without you wiring the ref.
-- **`createPortal(..., rootElement)`** mounts the dialog at the application root instead of inline. A dialog is a detached top-level surface, so it must not live inside the split view's widget hierarchy; the portal puts it where GTK expects it.
+- **`createPortal(..., rootElement)`** mounts the dialog at the application root instead of inline. A dialog is a detached top-level surface, so it must not live inside the split view's widget hierarchy; the portal puts it where GTK4 expects it.
 - **`useParentWindow()`** finds the enclosing `AdwApplicationWindow` so the dialog can be presented transient-for it (correct positioning, modality, focus). You can override the anchor with the `parent` prop, but omitting it, as every dialog in this app does, anchors to the current window.
 - **`present` on mount, `forceClose` on the effect cleanup.** When React mounts `<DeleteConfirmation>`, the effect runs and the dialog presents. When `setTaskToDelete(null)` unmounts it, the cleanup runs `forceClose()` and the dialog disappears. `forceClose` bypasses any close confirmation, which is what you want when React state, not the widget, owns whether the dialog is open.
 - **`onClose` mirrors user-initiated closes back to React.** Escape, the close button, and a swipe all make the widget emit `closed`; `Dialog` forwards that to your `onClose` so you can clear the state that mounted it. The `closingFromReact` guard skips the `closed` that its own `forceClose()` emits during unmount, so a React-driven close never re-fires `onClose`.
@@ -276,7 +276,7 @@ export const NewListDialog = ({
 };
 ```
 
-The form is ordinary controlled React: local `name` and `color` state, `onChanged={(self) => setName(self.text)}` on the `GtkEntry` (GTK signal handlers pass the emitting widget last as `self`, so `self.text` is the live entry text), and a `GtkToggleButton` per swatch whose `active` is driven by comparing against `color`. When the user picks "Add", `onResponse` reads the current `name` and `color` out of state and calls `onAdd`.
+The form is ordinary controlled React: local `name` and `color` state, `onChanged={(self) => setName(self.text)}` on the `GtkEntry` (GTKX's JSX signal props pass the emitting widget as the last handler argument, so `self.text` is the live entry text), and a `GtkToggleButton` per swatch whose `active` is driven by comparing against `color`. When the user picks "Add", `onResponse` reads the current `name` and `color` out of state and calls `onAdd`.
 
 Two details make it feel native. **`activatesDefault`** on the entry means pressing Return in the text field triggers the default response, and `defaultResponse="add"` makes that Add. So you can type a name and hit Enter without reaching for the mouse. **`Adw.ResponseAppearance.SUGGESTED`** styles Add as the accent affirmative (blue), the counterpart to the destructive red on the delete confirm.
 
@@ -305,13 +305,13 @@ export const About = ({ onClose }: { onClose: () => void }) => {
             copyright="© 2026 GTKX Contributors"
             licenseType={Gtk.License.MPL_2_0}
             developers={["GTKX Contributors"]}
-            comments="A task manager built with GTKX to showcase React, GTK4, and libadwaita."
+            comments="A task manager built with GTKX to showcase React, GTK4, and Adwaita."
         />
     );
 };
 ```
 
-`applicationIcon="com.gtkx.tutorial"` is the app id, which resolves to the installed icon. `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
+`applicationIcon="com.gtkx.tutorial"` is the application ID, which resolves to the installed icon. `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
 
 Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (just signals dismissal). About has no responses to choose, only a close, so there is nothing to branch on.
 

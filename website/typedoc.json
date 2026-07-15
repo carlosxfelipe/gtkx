@@ -4,6 +4,7 @@
     "entryPointStrategy": "packages",
     "entryPoints": [
         "../packages/react",
+        "../packages/components",
         "../packages/testing",
         "../packages/css",
         "../packages/animate",

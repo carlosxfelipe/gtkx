@@ -27,7 +27,7 @@ const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
     uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
 };
 
-type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
+export type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
     ControlledSelectionProps &
     ControlledExpansionProps & {
         items?: ItemNode<T>[] | undefined;

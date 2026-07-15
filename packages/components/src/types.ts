@@ -5,7 +5,7 @@ import type { ComponentProps, ComponentPropsWithRef, ElementType, Ref } from "re
 export type WidgetOf<C extends ElementType> =
     ComponentProps<C> extends { ref?: Ref<infer W | null> | undefined } ? W : never;
 
-type PolymorphicBody<C extends ElementType, Own, ExtraOmit extends string> = Own &
+export type PolymorphicBody<C extends ElementType, Own, ExtraOmit extends string> = Own &
     Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
 
 export type PolymorphicChildProps<C extends ElementType, Own = unknown> =

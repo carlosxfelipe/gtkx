@@ -2,7 +2,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
 /**
- * Describes one constraint added by {@link ConstraintLayout.Constraint}, relating a
+ * Describes one constraint added by `<ConstraintLayout.Constraint>`, relating a
  * target widget attribute to a source attribute of another widget or guide.
  */
 export type ConstraintProps = {
@@ -23,7 +23,7 @@ export type ConstraintProps = {
 };
 
 /**
- * Describes an invisible spacing guide added by {@link ConstraintLayout.Guide},
+ * Describes an invisible spacing guide added by `<ConstraintLayout.Guide>`,
  * usable as a constraint target under its id.
  */
 export type ConstraintGuideProps = {
@@ -43,7 +43,7 @@ export type ConstraintGuideProps = {
 
 /**
  * Describes constraints authored with the Visual Format Language (VFL), applied by
- * {@link ConstraintLayout.Vfl}.
+ * `<ConstraintLayout.Vfl>`.
  */
 export type ConstraintVflProps = {
     /** VFL lines describing the constraints between named widgets and guides. */

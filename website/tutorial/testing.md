@@ -1,13 +1,13 @@
 ---
-description: "Test real GTK widgets with @gtkx/testing: Testing Library style queries, user events, Vitest wiring, and MCP inspection of a live app."
+description: "Test real GTK4 widgets with @gtkx/testing: Testing Library style queries, user events, Vitest wiring, and MCP inspection of a live app."
 ---
 
 # Testing the App
 
-Because GTKX renders real GObject widgets, you can test a GTKX app much the way you test a React web app: render it, query the accessibility tree, drive it with user events, and assert on the result. The [`@gtkx/testing`](https://github.com/gtkx-org/gtkx/tree/main/packages/testing) package provides a React Testing Library style API over the live widget tree, and `@gtkx/vitest` wires it into Vitest.
+Because GTKX renders real GObject widgets, you can test a GTKX app much the way you test a React web app: render it, query the accessibility tree, drive it with user events, and assert on the result. The [`@gtkx/testing`](https://github.com/gtkx-org/gtkx/tree/main/packages/testing) package provides a React Testing Library style API over the live widget tree, and `@gtkx/vitest` wires it into Vitest (see the [testing guide's Setup section](/guide/testing#setup) for the scaffolded config and how to run the suite).
 
 ::: info
-The examples below are illustrative, they show the kind of tests you would add to the app. The starter does not ship with them.
+The examples below are illustrative: they show the kind of tests you would add to the app. The starter does not ship with them.
 :::
 
 ## Rendering and querying
@@ -55,7 +55,7 @@ it("opens the detail view when a task is activated", async () => {
 });
 ```
 
-Adding a task through the inline entry row. The `AdwEntryRow` surfaces its editable with the `TEXT_BOX` role (the search entry stays hidden, and therefore out of the accessibility tree, until you start a search). `userEvent.type` inserts text, then `userEvent.keyboard` presses Enter, which activates the entry and fires the `onEntryActivated` handler:
+The next flow adds a task through the inline entry row. The `AdwEntryRow` surfaces its editable with the `TEXT_BOX` role (the search entry reports the `SEARCH_BOX` role, so it never matches a `TEXT_BOX` query). `userEvent.type` inserts text, then `userEvent.keyboard` presses Enter, which activates the entry and fires the `onEntryActivated` handler:
 
 ```tsx
 it("adds a task from the entry row", async () => {
@@ -71,7 +71,7 @@ it("adds a task from the entry row", async () => {
 
 ## Drag and drop
 
-`@gtkx/testing` can even synthesize the drag-to-reorder gesture from the [Task Rows](/tutorial/task-rows-and-reordering) chapter. Every row carries a `GtkDragSource` and `GtkDropTarget` whenever manual sort order is active, which is the default. `userEvent.dragAndDrop` verifies the source's drag source, then delivers the payload to the target's drop target as a marshalled `GObject.Value`. A string argument is wrapped in a `TYPE_STRING` value, which is exactly what the row's `onDrop` reads back with `value.getString()`:
+`@gtkx/testing` can synthesize the drag-to-reorder gesture from the [Task Rows](/tutorial/task-rows-and-reordering) chapter. Every row carries a `GtkDragSource` and `GtkDropTarget` whenever manual sort order is active (the default) and neither a search nor the Trash view is showing. `userEvent.dragAndDrop` verifies the source's drag source, then delivers the payload to the target's drop target as a marshaled `GObject.Value`. A string argument is wrapped in a `TYPE_STRING` value, which is exactly what the row's `onDrop` reads back with `value.getString()`:
 
 ```tsx
 it("reorders tasks by dragging", async () => {
@@ -81,12 +81,14 @@ it("reorders tasks by dragging", async () => {
   const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ });
   await userEvent.dragAndDrop(source, target, "t2");
 
-  const rows = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+  const rows = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+    name: /Water the plants|Review pull requests/,
+  });
   // assert the new order from rows...
 });
 ```
 
-The third argument is the dragged task's id, the same value the row's `GtkDragSource` provides in production.
+The third argument is the dragged task's id, the same value the row's `GtkDragSource` provides in production. The `name` filter on the final query matters: the sidebar rows and the add-task entry row also report the `LIST_ITEM` role, so an unfiltered `getAllByRole` would mix them in with the task rows.
 
 ## Inspecting a running app
 
@@ -94,4 +96,4 @@ For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MC
 
 ## Next
 
-The app is complete and tested. The last step is [Packaging and Shipping](/tutorial/packaging).
+The app is complete and you have seen how to test it. Continue to **Packaging and Shipping** to build, package, and distribute it.

@@ -18,20 +18,20 @@ import type {
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
-export type { ColumnDef } from "./column-view-column.js";
+export type { ColumnDef, ColumnDefDeclarativeProps } from "./column-view-column.js";
 
 const headerFactoryInstaller: FactoryInstaller<Gtk.ColumnView> = {
     install: (widget, factory) => widget.setHeaderFactory(factory),
     uninstall: (widget) => widget.setHeaderFactory(null),
 };
 
-type ColumnViewSortProps = {
+export type ColumnViewSortProps = {
     sortColumn?: string | null | undefined;
     sortOrder?: Gtk.SortType | null | undefined;
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
 };
 
-type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
+export type ColumnViewDeclarativeProps<T = unknown, S = unknown> = ColumnViewSortProps &
     Omit<CollectionItemSizeProps, "estimatedItemWidth"> &
     ControlledSelectionProps &
     ControlledExpansionProps & {

@@ -29,7 +29,7 @@ const useFixedInstance = (): Gtk.Fixed | null => {
 /** Props for {@link Fixed}. */
 export type FixedProps = GtkFixedProps & { ref?: Ref<Gtk.Fixed | null>; children?: ReactNode };
 
-type FixedPlacementProps = {
+export type FixedPlacementProps = {
     x?: number | null | undefined;
     y?: number | null | undefined;
     /** Full transform applied to the child, overriding x and y when provided. */

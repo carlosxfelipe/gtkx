@@ -17,7 +17,7 @@ import Showcase from "./Showcase.vue";
     <a class="skip-link" href="#main">Skip to content</a>
     <a class="ann" :href="`${REPO_URL}#status`">
       <span class="ann__tag">NEW</span>
-      <span class="ann__txt">GTKX 1.0 release candidate: React for native Linux apps, GTK4 and libadwaita included</span>
+      <span class="ann__txt">GTKX 1.0 release candidate: React for native Linux apps, GTK4 and Adwaita included</span>
       <span class="ann__arrow" aria-hidden="true">→</span>
     </a>
     <Nav />
