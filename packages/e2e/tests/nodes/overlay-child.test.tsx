@@ -14,7 +14,7 @@ describe("render - Overlay.Child (1)", () => {
         await render(
             <Overlay ref={overlayRef}>
                 <GtkLabel ref={mainRef}>Main Content</GtkLabel>
-                <Overlay.Child>{(ref) => <GtkButton ref={ref} label="Overlay Button" />}</Overlay.Child>
+                <Overlay.Child component={GtkButton} label="Overlay Button" />
             </Overlay>,
         );
 
@@ -30,9 +30,7 @@ describe("render - Overlay.Child (1)", () => {
         await render(
             <Overlay ref={overlayRef}>
                 <GtkLabel>Main</GtkLabel>
-                <Overlay.Child measure={true}>
-                    {(ref) => <GtkButton ref={ref} label="Measured Overlay" />}
-                </Overlay.Child>
+                <Overlay.Child component={GtkButton} measure={true} label="Measured Overlay" />
             </Overlay>,
         );
 
@@ -49,9 +47,7 @@ describe("render - Overlay.Child (2)", () => {
         await render(
             <Overlay ref={overlayRef}>
                 <GtkLabel>Main</GtkLabel>
-                <Overlay.Child clipOverlay={true}>
-                    {(ref) => <GtkButton ref={ref} label="Clipped Overlay" />}
-                </Overlay.Child>
+                <Overlay.Child component={GtkButton} clipOverlay={true} label="Clipped Overlay" />
             </Overlay>,
         );
 
@@ -69,9 +65,7 @@ describe("render - Overlay.Child (3)", () => {
             return (
                 <Overlay ref={overlayRef}>
                     <GtkLabel>Main</GtkLabel>
-                    {showOverlay && (
-                        <Overlay.Child>{(ref) => <GtkButton ref={ref} label="Removable Overlay" />}</Overlay.Child>
-                    )}
+                    {showOverlay && <Overlay.Child component={GtkButton} label="Removable Overlay" />}
                 </Overlay>
             );
         }
@@ -91,8 +85,8 @@ describe("render - Overlay.Child (4)", () => {
         await render(
             <Overlay ref={overlayRef}>
                 <GtkLabel>Main</GtkLabel>
-                <Overlay.Child>{(ref) => <GtkButton ref={ref} label="First Overlay" />}</Overlay.Child>
-                <Overlay.Child>{(ref) => <GtkButton ref={ref} label="Second Overlay" />}</Overlay.Child>
+                <Overlay.Child component={GtkButton} label="First Overlay" />
+                <Overlay.Child component={GtkButton} label="Second Overlay" />
             </Overlay>,
         );
 
@@ -106,8 +100,8 @@ const renderTwoButtonOverlay = async (measure?: boolean): Promise<Gtk.Overlay> =
     await render(
         <Overlay ref={overlayRef}>
             <GtkLabel>Main</GtkLabel>
-            <Overlay.Child measure={measure}>{(ref) => <GtkButton ref={ref} label="First" />}</Overlay.Child>
-            <Overlay.Child measure={measure}>{(ref) => <GtkButton ref={ref} label="Second" />}</Overlay.Child>
+            <Overlay.Child component={GtkButton} measure={measure} label="First" />
+            <Overlay.Child component={GtkButton} measure={measure} label="Second" />
         </Overlay>,
     );
 
@@ -134,5 +128,30 @@ describe("render - Overlay.Child (6)", () => {
         const second = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
         expect(overlay.getMeasureOverlay(first)).toBe(true);
         expect(overlay.getMeasureOverlay(second)).toBe(true);
+    });
+});
+
+describe("render - Overlay.Child (7)", () => {
+    it("moves the widget to a newly-provided ref when the external ref identity changes", async () => {
+        const refA = createRef<Gtk.Button>();
+        const refB = createRef<Gtk.Button>();
+
+        function App({ useA }: { useA: boolean }) {
+            return (
+                <Overlay>
+                    <GtkLabel>Main</GtkLabel>
+                    <Overlay.Child component={GtkButton} ref={useA ? refA : refB} label="Movable" />
+                </Overlay>
+            );
+        }
+
+        const { rerender } = await render(<App useA={true} />);
+        const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Movable" });
+        expect(refA.current).toBe(button);
+        expect(refB.current).toBeNull();
+
+        await rerender(<App useA={false} />);
+        expect(refB.current).toBe(button);
+        expect(refA.current).toBeNull();
     });
 });

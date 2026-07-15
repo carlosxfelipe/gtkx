@@ -1,11 +1,14 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { createPortal, rootElement } from "@gtkx/react";
+import { useMergeRefs } from "@gtkx/react/internal";
 import {
     type Context,
     createContext,
     type ReactNode,
+    type Ref,
     type RefCallback,
     type RefObject,
+    useCallback,
     useContext,
     useLayoutEffect,
     useRef,
@@ -33,6 +36,8 @@ export type PlacedChildRender<T> = (ref: RefCallback<T>) => ReactNode;
 
 export type PlacedChildOptions<T extends GObject.Object, P> = {
     render: PlacedChildRender<T>;
+    /** External ref to also receive the placed object, merged with the internal capture. */
+    ref?: Ref<T | null> | undefined;
     placement: P;
     samePlacement: (a: P, b: P) => boolean;
     place: (object: T, placement: P, previous: P | undefined) => void;
@@ -40,15 +45,13 @@ export type PlacedChildOptions<T extends GObject.Object, P> = {
 };
 
 export const usePlacedChild = <T extends GObject.Object, P>(options: PlacedChildOptions<T, P>): ReactNode => {
-    const { render, placement, samePlacement, place, release } = options;
+    const { render, ref, placement, samePlacement, place, release } = options;
     const objectRef = useRef<T | null>(null);
     const appliedRef = useRef<{ object: T; placement: P } | null>(null);
-    const setObjectRef = useRef<RefCallback<T> | null>(null);
-    if (setObjectRef.current === null) {
-        setObjectRef.current = (object: T | null): void => {
-            objectRef.current = object;
-        };
-    }
+    const captureObject = useCallback<RefCallback<T>>((object) => {
+        objectRef.current = object;
+    }, []);
+    const setObjectRef = useMergeRefs<T>(ref, captureObject);
 
     useLayoutEffect(() => {
         const object = objectRef.current;
@@ -74,5 +77,5 @@ export const usePlacedChild = <T extends GObject.Object, P>(options: PlacedChild
         [],
     );
 
-    return createPortal(render(setObjectRef.current), rootElement);
+    return createPortal(render(setObjectRef), rootElement);
 };
