@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { getAccessibleMetadata } from "@gtkx/react";
+import { getAccessibleMetadata } from "@gtkx/react/internal";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { descendants } from "./traversal.js";
 

@@ -1,7 +1,5 @@
 import { type Css, createCss } from "./create-css.js";
 
-export { registerProviderForDefaultDisplay } from "./provider.js";
-
 const instance = createCss();
 
 /**

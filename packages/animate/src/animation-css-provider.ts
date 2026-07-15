@@ -1,4 +1,4 @@
-import { registerProviderForDefaultDisplay } from "@gtkx/css";
+import { registerProviderForDefaultDisplay } from "@gtkx/css/internal";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";

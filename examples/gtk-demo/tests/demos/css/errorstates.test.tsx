@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getAccessibleMetadata } from "@gtkx/react";
+import { getAccessibleMetadata } from "@gtkx/react/internal";
 import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { errorstatesDemo } from "../../../src/demos/css/errorstates.js";

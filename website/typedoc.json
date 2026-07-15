@@ -28,9 +28,6 @@
         "@gtkx/testing": {
             "tab": "/reference/@gtkx/testing/type-aliases/UserEvent#tab",
             "type": "/reference/@gtkx/testing/type-aliases/UserEvent#type"
-        },
-        ".gtkx": {
-            "CssProvider": "https://docs.gtk.org/gtk4/class.CssProvider.html"
         }
     }
 }

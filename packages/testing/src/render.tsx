@@ -1,6 +1,11 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { createReconcilerRoot, type ReconcilerRoot, type RootElement, setReconcilerErrorHandler } from "@gtkx/react";
-import { isRootElement } from "@gtkx/react/internal";
+import type { RootElement } from "@gtkx/react";
+import {
+    createReconcilerRoot,
+    isRootElement,
+    type ReconcilerRoot,
+    setReconcilerErrorHandler,
+} from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import { runInAct } from "./act.js";
 import type { RenderResult } from "./bound-queries.js";
