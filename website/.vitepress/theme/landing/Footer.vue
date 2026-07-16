@@ -27,7 +27,7 @@ const cols: { h: string; items: Link[] }[] = [
         h: "Packages",
         items: [
             { t: "@gtkx/react", href: `${NPM_URL}/@gtkx/react` },
-            { t: "@gtkx/ffi", href: `${NPM_URL}/@gtkx/ffi` },
+            { t: "@gtkx/runtime", href: `${NPM_URL}/@gtkx/runtime` },
             { t: "@gtkx/cli", href: `${NPM_URL}/@gtkx/cli` },
             { t: "@gtkx/testing", href: `${NPM_URL}/@gtkx/testing` },
             { t: "@gtkx/mcp", href: `${NPM_URL}/@gtkx/mcp` },

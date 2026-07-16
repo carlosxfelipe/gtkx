@@ -1,7 +1,7 @@
 import { loadConfig } from "@gtkx/config";
-import { quitApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { quitApplication } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { createServer } from "vite";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";

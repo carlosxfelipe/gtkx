@@ -29,6 +29,6 @@ export const createDevServerConfig = (root: string, plugins: Plugin[]): InlineCo
     optimizeDeps: { noDiscovery: true, include: [] },
     ssr: {
         external: true,
-        noExternal: [/^@gtkx\/(?!(?:native|gi|gl|ffi|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
+        noExternal: [/^@gtkx\/(?!(?:native|gi|gl|runtime|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
     },
 });

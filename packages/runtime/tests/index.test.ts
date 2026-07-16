@@ -1,4 +1,4 @@
-import * as runtime from "@gtkx/ffi";
+import * as runtime from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_RUNTIME_EXPORTS = [

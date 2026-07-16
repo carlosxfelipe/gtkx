@@ -56,7 +56,7 @@ const codegenOptions = ({ store, libraries, girPath, elementProps }: CodegenOpti
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
-        version: store.ffiVersion,
+        version: store.runtimeVersion,
     },
     jsx:
         store.react !== null

@@ -27,8 +27,8 @@ const installPackage = (cwd: string, name: string) => {
     writeFileSync(join(dir, "index.js"), "");
 };
 
-const installFfiPackage = (cwd: string) => {
-    installPackage(cwd, "ffi");
+const installRuntimePackage = (cwd: string) => {
+    installPackage(cwd, "runtime");
     installPackage(cwd, "native");
 };
 
@@ -92,14 +92,14 @@ describe("runCodegen", () => {
     });
 
     it("generates with default settings when no gtkx.config.ts is present", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         const result = await runCodegen({ cwd });
         expect(result.configFile).toBeUndefined();
         expect(result.namespaces).toBe(1);
     });
 
     it("falls back to process.cwd() when options.cwd is omitted", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         writeConfig(cwd);
         const originalCwd = process.cwd();
         process.chdir(cwd);
@@ -112,7 +112,7 @@ describe("runCodegen", () => {
     });
 
     it("with force, removes the gi store before regenerating", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
         const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
@@ -149,13 +149,13 @@ describe("ensureGenerated — announce path", () => {
 
     it("returns silently when there is no gtkx.config.ts", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
     it("propagates non-NotFound config errors", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         writeConfig(cwd, `export default { libraries: [] };`);
 
         await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow();
@@ -163,7 +163,7 @@ describe("ensureGenerated — announce path", () => {
 
     it("runs codegen when the gi store is missing", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         writeConfig(cwd);
 
         expect(await announceLogs(cwd)).toContain("running codegen");
@@ -171,7 +171,7 @@ describe("ensureGenerated — announce path", () => {
 
     it("skips codegen when the gi and jsx stores are present", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
@@ -194,7 +194,7 @@ describe("ensureGenerated", () => {
     });
 
     it("regenerates when the jsx unit is missing", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
@@ -203,7 +203,7 @@ describe("ensureGenerated", () => {
     });
 
     it("does nothing when the gi and jsx stores are present", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
@@ -214,7 +214,7 @@ describe("ensureGenerated", () => {
     });
 
     it("does not wedge on a missing jsx unit when the react runtime is absent", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         installPackage(cwd, "react");
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
@@ -224,13 +224,13 @@ describe("ensureGenerated", () => {
     });
 
     it("does nothing when there is no gtkx.config.ts", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
 
         expect(await ensureGenerated(cwd)).toBe(false);
     });
 
     it("propagates non-NotFound config errors", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         writeConfig(cwd, `export default { libraries: [] };`);
 
         await expect(ensureGenerated(cwd)).rejects.toThrow();
@@ -249,7 +249,7 @@ describe("ensureGenerated — store links", () => {
     });
 
     it("regenerates when the bundled gi store links are pruned", async () => {
-        installFfiPackage(cwd);
+        installRuntimePackage(cwd);
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);

@@ -1,5 +1,5 @@
-import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
+import type { SignalHandler } from "@gtkx/runtime";
 
 const UNBLOCKED_SIGNALS = new Set([
     "realize",

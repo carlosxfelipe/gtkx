@@ -50,7 +50,7 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/ffi": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },

@@ -1,4 +1,4 @@
-import { quit } from "@gtkx/ffi";
+import { quit } from "@gtkx/runtime";
 import { registerMatchers } from "./matchers.js";
 import { cleanup } from "./render.js";
 

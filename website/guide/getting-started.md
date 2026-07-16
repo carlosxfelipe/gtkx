@@ -117,13 +117,13 @@ The counter starter installs four runtime dependencies:
 
 - **`@gtkx/react`** ships the reconciler plus hooks and helpers (`createRoot`, `useApplication`, `useSetting`, `useSignal`, `createPortal`, `quit`, ...).
 - **`@gtkx/css`** is CSS-in-JS for GTK4's CSS (a `css` tagged template that feeds a widget's `cssClasses`).
-- **`@gtkx/ffi`** is the hand-written FFI runtime the generated bindings call into; it depends on and re-exports parts of `@gtkx/native`, the prebuilt addon.
+- **`@gtkx/runtime`** is the hand-written FFI runtime the generated bindings call into; it depends on and re-exports parts of `@gtkx/native`, the prebuilt addon.
 - **`react`** is plain React 19. GTKX is a custom reconciler, not a fork.
 
 The completed Tasks app adds two more runtime dependencies in the chapters that first need them:
 
 - **`@gtkx/components`** provides high-level React components over the harder GTK4 APIs, notably the model-backed collection components `ListView`, `ColumnView`, `GridView`, and `DropDown`, plus a declarative `Menu` builder over `Gio.Menu`.
-- **`@gtkx/animate`** adds declarative enter/exit animations backed by Adwaita's animation engine.
+- **`@gtkx/animated`** adds declarative enter/exit animations backed by Adwaita's animation engine.
 
 `@gtkx/cli` and `@gtkx/config` are dev-only: the CLI is the `gtkx` binary, and `@gtkx/config` provides `defineConfig`.
 

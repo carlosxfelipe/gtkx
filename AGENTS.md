@@ -9,7 +9,7 @@ Homepage: https://gtkx.dev
 | Package | Role |
 | --- | --- |
 | `@gtkx/native` | Rust N-API addon: drives the default GLib main context on the Node.js/libuv event loop, performs all libffi C calls into GTK4/GObject, marshals values via the Type descriptor contract, registers JS-backed subclasses/vfuncs, binds wrapper lifetime to native GObjects. |
-| `@gtkx/ffi` | Hand-written TypeScript runtime over the addon: GObject construction, value marshaling, signals and trampolines, subclass registration, the GType-to-class registry and wrapper identity, and the Type descriptor vocabulary the generated bindings target. |
+| `@gtkx/runtime` | Hand-written TypeScript runtime over the addon: GObject construction, value marshaling, signals and trampolines, subclass registration, the GType-to-class registry and wrapper identity, and the Type descriptor vocabulary the generated bindings target. |
 | `@gtkx/react` | Custom react-reconciler host config mapping JSX to GObject instances, plus the GObject-aware hooks; drives prop application, child attachment, and the commit signal-block strategy. |
 | `@gtkx/components` | Hand-written higher-level component families (list, grid, grid-view, fixed, overlay, column, drop-down, menu, size-group, dialog, navigation-view, constraint layout) over the generated bindings. |
 | `@gtkx/codegen` | Build-time GIR/Khronos generator producing the `@gtkx/gi` and `@gtkx/jsx` binding stores, the reconciler metadata, and `@gtkx/gl`; owns the Type descriptor and helper-name contract the runtimes implement. |
@@ -19,7 +19,7 @@ Homepage: https://gtkx.dev
 | `@gtkx/gi` | Generated low-level FFI bindings: one module per GIR namespace plus hand-written overrides; resolves as a real installed package via codegen symlinks. |
 | `@gtkx/jsx` | Generated React/JSX bindings: intrinsic element types, per-element prop interfaces, the JSX intrinsic-elements augmentation, and the reconciler metadata module. |
 | `@gtkx/css` | Emotion-based CSS-in-JS that compiles tagged-template styles into GTK4 CSS classes pushed through a process-wide CSS provider; raw global stylesheet injection; supports GTK4 `@named-colors`. |
-| `@gtkx/animate` | React animation components (tween/spring transitions and presence-aware enter/exit) that interpolate opacity/transform via Adwaita animations and write them out as per-element GTK4 CSS. |
+| `@gtkx/animated` | React animation components (tween/spring transitions and presence-aware enter/exit) that interpolate opacity/transform via Adwaita animations and write them out as per-element GTK4 CSS. |
 | `@gtkx/gl` | Hand-curated OpenGL core bindings generated from the vendored Khronos registry plus companion helpers, for use inside GL-area render callbacks. |
 | `@gtkx/mcp` | Model Context Protocol server exposing widget-inspection/interaction tools to AI agents over stdio, bridged to live GTKX apps over a Unix socket. |
 | `@gtkx/testing` | Testing Library-style harness over real GObject widgets: render/cleanup, accessibility-first queries, `userEvent`/`fireEvent` via real GTK4 controllers/signals, screenshots, all inside React `act()`. |

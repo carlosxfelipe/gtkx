@@ -1,8 +1,8 @@
 /// <reference types="@gtkx/config/env" />
 
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS } from "virtual:gtkx-config";
-import { getWrapperClass, type TypedClass } from "@gtkx/ffi";
 import * as GObject from "@gtkx/gi/gobject";
+import { getWrapperClass, type TypedClass } from "@gtkx/runtime";
 import { NOTIFY_SIGNAL, propToNotifySignal } from "./notify-name.js";
 
 const NOTIFY_PREFIX = "onNotify";

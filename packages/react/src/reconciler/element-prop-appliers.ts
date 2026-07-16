@@ -1,5 +1,5 @@
 import type { AppliedProp, Call, ControlledTextProp, LazyProp, ListProp, ValueProp } from "@gtkx/config";
-import type { TypedClass } from "@gtkx/ffi";
+import type { TypedClass } from "@gtkx/runtime";
 import { callMethod, isShallowEqual } from "@gtkx/utils";
 import { appliedPropsFor, runCall } from "./element-props.js";
 import type { Props } from "./types.js";

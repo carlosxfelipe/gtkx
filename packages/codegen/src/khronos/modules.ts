@@ -57,7 +57,7 @@ export const renderCommandsModule = (
     usedTypes: Set<string>,
 ): string => {
     const builder = new ModuleBuilder();
-    builder.imports.addNamed("@gtkx/ffi", "t");
+    builder.imports.addNamed("@gtkx/runtime", "t");
     for (const alias of sortStrings(usedTypes)) {
         if (TS_PRIMITIVES.has(alias)) continue;
         builder.imports.addNamed("./types.js", alias, true);

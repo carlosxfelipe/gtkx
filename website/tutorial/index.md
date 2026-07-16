@@ -66,7 +66,7 @@ createRoot().render(<App />);
 
 ## What GTKX is
 
-GTKX is a React reconciler that renders real GTK4 and Adwaita widgets instead of the DOM (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from three paths: `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `Dialog`, under `@gtkx/components/adw`), navigators from `@gtkx/navigation`, and animation helpers from `@gtkx/animate`.
+GTKX is a React reconciler that renders real GTK4 and Adwaita widgets instead of the DOM (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from three paths: `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `Dialog`, under `@gtkx/components/adw`), navigators from `@gtkx/navigation`, and animation helpers from `@gtkx/animated`.
 
 ::: info React knowledge transfers directly
 State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK4 side: which widget does what, how Adwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This tutorial leads with those.

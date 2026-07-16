@@ -21,7 +21,7 @@ vi.mock("@gtkx/gi/gio", () => ({
     Application: { getDefault: hoisted.getDefault },
 }));
 
-vi.mock("@gtkx/ffi", () => ({
+vi.mock("@gtkx/runtime", () => ({
     quitApplication: hoisted.quitApplication,
 }));
 

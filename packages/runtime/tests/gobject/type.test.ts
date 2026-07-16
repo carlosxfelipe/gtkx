@@ -23,7 +23,7 @@ import {
     TYPE_ULONG,
     TYPE_UNICHAR,
     TYPE_VARIANT,
-} from "@gtkx/ffi";
+} from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const NONZERO_FUNDAMENTALS: [string, bigint][] = [

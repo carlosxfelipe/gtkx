@@ -1,4 +1,4 @@
-import { animated } from "@gtkx/animate";
+import { animated } from "@gtkx/animated";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";

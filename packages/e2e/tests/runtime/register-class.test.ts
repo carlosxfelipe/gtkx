@@ -1,8 +1,8 @@
-import { getHandle, registerClass } from "@gtkx/ffi";
-import { resolveWrapperClass } from "@gtkx/ffi/internal";
 import * as Gdk from "@gtkx/gi/gdk";
 import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getHandle, registerClass } from "@gtkx/runtime";
+import { resolveWrapperClass } from "@gtkx/runtime/internal";
 import { describe, expect, it } from "vitest";
 import { instanceIsA } from "./helpers.js";
 

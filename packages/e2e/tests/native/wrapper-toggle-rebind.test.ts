@@ -1,6 +1,6 @@
-import { getHandle } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getWrapper, setWrapper } from "@gtkx/native";
+import { getHandle } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { getRefCount } from "../helpers/native-utils.js";
 

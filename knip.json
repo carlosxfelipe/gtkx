@@ -16,12 +16,12 @@
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts", "gtkx.config.base.ts", "scripts/**/*.ts"],
-            "ignoreDependencies": ["@gtkx/ffi", "@gtkx/native", "@gtkx/react", "@swc/core"]
+            "ignoreDependencies": ["@gtkx/runtime", "@gtkx/native", "@gtkx/react", "@swc/core"]
         },
         "website": {
             "entry": [".vitepress/theme/**/*.{ts,vue}"]
         },
-        "packages/animate": {
+        "packages/animated": {
             "entry": ["gtkx.config.ts!"]
         },
         "packages/e2e": {

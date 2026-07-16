@@ -1,4 +1,4 @@
-import { getBoxedValue, getHandle, setBoxedValue } from "@gtkx/ffi";
+import { getBoxedValue, getHandle, setBoxedValue } from "@gtkx/runtime";
 import { type Type, Value } from "../gobject.js";
 
 export const buildValue = (gtype: Type, populate: (value: Value) => void): Value => {

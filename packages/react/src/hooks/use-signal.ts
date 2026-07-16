@@ -1,5 +1,5 @@
-import type { SignalHandler } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/gi/gobject";
+import type { SignalHandler } from "@gtkx/runtime";
 import { useRef } from "react";
 import type { GObjectTarget } from "../utils/gobject-target.js";
 import { useTargetRegistration } from "./use-target-registration.js";

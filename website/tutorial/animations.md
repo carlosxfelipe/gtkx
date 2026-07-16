@@ -1,5 +1,5 @@
 ---
-description: "Give the empty state a subtle fade with @gtkx/animate, and learn where motion belongs in a GNOME app: communicate real state changes, honor reduce motion, and never re-animate what the toolkit already animates."
+description: "Give the empty state a subtle fade with @gtkx/animated, and learn where motion belongs in a GNOME app: communicate real state changes, honor reduce motion, and never re-animate what the toolkit already animates."
 ---
 
 # Animations
@@ -33,12 +33,12 @@ Adwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `
 
 ## The fix: `AnimatePresence` and `animated.AdwStatusPage`
 
-`@gtkx/animate` is the Framer-Motion-style layer covered in [CSS and Animations](/guide/css-and-animations). Two pieces of it solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animate` is already a dependency of the tutorial, so the fade itself is two edits to one file, plus a key on the list in `app.tsx`, which a later section explains.
+`@gtkx/animated` is the Framer-Motion-style layer covered in [CSS and Animations](/guide/css-and-animations). Two pieces of it solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animated` is already a dependency of the tutorial, so the fade itself is two edits to one file, plus a key on the list in `app.tsx`, which a later section explains.
 
-First the imports. The status page becomes an animated one, so `AdwStatusPage` moves out of the `@gtkx/jsx/adw` import (the file uses it nowhere else, so the name drops from the import list) and `@gtkx/animate` comes in:
+First the imports. The status page becomes an animated one, so `AdwStatusPage` moves out of the `@gtkx/jsx/adw` import (the file uses it nowhere else, so the name drops from the import list) and `@gtkx/animated` comes in:
 
 ```tsx
-import { AnimatePresence, animated } from "@gtkx/animate";
+import { AnimatePresence, animated } from "@gtkx/animated";
 // ...
 import { AdwButtonRow, AdwClamp, AdwEntryRow } from "@gtkx/jsx/adw";
 ```
@@ -65,7 +65,7 @@ Then the empty-state block itself, wrapped in `AnimatePresence` and rendered thr
 
 The animation props read like their web counterparts. `initial` is the state the widget starts from, `animate` is where it settles once present, and `exit` is where it goes on the way out. A target is opacity plus CSS transforms; here it is a plain opacity fade from `0` to `1`. A `transition` of `0.2` seconds makes it a short timed tween on the default `easeOut` curve. The `exit` target embeds a `transition` of its own that zeroes the duration on the way out; a later section explains that asymmetry.
 
-Under the hood there is no JavaScript timer: `@gtkx/animate` builds an `Adw.TimedAnimation`, drives an `Adw.CallbackAnimationTarget`, and writes the interpolated `opacity` as scoped GTK4 CSS on the widget. It is Adwaita animating a real widget, reached declaratively.
+Under the hood there is no JavaScript timer: `@gtkx/animated` builds an `Adw.TimedAnimation`, drives an `Adw.CallbackAnimationTarget`, and writes the interpolated `opacity` as scoped GTK4 CSS on the widget. It is Adwaita animating a real widget, reached declaratively.
 
 ## `AnimatePresence` is what makes `exit` possible
 
@@ -116,11 +116,11 @@ Note what the key leaves out. The search query is not in it, or every keystroke 
 
 Because the fade is an `Adw.Animation`, it honors the system "enable animations" accessibility setting automatically, with no code of ours. When a user turns on Reduce Motion, Adwaita skips the animation to its final value: the status page appears and disappears instantly, and the `exit` still completes so the widget still unmounts cleanly. The swap becomes the hard cut it was before, which is the correct behavior for someone who asked for less motion.
 
-This is free only because we left `followEnableAnimations` at its default. Building UI state changes on a raw timer would bypass the accessibility setting entirely; building them on Adwaita's animation primitives, as `@gtkx/animate` does, means Reduce Motion is respected by construction. (JavaScript timers keep their place for scheduling work; it is motion specifically that belongs on the animation primitives.) You would set `followEnableAnimations: false` on the transition only to force an animation to always run because its motion carries essential meaning, which a decorative fade never does.
+This is free only because we left `followEnableAnimations` at its default. Building UI state changes on a raw timer would bypass the accessibility setting entirely; building them on Adwaita's animation primitives, as `@gtkx/animated` does, means Reduce Motion is respected by construction. (JavaScript timers keep their place for scheduling work; it is motion specifically that belongs on the animation primitives.) You would set `followEnableAnimations: false` on the transition only to force an animation to always run because its motion carries essential meaning, which a decorative fade never does.
 
 ## Why a tween here, and not a spring
 
-`@gtkx/animate` offers both timed tweens and physics springs, and this fade is a tween. A spring is *physically simulated*: it has no fixed duration, it can overshoot, and it exists to model motion that tracks a gesture, the deceleration after you fling or drag something. This fade is none of that. It is a discrete, non-interactive view swap with a known start and end, so a short timed tween on an easing curve is the correct choice, and overshoot on a simple opacity fade would look wrong.
+`@gtkx/animated` offers both timed tweens and physics springs, and this fade is a tween. A spring is *physically simulated*: it has no fixed duration, it can overshoot, and it exists to model motion that tracks a gesture, the deceleration after you fling or drag something. This fade is none of that. It is a discrete, non-interactive view swap with a known start and end, so a short timed tween on an easing curve is the correct choice, and overshoot on a simple opacity fade would look wrong.
 
 Tasks ships no spring at all, because no surface in it qualifies. The clearest example of restraint is the important-star toggle on each row: it would be easy to make the star pop with a springy bounce when you tap it, but a star toggle is a discrete tap, and the HIG has discrete taps update instantly. The icon already swaps from outline to filled, which says everything the change needs to say; a bounce would add motion the interaction did not call for. Springs belong on gestures, and Tasks has none that would benefit, so it has no springs.
 

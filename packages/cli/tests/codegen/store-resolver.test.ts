@@ -25,7 +25,7 @@ describe("resolveCodegenStore", () => {
     }
 
     it("resolves the store and alias directories under the project node_modules", () => {
-        installPackage("@gtkx/ffi");
+        installPackage("@gtkx/runtime");
         const store = resolveCodegenStore(projectRoot);
         const nodeModules = join(projectRoot, "node_modules");
         expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
@@ -34,24 +34,24 @@ describe("resolveCodegenStore", () => {
         expect(store.jsxLinkDir).toBe(join(nodeModules, "@gtkx", "jsx"));
     });
 
-    it("resolves @gtkx/ffi's version", () => {
-        installPackage("@gtkx/ffi", "9.9.9");
+    it("resolves @gtkx/runtime's version", () => {
+        installPackage("@gtkx/runtime", "9.9.9");
         const store = resolveCodegenStore(projectRoot);
-        expect(store.ffiVersion).toBe("9.9.9");
+        expect(store.runtimeVersion).toBe("9.9.9");
     });
 
     it("resolves a locally installed @gtkx/react's version when the React runtime is present", () => {
-        installPackage("@gtkx/ffi");
+        installPackage("@gtkx/runtime");
         installPackage("react");
         installPackage("@gtkx/react", "4.5.6");
         const store = resolveCodegenStore(projectRoot);
         expect(store.react?.version).toBe("4.5.6");
     });
 
-    it("returns a string ffi version and a null-or-object React entry", () => {
-        installPackage("@gtkx/ffi");
+    it("returns a string runtime version and a null-or-object React entry", () => {
+        installPackage("@gtkx/runtime");
         const store = resolveCodegenStore(projectRoot);
-        expect(typeof store.ffiVersion).toBe("string");
+        expect(typeof store.runtimeVersion).toBe("string");
         expect(store.react === null || typeof store.react.version === "string").toBe(true);
     });
 });

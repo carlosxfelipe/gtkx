@@ -22,7 +22,7 @@
         "flatpak:build": "bash flatpak/build.sh"
     },
     "dependencies": {
-        "@gtkx/animate": "^1.0.0-rc.1",
+        "@gtkx/animated": "^1.0.0-rc.1",
         "@gtkx/components": "^1.0.0-rc.1",
         "@gtkx/css": "^1.0.0-rc.1",
         "@gtkx/navigation": "^1.0.0-rc.1",

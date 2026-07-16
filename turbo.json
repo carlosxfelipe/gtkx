@@ -54,11 +54,11 @@
             "dependsOn": [
                 "production",
                 "^build",
-                "@gtkx/animate#build",
+                "@gtkx/animated#build",
                 "@gtkx/components#build",
                 "@gtkx/config#build",
                 "@gtkx/css#build",
-                "@gtkx/ffi#build",
+                "@gtkx/runtime#build",
                 "@gtkx/gl#build",
                 "@gtkx/native#build",
                 "@gtkx/navigation#build",
@@ -137,8 +137,8 @@
                 "packages/codegen/overrides/**",
                 "packages/config/src/**",
                 "packages/utils/src/**",
-                "packages/ffi/src/**",
-                "packages/ffi/package.json",
+                "packages/runtime/src/**",
+                "packages/runtime/package.json",
                 "packages/react/package.json"
             ],
             "outputs": ["node_modules/.gtkx/**", "node_modules/@gtkx/gi", "node_modules/@gtkx/jsx"]

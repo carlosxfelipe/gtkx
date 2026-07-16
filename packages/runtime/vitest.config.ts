@@ -7,7 +7,9 @@ export default mergeConfig(
     defineConfig({
         plugins: [gtkx()],
         test: {
-            name: "animate",
+            name: "runtime",
+            setupFiles: ["./tests/setup.ts"],
+            execArgv: ["--expose-gc"],
         },
     }),
 );

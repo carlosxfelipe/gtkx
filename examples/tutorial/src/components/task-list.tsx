@@ -1,4 +1,4 @@
-import { AnimatePresence, animated } from "@gtkx/animate";
+import { AnimatePresence, animated } from "@gtkx/animated";
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwButtonRow, AdwClamp, AdwEntryRow } from "@gtkx/jsx/adw";

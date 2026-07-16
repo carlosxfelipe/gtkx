@@ -34,7 +34,7 @@ type ResolvedOptions = {
     includeTesting: boolean;
 };
 
-const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
+const DEPENDENCIES = ["@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "vite"];
 

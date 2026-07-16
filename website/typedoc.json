@@ -8,10 +8,10 @@
         "../packages/components",
         "../packages/testing",
         "../packages/css",
-        "../packages/animate",
+        "../packages/animated",
         "../packages/navigation",
         "../packages/config",
-        "../packages/ffi",
+        "../packages/runtime",
         "../packages/native",
         "../packages/gl"
     ],

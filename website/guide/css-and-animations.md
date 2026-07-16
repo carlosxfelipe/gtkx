@@ -1,12 +1,12 @@
 ---
-description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine, and animate them declaratively with @gtkx/animate on top of Adwaita's animation primitives."
+description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine, and animate them declaratively with @gtkx/animated on top of Adwaita's animation primitives."
 ---
 
 # CSS and Animations
 
 GTK4 styles widgets with a real CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
 
-Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animate` is a Framer-Motion-style animation layer: you declare `initial`, `animate`, and `exit` targets on a widget, and Adwaita's animation engine drives the frames.
+Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is a Framer-Motion-style animation layer: you declare `initial`, `animate`, and `exit` targets on a widget, and Adwaita's animation engine drives the frames.
 
 ## The `css` tagged template
 
@@ -110,7 +110,7 @@ Importing a plain `.css` file works too: the GTKX CLI compiles the import into a
 
 ## Animating widgets with `animated`
 
-`@gtkx/animate` wraps any widget so that it accepts animation props. Access an intrinsic element through the `animated` proxy (`animated.GtkLabel`, `animated.GtkButton`, any element whose instance is a `Gtk.Widget`), or wrap a custom component with `animated(MyComponent)`. The wrapped component takes everything the original takes, plus:
+`@gtkx/animated` wraps any widget so that it accepts animation props. Access an intrinsic element through the `animated` proxy (`animated.GtkLabel`, `animated.GtkButton`, any element whose instance is a `Gtk.Widget`), or wrap a custom component with `animated(MyComponent)`. The wrapped component takes everything the original takes, plus:
 
 - `initial`: the state the widget starts from before its enter animation, or `false` to skip the enter animation and apply `animate` directly.
 - `animate`: the state the widget animates to while present. Changing it starts a new animation, but only when the new target is not shallow-equal to the previous one.
@@ -121,7 +121,7 @@ Importing a plain `.css` file works too: the GTKX CLI compiles the import into a
 A target is an `AnimationTarget`: `opacity`, `x` and `y` (pixel translation), `scale`, `scaleX`, `scaleY`, `rotate` (degrees), `skewX`, and `skewY`. Every field is optional. An `animate` or `exit` target may also embed a `transition` of its own, which replaces the component's `transition` for the animation toward that target: an exit of `{ opacity: 0, transition: { duration: 0 } }` makes the leave instantaneous while the enter keeps its fade.
 
 ```tsx
-import { animated } from "@gtkx/animate";
+import { animated } from "@gtkx/animated";
 
 <animated.GtkButton
     label="Save"
@@ -156,7 +156,7 @@ Both kinds honor the system's "enable animations" accessibility setting by defau
 React unmounts a widget the instant it leaves the tree, which leaves no time for a leave animation. `AnimatePresence` fixes that the same way Framer Motion does: it keeps removed children mounted until their exit animations complete. Each direct child needs a stable, unique `key`; a child without one is dropped from the rendered output, with a one-time development warning.
 
 ```tsx
-import { AnimatePresence, animated } from "@gtkx/animate";
+import { AnimatePresence, animated } from "@gtkx/animated";
 import { GtkBox } from "@gtkx/jsx/gtk";
 
 <GtkBox>

@@ -24,7 +24,7 @@ describe("createDevServerConfig", () => {
             "@gtkx/react",
             "@gtkx/jsx",
             "@gtkx/jsx/gtk",
-            "@gtkx/animate",
+            "@gtkx/animated",
             "@gtkx/components",
             "@gtkx/testing",
         ]) {
@@ -32,7 +32,7 @@ describe("createDevServerConfig", () => {
         }
     });
 
-    it("externalizes the native, generated, and singleton-ffi leaves", () => {
+    it("externalizes the native, generated, and singleton leaves", () => {
         const noExternal = createDevServerConfig("/proj", []).ssr?.noExternal as RegExp[];
 
         for (const id of [
@@ -40,7 +40,7 @@ describe("createDevServerConfig", () => {
             "@gtkx/gi",
             "@gtkx/gi/gtk",
             "@gtkx/gl",
-            "@gtkx/ffi",
+            "@gtkx/runtime",
             "@gtkx/utils",
             "@gtkx/css",
             "react",

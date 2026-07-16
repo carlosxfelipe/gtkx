@@ -1,4 +1,4 @@
-import { t } from "@gtkx/ffi";
+import { t } from "@gtkx/runtime";
 import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
 import {
     ALREADY_SIGNALED,

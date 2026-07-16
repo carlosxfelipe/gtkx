@@ -1,6 +1,6 @@
-import { getObjectProperty, setObjectProperty, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getObjectProperty, setObjectProperty, t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
 

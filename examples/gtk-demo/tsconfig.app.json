@@ -8,7 +8,7 @@
             "path": "../../packages/css/tsconfig.lib.json"
         },
         {
-            "path": "../../packages/ffi/tsconfig.lib.json"
+            "path": "../../packages/runtime/tsconfig.lib.json"
         },
         {
             "path": "../../packages/gl/tsconfig.lib.json"

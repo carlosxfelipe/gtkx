@@ -9,7 +9,7 @@ export type CodegenStore = {
     giLinkDir: string;
     jsxStoreDir: string;
     jsxLinkDir: string;
-    ffiVersion: string;
+    runtimeVersion: string;
     react: CodegenReactPackage | null;
 };
 
@@ -40,9 +40,9 @@ const resolvePackage = (require: NodeJS.Require, dir: string, packageName: strin
 export const resolveCodegenStore = (dir: string): CodegenStore => {
     const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
 
-    const ffi = resolvePackage(require, dir, "@gtkx/ffi");
-    if (ffi === null) {
-        throw new Error("Cannot resolve @gtkx/ffi from the project; is it installed?");
+    const runtime = resolvePackage(require, dir, "@gtkx/runtime");
+    if (runtime === null) {
+        throw new Error("Cannot resolve @gtkx/runtime from the project; is it installed?");
     }
     const native = resolvePackage(require, dir, "@gtkx/native");
     if (native === null) {
@@ -57,7 +57,7 @@ export const resolveCodegenStore = (dir: string): CodegenStore => {
         giLinkDir: join(nodeModules, "@gtkx", "gi"),
         jsxStoreDir: join(nodeModules, ".gtkx", "jsx"),
         jsxLinkDir: join(nodeModules, "@gtkx", "jsx"),
-        ffiVersion: ffi.version,
+        runtimeVersion: runtime.version,
         react: react !== null && reactRuntime !== null ? { version: react.version } : null,
     };
 };

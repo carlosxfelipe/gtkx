@@ -1,4 +1,4 @@
-import { t } from "@gtkx/ffi";
+import { t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const GLIB = "libglib-2.0.so.0";

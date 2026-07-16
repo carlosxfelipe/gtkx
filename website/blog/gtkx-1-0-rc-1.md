@@ -17,7 +17,7 @@ This is a release candidate: the API described here is what we intend to ship as
 
 ## Bindings are generated on your machine, for any GObject-Introspection library
 
-The central change in 1.0 is where bindings come from. Previous versions shipped pregenerated bindings for a fixed set of libraries (GTK4, Adwaita, WebKit, GtkSourceView, VTE, GES) baked into `@gtkx/ffi`. That set was whatever we chose to build, and it could drift from the GTK4 actually installed on your system.
+The central change in 1.0 is where bindings come from. Previous versions shipped pregenerated bindings for a fixed set of libraries (GTK4, Adwaita, WebKit, GtkSourceView, VTE, GES) baked into `@gtkx/runtime`. That set was whatever we chose to build, and it could drift from the GTK4 actually installed on your system.
 
 Now the GTKX CLI runs codegen on your machine, reading the GObject-Introspection (`.gir`) data already installed with your development libraries. You declare which libraries you want in `gtkx.config.ts`:
 
@@ -58,13 +58,13 @@ The reconciler was rewritten from roughly sixty hand-written per-widget node cla
 
 ## Higher-level building blocks
 
-Hand-written high-level components moved out of the reconciler into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog` and `NavigationView`. `@gtkx/animate` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through Adwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
+Hand-written high-level components moved out of the reconciler into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog` and `NavigationView`. `@gtkx/animated` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through Adwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
 
 The native module was rewritten from a two-thread Neon addon into a single-threaded napi-rs design. The default GLib main context is now acquired on the Node thread and driven directly from libuv, so GTK4 and JavaScript share one thread with no cross-thread marshaling. The crate no longer links GTK4 at all: it links only GLib and loads every other library on demand, which is what makes GTKX a general GObject bridge rather than a GTK4-specific one.
 
-Error handling improved across the boundary. GLib criticals, native failures, and Rust panics now surface as Node fatal exceptions instead of being swallowed or reduced to a message string, and exceptions thrown in your signal handlers propagate with their original stack. On top of the FFI runtime in `@gtkx/ffi` you can now subclass any GObject from TypeScript with `registerClass`, including virtual-function overrides, and bind arbitrary native functions with the typed `t` descriptor DSL.
+Error handling improved across the boundary. GLib criticals, native failures, and Rust panics now surface as Node fatal exceptions instead of being swallowed or reduced to a message string, and exceptions thrown in your signal handlers propagate with their original stack. On top of the FFI runtime in `@gtkx/runtime` you can now subclass any GObject from TypeScript with `registerClass`, including virtual-function overrides, and bind arbitrary native functions with the typed `t` descriptor DSL.
 
 OpenGL moved into its own `@gtkx/gl` package, generated from the Khronos registry to cover the full OpenGL 4.6 core profile.
 
@@ -79,7 +79,7 @@ The CLI is driven by `gtkx.config.ts`, and 1.0 fills out the toolchain around it
 
 ## Breaking changes
 
-Because almost every import path changed, widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/ffi/<namespace>`, and apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components` and `@gtkx/animate`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
+Because almost every import path changed, widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/runtime/<namespace>`, and apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components` and `@gtkx/animated`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
 
 ## Try the release candidate
 

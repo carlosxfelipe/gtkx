@@ -7,7 +7,7 @@ import { buildCss } from "./build-css.js";
 
 const ANIMATION_PROVIDER_PRIORITY = STYLE_PROVIDER_PRIORITY_APPLICATION + 1;
 
-const log = createLogger("animate");
+const log = createLogger("animated");
 
 class AnimationStyleSheet {
     private provider: Gtk.CssProvider | null = null;

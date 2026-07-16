@@ -1,7 +1,7 @@
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
-import { quitApplication, runApplication } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { quitApplication, runApplication } from "@gtkx/runtime";
 import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";

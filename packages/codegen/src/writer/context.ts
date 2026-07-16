@@ -13,11 +13,11 @@ export class ModuleContext {
     }
 
     addRuntimeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/ffi", name);
+        this.module.imports.addNamed("@gtkx/runtime", name);
     }
 
     addRuntimeTypeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/ffi", name, true);
+        this.module.imports.addNamed("@gtkx/runtime", name, true);
     }
 
     hoistDescriptor(expression: string): string {

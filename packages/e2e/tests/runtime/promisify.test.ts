@@ -1,6 +1,6 @@
-import { getHandle, promisify, setHandle } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ExternalObject, Handle } from "@gtkx/native";
+import { getHandle, promisify, setHandle } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const handle = (id: number): ExternalObject<Handle> => {

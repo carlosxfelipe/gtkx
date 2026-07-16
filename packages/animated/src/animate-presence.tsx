@@ -16,7 +16,7 @@ import {
     useState,
 } from "react";
 
-const log = createLogger("animate");
+const log = createLogger("animated");
 
 type PresenceRegistration = {
     isComplete: boolean;

@@ -30,8 +30,8 @@ describe("Logger prefixing", () => {
 
     it("creates namespaced loggers via createLogger", () => {
         const stream = captureStream();
-        createLogger("ffi", { stream, debugEnabled: false }).info("hello");
-        expect(stream.written).toEqual(["[gtkx:ffi] hello\n"]);
+        createLogger("runtime", { stream, debugEnabled: false }).info("hello");
+        expect(stream.written).toEqual(["[gtkx:runtime] hello\n"]);
     });
 });
 
@@ -91,7 +91,7 @@ describe("Logger debug resolution from the environment", () => {
     });
 
     it("enables debug only for the listed namespaces", () => {
-        process.env.GTKX_DEBUG = "ffi,react";
+        process.env.GTKX_DEBUG = "runtime,react";
         const enabled = captureStream();
         const disabled = captureStream();
         createLogger("react", { stream: enabled }).debug("trace");

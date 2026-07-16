@@ -7,9 +7,7 @@ export default mergeConfig(
     defineConfig({
         plugins: [gtkx()],
         test: {
-            name: "ffi",
-            setupFiles: ["./tests/setup.ts"],
-            execArgv: ["--expose-gc"],
+            name: "animated",
         },
     }),
 );

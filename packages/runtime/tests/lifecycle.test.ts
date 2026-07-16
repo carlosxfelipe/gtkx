@@ -1,4 +1,4 @@
-import { type ApplicationLike, onExit, quitApplication, runApplication } from "@gtkx/ffi";
+import { type ApplicationLike, onExit, quitApplication, runApplication } from "@gtkx/runtime";
 import { describe, expect, it, vi } from "vitest";
 
 const nativeMock = vi.hoisted(() => ({ quit: vi.fn(), keepAlive: vi.fn() }));

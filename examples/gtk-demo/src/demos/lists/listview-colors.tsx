@@ -1,6 +1,5 @@
 import { DropDown, Grid, GridView, Overlay, type RenderItemProps } from "@gtkx/components";
 import { css } from "@gtkx/css";
-import { registerClass } from "@gtkx/ffi";
 import type { Context } from "@gtkx/gi/cairo";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
@@ -19,6 +18,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
+import { registerClass } from "@gtkx/runtime";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "../../use-latest.js";

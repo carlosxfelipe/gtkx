@@ -1,9 +1,9 @@
-import { registerClass } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkBox, GtkHeaderBar, GtkLabel } from "@gtkx/jsx/gtk";
+import { registerClass } from "@gtkx/runtime";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./frames.tsx?raw";

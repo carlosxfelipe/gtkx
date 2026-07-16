@@ -1,3 +1,8 @@
+import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
+import type { Type } from "@gtkx/gi/gobject";
+import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     TYPE_BOOLEAN,
     TYPE_DOUBLE,
@@ -11,15 +16,10 @@ import {
     TYPE_UINT,
     TYPE_UINT64,
     TYPE_VARIANT,
-} from "@gtkx/ffi";
-import * as Gdk from "@gtkx/gi/gdk";
-import * as GLib from "@gtkx/gi/glib";
-import type { Type } from "@gtkx/gi/gobject";
-import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
+} from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import "@gtkx/gi/gobject";
-import { getHandle, t } from "@gtkx/ffi";
+import { getHandle, t } from "@gtkx/runtime";
 import {
     fromValue,
     getBoxedValue,
@@ -29,7 +29,7 @@ import {
     outValueForBoxedDescriptor,
     resolveType,
     toValue,
-} from "@gtkx/ffi/internal";
+} from "@gtkx/runtime/internal";
 
 const callGetType = (lib: string, fn: string): Type => {
     const result = resolveType(lib, fn);

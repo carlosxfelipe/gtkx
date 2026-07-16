@@ -145,7 +145,7 @@ describe("createDevRunner (vite config)", () => {
         expect(config.optimizeDeps).toEqual({ noDiscovery: true, include: [] });
         expect(config.ssr).toEqual({
             external: true,
-            noExternal: [/^@gtkx\/(?!(?:native|gi|gl|ffi|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
+            noExternal: [/^@gtkx\/(?!(?:native|gi|gl|runtime|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
         });
         const names = (config.plugins as Array<{ name: string }>).map((p) => p.name);
         expect(names).toEqual([

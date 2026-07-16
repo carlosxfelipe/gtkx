@@ -18,7 +18,7 @@
     "dependencies": {
         "@gtkx/components": "workspace:*",
         "@gtkx/css": "workspace:*",
-        "@gtkx/ffi": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/react": "workspace:*",
         "react": "catalog:"

@@ -65,7 +65,7 @@
         "@babel/preset-typescript": "^8.0.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
-        "@gtkx/ffi": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/mcp": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",

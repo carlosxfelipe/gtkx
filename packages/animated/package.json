@@ -1,14 +1,14 @@
 {
-    "name": "@gtkx/ffi",
+    "name": "@gtkx/animated",
     "version": "1.0.0-rc.1",
-    "description": "Hand-written FFI runtime for GTKX: GObject lifecycle, GValue marshalling, signals, and the class registry the generated bindings call into",
+    "description": "Adwaita-powered animation for GTKX: the animated factory and AnimatePresence component with tween and spring transitions",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
-        "ffi",
-        "bindings",
-        "typescript",
+        "adwaita",
+        "animation",
+        "react",
         "linux",
         "desktop"
     ],
@@ -19,29 +19,23 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/gtkx-org/gtkx.git",
-        "directory": "packages/ffi"
+        "directory": "packages/animated"
     },
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
-    "sideEffects": true,
     "exports": {
         "./package.json": "./package.json",
         ".": {
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./internal": {
-            "source": "./src/internal.ts",
-            "types": "./dist/internal.d.ts",
-            "default": "./dist/internal.js"
         }
     },
+    "sideEffects": false,
     "files": [
         "dist",
-        "src",
-        "!**/*.tsbuildinfo"
+        "src"
     ],
     "scripts": {
         "build": "tsc -b tsconfig.lib.json",
@@ -52,10 +46,15 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/native": "workspace:*",
+        "@gtkx/css": "workspace:*",
+        "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },
     "devDependencies": {
+        "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "^19"
     }
 }

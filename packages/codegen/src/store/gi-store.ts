@@ -72,7 +72,7 @@ export const writeGiStore = (
             name: "@gtkx/gi",
             version: options.version,
             exports: exportsMap,
-            peerDependencies: { "@gtkx/ffi": "*" },
+            peerDependencies: { "@gtkx/runtime": "*" },
         }),
         rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
     });

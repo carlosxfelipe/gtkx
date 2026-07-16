@@ -1,6 +1,6 @@
-import { fromNative, getHandle, t } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { fromNative, getHandle, t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const rectangleFfi = t.boxed("GdkRectangle", {
