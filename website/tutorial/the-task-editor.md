@@ -1,29 +1,40 @@
 ---
-description: "The task detail form: a pushed navigation page over the content stack and a React key that remounts the editor for each task you open."
+description: "The task detail form: a routed screen in the content stack whose task id travels as a route param, and a React key that remounts the editor for each task you open."
 ---
 
 # The Task Editor
 
-Clicking a task in the list opens the editor: a title field, an Important switch, a due-date calendar, a notes area, and read-only metadata. This is a full detail form, and it pushes in over the list as a new page in the content stack. Two things make that work: a pushed navigation page driven by React state, and a `key` that forces a fresh mount every time you open a different task.
+Clicking a task in the list opens the editor: a title field, an Important switch, a due-date calendar, a notes area, and read-only metadata. This is a full detail form, and it pushes in over the list as a new page in the content stack. Two things make that work: a routed screen whose task id arrives as a route param, and a `key` that forces a fresh mount every time you open a different task.
 
-## The pushed detail page
+## The task screen
 
-The editor is a pushed page. The content pane holds a `<NavigationView>` (covered in **The Application Shell**), and the task detail is a `<NavigationView.Page tag="task">` that mounts only when a task is open. `selectedTask` is derived from a `selectedTaskId` state value; when it becomes non-null, the page mounts and `<NavigationView>` pushes it over the list, with an animation and an automatic back button. When it becomes null again, the page unmounts and pops. From `app.tsx`:
+The editor is a route. The content pane hosts a stack navigator (covered in **The Application Shell**) with two screens, `List` and `Task`, and opening a task navigates to the `Task` route with the task's id as a param: `navigationRef.navigate("Tasks", { screen: "Task", params: { id } })`. The stack navigator pushes the page with an animation and an automatic back button; going back pops it. The screen receives its `route` and looks the task up from the id. From `app.tsx`:
 
 ```tsx
-{selectedTask ? (
-    <NavigationView.Page tag="task" title={selectedTask.title}>
-        <AdwToolbarView topBar={detailHeader}>
-            <TaskDetail
-                key={selectedTask.id}
-                task={selectedTask}
-                onUpdate={(fields) => api.updateTask(selectedTask.id, fields)}
-                onSetImportant={(important) => api.setImportant(selectedTask.id, important)}
-            />
-        </AdwToolbarView>
-    </NavigationView.Page>
-) : null}
+<Stack.Screen
+    name="Task"
+    options={({ route }) => ({
+        title: tasks.find((task) => task.id === route.params.id)?.title ?? "Task",
+    })}
+>
+    {({ route }) => {
+        const task = tasks.find((entry) => entry.id === route.params.id);
+        if (!task) return null;
+        return (
+            <AdwToolbarView topBar={/* the detail header, below */} controllers={/* the Delete shortcut, below */}>
+                <TaskDetail
+                    key={task.id}
+                    task={task}
+                    onUpdate={(fields) => api.updateTask(task.id, fields)}
+                    onSetImportant={(important) => api.setImportant(task.id, important)}
+                />
+            </AdwToolbarView>
+        );
+    }}
+</Stack.Screen>
 ```
+
+The id in `route.params` is the single source of truth for which task is open. The screen body and the `options` callback both read it, so the page title and the form always describe the same task, and nothing in the shell holds a separate "selected task" state that could drift.
 
 The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
@@ -33,33 +44,42 @@ A `GtkTextView`'s buffer remembers cursor position and undo history; a `GtkCalen
 
 ## The detail header
 
-The task page carries its own header. `app.tsx` builds a `detailHeader` only when a task is selected, and passes it as the `topBar` of the task page's `AdwToolbarView`:
+The task screen carries its own header, built inline from the task it looked up and passed as the `topBar` of its `AdwToolbarView`:
 
 ```tsx
-const detailHeader = selectedTask ? (
-    <AdwHeaderBar
-        end={
-            <>
-                <GtkToggleButton
-                    iconName={selectedTask.important ? "starred-symbolic" : "non-starred-symbolic"}
-                    active={selectedTask.important}
-                    tooltipText="Important"
-                    onToggled={(self) => api.setImportant(selectedTask.id, self.active)}
-                />
-                <GtkButton
-                    iconName="user-trash-symbolic"
-                    tooltipText="Delete (Delete)"
-                    onClicked={() => handleDelete(selectedTask)}
-                />
-            </>
-        }
-    />
-) : null;
+<AdwHeaderBar
+    end={
+        <>
+            <GtkToggleButton
+                iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                active={task.important}
+                tooltipText="Important"
+                onToggled={(self) => api.setImportant(task.id, self.active)}
+            />
+            <GtkButton
+                iconName="user-trash-symbolic"
+                tooltipText="Delete (Delete)"
+                onClicked={() => handleDelete(task)}
+            />
+        </>
+    }
+/>
 ```
 
-`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back) pops the widget, which fires the `NavigationView`'s `onPop`; the handler calls `setSelectedTaskId(null)`, so `selectedTask` becomes null and the task page unmounts to match. Calling it programmatically (for example from a shortcut) pops the page the same way.
+`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back, or Escape) pops the widget, and the stack navigator reduces that pop into navigation state, so the `Task` route leaves the stack to match. A programmatic back is `navigationRef.goBack()`.
 
-`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash and shows an undo toast; it is covered in **Feedback and Dialogs**.
+The screen also mounts its own shortcut controller through the toolbar view's `controllers` slot, binding the Delete key to `handleDelete(task)`. Because the controller lives on the task screen, the shortcut exists exactly while a task is open, with no enabling flag to track:
+
+```tsx
+controllers={
+    <GtkShortcutController
+        scope={Gtk.ShortcutScope.GLOBAL}
+        shortcuts={makeShortcut("Delete", () => handleDelete(task), true)}
+    />
+}
+```
+
+`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash, pops the editor, and shows an undo toast; it is covered in **Feedback and Dialogs**.
 
 ## The editor shell: scroll, clamp, box
 

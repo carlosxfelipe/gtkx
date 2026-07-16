@@ -35,6 +35,7 @@ const guideSidebar = [
     { text: "Error Handling", link: "/guide/error-handling" },
     { text: "Components and Hooks", link: "/guide/components-and-hooks" },
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
+    { text: "Navigation", link: "/guide/navigation" },
     { text: "CSS and Animations", link: "/guide/css-and-animations" },
     { text: "Testing", link: "/guide/testing" },
     { text: "MCP", link: "/guide/mcp" },
@@ -43,10 +44,7 @@ const guideSidebar = [
 
 const tutorialSidebar = [{ text: "Tutorial", collapsed: false, items: tutorialItems }];
 
-const docItems = [
-    ...guideSidebar.filter((item) => !item.link.startsWith("/reference")),
-    ...tutorialItems,
-];
+const docItems = [...guideSidebar.filter((item) => !item.link.startsWith("/reference")), ...tutorialItems];
 
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
 

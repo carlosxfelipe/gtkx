@@ -9,6 +9,7 @@
         "../packages/testing",
         "../packages/css",
         "../packages/animate",
+        "../packages/navigation",
         "../packages/config",
         "../packages/ffi",
         "../packages/native",

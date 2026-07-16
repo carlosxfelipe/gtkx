@@ -155,15 +155,14 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
         complete: (id) => api.setDone(id, true),
         open: (id) => {
             setSelection({ kind: "smart", view: "all" });
-            setSelectedTaskId(id);
-            if (collapsed) setShowContent(true);
+            openTask(id);
         },
     };
     // ...
 }
 ```
 
-The reason for the indirection: the `GSimpleAction` elements live at the **application** level, outside `TasksWindow`, so their handlers cannot close over the window's state (`api.setDone`, `setSelection`, `setSelectedTaskId`, `collapsed`). The `notify` ref is created in `App`, passed down, and reassigned on every `TasksWindow` render to point at the current handlers. So `app.complete-task` marks the task done, and `app.open-task` navigates the split view to the task and reveals the content pane on a collapsed (mobile) layout. The action stays installed once for the life of the application; the ref keeps it pointed at the window's live handlers.
+The reason for the indirection: the `GSimpleAction` elements live at the **application** level, outside `TasksWindow`, so their handlers cannot close over the window's state (`api.setDone`, `setSelection`, the navigation ref behind `openTask`). The `notify` ref is created in `App`, passed down, and reassigned on every `TasksWindow` render to point at the current handlers. So `app.complete-task` marks the task done, and `app.open-task` navigates to the task's route, which also reveals the content pane on a collapsed (mobile) layout (`openTask` is covered in **The Application Shell**). The action stays installed once for the life of the application; the ref keeps it pointed at the window's live handlers.
 
 This is also what makes cold-start work. If the shell launches the app to deliver `app.open-task`, the application starts up, `TasksWindow` mounts and assigns `notify.current`, and the action then resolves to a real handler that opens the right task.
 

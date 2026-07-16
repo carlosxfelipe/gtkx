@@ -1,10 +1,10 @@
 ---
-description: "How the Tasks app builds its adaptive frame with AdwApplicationWindow and AdwNavigationSplitView, persists window size, and swaps panes from React state."
+description: "How the Tasks app builds its adaptive frame with AdwApplicationWindow and @gtkx/navigation: a split-view navigator for the panes and a stack navigator for the content."
 ---
 
 # The Application Shell
 
-Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state.
+Everything the app renders lives inside one `AdwApplicationWindow`. Its body is a navigation tree from `@gtkx/navigation` (see the [Navigation](/guide/navigation) guide): a split-view navigator holds the sidebar and content panes, and the content pane hosts a stack navigator for the list and the task editor. `app.tsx` builds that frame once, and everything the panes show follows from navigation state and React state.
 
 The file is organized around two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
@@ -50,7 +50,7 @@ return (
         onCloseRequest={handleClose}
         breakpoints={/* an <AdwBreakpoint> that collapses the layout, shown below */}
         actions={<WindowActions /* new, select, preferences, shortcuts, about */ />}
-        controllers={<AppShortcuts /* Ctrl+F, Escape, Delete */ />}
+        controllers={<AppShortcuts /* Ctrl+F, Escape */ />}
     >
         {/* ...toast overlay + split view... */}
     </AdwApplicationWindow>
@@ -100,41 +100,61 @@ Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addT
 
 ## The adaptive split view
 
-The body of the window is a single `<AdwNavigationSplitView>`. This is the adaptive master/detail container: on a wide screen it shows the sidebar and content side by side; when collapsed it becomes a single column that navigates between them.
+The body of the window is a navigation tree. Its root is a `NavigationContainer` from `@gtkx/navigation`, and inside it a split-view navigator renders the adaptive master/detail layout: on a wide screen the sidebar and content sit side by side; when collapsed it becomes a single column that navigates between them. The navigator is created once at module level, typed by the routes it holds:
 
 ```tsx
-<AdwNavigationSplitView
-    collapsed={collapsed}
-    showContent={showContent}
-    onNotifyShowContent={(value) => setShowContent(value ?? false)}
-    sidebarWidthFraction={0.25}
-    minSidebarWidth={220}
-    maxSidebarWidth={300}
-    sidebar={
-        <AdwNavigationPage title="Tasks">
-            <AdwToolbarView topBar={<AdwHeaderBar start={/* New List button */} />}>
-                <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
-            </AdwToolbarView>
-        </AdwNavigationPage>
-    }
-    content={
-        <AdwNavigationPage title={titleFor(selection, lists)}>
-            <NavigationView popOnEscape={false} onPop={/* clear the open task */}>
-                {/* a list page, plus a pushed task page when one is open */}
-            </NavigationView>
-        </AdwNavigationPage>
-    }
-/>
+type ShellParams = {
+    Sidebar: undefined;
+    Tasks: NavigatorScreenParams<TasksStackParams> | undefined;
+};
+
+const Split = createSplitViewNavigator<ShellParams>();
 ```
 
-`sidebar` and `content` are object-slot props: each takes a single `<AdwNavigationPage>` element (the page is the unit the split view navigates between). The sizing props tune the sidebar: `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}` logical pixels.
+```tsx
+<NavigationContainer ref={navigationRef}>
+    <Split.Navigator
+        collapsed={collapsed}
+        sidebarWidthFraction={0.25}
+        minSidebarWidth={220}
+        maxSidebarWidth={300}
+    >
+        <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
+            {() => (
+                <AdwToolbarView topBar={<AdwHeaderBar start={/* New List button */} />}>
+                    <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
+                </AdwToolbarView>
+            )}
+        </Split.Screen>
+        <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
+            {() => /* the tasks stack, covered below */}
+        </Split.Screen>
+    </Split.Navigator>
+</NavigationContainer>
+```
 
-The two props that make it adaptive are `collapsed` and `showContent`, both controlled from React state:
+The split-view navigator drives a real `Adw.NavigationSplitView` and takes exactly two screens: the first becomes the sidebar pane, the second the content pane. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. The sizing props pass through to the widget: `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}` logical pixels.
 
-- **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It is driven by the breakpoint below.
-- **`showContent`** only matters when collapsed: it decides whether the visible column is the sidebar or the content. `onNotifyShowContent` mirrors the widget's own changes (a swipe-back, for instance) back into React state with `(value) => setShowContent(value ?? false)`, so the two never drift. When a task or a sidebar entry is opened while collapsed, the handlers set `setShowContent(true)` to push the content into view.
+Both screens use render callbacks (`{() => ...}`) rather than `component`, because their content closes over `TasksWindow`'s state and handlers.
 
-The sidebar wraps its content in an `<AdwToolbarView>`, which gives you a header bar pinned to the top (`topBar`); on the content side, the `<NavigationView>`'s pages each wrap in their own `<AdwToolbarView>`, and the list page adds an action bar pinned to the bottom (`bottomBar`, revealed via `revealBottomBars` during selection mode). The content pane's `AdwNavigationPage` title is computed from the current selection with `titleFor(selection, lists)`, so the page is named "Today", "Important", or a user list's name; the list header itself shows the filter toggles as its title widget rather than this text. The content stack itself is covered below.
+Adaptivity splits between one controlled prop and navigation state:
+
+- **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It stays a controlled React prop, driven by the breakpoint below: the app owns when the layout collapses.
+- **Which pane is focused is navigation state.** Navigating to the `Tasks` route focuses the content pane, which on a collapsed layout slides it into view; the widget's own back motion (the back button or a swipe while collapsed) dispatches back to the `Sidebar` route. There is no `showContent` state to mirror by hand: the navigator keeps the widget and navigation state in lockstep.
+
+The `navigationRef` on the container comes from `useNavigationContainerRef()`. Handlers that live outside the screens (opening a task from a row, the sidebar's `selectSidebar`, the notification actions) navigate through it:
+
+```tsx
+const openTask = (id: string): void => {
+    navigationRef.navigate("Tasks", { screen: "Task", params: { id } });
+};
+
+const showList = (): void => {
+    navigationRef.navigate("Tasks", { screen: "List" });
+};
+```
+
+`openTask` addresses a screen *inside* the content pane's nested stack (the `{ screen, params }` shape is `NavigatorScreenParams`): one call focuses the content pane and pushes the task page. `selectSidebar` ends with `showList()`, which focuses the content pane on the list; on a collapsed layout that slides the content into view, and if a task page was open it pops back to the list, all from one navigate call.
 
 ## The breakpoint
 
@@ -160,48 +180,57 @@ The condition uses `sp` units rather than raw pixels. `sp` (scalable pixels) tra
 
 ## The content stack
 
-The content pane holds a `<NavigationView>`, from `@gtkx/components/adw`. It drives an `AdwNavigationView` purely from JSX: every mounted `<NavigationView.Page tag=…>` is one entry on the stack, so mounting a page is a push and unmounting the top page is a pop. The mounted pages are the stack, and React state decides which pages are mounted.
+The content pane hosts a stack navigator. It drives an `AdwNavigationView`: navigating to a route pushes its page with the Adwaita slide animation, going back pops it, and the pushed page gets a back button and an edge-swipe for free. The stack is created at module level next to the split navigator, with the task id as a route param:
 
 ```tsx
-<NavigationView
-    popOnEscape={false}
-    onPop={(tag) => {
-        if (tag === "task") setSelectedTaskId(null);
-    }}
->
-    <NavigationView.Page tag="list" title={titleFor(selection, lists)}>
-        <AdwToolbarView
-            topBar={selecting ? selectionHeader : listHeader}
-            bottomBar={selecting ? selectionActionBar : undefined}
-            revealBottomBars={selecting}
-        >
-            {listBody}
-        </AdwToolbarView>
-    </NavigationView.Page>
-    {selectedTask ? (
-        <NavigationView.Page tag="task" title={selectedTask.title}>
-            <AdwToolbarView topBar={detailHeader}>
-                <TaskDetail key={selectedTask.id} task={selectedTask} /* ... */ />
+type TasksStackParams = {
+    List: undefined;
+    Task: { id: string };
+};
+
+const Stack = createStackNavigator<TasksStackParams>();
+```
+
+```tsx
+<Stack.Navigator>
+    <Stack.Screen name="List" options={{ title: titleFor(selection, lists) }}>
+        {() => (
+            <AdwToolbarView
+                topBar={selecting ? selectionHeader : listHeader}
+                bottomBar={selecting ? selectionActionBar : undefined}
+                revealBottomBars={selecting}
+            >
+                {listBody}
             </AdwToolbarView>
-        </NavigationView.Page>
-    ) : null}
-</NavigationView>
+        )}
+    </Stack.Screen>
+    <Stack.Screen
+        name="Task"
+        options={({ route }) => ({
+            title: tasks.find((task) => task.id === route.params.id)?.title ?? "Task",
+        })}
+    >
+        {({ route }) => {
+            const task = tasks.find((entry) => entry.id === route.params.id);
+            if (!task) return null;
+            return (
+                <AdwToolbarView topBar={/* the detail header */}>
+                    <TaskDetail key={task.id} task={task} /* ... */ />
+                </AdwToolbarView>
+            );
+        }}
+    </Stack.Screen>
+</Stack.Navigator>
 ```
 
 The two changes the pane can show split cleanly by kind, and that split is the whole point:
 
-- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real pushed page: `<NavigationView.Page tag="task">` mounts only when `selectedTask` is set. The component pushes it with an animation, and the pushed page gets a back button and an edge-swipe for free.
-- **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one page (`tag="list"`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the `tag` never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed page would be the wrong shape.
+- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real route: `navigate("Task", { id })` pushes it, and which task it shows travels in `route.params`, not in shell state. The screen looks its task up from the id; the `options` callback does the same to put the task's title on the page.
+- **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one screen (`List`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the route never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed route would be the wrong shape.
 
-The pane's `AdwHeaderBar`, actions, and body all come from the same `selectedTask` / `selecting` state, so they can never disagree. `listBody` is `selecting ? <SelectionView /> : <TaskList />`, and each page carries its own header inside its `AdwToolbarView`. The detail header is a plain `AdwHeaderBar` with the Important toggle and Delete button in `end`, and no back button, because the pushed page supplies one:
+Each screen carries its own header inside its `AdwToolbarView`: the list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag, and the task screen builds its header inline from the task it looked up (the Important toggle and Delete button in `end`, with no back button, because the pushed page supplies one). The task screen and its header read the same `route.params.id`, so they can never disagree.
 
-```tsx
-const detailHeader = selectedTask ? (
-    <AdwHeaderBar end={/* important toggle + delete */} />
-) : null;
-```
-
-Opening a task is `setSelectedTaskId(id)`; a programmatic back is `setSelectedTaskId(null)`, which unmounts the task page and pops it. When the pop is instead driven by the widget itself (the back button or an edge-swipe), `onPop(tag)` fires and the handler clears `selectedTaskId`, so React unmounts the page to match. Escape takes the programmatic path: because `popOnEscape` is `false`, the global shortcut controller handles it and clears `selectedTaskId` directly. There is no desync and no hand-written mirroring of a widget stack, because reconciling the declared pages against the widget's live stack is exactly what `<NavigationView>` does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through `AdwNavigationSplitView`'s controlled `showContent` prop.
+Opening a task is `openTask(id)`; a programmatic back is `navigationRef.goBack()`. When the pop is instead driven by the widget itself (the back button, an edge-swipe, or Escape through the view's built-in `popOnEscape`), the navigator reduces it into navigation state, so the route leaves the stack to match the widget. There is no desync and no hand-written mirroring of a widget stack, because reconciling navigation state against the widget's live stack is exactly what the stack navigator does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through the split-view navigator's focused route.
 
 ## Next
 

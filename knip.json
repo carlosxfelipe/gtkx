@@ -27,6 +27,9 @@
         "packages/e2e": {
             "entry": ["gtkx.config.ts!"]
         },
+        "packages/navigation": {
+            "entry": ["gtkx.config.ts!"]
+        },
         "packages/testing": {
             "entry": ["gtkx.config.ts!"]
         },

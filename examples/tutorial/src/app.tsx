@@ -1,4 +1,3 @@
-import { NavigationView } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -7,8 +6,6 @@ import {
     AdwApplicationWindow,
     AdwBreakpoint,
     AdwHeaderBar,
-    AdwNavigationPage,
-    AdwNavigationSplitView,
     AdwToastOverlay,
     AdwToggle,
     AdwToggleGroup,
@@ -26,6 +23,13 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
+import {
+    createSplitViewNavigator,
+    createStackNavigator,
+    NavigationContainer,
+    type NavigatorScreenParams,
+    useNavigationContainerRef,
+} from "@gtkx/navigation";
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
@@ -46,6 +50,19 @@ import { buildReminder } from "./notifications.js";
 import { type Filter, sidebarCounts, visibleTasks } from "./select.js";
 import { applyColorScheme } from "./theme.js";
 import type { Selection, SmartView, Task, TaskList as TaskListType } from "./types.js";
+
+type TasksStackParams = {
+    List: undefined;
+    Task: { id: string };
+};
+
+type ShellParams = {
+    Sidebar: undefined;
+    Tasks: NavigatorScreenParams<TasksStackParams> | undefined;
+};
+
+const Stack = createStackNavigator<TasksStackParams>();
+const Split = createSplitViewNavigator<ShellParams>();
 
 const SMART_TITLES: Record<SmartView, string> = {
     all: "All Tasks",
@@ -129,14 +146,10 @@ const AppShortcuts = ({
     onSearch,
     onEscape,
     escapeEnabled,
-    onDelete,
-    deleteEnabled,
 }: {
     onSearch: () => void;
     onEscape: () => void;
     escapeEnabled: boolean;
-    onDelete: () => void;
-    deleteEnabled: boolean;
 }) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
@@ -144,7 +157,6 @@ const AppShortcuts = ({
             <>
                 {makeShortcut("<Control>f", onSearch, true)}
                 {makeShortcut("Escape", onEscape, escapeEnabled)}
-                {makeShortcut("Delete", onDelete, deleteEnabled)}
             </>
         }
     />
@@ -158,11 +170,9 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const app = useApplication();
 
     const [selection, setSelection] = useState<Selection>({ kind: "smart", view: "all" });
-    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [searchMode, setSearchMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [collapsed, setCollapsed] = useState(false);
-    const [showContent, setShowContent] = useState(false);
     const [showPreferences, setShowPreferences] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
@@ -177,6 +187,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const [reminderMinutes] = useSetting(schema, "reminder-minutes");
     const windowRef = useRef<Adw.ApplicationWindow | null>(null);
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+    const navigationRef = useNavigationContainerRef<ShellParams>();
 
     useBindSetting(schema, "window-width", windowRef, "defaultWidth");
     useBindSetting(schema, "window-height", windowRef, "defaultHeight");
@@ -187,36 +198,44 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
 
     const counts = sidebarCounts(tasks, lists);
     const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
-    const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
     const addListId = selection.kind === "list" ? selection.listId : (lists[0]?.id ?? "");
     const reorderable =
         sortOrder === "manual" && !searchQuery && !(selection.kind === "smart" && selection.view === "trash");
+
+    const openTask = (id: string): void => {
+        navigationRef.navigate("Tasks", { screen: "Task", params: { id } });
+    };
+
+    const showList = (): void => {
+        navigationRef.navigate("Tasks", { screen: "List" });
+    };
+
+    const closeTaskIfOpen = (id: string): void => {
+        if (!navigationRef.isReady()) return;
+        const current = navigationRef.getCurrentRoute();
+        if (current?.name === "Task" && (current.params as TasksStackParams["Task"]).id === id) {
+            navigationRef.goBack();
+        }
+    };
 
     notify.current = {
         complete: (id) => api.setDone(id, true),
         open: (id) => {
             setSelection({ kind: "smart", view: "all" });
-            setSelectedTaskId(id);
-            if (collapsed) setShowContent(true);
+            openTask(id);
         },
     };
 
     const sendReminder = useCallback((task: Task) => app.sendNotification(task.id, buildReminder(task)), [app]);
     useReminders(tasks, reminderMinutes, sendReminder);
 
-    const openTask = (id: string): void => {
-        setSelectedTaskId(id);
-        if (collapsed) setShowContent(true);
-    };
-
     const selectSidebar = (next: Selection): void => {
         setSelection(next);
-        setSelectedTaskId(null);
         setSearchQuery("");
         setSearchMode(false);
         setSelecting(false);
         setSelectedIds([]);
-        if (collapsed) setShowContent(true);
+        showList();
     };
 
     const newTask = (): void => {
@@ -230,7 +249,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
             return;
         }
         api.moveToTrash(task.id);
-        if (selectedTaskId === task.id) setSelectedTaskId(null);
+        closeTaskIfOpen(task.id);
         const toast = Adw.Toast.new(`“${task.title}” moved to Trash`);
         toast.buttonLabel = "Undo";
         toast.once("button-clicked", () => api.restore(task.id));
@@ -240,12 +259,12 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
     const confirmDelete = (): void => {
         if (!taskToDelete) return;
         api.deleteForever(taskToDelete.id);
-        if (selectedTaskId === taskToDelete.id) setSelectedTaskId(null);
+        closeTaskIfOpen(taskToDelete.id);
         setTaskToDelete(null);
     };
 
     const enterSelection = (): void => {
-        setSelectedTaskId(null);
+        showList();
         setSelectedIds([]);
         setSelecting(true);
     };
@@ -285,26 +304,6 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
         api.flush();
         return quit();
     };
-
-    const detailHeader = selectedTask ? (
-        <AdwHeaderBar
-            end={
-                <>
-                    <GtkToggleButton
-                        iconName={selectedTask.important ? "starred-symbolic" : "non-starred-symbolic"}
-                        active={selectedTask.important}
-                        tooltipText="Important"
-                        onToggled={(self) => api.setImportant(selectedTask.id, self.active)}
-                    />
-                    <GtkButton
-                        iconName="user-trash-symbolic"
-                        tooltipText="Delete (Delete)"
-                        onClicked={() => handleDelete(selectedTask)}
-                    />
-                </>
-            }
-        />
-    ) : null;
 
     const listHeader = (
         <AdwHeaderBar
@@ -421,80 +420,121 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
             controllers={
                 <AppShortcuts
                     onSearch={() => setSearchMode((mode) => !mode)}
-                    onEscape={() => {
-                        if (selecting) cancelSelection();
-                        else setSelectedTaskId(null);
-                    }}
-                    escapeEnabled={selectedTask !== null || selecting}
-                    onDelete={() => {
-                        if (selectedTask) handleDelete(selectedTask);
-                    }}
-                    deleteEnabled={selectedTask !== null}
+                    onEscape={cancelSelection}
+                    escapeEnabled={selecting}
                 />
             }
         >
             <AdwToastOverlay ref={toastOverlayRef}>
-                <AdwNavigationSplitView
-                    collapsed={collapsed}
-                    showContent={showContent}
-                    onNotifyShowContent={(value) => setShowContent(value ?? false)}
-                    sidebarWidthFraction={0.25}
-                    minSidebarWidth={220}
-                    maxSidebarWidth={300}
-                    sidebar={
-                        <AdwNavigationPage title="Tasks">
-                            <AdwToolbarView
-                                topBar={
-                                    <AdwHeaderBar
-                                        start={
-                                            <GtkButton
-                                                iconName="list-add-symbolic"
-                                                tooltipText="New List"
-                                                onClicked={() => setShowNewList(true)}
-                                            />
-                                        }
+                <NavigationContainer ref={navigationRef}>
+                    <Split.Navigator
+                        collapsed={collapsed}
+                        sidebarWidthFraction={0.25}
+                        minSidebarWidth={220}
+                        maxSidebarWidth={300}
+                    >
+                        <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
+                            {() => (
+                                <AdwToolbarView
+                                    topBar={
+                                        <AdwHeaderBar
+                                            start={
+                                                <GtkButton
+                                                    iconName="list-add-symbolic"
+                                                    tooltipText="New List"
+                                                    onClicked={() => setShowNewList(true)}
+                                                />
+                                            }
+                                        />
+                                    }
+                                >
+                                    <Sidebar
+                                        lists={lists}
+                                        counts={counts}
+                                        selection={selection}
+                                        onSelect={selectSidebar}
                                     />
-                                }
-                            >
-                                <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
-                            </AdwToolbarView>
-                        </AdwNavigationPage>
-                    }
-                    content={
-                        <AdwNavigationPage title={titleFor(selection, lists)}>
-                            <NavigationView
-                                popOnEscape={false}
-                                onPop={(tag) => {
-                                    if (tag === "task") setSelectedTaskId(null);
-                                }}
-                            >
-                                <NavigationView.Page tag="list" title={titleFor(selection, lists)}>
-                                    <AdwToolbarView
-                                        topBar={selecting ? selectionHeader : listHeader}
-                                        bottomBar={selecting ? selectionActionBar : undefined}
-                                        revealBottomBars={selecting}
+                                </AdwToolbarView>
+                            )}
+                        </Split.Screen>
+                        <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
+                            {() => (
+                                <Stack.Navigator>
+                                    <Stack.Screen name="List" options={{ title: titleFor(selection, lists) }}>
+                                        {() => (
+                                            <AdwToolbarView
+                                                topBar={selecting ? selectionHeader : listHeader}
+                                                bottomBar={selecting ? selectionActionBar : undefined}
+                                                revealBottomBars={selecting}
+                                            >
+                                                {listBody}
+                                            </AdwToolbarView>
+                                        )}
+                                    </Stack.Screen>
+                                    <Stack.Screen
+                                        name="Task"
+                                        options={({ route }) => ({
+                                            title: tasks.find((task) => task.id === route.params.id)?.title ?? "Task",
+                                        })}
                                     >
-                                        {listBody}
-                                    </AdwToolbarView>
-                                </NavigationView.Page>
-                                {selectedTask ? (
-                                    <NavigationView.Page tag="task" title={selectedTask.title}>
-                                        <AdwToolbarView topBar={detailHeader}>
-                                            <TaskDetail
-                                                key={selectedTask.id}
-                                                task={selectedTask}
-                                                onUpdate={(fields) => api.updateTask(selectedTask.id, fields)}
-                                                onSetImportant={(important) =>
-                                                    api.setImportant(selectedTask.id, important)
-                                                }
-                                            />
-                                        </AdwToolbarView>
-                                    </NavigationView.Page>
-                                ) : null}
-                            </NavigationView>
-                        </AdwNavigationPage>
-                    }
-                />
+                                        {({ route }) => {
+                                            const task = tasks.find((entry) => entry.id === route.params.id);
+                                            if (!task) return null;
+                                            return (
+                                                <AdwToolbarView
+                                                    topBar={
+                                                        <AdwHeaderBar
+                                                            end={
+                                                                <>
+                                                                    <GtkToggleButton
+                                                                        iconName={
+                                                                            task.important
+                                                                                ? "starred-symbolic"
+                                                                                : "non-starred-symbolic"
+                                                                        }
+                                                                        active={task.important}
+                                                                        tooltipText="Important"
+                                                                        onToggled={(self) =>
+                                                                            api.setImportant(task.id, self.active)
+                                                                        }
+                                                                    />
+                                                                    <GtkButton
+                                                                        iconName="user-trash-symbolic"
+                                                                        tooltipText="Delete (Delete)"
+                                                                        onClicked={() => handleDelete(task)}
+                                                                    />
+                                                                </>
+                                                            }
+                                                        />
+                                                    }
+                                                    controllers={
+                                                        <GtkShortcutController
+                                                            scope={Gtk.ShortcutScope.GLOBAL}
+                                                            shortcuts={makeShortcut(
+                                                                "Delete",
+                                                                () => handleDelete(task),
+                                                                true,
+                                                            )}
+                                                        />
+                                                    }
+                                                >
+                                                    <TaskDetail
+                                                        key={task.id}
+                                                        task={task}
+                                                        onUpdate={(fields) => api.updateTask(task.id, fields)}
+                                                        onSetImportant={(important) =>
+                                                            api.setImportant(task.id, important)
+                                                        }
+                                                    />
+                                                </AdwToolbarView>
+                                            );
+                                        }}
+                                    </Stack.Screen>
+                                </Stack.Navigator>
+                            )}
+                        </Split.Screen>
+                    </Split.Navigator>
+                </NavigationContainer>
             </AdwToastOverlay>
 
             {showPreferences ? <Preferences onClose={() => setShowPreferences(false)} /> : null}

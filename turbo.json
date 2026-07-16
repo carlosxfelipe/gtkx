@@ -61,6 +61,7 @@
                 "@gtkx/ffi#build",
                 "@gtkx/gl#build",
                 "@gtkx/native#build",
+                "@gtkx/navigation#build",
                 "@gtkx/react#build",
                 "@gtkx/testing#build"
             ],

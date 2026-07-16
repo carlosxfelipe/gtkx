@@ -153,7 +153,7 @@ const listHeader = (
 
 ## View shortcuts: `GtkShortcutController` for ephemeral keys
 
-`Ctrl+F`, `Escape`, and `Delete` are different in kind from `win.new`. They are not commands you would ever surface in a menu, and their meaning depends on transient view state: `Escape` closes the open task, `Delete` deletes it, and both should do nothing when nothing is open. Modeling those as GActions would be awkward. Instead Tasks attaches a `GtkShortcutController`, a `GtkEventController` that holds a list of `GtkShortcut`s, each pairing a *trigger* (a key combination) with an *action* (a callback).
+`Ctrl+F` and `Escape` are different in kind from `win.new`. They are not commands you would ever surface in a menu, and their meaning depends on transient view state: `Escape` cancels selection mode, and should do nothing when selection mode is off. Modeling those as GActions would be awkward. Instead Tasks attaches a `GtkShortcutController`, a `GtkEventController` that holds a list of `GtkShortcut`s, each pairing a *trigger* (a key combination) with an *action* (a callback).
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -173,14 +173,10 @@ const AppShortcuts = ({
     onSearch,
     onEscape,
     escapeEnabled,
-    onDelete,
-    deleteEnabled,
 }: {
     onSearch: () => void;
     onEscape: () => void;
     escapeEnabled: boolean;
-    onDelete: () => void;
-    deleteEnabled: boolean;
 }) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
@@ -188,7 +184,6 @@ const AppShortcuts = ({
             <>
                 {makeShortcut("<Control>f", onSearch, true)}
                 {makeShortcut("Escape", onEscape, escapeEnabled)}
-                {makeShortcut("Delete", onDelete, deleteEnabled)}
             </>
         }
     />
@@ -198,29 +193,24 @@ const AppShortcuts = ({
 A few GTKX-specific details:
 
 - **`trigger`** and **`action`** are object-typed props: here you pass live GI instances rather than JSX. `Gtk.ShortcutTrigger.parseString("<Control>f")` parses an accelerator string into a trigger; `Gtk.CallbackAction.new(cb)` wraps a JS callback as the shortcut action. The callback returns `true` to signal the key was handled and stop further propagation.
-- **`scope={Gtk.ShortcutScope.GLOBAL}`** means the shortcut fires no matter which descendant widget has focus inside the window, which is what you want for window-wide keys like search and delete.
-- **Gating with `NeverTrigger`.** Rather than adding and removing shortcuts as state changes, `makeShortcut` keeps every shortcut permanently in the list and swaps its *trigger*: when `enabled` is false it uses `Gtk.NeverTrigger.get()`, a trigger that matches no key at all. So `Delete` is inert until a task is open, without churning the controller's shortcut list.
+- **`scope={Gtk.ShortcutScope.GLOBAL}`** means the shortcut fires no matter which descendant widget has focus inside the window, which is what you want for window-wide keys like search.
+- **Gating with `NeverTrigger`.** Rather than adding and removing shortcuts as state changes, `makeShortcut` keeps every shortcut permanently in the list and swaps its *trigger*: when `enabled` is false it uses `Gtk.NeverTrigger.get()`, a trigger that matches no key at all. So `Escape` is inert outside selection mode, without churning the controller's shortcut list.
 
-The controller mounts through the window's `controllers` slot (every `GtkWidget` has one for event controllers), and the `enabled` flags are driven straight from render state:
+The controller mounts through the window's `controllers` slot (every `GtkWidget` has one for event controllers), and the `enabled` flag is driven straight from render state:
 
 ```tsx
 controllers={
     <AppShortcuts
         onSearch={() => setSearchMode((mode) => !mode)}
-        onEscape={() => {
-            if (selecting) cancelSelection();
-            else setSelectedTaskId(null);
-        }}
-        escapeEnabled={selectedTask !== null || selecting}
-        onDelete={() => {
-            if (selectedTask) handleDelete(selectedTask);
-        }}
-        deleteEnabled={selectedTask !== null}
+        onEscape={cancelSelection}
+        escapeEnabled={selecting}
     />
 }
 ```
 
-When `selectedTask` is `null`, `deleteEnabled` is false, so `Delete` resolves to `NeverTrigger` and passes through untouched. Open a task and the next render swaps in the real `parseString("Delete")` trigger. The behavior tracks state with no imperative connect/disconnect.
+When `selecting` is false, `escapeEnabled` is false, so `Escape` resolves to `NeverTrigger` and passes through untouched; with the task editor open, the untouched key reaches the content stack's `AdwNavigationView`, whose built-in Escape handling pops the page. Enter selection mode and the next render swaps in the real `parseString("Escape")` trigger. The behavior tracks state with no imperative connect/disconnect.
+
+The `Delete` key is scoped differently: deleting only makes sense while a task is open, so the `Task` screen mounts its own `GtkShortcutController` through its toolbar view's `controllers` slot (shown in **The Task Editor**). The shortcut exists exactly while the screen does, with no enabling flag at all.
 
 ## The shortcuts window: `AdwShortcutsDialog`
 

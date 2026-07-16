@@ -220,7 +220,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 **Alert dialogs** pass `AdwAlertDialog` (from `@gtkx/jsx/adw`) as `Dialog`'s `component`, declaring their buttons through the `responses` prop and delivering the chosen id to `onResponse`. See [Modals and Portals](/guide/modals-and-portals) for `responses`, `closeResponse`, and `onResponse`.
 
-**`NavigationView`** drives an `Adw.NavigationView` stack from JSX. Each mounted `NavigationView.Page` is a stack entry, identified by a stable `tag` and carrying an optional `title` and `canPop`; the mounted order is the stack order, with the first page as the root and the last one visible. Rendering a page pushes it and unmounting it pops it, and when the widget pops a page on its own (a swipe, Escape, or the back button) `onPop` receives the popped page's tag so you can remove it from state. The tutorial's [The Application Shell](/tutorial/app-shell) chapter builds the Tasks app's navigation with it.
+**Navigation is its own package.** Page stacks and the adaptive sidebar/content layout are not components here: `@gtkx/navigation` provides React Navigation-style stack and split-view navigators backed by `Adw.NavigationView` and `Adw.NavigationSplitView`, with routes, params, and hooks. See [Navigation](/guide/navigation).
 
 **`DropDown` as a combo row**: pass `component={AdwComboRow}` to apply the `DropDown` model (`items`, `selectedId`, `onSelectionChanged`, the same renderer props) to `Adw.ComboRow`, the preferences-style row with an embedded drop-down. The Tasks app's theme and sort-order pickers in [Preferences and Theming](/tutorial/preferences-and-theming) use it.
 

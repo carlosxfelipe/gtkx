@@ -44,7 +44,7 @@ const handleDelete = (task: Task): void => {
         return;
     }
     api.moveToTrash(task.id);
-    if (selectedTaskId === task.id) setSelectedTaskId(null);
+    closeTaskIfOpen(task.id);
     const toast = Adw.Toast.new(`“${task.title}” moved to Trash`);
     toast.buttonLabel = "Undo";
     toast.once("button-clicked", () => api.restore(task.id));
@@ -58,6 +58,18 @@ Four things are happening:
 2. **`toast.buttonLabel = "Undo"`** adds the action button. Setting `buttonLabel` is what makes the toast show a button at all. An informational toast with no button leaves it unset.
 3. **`toast.once("button-clicked", ...)`** connects the restore callback. `once` (not `on`) fires it at most one time, which is exactly right: the user can click Undo once, and after that the toast is done. The callback calls back into the task API to restore the trashed task.
 4. **`toastOverlayRef.current?.addToast(toast)`** hands the finished toast to the overlay, which animates it in, queues it if another is showing, and dismisses it after its timeout.
+
+Before the toast, `closeTaskIfOpen(task.id)` checks the navigation ref's current route and pops the task editor when the trashed task is the one open, so the content pane falls back to the list:
+
+```tsx
+const closeTaskIfOpen = (id: string): void => {
+    if (!navigationRef.isReady()) return;
+    const current = navigationRef.getCurrentRoute();
+    if (current?.name === "Task" && (current.params as TasksStackParams["Task"]).id === id) {
+        navigationRef.goBack();
+    }
+};
+```
 
 The batch case in `deleteSelected` is the same shape, restoring a list of ids and pluralizing the message:
 
@@ -149,7 +161,7 @@ The Cancel response is declared before Delete, which is also the on-screen order
 const confirmDelete = (): void => {
     if (!taskToDelete) return;
     api.deleteForever(taskToDelete.id);
-    if (selectedTaskId === taskToDelete.id) setSelectedTaskId(null);
+    closeTaskIfOpen(taskToDelete.id);
     setTaskToDelete(null);
 };
 ```

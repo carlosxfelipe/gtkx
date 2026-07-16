@@ -35,7 +35,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
 ```tsx
 const enterSelection = (): void => {
-    setSelectedTaskId(null);
+    showList();
     setSelectedIds([]);
     setSelecting(true);
 };
@@ -45,7 +45,7 @@ const cancelSelection = (): void => {
 };
 ```
 
-Entering clears any open task editor (`selectedTaskId`) so the content pane is free to show the selectable list, and starts from an empty selection. The Escape key also cancels: the app's global `GtkShortcutController` enables its `Escape` shortcut whenever `selectedTask !== null || selecting`, and its handler calls `cancelSelection()` when `selecting` is true.
+Entering starts with `showList()`, which navigates the content stack back to the `List` screen (popping any open task editor) so the content pane is free to show the selectable list, and starts from an empty selection. The Escape key also cancels: the app's global `GtkShortcutController` enables its `Escape` shortcut while `selecting`, and its handler calls `cancelSelection()`.
 
 ## Swapping the header bar
 
@@ -55,7 +55,7 @@ The list page's toolbar view picks its top bar from two candidates: selection mo
 topBar={selecting ? selectionHeader : listHeader}
 ```
 
-The task editor's header never enters this choice. As **The Application Shell** and **The Task Editor** established, `detailHeader` is the top bar of a separate `NavigationView.Page` that is pushed on top of the list page, so selection mode only ever competes with the list header.
+The task editor's header never enters this choice. As **The Application Shell** and **The Task Editor** established, the editor's header belongs to the separate `Task` screen that is pushed on top of the list, so selection mode only ever competes with the list header.
 
 The `selectionHeader` is a plain `AdwHeaderBar`, but configured to stop looking like the normal chrome:
 
@@ -130,15 +130,17 @@ The two style classes are the standard GTK4 accent roles: `suggested-action` pai
 That bar is mounted into the toolbar view's `bottomBar` slot, and `revealBottomBars` drives the reveal animation:
 
 ```tsx
-<NavigationView.Page tag="list" title={titleFor(selection, lists)}>
-    <AdwToolbarView
-        topBar={selecting ? selectionHeader : listHeader}
-        bottomBar={selecting ? selectionActionBar : undefined}
-        revealBottomBars={selecting}
-    >
-        {listBody}
-    </AdwToolbarView>
-</NavigationView.Page>
+<Stack.Screen name="List" options={{ title: titleFor(selection, lists) }}>
+    {() => (
+        <AdwToolbarView
+            topBar={selecting ? selectionHeader : listHeader}
+            bottomBar={selecting ? selectionActionBar : undefined}
+            revealBottomBars={selecting}
+        >
+            {listBody}
+        </AdwToolbarView>
+    )}
+</Stack.Screen>
 ```
 
 ::: tip
@@ -157,7 +159,7 @@ const listBody = selecting ? (
 );
 ```
 
-The task editor never appears in this ternary. `TaskDetail` lives on its own pushed `NavigationView.Page`, so `listBody` only ever switches between the selectable list and the normal one.
+The task editor never appears in this ternary. `TaskDetail` lives on its own pushed `Task` screen, so `listBody` only ever switches between the selectable list and the normal one.
 
 `SelectionView` (in `components/selection-view.tsx`) is where GTKX's high-level `ListView` from `@gtkx/components` earns its keep:
 

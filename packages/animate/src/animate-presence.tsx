@@ -177,13 +177,21 @@ const mergeExitingChildren = (
 
 type PresenceDiff = { nextChildren: ReactElement[]; allLeftInstantly: boolean };
 
-const diffPresentChildren = (
-    presentChildren: ReactElement[],
-    renderedChildren: ReactElement[],
-    presentKeys: Key[],
-    bags: Map<Key, RegistrationBag>,
-    mode: AnimatePresenceMode,
-): PresenceDiff => {
+type PresenceDiffInput = {
+    presentChildren: ReactElement[];
+    renderedChildren: ReactElement[];
+    presentKeys: Key[];
+    bags: Map<Key, RegistrationBag>;
+    mode: AnimatePresenceMode;
+};
+
+const diffPresentChildren = ({
+    presentChildren,
+    renderedChildren,
+    presentKeys,
+    bags,
+    mode,
+}: PresenceDiffInput): PresenceDiff => {
     const leavingChildren = exitingChildrenOf(renderedChildren, presentKeys);
     const heldChildren = leavingChildren.filter((child) => !isInstantExit(bags.get(getChildKey(child))));
     const heldKeys = new Set(heldChildren.map(getChildKey));
@@ -308,21 +316,32 @@ export type AnimatePresenceProps = {
  * transition, or animations disabled system-wide) are removed in the same update instead of being
  * held.
  */
-export const AnimatePresence = ({
-    children,
-    initial = true,
-    mode = "sync",
-    onExitComplete,
-}: AnimatePresenceProps): ReactNode => {
-    const presentChildren = useMemo(() => onlyElements(children), [children]);
-    const presentKeys = presentChildren.map(getChildKey);
-
+const usePresenceInitial = (initial: boolean): boolean => {
     const isInitialRender = useRef(true);
+    const presenceInitial = isInitialRender.current ? initial : true;
+    useLayoutEffect(() => {
+        isInitialRender.current = false;
+    }, []);
+    return presenceInitial;
+};
+
+type PresenceTracking = {
+    exitComplete: Map<Key, boolean>;
+    exitingComponents: Set<Key>;
+    pendingPresentChildren: RefObject<ReactElement[]>;
+    bagFor: (key: Key) => RegistrationBag;
+    bags: Map<Key, RegistrationBag>;
+};
+
+const usePresenceTracking = (
+    presentChildren: ReactElement[],
+    renderedChildren: ReactElement[],
+    presentKeys: Key[],
+): PresenceTracking => {
     const pendingPresentChildren = useRef(presentChildren);
     const exitComplete = useRef<Map<Key, boolean>>(new Map());
     const exitingComponents = useRef<Set<Key>>(new Set());
     const registrationBags = useRef<Map<Key, RegistrationBag>>(new Map());
-    const instantExitsCompleted = useRef(false);
 
     const bagFor = (key: Key): RegistrationBag => {
         const existing = registrationBags.current.get(key);
@@ -332,35 +351,55 @@ export const AnimatePresence = ({
         return bag;
     };
 
-    const [diffedChildren, setDiffedChildren] = useState(presentChildren);
-    const [renderedChildren, setRenderedChildren] = useState(presentChildren);
-
-    const presenceInitial = isInitialRender.current ? initial : true;
-
-    useLayoutEffect(() => {
-        isInitialRender.current = false;
-    }, []);
-
     useInsertionEffect(() => {
         pendingPresentChildren.current = presentChildren;
         syncExitTracking(renderedChildren, presentKeys, exitComplete.current, exitingComponents.current);
         pruneBags(registrationBags.current, renderedChildren, presentKeys);
     }, [renderedChildren, presentKeys.join("-"), presentChildren]);
 
+    return {
+        exitComplete: exitComplete.current,
+        exitingComponents: exitingComponents.current,
+        pendingPresentChildren,
+        bagFor,
+        bags: registrationBags.current,
+    };
+};
+
+const useInstantExitNotifier = (onExitComplete: (() => void) | undefined): RefObject<boolean> => {
+    const instantExitsCompleted = useRef(false);
     useLayoutEffect(() => {
         if (!instantExitsCompleted.current) return;
         instantExitsCompleted.current = false;
         onExitComplete?.();
     });
+    return instantExitsCompleted;
+};
+
+export const AnimatePresence = ({
+    children,
+    initial = true,
+    mode = "sync",
+    onExitComplete,
+}: AnimatePresenceProps): ReactNode => {
+    const presentChildren = useMemo(() => onlyElements(children), [children]);
+    const presentKeys = presentChildren.map(getChildKey);
+
+    const [diffedChildren, setDiffedChildren] = useState(presentChildren);
+    const [renderedChildren, setRenderedChildren] = useState(presentChildren);
+
+    const presenceInitial = usePresenceInitial(initial);
+    const tracking = usePresenceTracking(presentChildren, renderedChildren, presentKeys);
+    const instantExitsCompleted = useInstantExitNotifier(onExitComplete);
 
     if (presentChildren !== diffedChildren) {
-        const { nextChildren, allLeftInstantly } = diffPresentChildren(
+        const { nextChildren, allLeftInstantly } = diffPresentChildren({
             presentChildren,
             renderedChildren,
             presentKeys,
-            registrationBags.current,
+            bags: tracking.bags,
             mode,
-        );
+        });
         if (allLeftInstantly) instantExitsCompleted.current = true;
         setRenderedChildren(nextChildren);
         setDiffedChildren(presentChildren);
@@ -373,10 +412,10 @@ export const AnimatePresence = ({
                 renderedChildren,
                 presentKeys,
                 presenceInitial,
-                exitComplete: exitComplete.current,
-                exitingComponents: exitingComponents.current,
-                pendingPresentChildren,
-                bagFor,
+                exitComplete: tracking.exitComplete,
+                exitingComponents: tracking.exitingComponents,
+                pendingPresentChildren: tracking.pendingPresentChildren,
+                bagFor: tracking.bagFor,
                 commit: setRenderedChildren,
                 onAllComplete: onExitComplete,
             })}

@@ -1,0 +1,63 @@
+{
+    "name": "@gtkx/navigation",
+    "version": "1.0.0-rc.1",
+    "description": "React Navigation-powered navigators for GTKX: stack and split-view navigation backed by Adwaita widgets",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "adwaita",
+        "navigation",
+        "react",
+        "react-navigation",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/navigation"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "build": "tsc -b tsconfig.lib.json",
+        "typecheck": "tsc -b --emitDeclarationOnly",
+        "release": "tsx ../../scripts/release-package.ts"
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "dependencies": {
+        "@gtkx/react": "workspace:*",
+        "@react-navigation/core": "^7.9.2",
+        "@react-navigation/routers": "^7.6.0"
+    },
+    "devDependencies": {
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "react": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "^19"
+    }
+}
