@@ -41,7 +41,7 @@ test("increments on click", async () => {
         </p>
         <CodeBlock variant="terminal">
           <div class="mcp-com"># Claude drives your live app over MCP</div>
-          <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_query_widgets { by: "role", value: "button" }</div>
+          <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_query_widgets { by: "role", value: "BUTTON" }</div>
           <div class="mcp-out"><span aria-hidden="true">←</span> 2 matches: "Save" (id "12"), "Cancel" (id "13")</div>
           <div class="mcp-in"><span aria-hidden="true">→</span> gtkx_click { widgetId: "12" }</div>
           <div class="mcp-ok"><span aria-hidden="true">✓</span> toast "Task saved" appeared</div>

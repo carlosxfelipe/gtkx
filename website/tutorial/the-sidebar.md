@@ -4,7 +4,9 @@ description: "Build the navigation sidebar as one GtkListBox of AdwActionRows, d
 
 # The Sidebar
 
-The sidebar is the left pane of the adaptive `AdwNavigationSplitView`: a single scrolling list of "smart views" (All Tasks, Today, Important), then the user's colored task lists, then Trash. In GTK4 terms it is one `GtkListBox` wearing the `.navigation-sidebar` style class, and every row is an `AdwActionRow`. There is no per-row component and no imperative widget code in the hot path: the whole thing is derived from props, and selection is a controlled value synced in both directions between React state and the live `GtkListBox`.
+The sidebar is the left pane of the adaptive `AdwNavigationSplitView`: a single scrolling list of "smart views" (All Tasks, Today, Important), then the user's colored task lists, then Trash. In GTK4 terms it is one `GtkListBox` wearing the `.navigation-sidebar` style class, and every row is an `AdwActionRow`. There is no per-row component and no imperative widget code in the render itself. The whole list is derived from props, and selection is a controlled value synced both ways between React state and the live `GtkListBox`.
+
+This page walks the sidebar top to bottom: the `Entry` data model and `keyOf`, the `.navigation-sidebar` `GtkListBox`, the prefix/suffix row slots, and the two-way controlled selection.
 
 Here is the entire file's import block and the shape of one row entry, straight from `components/sidebar.tsx`:
 
@@ -26,7 +28,10 @@ type Entry = {
 };
 ```
 
-Two things worth flagging for a React reader. Every widget is a named PascalCase import from `@gtkx/jsx/<lib>` (there are no lowercase intrinsics like `<div>`); `AdwActionRow` comes from the Adwaita namespace, the `Gtk*` primitives from the GTK4 one. And `@gtkx/gi/gtk` (imported as `Gtk`) is a separate thing from `@gtkx/jsx/gtk`: it gives you the raw GI classes and enums (`Gtk.ListBox` for the ref type, `Gtk.Align`, `Gtk.AccessibleRole`), not JSX components.
+Two things worth flagging for a React reader:
+
+- **Every widget is a named PascalCase import** from `@gtkx/jsx/<lib>` (there are no lowercase intrinsics like `<div>`); `AdwActionRow` comes from the Adwaita namespace, the `Gtk*` primitives from the GTK4 one.
+- **`@gtkx/gi/gtk` is a separate thing from `@gtkx/jsx/gtk`.** Imported as `Gtk`, it gives you the raw GI classes and enums (`Gtk.ListBox` for the ref type, `Gtk.Align`, `Gtk.AccessibleRole`), not JSX components.
 
 ## One data model, one key function
 
@@ -134,7 +139,7 @@ The children are `AdwActionRow`s, and `AdwActionRow` subclasses `GtkListBoxRow` 
 />
 ```
 
-Passing `title` as a prop (not children) is the Adwaita convention: `AdwActionRow` is a preferences-style row where the title text is a first-class property, and GTKX surfaces it as a plain string prop.
+Passing `title` as a prop (not children) is the Adwaita convention: `AdwActionRow` is a preferences-style row where the title text is a real property, and GTKX surfaces it as a plain string prop.
 
 ### Colored list dots
 
@@ -151,7 +156,7 @@ export const listDot = (color: string): string => css`
 `;
 ```
 
-`css` from `@gtkx/css` takes a tagged template and returns a single class name string (like `gtkx-1a2b3c`), which you spread into `cssClasses`. This is GTK4 CSS, not web CSS: `min-width`/`min-height` set the box's size (an empty `GtkBox` has no intrinsic size), `border-radius: 9999px` makes it a pill/circle, and the interpolated `${color}` becomes the `background`. Because `listDot` is called with the list's color at render time, each list gets its own generated, deduplicated class.
+`listDot` returns a generated class name via `@gtkx/css`: the `css` tagged template returns a single class name string (like `gtkx-1a2b3c`), which you place into the `cssClasses` array. Because `listDot` is called with the list's color at render time, each list gets its own generated, deduplicated class. The GTK4 CSS itself, and how it differs from web CSS, is covered in [Preferences and Theming](/tutorial/preferences-and-theming).
 
 The dot carries no information a screen reader needs to announce, so it is marked decorative with `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. That removes the empty box from the accessibility tree, leaving the row's title as the only thing announced. `valign={Gtk.Align.CENTER}` keeps the 12px dot vertically centered against the taller row.
 
@@ -174,7 +179,7 @@ The trailing number is a `GtkLabel` styled with two stock classes:
 Adwaita deprecated `.dim-label` in favor of `.dimmed`. Reach for `.dimmed` in new code; they achieve the same visual muting.
 :::
 
-The badge only renders when `entry.count > 0`, otherwise the `suffix` slot receives `undefined` and the row shows no trailing number. The counts come from the `sidebarCounts` selector in `select.ts`, which is a pure derivation over the task array. The snippet below includes the file's imports and the `SidebarCounts` type that `sidebar.tsx` imports:
+The badge only renders when `entry.count > 0`, otherwise the `suffix` slot receives `undefined` and the row shows no trailing number. The counts come from the `sidebarCounts` selector in `select.ts`, which is a pure derivation over the tasks and lists arrays. The snippet below includes the file's imports and the `SidebarCounts` type that `sidebar.tsx` imports:
 
 ```ts
 import { isToday } from "./format.js";
@@ -212,6 +217,8 @@ export const isToday = (iso: string | null): boolean => {
     return startOfDay(new Date(iso)) === startOfDay(new Date());
 };
 ```
+
+This is plain JavaScript: `Date` and ordinary arithmetic, no `GLib.DateTime`. The app keeps dates as ISO strings and JS `Date` objects throughout; `GLib.DateTime` appears only where a widget property demands it, such as `GtkCalendar`'s `date` prop on the editor page.
 
 The smart-view and per-list counts are all computed from `active` tasks (not deleted, not done), so the badge reads like a GNOME "unfinished work" indicator, not a total. Trash is the exception: it counts every deleted task regardless of done state, since that pane shows deleted items in full.
 
@@ -268,4 +275,4 @@ These two directions form a loop: the effect calls `selectRow`, which makes the 
 
 ## Next
 
-Continue to **The Task List**.
+Continue to **The Task List** to see how the selected view drives `visibleTasks` and how each task renders as a row.

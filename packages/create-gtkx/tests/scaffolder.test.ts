@@ -244,6 +244,7 @@ describe("scaffold (dependency installation)", () => {
             pin("@gtkx/cli"),
             pin("@gtkx/config"),
             "vite",
+            "@types/node",
             "@types/react",
             "typescript",
             pin("@gtkx/testing"),

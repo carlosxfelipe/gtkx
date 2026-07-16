@@ -4,7 +4,9 @@ description: "Each task is an AdwActionRow with checkbox, star, and delete contr
 
 # Task Rows and Drag-to-Reorder
 
-Each task in the list is one `AdwActionRow`. In Adwaita an action row is a preferences-style row with a title, an optional subtitle, and slots on either end for small controls: a leading `prefix` and a trailing `suffix`. Dropped into a `GtkListBox` styled with the `boxed-list` CSS class, a stack of these rows becomes the rounded, separated card that every GNOME app uses for short editable lists. `TaskRow` fills that row with a done checkbox, a strikethrough title, a star, a delete button, and (when ordering is manual) the two event controllers that make it draggable.
+Each task in the list is one `AdwActionRow`. In Adwaita an action row is a preferences-style row with a title, an optional subtitle, and slots on either end for small controls: a leading `prefix` and a trailing `suffix`. Dropped into a `GtkListBox` styled with the `boxed-list` CSS class, a stack of these rows becomes the rounded, separated card that every GNOME app uses for short editable lists.
+
+`TaskRow` fills that row with a done checkbox, a strikethrough title, a star, a delete button, and (when ordering is manual) the two event controllers that make it draggable.
 
 The whole component is one JSX tree with no imperative widget code. Here is the shell, from `components/task-row.tsx`:
 
@@ -84,7 +86,7 @@ prefix={
 }
 ```
 
-Two GTK4 details worth calling out.
+Two GTK4 details.
 
 `valign={Gtk.Align.CENTER}` keeps the checkbox vertically centered against a row that may grow to two lines when it has a subtitle. Alignment enums like `Gtk.Align` come from `@gtkx/gi/gtk`, the raw GI import you reach for whenever a prop wants an enum value or you need a live widget class.
 
@@ -92,7 +94,7 @@ The `onToggled` handler reads `self.active` rather than computing `!task.done`. 
 
 ## The star and delete controls live in the suffix
 
-The suffix takes more than one widget, so it is a fragment. Adwaita packs each child into the trailing end of the row via `add_suffix`, in order.
+The suffix takes more than one widget, so it is a fragment. Adwaita packs each child into the trailing end of the row via `addSuffix`, in order.
 
 ```tsx
 suffix={
@@ -156,7 +158,7 @@ controllers={
 
 `actions={Gdk.DragAction.MOVE}` on both sides declares this a move (not a copy or link), which is what drives the move-cursor and the drop feedback.
 
-The payload is a GObject value, not a JavaScript object. GTK4 drag-and-drop transfers typed `GObject.Value` boxes so the same mechanism can carry data between processes and apps. `onPrepare` (the drag source's `prepare` signal) runs when the drag begins and must return a `Gdk.ContentProvider` describing what is being dragged:
+The payload is a GObject value, not a JavaScript object. GTK4 drag-and-drop transfers typed `GObject.Value` boxes so the same mechanism can carry data between processes and apps. `onPrepare` (the drag source's `prepare` signal) runs when a drag is about to begin and must return a `Gdk.ContentProvider` describing what is being dragged:
 
 - `GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id))` boxes the task's id into a string-typed `GObject.Value`. The callback receives a fresh value already initialized to the given type; you fill it with the matching setter (`setString`).
 - `Gdk.ContentProvider.newForValue(...)` wraps that value into a content provider the drag can carry.
@@ -165,26 +167,7 @@ On the receiving side, `GtkDropTarget.types` declares which `GObject.Type`s this
 
 ## Closing the loop stays in React state
 
-`onReorder` does not touch any widget. It forwards to `reorder` in the `use-tasks` hook, which is pure array work:
-
-```ts
-const reorder = (draggedId: string, targetId: string): void =>
-    mutate((tasks) => {
-        const from = tasks.findIndex((task) => task.id === draggedId);
-        const to = tasks.findIndex((task) => task.id === targetId);
-        if (from === -1 || to === -1 || from === to) return tasks;
-        const next = [...tasks];
-        const [moved] = next.splice(from, 1);
-        next.splice(to, 0, moved);
-        return reindex(next);
-    });
-```
-
-It finds both tasks, splices the dragged one out and back in at the target index, then `reindex` rewrites every task's `position` field to match its new array slot:
-
-```ts
-const reindex = (tasks: Task[]): Task[] => tasks.map((task, index) => ({ ...task, position: index }));
-```
+`onReorder` does not touch any widget. It forwards to `reorder` in the `use-tasks` hook, whose pure array splice and the `reindex` that rewrites every task's `position` field are covered on the [Data Model and Persistence](/tutorial/data-and-persistence) page.
 
 That single state update is all it takes, because the rows are keyed children of the same container. In `task-list.tsx` the rows render inside a `boxed-list` `GtkListBox`, each with `key={task.id}`:
 

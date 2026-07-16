@@ -5,8 +5,8 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  Linux app development for the modern age.<br />
-  Build native GTK4 and Adwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
+  Native Linux app development with React.<br />
+  Build GTK4 and Adwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
 </p>
 
 <p align="center">
@@ -99,7 +99,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, spring and tween animations, and higher-level list, grid, and dialog components,
+- CSS-in-JS styling, spring and tween animations, and high-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
@@ -109,17 +109,15 @@ React Native and similar frameworks hide the native toolkit so one API can run e
 
 ### Why Node.js, and why generated bindings
 
-GTKX runs on Node.js. The two established ways to reach GTK4 from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
-
-GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime from Node.js, it cuts you off from native modules and from the npm packages and tooling built for Node.js APIs.
-
-node-gtk does run on Node.js, but it is lightly maintained. Its native addon is C++ on the older nan/V8 ABI rather than N-API, and its documentation and examples still center on GTK3.
+GTKX runs on Node.js. The two established ways to reach GTK4 from JavaScript both come with trade-offs it set out to avoid: GJS uses SpiderMonkey, cutting you off from Node.js native modules and the npm ecosystem, while node-gtk is lightly maintained, built on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [why-gtkx guide](https://gtkx.dev/guide/why-gtkx) covers the comparison in full.
 
 GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back, and they cover the whole GTK4 and Adwaita surface rather than a hand-picked subset.
 
 At runtime, the Rust N-API addon calls straight into the system GTK4, Adwaita, and GLib libraries through libffi, without loading libgirepository at all.
 
 ## Quick start
+
+Requires Linux with the GTK4, Adwaita, and GLib development libraries and Node.js 24 or later (see [Requirements](#requirements)).
 
 Scaffold a new app with the `create-gtkx` initializer:
 

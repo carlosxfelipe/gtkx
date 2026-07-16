@@ -1,16 +1,18 @@
 ---
-description: "The @gtkx/testing and @gtkx/vitest reference: headless GTK4 test setup, render semantics, the full query and userEvent surface, custom matchers, and debugging helpers."
+description: "Reference for @gtkx/testing and @gtkx/vitest: headless GTK4 setup, render, queries, userEvent, matchers, and debugging."
 ---
 
 # Testing
 
-GTKX tests run against real GTK4. There is no fake widget tree and no mocked reconciler: `render` mounts your components into live GObject widgets inside a headless Wayland display, queries walk the actual accessibility tree GTK4 exposes to screen readers, and `userEvent` dispatches the same gestures and key events a person would produce. The API is deliberately shaped like React Testing Library, so if you have tested a React web app, you already know the model: query by role and accessible name, interact through user events, assert on what the user can observe.
+GTKX tests run against real GTK4. There is no fake widget tree and no mocked reconciler. `render` mounts your components into live GObject widgets inside a headless Wayland display. Queries walk the actual accessibility tree GTK4 exposes to screen readers, and `userEvent` dispatches the same gestures and key events a person would produce.
+
+The API is deliberately shaped like React Testing Library. If you have tested a React web app, you already know the model: query by role and accessible name, interact through user events, assert on what the user can observe.
 
 Two packages divide the work. `@gtkx/testing` is the library you import in test files: `render`, `screen`, `userEvent`, `fireEvent`, `waitFor`, and a set of widget-aware matchers. `@gtkx/vitest` is a Vitest plugin that gives every test worker its own isolated GTK4 display. For a walkthrough of testing a complete app, see the [tutorial's testing chapter](/tutorial/testing); this page is the reference for the full surface.
 
 ## Setup
 
-A scaffolded project (answer yes to "Include testing setup" in `npm create gtkx`) ships this config:
+A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) ships this config:
 
 ```ts
 import gtkx from "@gtkx/cli/vitest-plugin";
@@ -25,7 +27,17 @@ export default defineConfig({
 });
 ```
 
-`@gtkx/cli/vitest-plugin` combines the CLI's Vite plugins (the same ones `gtkx dev` and `gtkx build` use: the resolved app config and JSX metadata, GResource and GSettings modules, CSS imports, and the React Compiler) with the `@gtkx/vitest` plugin. The latter is where the interesting machinery lives. It configures the `forks` pool with `globals: true` and 30 second test and hook timeouts, and it injects a preload script into each worker process that boots a private headless environment before any test code loads: an isolated `XDG_RUNTIME_DIR`, a dedicated `dbus-daemon` session bus, and a headless Wayland compositor (weston with the pixman software renderer by default, or sway). Every worker gets its own compositor and bus, so tests in different files cannot interfere through shared display state, and the whole stack is torn down when the worker exits. The plugin also pins the environment GTK4 needs to behave deterministically off-screen: `GDK_BACKEND=wayland`, `GSK_RENDERER=cairo`, `GTK_A11Y=test`, `GSETTINGS_BACKEND=memory`, and software-only GL.
+`@gtkx/cli/vitest-plugin` combines the CLI's Vite plugins (the same ones `gtkx dev` and `gtkx build` use: the resolved app config and JSX metadata, GResource and GSettings modules, CSS imports, and the React Compiler) with the `@gtkx/vitest` plugin, which handles the headless display setup.
+
+`@gtkx/vitest` configures the `forks` pool with `globals: true` and 30 second test and hook timeouts, and injects a preload script into each worker process that boots a private headless environment before any test code loads:
+
+- an isolated `XDG_RUNTIME_DIR`
+- a dedicated `dbus-daemon` session bus
+- a headless Wayland compositor (weston with the pixman software renderer by default, or sway)
+
+Every worker gets its own compositor and bus, so tests in different files cannot interfere through shared display state, and the whole stack is torn down when the worker exits.
+
+The plugin also pins the environment GTK4 needs to behave deterministically off-screen: `GDK_BACKEND=wayland`, `GSK_RENDERER=cairo`, `GTK_A11Y=test`, `GSETTINGS_BACKEND=memory`, and software-only GL.
 
 `@gtkx/vitest` accepts two options: `size`, the headless output resolution as a `"WIDTHxHEIGHT"` string (default `"1024x768"`), and `compositor`, either `"weston"` (the default) or `"sway"`; `@gtkx/cli/vitest-plugin` takes no options and applies those defaults. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` installed on the host.
 
@@ -97,7 +109,7 @@ The surface, grouped by what it drives:
 - **Pointer**: `pointer(widget, input)` supports left-button tokens only (`"click"`, `"down"`, `"up"`, and their `[MouseLeft]` forms). Pointer input goes through `GestureClick` controller signals rather than real `GdkEvent`s, so coordinates, motion, and other buttons cannot be synthesized headless.
 - **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The last five drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads real pointer coordinates; use `slide(range, value)` or `keyboard` for sliders.
 - **Drag and drop**: `drop(widget, content)` and `dragAndDrop(source, target, content)` deliver a `GObject.Value` (strings, numbers, and booleans are wrapped automatically) to the target's `GtkDropTarget`; `dragAndDrop` also verifies the source carries a `GtkDragSource`.
-- **Scrolling and selection**: `scroll(widget, { x, y })` adjusts the nearest scrollable's adjustments, `slide(range, value)` jumps a range, and `selectOptions` selects by index in `ListView`, `GridView`, `ColumnView`, `DropDown`, `ComboBox`, and `GtkListBox` (list views through their selection models); `deselectOptions` deselects in the list views and `GtkListBox`.
+- **Scrolling and selection**: `scroll(widget, { x, y })` adjusts the nearest scrollable's adjustments, `slide(range, value)` jumps a range, and `selectOptions` selects by index in `GtkListView`, `GtkGridView`, `GtkColumnView`, `GtkDropDown`, `GtkComboBox`, and `GtkListBox` (list views through their selection models); `deselectOptions` deselects in the list views and `GtkListBox`.
 
 ## fireEvent, act, and waitFor
 

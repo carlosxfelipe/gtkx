@@ -1,9 +1,12 @@
-import * as GLib from "@gtkx/gi/glib";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Task, TaskList } from "./types.js";
 
 const APP_ID = "com.gtkx.tutorial";
-const DATA_DIR = GLib.buildFilenamev([GLib.getUserDataDir(), APP_ID]);
-const TASKS_PATH = GLib.buildFilenamev([DATA_DIR, "tasks.json"]);
+const DATA_HOME = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
+const DATA_DIR = join(DATA_HOME, APP_ID);
+const TASKS_PATH = join(DATA_DIR, "tasks.json");
 const SCHEMA_VERSION = 1;
 
 export type PersistedState = {
@@ -11,9 +14,6 @@ export type PersistedState = {
     lists: TaskList[];
     tasks: Task[];
 };
-
-const encode = (value: string): number[] => Array.from(new TextEncoder().encode(value));
-const decode = (bytes: number[]): string => new TextDecoder().decode(new Uint8Array(bytes));
 
 const isoInDays = (days: number): string => {
     const date = new Date();
@@ -72,10 +72,8 @@ const seed = (): PersistedState => {
 
 export const loadState = (): PersistedState => {
     try {
-        if (!GLib.fileTest(TASKS_PATH, GLib.FileTest.EXISTS)) return seed();
-        const [ok, bytes] = GLib.fileGetContents(TASKS_PATH);
-        if (!ok) return seed();
-        const parsed = JSON.parse(decode(bytes)) as PersistedState;
+        if (!existsSync(TASKS_PATH)) return seed();
+        const parsed = JSON.parse(readFileSync(TASKS_PATH, "utf8")) as PersistedState;
         if (parsed?.version !== SCHEMA_VERSION) return seed();
         return parsed;
     } catch {
@@ -84,6 +82,8 @@ export const loadState = (): PersistedState => {
 };
 
 export const saveState = (state: PersistedState): void => {
-    GLib.mkdirWithParents(DATA_DIR, 0o755);
-    GLib.fileSetContents(TASKS_PATH, encode(JSON.stringify(state, null, 2)));
+    mkdirSync(DATA_DIR, { recursive: true });
+    const tempPath = `${TASKS_PATH}.tmp`;
+    writeFileSync(tempPath, JSON.stringify(state, null, 2));
+    renameSync(tempPath, TASKS_PATH);
 };

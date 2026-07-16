@@ -31,7 +31,7 @@ const appCode = `function App() {
           you already know the API.
         </p>
       </div>
-      <CodeBlock title="App.tsx" :code="appCode" />
+      <CodeBlock title="app.tsx" :code="appCode" />
     </div>
 
     <div class="how__step how__step--rev">
@@ -51,7 +51,7 @@ const appCode = `function App() {
         </Callout>
       </div>
       <CodeBlock variant="terminal">
-        <div class="tdim">App.tsx → react-reconciler</div>
+        <div class="tdim">app.tsx → react-reconciler</div>
         <div class="tdim">→ GObject instances: GtkButton, AdwHeaderBar</div>
         <div class="tout"><span class="tmark" aria-hidden="true">✓</span> @gtkx/native → libffi → native libraries</div>
       </CodeBlock>
@@ -68,7 +68,7 @@ const appCode = `function App() {
         </p>
       </div>
       <CodeBlock variant="terminal">
-        <div class="tdim">[gtkx] File changed: src/App.tsx</div>
+        <div class="tdim">[gtkx] File changed: src/app.tsx</div>
         <div class="tdim">[gtkx] Running Fast Refresh...</div>
         <div class="tout">[gtkx] Fast Refresh complete</div>
       </CodeBlock>

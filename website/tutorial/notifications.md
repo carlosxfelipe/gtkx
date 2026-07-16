@@ -4,16 +4,14 @@ description: "Desktop reminders with Gio.Notification: application-scoped action
 
 # Reminders and Notifications
 
-Tasks have due dates, so the app fires a desktop notification when one is coming up. This is the one feature that has to keep working when the app is closed: the notification the user taps might be the thing that launches the process. That constraint shapes the whole design, so before any React, understand the two Gio pieces it forces:
+Tasks have due dates, so the app fires a desktop notification when one is coming up. This is the one feature that has to keep working when the app is closed: the notification the user taps might be what launches the process. That constraint shapes the whole design, so before any React, understand the two Gio concepts it depends on:
 
 - A **`Gio.Notification`** is a plain data object (title, body, priority, buttons). It does not run code. Every interactive part of it points at a named action string like `app.complete-task`, and the shell invokes that action on your `Gio.Application`, possibly after cold-starting it.
-- Because the action can be invoked against a freshly launched process, it must be **application-scoped** (`app.` prefix), installed on the application itself, and it must survive the notification object being long gone.
-
-Everything below builds up from those two facts.
+- Because the process can be cold-started with no window, the action must be **application-scoped** (`app.` prefix), installed on the application itself.
 
 ## Building the notification
 
-`src/notifications.ts` is the entire notification payload, one pure function that turns a `Task` into a `Gio.Notification`:
+`src/notifications.ts` holds the entire notification-building logic: one pure function that turns a `Task` into a `Gio.Notification`:
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
@@ -38,11 +36,9 @@ Reading it against the Gio API:
 - `addButtonWithTarget(label, action, target)` adds a button that invokes `app.complete-task` with a `GLib.Variant` payload. `setDefaultActionAndTarget(action, target)` is what fires when the user clicks the notification body itself, here `app.open-task`.
 - The target is always `GLib.Variant.newString(task.id)`. Gio actions carry at most one parameter, a `GLib.Variant`, so the task id is boxed into a string variant. The `*WithTarget` variants take the variant directly instead of forcing you to escape the id into a detailed action string like `app.open-task::<id>`.
 
-`formatDateTime` (from `src/format.ts`) turns the ISO due string into a human label and returns `"Never"` for a null date, so the body is always well-formed.
+`formatDateTime` (from `src/format.ts`) renders the ISO due string as a locale date-time; the only Gio surface in this file is the notification itself.
 
-## Why the actions must be app-scoped
-
-::: info Why not `win.` actions
+::: info Why the actions must be app-scoped
 GTK4 splits actions into window-scoped (`win.`) and application-scoped (`app.`). A `win.` action needs a live window to target. A notification action does not have one: when the user taps a reminder after the app has been closed, GNOME Shell D-Bus-activates a brand new process, and there is no window (and no `Gio.Notification` object) yet. The only thing guaranteed to exist is the `Gio.Application` and the actions installed on it. That is why `buildReminder` targets `app.complete-task` and `app.open-task`, never `win.`-anything.
 :::
 
@@ -82,7 +78,7 @@ The mechanics:
 - **`notified` is a `useRef<Set<string>>`, not state.** It records which task ids have already fired so a task is not re-notified on every 60-second tick. It is a ref because writing to it must not trigger a re-render, and it must persist across renders without being a dependency.
 - **`leadMs` comes from `reminderMinutes`**, the `reminder-minutes` GSettings preference read in the window (see below). A task fires when it is due within the lead window.
 - **The window is `remaining <= leadMs && remaining > -86_400_000`.** So a reminder fires from `reminderMinutes` before the due time up to 24 hours (`86_400_000` ms) after it. Tasks overdue by more than a day are skipped, avoiding a burst of stale notifications the first time the app opens after being off for a while.
-- **`sweep()` runs once immediately, then every 60 seconds** via `setInterval`. The effect returns a cleanup function that calls `clearInterval(handle)` so the timer is torn down when dependencies change or the component unmounts. This is an ordinary React timer effect driven by the same single-thread runloop that drives GTK4.
+- **`sweep()` runs once immediately, then every 60 seconds** via `setInterval`. The effect returns a cleanup function that calls `clearInterval(handle)` so the timer is torn down when dependencies change or the component unmounts. This is an ordinary React timer effect driven by the same single-thread runloop that drives GTK4. Because GTKX runs GTK4 on the Node.js event loop, plain `setInterval` and `setTimeout` are the right tools for scheduling; application code never needs `GLib.timeoutAdd`.
 
 ## Wiring the sweep to the application
 

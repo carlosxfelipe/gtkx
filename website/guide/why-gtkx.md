@@ -1,10 +1,10 @@
 ---
-description: "What GTKX is, why it exists, and how it compares to GJS, node-gtk, and portable UI frameworks like React Native or Electron."
+description: "What GTKX is, why it exists, and how it compares to GJS and node-gtk, to portable subsets like React Native, and to webview stacks like Electron."
 ---
 
 # Why GTKX
 
-GTKX lets you build native GTK4 and Adwaita apps in TypeScript, with React components and hooks driving real GObject widgets. No webview, no Electron. This page explains why the project exists and what sets it apart from the other ways of writing GNOME apps in JavaScript.
+GTKX lets you build native GTK4 and Adwaita apps in TypeScript, with React components and hooks driving real GObject widgets. No webview, no Electron.
 
 ## A declarative layer for the GNOME stack
 
@@ -13,7 +13,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, spring and tween animations, and higher-level list, grid, and dialog components,
+- CSS-in-JS styling, spring and tween animations, and high-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
@@ -33,7 +33,9 @@ node-gtk does run on Node.js, but it is lightly maintained. Its native addon is 
 
 GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back, and they cover the whole GTK4 and Adwaita surface rather than a hand-picked subset.
 
-At runtime, the Rust N-API addon owns the single GLib main loop and calls straight into the system GTK4 libraries through libffi, without loading libgirepository at all. All native mutation stays on one thread.
+Because a GTKX app is an ordinary Node.js process, everyday work is done with the Node standard library and npm: `node:fs` for files, `fetch` for HTTP, `setTimeout` and `setInterval` for timers, any package on the registry for the rest. The generated GLib and Gio bindings come in only where the GNOME platform itself is the point, such as GSettings, desktop notifications, actions, and platform file objects via `Gio.File`.
+
+At runtime, the native Rust core owns the single GLib main loop and calls straight into the system GTK4 libraries through libffi, with no separate introspection layer (libgirepository) loaded at all. All native mutation stays on one thread.
 
 ## Next
 

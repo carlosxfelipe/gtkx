@@ -1,12 +1,12 @@
 ---
-description: "The Tasks data layer, with JSON in the XDG data directory through GLib file APIs, GSettings for preferences, and React state as the source of truth."
+description: "The Tasks data layer, with JSON in the XDG data directory through node:fs, GSettings for preferences, and React state as the source of truth."
 ---
 
 # Data Model and Persistence
 
-Tasks keeps two entirely separate stores, and the split is deliberate. The task list itself, everything the user creates and edits, lives as one JSON file in the XDG data directory, loaded once at startup and written back through GLib's own file API. The handful of small UI preferences (filter, sort order, color scheme, window size) live in GSettings, the GNOME settings database. React state is the single source of truth while the app runs; both stores are where that state is serialized to and rehydrated from.
+Tasks keeps two entirely separate stores, and the split is deliberate. The task list itself, everything the user creates and edits, lives as one JSON file in the XDG data directory, loaded once at startup and written back with `node:fs`. The handful of small UI preferences (filter, sort order, color scheme, window size) live in GSettings, the GNOME settings database. React state is the single source of truth while the app runs; both stores are where that state is serialized to and rehydrated from. This page walks that data layer end to end: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
 
-If you come from the web, the surprising part is not React. It is that the byte-level I/O runs through `@gtkx/gi/glib` instead of `node:fs`, and that "the settings system" (GSettings) is a real, schema-validated key store that GNOME ships, not something you build. This page walks the real data layer of the app: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
+If you come from the web, none of it holds surprises: a GTKX app is an ordinary Node.js program, so file IO is `node:fs`, paths are `node:path`, and the npm ecosystem is a `package.json` entry away. The genuinely GNOME part is GSettings, a real, schema-validated key store GNOME ships rather than something you build.
 
 ## The shapes
 
@@ -44,17 +44,20 @@ export type SmartView = "all" | "today" | "important" | "trash";
 export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
 ```
 
-## Paths and encoding: the GLib file layer
+## Paths: the XDG data directory
 
-`src/store.ts` owns everything that touches disk. It starts by building the file path from GLib's XDG helpers, so the app writes to the correct per-user location on any platform without hardcoding a separator or a home directory.
+`src/store.ts` owns everything that touches disk, and it is plain Node.js. It starts by building the file path with `node:path` and `node:os`, following the XDG Base Directory specification so the app writes to the correct per-user location instead of littering the home directory.
 
 ```ts
-import * as GLib from "@gtkx/gi/glib";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Task, TaskList } from "./types.js";
 
 const APP_ID = "com.gtkx.tutorial";
-const DATA_DIR = GLib.buildFilenamev([GLib.getUserDataDir(), APP_ID]);
-const TASKS_PATH = GLib.buildFilenamev([DATA_DIR, "tasks.json"]);
+const DATA_HOME = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
+const DATA_DIR = join(DATA_HOME, APP_ID);
+const TASKS_PATH = join(DATA_DIR, "tasks.json");
 const SCHEMA_VERSION = 1;
 
 export type PersistedState = {
@@ -64,16 +67,7 @@ export type PersistedState = {
 };
 ```
 
-`GLib.getUserDataDir()` returns `$XDG_DATA_HOME`, defaulting to `~/.local/share`, so the file lands at `~/.local/share/com.gtkx.tutorial/tasks.json`. `GLib.buildFilenamev(parts: string[])` joins path segments with the platform separator. `PersistedState` is the exact JSON envelope: a `version` number for migration, plus the `lists` and `tasks` arrays.
-
-GLib's file functions marshal bytes as a plain `number[]` (an array of byte values), not a Node.js `Buffer` or a `Uint8Array`. So the two ends convert through the standard web encoders:
-
-```ts
-const encode = (value: string): number[] => Array.from(new TextEncoder().encode(value));
-const decode = (bytes: number[]): string => new TextDecoder().decode(new Uint8Array(bytes));
-```
-
-`TextEncoder`/`TextDecoder` are web platform globals, available here because GTKX runs your app on Node.js (which you provide, version 24 or newer).
+The XDG spec says per-user data files belong under `$XDG_DATA_HOME`, and that an unset or empty variable means `~/.local/share`, which is exactly what the `||` fallback expresses. Namespacing by the application ID puts the file at `~/.local/share/com.gtkx.tutorial/tasks.json`, where GNOME conventions expect it, and because the code honors `$XDG_DATA_HOME`, sandboxed packaging like Flatpak (which points the variable at the app's private data directory) redirects it automatically. `PersistedState` is the exact JSON envelope: a `version` number for migration, plus the `lists` and `tasks` arrays.
 
 ## First run: the seed
 
@@ -128,10 +122,8 @@ The color values (`#3584e4`, `#2ec27e`, `#e66100`) are from GNOME's standard col
 ```ts
 export const loadState = (): PersistedState => {
     try {
-        if (!GLib.fileTest(TASKS_PATH, GLib.FileTest.EXISTS)) return seed();
-        const [ok, bytes] = GLib.fileGetContents(TASKS_PATH);
-        if (!ok) return seed();
-        const parsed = JSON.parse(decode(bytes)) as PersistedState;
+        if (!existsSync(TASKS_PATH)) return seed();
+        const parsed = JSON.parse(readFileSync(TASKS_PATH, "utf8")) as PersistedState;
         if (parsed?.version !== SCHEMA_VERSION) return seed();
         return parsed;
     } catch {
@@ -142,26 +134,27 @@ export const loadState = (): PersistedState => {
 
 Read it top to bottom as a chain of guards:
 
-- `GLib.fileTest(path, GLib.FileTest.EXISTS)` is `g_file_test` with the `EXISTS` flag. No file means first run, so seed.
-- `GLib.fileGetContents(path)` returns a `[ok, bytes]` tuple (GLib's out-parameters surface as a returned array). A false `ok` means the read failed, so seed.
-- The `try/catch` wraps `JSON.parse`, so a truncated or corrupt file falls through to the same seed instead of crashing at startup.
+- `existsSync` catches the first run: no file yet, so seed.
+- The `try/catch` covers everything that can throw: `readFileSync` on an unreadable file (permission problems, a directory in the way) and `JSON.parse` on truncated or corrupt contents. Either way the app falls through to the same seed instead of crashing at startup.
 - `parsed?.version !== SCHEMA_VERSION` rejects data written by a future or incompatible schema. Bump `SCHEMA_VERSION` and add migration branches here when the shape changes; today anything that does not match reseeds.
 
 ## Saving: one atomic write
 
-`saveState` ensures the directory exists, then writes the pretty-printed JSON in a single call.
+`saveState` ensures the directory exists, then writes the pretty-printed JSON through a temporary file.
 
 ```ts
 export const saveState = (state: PersistedState): void => {
-    GLib.mkdirWithParents(DATA_DIR, 0o755);
-    GLib.fileSetContents(TASKS_PATH, encode(JSON.stringify(state, null, 2)));
+    mkdirSync(DATA_DIR, { recursive: true });
+    const tempPath = `${TASKS_PATH}.tmp`;
+    writeFileSync(tempPath, JSON.stringify(state, null, 2));
+    renameSync(tempPath, TASKS_PATH);
 };
 ```
 
-`GLib.mkdirWithParents(dir, 0o755)` is `g_mkdir_with_parents`, creating the namespaced directory (and any missing parent) on first save. `GLib.fileSetContents(path, bytes)` is the important one for durability.
+`mkdirSync` with `recursive: true` creates the namespaced directory (and any missing parent) on first save, and does nothing when it already exists. The temp-then-rename pair is the important part for durability.
 
-::: tip g_file_set_contents is atomic
-`GLib.fileSetContents` wraps `g_file_set_contents_full` with the `CONSISTENT` flag: internally it writes to a temporary file in the same directory and renames it over the target. A crash or `SIGKILL` mid-write can never leave a half-written `tasks.json`; a reader always sees either the complete old file or the complete new one. You get the temp-then-rename safety without writing it yourself.
+::: tip Write-then-rename is atomic
+A plain `writeFileSync` straight to `tasks.json` truncates the file before writing, so a crash or `SIGKILL` mid-write could leave it half-written. Writing the new contents to a temporary file in the same directory and then `renameSync`-ing it over the target closes that window: on POSIX systems, `rename(2)` within one filesystem atomically replaces the destination. A reader always sees either the complete old file or the complete new one, never a torn write. Same directory matters because `rename(2)` cannot cross filesystems (`renameSync` fails with `EXDEV` there), and writing the temp file next to the target guarantees both live on the same one.
 :::
 
 ## The hook: state plus every mutation
@@ -198,11 +191,11 @@ useEffect(() => {
 }, [state]);
 ```
 
-Because `state` is in the dependency array, every mutation reschedules the timer: the cleanup clears the previous `setTimeout` and a new one starts. A burst of edits collapses into a single disk write 500ms after the user stops. This is the crash safety net: the write lands 500ms after the last change, so a crash loses only the edits made since the last completed write.
+Because `state` is in the dependency array, every mutation reschedules the timer: the cleanup clears the previous `setTimeout` and a new one starts. A burst of edits collapses into a single disk write 500ms after the user stops. This is the crash safety net: a crash loses only the edits made since the last completed write.
 
-### Two helpers behind the actions
+### Helpers behind the actions
 
-Almost every action is expressed through two tiny helpers, so the individual mutations stay one-liners. `mutate` swaps in a new `tasks` array while preserving the rest of the state; `patch` merges fields into the one task whose id matches.
+A few tiny helpers keep the individual mutations one-liners. `mutate` swaps in a new `tasks` array while preserving the rest of the state; `patch` merges fields into the one task whose id matches.
 
 ```ts
 const mutate = (updater: (tasks: Task[]) => Task[]): void =>
@@ -346,6 +339,8 @@ return {
 };
 ```
 
+Every name here is defined above except `flush`, covered next.
+
 ## Flush on close
 
 The 500ms debounce is a safety net, not a clean exit. On a normal quit the app should not lose the last edit sitting inside a pending timer, so the hook also exposes a synchronous `flush`:
@@ -363,7 +358,7 @@ const handleClose = (): boolean => {
 };
 ```
 
-(The window size is not captured here. It is bound to GSettings continuously with `useBindSetting`, covered on the application-shell page.)
+(The window size is not captured here. It is bound to GSettings continuously with `useBindSetting`, covered on the Application Shell page.)
 
 ```tsx
 <AdwApplicationWindow
@@ -442,8 +437,8 @@ Two things worth calling out in the schema format:
 
 Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered on the Preferences and Theming page.
 
-::: info node:fs is available, but GLib keeps I/O dependency-free
-Because GTKX runs your app on Node.js, `node:fs` (`readFileSync`, `writeFileSync`, and friends) works here just like in any Node.js program. This app deliberately uses `@gtkx/gi/glib` instead: GLib is already a dependency of every GTK4 app, it supplies the XDG-correct paths, and `g_file_set_contents` gives the atomic write for free. Reaching for `node:fs` is a valid choice when you want Node.js streaming or watching APIs; for a whole-file JSON store, GLib keeps the data layer dependency-free.
+::: info The data layer is plain Node.js
+GLib does export file helpers through `@gtkx/gi/glib`, but there is no reason to use them for ordinary IO: the store you just read would drop unchanged into any Node.js project. The same door swings the other way, too: outgrow the JSON file and you can swap `store.ts` for `better-sqlite3` or any other npm package without touching the rest of the app. This split is the rule of thumb for every GTKX app: use the Node.js standard library and the npm ecosystem for everything it covers (files, paths, timers, networking, subprocesses, crypto), and reach for the platform libraries only where GNOME provides something Node.js cannot, like GSettings, desktop notifications, actions, and dialogs.
 :::
 
 ## Next

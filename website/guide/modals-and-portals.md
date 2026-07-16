@@ -4,9 +4,11 @@ description: "How GTKX renders GTK4 surfaces that live outside the widget tree: 
 
 # Modals and Portals
 
-A React tree normally mirrors a containment hierarchy: each JSX child becomes a child widget of its JSX parent. GTK4 has surfaces that refuse to fit that shape. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` that gets *presented* against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view, not by you. In every one of these cases you still want React state to decide what exists and what it looks like. Portals are the bridge: they let a component render children into a container other than its JSX parent, while the component keeps owning those children's state, props, and lifetime.
+A React tree normally mirrors a containment hierarchy: each JSX child becomes a child widget of its JSX parent. GTK4 has surfaces that refuse to fit that shape. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` that gets *presented* against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view, not by you.
 
-This page describes the general model. For a worked walkthrough of toasts, confirmations, and form dialogs in a real app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
+In every one of these cases you still want React state to decide what exists and what it looks like. Portals are the bridge: they let a component render children into a container other than its JSX parent, while the component keeps owning those children's state, props, and lifetime.
+
+For a worked walkthrough of toasts, confirmations, and form dialogs in a real app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
 
 ## createPortal
 
@@ -73,7 +75,7 @@ The portaled window has no widget parent (`getParent()` returns `null`), but `tr
 
 ## Declarative dialogs
 
-Adwaita dialogs have an imperative API: you call `dialog.present(parent)` to show one and `dialog.forceClose()` to dismiss it. The `Dialog` component from `@gtkx/components/adw` converts that protocol into the React contract you actually want: **mounting the component presents the dialog, unmounting it closes the dialog.**
+Adwaita dialogs have an imperative API: you call `dialog.present(parent)` to show one and `dialog.forceClose()` to dismiss it. The `Dialog` component from `@gtkx/components/adw` converts that protocol into the React contract you want: **mounting the component presents the dialog, unmounting it closes the dialog.**
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
@@ -98,14 +100,7 @@ Showing it is a conditional render, the same as any other component:
 {showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
 ```
 
-`Dialog` takes a `component` prop naming the dialog widget to present, defaulting to `AdwDialog`; it must be an `Adw.Dialog` or any subclass (`AdwAboutDialog`, `AdwPreferencesDialog`, `AdwShortcutsDialog`, `AdwAlertDialog`). You pass that widget's own props (and children) directly on `<Dialog>`, and `Dialog` attaches the ref for you. Internally it does four things:
-
-1. Renders your `component` element through `createPortal(..., rootElement)`, so the dialog widget is created top-level rather than inside your layout.
-2. In a layout effect, calls `present(parent)` on mount and `forceClose()` on unmount. `forceClose` bypasses any close confirmation, which is correct when React state, not the widget, owns whether the dialog is open.
-3. Resolves `parent` for you: the optional `parent` prop (`Gtk.Window | null`) anchors the dialog explicitly, and when omitted it defaults to the nearest enclosing window from `useParentWindow()`. Pass `parent={null}` to present a dialog with no anchor.
-4. Wires its own `onClose` prop to the widget's `closed` signal, so a user-initiated dismissal reports back to React without you touching the inner widget.
-
-Closing the loop when the *user* dismisses the dialog (Escape, the close button, a swipe) is handled by `Dialog` itself. Pass `onClose` and it fires whenever the widget emits `closed`, so you clear the state that mounted the dialog, as `About` does above. A `closingFromReact` guard makes sure the `forceClose()` from React's own unmount does not re-fire `onClose`. Without wiring `onClose`, React would still consider the dialog open after GTK4 has closed it.
+`Dialog` takes a `component` prop naming the dialog widget to present, defaulting to `AdwDialog`; it must be an `Adw.Dialog` or any subclass (`AdwAboutDialog`, `AdwPreferencesDialog`, `AdwShortcutsDialog`, `AdwAlertDialog`). You pass that widget's own props and children directly on `<Dialog>`, and `Dialog` attaches the ref for you. The contract is: mounting presents the dialog against its parent and unmounting force-closes it, the optional `parent` prop (`Gtk.Window | null`) anchors it explicitly while an omitted `parent` resolves to the nearest enclosing window from `useParentWindow()` (pass `parent={null}` for no anchor), and `onClose` fires only on a genuine user dismissal (Escape, the close button, a swipe), never on React's own unmount. Pass `onClose` to clear the state that mounted the dialog, as `About` does above; without wiring it, React would still consider the dialog open after GTK4 has closed it. For how these dialogs drive a real app, see the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
 
 The same wrapper covers full preference surfaces. The tutorial's preferences dialog is an `AdwPreferencesDialog` with pages, groups, and rows as ordinary children, driven by [GSettings-backed state](/tutorial/preferences-and-theming):
 
@@ -131,29 +126,18 @@ import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
-export const DeleteConfirmation = ({
-    taskTitle,
-    onConfirm,
-    onCancel,
-}: {
-    taskTitle: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) => (
+const ConfirmDialog = ({ onResponse }: { onResponse: (id: string) => void }) => (
     <Dialog
         component={AdwAlertDialog}
-        heading="Delete Task?"
-        body={`"${taskTitle}" will be permanently deleted. This cannot be undone.`}
+        heading="Delete item?"
+        body="This cannot be undone."
         defaultResponse="cancel"
         closeResponse="cancel"
         responses={[
             { id: "cancel", label: "Cancel" },
             { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
         ]}
-        onResponse={(id) => {
-            if (id === "delete") onConfirm();
-            else onCancel();
-        }}
+        onResponse={onResponse}
     />
 );
 ```
@@ -184,3 +168,7 @@ const MirrorWindow = ({ open }: { open: boolean }) => {
 Targeting the `Gtk.Application` object and targeting `rootElement` both produce a top-level window; use `transientFor` when the extra window should stay stacked above another one, and wire `onCloseRequest` to clear the state that mounted the window, so React stays in charge of when it goes away. Each window provides its own `useParentWindow()` context, so dialogs opened inside a secondary window anchor to that window automatically.
 
 Every dialog and window element, along with its full prop surface, is covered by the element reference `gtkx docs` generates for your project.
+
+## Next
+
+[CSS and Animations](/guide/css-and-animations) covers styling these surfaces and animating them as they present and dismiss.

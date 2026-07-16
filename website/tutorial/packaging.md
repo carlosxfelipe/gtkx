@@ -4,7 +4,7 @@ description: "Ship the Tasks app: gtkx build, a self-contained binary, a Flatpak
 
 # Packaging and Shipping
 
-A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the compiled GSettings schema into something a user can install. This chapter turns the Tasks app into a self-contained binary and a Flatpak.
+A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the compiled GSettings schema into something a user can install. This page turns the Tasks app into a self-contained binary and a Flatpak.
 
 ## Building
 
@@ -47,7 +47,13 @@ To ship a binary that does not depend on a system Node.js, the tutorial bundles 
 }
 ```
 
-- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary with `dist/gtkx.node` beside it. The Flatpak build below produces its own SEA binary the same way, injecting the blob into the SDK's `node` inside the sandbox, and installs it as `gtkx-tutorial`.
+- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary with `dist/gtkx.node` beside it.
+
+Run the three scripts in order to produce the binary:
+
+```bash
+npm run bundle && npm run bundle:postject && npm run build:sea
+```
 
 ::: warning
 The SEA blob is appended to the `node` binary as an ELF section. Stripping the binary would corrupt the embedded app, so any packaging step must leave it unstripped.
@@ -72,9 +78,9 @@ finish-args:
   - --device=dri
 ```
 
-The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. The tasks store writes to the app's private XDG data directory, which every Flatpak can access without permissions. User-selected files would arrive through XDG desktop portals, and notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
+The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. The tasks store resolves its path from `process.env.XDG_DATA_HOME`, which Flatpak sets inside the sandbox (to `~/.var/app/com.gtkx.tutorial/data`), so its writes land in the app's own private data directory. User-selected files arrive through XDG desktop portals. Notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
 
-The `build-options` point npm at the SDK's Node.js and, crucially, turn off stripping so the SEA-injected binary stays intact:
+The `build-options` point npm at the SDK's Node.js and turn off stripping:
 
 ```yaml
 build-options:
@@ -82,7 +88,7 @@ build-options:
   env:
     npm_config_nodedir: /usr/lib/sdk/node24
   no-debuginfo: true
-  strip: false   # the SEA blob is an ELF section; stripping would corrupt it
+  strip: false
 ```
 
 The module builds the SEA and installs everything under `/app`:
@@ -104,11 +110,11 @@ build-commands:
   - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/com.gtkx.tutorial.png
 ```
 
-Installing and compiling the GSettings schema into `/app/share/glib-2.0/schemas` is what lets `useSetting` read and write preferences inside the sandbox.
+These commands produce their own SEA binary the same way the local build does, injecting the blob into the SDK's `node` inside the sandbox, and install it as `gtkx-tutorial`. Installing and compiling the GSettings schema into `/app/share/glib-2.0/schemas` is what lets `useSetting` read and write preferences inside the sandbox.
 
 ## The desktop entry and AppStream metadata
 
-Two files make the app a first-class citizen of the desktop. The `.desktop` entry lists it in the launcher and, for the Tasks app, opts into notifications:
+Two files integrate the app with the desktop. The `.desktop` entry lists it in the launcher and, for the Tasks app, opts into notifications:
 
 ```ini
 [Desktop Entry]
@@ -141,8 +147,6 @@ npm run flatpak:lint
 ## Submitting to Flathub
 
 To publish, vendor the npm dependencies for the offline build with [flatpak-node-generator](https://github.com/flatpak/flatpak-builder-tools) (`npm run flatpak:sources`), build locally with `npm run flatpak:build`, then open a pull request against the [flathub/flathub](https://github.com/flathub/flathub) repository that swaps the local `dir` source for a pinned `git` source.
-
-That is the whole pipeline: `gtkx build` for the bundle, a Node.js SEA for a standalone binary, and a Flatpak manifest for a sandboxed, installable GNOME app.
 
 ## Next
 

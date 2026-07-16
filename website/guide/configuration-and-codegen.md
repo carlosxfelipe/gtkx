@@ -4,7 +4,7 @@ description: "The complete gtkx.config.ts option reference, what codegen generat
 
 # Configuration and Codegen
 
-Everything GTKX knows about your project comes from one file: `gtkx.config.ts`. The CLI reads it, resolves the GObject-Introspection data for the libraries you name, and generates the typed bindings your code imports. This page is the full reference for that pipeline: every config option, what codegen emits and where, how it decides when to regenerate, and how a `.gir` file turns into the props you type in JSX. If you have not scaffolded a project yet, start with [Getting Started](/guide/getting-started); this page picks up where its codegen section leaves off.
+Everything GTKX knows about your project comes from one file: `gtkx.config.ts`. The CLI reads it, resolves the GObject-Introspection data for the libraries you name, and generates the typed bindings your code imports. If you have not scaffolded a project yet, start with [Getting Started](/guide/getting-started); this page picks up where its codegen section leaves off.
 
 ## The config file
 
@@ -61,10 +61,29 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 Codegen writes two packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx` so imports resolve without either package appearing in your `package.json`:
 
-- **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, and the store is written atomically (built in a temporary directory, then renamed into place) so a crash mid-generation never leaves you with half a package.
+- **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. Reach for them for what only the GNOME platform provides, such as widgets, actions, settings, and notifications; for everything else, prefer the Node standard library, as [Why GTKX](/guide/why-gtkx) explains. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, and the store is written atomically (built in a temporary directory, then renamed into place) so a crash mid-generation never leaves you with half a package.
 - **`@gtkx/jsx`** (in `node_modules/.gtkx/jsx`) holds the React layer: per-namespace modules exporting one PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a global `React.JSX.IntrinsicElements` augmentation so the elements type-check. It also emits a `metadata` module recording, per element, the signal-handler-to-signal-name map, the construct-only and constructable prop sets, the GIR default values, and the merged element prop rules. The reconciler consumes that metadata at runtime through the `virtual:gtkx-config` module the CLI's Vite plugin serves, so the same generation pass that produces your types also drives prop application at runtime and the two cannot drift.
 
-Alongside the stores, the CLI writes `node_modules/.gtkx/env.d.ts` with a typed module declaration for every `.gschema.xml` file under your data directory, keyed by its `#data/...` import specifier. Each key's GVariant type maps to a natural TypeScript type: `b` to `boolean`, `i`, `u`, `x`, `t`, and `d` to `number`, `s` to `string`, and `as` to `string[]`; an enum key becomes a string-literal union of its nicks, a flags key an array of that union, a string key with `<choices>` a union of those choices, and anything else falls back to `GLib.Variant`. Each schema exports a typed const carrying its `id` and a `keys` map, and a schema declared without a path (a relocatable schema) additionally gets an `at(path)` method that returns the same typed reference bound to a concrete path. `gtkx codegen`, `gtkx dev`, and `gtkx build` all keep this file in sync.
+Alongside the stores, the CLI writes `node_modules/.gtkx/env.d.ts` with a typed module declaration for every `.gschema.xml` file under your data directory, keyed by its `#data/...` import specifier. Each key's GVariant type maps to a natural TypeScript type:
+
+| GVariant type | TypeScript type |
+| --- | --- |
+| `b` | `boolean` |
+| `i`, `u`, `x`, `t`, `d` | `number` |
+| `s` | `string` |
+| `as` | `string[]` |
+| enum key | string-literal union of its nicks |
+| flags key | array of that union |
+| string key with `<choices>` | union of those choices |
+| anything else | `GLib.Variant` |
+
+Each schema exports a typed const carrying its `id` and a `keys` map; a schema declared without a path (a relocatable schema) additionally gets an `at(path)` method that returns the same typed reference bound to a concrete path. `gtkx codegen`, `gtkx dev`, and `gtkx build` all keep this file in sync.
+
+## How applicationId flows
+
+The `applicationId` you set in config reaches your running app through the build. The CLI's Vite plugin serves a `virtual:gtkx-config` module that re-exports the jsx metadata together with your resolved `applicationId`. In `@gtkx/react`, the application component factory imports that value and uses it as the default for the `applicationId` prop, and codegen wraps every element descending from `GtkApplication` in that factory. Both `<GtkApplication>` and `<AdwApplication>` therefore carry your configured ID without you passing it, the wrapper runs the application when it mounts and quits it on unmount, and it provides the application instance to the tree via context (retrievable with `useApplication`). Passing an explicit `applicationId` prop overrides the default, which is how a test or a secondary tool can run under a different identity.
+
+The ID also anchors the rest of your app's platform identity. GSettings schemas conventionally use it as their schema ID (the tutorial's schema is `com.gtkx.tutorial` in `com.gtkx.tutorial.gschema.xml`), desktop notifications and D-Bus activation key off it, and the CLI derives your GResource prefix from it by replacing dots with slashes.
 
 ## Staleness and regeneration
 
@@ -92,7 +111,7 @@ Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, a
 - **Object-typed props also accept elements.** A writable, non-construct-only property whose type is itself a GObject class accepts a `ReactElement` in addition to an instance, so you can write `sidebar={<AdwNavigationPage ... />}` and let the reconciler construct and manage the child. The one exception is `child` on widgets with a `setChild` method, where JSX `children` already covers the element case.
 - **Signals become `on` handlers.** Every signal becomes `on` plus the UpperCamelCase signal name (`clicked` becomes `onClicked`, `row-activated` becomes `onRowActivated`), and the handler receives the signal's parameters followed by `self`, the widget instance, with parameter types rendered from the GIR.
 - **`ref` yields the native instance.** Every element accepts `ref?: Ref<Self | null>`, where `Self` is the `@gtkx/gi` class (`Gtk.Button`, `Adw.ToastOverlay`). This is your escape hatch to the full imperative API.
-- **`children` appears where it means something.** Widgets and types with a `children` container rule accept `children?: ReactNode`; container rules with other prop names surface as `ReactNode` props instead, which is why `AdwToolbarView` takes `topBar` and `bottomBar` and `AdwHeaderBar` takes `start` and `end`.
+- **`children` appears where it means something.** Widgets and types with a `children` [container rule](#customizing-elements-with-elementprops) accept `children?: ReactNode`; container rules with other prop names surface as `ReactNode` props instead, which is why `AdwToolbarView` takes `topBar` and `bottomBar` and `AdwHeaderBar` takes `start` and `end`.
 - **Construct-only props apply once.** Props backed by construct-only GIR properties are typed like any other but participate only in construction; the reconciler skips them on updates, so changing one on a mounted element has no effect.
 - **Removing a prop restores the GIR default.** The metadata records the default value each property declares in the GIR, and when a prop disappears between renders the reconciler resets the property to that default instead of leaving the last value behind. Your JSX therefore describes the widget's full state, exactly as it would in React DOM.
 
@@ -130,7 +149,7 @@ export default defineConfig({
 });
 ```
 
-After the next codegen, `<GtkFixed>` accepts children and positions each with `put(child, x, y)`, reading `x` and `y` from the child's props; because the `{ prop }` arguments map to typed method parameters, those props are typed as `number` on the child. Every rule is validated against the GIR index when codegen runs: a type name that is not in your generated libraries, a method that does not exist on the host type, or a prop that is not a property all fail with an error naming the exact `elementProps` path. Your rules merge over the built-ins, with a user rule replacing a built-in that targets the same prop (and, for containers, the same child type), so you can also override built-in behavior, not just extend it.
+After the next codegen, `<GtkFixed>` accepts children and positions each with `put(child, x, y)`, reading `x` and `y` from the child's props; because the `{ prop }` arguments map to typed method parameters, those props are typed as `number` on the child. Every rule is validated against the GIR index when codegen runs: a type name that is not in your generated libraries, a method that does not exist on the host type, or a prop that is not a property all fail with an error naming the exact `elementProps` path. Your rules merge over the built-ins, with a user rule replacing a built-in that targets the same prop (and, for containers, the same child type), so you can also override built-in behavior, not only extend it.
 
 ::: tip
 The generated `ELEMENT_PROPS` metadata in `node_modules/.gtkx/jsx` shows the final merged and expanded rule set, which is the quickest way to see exactly what a built-in does before overriding it.
@@ -148,8 +167,6 @@ By default the pages land in `docs/reference`, one directory per namespace plus 
 
 Three flags cover the knobs: `--out <dir>` changes the output directory, `--base-path <path>` changes the URL prefix used in links between pages, and `--force` regenerates even when the same fingerprint check that guards codegen says the pages are current. Because your `elementProps` feed the generator, custom rules like the `GtkFixed` container above appear in the generated pages too.
 
-## How applicationId flows
+## Next
 
-The `applicationId` you set in config reaches your running app through the build. The CLI's Vite plugin serves a `virtual:gtkx-config` module that re-exports the jsx metadata together with your resolved `applicationId`. In `@gtkx/react`, the application component factory imports that value and uses it as the default for the `applicationId` prop, and codegen wraps every element descending from `GtkApplication` in that factory. Both `<GtkApplication>` and `<AdwApplication>` therefore carry your configured ID without you passing it, the wrapper runs the application when it mounts and quits it on unmount, and it provides the application instance to the tree via context (retrievable with `useApplication`). Passing an explicit `applicationId` prop overrides the default, which is how a test or a secondary tool can run under a different identity.
-
-The ID also anchors the rest of your app's platform identity. GSettings schemas conventionally use it as their schema ID (the tutorial's schema is `com.gtkx.tutorial` in `com.gtkx.tutorial.gschema.xml`), desktop notifications and D-Bus activation key off it, and the CLI derives your GResource prefix from it by replacing dots with slashes. One string in one file, and every layer that needs to know who your app is agrees.
+With the codegen pipeline in hand, continue to [Async Operations](/guide/async-operations).

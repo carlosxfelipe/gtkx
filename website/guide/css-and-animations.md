@@ -4,7 +4,9 @@ description: "Style native widgets with the @gtkx/css tagged template and GTK4's
 
 # CSS and Animations
 
-GTK4 styles widgets with a real CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element. Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animate` is a Framer-Motion-style animation layer: you declare `initial`, `animate`, and `exit` targets on a widget, and Adwaita's animation engine drives the frames.
+GTK4 styles widgets with a real CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
+
+Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animate` is a Framer-Motion-style animation layer: you declare `initial`, `animate`, and `exit` targets on a widget, and Adwaita's animation engine drives the frames.
 
 ## The `css` tagged template
 
@@ -38,7 +40,7 @@ A single shared `Gtk.CssProvider` is attached to the default display at `STYLE_P
 
 The syntax is CSS, but the vocabulary is GTK4's. Selectors match widget node names (`window`, `button`, `entry`) rather than HTML tags, the set of supported properties is GTK4's own (there is no `display: flex`; layout belongs to containers and layout managers), and the theme exports named colors you reference with an `@` prefix, as `alpha(@accent_bg_color, 0.08)` does above. Treat the [GTK4 CSS overview](https://docs.gtk.org/gtk4/css-overview.html) and [property reference](https://docs.gtk.org/gtk4/css-properties.html) as the source of truth for what you can write, and the Adwaita [named colors](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/css-variables.html) as your palette. `@gtkx/css` protects named colors from its own compiler: any `@identifier` that is not `define-color`, `import`, `keyframes`, or `media` is treated as a named color rather than an at-rule.
 
-Nesting works the way you expect from Emotion, with `&` referring to the generated class:
+Nesting works like Emotion, with `&` referring to the generated class:
 
 ```tsx
 import { css } from "@gtkx/css";
@@ -50,8 +52,10 @@ const progressStyle = css`
     }
 `;
 
-<GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />;
+<GtkProgressBar fraction={progress} cssClasses={[progressStyle, "hidden"]} />;
 ```
+
+Toggle the `hidden` class on the widget to hide the progress bar and drop it again to reveal it.
 
 `@keyframes` blocks are written inline inside the template and emitted as top-level rules, so a class can carry its own animation:
 
@@ -69,7 +73,7 @@ const rainbow = css`
 
 ## Combining classes with `cx`
 
-GTK4's `css-classes` property is a string array, so `cx` returns a `string[]` rather than a space-joined string. It filters out falsy tokens, which makes conditional classes read naturally, and it mixes generated classes freely with the style classes Adwaita ships (`flat`, `pill`, `suggested-action`, `dim-label`, and friends):
+GTK4's `css-classes` property is a string array, so `cx` returns a `string[]` rather than a space-joined string. It filters out falsy tokens, which makes conditional classes read naturally, and it mixes generated classes freely with the style classes Adwaita ships (`flat`, `pill`, `suggested-action`, `dim-label`, among others):
 
 ```tsx
 import { css, cx } from "@gtkx/css";
@@ -171,7 +175,9 @@ import { GtkBox } from "@gtkx/jsx/gtk";
 </GtkBox>;
 ```
 
-`AnimatePresence` takes three props besides `children`. `initial` (default `true`) controls whether children already present on the first render run their enter animations; pass `false` to mount children directly in their `animate` state and animate only subsequent changes. `mode` chooses how entering and exiting children overlap: `"sync"` (the default) runs both at once, while `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. `onExitComplete` fires once after all exiting children have finished, useful for sequencing work behind a departure. A leaving child whose exit is instantaneous is not held at all: when it has no `exit` values, its exit transition has a zero duration, or animations are disabled system-wide, `AnimatePresence` removes it in the same update that removes it from your JSX, so it never lingers next to its replacement content.
+`AnimatePresence` takes three props besides `children`. `initial` (default `true`) controls whether children already present on the first render run their enter animations; pass `false` to mount children directly in their `animate` state and animate only subsequent changes. `mode` chooses how entering and exiting children overlap: `"sync"` (the default) runs both at once, while `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. `onExitComplete` fires once after all exiting children have finished, useful for sequencing work behind a departure.
+
+A leaving child whose exit is instantaneous is not held at all: when it has no `exit` values, its exit transition has a zero duration, or animations are disabled system-wide, `AnimatePresence` removes it in the same update that removes it from your JSX, so it never lingers next to its replacement content.
 
 ::: tip
 In tests, `render` from `@gtkx/testing` disables animations by default so assertions see final states immediately. Pass `render(element, { animations: true })` when the animation itself is what you are testing. See [Testing](/guide/testing) for the full model.
@@ -180,3 +186,7 @@ In tests, `render` from `@gtkx/testing` disables animations by default so assert
 ## Dark style and theming
 
 Light and dark are not a CSS concern in GTK4: Adwaita centralizes the color scheme on `Adw.StyleManager`, a process-wide singleton from `@gtkx/gi/adw` you drive imperatively with `setColorScheme`, and every named color you used above re-resolves automatically when the scheme flips. The [Preferences and Theming](/tutorial/preferences-and-theming) tutorial chapter walks the complete pattern in the Tasks app: a GSettings-backed preference, an `applyColorScheme` helper, and a preferences dialog that switches the theme live.
+
+## Next
+
+Continue with [Testing](/guide/testing) to see how the reconciler renders and asserts on widgets, including how animations behave under test.

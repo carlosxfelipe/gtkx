@@ -4,9 +4,11 @@ description: "Implement GNOME's selection mode pattern, with a transformed heade
 
 # Selection Mode
 
-Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated pattern for this, and it is worth learning because it is not a React idiom. You enter a distinct *selection mode* from a "Select" control, the header bar transforms into a selection header (a Cancel button plus a heading that counts what you have picked), and the batch actions live in an action bar pinned to the bottom of the window. The HIG reserves this pattern for cases with at least three batch actions, which is why Tasks ships Complete, Move, and Delete rather than just Complete/Delete.
+Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated *selection mode* for this, and it drives three parts of the UI: a selection header that replaces the titlebar, a bottom action bar that carries the batch actions, and one `selecting` boolean of React state behind both.
 
-Nothing gets torn down and rebuilt: the `AdwToolbarView` that already frames the task list swaps its top bar and reveals a bottom bar, both driven by a single `selecting` boolean in React state. Let's follow that state from the action that flips it through to the recycled list it renders.
+The HIG recommends this pattern when several batch actions apply, which is why Tasks ships Complete, Move, and Delete rather than just Complete/Delete.
+
+Nothing gets torn down and rebuilt: the `AdwToolbarView` that already frames the task list swaps its top bar and reveals a bottom bar. This page follows the `selecting` flag from the action that sets it, through the header and action bar it drives, down to the recycled list it renders.
 
 ## Entering via the `win.select` action
 
@@ -233,9 +235,9 @@ Tasks deliberately renders its tasks two different ways, and selection mode is t
 </GtkListBox>
 ```
 
-A boxed list materializes one widget per item. That is perfect for a small, static, richly-styled list (checkboxes, star toggles, delete buttons, drag-to-reorder, the inline add row), and it is the idiomatic GNOME default for exactly that case. But it does not scale: a thousand tasks means a thousand live rows.
+A boxed list materializes one widget per item. That is perfect for a small, static, heavily styled list (checkboxes, star toggles, delete buttons, drag-to-reorder, the inline add row), and it is the idiomatic GNOME default for exactly that case. But it does not scale: a thousand tasks means a thousand live rows.
 
-`SelectionView` swaps in `ListView`, which recycles a small pool of row widgets and reuses them as you scroll, so the widget count stays roughly constant no matter how many tasks exist. That is the trade the two lists make concrete: the boxed `GtkListBox` for the everyday small list, the recycled `ListView` for the potentially large batch-selection list. It also happens to be where multi-selection lives naturally, since `ListView` exposes `selectionMode`/`selectedIds` as first-class props while a boxed list is `Gtk.SelectionMode.NONE`.
+`SelectionView` swaps in `ListView`, which recycles a small pool of row widgets and reuses them as you scroll, so the widget count stays roughly constant no matter how many tasks exist. It is also where multi-selection lives naturally, since `ListView` exposes `selectionMode`/`selectedIds` as props while a boxed list is `Gtk.SelectionMode.NONE`.
 
 Both are fed the identical `visible` array, so switching into selection mode shows the same tasks, rendered through a scalable model-view stack.
 
@@ -254,7 +256,7 @@ const moveSelected = (listId: string): void => {
 };
 ```
 
-Delete is the interesting one, because it reuses the exact undo-toast flow that single-task deletion uses. Rather than confirm an irreversible action, it soft-deletes and offers Undo:
+Delete is the interesting one, because it reuses the exact undo-toast flow that single-task deletion uses (the toast idiom itself is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)). Rather than confirm an irreversible action, it soft-deletes and offers Undo:
 
 ```tsx
 const deleteSelected = (): void => {

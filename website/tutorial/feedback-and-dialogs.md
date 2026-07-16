@@ -4,17 +4,19 @@ description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informati
 
 # Feedback and Dialogs
 
-Deleting a task in Tasks does not pop an "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate. GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back. This page walks the whole feedback hierarchy in the app, from the lightest touch (a toast) to the heaviest (a destructive alert dialog), plus the informational dialogs (New List, About, Preferences) and the one GTKX mechanism that makes any of them appear on screen.
+Deleting a task in Tasks does not pop an "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate.
+
+GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back.
 
 ## The undo-first hierarchy
 
 Three surfaces, three weights:
 
 - **Undo toast** for reversible destructive actions. Delete a task, delete a batch: the task goes to Trash, a toast offers Undo, and the app never blocks. This is the common path.
-- **Destructive alert dialog** for the one irreversible action: emptying a task permanently out of Trash. Here undo is impossible, so a modal confirm is warranted.
+- **Destructive alert dialog** for the one irreversible action: deleting a task permanently from Trash. Here undo is impossible, so a modal confirm is warranted.
 - **Informational dialogs** (New List, About, Preferences) for input and metadata, not for destruction.
 
-The payoff for a React developer is that the first two map onto two very different GTKX idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes. Getting the distinction is most of this page.
+The payoff for a React developer is that the first two map onto two different GTKX idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes.
 
 ## Undo toasts
 
@@ -152,7 +154,7 @@ const confirmDelete = (): void => {
 };
 ```
 
-`deleteForever` actually removes it; `setTaskToDelete(null)` unmounts the dialog. `onCancel` does `setTaskToDelete(null)`, unmounting without deleting.
+`deleteForever` removes it; `setTaskToDelete(null)` unmounts the dialog. `onCancel` does `setTaskToDelete(null)`, unmounting without deleting.
 
 ## How a dialog gets on screen
 
@@ -180,18 +182,22 @@ const confirmDelete = (): void => {
 
 Mounting the component shows the dialog; unmounting it closes the dialog. That is the whole contract, and the `<Dialog>` wrapper is what makes it true.
 
-A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop (the dialog widget, defaulting to `AdwDialog`), attaches the ref to it itself, renders it through a **portal to the top-level root** (not into the surrounding widget tree), and drives present/close from an effect:
+A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop (the dialog widget, defaulting to `AdwDialog`), attaches the ref to it itself, renders it through a **portal to the top-level root** (not into the surrounding widget tree), and drives present/close from an effect. Here is the wrapper itself, from `packages/components/src/dialog.tsx`:
 
 ```tsx
 export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogProps<C>): ReactNode => {
-    const { component, parent, onClose, ref, ...rest } = props;
+    const { component, parent, onClose, ref, ...rest } = asPolymorphicProps<DialogOwnProps, DialogInstance>(props);
     const Component = component ?? AdwDialog;
+
     const parentWindow = useParentWindow();
     const resolvedParent = parent === undefined ? parentWindow : parent;
-    const [dialog, setDialog] = useState<Adw.Dialog | null>(null);
-    const setRef = useMergeRefs(ref, setDialog);
+    const [dialog, setDialogState] = useState<DialogInstance | null>(null);
+    const captureDialog = useCallback<RefCallback<DialogInstance>>((instance) => setDialogState(instance), []);
+    const setRef = useMergeRefs<DialogInstance>(ref, captureDialog);
     const closingFromReact = useRef(false);
-    // ...
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
+
     useLayoutEffect(() => {
         if (!dialog) return;
         closingFromReact.current = false;
@@ -203,7 +209,8 @@ export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogPr
     }, [dialog, resolvedParent]);
 
     useSignal(dialog, "closed", () => {
-        if (!closingFromReact.current) onClose?.();
+        if (closingFromReact.current) return;
+        onCloseRef.current?.();
     });
 
     return createPortal(<Component {...rest} ref={setRef} />, rootElement);

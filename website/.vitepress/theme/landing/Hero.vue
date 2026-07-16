@@ -21,15 +21,6 @@ const pms = [
 
 type Tok = { t: string; c?: string };
 const code: { indent?: number; toks: Tok[] }[] = [
-    {
-        toks: [
-            { c: "kw", t: "import" },
-            { t: " { createRoot } " },
-            { c: "kw", t: "from" },
-            { t: " " },
-            { c: "str", t: '"@gtkx/react"' },
-        ],
-    },
     { toks: [{ c: "kw", t: "import" }, { t: " {" }] },
     { indent: 1, toks: [{ c: "tag", t: "AdwApplication" }, { t: "," }] },
     { indent: 1, toks: [{ c: "tag", t: "AdwApplicationWindow" }, { t: "," }] },
@@ -50,7 +41,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
         ],
     },
     { toks: [] },
-    { toks: [{ c: "kw", t: "function" }, { t: " " }, { c: "fn", t: "App" }, { t: "() {" }] },
+    { toks: [{ c: "kw", t: "export function" }, { t: " " }, { c: "fn", t: "App" }, { t: "() {" }] },
     { indent: 1, toks: [{ c: "kw", t: "return" }, { t: " (" }] },
     {
         indent: 2,
@@ -120,18 +111,6 @@ const code: { indent?: number; toks: Tok[] }[] = [
     },
     { indent: 1, toks: [{ t: ")" }] },
     { toks: [{ t: "}" }] },
-    { toks: [] },
-    {
-        toks: [
-            { c: "fn", t: "createRoot" },
-            { t: "()." },
-            { c: "fn", t: "render" },
-            { t: "(" },
-            { c: "punct", t: "<" },
-            { c: "tag", t: "App" },
-            { t: " />)" },
-        ],
-    },
 ];
 </script>
 
@@ -142,13 +121,13 @@ const code: { indent?: number; toks: Tok[] }[] = [
       <div class="hero__col">
         <p class="overline hero__eyebrow">// React · Linux · GTK4 · Adwaita · TypeScript</p>
         <h1 class="hero__title">
-          Linux app development for the
-          <span class="gtkx-gradient-text">modern age</span>
+          Native Linux apps, built with
+          <span class="gtkx-gradient-text">React</span>
         </h1>
         <p class="hero__lede">
           Write declarative JSX. GTKX renders it to real, native
           <strong>GObjects</strong> (no webview, no Electron) powered by a native Rust core,
-          with first-class GTK4 &amp; Adwaita support.
+          with GTK4 &amp; Adwaita support.
         </p>
         <div class="hero__cta">
           <Button size="lg" href="/guide/getting-started">
@@ -171,7 +150,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
         </div>
       </div>
       <div class="hero__col hero__visual">
-        <CodeBlock title="src/App.tsx">
+        <CodeBlock title="src/app.tsx">
           <div class="hero__code">
             <div v-for="(ln, i) in code" :key="i" class="hcl" :style="{ paddingLeft: `${(ln.indent ?? 0) * 1.3}em` }">
               <span v-if="!ln.toks.length">&nbsp;</span>

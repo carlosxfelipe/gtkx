@@ -25,10 +25,10 @@ The editor is a pushed page. The content pane holds a `<NavigationView>` (covere
 ) : null}
 ```
 
-The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees (the text cursor and undo stack, the notes scroll position, the month the calendar has navigated to) would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
+The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
 ::: info WHY REMOUNT INSTEAD OF DIFF
-GTK4 widgets hold their own internal state that React doesn't track. A `GtkTextView`'s buffer remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
+A `GtkTextView`'s buffer remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
 :::
 
 ## The detail header
@@ -57,7 +57,7 @@ const detailHeader = selectedTask ? (
 ) : null;
 ```
 
-`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back) pops the widget, which fires the `NavigationView`'s `onPop`; the handler calls `setSelectedTaskId(null)`, so `selectedTask` becomes null and the task page unmounts to match. Going back programmatically is the same `setSelectedTaskId(null)`, which unmounts the page and pops it.
+`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back) pops the widget, which fires the `NavigationView`'s `onPop`; the handler calls `setSelectedTaskId(null)`, so `selectedTask` becomes null and the task page unmounts to match. Calling it programmatically (for example from a shortcut) pops the page the same way.
 
 `GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash and shows an undo toast; it is covered in **Feedback and Dialogs**.
 
@@ -85,7 +85,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
 
 `GtkScrolledWindow` with `vexpand` lets the whole form scroll when the notes push it past the window height. Both `AdwClamp` and `GtkScrolledWindow` are single-child containers, so their one child is passed as JSX children and placed via `set_child` under the hood.
 
-`GLib.DateTime.newFromIso8601(task.due, null)` parses the stored ISO string into a GLib date object up front. The second argument is a fallback timezone, consulted only when the string carries no offset. The stored strings always include one (they come from `toISOString()`, which emits a trailing `Z`), so passing `null` is fine here. `dueDate` is `undefined` when the task has no due date, and it feeds the calendar below.
+`GLib.DateTime.newFromIso8601(task.due, null)` parses the stored ISO string into a GLib date object up front. The second argument is a fallback timezone, consulted only when the string carries no offset. The stored strings always include one (they come from `toISOString()`, which emits a trailing `Z`), so passing `null` is fine here. `dueDate` is `undefined` when the task has no due date, and it feeds the calendar below. This is the only place `GLib.DateTime` appears in the app, and only because `GtkCalendar`'s `date` property requires one; the task data stays ISO strings, and every other date computation (`formatDue`, `formatDateTime`, the reminder sweep) works with plain JS `Date`.
 
 ## Title and Important: a preferences group
 
@@ -165,15 +165,7 @@ The Due row shows GTK4's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenu
 
 `GtkCalendar`'s `date` property takes a `GLib.DateTime`. Passing `dueDate` opens the calendar on the task's current due date (or today, when undefined). Picking a day fires the `day-selected` signal (`onDaySelected`), and the handler reads the selection back off the live widget with `self.getDate()`, which returns a fresh `GLib.DateTime`.
 
-Converting that GLib date into a JS `Date` needs one adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. The day is pinned to 18:00 local time (a 6 PM default reminder time), and the result is serialized back to ISO with `toISOString()`:
-
-```tsx
-const date = self.getDate();
-const picked = new Date(date.getYear(), date.getMonth() - 1, date.getDayOfMonth(), 18, 0, 0);
-onUpdate({ due: picked.toISOString() });
-```
-
-`getYear` / `getMonth` / `getDayOfMonth` are `GLib.DateTime` accessors. Using them plus `getDate()` is deliberate.
+Converting that GLib date into a JS `Date` needs one adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. `getYear`, `getMonth`, and `getDayOfMonth` are `GLib.DateTime` accessors; the day is pinned to 18:00 local time (a 6 PM default reminder time), and the result is serialized back to ISO with `toISOString()`. Reaching for those accessors plus `getDate()` is deliberate: it is the non-deprecated calendar API (see the warning below), and the `GLib.DateTime` lives only long enough to be read before the due date becomes an ISO string again.
 
 ::: warning DON'T USE select_day
 The older calendar API (`select_day`, plus the integer `day` / `month` / `year` properties) is deprecated since GTK 4.20. The non-deprecated path is the `date` property (a `GLib.DateTime`) for setting and `get_date()` for reading, which is exactly what this editor uses. The generated `@gtkx/gi/gtk` typings still expose the deprecated members because they strip GTK4's deprecation annotations, so it is on you to reach for `date` / `getDate` rather than `selectDay`.
@@ -238,7 +230,7 @@ The last group shows timestamps you can't edit. It reuses `AdwActionRow`, but wi
 </AdwPreferencesGroup>
 ```
 
-`subtitle` carries the value. `formatDateTime` renders the ISO string as a locale medium date plus short time, or "Never" when null. The Completed row only appears once the task actually has a `completedAt`, so an open task shows just its creation date. This is the idiomatic way to present read-only detail metadata in a GNOME app: same row widget as the editable fields, distinguished purely by the `.property` class.
+`subtitle` carries the value. `formatDateTime` renders the ISO string as a locale medium date plus short time, or "Never" when null. The Completed row only appears once the task has a `completedAt`, so an open task shows only its creation date. This is the idiomatic way to present read-only detail metadata in a GNOME app: same row widget as the editable fields, distinguished purely by the `.property` class.
 
 ## Next
 

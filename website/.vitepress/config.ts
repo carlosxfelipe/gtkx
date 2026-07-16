@@ -5,7 +5,7 @@ import typedocSidebar from "../reference/typedoc-sidebar.json";
 
 const title = "GTKX";
 const description =
-    "Write declarative JSX. GTKX renders it to real, native GObjects (no webview, no Electron) powered by a native Rust core, with first-class GTK4 and Adwaita support.";
+    "Write declarative JSX. GTKX renders it to real, native GObjects (no webview, no Electron) powered by a native Rust core, with GTK4 and Adwaita support.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 
@@ -27,10 +27,9 @@ const tutorialItems = [
     { text: "Packaging and Shipping", link: "/tutorial/packaging" },
 ];
 
-const sidebarItems = [
+const guideSidebar = [
     { text: "Why GTKX", link: "/guide/why-gtkx" },
     { text: "Getting Started", link: "/guide/getting-started" },
-    { text: "Tutorial", collapsed: false, items: tutorialItems },
     { text: "Configuration and Codegen", link: "/guide/configuration-and-codegen" },
     { text: "Async Operations", link: "/guide/async-operations" },
     { text: "Error Handling", link: "/guide/error-handling" },
@@ -42,9 +41,12 @@ const sidebarItems = [
     { text: "API Reference", link: "/reference/" },
 ];
 
-const docItems = sidebarItems.flatMap((item) =>
-    "items" in item ? item.items : item.link.startsWith("/reference") ? [] : [item],
-);
+const tutorialSidebar = [{ text: "Tutorial", collapsed: false, items: tutorialItems }];
+
+const docItems = [
+    ...guideSidebar.filter((item) => !item.link.startsWith("/reference")),
+    ...tutorialItems,
+];
 
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
 
@@ -145,8 +147,8 @@ export default defineConfig({
             { text: "1.0 RC", link: "/blog/gtkx-1-0-rc-1" },
         ],
         sidebar: {
-            "/guide/": sidebarItems,
-            "/tutorial/": sidebarItems,
+            "/guide/": guideSidebar,
+            "/tutorial/": tutorialSidebar,
             "/reference/": [{ text: "Overview", link: "/reference/" }, ...typedocSidebar],
             "/blog/": [
                 {

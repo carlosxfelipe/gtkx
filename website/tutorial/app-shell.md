@@ -4,7 +4,7 @@ description: "How the Tasks app builds its adaptive frame with AdwApplicationWin
 
 # The Application Shell
 
-Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state. This page walks that frame top to bottom: how the application and window are declared, how window size is persisted through a GSettings binding, how the layout collapses to a phone-width single column, and why the detail/list/selection swap is driven by state rather than by Adwaita's own navigation stack.
+Everything the app renders lives inside one `AdwApplicationWindow`. There is no router, no second window, no page stack you push and pop. Instead `app.tsx` builds a fixed adaptive frame (an application, a window, a split view, two toolbar views) and then swaps what fills the content pane purely from React state.
 
 The file is organized around two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
@@ -22,24 +22,7 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
-            actions={
-                <>
-                    <GSimpleAction
-                        name="complete-task"
-                        parameterType={GLib.VariantType.new("s")}
-                        onActivate={(parameter) => {
-                            if (parameter) notify.current.complete(parameter.getString()[0]);
-                        }}
-                    />
-                    <GSimpleAction
-                        name="open-task"
-                        parameterType={GLib.VariantType.new("s")}
-                        onActivate={(parameter) => {
-                            if (parameter) notify.current.open(parameter.getString()[0]);
-                        }}
-                    />
-                </>
-            }
+            actions={/* app.complete-task and app.open-task GSimpleActions, wired through the notify ref */}
         >
             <TasksWindow notify={notify} />
         </AdwApplication>
@@ -47,11 +30,11 @@ export function App() {
 }
 ```
 
-`actionAccels` is a declarative list prop. Each entry is `{ detailedActionName, accels }` and becomes one `gtk_application_set_accels_for_action` call, binding a keyboard accelerator to an action by name. The `win.` prefix means these accelerators fire actions installed on the **window** (`<GSimpleAction name="new">`, `preferences`, `shortcuts` live in the window's `actions` slot, covered on the actions page). So `Ctrl+N` triggers `win.new`, `Ctrl+,` opens preferences, `Ctrl+?` opens the shortcuts window, all wired from this one array.
+`actionAccels` is a declarative list prop. Each entry is `{ detailedActionName, accels }` and becomes one `gtk_application_set_accels_for_action` call, binding a keyboard accelerator to an action by name. The `win.` prefix means these accelerators fire actions installed on the **window** (`<GSimpleAction name="new">`, `preferences`, `shortcuts` live in the window's `actions` slot, covered on the actions page). So `Ctrl+N` triggers `win.new`, `Ctrl+,` opens preferences, `Ctrl+?` opens the shortcuts dialog, all wired from this one array.
 
 The two `<GSimpleAction>` elements in the application's `actions` slot are different: mounted on the application itself, they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the running app. Each declares `parameterType={GLib.VariantType.new("s")}`, meaning it takes a single string (a task id), which the handler pulls out with `parameter.getString()[0]`.
 
-Because the actions live at the application level but need to mutate window state, they route through a `notify` ref instead of calling into `TasksWindow` directly. `App` creates the ref, the two handlers read `notify.current.complete` / `notify.current.open`, and `TasksWindow` keeps `notify.current` pointed at live closures over its own state. This bridge is explained in full on the reminders/notifications page.
+Because the actions live at the application level but need to mutate window state, they route through a `notify` ref instead of calling into `TasksWindow` directly. `App` creates the ref, the two handlers read `notify.current.complete` / `notify.current.open`, and `TasksWindow` keeps `notify.current` pointed at live closures over its own state. This bridge is explained in full on the [Reminders and Notifications](/tutorial/notifications) page.
 
 ## The window
 
@@ -74,7 +57,7 @@ return (
 );
 ```
 
-A few things worth calling out for a GTK4 newcomer:
+A few things to note for a GTK4 newcomer:
 
 - **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). It is the target for the window-size bindings below.
 - **`widthRequest={360}` and `heightRequest={294}`** set the minimum window size. This is the GNOME phone-form-factor floor: the app is guaranteed to work down to a 360x294 window, which is what forces the layout to prove it collapses gracefully.
@@ -92,7 +75,7 @@ useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 
 `useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced on the data model and persistence page. On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
 
-That leaves the close handler doing only what is genuinely close-time work: flushing unsaved tasks and quitting.
+That leaves the close handler doing only close-time work: flushing unsaved tasks and quitting.
 
 ```tsx
 const handleClose = (): boolean => {
@@ -207,7 +190,7 @@ The content pane holds a `<NavigationView>`, from `@gtkx/components/adw`. It dri
 
 The two changes the pane can show split cleanly by kind, and that split is the whole point:
 
-- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real pushed page: `<NavigationView.Page tag="task">` mounts only when `selectedTask` is set. The component pushes it with an animation, and the pushed page gets a back button, an edge-swipe, and (with `popOnEscape`) Escape handling for free.
+- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real pushed page: `<NavigationView.Page tag="task">` mounts only when `selectedTask` is set. The component pushes it with an animation, and the pushed page gets a back button and an edge-swipe for free.
 - **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one page (`tag="list"`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the `tag` never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed page would be the wrong shape.
 
 The pane's `AdwHeaderBar`, actions, and body all come from the same `selectedTask` / `selecting` state, so they can never disagree. `listBody` is `selecting ? <SelectionView /> : <TaskList />`, and each page carries its own header inside its `AdwToolbarView`. The detail header is a plain `AdwHeaderBar` with the Important toggle and Delete button in `end`, and no back button, because the pushed page supplies one:
@@ -218,7 +201,7 @@ const detailHeader = selectedTask ? (
 ) : null;
 ```
 
-React stays the single source of truth. Opening a task is `setSelectedTaskId(id)`; a programmatic back is `setSelectedTaskId(null)`, which unmounts the task page and pops it. When the pop is instead driven by the widget itself (the back button or an edge-swipe), `onPop(tag)` fires and the handler clears `selectedTaskId`, so React unmounts the page to match. Escape takes the programmatic path: because `popOnEscape` is `false`, the global shortcut controller handles it and clears `selectedTaskId` directly. There is no desync and no hand-written mirroring of a widget stack, because reconciling the declared pages against the widget's live stack is exactly what `<NavigationView>` does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through `AdwNavigationSplitView`'s controlled `showContent` prop.
+Opening a task is `setSelectedTaskId(id)`; a programmatic back is `setSelectedTaskId(null)`, which unmounts the task page and pops it. When the pop is instead driven by the widget itself (the back button or an edge-swipe), `onPop(tag)` fires and the handler clears `selectedTaskId`, so React unmounts the page to match. Escape takes the programmatic path: because `popOnEscape` is `false`, the global shortcut controller handles it and clears `selectedTaskId` directly. There is no desync and no hand-written mirroring of a widget stack, because reconciling the declared pages against the widget's live stack is exactly what `<NavigationView>` does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through `AdwNavigationSplitView`'s controlled `showContent` prop.
 
 ## Next
 

@@ -38,7 +38,7 @@ const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "vite"];
 
-const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/react", "typescript"];
+const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/node", "@types/react", "typescript"];
 
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 

@@ -4,7 +4,7 @@ description: "The boxed task list pane, with search, a rounded card of rows, an 
 
 # The Task List
 
-The content pane of the app is the boxed task list: a search bar, a rounded "card" of rows, an inline add field, and a friendly empty state when there is nothing to show. It lives in `components/task-list.tsx` and is a pure view. It owns exactly one piece of local state (a ref to the add-entry) and takes everything else as props from `app.tsx`.
+The content pane of the app is the boxed task list, and it lives in `components/task-list.tsx`. It is a pure view: it holds a single local ref (to the add-entry) and takes everything else as props from `app.tsx`.
 
 Here is the whole prop surface it accepts:
 
@@ -80,7 +80,7 @@ Wiring both halves back to the same state (`search.mode` / `search.onModeChange`
 The setter prop and the notify handler are named mechanically from the GObject property `search-mode-enabled`: kebab-case becomes camelCase for the value prop (`searchModeEnabled`), and the notify handler is `onNotify` + PascalCase (`onNotifySearchModeEnabled`). Every property in GTKX follows this rule, so you can predict the names without looking them up.
 :::
 
-`GtkSearchEntry` is the actual text field. Its `text` is controlled the same way (`text={search.query}`), and `onSearchChanged` fires on a debounced keystroke. The handler receives `self`, the live `Gtk.SearchEntry` instance, so `self.text` reads the current value straight off the widget. Every GTKX `on*` signal prop handler ends with this `self` argument; handlers connected with `useSignal` or `.on` receive only the signal's own arguments.
+`GtkSearchEntry` is the text field. Its `text` is controlled the same way (`text={search.query}`), and `onSearchChanged` fires on a debounced keystroke. The handler receives `self`, the live `Gtk.SearchEntry` instance, so `self.text` reads the current value straight off the widget. Every GTKX `on*` signal prop handler ends with this `self` argument; handlers connected with `useSignal` or `.on` receive only the signal's own arguments.
 
 The search field is toggled from the header bar's search button in `app.tsx`, which flips the same `searchMode` state this component reads:
 
@@ -154,7 +154,7 @@ Assigning `self.text = ""` writes the GObject `text` property directly on the wi
 
 `AdwButtonRow` is a list row styled as a button, with an optional leading icon (`startIconName`). `"list-add-symbolic"` is a stock GNOME symbolic icon name, resolved from the icon theme at runtime; you never ship the asset yourself.
 
-Its `onActivated` handler calls `entryRef.current?.grabFocus()`. `grabFocus` is the standard GTK4 method that moves keyboard focus to a widget, so tapping this button at the bottom of a long list jumps you straight back up to the add field, ready to type. `entryRef.current` is the live `Adw.EntryRow` captured above (the optional chain guards the mount/unmount window where the ref is still `null`).
+Its `onActivated` handler calls `entryRef.current?.grabFocus()`. `grabFocus` is the standard GTK4 method that moves keyboard focus to a widget. Tapping this button at the bottom of a long list jumps you straight back up to the add field, ready to type. `entryRef.current` is the live `Adw.EntryRow` captured above. The optional chain guards the mount/unmount window where the ref is still `null`.
 
 This row only renders when there are tasks. When the list is empty the inline add row is already right there, so a second add affordance would be redundant.
 
@@ -225,9 +225,9 @@ const [filter, setFilter] = useSetting(schema, "filter");
 titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
 ```
 
-`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The Preferences and Theming page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook gives you persisted UI state for free.
+`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The Preferences and Theming page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook is all it takes to persist this UI state.
 
-## Where filtering actually happens: `select.ts`
+## Where filtering happens: `select.ts`
 
 GTK4 ships `GtkFilterListModel` and `GtkSortListModel` for filtering and sorting inside the widget layer. **This app uses neither.** All of it is plain JavaScript over the `Task[]` array, in `select.ts`. The `TaskList` component receives the finished list and renders it.
 

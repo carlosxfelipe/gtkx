@@ -4,20 +4,20 @@ description: "Tour a complete GNOME Tasks app built with GTKX, where real GTK4 a
 
 # Build a Tasks App with GTKX
 
-This guide walks through a complete, real GNOME application built with GTKX: **Tasks**, a task manager (application ID `com.gtkx.tutorial`). It looks and behaves like a native GNOME app because it *is* one. Every list, row, header bar, and dialog you see is a real GTK4 or Adwaita widget, driven from React components you already know how to write.
+**Tasks** is a complete, real GNOME task manager (application ID `com.gtkx.tutorial`) built with GTKX. It looks and behaves like a native GNOME app because it *is* one: every list, row, header bar, and dialog you see is a real GTK4 or Adwaita widget, driven from React components you already know how to write.
 
 <picture>
   <source srcset="/tasks-screenshot.webp" type="image/webp" />
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-The app is already written. Rather than building it file by file, this guide tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwNavigationSplitView`, `GtkListBox`, and friends.
+The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwNavigationSplitView`, `GtkListBox`, and friends.
 
-## What we are building
+## What Tasks is
 
-Tasks is a full-featured desktop app, not a toy. It has an adaptive `AdwNavigationSplitView`: a sidebar of smart views (All Tasks, Today, Important, Trash) plus user-created lists, next to a content pane that shows a boxed task list and swaps to a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
+The app centers on an adaptive `AdwNavigationSplitView`: a sidebar of smart views (All Tasks, Today, Important, Trash) plus user-created lists, next to a content pane that shows a boxed task list and swaps to a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
 
-Here is the whole app root. This is the real `App` component from `app.tsx`, and it is about as much boilerplate as GTKX asks for:
+Here is the app root, the real `App` component from `app.tsx`, with the notification actions elided:
 
 ```tsx
 export function App() {
@@ -29,7 +29,7 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
-            actions={/* app-scoped actions for notification buttons */}
+            actions={notificationActions}
         >
             <TasksWindow notify={notify} />
         </AdwApplication>
@@ -37,7 +37,7 @@ export function App() {
 }
 ```
 
-`<AdwApplication>` provides the GTK4 application object. Importing the Adwaita bindings runs `adw_init` at module load, which sets up the Adwaita style manager. Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the split view, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
+`<AdwApplication>` provides the GTK4 application object. Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the split view, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
 
 ```tsx
 <AdwApplicationWindow ref={windowRef} title="Tasks" /* ... */>
@@ -66,13 +66,25 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
+## What GTKX is
+
+GTKX is a React reconciler that renders real GTK4 and Adwaita widgets instead of the DOM (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from three paths: `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `NavigationView` and `Dialog`, under `@gtkx/components/adw`), and animation helpers from `@gtkx/animate`.
+
+::: info React knowledge transfers directly
+State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK4 side: which widget does what, how Adwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This tutorial leads with those.
+:::
+
+## Prerequisites
+
+Working familiarity with **React** and **TypeScript** is all you bring to this tutorial. You do not need any prior GTK4, GObject, or C experience. For the system requirements (Linux with the GTK4, Adwaita, and GLib development libraries, plus Node.js 24 or newer), see [Getting Started](/guide/getting-started).
+
 ## A tour of the features
 
-Each feature in Tasks is here because it shows off a distinct GTKX or GTK4 capability. As you read the rest of the guide, this is the map:
+Each feature in Tasks demonstrates a distinct GTKX or GTK4 capability. As you read the rest of this tutorial, this is the map:
 
 | Feature | What you see in the app | GTKX / GTK4 capability it teaches |
 |---|---|---|
-| **Local persistence** | Tasks and lists survive a restart | A `useTasks()` hook over a JSON store (`GLib` file APIs writing to the XDG data dir); lightweight UI state via `useSetting` + `GSettings` |
+| **Local persistence** | Tasks and lists survive a restart | A `useTasks()` hook over a JSON store (`node:fs` reading and writing in the XDG data dir); lightweight UI state via `useSetting` + `GSettings` |
 | **Adaptive layout** | Sidebar and content sit side by side, then collapse to one column when the window narrows | `AdwNavigationSplitView` with a controlled `collapsed` prop, driven by an `AdwBreakpoint`'s `apply`/`unapply` signals |
 | **Boxed lists** | Tasks in a rounded, card-style list | `GtkListBox` / `AdwActionRow` in the `boxed-list` style |
 | **Drag to reorder** | Drag a task row to a new position | `GtkDragSource` + `GtkDropTarget` mounted on a widget's `controllers` slot, closing the loop in React state |
@@ -85,34 +97,24 @@ Each feature in Tasks is here because it shows off a distinct GTKX or GTK4 capab
 | **Desktop reminders** | A system notification when a task is due | A `useReminders` hook calling `app.sendNotification` (`Gio.Notification`), with app-scoped `GSimpleAction`s handling the notification buttons |
 | **Keyboard shortcuts** | `Ctrl+N`, `Ctrl+F`, `Escape`, `Delete` | `GtkShortcutController` + `GtkShortcut`, `actionAccels`, and `GSimpleAction` |
 
-Every one of these is real, working code in `examples/tutorial/src`. Nothing is stubbed.
+## How this tutorial is organized
 
-## What GTKX is
+This tutorial moves from the outside of the app inward, then out to shipping. The pages run in this order:
 
-GTKX is a React reconciler that targets native GTK4 and Adwaita instead of the DOM. You write declarative JSX; a native Rust core instantiates and updates real GTK4 widgets underneath. There is no webview, no Electron, no HTML or CSS-in-a-browser. Every component you import from `@gtkx/jsx/adw`, `@gtkx/jsx/gtk`, and `@gtkx/jsx/gio` maps one-to-one onto a GObject class (`AdwHeaderBar` is `Adw.HeaderBar`, `GtkButton` is `Gtk.Button`), so anything you can find in the GTK4 or Adwaita documentation is reachable from React. Because it runs on Node.js, you also keep the full JavaScript ecosystem: `crypto.randomUUID` for ids, `TextEncoder` / `TextDecoder` for the JSON store, and any npm package that does not need the DOM.
-
-::: info React knowledge transfers directly
-State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK4 side: which widget does what, how Adwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This guide leads with those.
-:::
-
-## Prerequisites
-
-- **Linux** with the **GTK4**, **Adwaita**, and **GLib** development libraries installed (the runtime libraries ship with any current GNOME desktop; add your distribution's development packages for all three).
-- **Node.js 24 or newer.**
-- Working familiarity with **React** and **TypeScript**. You do not need any prior GTK4, GObject, or C experience.
-
-## How this guide is organized
-
-The guide moves from the outside of the app inward, then out to shipping:
-
-- **The shell**: the application object, the window, and the adaptive `AdwNavigationSplitView` that frames everything.
-- **Data and state**: the task model, the JSON store behind `useTasks`, and how `useSetting` bridges React state to `GSettings`.
-- **The sidebar**: the navigation list of smart views and user lists, and how the `Selection` state drives the content pane.
-- **The task list**: boxed lists, rows, inline add, filtering, search, drag-to-reorder, and animating state changes with `@gtkx/animate`.
-- **The editor and dialogs**: the detail form, preferences, and the undo/confirm patterns.
-- **Selection, shortcuts, and notifications**: batch actions, keyboard accelerators, and desktop reminders.
-- **Testing**: driving the real widget tree with `@gtkx/testing` and Vitest.
-- **Theming and packaging**: styling with `@gtkx/css`, and building a shippable app.
+1. [The Application Shell](/tutorial/app-shell)
+2. [Data Model and Persistence](/tutorial/data-and-persistence)
+3. [The Sidebar](/tutorial/the-sidebar)
+4. [The Task List](/tutorial/the-task-list)
+5. [Task Rows and Drag-to-Reorder](/tutorial/task-rows-and-reordering)
+6. [Animations](/tutorial/animations)
+7. [The Task Editor](/tutorial/the-task-editor)
+8. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts)
+9. [Selection Mode](/tutorial/selection-and-batch)
+10. [Preferences and Theming](/tutorial/preferences-and-theming)
+11. [Reminders and Notifications](/tutorial/notifications)
+12. [Feedback and Dialogs](/tutorial/feedback-and-dialogs)
+13. [Testing the App](/tutorial/testing)
+14. [Packaging and Shipping](/tutorial/packaging)
 
 You can read it straight through or jump to whichever feature you need. Every page quotes the actual source, so you can always open the matching file under `examples/tutorial/src` and follow along.
 

@@ -4,15 +4,15 @@ description: "Give the empty state a subtle fade with @gtkx/animate, and learn w
 
 # Animations
 
+This page adds one animation, a fade on the empty-state placeholder, and shows where motion does not belong in a GNOME app.
+
 Most of the motion in Tasks is not ours. Adwaita already animates the things that should move: `AdwNavigationView` slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
 
-So the question this chapter answers is narrow: given a native toolkit that already animates the important transitions, where is a *hand-written* animation worth adding? The GNOME Human Interface Guidelines set the bar. There is no dedicated "motion" page in the current HIG; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle, "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change *legible*, when it tells you that one thing gave way to another instead of hard-cutting between them. Motion that merely decorates an update you already understood is exactly the distraction that principle warns against.
-
-In Tasks there is one screen that would fail that test without the animation this chapter adds, and one only.
+Given a toolkit that already animates the important transitions, the scope is narrow: one hand-written animation, on the one screen in Tasks that would look wrong without it.
 
 ## The gap: a hard cut between the list and the empty state
 
-Back in [The Task List](./the-task-list) the content pane showed either the boxed list or, when the filtered set was empty, an `AdwStatusPage` placeholder. In `components/task-list.tsx` those two are not stacked alternatives; they are siblings in the same vertical `GtkBox`. The `GtkListBox` is always mounted (it holds the inline add-entry row even at zero tasks), and the status page is an extra child that mounts below it only when there is nothing to show:
+Back in [The Task List](./the-task-list) the content pane showed either the boxed list or, when the filtered set was empty, an `AdwStatusPage` placeholder. In `components/task-list.tsx` those two are not stacked alternatives; they are siblings in the same vertical `GtkBox`. The `GtkListBox` is always mounted (it holds the inline add-entry row even at zero tasks), and the status page is an extra child that mounts below it only when there is nothing to show. Before this chapter's change, that child is a plain `AdwStatusPage`:
 
 ```tsx
 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -25,15 +25,15 @@ Back in [The Task List](./the-task-list) the content pane showed either the boxe
 </GtkBox>
 ```
 
-Because nothing here is a `GtkStack`, that mount and unmount has no transition whatsoever. Delete your last task and the placeholder snaps into existence; add the first one back and it vanishes on the same frame the row appears. It reads as a glitch, and it is the textbook case the HIG describes: a real state change (populated becomes empty, and back) presented as a jarring swap.
+Because nothing here is a `GtkStack`, that mount and unmount has no transition whatsoever. Delete your last task and the placeholder snaps into existence; add the first one back and it vanishes on the same frame the row appears. It reads as a glitch, and it is the textbook case the GNOME Human Interface Guidelines describe. There is no dedicated "motion" page in the current HIG; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle, "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change legible, when it tells you that one thing gave way to another instead of hard-cutting between them. Here a real state change (populated becomes empty, and back) is presented as a jarring swap, exactly the hard cut a transition exists to soften.
 
-::: info Why not `AdwViewStack`?
+::: info Why `AdwViewStack` does not fit
 Adwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `enable-transitions`. It does not fit here, because it assumes the two states are *mutually exclusive stacked views*. In this layout the list never goes away: it keeps showing its add-entry row even at zero tasks, and the status page is an additional sibling below it. There is no second view to crossfade against, so the right tool is an enter/exit animation on the status page alone.
 :::
 
 ## The fix: `AnimatePresence` and `animated.AdwStatusPage`
 
-`@gtkx/animate` is the Framer-Motion-style layer covered in [CSS and Animations](/guide/css-and-animations). Two pieces of it solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animate` is already a dependency of the tutorial, so the fade itself is two edits to one file, plus a one-line guard in `app.tsx` that a later section explains.
+`@gtkx/animate` is the Framer-Motion-style layer covered in [CSS and Animations](/guide/css-and-animations). Two pieces of it solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animate` is already a dependency of the tutorial, so the fade itself is two edits to one file, plus a key on the list in `app.tsx`, which a later section explains.
 
 First the imports. The status page becomes an animated one, so `AdwStatusPage` moves out of the `@gtkx/jsx/adw` import (the file uses it nowhere else, so the name drops from the import list) and `@gtkx/animate` comes in:
 
@@ -87,11 +87,11 @@ With a zero duration the exit completes immediately, and `AnimatePresence` drops
 
 ## First paint should not animate
 
-`AnimatePresence initial={false}` is the small, important detail. By default `AnimatePresence` runs enter animations for children that are already present on its very first render, so launching straight into an empty view (a fresh install, or an empty Trash) would fade the placeholder in from transparent. But the user did not just empty that list; it was already empty when the window opened. Fading it in there is motion with nothing to communicate, the decorative kind the HIG rejects. `initial={false}` mounts any first-render child directly in its `animate` state, while a status page that appears *later*, because you actually deleted your last task, still runs its `initial` to `animate` fade. Genuine state changes animate; initial conditions do not.
+`AnimatePresence initial={false}` is the small, important detail. By default `AnimatePresence` runs enter animations for children that are already present on its very first render, so launching straight into an empty view (a fresh install, or an empty Trash) would fade the placeholder in from transparent. But the user did not just empty that list; it was already empty when the window opened. Fading it in there is motion with nothing to communicate, the decorative kind the HIG rejects. `initial={false}` mounts any first-render child directly in its `animate` state, while a status page that appears later, because you actually deleted your last task, still runs its `initial` to `animate` fade. Genuine state changes animate; initial conditions do not.
 
 ## Keeping the fade inside its view
 
-`AnimatePresence` tracks presence inside whatever subtree stays mounted around it, and that scope is wider than it first appears. `TaskList` renders at the same tree position for every sidebar view, so clicking from a populated list to an empty Today does not remount it; React hands the same component a new `tasks` array. To the wrapper, that is indistinguishable from deleting your last task: the condition flips, the status page mounts, and the enter fade plays. But nothing was just emptied; you navigated. A fade that narrates "this list just became empty" is wrong on a surface that swapped to a different list entirely, the same nothing-to-communicate motion that `initial={false}` already keeps off the first paint.
+`AnimatePresence` tracks presence inside whatever subtree stays mounted around it, and that scope is wider than it first appears. `TaskList` renders at the same tree position for every sidebar view, so clicking from a populated list to an empty Today does not remount it; React hands the same component a new `tasks` array. To the wrapper, that is indistinguishable from deleting your last task: the condition flips, the status page mounts, and the enter fade plays. But nothing was just emptied; you navigated, so the fade is the same decorative motion `initial={false}` already keeps off the first paint.
 
 The remedy is to make navigation a remount instead of a prop update. In `app.tsx`, key the list by the identity of the current view:
 
@@ -110,7 +110,7 @@ const keyFor = (selection: Selection): string =>
 
 Changing the selection now unmounts the old `TaskList`, taking its `AnimatePresence` and any in-flight animation with it, and mounts a fresh one. `initial={false}` from the earlier section does the rest: the new view's placeholder, if it has one, appears directly in its settled state. Within a view nothing changes, because there the key is stable; deleting your last task still fades the placeholder in, and adding the first one back still cuts it away.
 
-Note what the key leaves out. The search query is not in it, or every keystroke would remount the list and destroy the focused search entry. The All/Open/Done filter is not in it either: filtering re-slices the same list you are already looking at, which is exactly the populated-to-empty boundary the fade was built to narrate. Only navigation, the switch to a *different* view, gets the hard remount.
+Note what the key leaves out. The search query is not in it, or every keystroke would remount the list and destroy the focused search entry. The All/Open/Done filter is not in it either: filtering re-slices the same list you are already looking at, which is exactly the populated-to-empty boundary the fade was built to narrate. Only navigation, the switch to a different view, gets the hard remount.
 
 ## Reduce motion is handled for you
 

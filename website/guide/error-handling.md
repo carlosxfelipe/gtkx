@@ -4,11 +4,15 @@ description: "How GLib's GError model maps onto JavaScript exceptions in GTKX: c
 
 # Error Handling
 
-GLib-based C libraries report recoverable failures through `GError`: a fallible function takes a `GError**` out-parameter, and the caller checks it after every call. GTKX erases that convention entirely. Every generated binding for a throwing C function (anything marked `throws` in the GObject-Introspection data) checks the out-parameter for you and, when it is set, throws the error as a JavaScript exception. You never see the `GError**` argument in a JS signature, and you never check a return flag: you write `try`/`catch`, exactly as you would around any other JavaScript code.
+A throwing GTKX binding throws a JavaScript exception when it fails, so you handle it with `try`/`catch`, exactly as you would around any other JavaScript code.
 
-The same model carries over to asynchronous calls. GIO-style async methods are promisified, so a failed operation rejects its promise with the very same error object a synchronous call would have thrown. `try { await ... } catch` handles both identically. The promise model itself, including cancellation, is covered in [Async Operations](/guide/async-operations).
+GLib-based C libraries report recoverable failures through `GError`: a fallible function takes a `GError**` out-parameter, and the caller checks it after every call. GTKX erases that convention entirely.
 
-Failures that are not GErrors, such as passing an argument the native layer cannot convert, surface as plain JavaScript `Error`s rather than `GLib.Error` instances.
+Every generated binding for a throwing C function (anything marked `throws` in the GObject-Introspection data) checks the out-parameter for you and, when it is set, throws the error as a JavaScript exception. You never see the `GError**` argument in a JS signature, and you never check a return flag.
+
+The same model carries over to asynchronous calls. GIO-style async methods are promisified, so a failed operation rejects its promise with the same error object a synchronous call would have thrown. `try { await ... } catch` handles both identically. The promise model itself, including cancellation, is covered in [Async Operations](/guide/async-operations).
+
+Failures that are not GErrors, such as passing an argument the native Rust core cannot convert, surface as plain JavaScript `Error`s rather than `GLib.Error` instances. Most errors in a GTKX app are not GErrors at all: `node:fs` throws Node.js errors with string codes like `"ENOENT"`, `fetch` rejects with a `TypeError`, and `JSON.parse` throws a `SyntaxError`. GErrors appear only when a GI binding fails, and they land on the same `try`/`catch` channel as everything else.
 
 ## What you catch: `GLib.Error`
 
@@ -17,8 +21,10 @@ A thrown GError is an instance of the generated `GLib.Error` class from `@gtkx/g
 ```ts
 import * as GLib from "@gtkx/gi/glib";
 
+const data = "not a key file";
+
 try {
-    GLib.fileGetContents("/no/such/file");
+    GLib.KeyFile.new().loadFromData(data, Buffer.byteLength(data), GLib.KeyFileFlags.NONE);
 } catch (error) {
     error instanceof Error;      // true: it is a real JS Error
     error instanceof GLib.Error; // true: it is also a wrapped GError
@@ -42,22 +48,23 @@ The `domain` quark and `code` number are how GLib distinguishes "file not found"
 Any introspected enum that GLib marks as an error domain is generated as an `ErrorDomain` object: it carries the enum members as numeric constants and also works as the right-hand side of `instanceof`, matching any wrapped GError that belongs to that domain. The check is domain-only, so you combine it with a `code` comparison against the same object's members:
 
 ```ts
-import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 
-const file = Gio.fileNewForPath("/no/such/file");
+const contents = "not a key file";
+const keyFile = GLib.KeyFile.new();
 
 try {
-    await file.loadContentsAsync();
+    keyFile.loadFromData(contents, Buffer.byteLength(contents), GLib.KeyFileFlags.NONE);
 } catch (error) {
-    if (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.NOT_FOUND) {
-        // the file does not exist
+    if (error instanceof GLib.KeyFileError && error.code === GLib.KeyFileError.PARSE) {
+        // not a valid key file
     } else {
         throw error;
     }
 }
 ```
 
-These domain objects are generated in any namespace whose library registers error domains. A few you will actually meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK4. Each looks like a plain enum:
+These domain objects are generated in any namespace whose library registers error domains. A few you will meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK4. Each looks like a plain enum:
 
 ```ts
 Gtk.DialogError.FAILED;    // 0
@@ -74,8 +81,8 @@ A successful `instanceof` check against a domain object narrows the value's type
 ```ts
 import * as GLib from "@gtkx/gi/glib";
 
-if (error instanceof GLib.Error && error.matches(GLib.quarkFromString("g-file-error-quark"), GLib.FileError.NOENT)) {
-    // no such file
+if (error instanceof GLib.Error && error.matches(GLib.quarkFromString("g-key-file-error-quark"), GLib.KeyFileError.PARSE)) {
+    // not a valid key file
 }
 ```
 
@@ -83,26 +90,32 @@ The domain-object `instanceof` form is shorter and does not require knowing the 
 
 ## Synchronous calls: `try`/`catch`
 
-Any throwing binding can be wrapped in an ordinary `try`/`catch`. The Tasks app from the tutorial does exactly this around its JSON store in [Data and Persistence](/tutorial/data-and-persistence), falling back to seed data when the file is missing or unreadable:
+Any throwing binding can be wrapped in an ordinary `try`/`catch`, right next to plain JavaScript code that throws. This loader reads a `.desktop` launcher with `node:fs` and parses it with `GLib.KeyFile`, GLib's parser for the desktop-entry format, falling back to `null` when either step fails:
 
 ```ts
+import { readFileSync } from "node:fs";
 import * as GLib from "@gtkx/gi/glib";
 
-export const loadState = (): PersistedState => {
+type Launcher = { name: string; exec: string };
+
+const loadLauncher = (path: string): Launcher | null => {
     try {
-        if (!GLib.fileTest(TASKS_PATH, GLib.FileTest.EXISTS)) return seed();
-        const [ok, bytes] = GLib.fileGetContents(TASKS_PATH);
-        if (!ok) return seed();
-        const parsed = JSON.parse(decode(bytes)) as PersistedState;
-        if (parsed?.version !== SCHEMA_VERSION) return seed();
-        return parsed;
+        const data = readFileSync(path, "utf8");
+        const keyFile = GLib.KeyFile.new();
+        keyFile.loadFromData(data, Buffer.byteLength(data), GLib.KeyFileFlags.NONE);
+        return {
+            name: keyFile.getString("Desktop Entry", "Name"),
+            exec: keyFile.getString("Desktop Entry", "Exec"),
+        };
     } catch {
-        return seed();
+        return null;
     }
 };
 ```
 
-Note what the `catch` covers here: `GLib.fileGetContents` throws a `GLib.Error` in the `GLib.FileError` domain when the read fails, and `JSON.parse` throws a plain `SyntaxError` when the contents are corrupt. Both are ordinary exceptions on the same channel, which is the point of the mapping: one recovery path handles native and JavaScript failures together.
+The division of labor is the usual GTKX split: the Node.js standard library owns the file I/O, and GLib is only involved for the desktop-entry format it alone understands. The `catch` covers both channels at once. `readFileSync` throws a plain Node.js `Error`, where a missing file surfaces with `code === "ENOENT"`; `loadFromData` and `getString` throw `GLib.Error`s in the `GLib.KeyFileError` domain: `PARSE` for malformed data, `KEY_NOT_FOUND` or `GROUP_NOT_FOUND` for an incomplete entry. Both are ordinary exceptions on the same channel, which is the point of the mapping: one recovery path handles native and JavaScript failures together.
+
+The Tasks app from the tutorial needs even less: its JSON store in [Data and Persistence](/tutorial/data-and-persistence) is pure `node:fs` plus `JSON.parse`, with no GError in sight.
 
 ## Asynchronous calls: rejected promises
 
@@ -152,5 +165,5 @@ This is how the gtk-demo Shadertoy example reports GLSL compile failures to `Gtk
 
 ## Next
 
-- [Async Operations](/guide/async-operations) covers the promise model these rejections flow through, including `Gio.Cancellable`.
+- [Components and Hooks](/guide/components-and-hooks) is next in the guide, covering how GTKX widgets compose and the hooks that drive them.
 - Run `gtkx docs` in your project to generate reference pages for every element your libraries provide; throwing methods appear there as ordinary methods, with the error parameter already absorbed.

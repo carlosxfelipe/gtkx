@@ -4,7 +4,7 @@ description: "Test real GTK4 widgets with @gtkx/testing: Testing Library style q
 
 # Testing the App
 
-Because GTKX renders real GObject widgets, you can test a GTKX app much the way you test a React web app: render it, query the accessibility tree, drive it with user events, and assert on the result. The [`@gtkx/testing`](https://github.com/gtkx-org/gtkx/tree/main/packages/testing) package provides a React Testing Library style API over the live widget tree, and `@gtkx/vitest` wires it into Vitest (see the [testing guide's Setup section](/guide/testing#setup) for the scaffolded config and the headless environment it provides).
+Because GTKX renders real GObject widgets, you can test a GTKX app much the way you test a React web app: render it, query the accessibility tree, drive it with user events, and assert on the result. The [`@gtkx/testing`](https://github.com/gtkx-org/gtkx/tree/main/packages/testing) package provides a React Testing Library style API over the live widget tree. `@gtkx/vitest` wires it into Vitest; see the [testing guide's Setup section](/guide/testing#setup) for the scaffolded config and the headless environment it provides.
 
 ::: info
 The examples below are illustrative: they show the kind of tests you would add to the app. The app's source in `examples/tutorial` does not ship with them.
@@ -34,8 +34,8 @@ Every task row exposes a `GtkCheckButton` with `accessibleLabel="Mark complete"`
 
 `screen` exposes the full query family. `findBy*` waits for a match and is async, `getBy*` and `getAllBy*` return immediately and throw when nothing matches, and `queryBy*` returns `null` instead of throwing. The ones you reach for most:
 
-- `findByText` / `findAllByText`: match a widget's rendered label text.
-- `findByRole` / `getAllByRole`: match an accessible role, always a `Gtk.AccessibleRole` value (never a string), optionally narrowed by `{ name }`, `{ checked }`, `{ selected }`, and similar. The `name` option matches the accessible name, which comes from an `accessibleLabel` or from a container's child labels.
+- `findByText`: match a widget's rendered label text.
+- `findByRole`: match an accessible role, always a `Gtk.AccessibleRole` value (never a string), optionally narrowed by `{ name }`, `{ checked }`, `{ selected }`, and similar. The `name` option matches the accessible name, which comes from an `accessibleLabel` or from a container's child labels.
 - `findByName`: match a widget's `name` property, the value you set with the `name` prop, when you want to grab one specific widget directly.
 
 ## Driving a flow
@@ -92,7 +92,7 @@ The third argument is the dragged task's id, the same value the row's `GtkDragSo
 
 ## Inspecting a running app
 
-For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MCP server that an agent (or you, through any MCP client) can drive to list running apps, dump the widget tree, query widgets, take screenshots, fire events, click or type, and search the generated bindings' API reference. `gtkx dev` connects the running app to it automatically, so a dev session is inspectable out of the box.
+For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MCP server that an agent (or you, through any MCP client) can drive to list running apps, dump the widget tree, query widgets, take screenshots, fire events, click or type, and search the generated bindings' API reference. `gtkx dev` connects the running app to it automatically, so a dev session is inspectable without any extra setup.
 
 ## Next
 
