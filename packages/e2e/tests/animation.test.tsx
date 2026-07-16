@@ -451,7 +451,7 @@ describe("animated (14)", () => {
 
 describe("animated (15)", () => {
     describe("shallow-equal animate guard", () => {
-        it("does not re-animate when the animate target is shallow-equal across renders", async () => {
+        const expectNoReAnimation = async (withInlineTransition: boolean) => {
             const onAnimationStart = vi.fn();
 
             function App({ tick }: { tick: number }) {
@@ -461,7 +461,9 @@ describe("animated (15)", () => {
                         <animated.GtkLabel
                             label="Stable"
                             initial={false}
-                            animate={{ opacity: 1 }}
+                            animate={
+                                withInlineTransition ? { opacity: 1, transition: { duration: 0.05 } } : { opacity: 1 }
+                            }
                             transition={{ duration: 0.05 }}
                             onAnimationStart={onAnimationStart}
                         />
@@ -477,6 +479,14 @@ describe("animated (15)", () => {
             await rerender(<App tick={2} />);
 
             expect(onAnimationStart).not.toHaveBeenCalled();
+        };
+
+        it("does not re-animate when the animate target is shallow-equal across renders", async () => {
+            await expectNoReAnimation(false);
+        });
+
+        it("does not re-animate when a shallow-equal animate target embeds its own transition", async () => {
+            await expectNoReAnimation(true);
         });
     });
 });

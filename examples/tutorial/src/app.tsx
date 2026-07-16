@@ -59,6 +59,9 @@ const titleFor = (selection: Selection, lists: TaskListType[]): string =>
         ? (lists.find((list) => list.id === selection.listId)?.name ?? "Tasks")
         : SMART_TITLES[selection.view];
 
+const keyFor = (selection: Selection): string =>
+    selection.kind === "list" ? `list-${selection.listId}` : `smart-${selection.view}`;
+
 type EmptyState = { icon: string; title: string; description: string };
 
 const emptyFor = (selection: Selection, query: string): EmptyState => {
@@ -376,6 +379,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
         <SelectionView tasks={visible} selectedIds={selectedIds} onSelectionChanged={setSelectedIds} />
     ) : (
         <TaskList
+            key={keyFor(selection)}
             tasks={visible}
             reorderable={reorderable}
             addPlaceholder="Add a task…"

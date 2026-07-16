@@ -9,6 +9,12 @@ const DEFAULT_EASE: Easing = "easeOut";
 
 export const secondsToMilliseconds = (seconds: number): number => seconds * 1000;
 
+export const isInstantTransition = (transition: Transition): boolean => {
+    if (transition.type === "spring") return false;
+    if ((transition.delay ?? 0) > 0) return false;
+    return (transition.duration ?? DEFAULT_TWEEN_DURATION) === 0;
+};
+
 const resolveDuration = (seconds: number): number =>
     seconds === Number.POSITIVE_INFINITY ? Adw.DURATION_INFINITE : secondsToMilliseconds(seconds);
 

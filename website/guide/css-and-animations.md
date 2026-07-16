@@ -32,7 +32,7 @@ export const addRow = css`
 
 Interpolation is ordinary JavaScript: `listDot` produces one class per distinct color and reuses the class when called with the same color again. You can also interpolate a previously generated class name into another `css` call, and its styles are inlined rather than referenced, exactly as Emotion composition works.
 
-Behind the scenes there is a single shared `Gtk.CssProvider` attached to the default display at `STYLE_PROVIDER_PRIORITY_APPLICATION`. Every `css` call appends its rules to one stylesheet string, and updates are batched per microtask into a single `loadFromString` reload, so a render pass that creates a dozen styles costs one provider update. In development, the provider's `parsing-error` signal is logged as a warning, so a property GTK4 does not understand tells you immediately instead of failing silently.
+A single shared `Gtk.CssProvider` is attached to the default display at `STYLE_PROVIDER_PRIORITY_APPLICATION`. Every `css` call appends its rules to one stylesheet string, and updates are batched per microtask into a single `loadFromString` reload, so a render pass that creates a dozen styles costs one provider update. In development, the provider's `parsing-error` signal is logged as a warning, so a property GTK4 does not understand tells you immediately instead of failing silently.
 
 ## GTK4 CSS is its own dialect
 
@@ -114,7 +114,7 @@ Importing a plain `.css` file works too: the GTKX CLI compiles the import into a
 - `transition`: timing and physics, described below.
 - `onAnimationStart` and `onAnimationComplete` callbacks.
 
-A target is an `AnimationTarget`: `opacity`, `x` and `y` (pixel translation), `scale`, `scaleX`, `scaleY`, `rotate` (degrees), `skewX`, and `skewY`. Every field is optional.
+A target is an `AnimationTarget`: `opacity`, `x` and `y` (pixel translation), `scale`, `scaleX`, `scaleY`, `rotate` (degrees), `skewX`, and `skewY`. Every field is optional. An `animate` or `exit` target may also embed a `transition` of its own, which replaces the component's `transition` for the animation toward that target: an exit of `{ opacity: 0, transition: { duration: 0 } }` makes the leave instantaneous while the enter keeps its fade.
 
 ```tsx
 import { animated } from "@gtkx/animate";
@@ -127,7 +127,7 @@ import { animated } from "@gtkx/animate";
 />;
 ```
 
-Under the hood this is Adwaita, not a JavaScript timer loop. A tween builds an `Adw.TimedAnimation` and a spring builds an `Adw.SpringAnimation`, each driving an `Adw.CallbackAnimationTarget` that interpolates between the from and to targets and writes the result as `opacity` and `transform` CSS. Each animated widget gets a unique `gtkx-anim-<id>` class whose rule lives in a shared animation provider registered one priority above the `css()` provider, so animated values always win over your static styles, and the class and its rule are removed on unmount.
+This is Adwaita, not a JavaScript timer loop. A tween builds an `Adw.TimedAnimation` and a spring builds an `Adw.SpringAnimation`, each driving an `Adw.CallbackAnimationTarget` that interpolates between the from and to targets and writes the result as `opacity` and `transform` CSS. Each animated widget gets a unique `gtkx-anim-<id>` class whose rule lives in a shared animation provider registered one priority above the `css()` provider, so animated values always win over your static styles, and the class and its rule are removed on unmount.
 
 ## Tweens and springs
 
@@ -171,7 +171,7 @@ import { GtkBox } from "@gtkx/jsx/gtk";
 </GtkBox>;
 ```
 
-`AnimatePresence` takes three props besides `children`. `initial` (default `true`) controls whether children already present on the first render run their enter animations; pass `false` to mount children directly in their `animate` state and animate only subsequent changes. `mode` chooses how entering and exiting children overlap: `"sync"` (the default) runs both at once, while `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. `onExitComplete` fires once after all exiting children have finished, useful for sequencing work behind a departure. A child removed without an `exit` prop still exits cleanly; it is removed as soon as its (empty) exit animation completes.
+`AnimatePresence` takes three props besides `children`. `initial` (default `true`) controls whether children already present on the first render run their enter animations; pass `false` to mount children directly in their `animate` state and animate only subsequent changes. `mode` chooses how entering and exiting children overlap: `"sync"` (the default) runs both at once, while `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. `onExitComplete` fires once after all exiting children have finished, useful for sequencing work behind a departure. A leaving child whose exit is instantaneous is not held at all: when it has no `exit` values, its exit transition has a zero duration, or animations are disabled system-wide, `AnimatePresence` removes it in the same update that removes it from your JSX, so it never lingers next to its replacement content.
 
 ::: tip
 In tests, `render` from `@gtkx/testing` disables animations by default so assertions see final states immediately. Pass `render(element, { animations: true })` when the animation itself is what you are testing. See [Testing](/guide/testing) for the full model.

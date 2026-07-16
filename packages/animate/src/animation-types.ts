@@ -116,14 +116,23 @@ export type Transition = {
     clamp?: boolean;
 };
 
+/**
+ * An {@link AnimationTarget} that may carry its own {@link Transition}, which replaces the
+ * component's `transition` for the animation toward that target.
+ */
+export type AnimationTargetWithTransition = AnimationTarget & {
+    /** Timing and physics used only for this target, replacing the component's `transition`. */
+    transition?: Transition;
+};
+
 /** Animation configuration accepted by every component produced through {@link animated}. */
 export type AnimationProps = {
     /** State the widget starts from before its enter animation; `false` skips the enter animation. */
     initial?: AnimationTarget | false;
     /** State the widget animates to while it is present. */
-    animate?: AnimationTarget;
+    animate?: AnimationTargetWithTransition;
     /** State the widget animates to while exiting inside an `AnimatePresence`. */
-    exit?: AnimationTarget;
+    exit?: AnimationTargetWithTransition;
     /** Timing and physics for the animations. */
     transition?: Transition;
     /** Called when an animation begins. */

@@ -1,43 +1,92 @@
 import { AnimatePresence, animated } from "@gtkx/animate";
-import { GtkBox } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render as baseRender, screen, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const render = (element: ReactNode) => baseRender(element, { animations: true });
 
+const FadeList = ({ items, onExitComplete }: { items: string[]; onExitComplete: () => void }) => (
+    <GtkBox>
+        <AnimatePresence onExitComplete={onExitComplete}>
+            {items.map((id) => (
+                <animated.GtkLabel
+                    key={id}
+                    label={id}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.05 }}
+                />
+            ))}
+        </AnimatePresence>
+    </GtkBox>
+);
+
 describe("AnimatePresence (exit gating)", () => {
     it("fires onExitComplete once after every exiting child finishes", async () => {
         const onExitComplete = vi.fn();
 
-        function App({ items }: { items: string[] }) {
-            return (
-                <GtkBox>
-                    <AnimatePresence onExitComplete={onExitComplete}>
-                        {items.map((id) => (
-                            <animated.GtkLabel
-                                key={id}
-                                label={id}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.05 }}
-                            />
-                        ))}
-                    </AnimatePresence>
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App items={["alpha", "beta"]} />);
+        const { rerender } = await render(<FadeList items={["alpha", "beta"]} onExitComplete={onExitComplete} />);
         await screen.findByText("alpha");
         await screen.findByText("beta");
 
-        await rerender(<App items={[]} />);
+        await rerender(<FadeList items={[]} onExitComplete={onExitComplete} />);
 
         await waitFor(() => expect(screen.queryByText("alpha")).toBeNull());
         await waitFor(() => expect(screen.queryByText("beta")).toBeNull());
         await waitFor(() => expect(onExitComplete).toHaveBeenCalled());
         expect(onExitComplete).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("AnimatePresence (per-target exit transition)", () => {
+    it("removes an exiting child without overlap when its exit duration is 0", async () => {
+        const onExitComplete = vi.fn();
+
+        function App({ empty }: { empty: boolean }) {
+            return (
+                <GtkBox>
+                    {empty ? null : <GtkLabel label="Row" />}
+                    <AnimatePresence initial={false} onExitComplete={onExitComplete}>
+                        {empty ? (
+                            <animated.GtkLabel
+                                key="empty"
+                                label="Empty"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0, transition: { duration: 0 } }}
+                                transition={{ duration: 0.2 }}
+                            />
+                        ) : null}
+                    </AnimatePresence>
+                </GtkBox>
+            );
+        }
+
+        const { rerender } = await render(<App empty={true} />);
+        await screen.findByText("Empty");
+
+        await rerender(<App empty={false} />);
+
+        expect(screen.queryByText("Empty")).toBeNull();
+        await screen.findByText("Row");
+        expect(onExitComplete).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("AnimatePresence (animations disabled)", () => {
+    it("unmounts an exiting child whose animation completes synchronously", async () => {
+        const onExitComplete = vi.fn();
+
+        const { rerender } = await baseRender(<FadeList items={["alpha", "beta"]} onExitComplete={onExitComplete} />);
+        await screen.findByText("alpha");
+        await screen.findByText("beta");
+
+        await rerender(<FadeList items={["alpha"]} onExitComplete={onExitComplete} />);
+
+        await waitFor(() => expect(screen.queryByText("beta")).toBeNull());
+        expect(screen.queryByText("alpha")).not.toBeNull();
+        await waitFor(() => expect(onExitComplete).toHaveBeenCalledTimes(1));
     });
 });
 

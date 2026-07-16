@@ -1,12 +1,23 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
-import { isShallowEqual } from "@gtkx/utils";
 import { type Ref, type RefCallback, useId, useLayoutEffect, useRef } from "react";
 import { useIsInitialPresence, usePresence } from "./animate-presence.js";
-import type { AnimationProps, AnimationTarget } from "./animation-types.js";
+import { isTargetEqual, splitTarget } from "./animation-target.js";
+import type { AnimationProps, AnimationTargetWithTransition } from "./animation-types.js";
+import { isInstantTransition } from "./transition.js";
 import { WidgetAnimator } from "./widget-animator.js";
 
 const sanitizeId = (id: string): string => `gtkx-anim-${id.replace(/[^a-zA-Z0-9]/g, "")}`;
+
+const animationsDisabled = (): boolean => Gtk.Settings.getDefault()?.gtkEnableAnimations === false;
+
+const isExitInstant = (props: AnimationProps): boolean => {
+    const { values, transition: override } = splitTarget(props.exit ?? {});
+    const transition = override ?? props.transition ?? {};
+    if (Object.keys(values).length === 0) return true;
+    if (transition.followEnableAnimations !== false && animationsDisabled()) return true;
+    return isInstantTransition(transition);
+};
 
 export const useAnimatedWidget = (
     externalRef: Ref<Gtk.Widget | null> | undefined,
@@ -35,18 +46,18 @@ export const useAnimatedWidget = (
         return () => animator.dispose();
     }, [animator]);
 
-    const previousAnimateRef = useRef<AnimationTarget | undefined>(props.animate);
+    const previousAnimateRef = useRef<AnimationTargetWithTransition | undefined>(props.animate);
     useLayoutEffect(() => {
         const previous = previousAnimateRef.current;
         previousAnimateRef.current = props.animate;
 
         if (!widgetRef.current || !props.animate) return;
-        if (isShallowEqual(previous, props.animate)) return;
+        if (isTargetEqual(previous, props.animate)) return;
 
         animator.startAnimation(props.animate);
     }, [animator, props.animate]);
 
-    const [isPresent, safeToRemove] = usePresence();
+    const [isPresent, safeToRemove] = usePresence(() => isExitInstant(propsRef.current));
 
     const exitStartedRef = useRef(false);
     const wasPresentRef = useRef(isPresent);

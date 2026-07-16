@@ -3,12 +3,13 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { isShallowEqual } from "@gtkx/utils";
 import type { RefObject } from "react";
 import { AnimationCssProvider } from "./animation-css-provider.js";
-import type { AnimationProps, AnimationTarget } from "./animation-types.js";
+import { splitTarget } from "./animation-target.js";
+import type { AnimationProps, AnimationTarget, AnimationTargetWithTransition } from "./animation-types.js";
 import { interpolate } from "./interpolation.js";
 import { buildAnimation, secondsToMilliseconds } from "./transition.js";
 
 const restValuesOf = (props: AnimationProps): AnimationTarget => {
-    if (props.animate) return { ...props.animate };
+    if (props.animate) return splitTarget(props.animate).values;
     if (props.initial) return { ...props.initial };
     return {};
 };
@@ -16,7 +17,7 @@ const restValuesOf = (props: AnimationProps): AnimationTarget => {
 const shouldAnimateOnMount = (props: AnimationProps): boolean => {
     const { initial, animate } = props;
     if (initial === undefined || initial === false || animate === undefined) return false;
-    return !isShallowEqual(initial, animate);
+    return !isShallowEqual(initial, splitTarget(animate).values);
 };
 
 export class WidgetAnimator {
@@ -51,16 +52,16 @@ export class WidgetAnimator {
         }
     }
 
-    public startAnimation(target: AnimationTarget, onComplete?: () => void): void {
+    public startAnimation(target: AnimationTargetWithTransition, onComplete?: () => void): void {
         const widget = this.ref.current;
         if (!widget) return;
 
         this.cancelAnimation();
 
         const from = { ...this.currentValues };
-        const to = { ...target };
+        const { values: to, transition: override } = splitTarget(target);
         const props = this.propsRef.current;
-        const transition = props.transition ?? {};
+        const transition = override ?? props.transition ?? {};
 
         props.onAnimationStart?.();
 
