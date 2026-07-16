@@ -2,14 +2,12 @@ import { registerProviderForDefaultDisplay } from "@gtkx/css/internal";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";
-import type { AnimationTarget } from "./animation-types.js";
-import { buildCss } from "./build-css.js";
 
 const ANIMATION_PROVIDER_PRIORITY = STYLE_PROVIDER_PRIORITY_APPLICATION + 1;
 
 const log = createLogger("animated");
 
-class AnimationStyleSheet {
+export class AnimationStyleSheet {
     private provider: Gtk.CssProvider | null = null;
     private rules = new Map<string, string>();
     private lastFlushed = "";
@@ -59,31 +57,4 @@ class AnimationStyleSheet {
     }
 }
 
-const sheet = new AnimationStyleSheet();
-
-export class AnimationCssProvider {
-    private className: string;
-    private widget: Gtk.Widget | null = null;
-
-    constructor(className: string) {
-        this.className = className;
-    }
-
-    public attach(widget: Gtk.Widget): void {
-        if (this.widget) return;
-        this.widget = widget;
-        widget.addCssClass(this.className);
-    }
-
-    public write(values: AnimationTarget): void {
-        if (!this.widget) return;
-        sheet.set(this.className, buildCss(this.className, values));
-    }
-
-    public dispose(): void {
-        if (!this.widget) return;
-        this.widget.removeCssClass(this.className);
-        this.widget = null;
-        sheet.remove(this.className);
-    }
-}
+export const animationStyleSheet: AnimationStyleSheet = new AnimationStyleSheet();

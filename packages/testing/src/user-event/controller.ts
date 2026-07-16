@@ -2,37 +2,43 @@ import type * as Gtk from "@gtkx/gi/gtk";
 
 export type ControllerConstructor<T extends Gtk.EventController> = new () => T;
 
+export const queryAllControllers = <T extends Gtk.EventController>(
+    widget: Gtk.Widget,
+    controllerType: ControllerConstructor<T>,
+): T[] => {
+    const controllers = widget.observeControllers();
+    const nItems = controllers.getNItems();
+    const matches: T[] = [];
+    for (let i = 0; i < nItems; i++) {
+        const controller = controllers.getItem(i);
+        if (controller instanceof controllerType) matches.push(controller);
+    }
+    return matches;
+};
+
 export const queryController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
-): T | null => {
-    const controllers = widget.observeControllers();
-    const nItems = controllers.getNItems();
-    for (let i = 0; i < nItems; i++) {
-        const controller = controllers.getItem(i);
-        if (controller instanceof controllerType) return controller;
-    }
-    return null;
-};
+): T | null => queryAllControllers(widget, controllerType)[0] ?? null;
 
-export const getController = <T extends Gtk.EventController>(
+export const getAllControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
-): T => {
-    const controller = queryController(widget, controllerType);
-    if (!controller) {
+): T[] => {
+    const controllers = queryAllControllers(widget, controllerType);
+    if (controllers.length === 0) {
         throw new Error(`No ${controllerType.name} controller is attached to the widget`);
     }
-    return controller;
+    return controllers;
 };
 
-export const getOrCreateController = <T extends Gtk.EventController>(
+export const getOrCreateControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
-): T => {
-    const existing = queryController(widget, controllerType);
-    if (existing) return existing;
+): T[] => {
+    const existing = queryAllControllers(widget, controllerType);
+    if (existing.length > 0) return existing;
     const controller = new controllerType();
     widget.addController(controller);
-    return controller;
+    return [controller];
 };

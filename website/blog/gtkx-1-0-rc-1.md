@@ -17,7 +17,7 @@ This is a release candidate: the API described here is what we intend to ship as
 
 ## Bindings are generated on your machine, for any GObject-Introspection library
 
-The central change in 1.0 is where bindings come from. Previous versions shipped pregenerated bindings for a fixed set of libraries (GTK4, Adwaita, WebKit, GtkSourceView, VTE, GES) baked into `@gtkx/runtime`. That set was whatever we chose to build, and it could drift from the GTK4 actually installed on your system.
+The central change in 1.0 is where bindings come from. Previous versions shipped pregenerated bindings for a fixed set of libraries (GTK4, Adwaita, WebKit, GtkSourceView, VTE, GES) baked into `@gtkx/ffi`. That set was whatever we chose to build, and it could drift from the GTK4 actually installed on your system.
 
 Now the GTKX CLI runs codegen on your machine, reading the GObject-Introspection (`.gir`) data already installed with your development libraries. You declare which libraries you want in `gtkx.config.ts`:
 
@@ -58,7 +58,7 @@ The reconciler was rewritten from roughly sixty hand-written per-widget node cla
 
 ## Higher-level building blocks
 
-Hand-written high-level components moved out of the reconciler into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog` and `NavigationView`. `@gtkx/animated` replaces the old animation elements with a motion-style API: an `animated` factory, `AnimatePresence` for exit animations, springs and named easings, all still driven through Adwaita's animation primitives. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
+Hand-written high-level components moved out of the reconciler into focused packages. `@gtkx/components` ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, tree expansion, and sections, a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and, under `@gtkx/components/adw`, `Dialog`. Navigation moved to its own `@gtkx/navigation` package, which brings the React Navigation API to Adwaita: stack and split-view navigators over real `Adw.NavigationView` and `Adw.NavigationSplitView` widgets. `@gtkx/animated` replaces the old animation elements with framer-motion running against real GTK4 widgets: an `animated` factory, `AnimatePresence` for exit animations, springs and easings, hover, tap, focus, and in-view gestures, drag, and layout animations, all rendered as per-widget GTK4 CSS. `@gtkx/css` was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
 
@@ -79,15 +79,15 @@ The CLI is driven by `gtkx.config.ts`, and 1.0 fills out the toolchain around it
 
 ## Breaking changes
 
-Because almost every import path changed, widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/runtime/<namespace>`, and apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components` and `@gtkx/animated`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
+Because almost every import path changed, widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/ffi/<namespace>`, and apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components` and `@gtkx/animated`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
 
 ## Try the release candidate
 
 ```bash
-npm create gtkx@latest
+npm create gtkx@rc
 ```
 
-The initializer scaffolds a project pinned to the RC. You will need Linux with the GTK4, Adwaita, and GLib development libraries, and Node.js 24 or later. Existing projects should follow the migration reference in the release notes; the import-path and lifecycle changes are mechanical, and the CLI reports actionable errors when a system introspection package is missing.
+The RC is published under the `rc` dist-tag, so ask for it by name: `@latest` still resolves to the current stable release. The initializer scaffolds a project pinned to the RC. You will need Linux with the GTK4, Adwaita, and GLib development libraries, and Node.js 24 or later. Existing projects should follow the migration reference in the release notes; the import-path and lifecycle changes are mechanical, and the CLI reports actionable errors when a system introspection package is missing.
 
 ## The road to 1.0
 

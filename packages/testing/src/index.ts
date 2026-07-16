@@ -74,6 +74,7 @@ export type {
     WrapperComponent,
 } from "./types.js";
 export type {
+    DragOffset,
     DragOptions,
     DropContent,
     DropOptions,

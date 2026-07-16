@@ -8,6 +8,9 @@ import {
     GtkCheckButton,
     GtkDropTarget,
     GtkEntry,
+    GtkEventControllerKey,
+    GtkEventControllerMotion,
+    GtkGestureClick,
     GtkGestureDrag,
     GtkGestureLongPress,
     GtkGestureRotate,
@@ -486,7 +489,7 @@ describe("userEvent.longPress", () => {
 });
 
 describe("userEvent.drag", () => {
-    it("emits drag-begin, drag-update and drag-end in sequence", async () => {
+    it("emits drag-begin, one drag-update per step and drag-end in sequence", async () => {
         const events: string[] = [];
         const label = await renderGesturedLabel(
             "dragged",
@@ -505,7 +508,69 @@ describe("userEvent.drag", () => {
         );
         await userEvent.drag(label, 30, -15);
 
-        expect(events).toEqual(["begin", "update", "end"]);
+        expect(events).toEqual(["begin", "update", "update", "end"]);
+    });
+
+    it("emits a single drag-update when steps is 1", async () => {
+        const updates: [number, number][] = [];
+        const label = await renderGesturedLabel(
+            "dragged",
+            "Drag me",
+            <GtkGestureDrag
+                onDragUpdate={(offsetX, offsetY) => {
+                    updates.push([offsetX, offsetY]);
+                }}
+            />,
+        );
+        await userEvent.drag(label, 30, -15, { steps: 1 });
+
+        expect(updates).toEqual([[30, -15]]);
+    });
+
+    it("interpolates drag-update offsets across steps", async () => {
+        const updates: [number, number][] = [];
+        const label = await renderGesturedLabel(
+            "dragged",
+            "Drag me",
+            <GtkGestureDrag
+                onDragUpdate={(offsetX, offsetY) => {
+                    updates.push([offsetX, offsetY]);
+                }}
+            />,
+        );
+        await userEvent.drag(label, 40, -20, { steps: 4 });
+
+        expect(updates).toEqual([
+            [10, -5],
+            [20, -10],
+            [30, -15],
+            [40, -20],
+        ]);
+    });
+
+    it("emits explicit intermediate offsets before the final one", async () => {
+        const updates: [number, number][] = [];
+        const label = await renderGesturedLabel(
+            "dragged",
+            "Drag me",
+            <GtkGestureDrag
+                onDragUpdate={(offsetX, offsetY) => {
+                    updates.push([offsetX, offsetY]);
+                }}
+            />,
+        );
+        await userEvent.drag(label, 40, -20, {
+            offsets: [
+                { x: 5, y: 0 },
+                { x: 25, y: -10 },
+            ],
+        });
+
+        expect(updates).toEqual([
+            [5, 0],
+            [25, -10],
+            [40, -20],
+        ]);
     });
 
     it("reports a realistic start point so handlers can call getStartPoint()", async () => {
@@ -537,7 +602,115 @@ describe("userEvent.drag", () => {
         );
         await userEvent.drag(label, 40, -20);
 
-        expect(offsets[0]).toEqual([true, 40, -20]);
+        expect(offsets).toEqual([
+            [true, 20, -10],
+            [true, 40, -20],
+        ]);
+    });
+});
+
+describe("controller fan-out", () => {
+    it("delivers a click to every GestureClick controller alongside the button's own", async () => {
+        const handleClick = vi.fn();
+        const handlePressed = vi.fn();
+        const handleReleased = vi.fn();
+        await render(
+            <GtkButton
+                label="Fan out"
+                onClicked={handleClick}
+                controllers={<GtkGestureClick onPressed={handlePressed} onReleased={handleReleased} />}
+            />,
+        );
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Fan out" });
+        await userEvent.click(button);
+
+        expect(handleClick).toHaveBeenCalledTimes(1);
+        expect(handlePressed).toHaveBeenCalledTimes(1);
+        expect(handleReleased).toHaveBeenCalledTimes(1);
+    });
+
+    it("emits pressed at the center of the widget's allocation", async () => {
+        const handlePressed = vi.fn();
+        await render(<GtkButton label="Centered" controllers={<GtkGestureClick onPressed={handlePressed} />} />);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Centered" });
+        await userEvent.click(button);
+
+        const [, x, y] = handlePressed.mock.calls[0] ?? [];
+        expect(x).toBe(button.getWidth() / 2);
+        expect(y).toBe(button.getHeight() / 2);
+        expect(x).toBeGreaterThan(0);
+        expect(y).toBeGreaterThan(0);
+    });
+
+    it("delivers hover enter and leave to every motion controller", async () => {
+        const firstEnter = vi.fn();
+        const secondEnter = vi.fn();
+        const firstLeave = vi.fn();
+        const secondLeave = vi.fn();
+        const label = await renderGesturedLabel(
+            "hovered",
+            "Hover me",
+            <>
+                <GtkEventControllerMotion onEnter={firstEnter} onLeave={firstLeave} />
+                <GtkEventControllerMotion onEnter={secondEnter} onLeave={secondLeave} />
+            </>,
+        );
+        await userEvent.hover(label);
+        await userEvent.unhover(label);
+
+        expect(firstEnter).toHaveBeenCalledTimes(1);
+        expect(secondEnter).toHaveBeenCalledTimes(1);
+        expect(firstLeave).toHaveBeenCalledTimes(1);
+        expect(secondLeave).toHaveBeenCalledTimes(1);
+    });
+
+    it("delivers a drag sequence to every drag gesture controller", async () => {
+        const firstEvents: string[] = [];
+        const secondEvents: string[] = [];
+        const record = (events: string[]) => ({
+            onDragBegin: () => {
+                events.push("begin");
+            },
+            onDragUpdate: () => {
+                events.push("update");
+            },
+            onDragEnd: () => {
+                events.push("end");
+            },
+        });
+        const label = await renderGesturedLabel(
+            "multi-dragged",
+            "Drag me",
+            <>
+                <GtkGestureDrag {...record(firstEvents)} />
+                <GtkGestureDrag {...record(secondEvents)} />
+            </>,
+        );
+        await userEvent.drag(label, 30, -15);
+
+        expect(firstEvents).toEqual(["begin", "update", "update", "end"]);
+        expect(secondEvents).toEqual(["begin", "update", "update", "end"]);
+    });
+
+    it("delivers key events to every key controller", async () => {
+        const firstPressed = vi.fn();
+        const secondPressed = vi.fn();
+        await render(
+            <GtkEntry
+                name="multi-key"
+                controllers={
+                    <>
+                        <GtkEventControllerKey onKeyPressed={firstPressed} />
+                        <GtkEventControllerKey onKeyPressed={secondPressed} />
+                    </>
+                }
+            />,
+        );
+        const entry = await screen.findByName("multi-key");
+        await userEvent.keyboard(entry, "{Enter}");
+
+        expect(firstPressed).toHaveBeenCalledTimes(1);
+        expect(secondPressed).toHaveBeenCalledTimes(1);
     });
 });
 

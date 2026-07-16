@@ -1,0 +1,65 @@
+import "../motion-env.js";
+import { domMax } from "framer-motion";
+import { type MotionNodeOptions, setFeatureDefinitions } from "motion-dom";
+import { GtkWidgetProjectionNode } from "../projection/node.js";
+import { GtkFocusFeature } from "./focus.js";
+import { GtkInViewFeature } from "./in-view.js";
+
+const hasAny =
+    (...keys: string[]): ((props: MotionNodeOptions) => boolean) =>
+    (props) =>
+        keys.some((key) => Boolean(props[key as keyof MotionNodeOptions]));
+
+const bundled = <T>(feature: T | undefined, slot: string): T => {
+    if (feature === undefined) throw new Error(`framer-motion's domMax bundle is missing the ${slot} feature`);
+    return feature;
+};
+
+export const registerGtkFeatures = (): void => {
+    setFeatureDefinitions({
+        animation: {
+            isEnabled: hasAny(
+                "animate",
+                "variants",
+                "whileHover",
+                "whileTap",
+                "exit",
+                "whileInView",
+                "whileFocus",
+                "whileDrag",
+            ),
+            Feature: bundled(domMax.animation?.Feature, "animation"),
+        },
+        exit: { isEnabled: hasAny("exit"), Feature: bundled(domMax.exit?.Feature, "exit") },
+        hover: {
+            isEnabled: hasAny("whileHover", "onHoverStart", "onHoverEnd"),
+            Feature: bundled(domMax.hover?.Feature, "hover"),
+        },
+        tap: {
+            isEnabled: hasAny("whileTap", "onTap", "onTapStart", "onTapCancel"),
+            Feature: bundled(domMax.tap?.Feature, "tap"),
+        },
+        focus: { isEnabled: hasAny("whileFocus"), Feature: GtkFocusFeature },
+        inView: {
+            isEnabled: hasAny("whileInView", "onViewportEnter", "onViewportLeave"),
+            Feature: GtkInViewFeature,
+        },
+        pan: {
+            isEnabled: hasAny("onPan", "onPanStart", "onPanSessionStart", "onPanEnd"),
+            Feature: bundled(domMax.pan?.Feature, "pan"),
+        },
+        drag: {
+            isEnabled: hasAny("drag", "dragControls"),
+            Feature: bundled(domMax.drag?.Feature, "drag"),
+            ProjectionNode: GtkWidgetProjectionNode,
+            MeasureLayout: bundled(domMax.drag?.MeasureLayout, "drag MeasureLayout"),
+        },
+        layout: {
+            isEnabled: hasAny("layout", "layoutId"),
+            ProjectionNode: GtkWidgetProjectionNode,
+            MeasureLayout: bundled(domMax.layout?.MeasureLayout, "layout MeasureLayout"),
+        },
+    });
+};
+
+registerGtkFeatures();

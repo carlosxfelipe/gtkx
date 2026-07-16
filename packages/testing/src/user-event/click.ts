@@ -1,22 +1,35 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { getOrCreateController, queryController } from "./controller.js";
+import { getOrCreateControllers, queryController } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
-export const emitPress = (controller: Gtk.GestureClick, nPress: number): void => {
-    controller.emit("pressed", nPress, 0, 0);
+const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
+    const width = widget.getWidth();
+    const height = widget.getHeight();
+    if (width > 0 && height > 0) return { x: width / 2, y: height / 2 };
+    return { x: 0, y: 0 };
 };
 
-export const emitRelease = (controller: Gtk.GestureClick, nPress: number): void => {
-    controller.emit("released", nPress, 0, 0);
+export const emitPress = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
+    const { x, y } = pressPointOf(widget);
+    for (const controller of controllers) {
+        controller.emit("pressed", nPress, x, y);
+    }
+};
+
+export const emitRelease = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
+    const { x, y } = pressPointOf(widget);
+    for (const controller of controllers) {
+        controller.emit("released", nPress, x, y);
+    }
 };
 
 const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: number): Promise<void> =>
     wrapEvent(widget, () => {
-        const controller = getOrCreateController(target, Gtk.GestureClick);
+        const controllers = getOrCreateControllers(target, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
-            emitPress(controller, i);
-            emitRelease(controller, i);
+            emitPress(target, controllers, i);
+            emitRelease(target, controllers, i);
         }
     });
 

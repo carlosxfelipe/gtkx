@@ -1,12 +1,12 @@
 ---
-description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine, and animate them declaratively with @gtkx/animated on top of Adwaita's animation primitives."
+description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine, and animate them declaratively with @gtkx/animated, which runs framer-motion against real GTK4 widgets."
 ---
 
 # CSS and Animations
 
 GTK4 styles widgets with a real CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
 
-Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is a Framer-Motion-style animation layer: you declare `initial`, `animate`, and `exit` targets on a widget, and Adwaita's animation engine drives the frames.
+Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is framer-motion for GTK4: you declare `initial`, `animate`, and `exit` targets on a widget (plus gestures, drag, and layout animations), and framer-motion's engine drives the frames, rendered as GTK4 CSS.
 
 ## The `css` tagged template
 
@@ -110,15 +110,25 @@ Importing a plain `.css` file works too: the GTKX CLI compiles the import into a
 
 ## Animating widgets with `animated`
 
-`@gtkx/animated` wraps any widget so that it accepts animation props. Access an intrinsic element through the `animated` proxy (`animated.GtkLabel`, `animated.GtkButton`, any element whose instance is a `Gtk.Widget`), or wrap a custom component with `animated(MyComponent)`. The wrapped component takes everything the original takes, plus:
+`@gtkx/animated` wraps any widget so that it accepts framer-motion's animation props. Access an intrinsic element through the `animated` proxy (`animated.GtkLabel`, `animated.GtkButton`, any element whose instance is a `Gtk.Widget`), or wrap a custom component with `animated(MyComponent)`. The wrapped component takes everything the original takes, plus:
 
 - `initial`: the state the widget starts from before its enter animation, or `false` to skip the enter animation and apply `animate` directly.
 - `animate`: the state the widget animates to while present. Changing it starts a new animation, but only when the new target is not shallow-equal to the previous one.
 - `exit`: the state the widget animates to while leaving, inside an `AnimatePresence`.
 - `transition`: timing and physics, described below.
+- `variants` with variant labels, and a `style` record whose values may be static or `MotionValue`s from hooks like `useMotionValue` and `useTransform`.
+- The gesture targets (`whileHover`, `whileTap`, `whileFocus`, `whileInView`), `drag`, and the layout props, each covered in its own section below.
 - `onAnimationStart` and `onAnimationComplete` callbacks.
 
-A target is an `AnimationTarget`: `opacity`, `x` and `y` (pixel translation), `scale`, `scaleX`, `scaleY`, `rotate` (degrees), `skewX`, and `skewY`. Every field is optional. An `animate` or `exit` target may also embed a `transition` of its own, which replaces the component's `transition` for the animation toward that target: an exit of `{ opacity: 0, transition: { duration: 0 } }` makes the leave instantaneous while the enter keeps its fade.
+A target may hold any value the GTK CSS bridge can render:
+
+- `opacity`.
+- Transforms: `x` and `y` (pixel translation), `scale`, `scaleX`, `scaleY`, `rotate` (degrees), `skew`, `skewX`, `skewY`, with `originX` and `originY` rendered as `transform-origin`.
+- Colors: `color`, `backgroundColor`, `borderColor`, `caretColor`, `outlineColor`.
+- Pixel values: `borderRadius` (and the per-corner radii), `borderWidth` (and the per-side widths), `minWidth`, `minHeight`, `margin` (and the per-side margins), `padding` (and the per-side paddings), `fontSize`, `letterSpacing`.
+- Passthrough strings: `filter` and `boxShadow`.
+
+A value can be a single target or a keyframe array. Anything outside that set is dropped with a one-time development warning, because GTK4 CSS cannot express it: there is no `width`, `height`, `top`, or `left`, so animate `minWidth`, `minHeight`, or a transform instead. An `animate` or `exit` target may also embed a `transition` of its own, which replaces the component's `transition` for the animation toward that target: an exit of `{ opacity: 0, transition: { duration: 0 } }` makes the leave instantaneous while the enter keeps its fade.
 
 ```tsx
 import { animated } from "@gtkx/animated";
@@ -131,29 +141,43 @@ import { animated } from "@gtkx/animated";
 />;
 ```
 
-This is Adwaita, not a JavaScript timer loop. A tween builds an `Adw.TimedAnimation` and a spring builds an `Adw.SpringAnimation`, each driving an `Adw.CallbackAnimationTarget` that interpolates between the from and to targets and writes the result as `opacity` and `transform` CSS. Each animated widget gets a unique `gtkx-anim-<id>` class whose rule lives in a shared animation provider registered one priority above the `css()` provider, so animated values always win over your static styles, and the class and its rule are removed on unmount.
+The engine is framer-motion's own, running its frame loop in JavaScript; `@gtkx/animated` renders each frame's values as GTK4 CSS instead of DOM styles. Each animated widget gets a unique `gtkx-anim-<id>` class whose rule lives in a shared animation provider registered one priority above the `css()` provider, so animated values always win over your static styles, and the class and its rule are removed on unmount.
 
 ## Tweens and springs
 
-`transition.type` selects between the two, and defaults to `"tween"`:
+`transition` takes framer-motion's options, and `transition.type` selects the generator. Without an explicit transition, each value gets motion's default: transforms run on springs, everything else on a 0.3 second tween.
 
-- **Tween**: `duration` in seconds (default 0.3), `ease` as one of many named curves (`"linear"`, `"easeOut"` is the default, `"easeInOutCubic"`, `"backOut"`, and so on, each resolving to an `Adw.Easing` value, which you can also pass directly), `delay` in seconds, `reverse`, `repeat` (additional repetitions, a non-finite value repeats forever), and `repeatType` (`"loop"`, `"reverse"`, or `"mirror"`).
-- **Spring**: physics parameters `stiffness`, `damping`, and `mass` (defaults 100, 10, 1), or a `dampingRatio`, or the perceptual pair `visualDuration` and `bounce` from which the physics are derived, plus `velocity`, `epsilon`, and `clamp`, which prevents overshoot.
+- **Tween**: `duration` in seconds, `ease` as a named easing (`"linear"`, `"easeIn"`, `"easeOut"`, `"easeInOut"`, `"circIn"`, `"circOut"`, `"circInOut"`, `"backIn"`, `"backOut"`, `"backInOut"`, `"anticipate"`), a cubic-bezier array such as `[0.65, 0, 0.35, 1]`, or an easing function. A tween with a `duration` and no `ease` runs on `"easeInOut"`.
+- **Spring**: `type: "spring"` with the physics parameters `stiffness`, `damping`, and `mass` (defaults 100, 10, 1) plus a starting `velocity`, or the perceptual pair `visualDuration` and `bounce` from which the physics are derived. `restDelta` and `restSpeed` control when the spring counts as settled.
 
-Both kinds honor the system's "enable animations" accessibility setting by default; pass `followEnableAnimations: false` to opt an animation out when its motion is essential.
+Both kinds accept `delay` in seconds, `repeat` (additional repetitions, `Infinity` repeats forever), `repeatType` (`"loop"`, `"reverse"`, or `"mirror"`, which mirrors the easing on the way back), and `repeatDelay`. Variants orchestrate children with `staggerChildren`, `delayChildren`, and `when`, exactly as framer-motion does on the web.
 
 ```tsx
 <animated.GtkLabel
     label="Bouncy"
     initial={{ x: -100 }}
     animate={{ x: 0 }}
-    transition={{ type: "spring", damping: 1, stiffness: 200, mass: 1 }}
+    transition={{ type: "spring", damping: 6, stiffness: 200, mass: 1 }}
 />;
 ```
 
+If you are migrating from an earlier `@gtkx/animated` release, its transition options that framer-motion does not accept map as follows:
+
+| Removed option | Use instead |
+| --- | --- |
+| `dampingRatio` | `bounce`; a damping ratio of `d` corresponds to a bounce of about `1 - d` |
+| `epsilon` | `restDelta` and `restSpeed` |
+| `clamp` | No equivalent; use a tween when overshoot is unacceptable |
+| `followEnableAnimations` | Nothing to pass; the system setting applies globally (see the tip below) |
+| `Adw.Easing` values and the Adwaita easing names (`easeInQuad`, `easeOutElastic`, and the rest) | Named easings, cubic-bezier arrays, or easing functions |
+
+::: tip Reduced motion is handled globally
+`@gtkx/animated` watches two GTK settings. When `gtk-enable-animations` is off, every animation completes instantly, package-wide. When `gtk-interface-reduced-motion` asks for reduced motion, it is exposed to the engine as `prefers-reduced-motion`, and framer-motion's reduced-motion handling applies. Override that per tree with `MotionConfig`: wrap a subtree in `<MotionConfig reducedMotion="always">` (or `"never"`) to force or opt out of reduced-motion handling where motion is essential.
+:::
+
 ## Exit animations with `AnimatePresence`
 
-React unmounts a widget the instant it leaves the tree, which leaves no time for a leave animation. `AnimatePresence` fixes that the same way Framer Motion does: it keeps removed children mounted until their exit animations complete. Each direct child needs a stable, unique `key`; a child without one is dropped from the rendered output, with a one-time development warning.
+React unmounts a widget the instant it leaves the tree, which leaves no time for a leave animation. `AnimatePresence` fixes that: it is framer-motion's own component, retyped to the options that work against GTK widgets, and it keeps removed children mounted until their exit animations complete. Give each direct child a stable, unique `key` so presence is tracked across renders.
 
 ```tsx
 import { AnimatePresence, animated } from "@gtkx/animated";
@@ -175,13 +199,105 @@ import { GtkBox } from "@gtkx/jsx/gtk";
 </GtkBox>;
 ```
 
-`AnimatePresence` takes three props besides `children`. `initial` (default `true`) controls whether children already present on the first render run their enter animations; pass `false` to mount children directly in their `animate` state and animate only subsequent changes. `mode` chooses how entering and exiting children overlap: `"sync"` (the default) runs both at once, while `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. `onExitComplete` fires once after all exiting children have finished, useful for sequencing work behind a departure.
+`AnimatePresence` takes five props besides `children`. `initial` (default `true`) controls whether children already present on the first render run their enter animations; pass `false` to mount children directly in their `animate` state and animate only subsequent changes. `mode` chooses how entering and exiting children overlap: `"sync"` (the default) runs both at once, while `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot (the web-only `"popLayout"` mode is not supported). `onExitComplete` fires once after all exiting children have finished, useful for sequencing work behind a departure. `custom` forwards a value to exiting children as their `custom` prop, so dynamic variants resolve against fresh data even mid-exit, and `propagate` lets an exit cascade through nested `AnimatePresence` components.
 
-A leaving child whose exit is instantaneous is not held at all: when it has no `exit` values, its exit transition has a zero duration, or animations are disabled system-wide, `AnimatePresence` removes it in the same update that removes it from your JSX, so it never lingers next to its replacement content.
+A leaving child whose exit is instantaneous is not held for a fade: when it has no `exit` values, its exit transition has a zero duration, or animations are disabled system-wide, `AnimatePresence` removes it promptly, within a frame of the update that removed it from your JSX, so it never appears on screen next to its replacement content.
 
 ::: tip
 In tests, `render` from `@gtkx/testing` disables animations by default so assertions see final states immediately. Pass `render(element, { animations: true })` when the animation itself is what you are testing. See [Testing](/guide/testing) for the full model.
 :::
+
+## Gestures
+
+The gesture targets apply while an interaction is active and reverse when it ends: `whileHover`, `whileTap`, `whileFocus`, and `whileInView`. Each has matching callbacks: `onHoverStart` and `onHoverEnd`; `onTapStart`, `onTap`, and `onTapCancel`; `onViewportEnter` and `onViewportLeave`.
+
+```tsx
+<animated.GtkButton
+    label="Press"
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.9 }}
+    onTap={() => console.log("tapped")}
+/>;
+```
+
+The input is native: hover comes from a `Gtk.EventControllerMotion`, presses from a `Gtk.GestureClick` and `Gtk.GestureDrag` pair, and focus from a `Gtk.EventControllerFocus`, all attached to the widget and feeding framer-motion's own gesture logic. `whileFocus` activates only while the toplevel shows focus visibly, so it highlights keyboard navigation rather than every click, matching `:focus-visible` semantics on the web. Keyboard activation does not trigger `whileTap`: pressing a focused button with <kbd>Enter</kbd> or <kbd>Space</kbd> fires the button's own `onClicked` but not the tap gesture.
+
+`whileInView` activates while the widget is visible inside its scrollable viewport, which by default is the nearest ancestor `GtkScrolledWindow` (or the toplevel when there is none). Tune it with the `viewport` prop: `root` points at a different scroll container through a widget ref, `margin` grows or shrinks the viewport box (pixel values only), `amount` is `"some"` (the default), `"all"`, or a ratio between 0 and 1, and `once` keeps the state active after the first entry.
+
+```tsx
+<animated.GtkImage
+    iconName="starred-symbolic"
+    initial={{ opacity: 0, y: 24 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ amount: "all", once: true }}
+/>;
+```
+
+## Drag
+
+`drag` makes a widget follow the pointer: `drag` alone allows both axes, `drag="x"` or `drag="y"` locks one. `dragConstraints` bounds the motion, either as pixel offsets from the layout position (`{ left: 0, right: 240 }`) or as a ref to another widget whose bounds become the boundary. `dragElastic` (0 to 1) sets how far the widget can be pulled past its constraints, `dragMomentum` (default `true`) carries the release velocity into an inertia animation, and `dragSnapToOrigin` animates it back to where it started. `onDragStart`, `onDrag`, and `onDragEnd` report progress.
+
+```tsx
+const areaRef = useRef<Gtk.Widget | null>(null);
+
+<GtkBox ref={areaRef} heightRequest={200}>
+    <animated.GtkBox drag dragConstraints={areaRef} dragElastic={0.2}>
+        <GtkLabel label="Drag me" />
+    </animated.GtkBox>
+</GtkBox>;
+```
+
+The gesture is a real `Gtk.GestureDrag` in the capture phase. It claims the GTK event sequence only after the pointer has moved 3 pixels, so plain clicks fall through to the children: a draggable card with a button inside stays clickable.
+
+To start a drag from a handle rather than the widget itself, `useDragControls` returns a controls object you pass as `dragControls`, and `pointerEventFromController` converts a live GTK gesture into the pointer event that `start` expects:
+
+```tsx
+import { animated, pointerEventFromController, useDragControls } from "@gtkx/animated";
+import { GtkBox, GtkGestureDrag, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
+
+const Card = () => {
+    const controls = useDragControls();
+    return (
+        <GtkBox>
+            <GtkImage
+                iconName="list-drag-handle-symbolic"
+                controllers={
+                    <GtkGestureDrag
+                        onDragBegin={(_x, _y, gesture) => controls.start(pointerEventFromController(gesture))}
+                    />
+                }
+            />
+            <animated.GtkBox drag="y" dragControls={controls} dragListener={false}>
+                <GtkLabel label="Dragged by the handle" />
+            </animated.GtkBox>
+        </GtkBox>
+    );
+};
+```
+
+`dragListener={false}` keeps the widget's own pointer input from starting drags, so only the handle does.
+
+## Layout animations
+
+The `layout` prop animates a widget between layouts: when a re-render moves or resizes it, the widget is measured before and after (with `computeBounds` against the toplevel), and the difference plays as a CSS transform animation instead of a jump. `onLayoutAnimationStart` and `onLayoutAnimationComplete` report the lifecycle.
+
+```tsx
+<animated.GtkBox layout>
+    <GtkLabel label="I glide when the layout shifts" />
+</animated.GtkBox>;
+```
+
+`layoutId` connects widgets across renders: when a widget with a `layoutId` unmounts and another with the same id mounts, the new one animates from the old one's bounds, the shared-element transition. The two widgets must carry distinct `key` props so React actually swaps them:
+
+```tsx
+{expanded ? (
+    <animated.GtkBox key="hero" layoutId="cover" heightRequest={240} />
+) : (
+    <animated.GtkBox key="thumb" layoutId="cover" heightRequest={80} />
+)}
+```
+
+`LayoutGroup` groups animated widgets so that a layout change in one remeasures the others, and its `id` prop namespaces `layoutId`s between independent instances of the same component. When animated widgets live inside a `GtkScrolledWindow` that is itself animated, set `layoutScroll` on the animated scroll container so measurements account for its scroll offsets. Shared `layoutId` transitions work within one window; a `layoutId` cannot animate across windows.
 
 ## Dark style and theming
 

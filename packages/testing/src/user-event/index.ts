@@ -9,7 +9,7 @@ import { createInitialState } from "./state.js";
 import { clear, copy, cut, paste, type } from "./text.js";
 
 export type { ScrollDelta } from "./adjustment.js";
-export type { DragOptions, DropContent, DropOptions } from "./gesture.js";
+export type { DragOffset, DragOptions, DropContent, DropOptions } from "./gesture.js";
 export type { TabOptions } from "./keyboard.js";
 export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";

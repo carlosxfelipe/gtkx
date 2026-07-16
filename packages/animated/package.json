@@ -1,12 +1,13 @@
 {
     "name": "@gtkx/animated",
     "version": "1.0.0-rc.1",
-    "description": "Adwaita-powered animation for GTKX: the animated factory and AnimatePresence component with tween and spring transitions",
+    "description": "Framer Motion-powered animation for GTKX: the animated factory, AnimatePresence, gestures, drag, and layout animations rendered as GTK CSS",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
-        "adwaita",
+        "framer-motion",
+        "motion",
         "animation",
         "react",
         "linux",
@@ -32,7 +33,12 @@
             "default": "./dist/index.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./src/motion-env.ts",
+        "./dist/motion-env.js",
+        "./src/features/register.ts",
+        "./dist/features/register.js"
+    ],
     "files": [
         "dist",
         "src"
@@ -48,11 +54,15 @@
     "dependencies": {
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/utils": "workspace:*",
+        "framer-motion": "^12.42.2",
+        "motion-dom": "^12.42.2"
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
-        "@gtkx/vitest": "workspace:*"
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "react": "catalog:"
     },
     "peerDependencies": {
         "react": "^19"

@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
-import { dispatchOnOrCreateController } from "./dispatch.js";
+import { getOrCreateControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 import type { UserEventState } from "./state.js";
 
@@ -183,13 +183,15 @@ const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number
 
 const applyKeyAction = async (
     widget: Gtk.Widget,
-    controller: Gtk.EventControllerKey,
+    controllers: Gtk.EventControllerKey[],
     state: UserEventState,
     action: KeyAction,
 ): Promise<void> => {
     updateModifierState(state, action);
     const signalName = action.press ? "key-pressed" : "key-released";
-    controller.emit(signalName, action.keyval, 0, state.modifierState);
+    for (const controller of controllers) {
+        controller.emit(signalName, action.keyval, 0, state.modifierState);
+    }
     if (action.press) {
         const handled = dispatchShortcuts(widget, action.keyval, state.modifierState);
         if (!handled && action.keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
@@ -205,8 +207,9 @@ const applyKeyAction = async (
  * @param input Keyboard input string to replay.
  */
 export const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
-    dispatchOnOrCreateController(widget, Gtk.EventControllerKey, async (controller) => {
+    wrapEvent(widget, async () => {
+        const controllers = getOrCreateControllers(widget, Gtk.EventControllerKey);
         for (const action of parseKeyboardInput(input)) {
-            await applyKeyAction(widget, controller, state, action);
+            await applyKeyAction(widget, controllers, state, action);
         }
     });

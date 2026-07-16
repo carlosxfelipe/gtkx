@@ -1,3 +1,10 @@
 {
-    "intentionallyNotExported": ["Animated"]
+    "intentionallyNotExported": ["Animated"],
+    "externalSymbolLinkMappings": {
+        "motion-dom": {
+            "PanInfo": "https://motion.dev/docs/react-gestures#pan",
+            "TapInfo": "https://motion.dev/docs/react-gestures#tap",
+            "EventInfo": "https://motion.dev/docs/react-gestures"
+        }
+    }
 }

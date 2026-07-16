@@ -62,7 +62,7 @@ describe("drawingAreaDemo gestures", () => {
         const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
         await fireEvent(scribble, "resize", 100, 100);
         const queueDraw = vi.spyOn(scribble, "queueDraw");
-        await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10 });
+        await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10, steps: 1 });
         expect(queueDraw).toHaveBeenCalledTimes(3);
     });
 });

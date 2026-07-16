@@ -1,5 +1,6 @@
 {
     "extends": "../../tsconfig.test.json",
+    "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx", "${configDir}/src/global.d.ts"],
     "references": [
         {
             "path": "./tsconfig.lib.json"

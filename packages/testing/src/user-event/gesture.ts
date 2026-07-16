@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getController } from "./controller.js";
-import { dispatchOnController, dispatchOnOrCreateController } from "./dispatch.js";
+import { getAllControllers } from "./controller.js";
+import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** The value delivered to a drop target: a primitive (converted to a GObject.Value) or an explicit GObject.Value. */
@@ -13,10 +13,18 @@ export type DropOptions = {
     y?: number;
 };
 
-/** Options for a drag gesture: the starting point of the drag. */
+/** A drag offset relative to the drag start point. */
+export type DragOffset = {
+    x: number;
+    y: number;
+};
+
+/** Options for a drag gesture: the starting point, the number of interpolated drag updates, or explicit intermediate offsets emitted before the final one. */
 export type DragOptions = {
     startX?: number;
     startY?: number;
+    steps?: number;
+    offsets?: DragOffset[];
 };
 
 const buildDropValue = (content: DropContent): GObject.Value => {
@@ -32,11 +40,11 @@ const buildDropValue = (content: DropContent): GObject.Value => {
 
 /** Simulates the pointer entering the widget by dispatching a motion controller enter event. */
 export const hover = (widget: Gtk.Widget): Promise<void> =>
-    dispatchOnOrCreateController(widget, Gtk.EventControllerMotion, (controller) => controller.emit("enter", 0, 0));
+    dispatchOnOrCreateControllers(widget, Gtk.EventControllerMotion, (controller) => controller.emit("enter", 0, 0));
 
 /** Simulates the pointer leaving the widget by dispatching a motion controller leave event. */
 export const unhover = (widget: Gtk.Widget): Promise<void> =>
-    dispatchOnOrCreateController(widget, Gtk.EventControllerMotion, (controller) => controller.emit("leave"));
+    dispatchOnOrCreateControllers(widget, Gtk.EventControllerMotion, (controller) => controller.emit("leave"));
 
 /**
  * Simulates a two-finger rotate gesture on the widget.
@@ -45,7 +53,7 @@ export const unhover = (widget: Gtk.Widget): Promise<void> =>
  * @param deltaAngle Change in angle since the gesture began (defaults to `angle`).
  */
 export const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> =>
-    dispatchOnController(widget, Gtk.GestureRotate, (controller) =>
+    dispatchOnControllers(widget, Gtk.GestureRotate, (controller) =>
         controller.emit("angle-changed", angle, deltaAngle),
     );
 
@@ -55,7 +63,7 @@ export const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = a
  * @param scale Scale factor to apply.
  */
 export const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
-    dispatchOnController(widget, Gtk.GestureZoom, (controller) => controller.emit("scale-changed", scale));
+    dispatchOnControllers(widget, Gtk.GestureZoom, (controller) => controller.emit("scale-changed", scale));
 
 /**
  * Simulates a swipe gesture on the widget with the given velocity.
@@ -64,7 +72,7 @@ export const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
  * @param velocityY Vertical velocity of the swipe.
  */
 export const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> =>
-    dispatchOnController(widget, Gtk.GestureSwipe, (controller) => controller.emit("swipe", velocityX, velocityY));
+    dispatchOnControllers(widget, Gtk.GestureSwipe, (controller) => controller.emit("swipe", velocityX, velocityY));
 
 /**
  * Simulates a long press on the widget at the given coordinates.
@@ -73,48 +81,69 @@ export const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number):
  * @param y Vertical press position.
  */
 export const longPress = (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> =>
-    dispatchOnController(widget, Gtk.GestureLongPress, (controller) => controller.emit("pressed", x, y));
+    dispatchOnControllers(widget, Gtk.GestureLongPress, (controller) => controller.emit("pressed", x, y));
 
 type DragInstancePatch = {
     getStartPoint?: Gtk.GestureDrag["getStartPoint"] | undefined;
     getOffset?: Gtk.GestureDrag["getOffset"] | undefined;
 };
 
-const withGestureDragState = <T>(
-    controller: Gtk.GestureDrag,
-    startX: number,
-    startY: number,
-    runWithOffset: (setOffset: (dx: number, dy: number) => void) => T,
-): T => {
+const patchDragState = (controller: Gtk.GestureDrag, start: DragOffset, offset: () => DragOffset): (() => void) => {
     const instance: DragInstancePatch = controller;
     const ownsStartPoint = Object.hasOwn(instance, "getStartPoint");
     const ownsOffset = Object.hasOwn(instance, "getOffset");
     const previousStartPoint = instance.getStartPoint;
     const previousOffset = instance.getOffset;
-    let offsetX = 0;
-    let offsetY = 0;
-    instance.getStartPoint = () => [true, startX, startY];
-    instance.getOffset = () => [true, offsetX, offsetY];
-    const setOffset = (dx: number, dy: number): void => {
-        offsetX = dx;
-        offsetY = dy;
+    instance.getStartPoint = () => [true, start.x, start.y];
+    instance.getOffset = () => {
+        const current = offset();
+        return [true, current.x, current.y];
     };
-    try {
-        return runWithOffset(setOffset);
-    } finally {
+    return () => {
         if (ownsStartPoint) instance.getStartPoint = previousStartPoint;
         else delete instance.getStartPoint;
         if (ownsOffset) instance.getOffset = previousOffset;
         else delete instance.getOffset;
+    };
+};
+
+const runDragSequence = (controllers: Gtk.GestureDrag[], start: DragOffset, updates: DragOffset[]): void => {
+    let current: DragOffset = { x: 0, y: 0 };
+    const restores = controllers.map((controller) => patchDragState(controller, start, () => current));
+    try {
+        for (const controller of controllers) {
+            controller.emit("drag-begin", start.x, start.y);
+        }
+        for (const update of updates) {
+            current = update;
+            for (const controller of controllers) {
+                controller.emit("drag-update", update.x, update.y);
+            }
+        }
+        for (const controller of controllers) {
+            controller.emit("drag-end", current.x, current.y);
+        }
+    } finally {
+        for (const restore of restores) restore();
     }
 };
 
+const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragOffset[] => {
+    if (options.offsets) return [...options.offsets, { x: dx, y: dy }];
+    const steps = Math.max(1, Math.floor(options.steps ?? 2));
+    const updates: DragOffset[] = [];
+    for (let i = 1; i <= steps; i++) {
+        updates.push({ x: (dx * i) / steps, y: (dy * i) / steps });
+    }
+    return updates;
+};
+
 /**
- * Simulates dragging the widget by the given offset via its drag gesture controller.
+ * Simulates dragging the widget by the given offset via its drag gesture controllers, emitting one drag update per interpolated step (two by default) before ending the drag.
  * @param widget Widget to drag.
  * @param dx Horizontal drag offset.
  * @param dy Vertical drag offset.
- * @param options Starting point of the drag.
+ * @param options Starting point, step count, or explicit intermediate offsets of the drag.
  */
 export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     if (widget instanceof Gtk.Range) {
@@ -123,22 +152,18 @@ export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: 
                 "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
         );
     }
-    const startX = options.startX ?? 0;
-    const startY = options.startY ?? 0;
+    const start = { x: options.startX ?? 0, y: options.startY ?? 0 };
+    const updates = resolveDragUpdates(dx, dy, options);
     await wrapEvent(widget, () => {
-        const controller = getController(widget, Gtk.GestureDrag);
-        withGestureDragState(controller, startX, startY, (setOffset) => {
-            controller.emit("drag-begin", startX, startY);
-            setOffset(dx, dy);
-            controller.emit("drag-update", dx, dy);
-            controller.emit("drag-end", dx, dy);
-        });
+        runDragSequence(getAllControllers(widget, Gtk.GestureDrag), start, updates);
     });
 };
 
 const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): void => {
-    const dropTarget = getController(target, Gtk.DropTarget);
-    dropTarget.emit("drop", buildDropValue(content), options.x ?? 0, options.y ?? 0);
+    const dropTargets = getAllControllers(target, Gtk.DropTarget);
+    for (const dropTarget of dropTargets) {
+        dropTarget.emit("drop", buildDropValue(content), options.x ?? 0, options.y ?? 0);
+    }
 };
 
 /**
@@ -166,7 +191,7 @@ export const dragAndDrop = async (
     options: DropOptions = {},
 ): Promise<void> => {
     await wrapEvent(source, () => {
-        getController(source, Gtk.DragSource);
+        getAllControllers(source, Gtk.DragSource);
     });
     await wrapEvent(target, () => {
         emitDrop(target, content, options);

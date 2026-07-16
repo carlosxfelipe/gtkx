@@ -163,7 +163,7 @@ describe("animated (5)", () => {
         });
 
         it("respects spring transition parameters", async () => {
-            await expectSpringXCompletes({ from: -100, to: 0, damping: 1, stiffness: 200, timeout: 2000 });
+            await expectSpringXCompletes({ from: -100, to: 0, damping: 6, stiffness: 200, timeout: 3000 });
         });
     });
 });
@@ -370,7 +370,7 @@ describe("animated (11)", () => {
 describe("animated (12)", () => {
     describe("state-driven spring animation (2)", () => {
         it("animates spring with low damping for bouncy effect", async () => {
-            await expectSpringXCompletes({ from: 0, to: 100, damping: 0.5, stiffness: 100, timeout: 3000 });
+            await expectSpringXCompletes({ from: 0, to: 100, damping: 4, stiffness: 100, timeout: 3000 });
         });
     });
 

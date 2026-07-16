@@ -109,7 +109,7 @@ This file wires up the types for things that aren't plain modules: asset imports
 /// <reference path="../node_modules/.gtkx/env.d.ts" />
 ```
 
-The first reference pulls in `vite/client` plus type declarations for every asset kind you can import (`*.png`, `*.svg`, `*.css?url`, and so on), each typed as a resource module. The second points at a **generated** file: codegen writes `node_modules/.gtkx/env.d.ts` with a typed module declaration for each `#data/*.gschema.xml` schema, so `import schema from "#data/com.gtkx.tutorial.gschema.xml"` is fully typed. That generated file doesn't exist until you've run the CLI once; the reference is harmless before then and lights up afterward.
+The first reference pulls in `vite/client` plus type declarations for every asset kind you can import (`*.png`, `*.svg`, `*.css?url`, and so on), each typed as a resource module. The second points at a **generated** file: codegen writes `node_modules/.gtkx/env.d.ts` with a typed module declaration for each `#data/*.gschema.xml` schema, so `import schema from "#data/com.gtkx.tutorial.gschema.xml"` is fully typed. The scaffolder seeds an empty version of that file so the reference always resolves, and `gtkx dev`, `gtkx build`, and `gtkx codegen` rewrite it with a declaration per schema.
 
 ## The dependencies
 
@@ -120,14 +120,15 @@ The counter starter installs four runtime dependencies:
 - **`@gtkx/runtime`** is the hand-written FFI runtime the generated bindings call into; it depends on and re-exports parts of `@gtkx/native`, the prebuilt addon.
 - **`react`** is plain React 19. GTKX is a custom reconciler, not a fork.
 
-The completed Tasks app adds two more runtime dependencies in the chapters that first need them:
+The completed Tasks app adds three more runtime dependencies in the chapters that first need them:
 
 - **`@gtkx/components`** provides high-level React components over the harder GTK4 APIs, notably the model-backed collection components `ListView`, `ColumnView`, `GridView`, and `DropDown`, plus a declarative `Menu` builder over `Gio.Menu`.
-- **`@gtkx/animated`** adds declarative enter/exit animations backed by Adwaita's animation engine.
+- **`@gtkx/navigation`** provides React Navigation-powered navigators (stack and split view) backed by Adwaita widgets. See [Navigation](/guide/navigation).
+- **`@gtkx/animated`** brings framer-motion to native widgets: declarative enter/exit animations, gestures, drag, and layout animations. See [CSS and Animations](/guide/css-and-animations).
 
 `@gtkx/cli` and `@gtkx/config` are dev-only: the CLI is the `gtkx` binary, and `@gtkx/config` provides `defineConfig`.
 
-As noted above, `@gtkx/gi` and `@gtkx/jsx` are not among the dependencies: codegen generates them into `node_modules/.gtkx`. The `"imports": { "#data/*": "./data/*" }` map resolves `#data/...` specifiers to your `data/` directory, which is also how the CLI discovers your GSettings schemas.
+The `"imports": { "#data/*": "./data/*" }` map resolves `#data/...` specifiers to your `data/` directory, which is also how the CLI discovers your GSettings schemas.
 
 ## The dev loop: the `gtkx` CLI
 
