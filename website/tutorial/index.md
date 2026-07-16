@@ -11,11 +11,11 @@ description: "Tour a complete GNOME Tasks app built with GTKX, where real GTK4 a
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwNavigationSplitView`, `GtkListBox`, and friends.
+The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwHeaderBar`, `GtkListBox`, and friends.
 
 ## What Tasks is
 
-The app centers on an adaptive `AdwNavigationSplitView`: a sidebar of smart views (All Tasks, Today, Important, Trash) plus user-created lists, next to a content pane that shows a boxed task list and swaps to a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
+The app centers on a split-view navigator from `@gtkx/navigation`, which drives an adaptive `Adw.NavigationSplitView`: a sidebar of smart views (All Tasks, Today, Important, Trash) plus user-created lists, next to a content pane that shows a boxed task list and pushes a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
 
 Here is the app root, the real `App` component from `app.tsx`, with the notification actions elided:
 
@@ -29,7 +29,7 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
-            actions={notificationActions}
+            actions={/* app.complete-task and app.open-task GSimpleActions, wired through the notify ref */}
         >
             <TasksWindow notify={notify} />
         </AdwApplication>
@@ -83,7 +83,7 @@ Each feature in Tasks demonstrates a distinct GTKX or GTK4 capability. As you re
 | Feature | What you see in the app | GTKX / GTK4 capability it teaches |
 |---|---|---|
 | **Local persistence** | Tasks and lists survive a restart | A `useTasks()` hook over a JSON store (`node:fs` reading and writing in the XDG data dir); lightweight UI state via `useSetting` + `GSettings` |
-| **Adaptive layout** | Sidebar and content sit side by side, then collapse to one column when the window narrows | `AdwNavigationSplitView` with a controlled `collapsed` prop, driven by an `AdwBreakpoint`'s `apply`/`unapply` signals |
+| **Adaptive layout** | Sidebar and content sit side by side, then collapse to one column when the window narrows | A `createSplitViewNavigator()` from `@gtkx/navigation` over `Adw.NavigationSplitView`, with a controlled `collapsed` prop driven by an `AdwBreakpoint`'s `apply`/`unapply` signals |
 | **Boxed lists** | Tasks in a rounded, card-style list | `GtkListBox` / `AdwActionRow` in the `boxed-list` style |
 | **Drag to reorder** | Drag a task row to a new position | `GtkDragSource` + `GtkDropTarget` mounted on a widget's `controllers` slot, closing the loop in React state |
 | **Filter and search** | An All / Open / Done segmented toggle, plus `Ctrl+F` text search | `AdwToggleGroup` + `AdwToggle`; `GtkSearchBar` + `GtkSearchEntry` |
@@ -118,4 +118,4 @@ You can read it straight through or jump to whichever feature you need. Every pa
 
 ## Next
 
-Continue to **The Application Shell** to see how the application, window, and adaptive split view fit together. To scaffold the project and get the edit, save, watch-it-update loop running first, see [Getting Started](/guide/getting-started).
+Continue to [The Application Shell](/tutorial/app-shell) to see how the application, window, and adaptive split view fit together. To scaffold the project and get the edit, save, watch-it-update loop running first, see [Getting Started](/guide/getting-started).

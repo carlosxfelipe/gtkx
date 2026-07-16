@@ -3,8 +3,8 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { useTickCallback } from "@gtkx/react";
 import { useRef } from "react";
+import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 

@@ -77,7 +77,7 @@ A few GTK4-isms to unpack for a React reader:
 Wiring both halves back to the same state (`search.mode` / `search.onModeChange`) is what makes it a controlled component, exactly like a controlled `<input>` in React. This is the general GTKX pattern for two-way binding any GObject property.
 
 ::: tip
-The setter prop and the notify handler are named mechanically from the GObject property `search-mode-enabled`: kebab-case becomes camelCase for the value prop (`searchModeEnabled`), and the notify handler is `onNotify` + PascalCase (`onNotifySearchModeEnabled`). Every property in GTKX follows this rule, so you can predict the names without looking them up.
+The names are mechanical: the GObject property `search-mode-enabled` becomes the value prop `searchModeEnabled` and the notify handler `onNotifySearchModeEnabled`, so you can predict them without looking them up. The [JSX prop model](/guide/configuration-and-codegen#the-jsx-prop-model) covers which properties get which half.
 :::
 
 `GtkSearchEntry` is the text field. Its `text` is controlled the same way (`text={search.query}`), and `onSearchChanged` fires on a debounced keystroke. The handler receives `self`, the live `Gtk.SearchEntry` instance, so `self.text` reads the current value straight off the widget. Every GTKX `on*` signal prop handler ends with this `self` argument; handlers connected with `useSignal` or `.on` receive only the signal's own arguments.
@@ -320,4 +320,4 @@ Because the list is derived, `visibleTasks` recomputes on every render. For a pe
 
 ## Next
 
-Continue to **Task Rows and Drag-to-Reorder** to see how each row renders its checkbox, star, and delete controls, and how drag-to-reorder is wired up.
+Continue to [Task Rows and Drag-to-Reorder](/tutorial/task-rows-and-reordering) to see how each row renders its checkbox, star, and delete controls, and how drag-to-reorder is wired up.

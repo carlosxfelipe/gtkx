@@ -30,8 +30,8 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
 

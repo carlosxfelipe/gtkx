@@ -63,8 +63,8 @@ const appCode = `function App() {
         <h3 class="how__name">Run it with hot reload</h3>
         <p class="how__body">
           <code class="l-code">gtkx dev</code> starts a Vite-based supervisor with Fast Refresh. Edit a
-          component and the running native window updates instantly: no restart, no
-          lost state.
+          component and the running native window updates in place, with no lost state.
+          Changes Fast Refresh cannot patch trigger an automatic, supervised restart.
         </p>
       </div>
       <CodeBlock variant="terminal">

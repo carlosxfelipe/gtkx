@@ -8,7 +8,7 @@ Some actions only make sense in bulk: complete ten tasks at once, move a handful
 
 The HIG recommends this pattern when several batch actions apply, which is why Tasks ships Complete, Move, and Delete rather than just Complete/Delete.
 
-Nothing gets torn down and rebuilt: the `AdwToolbarView` that already frames the task list swaps its top bar and reveals a bottom bar. This page follows the `selecting` flag from the action that sets it, through the header and action bar it drives, down to the recycled list it renders.
+The `AdwToolbarView` that frames the task list stays mounted throughout: it swaps its top bar, mounts a bottom bar, and switches its body from `TaskList` to `SelectionView`. This page follows the `selecting` flag from the action that sets it, through the header and action bar it drives, down to the recycled list it renders.
 
 ## Entering via the `win.select` action
 
@@ -55,7 +55,7 @@ The list page's toolbar view picks its top bar from two candidates: selection mo
 topBar={selecting ? selectionHeader : listHeader}
 ```
 
-The task editor's header never enters this choice. As **The Application Shell** and **The Task Editor** established, the editor's header belongs to the separate `Task` screen that is pushed on top of the list, so selection mode only ever competes with the list header.
+The task editor's header never enters this choice. As [The Application Shell](/tutorial/app-shell) and [The Task Editor](/tutorial/the-task-editor) established, the editor's header belongs to the separate `Task` screen that is pushed on top of the list, so selection mode only ever competes with the list header.
 
 The `selectionHeader` is a plain `AdwHeaderBar`, but configured to stop looking like the normal chrome:
 
@@ -144,7 +144,7 @@ That bar is mounted into the toolbar view's `bottomBar` slot, and `revealBottomB
 ```
 
 ::: tip
-The bar's own `revealed={selecting}` and the toolbar view's `revealBottomBars={selecting}` are both driven by the same flag. `revealBottomBars` is the toolbar view coordinating its bottom bars as a group; the `GtkActionBar`'s `revealed` is the widget's own slide transition. Setting both keeps the animation clean when the bar mounts and unmounts.
+`revealBottomBars` is how `AdwToolbarView` reveals its bottom bars as a group, and the `GtkActionBar`'s own `revealed` prop drives the widget's slide transition. Both read the same flag, but the bar is only mounted while `selecting` is true, so in practice it is always `revealed` for as long as it exists.
 :::
 
 ## The selectable list: a recycled `ListView`
@@ -217,10 +217,10 @@ export const SelectionView = ({
 How the pieces map:
 
 - `items` is your data lifted into `{ id, value }` nodes. The `id` is the stable identity GTKX uses to track a row across updates and to key the selection; `value` is the `Task` object handed back to `renderItem` as `item`.
-- `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells GTKX to back the list with a `Gtk.MultiSelection` model (the default is `SINGLE`, a `Gtk.SingleSelection`). This is what lets the user tick more than one row.
+- `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells GTKX to back the list with a `Gtk.MultiSelection` model (the default is `SINGLE`, a `Gtk.SingleSelection`). This is what lets the user select more than one row at a time.
 - Selection is **controlled**, exactly like a controlled input in React. `selectedIds` is the source of truth passed down, and `onSelectionChanged` reports the new array back up. Tasks routes `onSelectionChanged` straight into `setSelectedIds`, so a click on a row and a click on "Select All" both flow into the same state, which then drives the header count, the action bar's `sensitive` gating, and the batch handlers.
 - `renderItem` is a normal React render function returning GTKX JSX. Here it builds a horizontal box: title stacked over a dimmed due-date caption, with a star icon on the trailing edge for important tasks.
-- `estimatedItemHeight={56}` is a hint GTKX uses to size the virtualized viewport before rows are measured.
+- `estimatedItemHeight={56}` gives each recycled cell's placeholder a size request before its content renders, which keeps scrolling and the scrollbar steady in a long list.
 
 ## Recycled versus boxed: why a second kind of list
 
@@ -239,7 +239,7 @@ Tasks deliberately renders its tasks two different ways, and selection mode is t
 
 A boxed list materializes one widget per item. That is perfect for a small, static, heavily styled list (checkboxes, star toggles, delete buttons, drag-to-reorder, the inline add row), and it is the idiomatic GNOME default for exactly that case. But it does not scale: a thousand tasks means a thousand live rows.
 
-`SelectionView` swaps in `ListView`, which recycles a small pool of row widgets and reuses them as you scroll, so the widget count stays roughly constant no matter how many tasks exist. It is also where multi-selection lives naturally, since `ListView` exposes `selectionMode`/`selectedIds` as props while a boxed list is `Gtk.SelectionMode.NONE`.
+`SelectionView` swaps in `ListView`, which recycles a small pool of row widgets and reuses them as you scroll, so the widget count stays roughly constant no matter how many tasks exist. It is also where multi-selection is controlled from React, since `ListView` exposes `selectionMode` and id-keyed `selectedIds`/`onSelectionChanged` props, while the boxed list is deliberately `Gtk.SelectionMode.NONE` because each of its rows carries its own controls.
 
 Both are fed the identical `visible` array, so switching into selection mode shows the same tasks, rendered through a scalable model-view stack.
 
@@ -282,4 +282,4 @@ It snapshots the ids into a local `const ids = [...selectedIds]` first, because 
 
 ## Next
 
-Continue to **Preferences and Theming** to see how `useSetting` binds the app's GSettings schema to two-way-bound rows.
+Continue to [Preferences and Theming](/tutorial/preferences-and-theming) to see how `useSetting` binds the app's GSettings schema to two-way-bound rows.

@@ -20,7 +20,7 @@ The payoff for a React developer is that the first two map onto two different GT
 
 ## Undo toasts
 
-Toasts are shown by an `AdwToastOverlay` that wraps the window content. The overlay is a single-child container (it draws one toast at a time over whatever it wraps), so in `app.tsx` it sits just inside the window and wraps the entire split view:
+Toasts are shown by an `AdwToastOverlay` that wraps the window content. The overlay is a single-child container (it draws one toast at a time over whatever it wraps), so in `app.tsx` it sits just inside the window and wraps the whole navigation tree:
 
 ```tsx
 const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
@@ -28,10 +28,9 @@ const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 // ...
 
 <AdwToastOverlay ref={toastOverlayRef}>
-    <AdwNavigationSplitView
-        collapsed={collapsed}
-        // ...
-    />
+    <NavigationContainer ref={navigationRef}>
+        <Split.Navigator>{/* ... */}</Split.Navigator>
+    </NavigationContainer>
 </AdwToastOverlay>
 ```
 
@@ -336,4 +335,4 @@ Note the difference between `onResponse` on an alert dialog (fires with the chos
 
 ## Next
 
-Continue to **Testing the App** to see how the accessibility metadata set on these dialogs and rows makes the whole app queryable, and how `@gtkx/testing` drives it with user events.
+Continue to [Testing the App](/tutorial/testing) to see how the accessibility metadata set on these dialogs and rows makes the whole app queryable, and how `@gtkx/testing` drives it with user events.

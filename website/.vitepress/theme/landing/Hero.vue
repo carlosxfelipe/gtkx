@@ -8,9 +8,9 @@ import { REPO_URL } from "./content";
 
 const pm = ref("pnpm");
 const CMDS: Record<string, string> = {
-    npm: "npm create gtkx@latest",
-    pnpm: "pnpm create gtkx",
-    yarn: "yarn create gtkx",
+    npm: "npm create gtkx@rc",
+    pnpm: "pnpm create gtkx@rc",
+    yarn: "yarn create gtkx@rc",
 };
 const cmd = computed(() => CMDS[pm.value]);
 const pms = [
@@ -121,8 +121,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
       <div class="hero__col">
         <p class="overline hero__eyebrow">// React · Linux · GTK4 · Adwaita · TypeScript</p>
         <h1 class="hero__title">
-          Native Linux apps, built with
-          <span class="gtkx-gradient-text">React</span>
+          The <span class="gtkx-gradient-text">React</span> framework for Linux
         </h1>
         <p class="hero__lede">
           Write declarative JSX. GTKX renders it to real, native

@@ -168,7 +168,7 @@ import { GtkEntry } from "@gtkx/jsx/gtk";
 
 ## Fixed and Fixed.Child
 
-`Fixed` wraps `Gtk.Fixed`, the manual-positioning container. `Fixed.Child` places a widget at `x`/`y`, or accepts a full `transform: Gsk.Transform` (which overrides `x`/`y`) for rotation, scaling, and 3D placement; the fixed-layout demos in `examples/gtk-demo` assemble a 3D cube from six perspective-transformed faces and animate a rotating label per frame with `useTickCallback`.
+`Fixed` wraps `Gtk.Fixed`, the manual-positioning container. `Fixed.Child` places a widget at `x`/`y`, or accepts a full `transform: Gsk.Transform` (which overrides `x`/`y`) for rotation, scaling, and 3D placement; the fixed-layout demos in `examples/gtk-demo` assemble a 3D cube from six perspective-transformed faces and animate a rotating label per frame from the widget's frame clock.
 
 ## SizeGroup
 
@@ -260,9 +260,9 @@ useSignal(window, "notify::fullscreened", () => setFullscreened(window.current?.
 
 Generated JSX elements already expose signals as `on*` props; `useSignal` is for objects you hold by ref or that are not rendered by you at all, such as models, monitors, or the clipboard.
 
-**`useTickCallback(target, callback)`** registers a frame-clock callback on a widget via `addTickCallback`, running once per frame while the widget is mounted. Return `false` from the callback to remove it. Pass `null` as the target to pause: the gtk-demo benchmarks use `useTickCallback(isRunning ? window : null, ...)` to start and stop a frame loop from state. For property animations, [`@gtkx/css` and `@gtkx/animated`](/guide/css-and-animations) are usually the better fit; a tick callback is the tool for genuinely per-frame work such as custom drawing or transforms.
+For property animations, reach for [`@gtkx/css` and `@gtkx/animated`](/guide/css-and-animations). Genuinely per-frame work such as custom drawing or transforms is what `Gtk.Widget.addTickCallback` is for: call it on a widget you hold by ref and remove the callback on unmount, as the frame-clock demos in `examples/gtk-demo` do.
 
-The remaining exports (`createRoot`, `quit`, `createPortal`, and `rootElement`) belong to the mounting story rather than day-to-day component code: `createRoot` and `quit` are covered in [Getting Started](/guide/getting-started), and `createPortal` in [Modals and Portals](/guide/modals-and-portals).
+The remaining exports (`createRoot`, `quit`, `createPortal`, and `rootElement`) belong to the mounting story rather than day-to-day component code: `createRoot` is covered in [Getting Started](/guide/getting-started), `quit` in [The Application Shell](/tutorial/app-shell), and `createPortal` in [Modals and Portals](/guide/modals-and-portals).
 
 ## Next
 

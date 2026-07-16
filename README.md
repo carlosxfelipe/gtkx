@@ -5,7 +5,7 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  Native Linux app development with React.<br />
+  The React framework for Linux.<br />
   Build GTK4 and Adwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
 </p>
 
@@ -99,7 +99,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, spring and tween animations, and high-level list, grid, and dialog components,
+- CSS-in-JS styling, spring and tween animations, React Navigation-style navigators, and high-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
@@ -117,7 +117,7 @@ At runtime, the Rust N-API addon calls straight into the system GTK4, Adwaita, a
 
 ## Quick start
 
-Requires Linux with the GTK4, Adwaita, and GLib development libraries and Node.js 24 or later (see [Requirements](#requirements)).
+GTKX is Linux-only and needs Node.js 24 or later. See [Requirements](#requirements).
 
 Scaffold a new app with the `create-gtkx` initializer:
 

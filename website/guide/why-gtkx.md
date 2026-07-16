@@ -21,7 +21,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 
 React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes GTK4, Adwaita, and any other GObject-Introspection library on your system, and is Linux-only by design.
 
-Your JSX becomes live GObject instances, an actual `GtkButton`, an actual `AdwHeaderBar`. There is no canvas emulating widgets and no browser engine rendering HTML that imitates them. Apps built with GTKX follow the GNOME Human Interface Guidelines because they are made of the same widgets GNOME apps are made of.
+Your JSX becomes live GObject instances, an actual `GtkButton`, an actual `AdwHeaderBar`. There is no canvas emulating widgets and no browser engine rendering HTML that imitates them. Apps built with GTKX inherit the native GNOME look and behavior because they are made of the same widgets GNOME apps are made of.
 
 ## Why Node.js, and why generated bindings
 

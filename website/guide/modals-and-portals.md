@@ -171,4 +171,4 @@ Every dialog and window element, along with its full prop surface, is covered by
 
 ## Next
 
-[CSS and Animations](/guide/css-and-animations) covers styling these surfaces and animating them as they present and dismiss.
+[Navigation](/guide/navigation) covers the other way a surface takes over the screen: pushing a page onto a stack instead of presenting over it.

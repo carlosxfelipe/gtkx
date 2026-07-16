@@ -5,8 +5,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
-import { useTickCallback } from "@gtkx/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
 

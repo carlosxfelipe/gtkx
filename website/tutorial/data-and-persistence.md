@@ -358,7 +358,7 @@ const handleClose = (): boolean => {
 };
 ```
 
-(The window size is not captured here. It is bound to GSettings continuously with `useBindSetting`, covered on the Application Shell page.)
+(The window size is not captured here. It is bound to GSettings continuously with `useBindSetting`, covered in [The Application Shell](/tutorial/app-shell).)
 
 ```tsx
 <AdwApplicationWindow
@@ -435,7 +435,7 @@ Two things worth calling out in the schema format:
 - **Constrained strings, two ways.** `filter` and `color-scheme` inline a `<choices>` list; `sort-order` references a top-level `<enum>` by id via `enum="..."`, and its `<default>` is one of the enum *nicks*, single-quoted. Both forms produce a key GSettings validates against its allowed set, so a write of an undeclared value is rejected.
 - **Ranged integer.** `reminder-minutes` is `type="i"` with a `<range min="0" max="1440"/>`, capping the reminder lead time to a day.
 
-Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered on the Preferences and Theming page.
+Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered in [Preferences and Theming](/tutorial/preferences-and-theming).
 
 ::: info The data layer is plain Node.js
 GLib does export file helpers through `@gtkx/gi/glib`, but there is no reason to use them for ordinary IO: the store you just read would drop unchanged into any Node.js project. The same door swings the other way, too: outgrow the JSON file and you can swap `store.ts` for `better-sqlite3` or any other npm package without touching the rest of the app. This split is the rule of thumb for every GTKX app: use the Node.js standard library and the npm ecosystem for everything it covers (files, paths, timers, networking, subprocesses, crypto), and reach for the platform libraries only where GNOME provides something Node.js cannot, like GSettings, desktop notifications, actions, and dialogs.
@@ -443,4 +443,4 @@ GLib does export file helpers through `@gtkx/gi/glib`, but there is no reason to
 
 ## Next
 
-Continue to **The Sidebar**, where the `Selection` and `SmartView` types from `types.ts` drive the navigation list, the smart views, and the user's task lists.
+Continue to [The Sidebar](/tutorial/the-sidebar), where the `Selection` and `SmartView` types from `types.ts` drive the navigation list, the smart views, and the user's task lists.

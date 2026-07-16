@@ -9,7 +9,7 @@ const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: st
     create: {
         label: "create",
         blurb: "Scaffold a typed app.",
-        cmd: "npm create gtkx@latest",
+        cmd: "npm create gtkx@rc",
         out: ["◇ Project structure created", "◇ Dependencies installed", "◇ Git repository initialized"],
     },
     dev: {

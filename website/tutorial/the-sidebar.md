@@ -156,7 +156,7 @@ export const listDot = (color: string): string => css`
 `;
 ```
 
-`listDot` returns a generated class name via `@gtkx/css`: the `css` tagged template returns a single class name string (like `gtkx-1a2b3c`), which you place into the `cssClasses` array. Because `listDot` is called with the list's color at render time, each list gets its own generated, deduplicated class. The GTK4 CSS itself, and how it differs from web CSS, is covered in [Preferences and Theming](/tutorial/preferences-and-theming).
+You place that class name into the widget's `cssClasses` array. Because `listDot` is called with the list's color at render time, each list gets its own generated, deduplicated class. The GTK4 CSS itself, and how it differs from web CSS, is covered in [CSS and Animations](/guide/css-and-animations).
 
 The dot carries no information a screen reader needs to announce, so it is marked decorative with `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. That removes the empty box from the accessibility tree, leaving the row's title as the only thing announced. `valign={Gtk.Align.CENTER}` keeps the 12px dot vertically centered against the taller row.
 
@@ -275,4 +275,4 @@ These two directions form a loop: the effect calls `selectRow`, which makes the 
 
 ## Next
 
-Continue to **The Task List** to see how the selected view drives `visibleTasks` and how each task renders as a row.
+Continue to [The Task List](/tutorial/the-task-list) to see how the selected view drives `visibleTasks` and how each task renders as a row.

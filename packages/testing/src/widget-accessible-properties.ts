@@ -160,6 +160,15 @@ export const getWidgetLevel = (widget: Gtk.Widget): number | null => {
     return readAccessibleNumber(widget, "accessibleLevel");
 };
 
+export const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState | null => {
+    return getAccessibleMetadata<Gtk.AccessibleInvalidState>(widget, "accessibleInvalid");
+};
+
+export const getWidgetErrorMessage = (widget: Gtk.Widget): Gtk.Widget[] | null => {
+    const targets = getAccessibleMetadata<Gtk.Widget[]>(widget, "accessibleErrorMessage");
+    return Array.isArray(targets) && targets.length > 0 ? targets : null;
+};
+
 export const getWidgetBusyState = (widget: Gtk.Widget): boolean | null => {
     return readAccessibleBoolean(widget, "accessibleBusy");
 };

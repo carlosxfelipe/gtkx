@@ -8,7 +8,7 @@ Clicking a task in the list opens the editor: a title field, an Important switch
 
 ## The task screen
 
-The editor is a route. The content pane hosts a stack navigator (covered in **The Application Shell**) with two screens, `List` and `Task`, and opening a task navigates to the `Task` route with the task's id as a param: `navigationRef.navigate("Tasks", { screen: "Task", params: { id } })`. The stack navigator pushes the page with an animation and an automatic back button; going back pops it. The screen receives its `route` and looks the task up from the id. From `app.tsx`:
+The editor is a route. The content pane hosts a stack navigator (covered in [The Application Shell](/tutorial/app-shell)) with two screens, `List` and `Task`, and opening a task navigates to the `Task` route with the task's id as a param: `navigationRef.navigate("Tasks", { screen: "Task", params: { id } })`. The stack navigator pushes the page with an animation and an automatic back button; going back pops it. The screen receives its `route` and looks the task up from the id. From `app.tsx`:
 
 ```tsx
 <Stack.Screen
@@ -36,9 +36,9 @@ The editor is a route. The content pane hosts a stack navigator (covered in **Th
 
 The id in `route.params` is the single source of truth for which task is open. The screen body and the `options` callback both read it, so the page title and the form always describe the same task, and nothing in the shell holds a separate "selected task" state that could drift.
 
-The `key={selectedTask.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
+The `key={task.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
-::: info WHY REMOUNT INSTEAD OF DIFF
+::: info Why remount instead of diff
 A `GtkTextView`'s buffer remembers cursor position and undo history; a `GtkCalendar` remembers which month is shown. Remounting throws all of that away and starts clean for the newly-selected task, which is exactly what you want when the identity of the thing being edited changes.
 :::
 
@@ -79,7 +79,7 @@ controllers={
 }
 ```
 
-`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash, pops the editor, and shows an undo toast; it is covered in **Feedback and Dialogs**.
+`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash, pops the editor, and shows an undo toast; it is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs).
 
 ## The editor shell: scroll, clamp, box
 
@@ -187,7 +187,7 @@ The Due row shows GTK4's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenu
 
 Converting that GLib date into a JS `Date` needs one adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. `getYear`, `getMonth`, and `getDayOfMonth` are `GLib.DateTime` accessors; the day is pinned to 18:00 local time (a 6 PM default reminder time), and the result is serialized back to ISO with `toISOString()`. Reaching for those accessors plus `getDate()` is deliberate: it is the non-deprecated calendar API (see the warning below), and the `GLib.DateTime` lives only long enough to be read before the due date becomes an ISO string again.
 
-::: warning DON'T USE select_day
+::: warning Don't use `select_day`
 The older calendar API (`select_day`, plus the integer `day` / `month` / `year` properties) is deprecated since GTK 4.20. The non-deprecated path is the `date` property (a `GLib.DateTime`) for setting and `get_date()` for reading, which is exactly what this editor uses. The generated `@gtkx/gi/gtk` typings still expose the deprecated members because they strip GTK4's deprecation annotations, so it is on you to reach for `date` / `getDate` rather than `selectDay`.
 :::
 
@@ -254,4 +254,4 @@ The last group shows timestamps you can't edit. It reuses `AdwActionRow`, but wi
 
 ## Next
 
-Continue to **Actions, Menus, and Shortcuts** to wire up the app's `GSimpleAction`s, the main menu, and keyboard accelerators.
+Continue to [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) to wire up the app's `GSimpleAction`s, the main menu, and keyboard accelerators.

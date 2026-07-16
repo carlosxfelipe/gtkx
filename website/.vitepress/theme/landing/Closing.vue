@@ -34,7 +34,7 @@ import { LICENSE, REPO_URL } from "./content";
     <div class="cta__inner">
       <h2 class="cta__title">Start building native Linux apps today</h2>
       <p class="cta__sub">
-        One command scaffolds everything: typed widgets, Fast Refresh, tests, and production bundling.
+        One command scaffolds everything: typed widgets, Fast Refresh, an optional Vitest setup, and production bundling.
       </p>
       <div class="cta__actions">
         <Button size="lg" href="/guide/getting-started">
@@ -43,7 +43,7 @@ import { LICENSE, REPO_URL } from "./content";
         </Button>
       </div>
       <div class="cta__cmd">
-        <CodeBlock variant="terminal" code="npm create gtkx@latest" />
+        <CodeBlock variant="terminal" code="npm create gtkx@rc" />
       </div>
     </div>
   </section>

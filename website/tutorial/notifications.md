@@ -140,7 +140,7 @@ Points to notice:
 
 - **`name="complete-task"` becomes `app.complete-task`.** Actions placed under the application element are added to its action map with the `app.` prefix, which is exactly the string `buildReminder` targets. (Window-scoped actions, by contrast, live in the window's `actions` slot and become `win.`-prefixed.)
 - **`parameterType={GLib.VariantType.new("s")}` declares the action takes a single string parameter.** This must match the `GLib.Variant.newString(task.id)` target attached to the notification; a mismatch means the action refuses to activate.
-- **`onActivate` receives the `GLib.Variant | null` parameter.** `parameter.getString()` returns a `[value, length]` tuple in the GI bindings, so `parameter.getString()[0]` pulls out the task id. The `if (parameter)` guard is there because an action can be activated with no parameter.
+- **`onActivate` receives the `GLib.Variant | null` parameter.** The signal is typed nullable because an action declared without a `parameterType` is activated with no parameter at all. This one always carries its string, so `if (parameter)` is narrowing the type rather than guarding a real case. `parameter.getString()` returns a `[value, length]` tuple in the GI bindings, so `parameter.getString()[0]` pulls out the task id.
 
 ## Bridging the action to the window
 
@@ -162,33 +162,14 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
 }
 ```
 
-The reason for the indirection: the `GSimpleAction` elements live at the **application** level, outside `TasksWindow`, so their handlers cannot close over the window's state (`api.setDone`, `setSelection`, the navigation ref behind `openTask`). The `notify` ref is created in `App`, passed down, and reassigned on every `TasksWindow` render to point at the current handlers. So `app.complete-task` marks the task done, and `app.open-task` navigates to the task's route, which also reveals the content pane on a collapsed (mobile) layout (`openTask` is covered in **The Application Shell**). The action stays installed once for the life of the application; the ref keeps it pointed at the window's live handlers.
+The reason for the indirection: the `GSimpleAction` elements live at the **application** level, outside `TasksWindow`, so their handlers cannot close over the window's state (`api.setDone`, `setSelection`, the navigation ref behind `openTask`). The `notify` ref is created in `App`, passed down, and reassigned on every `TasksWindow` render to point at the current handlers. So `app.complete-task` marks the task done, and `app.open-task` navigates to the task's route, which also reveals the content pane on a collapsed (mobile) layout (`openTask` is covered in [The Application Shell](/tutorial/app-shell)). The action stays installed once for the life of the application; the ref keeps it pointed at the window's live handlers.
 
 This is also what makes cold-start work. If the shell launches the app to deliver `app.open-task`, the application starts up, `TasksWindow` mounts and assigns `notify.current`, and the action then resolves to a real handler that opens the right task.
 
 ## Desktop-file requirements
 
-For GNOME to route the notification and its actions, the app ships a desktop entry named after its application ID (`flatpak/com.gtkx.tutorial.desktop`). Two keys make notifications work:
-
-```ini
-[Desktop Entry]
-Name=Tasks
-Exec=gtkx-tutorial
-Icon=com.gtkx.tutorial
-Type=Application
-# ...
-StartupNotify=true
-X-GNOME-UsesNotifications=true
-DBusActivatable=true
-```
-
-- **`X-GNOME-UsesNotifications=true`** lists the app in GNOME Settings under Notifications so the user can toggle its notifications on and off.
-- **`DBusActivatable=true`** lets the shell D-Bus-activate the app to deliver an action. This is the key that makes "tap a reminder while the app is closed" launch the process and fire `app.open-task`, rather than doing nothing.
-
-::: tip Flatpak needs no extra permission
-Under Flatpak, notifications are routed through the `org.freedesktop.portal.Notification` portal automatically, so the manifest needs no `--talk-name` for the notification bus. The portal handles it, and the same desktop-file keys apply.
-:::
+Routing depends on one thing outside the code: the app's desktop entry, named after its application ID, must set `X-GNOME-UsesNotifications=true` and `DBusActivatable=true`. The second is what makes cold start work: it lets the shell D-Bus-activate the app to deliver an action, so tapping a reminder while the app is closed launches the process and fires `app.open-task` rather than doing nothing. [Packaging and Shipping](/tutorial/packaging) shows the full entry.
 
 ## Next
 
-Continue to **Feedback and Dialogs** to see how the app confirms and softens destructive actions with toasts and alert dialogs.
+Continue to [Feedback and Dialogs](/tutorial/feedback-and-dialogs) to see how the app confirms and softens destructive actions with toasts and alert dialogs.

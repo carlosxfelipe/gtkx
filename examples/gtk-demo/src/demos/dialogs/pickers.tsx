@@ -23,7 +23,8 @@ const gfileType = Gio.File.prototype.__type__;
 const DIALOG_TIMEOUT_SECONDS = 20;
 
 const isCancellation = (error: unknown): boolean =>
-    (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) ||
+    (error instanceof Gtk.DialogError &&
+        (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)) ||
     (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
 
 const reportPickerError = (error: unknown): void => {

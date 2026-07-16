@@ -45,7 +45,7 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 | `reactCompiler` | `boolean` or options object | enabled | React Compiler over your sources in the Vite build |
 | `codegen` | `boolean` | `true` | `false` disables generation and uses installed bindings |
 
-**`applicationId`** is the only required option. It must satisfy `g_application_id_is_valid`: dot-separated reverse-DNS segments, each starting with a letter or underscore, at most 255 characters (for example `org.example.MyApp`). It identifies your app to D-Bus and GNOME, and it flows into your component tree automatically (see [How applicationId flows](#how-applicationid-flows) below). By convention it is also the ID of your GSettings schema and, with dots turned into slashes, the prefix under which the CLI bundles your GResources.
+**`applicationId`** is the only required option. It must satisfy `g_application_id_is_valid`: dot-separated reverse-DNS segments, each starting with a letter or underscore, at most 255 characters (for example `org.example.MyApp`). It identifies your app to D-Bus and GNOME, and it flows into your component tree automatically (see [How applicationId flows](#how-applicationid-flows) below).
 
 **`libraries`** lists GObject-Introspection namespaces in `Name-Version` form, such as `"Gtk-4.0"`, `"Adw-1"`, or `"GtkSource-5"`. Omitting it gives you `["Gtk-4.0"]`; naming libraries explicitly prepends `Gtk-4.0` unless your list already contains a `Gtk-` entry, because the GTK4 bindings are the foundation everything else builds on. The wildcard `"*"` discovers every `.gir` file on the search path and binds the highest version of each namespace, which pulls in the entire installed platform at once.
 

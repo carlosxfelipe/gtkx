@@ -126,7 +126,8 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 
 const isCancellation = (error: unknown): boolean =>
-    (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) ||
+    (error instanceof Gtk.DialogError &&
+        (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)) ||
     (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
 
 const handleOpenFile = async () => {
@@ -141,7 +142,7 @@ const handleOpenFile = async () => {
 };
 ```
 
-Two domains matter here. Dismissing the dialog rejects with `Gtk.DialogError.DISMISSED`. Canceling the operation programmatically, by calling `cancel()` on the `Gio.Cancellable` you passed in, rejects with `Gio.IOErrorEnum.CANCELLED`. Both are expected outcomes rather than failures, so the handler swallows them and only logs everything else.
+The pattern to notice is matching on domain and code: each expected outcome is one `instanceof` plus a code check, and everything else falls through to the log. Which domain a canceled call rejects with depends on the API family, which [Async Operations](/guide/async-operations#cancellation-with-gio-cancellable) covers along with the rest of the `Gio.Cancellable` model.
 
 The final `error instanceof Error` check is the standard way to distinguish real errors (native or JavaScript) from arbitrary thrown values, and since `GLib.Error` extends `Error`, it covers GErrors too.
 

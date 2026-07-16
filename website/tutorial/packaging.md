@@ -47,7 +47,7 @@ To ship a binary that does not depend on a system Node.js, the tutorial bundles 
 }
 ```
 
-- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary with `dist/gtkx.node` beside it.
+- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary. It is not self-contained: both `gtkx.node` and `gschemas.compiled` are resolved next to the executable at runtime, so all three files ship together.
 
 Run the three scripts in order to produce the binary:
 
@@ -78,7 +78,7 @@ finish-args:
   - --device=dri
 ```
 
-The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. The tasks store resolves its path from `process.env.XDG_DATA_HOME`, which Flatpak sets inside the sandbox (to `~/.var/app/com.gtkx.tutorial/data`), so its writes land in the app's own private data directory. User-selected files arrive through XDG desktop portals. Notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
+The `finish-args` are intentionally minimal: no `--filesystem` permission is granted. The tasks store resolves its path from `process.env.XDG_DATA_HOME`, which Flatpak sets inside the sandbox (to `~/.var/app/com.gtkx.tutorial/data`), so its writes land in the app's own private data directory. Notifications are routed through the portal automatically, so `app.sendNotification` works without extra permissions.
 
 The `build-options` point npm at the SDK's Node.js and turn off stripping:
 
@@ -144,9 +144,22 @@ npm run flatpak:lint
 # appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml
 ```
 
+### Build and run it
+
+Vendor the dependencies, build in the sandbox, then install and run the result:
+
+```bash
+npm run flatpak:sources   # vendor deps into flatpak/generated-sources.json
+npm run flatpak:build     # build the flatpak in a sandbox
+flatpak install --user flatpak-repo com.gtkx.tutorial
+flatpak run com.gtkx.tutorial
+```
+
+This needs `flatpak` and `flatpak-builder` with the Flathub remote configured, plus `flatpak-node-generator`, `desktop-file-validate`, and `appstreamcli`. The [flatpak README](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/flatpak) lists them with install commands; each script also fails with the exact command to run when a tool is missing.
+
 ## Submitting to Flathub
 
-To publish, vendor the npm dependencies for the offline build with [flatpak-node-generator](https://github.com/flatpak/flatpak-builder-tools) (`npm run flatpak:sources`), build locally with `npm run flatpak:build`, then open a pull request against the [flathub/flathub](https://github.com/flathub/flathub) repository that swaps the local `dir` source for a pinned `git` source.
+Once it builds and runs locally, open a pull request against the [flathub/flathub](https://github.com/flathub/flathub) repository that swaps the local `dir` source for a pinned `git` source of your published release.
 
 ## Next
 

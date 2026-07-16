@@ -180,3 +180,7 @@ describe("Counter", () => {
 ```
 
 Nothing here is simulated: the click drives a real `GtkGestureClick` on a real `GtkButton`, React re-renders, GTK4 relabels the `GtkLabel`, and `findByText` reads the result off the live widget. The same pattern scales from a counter to the full Tasks app in the [tutorial](/tutorial/testing).
+
+## Next
+
+[MCP](/guide/mcp) exposes these same queries and events to an AI agent, so it can drive your running app instead of a test doing it.

@@ -30,7 +30,7 @@ export function App() {
 }
 ```
 
-`actionAccels` is a declarative list prop. Each entry is `{ detailedActionName, accels }` and becomes one `gtk_application_set_accels_for_action` call, binding a keyboard accelerator to an action by name. The `win.` prefix means these accelerators fire actions installed on the **window** (`<GSimpleAction name="new">`, `preferences`, `shortcuts` live in the window's `actions` slot, covered on the actions page). So `Ctrl+N` triggers `win.new`, `Ctrl+,` opens preferences, `Ctrl+?` opens the shortcuts dialog, all wired from this one array.
+`actionAccels` is a declarative list prop. Each entry is `{ detailedActionName, accels }` and becomes one `gtk_application_set_accels_for_action` call, binding a keyboard accelerator to an action by name. The `win.` prefix means these accelerators fire actions installed on the **window** (`<GSimpleAction name="new">`, `preferences`, `shortcuts` live in the window's `actions` slot, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts)). So `Ctrl+N` triggers `win.new`, `Ctrl+,` opens preferences, `Ctrl+?` opens the shortcuts dialog, all wired from this one array.
 
 The two `<GSimpleAction>` elements in the application's `actions` slot are different: mounted on the application itself, they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the running app. Each declares `parameterType={GLib.VariantType.new("s")}`, meaning it takes a single string (a task id), which the handler pulls out with `parameter.getString()[0]`.
 
@@ -62,7 +62,7 @@ A few things to note for a GTK4 newcomer:
 - **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). It is the target for the window-size bindings below.
 - **`widthRequest={360}` and `heightRequest={294}`** set the minimum window size. This is the GNOME phone-form-factor floor: the app is guaranteed to work down to a 360x294 window, which is what forces the layout to prove it collapses gracefully.
 - **`breakpoints`** is a slot that attaches an `<AdwBreakpoint>` to the window, covered below.
-- **`actions`** and **`controllers`** are `ReactNode` slots. `controllers` is present on every widget; `actions` on anything that is an action map (`Gio.ActionMap`), which includes the application and application windows (`AdwApplicationWindow` / `GtkApplicationWindow`), but not a plain `GtkWindow`. `actions` holds `<GSimpleAction>` elements (here the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed on the actions and shortcuts page.
+- **`actions`** and **`controllers`** are `ReactNode` slots. `controllers` is present on every widget; `actions` on anything that is an action map (`Gio.ActionMap`), which includes the application and application windows (`AdwApplicationWindow` / `GtkApplicationWindow`), but not a plain `GtkWindow`. `actions` holds `<GSimpleAction>` elements (here the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts).
 
 ### Persisting window size
 
@@ -73,7 +73,7 @@ useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-`useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced on the data model and persistence page. On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
+`useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced in [Data Model and Persistence](/tutorial/data-and-persistence). On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
 
 That leaves the close handler doing only close-time work: flushing unsaved tasks and quitting.
 
@@ -96,7 +96,7 @@ Immediately inside the window is an `<AdwToastOverlay>`. It wraps the entire lay
 </AdwToastOverlay>
 ```
 
-Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works: when a task is trashed, the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered on the feedback and dialogs page.
+Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works: when a task is trashed, the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs).
 
 ## The adaptive split view
 
@@ -133,7 +133,7 @@ const Split = createSplitViewNavigator<ShellParams>();
 </NavigationContainer>
 ```
 
-The split-view navigator drives a real `Adw.NavigationSplitView` and takes exactly two screens: the first becomes the sidebar pane, the second the content pane. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. The sizing props pass through to the widget: `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}` logical pixels.
+The split-view navigator drives a real `Adw.NavigationSplitView` and takes exactly two screens: the first becomes the sidebar pane, the second the content pane. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. The sizing props pass through to the widget: `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}`, both in `sp`, the same text-scaling unit the breakpoint below uses.
 
 Both screens use render callbacks (`{() => ...}`) rather than `component`, because their content closes over `TasksWindow`'s state and handlers.
 
@@ -234,4 +234,4 @@ Opening a task is `openTask(id)`; a programmatic back is `navigationRef.goBack()
 
 ## Next
 
-Continue to **Data Model and Persistence**, which introduces the types, the store, and the `useTasks` hook this chapter already leans on.
+Continue to [Data Model and Persistence](/tutorial/data-and-persistence), which introduces the types, the store, and the `useTasks` hook this chapter already leans on.

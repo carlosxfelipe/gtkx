@@ -1,7 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getAccessibleMetadata } from "@gtkx/react/internal";
-import { screen, userEvent } from "@gtkx/testing";
+import { getWidgetErrorMessage, getWidgetInvalidState, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { errorstatesDemo } from "../../../src/demos/css/errorstates.js";
 import { renderDemo } from "../../test-utils.js";
@@ -41,7 +40,7 @@ describe("errorstatesDemo entries", () => {
         const { moreDetailsEntry } = await renderAndFlagMoreDetails();
         expect(moreDetailsEntry.hasCssClass("error")).toBe(true);
         expect(moreDetailsEntry.getTooltipText()).toBe("Must have details first");
-        expect(getAccessibleMetadata(moreDetailsEntry, "accessibleInvalid")).toBe(Gtk.AccessibleInvalidState.TRUE);
+        expect(getWidgetInvalidState(moreDetailsEntry)).toBe(Gtk.AccessibleInvalidState.TRUE);
     });
 
     it("clears the more-details error once the details entry receives input", async () => {
@@ -50,7 +49,7 @@ describe("errorstatesDemo entries", () => {
         await userEvent.type(detailsEntry, "ok");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(false);
         expect(moreDetailsEntry.getTooltipText()).toBeNull();
-        expect(getAccessibleMetadata(moreDetailsEntry, "accessibleInvalid")).toBe(Gtk.AccessibleInvalidState.FALSE);
+        expect(getWidgetInvalidState(moreDetailsEntry)).toBe(Gtk.AccessibleInvalidState.FALSE);
     });
 });
 
@@ -58,14 +57,14 @@ describe("errorstatesDemo switch and scale", () => {
     it("shows the level-too-low error label and flags the switch invalid when activated with a low level", async () => {
         await renderDemo(errorstatesDemo);
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        expect(getAccessibleMetadata(sw, "accessibleInvalid")).toBe(Gtk.AccessibleInvalidState.FALSE);
+        expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.FALSE);
         await userEvent.click(sw);
         const errorLabel = (await screen.findByRole(Gtk.AccessibleRole.LABEL, {
             name: "Level too low",
         })) as Gtk.Label;
         expect(errorLabel.hasCssClass("error")).toBe(true);
-        expect(getAccessibleMetadata(sw, "accessibleInvalid")).toBe(Gtk.AccessibleInvalidState.TRUE);
-        expect(getAccessibleMetadata(sw, "accessibleErrorMessage")).toEqual([errorLabel]);
+        expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.TRUE);
+        expect(getWidgetErrorMessage(sw)).toEqual([errorLabel]);
     });
 
     it("activates the switch through the Control+M keyboard shortcut", async () => {
@@ -78,7 +77,7 @@ describe("errorstatesDemo switch and scale", () => {
             name: "Level too low",
         })) as Gtk.Label;
         expect(errorLabel.hasCssClass("error")).toBe(true);
-        expect(getAccessibleMetadata(sw, "accessibleInvalid")).toBe(Gtk.AccessibleInvalidState.TRUE);
+        expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.TRUE);
     });
 
     it("does not show the error label when the switch is activated with a high level", async () => {
@@ -89,7 +88,7 @@ describe("errorstatesDemo switch and scale", () => {
         await userEvent.click(sw);
         expect(sw.getState()).toBe(true);
         expect(screen.queryByRole(Gtk.AccessibleRole.LABEL, { name: "Level too low" })).toBeNull();
-        expect(getAccessibleMetadata(sw, "accessibleInvalid")).toBe(Gtk.AccessibleInvalidState.FALSE);
+        expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.FALSE);
     });
 
     it("flips the switch state automatically when the level crosses 50 with the switch already active", async () => {

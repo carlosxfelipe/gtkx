@@ -35,7 +35,7 @@ Every task row exposes a `GtkCheckButton` with `accessibleLabel="Mark complete"`
 `screen` exposes the full query family. `findBy*` waits for a match and is async, `getBy*` and `getAllBy*` return immediately and throw when nothing matches, and `queryBy*` returns `null` instead of throwing. The ones you reach for most:
 
 - `findByText`: match a widget's rendered label text.
-- `findByRole`: match an accessible role, always a `Gtk.AccessibleRole` value (never a string), optionally narrowed by `{ name }`, `{ checked }`, `{ selected }`, and similar. The `name` option matches the accessible name, which comes from an `accessibleLabel` or from a container's child labels.
+- `findByRole`: match an accessible role, always a `Gtk.AccessibleRole` value (never a string), optionally narrowed by `{ name }`, `{ checked }`, `{ selected }`, and similar. The `name` option matches the accessible name, which resolves in order: an explicit `accessibleLabel`, then the widget's own text (a label's text, a row's title), then its child labels joined together, then its tooltip.
 - `findByName`: match a widget's `name` property, the value you set with the `name` prop, when you want to grab one specific widget directly.
 
 ## Driving a flow
@@ -92,8 +92,8 @@ The third argument is the dragged task's id, the same value the row's `GtkDragSo
 
 ## Inspecting a running app
 
-For interactive debugging rather than automated assertions, `@gtkx/mcp` is an MCP server that an agent (or you, through any MCP client) can drive to list running apps, dump the widget tree, query widgets, take screenshots, fire events, click or type, and search the generated bindings' API reference. `gtkx dev` connects the running app to it automatically, so a dev session is inspectable without any extra setup.
+For interactive debugging rather than automated assertions, the [MCP server](/guide/mcp) exposes the same tree dumps, queries, events, and screenshots to any MCP client against your live `gtkx dev` session. The app half is automatic: `gtkx dev` registers the running app for you. The agent half is a one-time client registration, which the guide covers.
 
 ## Next
 
-The app is complete and you have seen how to test it. Continue to **Packaging and Shipping** to build, package, and distribute it.
+The app is complete and you have seen how to test it. Continue to [Packaging and Shipping](/tutorial/packaging) to build, package, and distribute it.

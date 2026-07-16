@@ -163,7 +163,7 @@ Because `useSetting` re-renders on the `changed::color-scheme` signal, choosing 
 
 ## Custom styling with @gtkx/css
 
-Beyond the theme toggle, Tasks styles a few of its own widgets. `@gtkx/css` gives you a `css` tagged template that returns a generated CSS class name, which you then feed into a widget's `cssClasses` array. The app's shared styles live in `styles.ts`:
+Beyond the theme toggle, Tasks styles a few of its own widgets. Its shared styles live in `styles.ts`:
 
 ```ts
 import { css } from "@gtkx/css";
@@ -181,7 +181,7 @@ export const detailNotes = css`
 `;
 ```
 
-`css` returns a string like `gtkx-1a2b3c`, a class name. There is no `className` prop anywhere in GTKX; you pass the class into the universal `cssClasses` prop, which every widget exposes as `string[]`. The sidebar uses `listDot` to give each list a colored dot:
+`css` returns a generated class name that you pass into a widget's `cssClasses` array. The sidebar uses `listDot` to give each list a colored dot:
 
 ```tsx
 <GtkBox
@@ -191,22 +191,10 @@ export const detailNotes = css`
 />
 ```
 
-When you need to merge or conditionally combine classes, `@gtkx/css` also exports `cx`: it drops falsy entries and returns a `string[]` you pass directly as `cssClasses`, for example `cssClasses={cx(base, active && activeStyle)}`.
-
-Two GTK4-specific idioms are worth knowing when you write these rules: named colors via `@name`, and GTK4's own `alpha()` color function. As a general illustration, not a style this app applies:
-
-```css
-background: alpha(@accent_bg_color, 0.08);
-```
-
-`@accent_bg_color` is one of Adwaita's semantic palette colors, and it resolves to whatever the current theme (including the light/dark scheme you just set) defines. Style against these instead of hardcoded hex values and your widgets stay correct across themes automatically. `alpha()` wraps such a color to produce a faint accent-tinted background.
-
 `listDot` is a function rather than a constant so each user list can pass its own `color` in through interpolation, giving every list its colored dot from one style definition.
 
-::: warning @gtkx/css targets GTK4 CSS, not web CSS
-The syntax looks like the web (nesting, `&:hover`, `border-radius`), and emotion/stylis do run over it, but the output goes to a `Gtk.CssProvider`, so only what GTK4's CSS parser accepts is valid. Layout is driven by GTK4 widgets rather than CSS: there is no flexbox or float/absolute positioning, and the cascade and selectors are more limited than a browser's. GTK4 does apply a CSS box model (margin, border, padding, min-width/min-height), which is why the size properties above work. Named colors (`@accent_bg_color`) and `alpha()` have no web equivalent. The provider is registered against the default display lazily on the first `css()` call, so you do not wire it up yourself.
-:::
+These rules are GTK4 CSS, not web CSS: the supported properties, the selectors, and the named-color palette are GTK4's own, and `cx`, global styles, and the shared provider work the same here as anywhere else. [CSS and Animations](/guide/css-and-animations) is the reference for all of it.
 
 ## Next
 
-Continue to **Reminders and Notifications** to see how the persisted `reminder-minutes` setting drives desktop notifications through `Gio.Notification`.
+Continue to [Reminders and Notifications](/tutorial/notifications) to see how the persisted `reminder-minutes` setting drives desktop notifications through `Gio.Notification`.

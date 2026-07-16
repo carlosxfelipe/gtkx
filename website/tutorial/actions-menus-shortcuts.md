@@ -13,7 +13,7 @@ Tasks uses this everywhere its commands need more than one entry point. The hamb
 Every action string carries a scope prefix. Tasks uses both:
 
 - **`win.*`** actions belong to the window. They are the app's real commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
-- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires ("Mark Complete", "Open"), because a notification is delivered to the whole application, not to any particular window, and may arrive when no window is even open. They live in the `actions` slot of `<AdwApplication>`.
+- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires, its "Mark Complete" button and the default action that runs when you click the notification body, because a notification is delivered to the whole application, not to any particular window, and may arrive when no window is even open. They live in the `actions` slot of `<AdwApplication>`.
 
 The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
 
@@ -97,7 +97,7 @@ Not every action needs an accelerator. `win.select` and `win.about` are reachabl
 
 ## Application actions for notifications
 
-The two `app.*` actions live in the `actions` slot of `<AdwApplication>`, mounted one level up from the window so a desktop notification has something to invoke even when no window is focused. Each declares a `parameterType` of `"s"` and carries a task id as its payload, and a notification button targets them by their fully scoped names, `app.complete-task` and `app.open-task`.
+The two `app.*` actions live in the `actions` slot of `<AdwApplication>`, mounted one level up from the window so a desktop notification has something to invoke even when no window is focused. Each declares a `parameterType` of `"s"` and carries a task id as its payload, and the notification targets them by their fully scoped names: its button invokes `app.complete-task`, and its default action invokes `app.open-task`.
 
 [Reminders and Notifications](/tutorial/notifications) is the canonical home for these actions: the full `GSimpleAction` declaration, the `onActivate` handlers, the `buildReminder` notification model, and the `notify` ref that bridges each application-scoped action to the live window all live there.
 
@@ -210,11 +210,11 @@ controllers={
 
 When `selecting` is false, `escapeEnabled` is false, so `Escape` resolves to `NeverTrigger` and passes through untouched; with the task editor open, the untouched key reaches the content stack's `AdwNavigationView`, whose built-in Escape handling pops the page. Enter selection mode and the next render swaps in the real `parseString("Escape")` trigger. The behavior tracks state with no imperative connect/disconnect.
 
-The `Delete` key is scoped differently: deleting only makes sense while a task is open, so the `Task` screen mounts its own `GtkShortcutController` through its toolbar view's `controllers` slot (shown in **The Task Editor**). The shortcut exists exactly while the screen does, with no enabling flag at all.
+The `Delete` key is scoped differently: deleting only makes sense while a task is open, so the `Task` screen mounts its own `GtkShortcutController` through its toolbar view's `controllers` slot (shown in [The Task Editor](/tutorial/the-task-editor)). The shortcut exists exactly while the screen does, with no enabling flag at all.
 
-## The shortcuts window: `AdwShortcutsDialog`
+## The shortcuts dialog: `AdwShortcutsDialog`
 
-The `win.shortcuts` action opens a dialog listing every shortcut. `AdwShortcutsDialog` is the standard GNOME "Keyboard Shortcuts" surface: a searchable window of grouped, titled sections. Tasks builds it the same declarative way as every other dialog, in `components/shortcuts.tsx`:
+The `win.shortcuts` action opens a dialog listing every shortcut. `AdwShortcutsDialog` is the standard GNOME "Keyboard Shortcuts" surface: a searchable dialog of grouped, titled sections. Tasks builds it the same declarative way as every other dialog, in `components/shortcuts.tsx`:
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
@@ -236,9 +236,9 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
 );
 ```
 
-Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, so keep them in sync with the real bindings: `<Control>n`, `<Control>f`, `<Control>comma`, and `<Control>question` come from `actionAccels` and the search shortcut, while `Delete` and `Escape` come from the `GtkShortcutController`.
+Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, not bindings, so keep them in sync with the real ones: `<Control>n`, `<Control>comma`, and `<Control>question` come from `actionAccels`, `<Control>f` from the app-level `GtkShortcutController`, `Delete` from the task screen's own controller, and the "Close task" `Escape` from `AdwNavigationView`'s built-in pop rather than any controller of ours.
 
-`<Dialog>` (from `@gtkx/components/adw`, documented in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the window. The action handler flips a state flag:
+`<Dialog>` (from `@gtkx/components/adw`, documented in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the dialog. The action handler flips a state flag:
 
 ```tsx
 onShortcuts={() => setShowShortcuts(true)}
@@ -256,8 +256,8 @@ A single command like "create a new task" now has three front doors, all converg
 
 The first two resolve through `win.new`, whose `onActivate` is `newTask`; the button skips the action system and calls `newTask` directly.
 
-Meanwhile `Ctrl+F` / `Escape` / `Delete` stay out of the action system entirely, living as state-gated `GtkShortcut`s because their meaning is view-local. And `app.complete-task` / `app.open-task` sit on the application so a notification button has an action alive even when no window is focused. Choosing the right home for each command, `win.*`, `app.*`, or a plain shortcut controller, is the whole discipline here.
+Meanwhile `Ctrl+F`, `Escape`, and `Delete` stay out of the action system entirely, living as `GtkShortcut`s that are gated by state or by the lifetime of the screen that mounts them, because their meaning is view-local. And `app.complete-task` / `app.open-task` sit on the application so a notification has actions alive even when no window is focused. Choosing the right home for each command, `win.*`, `app.*`, or a plain shortcut controller, is the whole discipline here.
 
 ## Next
 
-Continue to **Selection Mode** to follow where the `win.select` action leads: a distinct mode for completing, moving, and deleting many tasks at once.
+Continue to [Selection Mode](/tutorial/selection-and-batch) to follow where the `win.select` action leads: a distinct mode for completing, moving, and deleting many tasks at once.

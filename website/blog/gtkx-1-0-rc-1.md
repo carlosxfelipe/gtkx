@@ -54,7 +54,7 @@ createRoot().render(
 );
 ```
 
-The reconciler was rewritten from roughly sixty hand-written per-widget node classes into a single generic reconciler that instantiates real GObject classes by type and drives child attachment from generated metadata. Because every element is a real GObject, JSX composes in ways it could not before: any element passed as a prop value is mounted and assigned to that property, so a text view can take `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale can take `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative children. Signals are typed end to end, including `notify::<property>` details. New hooks `useSignal` and `useTickCallback` connect handlers, and `useSetting` is now typed against imported GSettings schemas.
+The reconciler was rewritten from roughly sixty hand-written per-widget node classes into a single generic reconciler that instantiates real GObject classes by type and drives child attachment from generated metadata. Because every element is a real GObject, JSX composes in ways it could not before: any element passed as a prop value is mounted and assigned to that property, so a text view can take `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale can take `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative children. Signals are typed end to end, including `notify::<property>` details. A new `useSignal` hook connects handlers, and `useSetting` is now typed against imported GSettings schemas.
 
 ## Higher-level building blocks
 

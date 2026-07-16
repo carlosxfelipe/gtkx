@@ -16,7 +16,9 @@ import {
     createSplitViewNavigator,
     createStackNavigator,
     NavigationContainer,
+    type RouteProp,
     useNavigation,
+    useRoute,
 } from "@gtkx/navigation";
 
 type TasksStackParams = {
@@ -34,7 +36,7 @@ const TasksStack = () => (
 );
 ```
 
-Navigators are created once, at module level. The factory returns a `Navigator` component plus the `Screen` and `Group` components used to declare its routes, all typed by the param list you pass: `navigate("Task", { id })` type-checks against `TasksStackParams`, and `useRoute()` in the `Task` screen knows `params` is `{ id: string }`.
+Navigators are created once, at module level. The factory returns a `Navigator` component plus the `Screen` and `Group` components used to declare its routes, all typed by the param list you pass: `navigate("Task", { id })` type-checks against `TasksStackParams`, and `useRoute<RouteProp<TasksStackParams, "Task">>()` in the `Task` screen types `params` as `{ id: string }`.
 
 ## The container
 
@@ -76,8 +78,8 @@ Screens receive `route` and `navigation` props, or reach the same objects from a
 ```tsx
 const TaskScreen = () => {
     const navigation = useNavigation();
-    const route = useRoute();
-    const { id } = route.params as TasksStackParams["Task"];
+    const route = useRoute<RouteProp<TasksStackParams, "Task">>();
+    const { id } = route.params;
     return (
         <AdwToolbarView topBar={<AdwHeaderBar />}>
             <TaskDetail id={id} onDone={() => navigation.goBack()} />
@@ -143,3 +145,7 @@ What it cannot do is Adwaita's "ask first, then maybe close" flow, because `Adw.
 ## Where the old pieces live
 
 Navigation state (which page is open, which pane is focused) belongs to the navigators. App data referenced by routes travels in **params**: a task editor screen receives `{ id }` and looks the task up, rather than the shell hoisting a `selectedTask` into its own state. The [tutorial's application shell](/tutorial/app-shell) builds a complete adaptive app this way: a split-view navigator for the sidebar and content, a stack navigator inside the content pane, and a container ref for window-level actions.
+
+## Next
+
+[CSS and Animations](/guide/css-and-animations) covers styling these surfaces and animating the state changes the navigators do not animate for you.

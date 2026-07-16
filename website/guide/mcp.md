@@ -152,5 +152,5 @@ The pattern generalizes: inspect to find IDs, interact, screenshot to verify, re
 
 ## Next
 
-- The [API reference](/reference/) documents every package the MCP tools surface: `@gtkx/gi`, `@gtkx/jsx`, and the rest, with the same signatures `gtkx_get_api_docs` returns.
+- The [API reference](/reference/) documents the GTKX packages themselves. The generated bindings (`@gtkx/gi`, `@gtkx/jsx`) are specific to your project's configured libraries, which is what `gtkx_get_api_docs` reads; `gtkx docs` writes the same pages to disk.
 - The [tutorial's testing chapter](/tutorial/testing) applies the queries and events behind these tools to the Tasks app.

@@ -100,7 +100,7 @@ Everything resolves on the one JavaScript thread your components run on. GTKX dr
 
 ## Cancellation with Gio.Cancellable
 
-Every promisified method accepts an optional `Gio.Cancellable` as its last argument. Construct one, pass it in, and call `cancel()` to abort the operation; the pending promise then rejects with a `Gio.IOErrorEnum.CANCELLED` error. Passing `null` or omitting the argument means the operation runs to completion.
+Every promisified method accepts an optional `Gio.Cancellable` as its last argument. Construct one, pass it in, and call `cancel()` to abort the operation; the pending promise then rejects with an error whose domain depends on the API family, as described below. Passing `null` or omitting the argument means the operation runs to completion.
 
 One cancellable can be shared across several calls, and canceling is safe at any point, including after the operation already finished. The gtk-demo pickers use this to put a deadline on a dialog:
 
@@ -125,13 +125,16 @@ await runWithTimeout(async (cancellable) => {
 });
 ```
 
-Cancellation and dismissal are distinct rejections: canceling via the cancellable produces `Gio.IOErrorEnum.CANCELLED`, while the user closing a GTK4 dialog produces `Gtk.DialogError.DISMISSED`. Code that treats both as "the user changed their mind" checks for either:
+Which error you get depends on the API family. GIO operations like `loadContentsAsync` reject with `Gio.IOErrorEnum.CANCELLED`. GTK4 dialogs have their own domain and distinguish two cases: canceling through the cancellable rejects with `Gtk.DialogError.CANCELLED`, while the user closing the dialog rejects with `Gtk.DialogError.DISMISSED`. Code that treats all three as "no result, and that's fine" checks for each:
 
 ```ts
 const isCancellation = (error: unknown): boolean =>
-    (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) ||
+    (error instanceof Gtk.DialogError &&
+        (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)) ||
     (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
 ```
+
+The `runWithTimeout` example above hits exactly that first case: when the deadline fires, `dialog.open` rejects with `Gtk.DialogError.CANCELLED`.
 
 ## What stays callback-based
 

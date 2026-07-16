@@ -13,8 +13,8 @@ import {
     GtkScrolledWindow,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { useTickCallback } from "@gtkx/react";
 import { useEffect, useRef, useState } from "react";
+import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo } from "../types.js";
 import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./shadertoy.tsx?raw";
