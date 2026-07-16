@@ -18,7 +18,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/gtkx-org/gtkx.git",
+        "url": "git+https://github.com/gtkx-org/gtkx.git",
         "directory": "packages/gl"
     },
     "license": "MPL-2.0",
