@@ -1,6 +1,5 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { AnyClass } from "@gtkx/utils";
 import { type Node, stateOf } from "./state.js";
 import { isWrapperNode } from "./wrapper-node.js";
 
@@ -21,7 +20,5 @@ export const trackedInstance = (node: Node): GObject.Object | undefined => {
     return child instanceof GObject.Object ? child : undefined;
 };
 
-const wrapperChildren = <T extends GObject.Object>(node: Node, ctor: AnyClass<T>): T[] =>
-    stateOf(node).children.filter((child): child is T => child instanceof ctor);
-
-export const wrapperChildInstances = (node: Node): GObject.Object[] => wrapperChildren(node, GObject.Object);
+export const wrapperChildInstances = (node: Node): GObject.Object[] =>
+    stateOf(node).children.filter((child): child is GObject.Object => child instanceof GObject.Object);

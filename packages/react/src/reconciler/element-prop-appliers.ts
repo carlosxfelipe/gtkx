@@ -44,17 +44,11 @@ const applyList = (instance: object, prop: ListProp, newValue: unknown): void =>
     if (applied !== undefined && listValuesEqual(applied, newItems)) return;
     if (prop.clear !== undefined) {
         runCall(instance, prop.clear, [], {});
-        for (const item of newItems) runAdd(instance, prop.add, item);
-        rememberAppliedList(instance, prop.prop, newItems);
-        return;
-    }
-    if (prop.remove !== undefined) {
+    } else if (prop.remove !== undefined) {
         for (const item of asArray(applied)) runCall(instance, prop.remove, [item], { item });
-        for (const item of newItems) runAdd(instance, prop.add, item);
-        rememberAppliedList(instance, prop.prop, newItems);
+    } else if (asArray(applied).length !== 0) {
         return;
     }
-    if (asArray(applied).length !== 0) return;
     for (const item of newItems) runAdd(instance, prop.add, item);
     rememberAppliedList(instance, prop.prop, newItems);
 };

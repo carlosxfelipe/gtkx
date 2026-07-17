@@ -76,17 +76,9 @@ const unlink = (parent: Node, child: Node): void => {
 const isBufferRelated = (instance: Node): boolean =>
     isBufferContentNode(instance) || instance instanceof Gtk.TextTag || instance instanceof Gtk.TextBuffer;
 
-const maybeScheduleBufferRebuild = (parent: Node, child: Node): void => {
-    if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
-};
-
-const maybeScheduleLabelTextRebuild = (parent: Node, child: Node): void => {
-    if (isLabelTextNode(child)) scheduleLabelTextRebuild(parent);
-};
-
 const scheduleTextRebuilds = (parent: Node, child: Node): void => {
-    maybeScheduleBufferRebuild(parent, child);
-    maybeScheduleLabelTextRebuild(parent, child);
+    if (isBufferRelated(parent) || isBufferRelated(child)) scheduleBufferRebuild(parent);
+    if (isLabelTextNode(child)) scheduleLabelTextRebuild(parent);
 };
 
 const reapplyParentLazy = (parent: Node): void => {

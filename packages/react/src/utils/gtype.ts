@@ -9,9 +9,9 @@ const NOTIFY_PREFIX = "onNotify";
 
 const resolveNotifySignal = (propName: string): string | null => {
     if (propName === NOTIFY_PREFIX) return NOTIFY_SIGNAL;
-    if (!propName.startsWith(NOTIFY_PREFIX) || propName.length === NOTIFY_PREFIX.length) return null;
+    if (!propName.startsWith(NOTIFY_PREFIX)) return null;
     const tail = propName.slice(NOTIFY_PREFIX.length);
-    if (tail[0] !== tail[0]?.toUpperCase()) return null;
+    if (tail.charAt(0) !== tail.charAt(0).toUpperCase()) return null;
     return propToNotifySignal(tail);
 };
 
@@ -23,46 +23,44 @@ const constructOnlyCache = new Map<bigint, Map<string, boolean>>();
 const defaultPropCache = new Map<bigint, Map<string, DefaultPropLookup>>();
 const constructablePropsCache = new Map<bigint, Set<string>>();
 
-const collectTypeNameChain = (gtype: bigint): string[] => {
-    const cached = typeNameChainCache.get(gtype);
-    if (cached) return cached;
-
-    const chain: string[] = [];
-    let current = gtype;
-    while (current !== 0n) {
-        const name = GObject.typeName(current);
-        if (!name) break;
-        chain.push(name);
-        current = GObject.typeParent(current);
-    }
-
-    typeNameChainCache.set(gtype, chain);
-    return chain;
+const memoizeGtype = <T>(cache: Map<bigint, T>, gtype: bigint, compute: () => T): T => {
+    const cached = cache.get(gtype);
+    if (cached !== undefined) return cached;
+    const result = compute();
+    cache.set(gtype, result);
+    return result;
 };
 
-const collectInterfaceNames = (gtype: bigint): string[] => {
-    const cached = interfaceNamesCache.get(gtype);
-    if (cached) return cached;
+const collectTypeNameChain = (gtype: bigint): string[] =>
+    memoizeGtype(typeNameChainCache, gtype, () => {
+        const chain: string[] = [];
+        let current = gtype;
+        while (current !== 0n) {
+            const name = GObject.typeName(current);
+            if (!name) break;
+            chain.push(name);
+            current = GObject.typeParent(current);
+        }
+        return chain;
+    });
 
-    const names: string[] = [];
-    for (const iface of GObject.typeInterfaces(gtype)) {
-        const name = GObject.typeName(iface);
-        if (name) names.push(name);
-    }
-
-    interfaceNamesCache.set(gtype, names);
-    return names;
-};
+const collectInterfaceNames = (gtype: bigint): string[] =>
+    memoizeGtype(interfaceNamesCache, gtype, () => {
+        const names: string[] = [];
+        for (const iface of GObject.typeInterfaces(gtype)) {
+            const name = GObject.typeName(iface);
+            if (name) names.push(name);
+        }
+        return names;
+    });
 
 const typeNamesWithInterfacesCache = new Map<bigint, string[]>();
 
-export const collectTypeNamesWithInterfaces = (gtype: bigint): string[] => {
-    const cached = typeNamesWithInterfacesCache.get(gtype);
-    if (cached) return cached;
-    const names = [...collectTypeNameChain(gtype), ...collectInterfaceNames(gtype)];
-    typeNamesWithInterfacesCache.set(gtype, names);
-    return names;
-};
+export const collectTypeNamesWithInterfaces = (gtype: bigint): string[] =>
+    memoizeGtype(typeNamesWithInterfacesCache, gtype, () => [
+        ...collectTypeNameChain(gtype),
+        ...collectInterfaceNames(gtype),
+    ]);
 
 const foldInheritedTable = <R, T>(
     gtype: bigint,
@@ -92,14 +90,8 @@ export const foldInheritedTableWithInterfaces = <R, T>(
     return accumulator;
 };
 
-export const typeChainIncludes = (gtype: bigint, name: string): boolean => {
-    let names = typeNameSetCache.get(gtype);
-    if (!names) {
-        names = new Set(collectTypeNameChain(gtype));
-        typeNameSetCache.set(gtype, names);
-    }
-    return names.has(name);
-};
+export const typeChainIncludes = (gtype: bigint, name: string): boolean =>
+    memoizeGtype(typeNameSetCache, gtype, () => new Set(collectTypeNameChain(gtype))).has(name);
 
 const memoize = <T>(
     cache: Map<bigint, Map<string, T>>,
@@ -108,11 +100,7 @@ const memoize = <T>(
     compute: (typeNames: string[]) => T,
 ): T => {
     const gtype = instance.__type__;
-    let perGtype = cache.get(gtype);
-    if (!perGtype) {
-        perGtype = new Map();
-        cache.set(gtype, perGtype);
-    }
+    const perGtype = memoizeGtype(cache, gtype, () => new Map<string, T>());
     const cached = perGtype.get(key);
     if (cached !== undefined) return cached;
     const result = compute(collectTypeNameChain(gtype));
@@ -120,21 +108,18 @@ const memoize = <T>(
     return result;
 };
 
-export const collectConstructableProps = (gtype: bigint): Set<string> => {
-    const cached = constructablePropsCache.get(gtype);
-    if (cached) return cached;
-    const names = foldInheritedTable(
-        gtype,
-        CONSTRUCT_PROPS,
-        (collected: Set<string>, props) => {
-            for (const prop of props) collected.add(prop);
-            return collected;
-        },
-        new Set<string>(),
+export const collectConstructableProps = (gtype: bigint): Set<string> =>
+    memoizeGtype(constructablePropsCache, gtype, () =>
+        foldInheritedTable(
+            gtype,
+            CONSTRUCT_PROPS,
+            (collected: Set<string>, props) => {
+                for (const prop of props) collected.add(prop);
+                return collected;
+            },
+            new Set<string>(),
+        ),
     );
-    constructablePropsCache.set(gtype, names);
-    return names;
-};
 
 export const isConstructOnlyProp = (instance: TypedClass, key: string): boolean =>
     memoize(constructOnlyCache, instance, key, (typeNames) => {

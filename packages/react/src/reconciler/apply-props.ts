@@ -39,16 +39,6 @@ type PendingSignal = { signalName: string; newValue: unknown };
 
 type PendingProperty = { name: string; newValue: unknown };
 
-const resolvePendingProperty = (
-    container: GObject.Object,
-    name: string,
-    newValue: unknown,
-): PendingProperty | undefined => {
-    if (newValue !== undefined) return { name, newValue };
-    const fallback = resolveDefaultProp(container, name);
-    return fallback.has ? { name, newValue: fallback.value } : undefined;
-};
-
 const collectGenericChanges = (
     container: GObject.Object,
     oldProps: Props | null,
@@ -73,8 +63,12 @@ const collectGenericChanges = (
             return;
         }
         if (constructionApplied) return;
-        const pending = resolvePendingProperty(container, name, newValue);
-        if (pending) pendingProperties.push(pending);
+        if (newValue !== undefined) {
+            pendingProperties.push({ name, newValue });
+            return;
+        }
+        const fallback = resolveDefaultProp(container, name);
+        if (fallback.has) pendingProperties.push({ name, newValue: fallback.value });
     };
 
     if (oldProps) {

@@ -16,13 +16,9 @@ const pickConstructProps = (gtype: bigint, props: Props): Props => {
     return result;
 };
 
-const constructWrapperInstance = (type: string, props: Props): GObject.Object => {
-    const cls = requireClassByName(type);
-    return new cls(pickConstructProps(GObject.typeFromName(type), props));
-};
-
 export const createElementInstance = (type: string, props: Props, rootContainer: Container): Node => {
-    const node = constructWrapperInstance(type, props);
+    const cls = requireClassByName(type);
+    const node = new cls(pickConstructProps(GObject.typeFromName(type), props));
     registerState(node, { props, rootContainer });
     return node;
 };

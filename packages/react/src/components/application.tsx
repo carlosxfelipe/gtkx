@@ -5,7 +5,7 @@ import { type ElementType, type ReactNode, type Ref, useCallback, useState } fro
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 
-const POST_ACTIVATE_PROPS = new Set(["menubar"])
+const POST_ACTIVATE_PROPS = new Set(["menubar"]);
 
 type ApplicationComponentProps<T extends Gtk.Application> = {
     applicationId?: string | null | undefined;
@@ -16,7 +16,12 @@ type ApplicationComponentProps<T extends Gtk.Application> = {
 export const createApplicationComponent = <T extends Gtk.Application>(
     Component: ElementType,
 ): ((props: ApplicationComponentProps<T>) => ReactNode) => {
-    return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps<T>): ReactNode => {
+    return ({
+        applicationId = defaultApplicationId,
+        children,
+        ref,
+        ...rest
+    }: ApplicationComponentProps<T>): ReactNode => {
         const [app, setApp] = useState<T | null>(null);
 
         const handleMount = useCallback((instance: T) => {
@@ -30,7 +35,9 @@ export const createApplicationComponent = <T extends Gtk.Application>(
         }, []);
 
         const mergedRef = useMergeRefs<T>(ref, handleMount);
-        const appliedProps = app ? rest : Object.fromEntries(Object.entries(rest).filter(([key]) => !POST_ACTIVATE_PROPS.has(key)));
+        const appliedProps = app
+            ? rest
+            : Object.fromEntries(Object.entries(rest).filter(([key]) => !POST_ACTIVATE_PROPS.has(key)));
 
         return (
             <Component ref={mergedRef} applicationId={applicationId} {...appliedProps}>

@@ -196,16 +196,10 @@ function resetDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescripto
     }
 }
 
-const applyChangedAccessibleProps = (
-    widget: Gtk.Accessible,
-    oldProps: Props | null,
-    newProps: Props,
-    seen: Set<string>,
-): void => {
+const applyChangedAccessibleProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
     for (const name in newProps) {
         const descriptor = lookupDescriptor(name);
         if (!descriptor) continue;
-        seen.add(name);
 
         const newValue = newProps[name];
         if (oldProps?.[name] === newValue) continue;
@@ -220,9 +214,9 @@ const applyChangedAccessibleProps = (
     }
 };
 
-const resetRemovedAccessibleProps = (widget: Gtk.Accessible, oldProps: Props, seen: Set<string>): void => {
+const resetRemovedAccessibleProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Props): void => {
     for (const name in oldProps) {
-        if (seen.has(name)) continue;
+        if (Object.hasOwn(newProps, name)) continue;
         const descriptor = lookupDescriptor(name);
         if (!descriptor) continue;
         if (oldProps[name] !== undefined) {
@@ -233,7 +227,6 @@ const resetRemovedAccessibleProps = (widget: Gtk.Accessible, oldProps: Props, se
 };
 
 export const applyAccessibleProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
-    const seen = new Set<string>();
-    applyChangedAccessibleProps(widget, oldProps, newProps, seen);
-    if (oldProps) resetRemovedAccessibleProps(widget, oldProps, seen);
+    applyChangedAccessibleProps(widget, oldProps, newProps);
+    if (oldProps) resetRemovedAccessibleProps(widget, oldProps, newProps);
 };

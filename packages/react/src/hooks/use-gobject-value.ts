@@ -18,42 +18,32 @@ export function useGObjectValue<T extends GObject.Object, V>(
     const readRef = useRef(read);
     readRef.current = read;
     const cacheRef = useRef<GObjectValueCache<T, V> | null>(null);
-    const readingRef = useRef(false);
-    const onChangeRef = useRef<() => void>(() => {});
 
-    const readNow = useCallback((): void => {
-        if (readingRef.current) return;
-        readingRef.current = true;
-        try {
-            cacheRef.current = { target: resolved, signal, value: readRef.current(resolved) };
-        } finally {
-            readingRef.current = false;
-        }
+    const readNow = useCallback((): GObjectValueCache<T, V> => {
+        const cache = { target: resolved, signal, value: readRef.current(resolved) };
+        cacheRef.current = cache;
+        return cache;
     }, [resolved, signal]);
-
-    const refresh = useCallback((): void => {
-        readNow();
-        onChangeRef.current();
-    }, [readNow]);
 
     const getSnapshot = useCallback((): V => {
         const cache = cacheRef.current;
         if (cache !== null && cache.target === resolved && cache.signal === signal) {
             return cache.value;
         }
-        readNow();
-        return cacheRef.current?.value ?? readRef.current(resolved);
+        return readNow().value;
     }, [resolved, signal, readNow]);
 
     const subscribe = useCallback(
         (onStoreChange: () => void): (() => void) => {
             if (resolved === null) return () => {};
-            onChangeRef.current = onStoreChange;
-            const handler: SignalHandler = () => refresh();
+            const handler: SignalHandler = () => {
+                readNow();
+                onStoreChange();
+            };
             resolved.on(signal, handler);
             return () => resolved.off(signal, handler);
         },
-        [resolved, signal, refresh],
+        [resolved, signal, readNow],
     );
 
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
