@@ -383,9 +383,30 @@ describe("codegen read-only props", () => {
     });
 });
 
+const defaultPropsBody = (metadata: string, glibName: string): string => {
+    const table = metadata.slice(metadata.indexOf("export const DEFAULT_PROPS"));
+    const block = table.slice(table.indexOf(`"${glibName}": {`));
+    return block.slice(0, block.indexOf("\n    }"));
+};
+
 describe("codegen runtime tables", () => {
     it("bakes the element-prop table into the metadata module", () => {
         expect(reactPipeline.metadata).toContain("export const ELEMENT_PROPS");
+    });
+
+    it("omits a null default when the property setter rejects null", () => {
+        const button = defaultPropsBody(reactPipeline.metadata, "GtkButton");
+        expect(button).not.toContain('"iconName"');
+        expect(button).not.toContain('"label"');
+    });
+
+    it("keeps a null default when the property setter accepts null", () => {
+        expect(defaultPropsBody(reactPipeline.metadata, "GtkImage")).toContain('"iconName": null');
+        expect(defaultPropsBody(reactPipeline.metadata, "GtkButton")).toContain('"actionName": null');
+    });
+
+    it("keeps non-null defaults on properties whose setter rejects null", () => {
+        expect(defaultPropsBody(reactPipeline.metadata, "GtkButton")).toContain('"hasFrame": true');
     });
 
     it("bakes the ColumnView ordered insert as a container prop", () => {

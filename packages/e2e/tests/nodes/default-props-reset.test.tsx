@@ -1,9 +1,23 @@
+import * as GLib from "@gtkx/gi/glib";
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+const captureCriticals = async (domain: string, run: () => Promise<void>): Promise<string[]> => {
+    const messages: string[] = [];
+    const handler = GLib.logSetHandler(domain, GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
+        messages.push(message);
+    });
+    try {
+        await run();
+    } finally {
+        GLib.logRemoveHandler(domain, handler);
+    }
+    return messages;
+};
 
 describe("default-props reset on removal", () => {
     it("resets a boolean property to its GIR default when the prop is removed", async () => {
@@ -31,6 +45,20 @@ describe("default-props reset on removal", () => {
 
         await rerender(<GtkLabel ref={ref} label="x" />);
         expect(ref.current?.xalign).toBeCloseTo(0.5);
+    });
+
+    it("leaves a property alone when its setter rejects the null default", async () => {
+        const ref = createRef<Gtk.Button>();
+        const { rerender } = await render(<GtkButton ref={ref} iconName="list-add-symbolic" />);
+        expect(ref.current?.iconName).toBe("list-add-symbolic");
+
+        const criticals = await captureCriticals("Gtk", async () => {
+            await rerender(<GtkButton ref={ref} label="Cancel" />);
+        });
+
+        expect(criticals).toEqual([]);
+        expect(ref.current?.label).toBe("Cancel");
+        expect(ref.current?.iconName).toBeNull();
     });
 
     it("resets a property with no typed C accessor through the static GValue path", async () => {

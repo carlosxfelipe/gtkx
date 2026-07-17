@@ -1,5 +1,6 @@
 import type { ElementProp } from "@gtkx/config";
 import { sortStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { inputParameters } from "../../analysis/param-structure.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
 import type { Library } from "../../gir/library.js";
@@ -118,7 +119,7 @@ const collectDefaultProps = (library: Library, sources: GirClass[]): [string, st
             const jsName = toCamelIdentifier(property.name);
             if (seen.has(jsName)) continue;
             seen.add(jsName);
-            const literal = renderDefaultLiteral(library, property);
+            const literal = renderDefaultLiteral(library, klass, property);
             if (literal === undefined) continue;
             defaults.push([jsName, literal] as const);
         }
@@ -126,8 +127,18 @@ const collectDefaultProps = (library: Library, sources: GirClass[]): [string, st
     return defaults;
 };
 
-const renderDefaultLiteral = (library: Library, property: GirProperty): string | undefined =>
-    resolveDefaultLiteral(library, property.type, property.defaultValue);
+const setterRejectsNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {
+    if (property.setter === undefined) return false;
+    const setter = klass.methods.find((method) => method.name === property.setter);
+    if (setter === undefined) return false;
+    const [value] = inputParameters(library, setter);
+    return value !== undefined && !value.parameter.nullable && !value.parameter.optional;
+};
+
+const renderDefaultLiteral = (library: Library, klass: GirClass, property: GirProperty): string | undefined => {
+    if (property.defaultValue === "NULL" && setterRejectsNull(library, klass, property)) return undefined;
+    return resolveDefaultLiteral(library, property.type, property.defaultValue);
+};
 
 const resolveDefaultLiteral = (
     library: Library,
