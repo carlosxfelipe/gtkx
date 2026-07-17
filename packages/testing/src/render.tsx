@@ -31,6 +31,33 @@ const activeRenders = new Set<ActiveRender>();
 
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
+const LAYOUT_FLUSH_FALLBACK_MS = 500;
+
+const flushLayout = (window: Gtk.Window | null): Promise<void> => {
+    if (window === null || window.getFrameClock() === null || window.getWidth() > 0) return Promise.resolve();
+    return new Promise((resolve) => {
+        let done = false;
+        let cleanup: (() => void) | null = null;
+        const finish = (): void => {
+            if (done) return;
+            done = true;
+            cleanup?.();
+            resolve();
+        };
+        const fallback = setTimeout(finish, LAYOUT_FLUSH_FALLBACK_MS);
+        const tickId = window.addTickCallback(() => {
+            if (window.getWidth() === 0) return true;
+            clearTimeout(fallback);
+            cleanup = null;
+            finish();
+            return false;
+        });
+        cleanup = () => {
+            clearTimeout(fallback);
+            window.removeTickCallback(tickId);
+        };
+    });
+};
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
     await runInAct(() => {
@@ -159,6 +186,7 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
 
     await update(wrap(element), root);
     resolved.window?.present();
+    await flushLayout(resolved.window);
 
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
@@ -171,6 +199,7 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
         },
         rerender: async (newElement: ReactNode) => {
             await update(wrap(newElement), root);
+            await flushLayout(resolved.window);
         },
         debug: (element: Container | Container[] = baseElement, debugOptions?: PrettyWidgetOptions) => {
             logWidget(element, debugOptions);
