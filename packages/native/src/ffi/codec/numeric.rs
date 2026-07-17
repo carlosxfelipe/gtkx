@@ -222,6 +222,12 @@ impl IntegerCodec {
 
     pub(super) fn check_range(self, value: f64) -> anyhow::Result<()> {
         let name = self.name();
+        if !value.is_finite() {
+            bail!("Value {value} is not finite, {name} expects a whole number");
+        }
+        if value.fract() != 0.0 {
+            bail!("Value {value} is not an integer, {name} expects a whole number");
+        }
         let (min, max) = match self {
             Self::I8 => (i8::MIN as f64, i8::MAX as f64),
             Self::U8 => (0.0, u8::MAX as f64),
@@ -232,7 +238,7 @@ impl IntegerCodec {
             Self::I64 => (-MAX_SAFE_INTEGER, MAX_SAFE_INTEGER),
             Self::U64 => (0.0, MAX_SAFE_INTEGER),
         };
-        if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
+        if value < min || value > max {
             bail!("Value {value} is out of range for {name} [{min}, {max}]");
         }
         Ok(())

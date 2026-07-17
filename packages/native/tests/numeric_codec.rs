@@ -151,6 +151,49 @@ fn integer_checked_to_stash_accepts_and_rejects() {
 }
 
 #[test]
+fn integer_checked_to_stash_reports_fractional_separately_from_range() {
+    let err = IntegerCodec::I32
+        .checked_to_stash(181.5)
+        .expect_err("a fractional value should fail");
+    let message = err.to_string();
+    assert_eq!(
+        message,
+        "Value 181.5 is not an integer, i32 expects a whole number"
+    );
+    assert!(!message.contains("out of range"));
+}
+
+#[test]
+fn integer_checked_to_stash_reports_non_finite_separately_from_range() {
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let err = IntegerCodec::I32
+            .checked_to_stash(value)
+            .expect_err("a non-finite value should fail");
+        let message = err.to_string();
+        assert!(
+            message.contains("is not finite"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            !message.contains("out of range"),
+            "unexpected message: {message}"
+        );
+    }
+}
+
+#[test]
+fn integer_checked_to_stash_still_reports_genuine_range_errors() {
+    let err = IntegerCodec::I32
+        .checked_to_stash(4_000_000_000.0)
+        .expect_err("a value above i32::MAX should fail");
+    let message = err.to_string();
+    assert!(
+        message.contains("is out of range for i32"),
+        "unexpected message: {message}"
+    );
+}
+
+#[test]
 fn integer_ptr_to_value_raw_round_trips() {
     for kind in INTEGER_KINDS {
         let value = kind
