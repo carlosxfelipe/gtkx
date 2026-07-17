@@ -42,7 +42,8 @@ modules:
       - glib-compile-schemas /app/share/glib-2.0/schemas
       - install -Dm644 flatpak/com.gtkx.tutorial.desktop /app/share/applications/com.gtkx.tutorial.desktop
       - install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml /app/share/metainfo/com.gtkx.tutorial.metainfo.xml
-      - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/com.gtkx.tutorial.png
+      - install -Dm644 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg /app/share/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
+      - install -Dm644 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg /app/share/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
     sources:
       - type: dir
         path: ..

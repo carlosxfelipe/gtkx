@@ -329,7 +329,7 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`applicationIcon="com.gtkx.tutorial"` is the application ID, which resolves to the installed icon. `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
+`applicationIcon="com.gtkx.tutorial"` is the application ID, which the icon theme resolves to the app icon shipped under `data/icons/` (see [Packaging and Shipping](/tutorial/packaging) for how it is laid out and installed). `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
 
 Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (signals dismissal only). About has no responses to choose, only a close, so there is nothing to branch on.
 

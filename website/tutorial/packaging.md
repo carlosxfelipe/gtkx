@@ -107,10 +107,13 @@ build-commands:
   - glib-compile-schemas /app/share/glib-2.0/schemas
   - install -Dm644 flatpak/com.gtkx.tutorial.desktop /app/share/applications/com.gtkx.tutorial.desktop
   - install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml /app/share/metainfo/com.gtkx.tutorial.metainfo.xml
-  - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/com.gtkx.tutorial.png
+  - install -Dm644 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg /app/share/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
+  - install -Dm644 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg /app/share/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
 ```
 
 These commands produce their own SEA binary the same way the local build does, injecting the blob into the SDK's `node` inside the sandbox, and install it as `gtkx-tutorial`. Installing and compiling the GSettings schema into `/app/share/glib-2.0/schemas` is what lets `useSetting` read and write preferences inside the sandbox.
+
+The app icon lives in the project at `data/icons/hicolor/`, laid out exactly like the system icon theme: a scalable SVG named after the application ID, plus a 16×16 monochrome `-symbolic` variant, both drawn to the [GNOME app icon guidelines](https://developer.gnome.org/hig/guidelines/app-icons.html). Because the layout mirrors `share/icons`, the install commands are a straight copy, and outside the sandbox the icon resolves too: `gtkx dev` adds the `data/` directory to `XDG_DATA_DIRS`, and `gtkx build` copies `data/icons/` next to the bundle, so named lookups like the About dialog's `applicationIcon="com.gtkx.tutorial"` work in every environment.
 
 ## The desktop entry and AppStream metadata
 

@@ -37,7 +37,7 @@ const applySelectedPositions = (model: Gtk.SelectionModel, positions: number[]):
             return;
         }
         const requested = bitsetOf(positions);
-        const changed = model.getSelection();
+        const changed = model.getSelection().copy();
         changed.difference(requested);
         if (changed.isEmpty()) return;
         model.setSelection(requested, changed);
