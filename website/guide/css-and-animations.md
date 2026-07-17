@@ -6,7 +6,7 @@ description: "Style native widgets with the @gtkx/css tagged template and GTK4's
 
 GTK4 styles widgets with a CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
 
-Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is framer-motion for GTK4: you declare `initial`, `animate`, and `exit` targets on a widget (plus gestures, drag, and layout animations), and framer-motion's engine drives the frames, rendered as GTK4 CSS.
+These packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is framer-motion for GTK4: you declare `initial`, `animate`, and `exit` targets on a widget (plus gestures, drag, and layout animations), and framer-motion's engine drives the frames, rendered as GTK4 CSS.
 
 ## The `css` tagged template
 
@@ -165,7 +165,7 @@ Both kinds accept `delay` in seconds, `repeat` (additional repetitions, `Infinit
 ```
 
 ::: tip Reduced motion is handled globally
-`@gtkx/animated` watches two GTK4 settings. When `gtk-enable-animations` is off, every animation completes instantly, package-wide. When `gtk-interface-reduced-motion` asks for reduced motion, it is exposed to the engine as `prefers-reduced-motion`, and framer-motion's reduced-motion handling applies. Override that per tree with `MotionConfig`: wrap a subtree in `<MotionConfig reducedMotion="always">` (or `"never"`) to force or opt out of reduced-motion handling where motion is essential.
+`@gtkx/animated` watches GTK4's motion settings. When `gtk-enable-animations` is off, every animation completes instantly, package-wide. When `gtk-interface-reduced-motion` asks for reduced motion, it is exposed to the engine as `prefers-reduced-motion`, and framer-motion's reduced-motion handling applies. Override that per tree with `MotionConfig`: wrap a subtree in `<MotionConfig reducedMotion="always">` (or `"never"`) to force or opt out of reduced-motion handling where motion is essential.
 :::
 
 ## Exit animations with `AnimatePresence`
@@ -193,7 +193,7 @@ import { GtkBox } from "@gtkx/jsx/gtk";
 </GtkBox>;
 ```
 
-`AnimatePresence` takes five props besides `children`:
+`AnimatePresence` takes these props besides `children`:
 
 - `initial` (default `true`): whether children already present on the first render run their enter animations. Pass `false` to mount them directly in their `animate` state and animate only subsequent changes.
 - `mode`: how entering and exiting children overlap. `"sync"` (the default) runs both at once. `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. The web-only `"popLayout"` mode is not supported.
@@ -298,7 +298,7 @@ The `layout` prop animates a widget between layouts. When a re-render moves or r
 </animated.GtkBox>;
 ```
 
-`layoutId` connects widgets across renders: when a widget with a `layoutId` unmounts and another with the same id mounts, the new one animates from the old one's bounds, the shared-element transition. The two widgets must carry distinct `key` props so React actually swaps them:
+`layoutId` connects widgets across renders: when a widget with a `layoutId` unmounts and another with the same id mounts, the new one animates from the old one's bounds, the shared-element transition. Both widgets must carry distinct `key` props so React actually swaps them:
 
 ```tsx
 {expanded ? (

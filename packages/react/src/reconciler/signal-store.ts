@@ -20,7 +20,7 @@ let blockDepth = 0;
 type SignalBinding = {
     instance: GObject.Object;
     signal: string;
-    handler?: SignalHandler | null | undefined;
+    handler?: SignalHandler | undefined;
 };
 
 export class SignalStore {
@@ -46,15 +46,12 @@ export class SignalStore {
 
     private disconnect(instance: GObject.Object, signal: string): void {
         const instanceMap = this.instanceHandlers.get(instance);
-        const handlerId = instanceMap?.get(signal);
-
-        if (handlerId !== undefined) {
-            instance.disconnect(handlerId);
-            instanceMap?.delete(signal);
-            if (instanceMap?.size === 0) {
-                this.instanceHandlers.delete(instance);
-            }
-        }
+        if (!instanceMap) return;
+        const handlerId = instanceMap.get(signal);
+        if (handlerId === undefined) return;
+        instance.disconnect(handlerId);
+        instanceMap.delete(signal);
+        if (instanceMap.size === 0) this.instanceHandlers.delete(instance);
     }
 
     private connect(binding: SignalBinding & { handler: SignalHandler }): void {

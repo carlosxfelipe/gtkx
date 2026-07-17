@@ -54,7 +54,7 @@ A few GTK4-isms to unpack for a React reader:
 - **`AdwClamp`** is the Adwaita widget that caps content width and centers it. `maximumSize={640}` means "never let the list grow past 640px wide, no matter how wide the monitor is." This is the standard GNOME reading-width treatment: on a wide screen the boxed list sits centered instead of stretching edge to edge. The `margin*` props (universal on every widget) inset it from the pane edges.
 - `GtkScrolledWindow` with `vexpand` wraps the clamp so a long list scrolls.
 
-## Search: two controlled GObject properties
+## Search: controlled GObject properties
 
 ```tsx
 <GtkSearchBar
@@ -107,7 +107,7 @@ onClicked={() => setSearchMode((mode) => !mode)}
 </GtkBox>
 ```
 
-Two things make this the idiomatic Adwaita list rather than a plain one:
+These props make this the idiomatic Adwaita list rather than a plain one:
 
 - **`cssClasses={["boxed-list"]}`** applies the `.boxed-list` style class, which turns a bare `GtkListBox` into the rounded, bordered card group you see all over GNOME Settings.
 - **`selectionMode={Gtk.SelectionMode.NONE}`** disables row selection. Boxed lists are not "pick one of these" lists; each row carries its own controls (a checkbox, a star, a delete button), so selecting the whole row would be meaningless.
@@ -251,7 +251,7 @@ export const visibleTasks = (
         .sort(byOrder(options.sortOrder));
 ```
 
-Three predicates compose in one `.filter`, then a comparator sorts. Each is an ordinary pure function:
+The predicates compose in one `.filter`, then a comparator sorts. Each is an ordinary pure function:
 
 ```ts
 const inSelection = (task: Task, selection: Selection): boolean => {
@@ -281,7 +281,7 @@ const matchesFilter = (task: Task, filter: Filter): boolean => {
 };
 ```
 
-`inSelection` handles the sidebar choice (a smart view or a user list). `matchesQuery` is the free-text search across title and notes. `matchesFilter` is the All / Open / Done toggle. They are independent, so a search inside the "Today" view with the "Open" filter ANDs all three.
+`inSelection` handles the sidebar choice (a smart view or a user list). `matchesQuery` is the free-text search across title and notes. `matchesFilter` is the All / Open / Done toggle. They are independent, so a search inside the "Today" view with the "Open" filter ANDs all of them.
 
 Sorting is likewise a JS comparator, chosen by the persisted `sort-order` setting:
 

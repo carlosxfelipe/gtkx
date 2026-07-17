@@ -31,7 +31,7 @@ try {
 }
 ```
 
-Because it is an `Error` subclass, it behaves like one everywhere: `String(error)` and `console.error(error)` print the message instead of an opaque object, and rethrowing or wrapping it works as expected. On top of the standard `Error` surface, a `GLib.Error` exposes the three fields of the underlying C struct:
+Because it is an `Error` subclass, it behaves like one everywhere: `String(error)` and `console.error(error)` print the message instead of an opaque object, and rethrowing or wrapping it works as expected. On top of the standard `Error` surface, a `GLib.Error` exposes the fields of the underlying C struct:
 
 - **`message`** is the human-readable description, the same string GLib produced.
 - **`domain`** is the error domain as a numeric GQuark (`GLib.Quark` is `number`). Each library registers its own domains: file errors, GIO I/O errors, GTK4 dialog errors, and so on.
@@ -41,7 +41,7 @@ Its `name` is `"GLib.Error"`, and it carries a `stack` captured at the point of 
 
 ## Matching errors by domain and code
 
-The `domain` quark and `code` number are how GLib distinguishes "file not found" from "permission denied" from "the user closed the dialog". GTKX gives you two ways to match them.
+The `domain` quark and `code` number are how GLib distinguishes "file not found" from "permission denied" from "the user closed the dialog". GTKX lets you match them by domain object or by the `matches` method.
 
 ### Error domain objects
 
@@ -150,7 +150,7 @@ A rejected native promise's `stack` describes the GIO completion callback, not y
 
 ## Constructing GErrors yourself
 
-Some APIs consume GErrors rather than produce them. `GLib.Error.newLiteral(domain, code, message)` builds one, and the `GLib.Error` constructor accepts the same three fields as optional props:
+Some APIs consume GErrors rather than produce them. `GLib.Error.newLiteral(domain, code, message)` builds one, and the `GLib.Error` constructor accepts the same fields as optional props:
 
 ```ts
 import * as GLib from "@gtkx/gi/glib";

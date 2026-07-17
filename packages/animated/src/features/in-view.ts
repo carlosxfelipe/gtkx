@@ -203,7 +203,6 @@ export class GtkInViewFeature extends Feature<unknown> {
         if (this.isInView === isIntersecting) return;
         this.isInView = isIntersecting;
         const once = this.viewportOptions().once === true;
-        if (once && !isIntersecting && this.hasEnteredView) return;
         if (isIntersecting) {
             this.hasEnteredView = true;
             if (once) this.disconnectScroll();

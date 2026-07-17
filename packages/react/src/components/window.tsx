@@ -3,17 +3,15 @@ import { type ElementType, type ReactNode, type Ref, useCallback, useState } fro
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 
-type WindowComponentProps<T extends Gtk.Window> = {
-    ref?: Ref<T | null> | undefined;
+type WindowComponentProps = {
+    ref?: Ref<Gtk.Window | null> | undefined;
 };
 
-export const createWindowComponent = <T extends Gtk.Window>(
-    Component: ElementType,
-): ((props: WindowComponentProps<T>) => ReactNode) => {
-    return ({ ref, ...rest }: WindowComponentProps<T>): ReactNode => {
-        const [window, setWindow] = useState<T | null>(null);
+export const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
+    return ({ ref, ...rest }: WindowComponentProps): ReactNode => {
+        const [window, setWindow] = useState<Gtk.Window | null>(null);
 
-        const handleMount = useCallback((window: T) => {
+        const handleMount = useCallback((window: Gtk.Window) => {
             window.present();
             setWindow(window);
 

@@ -4,7 +4,7 @@ description: "The Tasks data layer, with JSON in the XDG data directory through 
 
 # Data Model and Persistence
 
-Tasks keeps its data in two separate stores: task content as one JSON file in the XDG data directory, and small UI preferences (filter, sort order, color scheme, window size) in GSettings. This page walks that data layer end to end: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
+Tasks keeps its data in separate stores: task content as one JSON file in the XDG data directory, and small UI preferences (filter, sort order, color scheme, window size) in GSettings. This page walks that data layer end to end: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
 
 React state is the single source of truth while the app runs. Both stores are only where that state is serialized to and rehydrated from.
 
@@ -34,9 +34,9 @@ export type Task = {
 };
 ```
 
-Two fields matter later. `position` is the manual sort index that drag-to-reorder rewrites. `deleted` is a soft-delete flag: trashing a task flips `deleted` to `true` rather than removing it, which is what makes the Trash smart view and the undo toast possible without a second data structure.
+`position` and `deleted` matter later. `position` is the manual sort index that drag-to-reorder rewrites. `deleted` is a soft-delete flag: trashing a task flips `deleted` to `true` rather than removing it, which is what makes the Trash smart view and the undo toast possible without a second data structure.
 
-The remaining two types describe what the sidebar has selected, not stored data. A `Selection` is a discriminated union: either one of the built-in smart views or a specific user list by id.
+The remaining types describe what the sidebar has selected, not stored data. A `Selection` is a discriminated union: either one of the built-in smart views or a specific user list by id.
 
 ```ts
 export type SmartView = "all" | "today" | "important" | "trash";
@@ -71,7 +71,7 @@ The XDG spec says per-user data files belong under `$XDG_DATA_HOME`, and that an
 
 ## First run: the seed
 
-When there is no file yet, the app has to start from something. `seed()` returns a `PersistedState` with three example lists and six example tasks, so a fresh install opens onto a populated list instead of an empty screen. `isoInDays` builds due dates relative to today (18:00), and `make` fills in the boilerplate fields so each task literal only spells out what differs.
+When there is no file yet, the app has to start from something. `seed()` returns a `PersistedState` with example lists and tasks, so a fresh install opens onto a populated list instead of an empty screen. `isoInDays` builds due dates relative to today (18:00), and `make` fills in the boilerplate fields so each task literal only spells out what differs.
 
 ```ts
 const seed = (): PersistedState => {
@@ -117,7 +117,7 @@ The color values (`#3584e4`, `#2ec27e`, `#e66100`) are from GNOME's standard col
 
 ## Loading: seed, corruption, and version guard in one function
 
-`loadState` handles all three ways loading can go wrong (no file, unreadable file, garbage or stale contents) and always returns a valid `PersistedState`. This matters because it runs as the lazy `useState` initializer: if it threw, the whole app would fail to mount.
+`loadState` handles every way loading can go wrong (no file, unreadable file, garbage or stale contents) and always returns a valid `PersistedState`. This matters because it runs as the lazy `useState` initializer: if it threw, the whole app would fail to mount.
 
 ```ts
 export const loadState = (): PersistedState => {
@@ -270,7 +270,7 @@ const updateTask = (id: string, fields: Partial<Pick<Task, "title" | "notes" | "
     patch(id, fields);
 ```
 
-`setDone` and `toggleDone` go through `withDone` to keep the completion timestamp honest. `updateTask` is the editor's catch-all: its `fields` type is narrowed to just the four user-editable fields, so the form cannot accidentally patch `done` or `position`.
+`setDone` and `toggleDone` go through `withDone` to keep the completion timestamp honest. `updateTask` is the editor's catch-all: its `fields` type is narrowed to just the user-editable fields, so the form cannot accidentally patch `done` or `position`.
 
 ### Trash, restore, delete
 
@@ -414,9 +414,9 @@ The preference keys are declared in `data/com.gtkx.tutorial.gschema.xml`. Each k
 </schemalist>
 ```
 
-Two things worth calling out in the schema format:
+Some things worth calling out in the schema format:
 
-- **Constrained strings, two ways.** `filter` and `color-scheme` inline a `<choices>` list; `sort-order` references a top-level `<enum>` by id via `enum="..."`, and its `<default>` is one of the enum *nicks*, single-quoted. Both forms produce a key GSettings validates against its allowed set, so a write of an undeclared value is rejected.
+- **Constrained strings.** `filter` and `color-scheme` inline a `<choices>` list; `sort-order` references a top-level `<enum>` by id via `enum="..."`, and its `<default>` is one of the enum *nicks*, single-quoted. Both forms produce a key GSettings validates against its allowed set, so a write of an undeclared value is rejected.
 - **Ranged integer.** `reminder-minutes` is `type="i"` with a `<range min="0" max="1440"/>`, capping the reminder lead time to a day.
 
 Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. How components read and write these keys with the `useSetting` hook is covered in [Preferences and Theming](/tutorial/preferences-and-theming).

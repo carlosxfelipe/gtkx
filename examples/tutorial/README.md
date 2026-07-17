@@ -6,7 +6,7 @@
 
 ## What it demonstrates
 
-- Adaptive navigation with `@gtkx/navigation`: a split-view navigator and a stack navigator inside a `NavigationContainer`, with an `AdwBreakpoint` collapsing the two panes into one column on a narrow window.
+- Adaptive navigation with `@gtkx/navigation`: a split-view navigator and a stack navigator inside a `NavigationContainer`, with an `AdwBreakpoint` collapsing the panes into one column on a narrow window.
 - Settings backed by a GSettings schema (`data/com.gtkx.tutorial.gschema.xml`), read and written with `useSetting` and `useBindSetting`, driving the Adwaita color scheme through `Adw.StyleManager`.
 - Actions, menus, and shortcuts: `GSimpleAction` elements wired to a menu button, `actionAccels`, and a `GtkShortcutController`.
 - Dialogs and feedback: preferences, an about dialog, a shortcuts window, delete confirmation, and toasts via `AdwToastOverlay`.

@@ -54,7 +54,7 @@ it("marks a task complete", async () => {
 
 Every task row exposes a `GtkCheckButton` with `accessibleLabel="Mark complete"` (from the [Task Rows](/tutorial/task-rows-and-reordering) chapter), and a check button reports the `CHECKBOX` role, so `findAllByRole(Gtk.AccessibleRole.CHECKBOX)` returns one per task. `userEvent.click` runs the same `onToggled` handler the app uses in production, and `toBeChecked` asserts against the live `Gtk.CheckButton`.
 
-`screen` exposes the full query family, which the [testing guide](/guide/testing#queries) documents in full. This chapter uses three of them: `findAllByRole` and `findByRole` to match an accessible role (always a `Gtk.AccessibleRole` value, never a string, optionally narrowed by `{ name }`), and `findByText` to match rendered label text.
+`screen` exposes the full query family, which the [testing guide](/guide/testing#queries) documents in full. This chapter uses `findAllByRole` and `findByRole` to match an accessible role (always a `Gtk.AccessibleRole` value, never a string, optionally narrowed by `{ name }`), and `findByText` to match rendered label text.
 
 ## Driving a flow
 

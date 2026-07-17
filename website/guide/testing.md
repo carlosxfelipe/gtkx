@@ -8,7 +8,7 @@ GTKX tests run on the widget set GNOME ships. `render` mounts your components in
 
 The API is deliberately shaped like React Testing Library. If you have tested a React web app, you already know the model: query by role and accessible name, interact through user events, assert on what the user can observe.
 
-Two packages divide the work. `@gtkx/testing` is the library you import in test files: `render`, `screen`, `userEvent`, `fireEvent`, `waitFor`, and a set of widget-aware matchers. `@gtkx/vitest` is a Vitest plugin that gives every test worker its own isolated GTK4 display. For a walkthrough of testing a complete app, see the [tutorial's testing chapter](/tutorial/testing); this page is the reference for the full surface.
+Separate packages divide the work. `@gtkx/testing` is the library you import in test files: `render`, `screen`, `userEvent`, `fireEvent`, `waitFor`, and a set of widget-aware matchers. `@gtkx/vitest` is a Vitest plugin that gives every test worker its own isolated GTK4 display. For a walkthrough of testing a complete app, see the [tutorial's testing chapter](/tutorial/testing); this page is the reference for the full surface.
 
 ## Setup
 
@@ -39,7 +39,7 @@ Every worker gets its own compositor and bus, so tests in different files cannot
 
 The plugin also pins the environment GTK4 needs to behave deterministically off-screen: `GDK_BACKEND=wayland`, `GSK_RENDERER=cairo`, `GTK_A11Y=test`, `GSETTINGS_BACKEND=memory`, and software-only GL.
 
-`@gtkx/vitest` accepts two options: `size`, the headless output resolution as a `"WIDTHxHEIGHT"` string (default `"1024x768"`), and `compositor`, either `"weston"` (the default) or `"sway"`; `@gtkx/cli/vitest-plugin` takes no options and applies those defaults. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` installed on the host.
+`@gtkx/vitest` accepts `size`, the headless output resolution as a `"WIDTHxHEIGHT"` string (default `"1024x768"`), and `compositor`, either `"weston"` (the default) or `"sway"`; `@gtkx/cli/vitest-plugin` takes no options and applies those defaults. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` installed on the host.
 
 Importing `@gtkx/testing` registers everything else for you: it hooks `afterEach` to clean up renders, hooks `afterAll` to quit the GTK4 loop, and extends `expect` with the widget matchers. There is no setup file to write.
 
@@ -69,7 +69,7 @@ Cleanup is automatic. The registered `afterEach` unmounts every active render, d
 
 ## Queries
 
-Six query kinds, each in six variants (`getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `findBy`, `findAllBy`), cover the widget tree:
+The query kinds, each available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `findBy`, and `findAllBy`, cover the widget tree:
 
 | Kind | Matches |
 |---|---|
@@ -86,7 +86,7 @@ Roles are always `Gtk.AccessibleRole` enum values, never strings, because they a
 
 `ByRole` accepts the richest options object: `name` narrows by accessible name, and `checked`, `pressed`, `selected`, `expanded`, `level`, `busy`, `description`, and `value: { now, min, max, text }` narrow by accessible state read live from the widget (a `CHECKBOX` is checked when the underlying `GtkCheckButton` is active, a `ROW` is selected when GTK4's selection state flag is set, and so on).
 
-Text matchers are a `string` or number, a `RegExp`, or a predicate function, with `MatcherOptions` controlling exactness and normalization (`exact` defaults to `true`; `trim` and `collapseWhitespace` are applied by the default normalizer).
+Text matchers are a `string` or number, a `RegExp`, or a predicate function, with `MatcherOptions` controlling exactness and normalization.
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -104,10 +104,10 @@ Every `userEvent` helper first waits for the widget to be actionable, polling fo
 The surface, grouped by what it drives:
 
 - **Clicking**: `click`, `dblClick`, `tripleClick`. A `GtkButton` receives a press/release gesture, a `GtkSwitch` toggles, and anything else is activated directly or through its nearest clickable ancestor.
-- **Text**: `type(widget, text, options?)`, `clear`, `copy`, `cut`, `paste(widget, text?)`. All five require a `Gtk.Editable` or `Gtk.TextView`. `copy` and `cut` write to the display's clipboard, and `paste` reads from it when you omit `text`. The clipboard is reset between tests.
+- **Text**: `type(widget, text, options?)`, `clear`, `copy`, `cut`, `paste(widget, text?)`. They all require a `Gtk.Editable` or `Gtk.TextView`. `copy` and `cut` write to the display's clipboard, and `paste` reads from it when you omit `text`. The clipboard is reset between tests.
 - **Keyboard**: `keyboard(widget, input)` types characters and named keys (`{Enter}`, `{Tab}`, `{Escape}`, `{Backspace}`, arrows, `{Home}`, `{PageUp}`, `{F1}` through `{F12}`, and held modifiers like `{Control>}a{/Control}`). Key events are emitted on a key controller and matched against the widget's and its ancestors' shortcut controllers, so GTK4 key bindings fire: an `{ArrowUp}` moves a `GtkScale`. `tab(widget, { shift })` moves focus.
 - **Pointer**: `pointer(widget, input)` supports left-button tokens only (`"click"`, `"down"`, `"up"`, and their `[MouseLeft]` forms). Pointer input goes through `GestureClick` controller signals rather than `GdkEvent`s, so coordinates, motion, and other buttons cannot be synthesized headless.
-- **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The last five drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads pointer coordinates the harness cannot synthesize; use `slide(range, value)` or `keyboard` for sliders.
+- **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The rest drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads pointer coordinates the harness cannot synthesize; use `slide(range, value)` or `keyboard` for sliders.
 - **Drag and drop**: `drop(widget, content)` and `dragAndDrop(source, target, content)` deliver a `GObject.Value` (strings, numbers, and booleans are wrapped automatically) to the target's `GtkDropTarget`; `dragAndDrop` also verifies the source carries a `GtkDragSource`.
 - **Scrolling and selection**: `scroll(widget, { x, y })` adjusts the nearest scrollable's adjustments, `slide(range, value)` jumps a range, and `selectOptions` selects by index in `GtkListView`, `GtkGridView`, `GtkColumnView`, `GtkDropDown`, `GtkComboBox`, and `GtkListBox` (list views through their selection models); `deselectOptions` deselects in the list views and `GtkListBox`.
 
@@ -133,7 +133,7 @@ expect(row).toBeSelected();
 expect(scale).toHaveValue(50);
 ```
 
-The four text matchers take a string or `RegExp` (`toHaveTextContent` matches substrings; the others match exactly) and assert non-emptiness when called with no argument. The boolean state matchers throw when the widget does not expose that state at all, which catches querying the wrong widget rather than silently passing.
+The text matchers take a string or `RegExp` (`toHaveTextContent` matches substrings; the others match exactly) and assert non-emptiness when called with no argument. The boolean state matchers throw when the widget does not expose that state at all, which catches querying the wrong widget rather than silently passing.
 
 ## Debugging
 

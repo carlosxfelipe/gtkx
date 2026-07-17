@@ -28,14 +28,14 @@ type Entry = {
 };
 ```
 
-Two things worth flagging for a React reader:
+Worth flagging for a React reader:
 
 - **Every widget is a named PascalCase import** from `@gtkx/jsx/<lib>` (there are no lowercase intrinsics like `<div>`); `AdwActionRow` comes from the Adwaita namespace, the `Gtk*` primitives from the GTK4 one.
 - **`@gtkx/gi/gtk` is a separate thing from `@gtkx/jsx/gtk`.** Imported as `Gtk`, it gives you the raw GI classes and enums (`Gtk.ListBox` for the ref type, `Gtk.Align`, `Gtk.AccessibleRole`), not JSX components.
 
 ## One data model, one key function
 
-The sidebar renders from a flat `Entry[]` built once per render. `buildEntries` stitches the three fixed smart views around the dynamic user lists and caps the list with Trash:
+The sidebar renders from a flat `Entry[]` built once per render. `buildEntries` stitches the fixed smart views around the dynamic user lists and caps the list with Trash:
 
 ```tsx
 const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
@@ -109,7 +109,7 @@ The children are `AdwActionRow`s, and `AdwActionRow` subclasses `GtkListBoxRow` 
 
 ## Rows: prefix and suffix slots
 
-`AdwActionRow` exposes two named `ReactNode` slots, `prefix` and `suffix`, that map to Adwaita's `add_prefix`/`add_suffix`. The sidebar uses `prefix` for the leading icon-or-dot and `suffix` for the trailing count badge:
+`AdwActionRow` exposes named `ReactNode` slots, `prefix` and `suffix`, that map to Adwaita's `add_prefix`/`add_suffix`. The sidebar uses `prefix` for the leading icon-or-dot and `suffix` for the trailing count badge:
 
 ```tsx
 <AdwActionRow
@@ -162,7 +162,7 @@ The dot carries no information a screen reader needs to announce, so it is marke
 
 ### Count badges
 
-The trailing number is a `GtkLabel` styled with two stock classes. `.numeric` switches the label to tabular (fixed-width) figures so counts stay aligned as they change, and `.dimmed` de-emphasizes the text.
+The trailing number is a `GtkLabel` styled with stock classes. `.numeric` switches the label to tabular (fixed-width) figures so counts stay aligned as they change, and `.dimmed` de-emphasizes the text.
 
 ::: tip `.dimmed`, not `.dim-label`
 Adwaita deprecated `.dim-label` in favor of `.dimmed`. Reach for `.dimmed` in new code; they achieve the same visual muting.

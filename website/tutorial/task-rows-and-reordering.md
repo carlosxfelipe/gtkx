@@ -6,7 +6,7 @@ description: "Each task is an AdwActionRow with checkbox, star, and delete contr
 
 Each task in the list is one `AdwActionRow`. In Adwaita an action row is a preferences-style row with a title, an optional subtitle, and slots on either end for small controls: a leading `prefix` and a trailing `suffix`. Dropped into a `GtkListBox` styled with the `boxed-list` CSS class, a stack of these rows becomes the rounded, separated card that every GNOME app uses for short editable lists.
 
-`TaskRow` fills that row with a done checkbox, a strikethrough title, a star, a delete button, and (when ordering is manual) the two event controllers that make it draggable.
+`TaskRow` fills that row with a done checkbox, a strikethrough title, a star, a delete button, and (when ordering is manual) the event controllers that make it draggable.
 
 The whole component is one JSX tree with no imperative widget code. Here is the shell, from `components/task-row.tsx`:
 
@@ -62,7 +62,7 @@ const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(ta
 <AdwActionRow title={title} useMarkup /* ... */ />
 ```
 
-`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is not optional for any user-supplied title: a task titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the three markup-significant characters before they reach Pango:
+`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is not optional for any user-supplied title: a task titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the markup-significant characters before they reach Pango:
 
 ```ts
 export const escapeMarkup = (value: string): string =>
@@ -86,7 +86,7 @@ prefix={
 }
 ```
 
-Two GTK4 details.
+A couple of GTK4 details.
 
 `valign={Gtk.Align.CENTER}` keeps the checkbox vertically centered against a row that may grow to two lines when it has a subtitle. Alignment enums like `Gtk.Align` come from `@gtkx/gi/gtk`, the raw GI import you reach for whenever a prop wants an enum value or you need a live widget class.
 
@@ -124,9 +124,9 @@ Delete is a plain `GtkButton` whose `onClicked` hands the whole `task` object to
 
 Because icon-only buttons have no visible text, each control gets an `accessibleLabel`. That sets the widget's accessible name so screen readers announce "Mark complete", "Toggle important", "Delete task" instead of an unlabeled button.
 
-## Drag-to-reorder mounts two controllers
+## Drag-to-reorder mounts its controllers
 
-Reordering is a drag-and-drop gesture, and in GTK4 drag and drop is implemented by two event controllers: a `GtkDragSource` on the widget you can pick up, and a `GtkDropTarget` on the widget you can drop onto. Every row is both, so the whole boxed list is one uniform drag surface.
+Reordering is a drag-and-drop gesture, and in GTK4 drag and drop is implemented by event controllers: a `GtkDragSource` on the widget you can pick up, and a `GtkDropTarget` on the widget you can drop onto. Every row is both, so the whole boxed list is one uniform drag surface.
 
 Controllers are not children of a widget; they attach to it through the universal `controllers` slot that every `GtkWidget` exposes. `TaskRow` renders that slot conditionally, so a row that is not currently reorderable gets no drag machinery at all:
 
@@ -210,7 +210,7 @@ The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it
 
 ## Drag is enabled only when ordering is manual
 
-The `reorderable` prop is not always on. Reordering by hand only makes sense when the list is in manual order and shows a stable set of rows, so `app.tsx` computes it from three conditions:
+The `reorderable` prop is not always on. Reordering by hand only makes sense when the list is in manual order and shows a stable set of rows, so `app.tsx` computes it from these conditions:
 
 ```tsx
 const reorderable =

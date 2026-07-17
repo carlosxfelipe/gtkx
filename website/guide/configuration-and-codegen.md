@@ -32,7 +32,7 @@ export default defineConfig({
 });
 ```
 
-For sharing a base config across packages, `mergeConfig(base, override)` deep-merges two configs with the override winning on conflict.
+For sharing a base config across packages, `mergeConfig(base, override)` deep-merges configs with the override winning on conflict.
 
 ## Option reference
 
@@ -51,7 +51,7 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`girPath`** adds directories to the front of the `.gir` search path. The resolved order is: your `girPath` entries, then the colon-separated `GTKX_GIR_PATH` environment variable, then `/usr/share/gir-1.0`, then whatever `pkg-config --variable=girdir gobject-introspection-1.0` reports, with duplicates removed. You only need this when your GIR files live somewhere nonstandard, such as a locally built GTK4.
 
-**`reactCompiler`** controls the React Compiler, which is enabled by default with its target fixed to React 19. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it: `compilationMode` is one of `"infer"`, `"syntax"`, `"annotation"`, or `"all"`, and `panicThreshold` is one of `"none"`, `"critical_errors"`, or `"all_errors"`.
+**`reactCompiler`** controls the React Compiler, which is enabled by default with its target fixed to React 19. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
 
 **`codegen: false`** turns generation off entirely: the CLI deletes the local `node_modules/.gtkx/gi` and `node_modules/.gtkx/jsx` stores along with the `@gtkx/gi` and `@gtkx/jsx` links, and module resolution falls through to bindings installed as a regular dependency. This is for consuming a prebuilt binding package instead of generating against the local system.
 
@@ -59,7 +59,7 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 ## What codegen emits
 
-Codegen writes two packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx` so imports resolve without either package appearing in your `package.json`:
+Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx` so imports resolve without either package appearing in your `package.json`:
 
 - **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. Reach for them for what only the GNOME platform provides; for everything else, prefer the Node standard library, as [Why GTKX](/guide/why-gtkx) explains. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, which codegen builds in a temporary directory and then renames into place, so a crash never leaves half a package.
 - **`@gtkx/jsx`** (in `node_modules/.gtkx/jsx`) holds the React layer: per-namespace modules exporting one PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a global `React.JSX.IntrinsicElements` augmentation so the elements type-check. It also emits a `metadata` module recording, per element, the signal-handler-to-signal-name map, the construct-only and constructable prop sets, the GIR default values, and the merged element prop rules. The reconciler reads that metadata at runtime through the `virtual:gtkx-config` module the CLI's Vite plugin serves. The same pass that generates your types generates that metadata, so your types and runtime prop application cannot drift.
@@ -87,7 +87,7 @@ The ID also anchors the rest of your app's platform identity. GSettings schemas 
 
 ## Staleness and regeneration
 
-You rarely run `gtkx codegen` by hand, because `gtkx dev` and `gtkx build` check freshness first and regenerate only when something changed. The check has two layers:
+You rarely run `gtkx codegen` by hand, because `gtkx dev` and `gtkx build` check freshness first and regenerate only when something changed. The check has these layers:
 
 1. **Structural**: if a store directory or its link is missing, a namespace barrel for one of your libraries is absent, or the jsx store lacks its generated modules, the bindings are stale regardless of content.
 2. **Fingerprint**: the gi store carries a `.codegen-fingerprint.json` sentinel holding a SHA-256 hash over the codegen package version, your `elementProps` (serialized), the sorted library list, and the path and full contents of every `.gir` file that fed the last run. On each check the hash is recomputed against the recorded GIR files; any mismatch, including a system GTK4 upgrade that rewrote a `.gir`, triggers regeneration. A changed library list is stale by definition.
@@ -117,7 +117,7 @@ Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, a
 
 ## Customizing elements with elementProps
 
-Property setting alone cannot express everything GTK4 does. Adding a child is `append` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with element prop rules: small declarative records that tell the reconciler which method calls realize a given JSX prop. A large built-in set covers GTK4 and Adwaita (containers for over seventy types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more), and `elementProps` in your config layers your own rules on top. There are five kinds:
+Property setting alone cannot express everything GTK4 does. Adding a child is `append` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with element prop rules: small declarative records that tell the reconciler which method calls realize a given JSX prop. A large built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more), and `elementProps` in your config layers your own rules on top. The kinds are:
 
 - **`container`**: children held under `prop` (usually `children`) of GObject type `child`, attached with `append`, detached with `remove`, optionally supporting `insert` and `reorder`, wrapping each child in an `autowrap` widget type, or adopting children the widget creates itself via `adopt`. At least one of `append` or `remove` is required.
 - **`value`**: a scalar prop applied by invoking `call` whenever it changes, optionally followed by `after`. The built-in `GtkDrawingArea` rule is `{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }`.
@@ -159,7 +159,7 @@ gtkx docs
 
 By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
 
-Three flags cover the knobs: `--out <dir>` changes the output directory, `--base-path <path>` changes the URL prefix used in links between pages, and `--force` regenerates even when the same fingerprint check that guards codegen says the pages are current. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
+These flags cover the knobs: `--out <dir>` changes the output directory, `--base-path <path>` changes the URL prefix used in links between pages, and `--force` regenerates even when the same fingerprint check that guards codegen says the pages are current. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
 
 ## Next
 

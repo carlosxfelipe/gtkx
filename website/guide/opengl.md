@@ -34,7 +34,7 @@ import * as gl from "@gtkx/gl";
 
 ## The GtkGLArea signal flow
 
-`GtkGLArea` is the intrinsic element you draw into. GTK4 creates a `Gdk.GLContext` for it, gives it a framebuffer, and emits four signals that sequence everything you do:
+`GtkGLArea` is the intrinsic element you draw into. GTK4 creates a `Gdk.GLContext` for it, gives it a framebuffer, and emits the signals that sequence everything you do:
 
 - `onRealize` fires when the widget receives its context. Compile shaders and upload geometry here, after calling `area.makeCurrent()`: GTK4 does not make the context current for you in this signal.
 - `onResize` fires with the framebuffer width and height before rendering, which is where `viewport` belongs.
@@ -43,7 +43,7 @@ import * as gl from "@gtkx/gl";
 
 Realize and unrealize come from `Gtk.Widget`, so they track the widget's lifetime rather than the component's. React mounts your component first, and realization follows when the widget's window is shown.
 
-Four props shape the context before it exists. `useEs` asks for an OpenGL ES context, `allowedApis` restricts which APIs may be chosen, and `hasDepthBuffer` and `hasStencilBuffer` add those attachments to the framebuffer. Once the area is realized, `area.getApi()` tells you what you actually got.
+Several props shape the context before it exists. `useEs` asks for an OpenGL ES context, `allowedApis` restricts which APIs may be chosen, and `hasDepthBuffer` and `hasStencilBuffer` add those attachments to the framebuffer. Once the area is realized, `area.getApi()` tells you what you actually got.
 
 ## A worked example
 
@@ -69,7 +69,7 @@ const compileShader = (type: number, source: string, name: string): number => {
 };
 ```
 
-`initGL` links two compiled shaders into a program, then creates the vertex array and buffer the draw call needs. Buffer uploads take the byte length next to the view, since the binding passes both to the driver:
+`initGL` links the compiled shaders into a program, then creates the vertex array and buffer the draw call needs. Buffer uploads take the byte length next to the view, since the binding passes both to the driver:
 
 ```ts
 interface GLState {
@@ -109,7 +109,7 @@ const initGL = (api: Gdk.GLAPI): GLState => {
 };
 ```
 
-The component holds the area and the GL state in refs, and hangs the four handlers off the element:
+The component holds the area and the GL state in refs, and hangs the handlers off the element:
 
 ```tsx
 const GLAreaDemo = () => {

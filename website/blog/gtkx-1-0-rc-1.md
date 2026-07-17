@@ -30,7 +30,7 @@ export default defineConfig({
 });
 ```
 
-Codegen emits two packages into `node_modules` and links them as `@gtkx/gi` and `@gtkx/jsx`, so you never install them from npm:
+Codegen emits packages into `node_modules` and links them as `@gtkx/gi` and `@gtkx/jsx`, so you never install them from npm:
 
 - `@gtkx/gi/<namespace>` gives you fully typed TypeScript classes: `@gtkx/gi/gtk`, `@gtkx/gi/adw`, `@gtkx/gi/gio`, `@gtkx/gi/cairo`, and so on, with typed per-class signal maps, constructor-property interfaces, and interface mixins.
 - `@gtkx/jsx/<namespace>` gives you one React component per widget, with typed props.
@@ -54,7 +54,7 @@ createRoot().render(
 );
 ```
 
-The reconciler was rewritten from roughly fifty hand-written per-widget node classes into a single generic reconciler that instantiates GObject classes by type and drives child attachment from generated metadata.
+The reconciler was rewritten from hand-written per-widget node classes into a single generic reconciler that instantiates GObject classes by type and drives child attachment from generated metadata.
 
 Because every element is a GObject, JSX composes in ways it could not before. Any element passed as a prop value is mounted and assigned to that property: a text view takes `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale takes `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative props.
 

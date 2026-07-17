@@ -8,12 +8,12 @@ In a React web app, a click handler is wired straight to a button. GTK4 pulls th
 
 Tasks uses this everywhere its commands need more than one entry point. The hamburger menu item and the `Ctrl+N` accelerator both resolve the same `win.new` action, and the "New Task" toolbar button calls the very handler that action wraps.
 
-## Two scopes: `win.*` and `app.*`
+## Scopes: `win.*` and `app.*`
 
 Every action string carries a scope prefix. Tasks uses both:
 
 - **`win.*`** actions belong to the window. They are the app's primary commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
-- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires: its "Mark Complete" button and the default action that runs when you click the notification body. A notification is delivered to the whole application, not to any particular window, and it may arrive when no window is open. They live in the `actions` slot of `<AdwApplication>`.
+- **`app.*`** actions belong to the application itself. Tasks uses them only for the commands a desktop notification fires: its "Mark Complete" button and the default action that runs when you click the notification body. A notification is delivered to the whole application, not to any particular window, and it may arrive when no window is open. They live in the `actions` slot of `<AdwApplication>`.
 
 The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
 
@@ -21,7 +21,7 @@ The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in wh
 
 `GSimpleAction` is the concrete GAction you instantiate. In GTKX it is a declarative intrinsic element from `@gtkx/jsx/gio`, so you mount actions as JSX and let them come and go with your component tree. Each one takes a `name` and an `onActivate` handler that runs when the action fires.
 
-Tasks groups the five window commands into one `WindowActions` component:
+Tasks groups the window commands into one `WindowActions` component:
 
 ```tsx
 import { GSimpleAction } from "@gtkx/jsx/gio";
@@ -72,7 +72,7 @@ The scope prefix comes from *where* you mount these, not from the `name`. `AdwAp
 Because the handlers close over the window component's state setters (`setShowPreferences`, `setShowAbout`, ...), firing `win.preferences` from *any* source (menu click, accelerator, a future button) flips React state. The action is the single seam between "a command was requested" and "here is what that does".
 
 ::: tip
-The `onActivate` handler receives `(parameter, self)`, where `parameter` is a `GLib.Variant | null`. The five window actions here are parameterless, so they ignore it. The two application actions below use it.
+The `onActivate` handler receives `(parameter, self)`, where `parameter` is a `GLib.Variant | null`. The window actions here are parameterless, so they ignore it. The application actions below use it.
 :::
 
 ## Accelerators: `actionAccels` on `<AdwApplication>`
@@ -97,7 +97,7 @@ Not every action needs an accelerator. `win.select` and `win.about` are reachabl
 
 ## Application actions for notifications
 
-The two `app.*` actions live in the `actions` slot of `<AdwApplication>`, mounted one level up from the window so a desktop notification has something to invoke even when no window is focused. Each declares a `parameterType` of `"s"` and carries a task id as its payload, and the notification targets them by their fully scoped names: its button invokes `app.complete-task`, and its default action invokes `app.open-task`.
+The `app.*` actions live in the `actions` slot of `<AdwApplication>`, mounted one level up from the window so a desktop notification has something to invoke even when no window is focused. Each declares a `parameterType` of `"s"` and carries a task id as its payload, and the notification targets them by their fully scoped names: its button invokes `app.complete-task`, and its default action invokes `app.open-task`.
 
 [Reminders and Notifications](/tutorial/notifications) is the canonical home for these actions: the full `GSimpleAction` declaration, the `onActivate` handlers, the `buildReminder` notification model, and the `notify` ref that bridges each application-scoped action to the live window all live there.
 
@@ -139,7 +139,7 @@ export const MainMenu = () => (
 
 Each entry pairs a `label` with an `action` string, and those strings are exactly the scoped action names declared earlier. There is no `onClick` here: choosing "Preferences" activates `win.preferences`, which reaches the same `setShowPreferences(true)` as the accelerator does. The `section` wrapping groups items into visually separated blocks (GTK4 draws a divider between sections), which is how the standard GNOME primary menu is organized.
 
-Two `GtkMenuButton` props matter for a primary menu: `iconName="open-menu-symbolic"` is the conventional hamburger icon, and `primary` marks this as *the* window menu, which lets `F10` open it. `MainMenu` is dropped into the header bar's `end` slot:
+For a primary menu, `iconName="open-menu-symbolic"` is the conventional hamburger icon, and `primary` marks this as *the* window menu, which lets `F10` open it. `MainMenu` is dropped into the header bar's `end` slot:
 
 ```tsx
 const listHeader = (
@@ -238,9 +238,9 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
 
 Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX.
 
-An `accelerator` string is display text, not a binding, so a hand-written one has to be kept in sync with the shortcut it describes. Rows backed by an action can skip that. `AdwShortcutsItem` also takes an `actionName` prop that reads the accelerator back from whatever `actionAccels` registered, so `actionName="win.new"`, `actionName="win.preferences"`, and `actionName="win.shortcuts"` keep those three rows correct on their own.
+An `accelerator` string is display text, not a binding, so a hand-written one has to be kept in sync with the shortcut it describes. Rows backed by an action can skip that. `AdwShortcutsItem` also takes an `actionName` prop that reads the accelerator back from whatever `actionAccels` registered, so `actionName="win.new"`, `actionName="win.preferences"`, and `actionName="win.shortcuts"` keep those rows correct on their own.
 
-The other three rows have no action to point at, so their `accelerator` has to be written by hand and kept in sync. `<Control>f` comes from the window's `AppShortcuts` controller, and `Delete` from the task screen's own controller. The "Close task" `Escape` comes from `AdwNavigationView`'s built-in pop rather than from any controller in Tasks.
+The other rows have no action to point at, so their `accelerator` has to be written by hand and kept in sync. `<Control>f` comes from the window's `AppShortcuts` controller, and `Delete` from the task screen's own controller. The "Close task" `Escape` comes from `AdwNavigationView`'s built-in pop rather than from any controller in Tasks.
 
 `<Dialog>` (from `@gtkx/components/adw`, documented in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the dialog. The action handler flips a state flag:
 
@@ -252,13 +252,13 @@ and the window renders `{showShortcuts ? <Shortcuts onClose={() => setShowShortc
 
 ## Putting the pieces together
 
-A single command like "create a new task" now has three front doors, all converging on the same `newTask` behavior:
+A single command like "create a new task" now has several front doors, all converging on the same `newTask` behavior:
 
 - the **menu** item `{ label: "New Task", action: "win.new" }`,
 - the **accelerator** `{ detailedActionName: "win.new", accels: ["<Control>n"] }`,
 - and the header-bar **button** `<GtkButton onClicked={newTask} />`.
 
-The first two resolve through `win.new`, whose `onActivate` is `newTask`; the button skips the action system and calls `newTask` directly.
+The menu and accelerator resolve through `win.new`, whose `onActivate` is `newTask`; the button skips the action system and calls `newTask` directly.
 
 Meanwhile `Ctrl+F`, `Escape`, and `Delete` stay out of the action system entirely, living as `GtkShortcut`s that are gated by state or by the lifetime of the screen that mounts them, because their meaning is view-local. And `app.complete-task` / `app.open-task` sit on the application so a notification has actions alive even when no window is focused. Choosing the right home for each command, `win.*`, `app.*`, or a plain shortcut controller, is the whole discipline here.
 

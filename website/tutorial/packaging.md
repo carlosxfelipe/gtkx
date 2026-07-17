@@ -14,7 +14,7 @@ A GTKX app is a Node.js program that renders native widgets, so shipping it mean
 npm run build   # gtkx build
 ```
 
-It writes four things to `dist/`:
+It writes these things to `dist/`:
 
 - `bundle.js`, the whole app as one JavaScript file,
 - `gtkx.node`, the native addon that bridges to GTK4,
@@ -50,9 +50,9 @@ To ship a binary that does not depend on a system Node.js, the tutorial bundles 
 }
 ```
 
-- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary. It is not self-contained: both `gtkx.node` and `gschemas.compiled` are resolved next to the executable at runtime, so all three files ship together.
+- `build:sea` runs `node --experimental-sea-config sea-config.json` to produce the blob, copies the `node` binary to `dist/app`, and uses `postject` to inject the blob as an ELF section. The result is a standalone `dist/app` binary. It is not self-contained: both `gtkx.node` and `gschemas.compiled` are resolved next to the executable at runtime, so they ship alongside the binary.
 
-Run the three scripts in order to produce the binary:
+Run the scripts in order to produce the binary:
 
 ```bash
 npm run bundle && npm run bundle:postject && npm run build:sea
@@ -120,7 +120,7 @@ The app icon lives in the project at `data/icons/hicolor/`, laid out exactly lik
 
 ## The desktop entry and AppStream metadata
 
-Two files integrate the app with the desktop. The `.desktop` entry lists it in the launcher and, for the Tasks app, opts into notifications:
+The desktop entry and AppStream metadata integrate the app with the desktop. The `.desktop` entry lists it in the launcher and, for the Tasks app, opts into notifications:
 
 ```ini
 [Desktop Entry]

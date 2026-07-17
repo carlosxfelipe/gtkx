@@ -10,13 +10,13 @@ GNOME's Human Interface Guidelines put reversibility first: if an action can be 
 
 ## The undo-first hierarchy
 
-Three surfaces, three weights:
+Different surfaces, different weights:
 
 - **Undo toast** for reversible destructive actions. Delete a task, delete a batch: the task goes to Trash, a toast offers Undo, and the app never blocks. This is the common path.
 - **Destructive alert dialog** for the one irreversible action: deleting a task permanently from Trash. Here undo is impossible, so a modal confirm is warranted.
 - **Informational dialogs** (New List, About, Preferences) for input and metadata, not for destruction.
 
-The payoff for a React developer is that the first two map onto two different GTKX idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes.
+The payoff for a React developer is that a toast and a dialog map onto different GTKX idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes.
 
 ## Undo toasts
 
@@ -51,7 +51,7 @@ const handleDelete = (task: Task): void => {
 };
 ```
 
-Four things are happening:
+A few things are happening:
 
 1. **`Adw.Toast.new(title)`** constructs the toast with its message. `Adw.Toast` comes from `@gtkx/gi/adw`, the raw GI namespace, because a toast is not a widget you place, it is an object you build.
 2. **`toast.buttonLabel = "Undo"`** adds the action button. Setting `buttonLabel` is what makes the toast show a button at all. An informational toast with no button leaves it unset.
@@ -131,7 +131,7 @@ export const DeleteConfirmation = ({
 - **`label`** is the button text. Use a specific verb ("Delete"), not "OK", so the button reads clearly on its own.
 - **`appearance: Adw.ResponseAppearance.DESTRUCTIVE`** paints the Delete button red. `SUGGESTED` (used by New List below) paints it as the accent affirmative; leaving it unset gives a neutral button.
 
-Two safety properties keep the destructive button from firing by accident:
+Safety properties keep the destructive button from firing by accident:
 
 - **`defaultResponse="cancel"`** makes Cancel the response bound to Return, so hitting Enter cannot delete.
 - **`closeResponse="cancel"`** makes Escape (and any other dismissal) resolve to Cancel.
@@ -284,7 +284,7 @@ export const NewListDialog = ({
 
 The form is ordinary controlled React: local `name` and `color` state feed the widgets, and the widgets write back. `onChanged={(self) => setName(self.text)}` on the `GtkEntry` reads the live text off `self`, because GTKX's JSX signal props pass the emitting widget as the last handler argument. Each swatch is a `GtkToggleButton` whose `active` compares against `color`. When the user picks "Add", `onResponse` reads the current `name` and `color` out of state and calls `onAdd`.
 
-Two details make it feel native. **`activatesDefault`** on the entry means pressing Return in the text field triggers the default response, and `defaultResponse="add"` makes that Add. So you can type a name and hit Enter without reaching for the mouse. **`Adw.ResponseAppearance.SUGGESTED`** styles Add as the accent affirmative (blue), the counterpart to the destructive red on the delete confirm.
+Small details make it feel native. **`activatesDefault`** on the entry means pressing Return in the text field triggers the default response, and `defaultResponse="add"` makes that Add. So you can type a name and hit Enter without reaching for the mouse. **`Adw.ResponseAppearance.SUGGESTED`** styles Add as the accent affirmative (blue), the counterpart to the destructive red on the delete confirm.
 
 The swatches also show the accessibility pattern for decorative content: the visible colored square is a `GtkBox` marked `accessibleRole={Gtk.AccessibleRole.PRESENTATION}` (it is pure decoration, hidden from assistive tech), while the meaning lives on the button's ``accessibleLabel={`Color ${swatch}`}``.
 
@@ -319,7 +319,7 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 
 `applicationIcon="com.gtkx.tutorial"` is an icon name, not the application ID itself. GNOME apps install their icon under their application ID, so the two match here. The icon theme resolves the name to the app icon shipped under `data/icons/` (see [Packaging and Shipping](/tutorial/packaging) for how it is laid out and installed).
 
-`licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
+`licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
 
 Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (signals dismissal only). About has no responses to choose, only a close, so there is nothing to branch on.
 

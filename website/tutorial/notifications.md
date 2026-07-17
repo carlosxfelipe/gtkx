@@ -4,7 +4,7 @@ description: "Desktop reminders with Gio.Notification: application-scoped action
 
 # Reminders and Notifications
 
-Tasks have due dates, so the app fires a desktop notification when one is coming up. This is the one feature that has to keep working when the app is closed: the notification the user taps might be what launches the process. That constraint shapes the whole design, so before any React, understand the two Gio concepts it depends on:
+Tasks have due dates, so the app fires a desktop notification when one is coming up. This is the one feature that has to keep working when the app is closed: the notification the user taps might be what launches the process. That constraint shapes the whole design, so before any React, understand the Gio concepts it depends on:
 
 - A **`Gio.Notification`** is a plain data object (title, body, priority, buttons). It does not run code. Every interactive part of it points at a named action string like `app.complete-task`, and the shell invokes that action on your `Gio.Application`, possibly after cold-starting it.
 - Because the process can be cold-started with no window, the action must be **application-scoped** (`app.` prefix), installed on the application itself: a `win.` action would have no window to target. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) covers the `win.*` / `app.*` split in full.
@@ -95,7 +95,7 @@ The first argument to `sendNotification` is a notification **id**, and it is key
 
 ## Installing the app-scoped actions
 
-The two actions the notification targets are declared in the `actions` slot of `<AdwApplication>` in the top-level `App` component:
+The actions the notification targets are declared in the `actions` slot of `<AdwApplication>` in the top-level `App` component:
 
 ```tsx
 export function App() {

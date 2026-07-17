@@ -7,24 +7,19 @@ import { useMergeRefs } from "../hooks/use-merge-refs.js";
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
 
-type ApplicationComponentProps<T extends Gtk.Application> = {
+type ApplicationComponentProps = {
     applicationId?: string | null | undefined;
     children?: ReactNode | undefined;
-    ref?: Ref<T | null> | undefined;
+    ref?: Ref<Gtk.Application | null> | undefined;
 };
 
-export const createApplicationComponent = <T extends Gtk.Application>(
+export const createApplicationComponent = (
     Component: ElementType,
-): ((props: ApplicationComponentProps<T>) => ReactNode) => {
-    return ({
-        applicationId = defaultApplicationId,
-        children,
-        ref,
-        ...rest
-    }: ApplicationComponentProps<T>): ReactNode => {
-        const [app, setApp] = useState<T | null>(null);
+): ((props: ApplicationComponentProps) => ReactNode) => {
+    return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
+        const [app, setApp] = useState<Gtk.Application | null>(null);
 
-        const handleMount = useCallback((instance: T) => {
+        const handleMount = useCallback((instance: Gtk.Application) => {
             runApplication(instance);
             setApp(instance);
 
@@ -34,7 +29,7 @@ export const createApplicationComponent = <T extends Gtk.Application>(
             };
         }, []);
 
-        const mergedRef = useMergeRefs<T>(ref, handleMount);
+        const mergedRef = useMergeRefs<Gtk.Application>(ref, handleMount);
         const appliedProps = app
             ? rest
             : Object.fromEntries(Object.entries(rest).filter(([key]) => !POST_ACTIVATE_PROPS.has(key)));

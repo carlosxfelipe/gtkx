@@ -18,7 +18,7 @@ GTK4's list widgets are built around a model/factory split: you hand `Gtk.ListVi
 
 The same goes for `Gtk.Grid.attach()`, `Gtk.Overlay.addOverlay()`, `Gtk.SizeGroup.addWidget()`, and `Gio.Menu` construction: they are imperative calls with no natural JSX shape.
 
-`@gtkx/components` gives each of these a React vocabulary (plain arrays, `renderItem` callbacks, and `component`-injecting children) while keeping the recycling, sorting, and selection machinery of the underlying widget intact. It has two entry points: `@gtkx/components` for the GTK4-level components and `@gtkx/components/adw` for the Adwaita ones.
+`@gtkx/components` gives each of these a React vocabulary (plain arrays, `renderItem` callbacks, and `component`-injecting children) while keeping the recycling, sorting, and selection machinery of the underlying widget intact. The GTK4-level components import from `@gtkx/components`, the Adwaita ones from `@gtkx/components/adw`.
 
 ## The collection vocabulary
 
@@ -26,7 +26,7 @@ The model-backed components (`ListView`, `GridView`, `ColumnView`, and `DropDown
 
 - `ItemNode<T>` is `{ id, value }`: a stable string id plus your data. Giving an item `children: ItemNode<T>[]` turns the collection into a tree; `hideExpander`, `indentForDepth`, and `indentForIcon` tune how tree rows are drawn.
 - `SectionNode<S, T>` is `{ id, value, data }`: a group of items rendered under a shared header. Every component accepts a flat `items` array; all but `GridView` also accept a `sections` array, with a `renderHeader={({ section }) => ...}` callback for the headers.
-- `RenderItemProps<T>` is what every `renderItem` callback receives: `{ item, index, depth?, isExpanded? }`. The last two are populated for tree rows.
+- `RenderItemProps<T>` is what every `renderItem` callback receives: `{ item, index, depth?, isExpanded? }`. `depth` and `isExpanded` are populated for tree rows.
 - Selection is keyed by id: `onSelectionChanged: (ids: string[]) => void` reports every change, passing `selectedIds: string[]` makes it controlled, and `selectionMode` picks the `Gtk.SelectionMode` (`DropDown` is single-select, so it uses `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
 - Expansion works the same way for trees in `ListView` and `ColumnView`: `onExpandedChange: (ids: string[]) => void` observes it, and `expandedIds: string[]` controls it.
 - `estimatedItemHeight` gives the recycler a size hint before cells render, keeping scrollbars stable in long lists. `ListView` and `GridView` also take `estimatedItemWidth`, where widths vary; `ColumnView` takes only height, and `DropDown` takes no size hints.
@@ -75,7 +75,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 ## ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional `sortable`, `expand`, `resizable`, `fixedWidth`, `visible`, and `headerMenu` props. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view never disagrees with your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view never disagrees with your data:
 
 ```tsx
 import { ColumnView, type ColumnDef } from "@gtkx/components";
@@ -104,7 +104,7 @@ Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to
 
 ## DropDown
 
-`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus up to three factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
+`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus separate factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
 
 ```tsx
 import { DropDown } from "@gtkx/components";
@@ -210,7 +210,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 `ConstraintLayout` builds a `Gtk.ConstraintLayout` for a container's `layoutManager` prop, replacing manual `Gtk.Constraint` and `Gtk.ConstraintGuide` construction. Widgets are referenced by their `name` prop, with `"super"` (or an omitted `target`/`source`) meaning the container itself. Referencing an unknown name throws with a message telling you which `name` to set.
 
-- `ConstraintLayout.Constraint` declares one relation. Only `targetAttribute` is required; `relation` defaults to equality, `sourceAttribute` to `NONE`, `multiplier` to 1, `constant` to 0, and `strength` to required.
+- `ConstraintLayout.Constraint` declares one relation. Only `targetAttribute` is required; the rest default, with `relation` defaulting to equality.
 - `ConstraintLayout.Guide` declares an invisible spacer with min, natural, and max sizes.
 - `ConstraintLayout.Vfl` applies Visual Format Language `lines`.
 

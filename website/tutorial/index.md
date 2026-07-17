@@ -15,7 +15,7 @@ The app is already written. Rather than building it file by file, this tutorial 
 
 ## What Tasks is
 
-The app centers on a split-view navigator from `@gtkx/navigation`, which drives an adaptive `Adw.NavigationSplitView`. A sidebar of four smart views (All Tasks, Today, Important, Trash) plus the lists you create sits next to the content pane. That pane shows a boxed task list and pushes a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
+The app centers on a split-view navigator from `@gtkx/navigation`, which drives an adaptive `Adw.NavigationSplitView`. A sidebar of smart views (All Tasks, Today, Important, Trash) plus the lists you create sits next to the content pane. That pane shows a boxed task list and pushes a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
 
 The app root, the `App` component in `app.tsx`, is one `<AdwApplication>`. It provides the GTK4 application object, binds keyboard accelerators through its `actionAccels` prop, and hosts the app-scoped actions that desktop notifications call back into. Inside it sits a single `<TasksWindow>`, which [The Application Shell](/tutorial/app-shell) walks through line by line.
 
@@ -39,7 +39,7 @@ The app root, the `App` component in `app.tsx`, is one `<AdwApplication>`. It pr
 </AdwApplicationWindow>
 ```
 
-That is the entire skeleton. The window mounts from a three-line entry point (`index.tsx`):
+That is the entire skeleton. The window mounts from a short entry point (`index.tsx`):
 
 ```tsx
 import { createRoot } from "@gtkx/react";
@@ -50,7 +50,7 @@ createRoot().render(<App />);
 
 ## What GTKX is
 
-GTKX is a React reconciler that renders GTK4 and Adwaita widgets, the widget set GNOME ships (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from three paths: `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `Dialog`, under `@gtkx/components/adw`), navigators from `@gtkx/navigation`, and animation helpers from `@gtkx/animated`.
+GTKX is a React reconciler that renders GTK4 and Adwaita widgets, the widget set GNOME ships (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `Dialog`, under `@gtkx/components/adw`), navigators from `@gtkx/navigation`, and animation helpers from `@gtkx/animated`.
 
 ::: info React knowledge transfers directly
 State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK4 side: which widget does what, how Adwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This tutorial leads with those.

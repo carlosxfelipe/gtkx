@@ -6,9 +6,9 @@ import { GtkFocusFeature } from "./focus.js";
 import { GtkInViewFeature } from "./in-view.js";
 
 const hasAny =
-    (...keys: string[]): ((props: MotionNodeOptions) => boolean) =>
+    (...keys: (keyof MotionNodeOptions)[]): ((props: MotionNodeOptions) => boolean) =>
     (props) =>
-        keys.some((key) => Boolean(props[key as keyof MotionNodeOptions]));
+        keys.some((key) => Boolean(props[key]));
 
 const bundled = <T>(feature: T | undefined, slot: string): T => {
     if (feature === undefined) throw new Error(`framer-motion's domMax bundle is missing the ${slot} feature`);

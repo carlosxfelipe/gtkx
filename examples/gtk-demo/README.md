@@ -4,7 +4,7 @@ A React port of [gtk4-demo](https://gitlab.gnome.org/GNOME/gtk/-/tree/main/demos
 
 ## What it demonstrates
 
-Around seventy demos live under `src/demos`, grouped by category:
+The demos live under `src/demos`, grouped by category:
 
 - **lists**: `GtkListView` and `GtkListBox`, selection models, filtering, sorting, and a file browser.
 - **css**: style classes, blend modes, shadows, multiple backgrounds, and error states.

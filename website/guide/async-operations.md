@@ -12,7 +12,7 @@ The call keeps its own camelCase name. There is no renaming and no suffix stripp
 
 ## Generated signatures
 
-Promisification reshapes the signature in three ways. The callback parameter disappears, since the promise replaces it. The `Gio.Cancellable` parameter survives but becomes a trailing optional, so you only mention it when you need cancellation. And the return type is a `Promise` of whatever the `_finish` call returns, with C out-parameters folded into a tuple. These are the generated signatures, verbatim from `@gtkx/gi`:
+Promisification reshapes the signature. The callback parameter disappears, since the promise replaces it. The `Gio.Cancellable` parameter survives but becomes a trailing optional, so you only mention it when you need cancellation. And the return type is a `Promise` of whatever the `_finish` call returns, with C out-parameters folded into a tuple. These are the generated signatures, verbatim from `@gtkx/gi`:
 
 ```ts
 // Gio.File (instance method)
@@ -32,7 +32,7 @@ static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, ob
 function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection>;
 ```
 
-`loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills three out-parameters (the contents, their length, and an etag). The length collapses into the contents array, so the promise resolves to the boolean, the contents, and the etag at once.
+`loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills its out-parameters (the contents, their length, and an etag). The length collapses into the contents array, so the promise resolves to the boolean, the contents, and the etag at once.
 
 `choose` resolves to the response ID string you registered on the alert dialog. The static `Gio.DBusConnection.new` and the module-level `Gio.busGet` both start an async connection and resolve to the `Gio.DBusConnection`, reusing the same static and module-level `_finish` calls under the hood. The `_finish` calls (`loadContentsFinish`, `openFinish`, `newFinish`, `busGetFinish`, and so on) are still generated alongside the promise-returning ones, but there is no reason to call them yourself.
 
@@ -42,7 +42,7 @@ function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBu
 
 ## Awaiting in components
 
-Async platform calls slot into React in two places: event handlers and effects. Signal handler props like `onClicked` are synchronous, so the pattern is to define an `async` function and kick it off with `void`, letting the promise settle on its own. This file picker is adapted from the gtk-demo examples, and anchors the dialog to its enclosing window with `useParentWindow()` (see [Finding the parent window](/guide/modals-and-portals#finding-the-parent-window)):
+Async platform calls slot into React in event handlers and effects. Signal handler props like `onClicked` are synchronous, so the pattern is to define an `async` function and kick it off with `void`, letting the promise settle on its own. This file picker is adapted from the gtk-demo examples, and anchors the dialog to its enclosing window with `useParentWindow()` (see [Finding the parent window](/guide/modals-and-portals#finding-the-parent-window)):
 
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
@@ -127,7 +127,7 @@ await runWithTimeout(async (cancellable) => {
 });
 ```
 
-Which error you get depends on the API family. GIO operations like `loadContentsAsync` reject with `Gio.IOErrorEnum.CANCELLED`. GTK4 dialogs have their own domain and distinguish two cases: canceling through the cancellable rejects with `Gtk.DialogError.CANCELLED`, while the user closing the dialog rejects with `Gtk.DialogError.DISMISSED`. Code that treats all three as "no result, and that's fine" checks for each:
+Which error you get depends on the API family. GIO operations like `loadContentsAsync` reject with `Gio.IOErrorEnum.CANCELLED`. GTK4 dialogs have their own domain and distinguish cancellation from dismissal: canceling through the cancellable rejects with `Gtk.DialogError.CANCELLED`, while the user closing the dialog rejects with `Gtk.DialogError.DISMISSED`. Code that treats all of these as "no result, and that's fine" checks for each:
 
 ```ts
 const isCancellation = (error: unknown): boolean =>
@@ -140,9 +140,9 @@ The `runWithTimeout` example above hits exactly that first case: when the deadli
 
 ## What stays callback-based
 
-Codegen promisifies a call in either of two shapes. The classic GIO shape ends in `_async` with a matching `_finish` sibling, like `g_file_load_contents_async` plus `g_file_load_contents_finish`. The GTK4 dialog shape takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`.
+Codegen promisifies a call in either of these shapes. The classic GIO shape ends in `_async` with a matching `_finish` sibling, like `g_file_load_contents_async` plus `g_file_load_contents_finish`. The GTK4 dialog shape takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`.
 
-Two conditions keep it honest. The initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter. The `_finish` sibling must consume only the `GAsyncResult` the callback delivers, so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
+These conditions keep it honest. The initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter. The `_finish` sibling must consume only the `GAsyncResult` the callback delivers, so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
 
 A few shapes fall outside that rule and keep their raw callback form.
 
@@ -155,7 +155,7 @@ Gtk.printRunPageSetupDialogAsync(parentWindow, null, settings, (pageSetup) => {
 });
 ```
 
-A pair whose `_finish` needs more than the `GAsyncResult` also stays callback-based, because the promise has only the async result to hand back. `Gtk.showUriFull` is one: its `Gtk.showUriFullFinish(parent, result)` wants the parent window as well, so the call keeps its callback and the finish keeps its two arguments:
+A pair whose `_finish` needs more than the `GAsyncResult` also stays callback-based, because the promise has only the async result to hand back. `Gtk.showUriFull` is one: its `Gtk.showUriFullFinish(parent, result)` wants the parent window as well, so the call keeps its callback and the finish keeps its arguments:
 
 ```ts
 Gtk.showUriFull(parentWindow, "https://example.com", 0, null, (source, result) => {

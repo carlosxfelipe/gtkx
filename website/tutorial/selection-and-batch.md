@@ -4,7 +4,7 @@ description: "Implement GNOME's selection mode pattern, with a transformed heade
 
 # Selection Mode
 
-Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated *selection mode* for this. It drives three parts of the UI: a selection header that replaces the titlebar, a bottom action bar that carries the batch actions, and one `selecting` boolean of React state behind both.
+Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated *selection mode* for this. It drives these parts of the UI: a selection header that replaces the titlebar, a bottom action bar that carries the batch actions, and one `selecting` boolean of React state behind both.
 
 The HIG reserves selection mode for large collections where at least three actions can be taken on the selected items, which is why Tasks ships Complete, Move, and Delete rather than only Complete and Delete. See [Selection & Edit Modes](https://developer.gnome.org/hig/patterns/containers/selection-mode.html).
 
@@ -12,7 +12,7 @@ The `AdwToolbarView` that frames the task list stays mounted throughout: it swap
 
 ## Entering via the `win.select` action
 
-Selection mode is toggled on by the window's `select` action, one of the five `<GSimpleAction>` elements `app.tsx` mounts in the `AdwApplicationWindow`'s `actions` slot. That slot is what makes its fully qualified name `win.select`. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) covers that scoping. The main menu's "Select Tasks" item activates it, and it runs whatever `onSelect` points at. Two pieces of state back the whole feature:
+Selection mode is toggled on by the window's `select` action, one of the `<GSimpleAction>` elements `app.tsx` mounts in the `AdwApplicationWindow`'s `actions` slot. That slot is what makes its fully qualified name `win.select`. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) covers that scoping. The main menu's "Select Tasks" item activates it, and it runs whatever `onSelect` points at. These pieces of state back the whole feature:
 
 ```tsx
 const [selecting, setSelecting] = useState(false);
@@ -37,7 +37,7 @@ Entering starts with `showList()`, which navigates the content stack back to the
 
 ## Swapping the header bar
 
-The list page's toolbar view picks its top bar from two candidates: selection mode wins, otherwise the normal list header shows:
+The list page's toolbar view picks its top bar: selection mode wins, otherwise the normal list header shows:
 
 ```tsx
 topBar={selecting ? selectionHeader : listHeader}
@@ -59,7 +59,7 @@ const selectionHeader = (
 );
 ```
 
-Three things to notice, all GTK4/Adwaita specifics rather than React:
+A few things to notice, all GTK4/Adwaita specifics rather than React:
 
 - `showStartTitleButtons={false}` and `showEndTitleButtons={false}` hide the window's own controls (close, minimize) so the header reads as a modal selection surface, not the normal titlebar. Cancel (or the Escape key) exits.
 - `titleWidget` takes a full widget instead of a plain string. An `AdwWindowTitle` renders the HIG-mandated count, `"3 selected"`, and re-renders automatically because `selectedIds.length` is React state.
@@ -113,7 +113,7 @@ const selectionActionBar = (
 );
 ```
 
-The two style classes are the standard GTK4 accent roles: `suggested-action` paints Complete in the accent color (the primary batch action), and `destructive-action` paints Delete red. Every button is gated with `sensitive={selectedIds.length > 0}`, so with nothing selected the bar is visible but inert. Move is a `GtkMenuButton`: its `popover` prop takes a `GtkPopover` whose body is a vertical `GtkBox` of one flat `GtkButton` per user list, each calling `moveSelected(list.id)`.
+The style classes are the standard GTK4 accent roles: `suggested-action` paints Complete in the accent color (the primary batch action), and `destructive-action` paints Delete red. Every button is gated with `sensitive={selectedIds.length > 0}`, so with nothing selected the bar is visible but inert. Move is a `GtkMenuButton`: its `popover` prop takes a `GtkPopover` whose body is a vertical `GtkBox` of one flat `GtkButton` per user list, each calling `moveSelected(list.id)`.
 
 That bar is mounted into the toolbar view's `bottomBar` slot, and `revealBottomBars` drives the reveal animation:
 

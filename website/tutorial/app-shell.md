@@ -6,7 +6,7 @@ description: "How the Tasks app builds its adaptive frame with AdwApplicationWin
 
 Everything the app renders lives inside one `AdwApplicationWindow`. Its body is a navigation tree from `@gtkx/navigation` (see the [Navigation](/guide/navigation) guide). A split-view navigator holds the sidebar and content panes, and the content pane hosts a stack navigator for the list and the task editor. `app.tsx` builds that frame once, and everything the panes show follows from navigation state and React state.
 
-The file is organized around two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
+The file is organized around `App` and `TasksWindow`. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
 ## The application root
 
@@ -30,9 +30,9 @@ export function App() {
 }
 ```
 
-`actionAccels` binds keyboard accelerators to named actions. These three target window actions, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts).
+`actionAccels` binds keyboard accelerators to named actions. These target window actions, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts).
 
-The two `<GSimpleAction>` elements in the application's `actions` slot are mounted on the application itself rather than the window, so they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the app even when no window exists yet, which is why they cannot be `win.`-scoped. Because they live outside `TasksWindow`, they reach its state through the `notify` ref that `App` creates and passes down. [Reminders and Notifications](/tutorial/notifications) covers these actions, their parameter type, and the ref bridge in full.
+The `<GSimpleAction>` elements in the application's `actions` slot are mounted on the application itself rather than the window, so they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the app even when no window exists yet, which is why they cannot be `win.`-scoped. Because they live outside `TasksWindow`, they reach its state through the `notify` ref that `App` creates and passes down. [Reminders and Notifications](/tutorial/notifications) covers these actions, their parameter type, and the ref bridge in full.
 
 ## The window
 
@@ -71,7 +71,7 @@ useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-`useBindSetting(schema, key, target, property)` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced in [Data Model and Persistence](/tutorial/data-and-persistence). On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
+`useBindSetting` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced in [Data Model and Persistence](/tutorial/data-and-persistence). On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
 
 That leaves the close handler doing only close-time work: flushing unsaved tasks and quitting.
 
@@ -98,7 +98,7 @@ Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addT
 
 ## The adaptive split view
 
-The body of the window is a navigation tree rooted in a `NavigationContainer` from `@gtkx/navigation`. Inside it, a split-view navigator renders the adaptive sidebar/content layout. On a wide screen the two panes sit side by side. When collapsed, the layout becomes a single column that navigates between them. The navigator is created once at module level, typed by the routes it holds:
+The body of the window is a navigation tree rooted in a `NavigationContainer` from `@gtkx/navigation`. Inside it, a split-view navigator renders the adaptive sidebar/content layout. On a wide screen the panes sit side by side. When collapsed, the layout becomes a single column that navigates between them. The navigator is created once at module level, typed by the routes it holds:
 
 ```tsx
 type ShellParams = {
@@ -109,7 +109,7 @@ type ShellParams = {
 const Split = createSplitViewNavigator<ShellParams>();
 ```
 
-The container wraps the navigator, and the navigator's two screens become the sidebar and content panes:
+The container wraps the navigator, and the navigator's screens become the sidebar and content panes:
 
 ```tsx
 <NavigationContainer ref={navigationRef}>
@@ -139,7 +139,7 @@ Both screens use render callbacks (`{() => ...}`) rather than `component`, becau
 
 Adaptivity splits between one controlled prop and navigation state:
 
-- **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It is a controlled React prop, driven by the breakpoint below.
+- **`collapsed`** decides whether the panes are side by side (`false`) or stacked into one column (`true`). It is a controlled React prop, driven by the breakpoint below.
 - **Which pane is focused is navigation state.** Navigating to the `Tasks` route focuses the content pane, which on a collapsed layout slides it into view. There is no `showContent` state to mirror by hand; see [the split-view navigator](/guide/navigation#the-split-view-navigator) for how widget-driven back and navigation state stay in agreement.
 
 The `navigationRef` on the container comes from `useNavigationContainerRef()`. Handlers that live outside the screens (opening a task from a row, the sidebar's `selectSidebar`, the notification actions) navigate through it:
@@ -225,7 +225,7 @@ The stack is rendered as the content pane's screen body:
 </Stack.Navigator>
 ```
 
-The two changes the pane can show split cleanly by kind, and that split is the whole point:
+What the pane can show splits cleanly by kind, and that split is the whole point:
 
 - **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it gets its own route: `navigate("Task", { id })` pushes it, and which task it shows travels in `route.params`, not in shell state. The screen looks its task up from the id; the `options` callback does the same to put the task's title on the page.
 - **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one screen (`List`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the route never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed route would be the wrong shape.

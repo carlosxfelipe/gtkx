@@ -50,7 +50,7 @@ const Counter = () => {
 
 ## Why Node.js, and why generated bindings
 
-GTKX runs on Node.js. The two established ways to reach GTK4 from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
+GTKX runs on Node.js. The established ways to reach GTK4 from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
 
 GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime from Node.js, it cuts you off from native modules and from the npm packages and tooling built for Node.js APIs.
 

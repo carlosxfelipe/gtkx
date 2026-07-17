@@ -38,7 +38,7 @@ Older Adwaita code used `AdwPreferencesWindow` and `AdwWindow` subclasses that y
 
 ## The preferences tree
 
-Inside the dialog the structure is the standard three-level Adwaita preferences hierarchy: a page holds groups, and groups hold rows.
+Inside the dialog the structure is the standard Adwaita preferences hierarchy: a page holds groups, and groups hold rows.
 
 ```tsx
 <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
@@ -93,7 +93,7 @@ type Scheme = "default" | "light" | "dark";
 const isScheme = (value: string): value is Scheme => value === "default" || value === "light" || value === "dark";
 ```
 
-`setScheme` is typed to the setting's string-union type (see below), so the guard narrows the raw `string` from the combo row back into `Scheme` before the write. The `sort-order` row follows the identical pattern with `isSort` and its four nicks.
+`setScheme` is typed to the setting's string-union type (see below), so the guard narrows the raw `string` from the combo row back into `Scheme` before the write. The `sort-order` row follows the identical pattern with `isSort` and its nicks.
 
 The reminder row is a spin button rather than a combo:
 
@@ -120,7 +120,7 @@ The `schema` object threaded into every `useSetting` call comes from a single im
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 ```
 
-You never hand-write a schema descriptor. `gtkx codegen`, `gtkx dev`, and `gtkx build` parse `data/com.gtkx.tutorial.gschema.xml` and generate a typed module for it, so `schema` carries the id, path, and the value type of every key. That is what makes `useSetting(schema, "color-scheme")` return a strongly typed tuple and reject an undeclared key at compile time. The XML itself, and the two ways it constrains a string key (a top-level `<enum>` versus inline `<choices>`), are covered in [Data Model and Persistence](./data-and-persistence#the-other-store-gsettings-for-ui-preferences).
+You never hand-write a schema descriptor. `gtkx codegen`, `gtkx dev`, and `gtkx build` parse `data/com.gtkx.tutorial.gschema.xml` and generate a typed module for it, so `schema` carries the id, path, and the value type of every key. That is what makes `useSetting(schema, "color-scheme")` return a strongly typed tuple and reject an undeclared key at compile time. The XML itself, and the ways it constrains a string key (a top-level `<enum>` versus inline `<choices>`), are covered in [Data Model and Persistence](./data-and-persistence#the-other-store-gsettings-for-ui-preferences).
 
 Codegen narrows each constrained string key to a literal string union in the generated types: `color-scheme` becomes `"default" | "light" | "dark"` and `sort-order` becomes `"manual" | "due-date" | "title" | "created"`, with the values round-tripping as raw strings (through `getString`/`setString`, not `getEnum`). That union is precisely what the `isScheme`/`isSort` guards narrow into. `reminder-minutes` types as a plain `number`, which is why its setter takes the adjustment's numeric `value`.
 

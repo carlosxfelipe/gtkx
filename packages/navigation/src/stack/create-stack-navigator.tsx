@@ -10,7 +10,7 @@ import {
     StackRouter,
     type StackRouterOptions,
 } from "@react-navigation/routers";
-import { type ReactNode, type RefCallback, useCallback, useLayoutEffect, useReducer, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { definedNavigatorOptions } from "../navigator-options.js";
 import { type PageRegistry, PageRegistryContext, usePageRegistry } from "./page-registry.js";
 import { applyStackDiff } from "./stack-diff.js";
@@ -73,8 +73,7 @@ const StackNavigator = (props: StackNavigatorProps): ReactNode => {
     });
 
     const [view, setView] = useState<Adw.NavigationView | null>(null);
-    const captureView = useCallback<RefCallback<Adw.NavigationView>>((value) => setView(value), []);
-    const setRef = useMergeRefs<Adw.NavigationView>(captureView, ref);
+    const setRef = useMergeRefs<Adw.NavigationView>(setView, ref);
 
     const registry = usePageRegistry();
     const [, forceSync] = useReducer((generation: number) => generation + 1, 0);

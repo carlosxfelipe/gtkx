@@ -35,7 +35,7 @@ Adwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `
 
 ## The fix: `AnimatePresence` and `animated.AdwStatusPage`
 
-`@gtkx/animated` is the framer-motion-powered layer covered in [CSS and Animations](/guide/css-and-animations). Two pieces of it solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animated` is already a dependency of the tutorial, so the fade itself is two edits to one file, plus a key on the list in `app.tsx`, which a later section explains.
+`@gtkx/animated` is the framer-motion-powered layer covered in [CSS and Animations](/guide/css-and-animations). Its pieces solve this. `animated.<Widget>` wraps any intrinsic element whose instance is a `Gtk.Widget` so that it accepts animation props, and `AnimatePresence` keeps a removed child mounted just long enough to play its leave animation. `@gtkx/animated` is already a dependency of the tutorial, so the fade itself is a small change to one file, plus a key on the list in `app.tsx`, which a later section explains.
 
 First the imports. The status page becomes an animated one, so `AdwStatusPage` moves out of the `@gtkx/jsx/adw` import (the file uses it nowhere else, so the name drops from the import list) and `@gtkx/animated` comes in:
 
@@ -128,7 +128,7 @@ This is free only because the fade goes through `@gtkx/animated`. Hand-rolling t
 
 There is no per-subtree opt-out from `gtk-enable-animations` being off. When the system turns animations off, every animation in the app completes instantly, and no `MotionConfig` prop can restore this fade.
 
-The separate `gtk-interface-reduced-motion` setting drives framer-motion's reduced-motion handling, which `MotionConfig` does gate per subtree (`reducedMotion="user"` follows the setting, `"always"` forces it, and `"never"`, the default, ignores it). That handling only ever swaps size, position, and transform animations for instant ones, so it does not reach an opacity fade either way. See [CSS and Animations](/guide/css-and-animations) for both settings.
+The separate `gtk-interface-reduced-motion` setting drives framer-motion's reduced-motion handling, which `MotionConfig` does gate per subtree through its `reducedMotion` prop. That handling only ever swaps size, position, and transform animations for instant ones, so it does not reach an opacity fade either way. See [CSS and Animations](/guide/css-and-animations) for both settings.
 
 ## Why a tween here, and not a spring
 

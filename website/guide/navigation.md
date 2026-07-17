@@ -6,7 +6,7 @@ description: "Stack and split-view navigation with @gtkx/navigation: React Navig
 
 `@gtkx/navigation` brings routing to a GTKX app: named screens, typed route params, an imperative `navigate()`, focus-aware hooks, and nested navigators. It is built on `@react-navigation/core`, the platform-agnostic heart of [React Navigation](https://reactnavigation.org), so the mental model (and most of the API) is the one React developers already know from the web and React Native. What GTKX supplies is the view layer: each navigator renders an Adwaita widget and keeps it in lockstep with navigation state.
 
-Two navigators ship today:
+These navigators ship today:
 
 - **`createStackNavigator`** drives an `Adw.NavigationView`: a page stack with slide animations, an automatic back button, edge-swipe back, and Escape-to-pop.
 - **`createSplitViewNavigator`** drives an `Adw.NavigationSplitView`: the adaptive sidebar/content layout that collapses to a single column on narrow windows.
@@ -144,7 +144,7 @@ That one call focuses the content pane *and* pushes the task page in its stack. 
 
 ## Preventing removal
 
-`usePreventRemove(true, onAttempt)` does two things on a stack screen. It sets the page's `canPop` to `false`, so the back button disappears and the pop gesture and shortcuts are disabled up front. If the page is popped anyway, because something called `pop()` on the widget directly, the navigator's dispatched pop is prevented. The `onAttempt` callback fires with the blocked action. The navigator then pushes the page straight back, so navigation state wins.
+`usePreventRemove(true, onAttempt)` guards removal on a stack screen. It sets the page's `canPop` to `false`, so the back button disappears and the pop gesture and shortcuts are disabled up front. If the page is popped anyway, because something called `pop()` on the widget directly, the navigator's dispatched pop is prevented. The `onAttempt` callback fires with the blocked action. The navigator then pushes the page straight back, so navigation state wins.
 
 What it cannot do is Adwaita's "ask first, then maybe close" flow, because `Adw.NavigationView` has no vetoable pop: the widget notifies *after* a page is popped, so prevention for widget-initiated pops is block-up-front, not intercept-in-flight. For a confirmation flow, reach for the surface Adwaita makes vetoable: present the question in a [`Dialog`](/guide/modals-and-portals), whose close attempt genuinely waits for an answer.
 

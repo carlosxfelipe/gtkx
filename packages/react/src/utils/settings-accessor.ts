@@ -45,7 +45,7 @@ const STRV_ACCESSOR: SettingAccessor = {
     write: (settings, key, value) => settings.setStrv(key, expectStringArray(value)),
 };
 
-const ACCESSORS: Record<string, SettingAccessor | undefined> = {
+const ACCESSORS: Record<string, SettingAccessor> = {
     b: {
         read: (settings, key) => settings.getBoolean(key),
         write: (settings, key, value) => settings.setBoolean(key, expectBoolean(value)),

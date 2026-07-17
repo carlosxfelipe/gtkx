@@ -4,7 +4,7 @@ description: "The task detail form: a routed screen in the content stack whose t
 
 # The Task Editor
 
-Clicking a task in the list opens the editor: a title field, an Important switch, a due-date calendar, a notes area, and read-only metadata. This is a full detail form, and it pushes in over the list as a new page in the content stack. Two things make that work: a routed screen whose task id arrives as a route param, and a `key` that forces a fresh mount every time you open a different task.
+Clicking a task in the list opens the editor: a title field, an Important switch, a due-date calendar, a notes area, and read-only metadata. This is a full detail form, and it pushes in over the list as a new page in the content stack. Making that work takes a routed screen whose task id arrives as a route param, and a `key` that forces a fresh mount every time you open a different task.
 
 ## The task screen
 
@@ -88,7 +88,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
 };
 ```
 
-[`AdwClamp`](/tutorial/the-task-list#the-outer-frame) caps and centers the child's width, here at `maximumSize={600}` rather than the list's 640. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
+[`AdwClamp`](/tutorial/the-task-list#the-outer-frame) caps and centers the child's width, here at `maximumSize={600}` rather than the list's 640. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the sections with even gaps.
 
 `GtkScrolledWindow` with `vexpand` lets the whole form scroll when the notes push it past the window height. Both `AdwClamp` and `GtkScrolledWindow` are single-child containers, so their one child is passed as JSX children and placed via `set_child` under the hood.
 
@@ -174,7 +174,7 @@ The Due row shows GTK4's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenu
 
 `GtkCalendar`'s `date` property takes a `GLib.DateTime`. Passing `dueDate` opens the calendar on the task's current due date (or today, when undefined). Picking a day fires the `day-selected` signal (`onDaySelected`), and the handler reads the selection back off the live widget with `self.getDate()`, which returns a fresh `GLib.DateTime`.
 
-Converting that GLib date into a JS `Date` needs one adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. `getYear`, `getMonth`, and `getDayOfMonth` are `GLib.DateTime` accessors. The day is pinned to 18:00 local time (the app's default due time, matching the seeded tasks in `store.ts`), and the result is serialized back to ISO with `toISOString()`. Reaching for those accessors plus `getDate()` is deliberate: it is the non-deprecated calendar API (see the warning below), and the `GLib.DateTime` lives only long enough to be read before the due date becomes an ISO string again.
+Converting that GLib date into a JS `Date` needs an adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. `getYear`, `getMonth`, and `getDayOfMonth` are `GLib.DateTime` accessors. The day is pinned to 18:00 local time (the app's default due time, matching the seeded tasks in `store.ts`), and the result is serialized back to ISO with `toISOString()`. Reaching for those accessors plus `getDate()` is deliberate: it is the non-deprecated calendar API (see the warning below), and the `GLib.DateTime` lives only long enough to be read before the due date becomes an ISO string again.
 
 ::: warning Don't use `select_day`
 The older calendar API (`select_day`, plus the integer `day` / `month` / `year` properties) is deprecated since GTK 4.20. The non-deprecated path is the `date` property (a `GLib.DateTime`) for setting and `get_date()` for reading, which is exactly what this editor uses. The generated `@gtkx/gi/gtk` typings still expose the deprecated members because they strip GTK4's deprecation annotations, so it is on you to reach for `date` / `getDate` rather than `selectDay`.

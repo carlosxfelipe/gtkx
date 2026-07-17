@@ -1,6 +1,6 @@
 # browser
 
-A web browser in about 160 lines. An Adwaita window wraps a `WebKitWebView`, with back, forward, and reload/stop buttons, a URL entry in the header bar, and a progress bar that hides when a page finishes loading. It opens [gtkx.dev](https://gtkx.dev).
+A compact web browser. An Adwaita window wraps a `WebKitWebView`, with back, forward, and reload/stop buttons, a URL entry in the header bar, and a progress bar that hides when a page finishes loading. It opens [gtkx.dev](https://gtkx.dev).
 
 ## What it demonstrates
 

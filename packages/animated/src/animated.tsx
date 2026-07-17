@@ -65,7 +65,6 @@ const getMeasureLayout = (props: MotionNodeOptions): MeasureLayoutComponent | un
     const definitions = getFeatureDefinitions();
     const drag = definitions.drag;
     const layout = definitions.layout;
-    if (!drag && !layout) return undefined;
     const enabled = Boolean(drag?.isEnabled(props)) || Boolean(layout?.isEnabled(props));
     if (!enabled) return undefined;
     return drag?.MeasureLayout ?? layout?.MeasureLayout;
@@ -74,11 +73,8 @@ const getMeasureLayout = (props: MotionNodeOptions): MeasureLayoutComponent | un
 const animatedByName = new Map<string, unknown>();
 const animatedByComponent = new WeakMap<object, unknown>();
 
-const getCachedAnimated = <P extends object>(component: object): AnimatedComponent<P> | undefined =>
-    animatedByComponent.get(component) as AnimatedComponent<P> | undefined;
-
 const animatedFactory = <P extends object>(Component: (props: P) => ReactNode): AnimatedComponent<P> => {
-    const cached = getCachedAnimated<P>(Component);
+    const cached = animatedByComponent.get(Component) as AnimatedComponent<P> | undefined;
     if (cached) return cached;
 
     const Animated = (props: P & AnimationProps): ReactNode => {

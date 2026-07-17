@@ -4,17 +4,13 @@ type AccessibleMetadata = Map<string, unknown>;
 
 const accessibleMetadata = new WeakMap<Gtk.Accessible, AccessibleMetadata>();
 
-const getOrCreateMetadata = (accessible: Gtk.Accessible): AccessibleMetadata => {
+export const setAccessibleMetadata = (accessible: Gtk.Accessible, propName: string, value: unknown): void => {
     let entry = accessibleMetadata.get(accessible);
     if (!entry) {
         entry = new Map();
         accessibleMetadata.set(accessible, entry);
     }
-    return entry;
-};
-
-export const setAccessibleMetadata = (accessible: Gtk.Accessible, propName: string, value: unknown): void => {
-    getOrCreateMetadata(accessible).set(propName, value);
+    entry.set(propName, value);
 };
 
 export const deleteAccessibleMetadata = (accessible: Gtk.Accessible, propName: string): void => {

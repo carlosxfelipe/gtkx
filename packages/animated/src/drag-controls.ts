@@ -7,8 +7,6 @@ export type DragControlOptions = NonNullable<Parameters<FramerStart>[1]>;
 
 export interface DragControls extends FramerDragControls {
     start(event: SyntheticEvent | Parameters<FramerStart>[0], options?: DragControlOptions): void;
-    cancel(): void;
-    stop(): void;
 }
 
 export const useDragControls = (): DragControls => useFramerDragControls();

@@ -126,14 +126,14 @@ The first reference pulls in `vite/client` plus type declarations for every asse
 
 ## The dependencies
 
-The counter starter installs four runtime dependencies:
+The counter starter installs these runtime dependencies:
 
 - **`@gtkx/react`** ships the reconciler plus hooks and helpers (`createRoot`, `useApplication`, `useSetting`, `useSignal`, `createPortal`, `quit`, ...).
 - **`@gtkx/css`** is CSS-in-JS for GTK4's CSS (a `css` tagged template that feeds a widget's `cssClasses`).
 - **`@gtkx/runtime`** is the hand-written FFI runtime the generated bindings call into; it depends on and re-exports parts of `@gtkx/native`, the prebuilt addon.
 - **`react`** is plain React 19. GTKX is a custom reconciler, not a fork.
 
-The completed Tasks app adds three more runtime dependencies in the chapters that first need them:
+The completed Tasks app adds more runtime dependencies in the chapters that first need them:
 
 - **`@gtkx/components`** provides high-level React components over the harder GTK4 APIs, notably the model-backed collection components `ListView`, `ColumnView`, `GridView`, and `DropDown`, plus a declarative `Menu` builder over `Gio.Menu`.
 - **`@gtkx/navigation`** provides React Navigation-powered navigators (stack and split view) backed by Adwaita widgets. See [Navigation](/guide/navigation).
@@ -145,7 +145,7 @@ The `"imports": { "#data/*": "./data/*" }` map resolves `#data/...` specifiers t
 
 ## The dev loop: the `gtkx` CLI
 
-Three commands cover the day-to-day loop:
+These commands cover the day-to-day loop:
 
 ```bash
 gtkx dev        # dev server with Fast Refresh
@@ -153,7 +153,7 @@ gtkx build      # production bundle in dist/
 gtkx codegen    # (re)generate the native bindings
 ```
 
-Two more subcommands round out the CLI. `gtkx create` is the scaffolder you already ran through `npm create gtkx@rc`, and `gtkx docs` generates markdown reference pages for the JSX elements of the libraries declared in `gtkx.config.ts`; you'll rarely need either after setup.
+The remaining subcommands round out the CLI. `gtkx create` is the scaffolder you already ran through `npm create gtkx@rc`, and `gtkx docs` generates markdown reference pages for the JSX elements of the libraries declared in `gtkx.config.ts`; you'll rarely need either after setup.
 
 **`gtkx dev`** is what you'll run while building the app. It starts a Vite dev server wired to a supervisor that launches your GTK4 app and hot-reloads it. Edit a component, save, and the running window updates in place with React Fast Refresh: your `useState` survives the reload, so you don't lose the task you were mid-edit on. It also watches `gtkx.config.ts` and your schemas.
 

@@ -8,11 +8,11 @@ An AI coding agent working on a web app can open the page and read the DOM. `@gt
 
 Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent looks up exact props, signals, and method signatures instead of guessing.
 
-Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have. Jump to [Setup](#setup) to register the server, or read on for how the two halves connect.
+Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have. Jump to [Setup](#setup) to register the server, or read on for how it connects.
 
 ## How it connects
 
-The system has two halves that find each other through a Unix domain socket.
+The system has a server half and an app half that find each other through a Unix domain socket.
 
 The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your MCP client launches it as an ordinary stdio MCP server. On startup it also opens a socket at `$XDG_RUNTIME_DIR/gtkx-mcp.sock` (falling back to the system temporary directory) and waits for apps to register. Because the socket path is fixed, one server serves your whole session; a second instance refuses to start while the first is alive.
 
@@ -55,7 +55,7 @@ The binary takes no arguments and has no configuration of its own. If the agent 
 
 ## The tools
 
-The server exposes tools in three groups: inspection, interaction, and the API reference:
+The server groups its tools into inspection, interaction, and the API reference:
 
 | Tool | Kind | What it does |
 |---|---|---|
@@ -73,7 +73,7 @@ The server exposes tools in three groups: inspection, interaction, and the API r
 
 ### Inspection
 
-The five read-only tools carry the MCP `readOnlyHint` annotation, so clients that gate destructive actions can run them freely.
+The read-only tools carry the MCP `readOnlyHint` annotation, so clients that gate destructive actions can run them freely.
 
 **`gtkx_list_apps`** lists every connected app with its application ID, process ID, and open windows (each with an ID and title). Pass `waitForApps: true` to block until at least one app registers, with `timeout` in milliseconds (default 10000). This is the natural first call in any session, especially right after launching `gtkx dev`, when the app may still be starting.
 
@@ -117,7 +117,7 @@ Widget IDs are stable for as long as a widget stays mounted: the app re-walks it
 
 ### Interaction
 
-The three mutating tools carry the `destructiveHint` annotation, so clients that ask for confirmation before mutations will do so here.
+The mutating tools carry the `destructiveHint` annotation, so clients that ask for confirmation before mutations will do so here.
 
 **`gtkx_click`** clicks the widget with the given `widgetId`. It works on anything `userEvent.click` handles: buttons, check buttons, switches, rows, and other activatable widgets.
 
@@ -131,7 +131,7 @@ Every widget tool call, inspection or interaction, is routed to the app with a 3
 
 ### API reference
 
-The three reference tools answer from the same GObject-Introspection data your bindings are generated from, so what they document is exactly what `@gtkx/gi` and `@gtkx/jsx` export: the same camelCase methods, the same promisified async pairs, the same JSX props and `on<Signal>` handlers. They need no running app and no `@gtkx/testing`; the only requirement is a project with codegen enabled, since a `codegen: false` project has no generated bindings to document. All three are read-only.
+The reference tools answer from the same GObject-Introspection data your bindings are generated from, so what they document is exactly what `@gtkx/gi` and `@gtkx/jsx` export: the same camelCase methods, the same promisified async pairs, the same JSX props and `on<Signal>` handlers. They need no running app and no `@gtkx/testing`; the only requirement is a project with codegen enabled, since a `codegen: false` project has no generated bindings to document. They are all read-only.
 
 **`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists all of that namespace's symbols grouped by kind: JSX elements, classes, interfaces, records, enums, callbacks, aliases, functions, and constants.
 
@@ -149,7 +149,7 @@ The same pages are also published as MCP resources for clients that work resourc
 
 Here is what the loop looks like when an agent verifies a change to the [Tasks app](/tutorial/) from the tutorial. You (or the agent) have `gtkx dev` running in the project.
 
-1. The agent calls `gtkx_list_apps` with `waitForApps: true` and sees `com.gtkx.tutorial` with one window titled "Tasks".
+1. The agent calls `gtkx_list_apps` with `waitForApps: true` and sees `com.gtkx.tutorial` with a window titled "Tasks".
 2. It calls `gtkx_get_widget_tree` and reads the shape of the UI: the `AdwNavigationSplitView`, the sidebar rows, the task list, each with an ID.
 3. It calls `gtkx_query_widgets` with `by: "role"`, `value: "BUTTON"`, `options: { name: "New List" }` to pin down the exact button, then `gtkx_click` on the returned ID.
 4. The dialog opens. The agent re-fetches the tree (the dialog's widgets are new, with new IDs), finds the name entry, and calls `gtkx_type` with `clear: true` and the text "Groceries".
