@@ -4,7 +4,7 @@ import { useMergeRefs } from "../hooks/use-merge-refs.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 
 type WindowComponentProps<T extends Gtk.Window> = {
-    ref?: Ref<T | null>;
+    ref?: Ref<T | null> | undefined;
 };
 
 export const createWindowComponent = <T extends Gtk.Window>(
@@ -24,7 +24,7 @@ export const createWindowComponent = <T extends Gtk.Window>(
             };
         }, []);
 
-         const mergedRef = useMergeRefs(ref, handleMount);
+        const mergedRef = useMergeRefs(ref, handleMount);
 
         return (
             <ParentWindowContext.Provider value={window}>

@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-const ARG_REFS = ["child", "item", "index", "sibling"] as const;
+const ARG_REFS = ["child", "item", "index", "sibling", "adopted"] as const;
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 /**
  * Named reference to a value available while invoking a {@link Call}: the child
- * widget, the current list item, its index, or the preceding sibling.
+ * widget, the current list item, its index, the preceding sibling, or the
+ * adopted instance a container returned for the child.
  */
 export type ArgRef = (typeof ARG_REFS)[number];
 

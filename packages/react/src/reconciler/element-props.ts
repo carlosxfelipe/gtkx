@@ -11,6 +11,7 @@ export type CallScope = {
     item?: unknown;
     index?: number;
     sibling?: unknown;
+    adopted?: unknown;
     props?: Record<string, unknown>;
 };
 
@@ -30,6 +31,8 @@ const evalArg = (arg: Arg, scope: CallScope): unknown => {
                 return scope.index;
             case "sibling":
                 return scope.sibling;
+            case "adopted":
+                return scope.adopted;
         }
     }
     if ("literal" in arg) return arg.literal;

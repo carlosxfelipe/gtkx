@@ -3,7 +3,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { typeChainIncludes } from "../utils/gtype.js";
 import { callUsesRef, nullSetterCurrentHolder, resolveContainerProp, runCall } from "./element-props.js";
-import { type ElementMapping, type Node, registeredStateOf, stateOf } from "./state.js";
+import { type ElementMapping, registeredStateOf, stateOf } from "./state.js";
 import { childWidget } from "./wrapper-content.js";
 
 const containerPropFor = (container: GObject.Object, child: Gtk.Widget): ContainerProp | null =>
@@ -102,6 +102,16 @@ const findInsertPosition = (container: Gtk.Widget, anchor: Gtk.Widget): number =
     return position;
 };
 
+const reorderPosition = (container: Gtk.Widget, anchor: Gtk.Widget, moving: Gtk.Widget): number => {
+    let position = 0;
+    for (const current of childWidgetsOf(container)) {
+        if (current === moving) continue;
+        if (current === anchor) return position;
+        position++;
+    }
+    return position;
+};
+
 const findPrevSibling = (container: Gtk.Widget, anchor: Gtk.Widget): Gtk.Widget | undefined => {
     for (const child of childWidgetsOf(container)) {
         if (child === anchor) return child.getPrevSibling() ?? undefined;
@@ -125,6 +135,11 @@ const insertAtIndex = (
         else runCall(container, cp.insert, [widget, position], { child: widget, index: position });
         return;
     }
+    if (widget.getParent() === container && cp.reorder !== undefined) {
+        const position = reorderPosition(container, anchor, widget);
+        runCall(container, cp.reorder, [widget, position], { child: widget, index: position });
+        return;
+    }
     unparentWidget(widget);
     const position = findInsertPosition(container, anchor);
     runCall(container, cp.insert, [widget, position], { child: widget, index: position });
@@ -142,9 +157,9 @@ const insertBySibling = (container: Gtk.Widget, widget: Gtk.Widget, anchor: Gtk.
     else attachChild(widget, container);
 };
 
-const reinsertAll = (parent: Node, container: GObject.Object): void => {
+const reinsertAll = (container: GObject.Object): void => {
     const widgets: Gtk.Widget[] = [];
-    for (const child of stateOf(parent).children) {
+    for (const child of stateOf(container).children) {
         const widget = childWidget(child);
         if (widget) widgets.push(widget);
     }
@@ -152,7 +167,7 @@ const reinsertAll = (parent: Node, container: GObject.Object): void => {
     for (const widget of widgets) attachChild(widget, container);
 };
 
-const insertWidgetBefore = (parent: Node, container: GObject.Object, widget: Gtk.Widget, anchor: Gtk.Widget): void => {
+const insertWidgetBefore = (container: GObject.Object, widget: Gtk.Widget, anchor: Gtk.Widget): void => {
     const cp = containerPropFor(container, widget);
     if (cp?.insert !== undefined && callUsesRef(cp.insert, "index") && container instanceof Gtk.Widget) {
         insertAtIndex(container, widget, anchor, { ...cp, insert: cp.insert });
@@ -165,7 +180,7 @@ const insertWidgetBefore = (parent: Node, container: GObject.Object, widget: Gtk
         insertBySibling(container, widget, anchor, cp);
         return;
     }
-    reinsertAll(parent, container);
+    reinsertAll(container);
 };
 
 const appendWidget = (container: GObject.Object, widget: Gtk.Widget, fresh: boolean): void => {
@@ -196,7 +211,7 @@ export const containerMapping: ElementMapping = (child, parent) => {
     if (!(parent instanceof Gtk.Widget) && containerPropFor(parent, widget) === null) return null;
     return {
         attach: (anchor, fresh) => {
-            if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, parent, widget, anchor);
+            if (anchor instanceof Gtk.Widget) insertWidgetBefore(parent, widget, anchor);
             else appendWidget(parent, widget, fresh === true);
         },
         detach: () => removeWidget(parent, widget),

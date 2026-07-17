@@ -126,8 +126,8 @@ export const objectPropMapping: ElementMapping = (child, parent) => {
     if (!hasWrapperKind(child, OBJECT_PROP_KIND) || !(parent instanceof GObject.Object)) return null;
     return {
         attach: () => {
-            const prop = stateOf(child).props.propName;
-            if (typeof prop !== "string") return;
+            const prop = propNameOf(child);
+            if (prop === undefined) return;
             const value = trackedInstance(child);
             const state = objectPropState.get(child);
             if (state && state.value === value) return;
@@ -183,11 +183,11 @@ export const containerPropMapping: ElementMapping = (child, parent) => {
     };
 };
 
-type LazyState = { content: Gtk.Widget | null; instance: GObject.Object | null; appliedProps: Props };
+type LazyState = { content: Gtk.Widget | null; instance: GObject.Object | null; appliedProps: Props; ordinal: number };
 
 const lazyState = new WeakMap<Node, LazyState>();
 
-const freshLazyState = (): LazyState => ({ content: null, instance: null, appliedProps: {} });
+const freshLazyState = (): LazyState => ({ content: null, instance: null, appliedProps: {}, ordinal: -1 });
 
 const RESERVED_LAZY_PROPS = new Set(["children", "ref", "key", "kind"]);
 
@@ -215,9 +215,9 @@ const appendLazyContent = (
     node: Node,
     content: Gtk.Widget,
 ): GObject.Object | undefined => {
-    const ordinal = cp.insert !== undefined ? lazyOrdinal(parent, node) : null;
     let appended: unknown;
-    if (cp.insert !== undefined && ordinal !== null) {
+    if (cp.insert !== undefined) {
+        const ordinal = lazyOrdinal(parent, node);
         appended = runCallValue(parent, cp.insert, [content, ordinal], {
             child: content,
             index: ordinal,
@@ -253,7 +253,7 @@ const releaseLazyContent = (node: Node, state: LazyState, parent: GObject.Object
         if (cp.remove !== undefined) {
             const stillInside =
                 !(parent instanceof Gtk.Widget) || (content.getParent() !== null && isDescendantOf(content, parent));
-            if (stillInside) runCall(parent, cp.remove, [content], { child: content });
+            if (stillInside) runCall(parent, cp.remove, [content], { child: content, adopted: instance ?? undefined });
         } else {
             detachChild(content, parent);
         }
@@ -270,12 +270,23 @@ const syncLazyElement = (parent: GObject.Object, cp: ContainerProp, node: Node):
     if (state.instance === null) {
         const instance = appendLazyContent(parent, cp, node, content);
         state.content = content;
+        state.ordinal = lazyOrdinal(parent, node);
         if (instance !== undefined) {
             state.instance = instance;
             stateOf(node).adoptedInstance = instance;
             if (!registeredStateOf(instance)) {
                 registerState(instance, { props: {}, rootContainer: stateOf(node).rootContainer });
             }
+        }
+    } else if (cp.reorder !== undefined) {
+        const ordinal = lazyOrdinal(parent, node);
+        if (ordinal !== state.ordinal) {
+            runCall(parent, cp.reorder, [content, ordinal], {
+                child: content,
+                index: ordinal,
+                adopted: state.instance ?? undefined,
+            });
+            state.ordinal = ordinal;
         }
     }
     applyAdoptedProps(state, node);

@@ -32,11 +32,12 @@ const boxChildren = (): ElementProp =>
         reorder: { method: "reorderChildAfter", args: ["child", "sibling"] },
     });
 
-const indexedChildren = (append: string): ElementProp =>
+const indexedChildren = (append: string, reorder?: string): ElementProp =>
     container("children", "GtkWidget", {
         append,
         remove: "remove",
         insert: { method: "insert", args: ["child", "index"] },
+        ...(reorder !== undefined ? { reorder: { method: reorder, args: ["child", "index"] } } : {}),
     });
 
 const addRemoveChildren = (): ElementProp => container("children", "GtkWidget", { append: "add", remove: "remove" });
@@ -193,12 +194,15 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         container("bottomBar", "GtkWidget", { append: "addBottomBar" }),
         singleContent(),
     ],
-    AdwCarousel: [indexedChildren("append")],
+    AdwCarousel: [indexedChildren("append", "reorder")],
     AdwPreferencesPage: [indexedChildren("add")],
     AdwTabView: [
         container("children", "GtkWidget", {
             append: "append",
             insert: { method: "insert", args: ["child", "index"] },
+            reorder: { method: "reorderPage", args: ["adopted", "index"] },
+            remove: { method: "closePage", args: ["adopted"] },
+            adopt: "getPage",
         }),
     ],
     GtkListBox: [autowrapProp("GtkListBoxRow")],
@@ -215,6 +219,7 @@ export const BUILT_IN_ELEMENT_PROPS: Record<string, ElementProp[]> = withBreakpo
         container("children", "GtkWidget", {
             append: { method: "appendPage", args: ["child", { literal: null }] },
             insert: { method: "insertPage", args: ["child", { literal: null }, "index"] },
+            reorder: { method: "reorderChild", args: ["child", "index"] },
             remove: "detachTab",
             adopt: "getPage",
         }),
