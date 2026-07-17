@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { collectLogged, setupLogState } from "./log-state.js";
 
 vi.mock("@gtkx/codegen", () => ({
     resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
@@ -56,23 +57,6 @@ const run = (overrides: DocsArgs): Promise<unknown> => {
     } as DocsContext["args"];
     return Promise.resolve(handler({ rawArgs: [], args, cmd: docs }));
 };
-
-type LogState = { stderrSpy: ReturnType<typeof vi.spyOn> };
-
-const setupLogState = (): LogState => {
-    const state = {} as LogState;
-    beforeEach(() => {
-        vi.clearAllMocks();
-        state.stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    });
-    afterEach(() => {
-        state.stderrSpy.mockRestore();
-    });
-    return state;
-};
-
-const collectLogged = (stderrSpy: ReturnType<typeof vi.spyOn>): string =>
-    stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
 
 describe("docs command", () => {
     const state = setupLogState();

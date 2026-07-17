@@ -6,6 +6,7 @@ import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
+import { callOutputOptions } from "./output-options.js";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;
@@ -38,16 +39,6 @@ const callResolveIdGsettings = async (
 ): Promise<string | undefined | null> => {
     const plugin = gtkxGSettings();
     return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
-};
-
-const callOutputOptions = (
-    plugin: ReturnType<typeof gtkxGSettings>,
-    options: Record<string, unknown>,
-): Record<string, unknown> | undefined => {
-    const hook = plugin.outputOptions;
-    const handler = typeof hook === "function" ? hook : hook?.handler;
-    if (!handler) return undefined;
-    return (Reflect.apply(handler, {}, [options]) ?? undefined) as Record<string, unknown> | undefined;
 };
 
 describe("gtkxGSettings (plugin shape and init)", () => {

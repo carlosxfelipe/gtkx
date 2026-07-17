@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { error } from "@gtkx/utils";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { prepareDevIconDir } from "./icon-dir.js";
 import { createDevRunner } from "./runner.js";
 import { prepareDevSchemaDir } from "./schema-dir.js";
 
@@ -21,7 +22,9 @@ export const main = async (): Promise<void> => {
         process.exit(1);
     }
 
-    prepareDevSchemaDir(cwd, resolveDataDir(cwd));
+    const dataDir = resolveDataDir(cwd);
+    prepareDevSchemaDir(cwd, dataDir);
+    prepareDevIconDir(cwd, dataDir);
 
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");

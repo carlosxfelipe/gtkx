@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { collectLogged, setupLogState } from "./log-state.js";
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
     ensureGenerated: vi.fn(async () => true),
@@ -32,23 +33,6 @@ const run = (overrides: CodegenArgs): Promise<unknown> => {
     const args = { force: false, ...overrides } as CodegenContext["args"];
     return Promise.resolve(handler({ rawArgs: [], args, cmd: codegen }));
 };
-
-type LogState = { stderrSpy: ReturnType<typeof vi.spyOn> };
-
-const setupLogState = (): LogState => {
-    const state = {} as LogState;
-    beforeEach(() => {
-        vi.clearAllMocks();
-        state.stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    });
-    afterEach(() => {
-        state.stderrSpy.mockRestore();
-    });
-    return state;
-};
-
-const collectLogged = (stderrSpy: ReturnType<typeof vi.spyOn>): string =>
-    stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("");
 
 describe("codegen command (default — conditional)", () => {
     const state = setupLogState();

@@ -86,6 +86,7 @@ describe("build (plugin order)", () => {
         expect(pluginNames).toEqual([
             "gtkx:config",
             "gtkx:gsettings",
+            "gtkx:icons",
             "gtkx:gresources",
             "gtkx:assets",
             "gtkx:react-compiler",
@@ -103,6 +104,7 @@ describe("build (plugin order)", () => {
         expect(pluginNames.slice(1)).toEqual([
             "gtkx:config",
             "gtkx:gsettings",
+            "gtkx:icons",
             "gtkx:gresources",
             "gtkx:assets",
             "gtkx:react-compiler",

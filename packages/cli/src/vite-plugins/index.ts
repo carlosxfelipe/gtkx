@@ -4,6 +4,7 @@ import type { Plugin } from "vite";
 import { gtkxAssets } from "./css.js";
 import { gtkxGResources } from "./gresources.js";
 import { gtkxGSettings } from "./gsettings.js";
+import { gtkxIcons } from "./icons.js";
 import { gtkxReactCompiler } from "./react-compiler.js";
 
 export const gtkxVitePlugins = (mode?: string): Plugin[] => {
@@ -11,6 +12,7 @@ export const gtkxVitePlugins = (mode?: string): Plugin[] => {
     return [
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
         gtkxGSettings(),
+        gtkxIcons(),
         gtkxGResources(loadConfig),
         gtkxAssets(),
         gtkxReactCompiler(loadConfig),

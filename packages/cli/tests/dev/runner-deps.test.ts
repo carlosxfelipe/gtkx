@@ -105,6 +105,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
         expect(names).toEqual([
             "gtkx:config",
             "gtkx:gsettings",
+            "gtkx:icons",
             "gtkx:gresources",
             "gtkx:assets",
             "gtkx:react-compiler",
