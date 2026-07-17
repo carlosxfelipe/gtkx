@@ -16,11 +16,12 @@ describe("keyframes-variants (1)", () => {
 
             await render(
                 <animated.GtkLabel
-                    label="Keys"
                     animate={{ x: [0, 50, 10] }}
                     transition={{ duration: 0.15 }}
                     onAnimationComplete={onComplete}
-                />,
+                >
+                    Keys
+                </animated.GtkLabel>,
             );
 
             await screen.findByText("Keys");
@@ -47,17 +48,19 @@ describe("keyframes-variants (2)", () => {
             await render(
                 <animated.GtkBox variants={parentVariants} initial="hidden" animate="visible">
                     <animated.GtkLabel
-                        label="First"
                         variants={childVariants}
                         transition={{ duration: 0.05 }}
                         onAnimationComplete={firstComplete}
-                    />
+                    >
+                        First
+                    </animated.GtkLabel>
                     <animated.GtkLabel
-                        label="Second"
                         variants={childVariants}
                         transition={{ duration: 0.05 }}
                         onAnimationComplete={secondComplete}
-                    />
+                    >
+                        Second
+                    </animated.GtkLabel>
                 </animated.GtkBox>,
             );
 
@@ -83,7 +86,7 @@ describe("keyframes-variants (3)", () => {
                     transition={{ duration: 0.05 }}
                     onAnimationComplete={onComplete}
                 >
-                    <GtkLabel label="Colored" />
+                    <GtkLabel>Colored</GtkLabel>
                 </animated.GtkBox>,
             );
 

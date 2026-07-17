@@ -67,7 +67,7 @@ describe("render - AlertDialog responses (1)", () => {
 
         await render(
             <Dialog component={AdwAlertDialog} ref={ref} heading="Test" responses={[{ id: "ok", label: "OK" }]}>
-                <GtkLabel label="Body content" />
+                <GtkLabel>Body content</GtkLabel>
             </Dialog>,
             options(),
         );

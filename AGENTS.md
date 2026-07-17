@@ -17,13 +17,13 @@ Homepage: https://gtkx.dev
 | `@gtkx/cli` | User-facing CLI and Vite integration: hot-reloading dev supervisor over SSR with Fast Refresh, single-file production bundling, codegen orchestration with freshness checks, the GTK4-asset Vite plugins, and the embedded MCP client. |
 | `@gtkx/config` | Single source of truth for `gtkx.config.ts`: schema, validation, loading and resolution, the elementProps schema, and the Vite plugin that emits the `virtual:gtkx-config` module fusing resolved config with codegen metadata. |
 | `create-gtkx` | The `create` scaffolder: renders project templates, installs dependencies, and initializes a git repository; the CLI's `create` subcommand delegates here. |
-| `@gtkx/gi` | Generated low-level FFI bindings: one module per GIR namespace plus hand-written overrides; resolves as a real installed package via codegen symlinks. |
+| `@gtkx/gi` | Generated low-level FFI bindings: one module per GIR namespace plus hand-written overrides; resolves through `node_modules` as an installed package via codegen symlinks. |
 | `@gtkx/jsx` | Generated React/JSX bindings: intrinsic element types, per-element prop interfaces, the JSX intrinsic-elements augmentation, and the reconciler metadata module. |
 | `@gtkx/css` | Emotion-based CSS-in-JS that compiles tagged-template styles into GTK4 CSS classes pushed through a process-wide CSS provider; raw global stylesheet injection; supports GTK4 `@named-colors`. |
 | `@gtkx/animated` | framer-motion running against GTK4 widgets: animations, presence-aware enter/exit, gestures, drag, and layout animations whose values are rendered as per-widget GTK4 CSS through GTK4 event controllers and a shared CSS provider. |
 | `@gtkx/gl` | Hand-curated OpenGL core bindings generated from the vendored Khronos registry plus companion helpers, for use inside GL-area render callbacks. |
 | `@gtkx/mcp` | Model Context Protocol server exposing widget-inspection/interaction tools to AI agents over stdio, bridged to live GTKX apps over a Unix socket. |
-| `@gtkx/testing` | Testing Library-style harness over real GObject widgets: render/cleanup, accessibility-first queries, `userEvent`/`fireEvent` via real GTK4 controllers/signals, screenshots, all inside React `act()`. |
+| `@gtkx/testing` | Testing Library-style harness over GObject widgets: render/cleanup, accessibility-first queries, `userEvent`/`fireEvent` driving each widget's own GTK4 controllers and signals, screenshots, all inside React `act()`. |
 | `@gtkx/vitest` | Vitest plugin provisioning per-worker headless display isolation and wiring the GTKX config virtual module identically to production. |
 | `@gtkx/e2e` | Private in-repo end-to-end suite exercising the whole framework plus performance benchmarks under the headless harness. |
 | `@gtkx/utils` | Leaf package of pure helpers (sole dependency: picocolors, used for log coloring): string casing, safe source-text/identifier generation, collection helpers, error normalization, graceful-shutdown installer, and the shared structural any-constructor type. |

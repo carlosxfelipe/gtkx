@@ -145,7 +145,7 @@ describe("render - Window (4)", () => {
 
             await render(
                 <GtkApplicationWindow ref={windowRef}>
-                    <GtkLabel ref={labelRef} label="Window Child" />
+                    <GtkLabel ref={labelRef}>Window Child</GtkLabel>
                 </GtkApplicationWindow>,
             );
 
@@ -162,9 +162,13 @@ describe("render - Window (4)", () => {
                 return (
                     <GtkApplicationWindow ref={windowRef}>
                         {first ? (
-                            <GtkLabel ref={label1Ref} key="first" label="First" />
+                            <GtkLabel ref={label1Ref} key="first">
+                                First
+                            </GtkLabel>
                         ) : (
-                            <GtkLabel ref={label2Ref} key="second" label="Second" />
+                            <GtkLabel ref={label2Ref} key="second">
+                                Second
+                            </GtkLabel>
                         )}
                     </GtkApplicationWindow>
                 );

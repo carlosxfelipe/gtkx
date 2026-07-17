@@ -136,7 +136,7 @@ Points to notice:
 
 - **`name="complete-task"` becomes `app.complete-task`.** Actions placed under the application element are added to its action map with the `app.` prefix, which is exactly the string `buildReminder` targets. (Window-scoped actions, by contrast, live in the window's `actions` slot and become `win.`-prefixed.)
 - **`parameterType={GLib.VariantType.new("s")}` declares the action takes a single string parameter.** This must match the `GLib.Variant.newString(task.id)` target attached to the notification; a mismatch means the action refuses to activate.
-- **`onActivate` receives the `GLib.Variant | null` parameter.** The signal is typed nullable because an action declared without a `parameterType` is activated with no parameter at all. This one always carries its string, so `if (parameter)` is narrowing the type rather than guarding a real case. `parameter.getString()` returns a `[value, length]` tuple in the GI bindings, so `parameter.getString()[0]` pulls out the task id.
+- **`onActivate` receives the `GLib.Variant | null` parameter.** The signal is typed nullable because an action declared without a `parameterType` is activated with no parameter at all. This one always carries its string, so `if (parameter)` narrows the type; the null branch never runs here. `parameter.getString()` returns a `[value, length]` tuple in the GI bindings, so `parameter.getString()[0]` pulls out the task id.
 
 ## Bridging the action to the window
 
@@ -160,7 +160,7 @@ function TasksWindow({ notify }: { notify: RefObject<NotifyHandlers> }) {
 
 The reason for the indirection: the `GSimpleAction` elements live at the **application** level, outside `TasksWindow`, so their handlers cannot close over the window's state (`api.setDone`, `setSelection`, the navigation ref behind `openTask`). The `notify` ref is created in `App`, passed down, and reassigned on every `TasksWindow` render to point at the current handlers. So `app.complete-task` marks the task done, and `app.open-task` navigates to the task's route, which also reveals the content pane on a collapsed (mobile) layout (`openTask` is covered in [The Application Shell](/tutorial/app-shell)). The action stays installed once for the life of the application; the ref keeps it pointed at the window's live handlers.
 
-This is also what makes cold-start work. If the shell launches the app to deliver `app.open-task`, the application starts up, `TasksWindow` mounts and assigns `notify.current`, and the action then resolves to a real handler that opens the right task.
+This is also what makes cold-start work. If the shell launches the app to deliver `app.open-task`, the application starts up, `TasksWindow` mounts and assigns `notify.current`, and the action then resolves to the handler that opens the right task.
 
 ## Desktop-file requirements
 

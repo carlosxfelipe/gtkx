@@ -10,7 +10,7 @@ The file is organized around two components. `App` is the exported application r
 
 ## The application root
 
-The outermost element is `<AdwApplication>`. It is a real component from `@gtkx/jsx/adw`, not a wrapper you configure imperatively. Importing the Adwaita bindings runs `adw_init` at module load, which sets up the global `AdwStyleManager`; the component itself starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
+The outermost element is `<AdwApplication>`, a component from `@gtkx/jsx/adw` that you configure through props. Importing the Adwaita bindings runs `adw_init` at module load, which sets up the global `AdwStyleManager`; the component itself starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
 
 ```tsx
 export function App() {
@@ -133,7 +133,7 @@ The container wraps the navigator, and the navigator's two screens become the si
 </NavigationContainer>
 ```
 
-The split-view navigator drives a real `Adw.NavigationSplitView`. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}`, both in `sp`, the same text-scaling unit the breakpoint below uses.
+The split-view navigator drives an `Adw.NavigationSplitView`. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}`, both in `sp`, the same text-scaling unit the breakpoint below uses.
 
 Both screens use render callbacks (`{() => ...}`) rather than `component`, because their content closes over `TasksWindow`'s state and handlers.
 
@@ -227,10 +227,10 @@ The stack is rendered as the content pane's screen body:
 
 The two changes the pane can show split cleanly by kind, and that split is the whole point:
 
-- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it is a real route: `navigate("Task", { id })` pushes it, and which task it shows travels in `route.params`, not in shell state. The screen looks its task up from the id; the `options` callback does the same to put the task's title on the page.
+- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it gets its own route: `navigate("Task", { id })` pushes it, and which task it shows travels in `route.params`, not in shell state. The screen looks its task up from the id; the `options` callback does the same to put the task's title on the page.
 - **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one screen (`List`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the route never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed route would be the wrong shape.
 
-Each screen carries its own header inside its `AdwToolbarView`: the list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag, and the task screen builds its header inline from the task it looked up (the Important toggle and Delete button in `end`, with no back button, because the pushed page supplies one). The task screen and its header read the same `route.params.id`, so they can never disagree.
+Each screen carries its own header inside its `AdwToolbarView`. The list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag. The task screen builds its header inline from the task it looked up: the Important toggle and Delete button in `end`, with no back button, because the pushed page supplies one. The task screen and its header read the same `route.params.id`, so they can never disagree.
 
 Opening a task is `openTask(id)`; a programmatic back is `navigationRef.goBack()`. Widget-driven pops (the back button, an edge-swipe, or Escape through `AdwNavigationView`'s `popOnEscape`) reduce into navigation state as well, so the route and the widget stack never disagree; [the stack navigator](/guide/navigation#the-stack-navigator) covers that reconciliation. The sidebar-to-content transition when collapsed follows the same principle one level up, through the split-view navigator's focused route.
 

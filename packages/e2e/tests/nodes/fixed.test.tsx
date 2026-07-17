@@ -13,7 +13,9 @@ describe("render - Fixed", () => {
 
         await render(
             <Fixed ref={fixedRef}>
-                <Fixed.Child component={GtkLabel} x={10} y={20} label="pinned" />
+                <Fixed.Child component={GtkLabel} x={10} y={20}>
+                    pinned
+                </Fixed.Child>
             </Fixed>,
         );
 
@@ -30,7 +32,9 @@ describe("render - Fixed", () => {
 
         await render(
             <Fixed ref={fixedRef}>
-                <Fixed.Child component={GtkLabel} transform={transform} label="transformed" />
+                <Fixed.Child component={GtkLabel} transform={transform}>
+                    transformed
+                </Fixed.Child>
             </Fixed>,
         );
 
@@ -45,7 +49,9 @@ describe("render - Fixed", () => {
         function App({ x, y }: { x: number; y: number }) {
             return (
                 <Fixed ref={fixedRef}>
-                    <Fixed.Child component={GtkLabel} x={x} y={y} label="movable" />
+                    <Fixed.Child component={GtkLabel} x={x} y={y}>
+                        movable
+                    </Fixed.Child>
                 </Fixed>
             );
         }
@@ -66,7 +72,15 @@ describe("render - Fixed", () => {
         const fixedRef = createRef<Gtk.Fixed>();
 
         function App({ show }: { show: boolean }) {
-            return <Fixed ref={fixedRef}>{show && <Fixed.Child component={GtkLabel} x={0} y={0} label="A" />}</Fixed>;
+            return (
+                <Fixed ref={fixedRef}>
+                    {show && (
+                        <Fixed.Child component={GtkLabel} x={0} y={0}>
+                            A
+                        </Fixed.Child>
+                    )}
+                </Fixed>
+            );
         }
 
         const { rerender } = await render(<App show={true} />);

@@ -34,7 +34,7 @@ export type Task = {
 };
 ```
 
-Two fields do real work later. `position` is the manual sort index that drag-to-reorder rewrites. `deleted` is a soft-delete flag: trashing a task flips `deleted` to `true` rather than removing it, which is what makes the Trash smart view and the undo toast possible without a second data structure.
+Two fields matter later. `position` is the manual sort index that drag-to-reorder rewrites. `deleted` is a soft-delete flag: trashing a task flips `deleted` to `true` rather than removing it, which is what makes the Trash smart view and the undo toast possible without a second data structure.
 
 The remaining two types describe what the sidebar has selected, not stored data. A `Selection` is a discriminated union: either one of the built-in smart views or a specific user list by id.
 
@@ -71,7 +71,7 @@ The XDG spec says per-user data files belong under `$XDG_DATA_HOME`, and that an
 
 ## First run: the seed
 
-When there is no file yet, the app has to start from something. `seed()` returns a `PersistedState` with three example lists and six example tasks, so a fresh install opens onto real content instead of an empty screen. `isoInDays` builds due dates relative to today (18:00), and `make` fills in the boilerplate fields so each task literal only spells out what differs.
+When there is no file yet, the app has to start from something. `seed()` returns a `PersistedState` with three example lists and six example tasks, so a fresh install opens onto a populated list instead of an empty screen. `isoInDays` builds due dates relative to today (18:00), and `make` fills in the boilerplate fields so each task literal only spells out what differs.
 
 ```ts
 const seed = (): PersistedState => {

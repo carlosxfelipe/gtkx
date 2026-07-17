@@ -1,10 +1,10 @@
 ---
-description: "What GTKX is, why it exists, and how it compares to GJS and node-gtk, to portable subsets like React Native, and to webview stacks like Electron."
+description: "What GTKX is, why it exists, and how it compares to GJS, node-gtk, and portable subsets like React Native."
 ---
 
 # Why GTKX
 
-GTKX lets you build native GTK4 and Adwaita apps in TypeScript, with React components and hooks driving real GObject widgets. No webview, no Electron.
+GTKX lets you build native GTK4 and Adwaita apps in TypeScript, with React components and hooks driving GObject widgets. What you ship is a GNOME app, built from GNOME's own widgets.
 
 ## A declarative layer for the GNOME stack
 
@@ -17,11 +17,11 @@ GTK4 is mature, and GtkBuilder XML can lay out an interface and bind properties 
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-## The full GNOME API surface, not a portable subset
+## The full GNOME API surface
 
-React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes GTK4, Adwaita, and any other GObject-Introspection library on your system, and is Linux-only by design.
+React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX exposes it: GTK4, Adwaita, and any other GObject-Introspection library on your system are reachable from JSX. GTKX is Linux-only by design.
 
-Your JSX becomes live GObject instances, an actual `GtkButton`, an actual `AdwHeaderBar`. There is no canvas emulating widgets and no browser engine rendering HTML that imitates them. Apps built with GTKX inherit the native GNOME look and behavior because they are made of the same widgets GNOME apps are made of.
+Your JSX becomes live GObject instances: a `GtkButton`, an `AdwHeaderBar`. Apps built with GTKX inherit the native GNOME look and behavior because they are made of the same widgets GNOME apps are made of.
 
 ## What it looks like
 

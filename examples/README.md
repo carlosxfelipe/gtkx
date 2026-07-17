@@ -1,6 +1,6 @@
 # Examples
 
-Four apps built with GTKX, the React framework for Linux. Each one renders real GTK4 and Adwaita widgets from React components and hooks.
+Four apps built with GTKX, the React framework for Linux. Each one renders GTK4 and Adwaita widgets, the same widget set GNOME ships, from React components and hooks.
 
 | Example | What it is |
 | --- | --- |

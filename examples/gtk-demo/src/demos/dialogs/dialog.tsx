@@ -33,14 +33,9 @@ const DialogEntryRow = ({
     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
         <GtkButton label="_Interactive Dialog" useUnderline valign={Gtk.Align.START} onClicked={onOpenInteractive} />
         <Grid rowSpacing={4} columnSpacing={4}>
-            <Grid.Child
-                component={GtkLabel}
-                column={0}
-                row={0}
-                label="_Entry 1"
-                useUnderline
-                mnemonicWidget={entry1Widget}
-            />
+            <Grid.Child component={GtkLabel} column={0} row={0} useUnderline mnemonicWidget={entry1Widget}>
+                _Entry 1
+            </Grid.Child>
             <Grid.Child
                 component={GtkEntry}
                 column={1}
@@ -52,14 +47,9 @@ const DialogEntryRow = ({
                 text={entry1}
                 onChanged={(e) => setEntry1(e.getText())}
             />
-            <Grid.Child
-                component={GtkLabel}
-                column={0}
-                row={1}
-                label="E_ntry 2"
-                useUnderline
-                mnemonicWidget={entry2Widget}
-            />
+            <Grid.Child component={GtkLabel} column={0} row={1} useUnderline mnemonicWidget={entry2Widget}>
+                E_ntry 2
+            </Grid.Child>
             <Grid.Child
                 component={GtkEntry}
                 column={1}
@@ -109,14 +99,9 @@ const InteractiveFields = ({
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return (
         <Grid rowSpacing={6} columnSpacing={6} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-            <Grid.Child
-                component={GtkLabel}
-                column={0}
-                row={0}
-                label="_Entry 1"
-                useUnderline
-                mnemonicWidget={dialogEntry1Widget}
-            />
+            <Grid.Child component={GtkLabel} column={0} row={0} useUnderline mnemonicWidget={dialogEntry1Widget}>
+                _Entry 1
+            </Grid.Child>
             <Grid.Child
                 component={GtkEntry}
                 column={1}
@@ -128,14 +113,9 @@ const InteractiveFields = ({
                 text={entry1Text}
                 onChanged={(e) => setEntry1Text(e.getText())}
             />
-            <Grid.Child
-                component={GtkLabel}
-                column={0}
-                row={1}
-                label="E_ntry 2"
-                useUnderline
-                mnemonicWidget={dialogEntry2Widget}
-            />
+            <Grid.Child component={GtkLabel} column={0} row={1} useUnderline mnemonicWidget={dialogEntry2Widget}>
+                E_ntry 2
+            </Grid.Child>
             <Grid.Child
                 component={GtkEntry}
                 column={1}

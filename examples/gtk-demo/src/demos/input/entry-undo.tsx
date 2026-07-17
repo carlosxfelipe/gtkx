@@ -17,7 +17,7 @@ const EntryUndoDemo = () => {
             marginTop={18}
             marginBottom={18}
         >
-            <GtkLabel ref={setLabel} label="Use Control+z or Control+Shift+z to undo or redo changes" />
+            <GtkLabel ref={setLabel}>Use Control+z or Control+Shift+z to undo or redo changes</GtkLabel>
             <GtkEntry accessibleLabelledBy={label ? [label] : undefined} enableUndo />
         </GtkBox>
     );

@@ -40,7 +40,11 @@ describe("useProperty", () => {
 
     it("reads boolean properties", async () => {
         const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="Test" visible={true} />);
+        await render(
+            <GtkLabel ref={ref} visible={true}>
+                Test
+            </GtkLabel>,
+        );
         const label = deref(ref);
 
         const { result } = await renderHook(() => useProperty(label, "visible"));

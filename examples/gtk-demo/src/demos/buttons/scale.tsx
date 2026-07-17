@@ -14,7 +14,9 @@ interface ScaleRowProps {
 
 const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
     <>
-        <Grid.Child component={GtkLabel} column={0} row={row} label={label} xalign={0} />
+        <Grid.Child component={GtkLabel} column={0} row={row} xalign={0}>
+            {label}
+        </Grid.Child>
         <Grid.Child
             component={GtkScale}
             column={1}

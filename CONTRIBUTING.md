@@ -159,7 +159,7 @@ pnpm turbo run dev --filter=@gtkx/website   # Local preview
 
 Examples in `examples/` serve as both documentation and integration tests. When adding features, consider updating or adding examples to demonstrate usage.
 
-`examples/tutorial` is the exception: it is deliberately excluded from the pnpm workspace and installs GTKX from the registry, the way a real user's project does. Validate it against your working copy with `pnpm tutorial` from the root rather than building it directly.
+`examples/tutorial` is the exception: it is deliberately excluded from the pnpm workspace and installs GTKX from the registry, the way a project outside this repository does. Validate it against your working copy with `pnpm tutorial` from the root rather than building it directly.
 
 ## Getting Help
 

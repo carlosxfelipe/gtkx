@@ -12,7 +12,7 @@
 - Dialogs and feedback: preferences, an about dialog, a shortcuts window, delete confirmation, and toasts via `AdwToastOverlay`.
 - List animations with `@gtkx/animated` (`animated`, `AnimatePresence`) and styling with `@gtkx/css`.
 - Desktop notifications built with `Gio.Notification`, including action buttons that route back into the app.
-- Persistence to `$XDG_DATA_HOME` with the Node.js standard library, not a GLib API.
+- Persistence to `$XDG_DATA_HOME` with the Node.js standard library: `node:fs` writes a temp file, then `renameSync` swaps it into place.
 - Packaging: a Node.js Single Executable Application under `scripts/`, and a Flatpak under [`flatpak/`](flatpak/README.md).
 
 `gtkx.config.ts` declares `Gtk-4.0` and `Adw-1`, with the application ID `com.gtkx.tutorial`.

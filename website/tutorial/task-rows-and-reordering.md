@@ -62,7 +62,7 @@ const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(ta
 <AdwActionRow title={title} useMarkup /* ... */ />
 ```
 
-`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is not optional for any user-supplied title: a task literally titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the three markup-significant characters before they reach Pango:
+`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is not optional for any user-supplied title: a task titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the three markup-significant characters before they reach Pango:
 
 ```ts
 export const escapeMarkup = (value: string): string =>
@@ -182,7 +182,7 @@ if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y)
 
 The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it. That grab point is why the icon is set here instead of in `onDragBegin`: `prepare` is the only signal that carries it. GTK4 reads the icon back after both signals have run, so setting it this early still takes effect.
 
-`Math.round` is not cosmetic. Pointer coordinates arrive as GTK4 doubles and a real drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
+`Math.round` is not cosmetic. Pointer coordinates arrive as GTK4 doubles and a drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
 
 ## Closing the loop stays in React state
 
@@ -206,7 +206,7 @@ When `reorder` returns a new array with the same keys in a new order, React diff
 How the reconciler performs that move depends on the container. A `GtkBox` exposes a dedicated `reorderChildAfter(child, sibling)` for exactly this, so a box moves the widget with one call. The `boxed-list` here is a `GtkListBox`, which auto-wraps any child that is not already a `GtkListBoxRow` and moves it via an indexed `insert`. Either way the widget is repositioned, never recreated.
 :::
 
-The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it and calls `onReorder` -> `reorder` re-splices the array and re-derives `position` -> keyed reconcile repositions the real widget.** State stays the single source of truth from end to end.
+The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it and calls `onReorder` -> `reorder` re-splices the array and re-derives `position` -> keyed reconcile repositions the existing widget.** State stays the single source of truth from end to end.
 
 ## Drag is enabled only when ordering is manual
 

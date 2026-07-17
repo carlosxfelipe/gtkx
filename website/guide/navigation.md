@@ -4,7 +4,7 @@ description: "Stack and split-view navigation with @gtkx/navigation: React Navig
 
 # Navigation
 
-`@gtkx/navigation` gives a GTKX app real routing: named screens, typed route params, an imperative `navigate()`, focus-aware hooks, and nested navigators. It is built on `@react-navigation/core`, the platform-agnostic heart of [React Navigation](https://reactnavigation.org), so the mental model (and most of the API) is the one React developers already know from the web and React Native. What GTKX supplies is the view layer: each navigator renders a real Adwaita widget and keeps it in lockstep with navigation state.
+`@gtkx/navigation` brings routing to a GTKX app: named screens, typed route params, an imperative `navigate()`, focus-aware hooks, and nested navigators. It is built on `@react-navigation/core`, the platform-agnostic heart of [React Navigation](https://reactnavigation.org), so the mental model (and most of the API) is the one React developers already know from the web and React Native. What GTKX supplies is the view layer: each navigator renders an Adwaita widget and keeps it in lockstep with navigation state.
 
 Two navigators ship today:
 
@@ -38,11 +38,11 @@ const TasksStack = () => (
 );
 ```
 
-Navigators are created once, at module level. The factory returns a `Navigator` component plus the `Screen` and `Group` components used to declare its routes, all typed by the param list you pass: `navigate("Task", { id })` type-checks against `TasksStackParams`, and `useRoute<RouteProp<TasksStackParams, "Task">>()` in the `Task` screen types `params` as `{ id: string }`.
+Navigators are created once, at module level. The factory returns a `Navigator` component plus the `Screen` and `Group` components used to declare its routes, all typed by the param list you pass. `navigate("Task", { id })` type-checks against `TasksStackParams`, and `useRoute<RouteProp<TasksStackParams, "Task">>()` in the `Task` screen types `params` as `{ id: string }`.
 
 ## The container
 
-Every navigation tree lives inside one `NavigationContainer`. It owns the navigation state, delivers it to the navigators below, and is where state-level concerns attach: `initialState` to start deep in the app, `onStateChange` to observe transitions, `onReady` to know when the tree is live.
+Every navigation tree lives inside one `NavigationContainer`. It owns the navigation state and delivers it to the navigators below. State-level concerns attach there too: `initialState` to start deep in the app, `onStateChange` to observe transitions, `onReady` to know when the tree is live.
 
 ```tsx
 const App = () => (
@@ -120,7 +120,7 @@ const Split = createSplitViewNavigator<ShellParams>();
 </Split.Navigator>;
 ```
 
-`navigate("Tasks")` focuses the content pane; on a collapsed layout that slides it into view (the widget's `show-content`). The widget's own back motion (the back button or a swipe while collapsed) dispatches back to the sidebar route, and `goBack()` from the content returns to the sidebar, because the router's back behavior is pinned to the initial route. `collapsed` stays a controlled prop: the app decides when the layout collapses, typically from an `AdwBreakpoint`, and the navigator follows. All other `AdwNavigationSplitView` props (`sidebarWidthFraction`, `minSidebarWidth`, `maxSidebarWidth`, `sidebarPosition`, and the rest) pass through, and each pane's `Adw.NavigationPage` title comes from the screen's `title` option.
+`navigate("Tasks")` focuses the content pane; on a collapsed layout that slides it into view (the widget's `show-content`). The widget's own back motion (the back button or a swipe while collapsed) dispatches back to the sidebar route. `goBack()` from the content does the same, because the router's back behavior is pinned to the initial route. `collapsed` stays a controlled prop: the app decides when the layout collapses, typically from an `AdwBreakpoint`, and the navigator follows. All other `AdwNavigationSplitView` props (`sidebarWidthFraction`, `minSidebarWidth`, `maxSidebarWidth`, `sidebarPosition`, and the rest) pass through, and each pane's `Adw.NavigationPage` title comes from the screen's `title` option.
 
 Nesting follows React Navigation's standard shape: render a stack navigator as the content screen and address its screens through `NavigatorScreenParams`:
 
@@ -146,7 +146,7 @@ That one call focuses the content pane *and* pushes the task page in its stack. 
 
 `usePreventRemove(true, onAttempt)` does two things on a stack screen. It sets the page's `canPop` to `false`, so the back button disappears and the pop gesture and shortcuts are disabled up front. If the page is popped anyway, because something called `pop()` on the widget directly, the navigator's dispatched pop is prevented. The `onAttempt` callback fires with the blocked action. The navigator then pushes the page straight back, so navigation state wins.
 
-What it cannot do is Adwaita's "ask first, then maybe close" flow, because `Adw.NavigationView` has no vetoable pop: the widget notifies *after* a page is popped, so prevention for widget-initiated pops is block-up-front, not intercept-in-flight. For a genuine confirmation flow, reach for the surface Adwaita makes vetoable: present the question in a [`Dialog`](/guide/modals-and-portals), whose close attempt genuinely waits for an answer.
+What it cannot do is Adwaita's "ask first, then maybe close" flow, because `Adw.NavigationView` has no vetoable pop: the widget notifies *after* a page is popped, so prevention for widget-initiated pops is block-up-front, not intercept-in-flight. For a confirmation flow, reach for the surface Adwaita makes vetoable: present the question in a [`Dialog`](/guide/modals-and-portals), whose close attempt genuinely waits for an answer.
 
 ## What belongs in navigation state
 

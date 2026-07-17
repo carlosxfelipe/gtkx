@@ -13,7 +13,7 @@ describe("render - page adoption > NotebookPage", () => {
         await render(
             <GtkNotebook ref={notebookRef}>
                 <GtkNotebookPage ref={pageRef} tabLabel="Page">
-                    <GtkLabel ref={contentRef} label="Content" />
+                    <GtkLabel ref={contentRef}>Content</GtkLabel>
                 </GtkNotebookPage>
             </GtkNotebook>,
         );
@@ -30,7 +30,7 @@ describe("render - page adoption > NotebookPage", () => {
         await render(
             <GtkNotebook ref={notebookRef}>
                 <GtkNotebookPage tabLabel="Page" reorderable detachable menuLabel="Menu Entry">
-                    <GtkLabel ref={contentRef} label="Content" />
+                    <GtkLabel ref={contentRef}>Content</GtkLabel>
                 </GtkNotebookPage>
             </GtkNotebook>,
         );
@@ -49,7 +49,7 @@ describe("render - page adoption > NotebookPage", () => {
             return (
                 <GtkNotebook ref={notebookRef}>
                     <GtkNotebookPage tabLabel="Page" reorderable={reorderable}>
-                        <GtkLabel ref={contentRef} label="Content" />
+                        <GtkLabel ref={contentRef}>Content</GtkLabel>
                     </GtkNotebookPage>
                 </GtkNotebook>
             );
@@ -74,7 +74,7 @@ describe("render - page adoption > StackPage", () => {
         await render(
             <GtkStack ref={stackRef}>
                 <GtkStackPage ref={pageRef} name="page" title="Title">
-                    <GtkLabel ref={contentRef} label="Content" />
+                    <GtkLabel ref={contentRef}>Content</GtkLabel>
                 </GtkStackPage>
             </GtkStack>,
         );

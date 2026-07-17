@@ -148,7 +148,7 @@ const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragO
 export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     if (widget instanceof Gtk.Range) {
         throw new Error(
-            "userEvent.drag cannot drive a Gtk.Range's built-in slider (its drag reads real pointer coordinates); " +
+            "userEvent.drag cannot drive a Gtk.Range's built-in slider (its drag reads pointer coordinates from the display); " +
                 "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
         );
     }

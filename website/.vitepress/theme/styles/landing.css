@@ -109,9 +109,9 @@
 .tout {
     color: var(--success);
 }
+.terr {
+    color: var(--red-400);
+}
 .tdim {
     color: var(--text-3);
-}
-.tmark {
-    padding-right: 0.4em;
 }

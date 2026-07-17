@@ -10,14 +10,16 @@ const props = withDefaults(
         title?: string;
         variant?: "code" | "terminal";
         showLineNumbers?: boolean;
+        frame?: boolean;
     }>(),
-    { lang: "bash", variant: "code", showLineNumbers: false },
+    { lang: "bash", variant: "code", showLineNumbers: false, frame: true },
 );
 
 const isTerminal = computed(() => props.variant === "terminal");
 const lines = computed(() => (props.code != null ? String(props.code).replace(/\n$/, "").split("\n") : null));
 const tokenLines = computed(() => (!isTerminal.value && props.code != null ? tokenizeCode(props.code) : null));
-const hasHead = computed(() => isTerminal.value || props.title != null);
+const hasHead = computed(() => (isTerminal.value && props.frame) || props.title != null);
+const hasFloatingCopy = computed(() => !hasHead.value && props.code != null);
 
 const copied = ref(false);
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -61,6 +63,15 @@ const copy = async (): Promise<void> => {
         <Icon :name="copied ? 'check' : 'copy'" :size="14" />
       </button>
     </div>
+    <button
+      v-if="hasFloatingCopy"
+      type="button"
+      class="cb__copy cb__copy--float"
+      :aria-label="copied ? 'Copied' : 'Copy to clipboard'"
+      @click="copy"
+    >
+      <Icon :name="copied ? 'check' : 'copy'" :size="14" />
+    </button>
     <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
     <pre class="cb__pre"><code class="cb__code"><template v-if="tokenLines"><div v-for="(ln, i) in tokenLines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span class="cb__txt"><span v-for="(tk, j) in ln" :key="j" :class="tk.c ? `tok-${tk.c}` : undefined">{{ tk.t }}</span></span></div></template><template v-else-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
   </div>
@@ -68,6 +79,7 @@ const copy = async (): Promise<void> => {
 
 <style scoped>
 .cb {
+  position: relative;
   min-width: 0;
   max-width: 100%;
   background: var(--code-bg);
@@ -113,6 +125,13 @@ const copy = async (): Promise<void> => {
 }
 .cb--terminal .cb__title {
   color: rgba(235, 235, 245, 0.6);
+}
+.cb__copy--float {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  z-index: 1;
 }
 .cb__copy {
   display: inline-flex;
@@ -170,6 +189,9 @@ const copy = async (): Promise<void> => {
   padding: 0;
   color: inherit;
   font-size: inherit;
+  display: block;
+  width: max-content;
+  min-width: 100%;
 }
 .cb__line {
   display: flex;

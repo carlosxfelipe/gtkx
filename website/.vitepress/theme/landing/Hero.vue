@@ -1,55 +1,50 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
 import Button from "../components/Button.vue";
 import CodeBlock from "../components/CodeBlock.vue";
 import Icon from "../components/Icon.vue";
-import Tabs from "../components/Tabs.vue";
 import { REPO_URL } from "./content";
 
-const pm = ref("pnpm");
-const CMDS: Record<string, string> = {
-    npm: "npm create gtkx@rc",
-    pnpm: "pnpm create gtkx@rc",
-    yarn: "yarn create gtkx@rc",
-};
-const cmd = computed(() => CMDS[pm.value]);
-const pms = [
-    { value: "npm", label: "npm" },
-    { value: "pnpm", label: "pnpm" },
-    { value: "yarn", label: "yarn" },
-];
+const cmd = "npm create gtkx@rc";
 
 type Tok = { t: string; c?: string };
-const code: { indent?: number; toks: Tok[] }[] = [
+type Line = { indent?: number; toks: Tok[] };
+
+const code: Line[] = [
     { toks: [{ c: "kw", t: "import" }, { t: " {" }] },
-    { indent: 1, toks: [{ c: "tag", t: "GtkApplicationWindow" }, { t: "," }] },
-    { indent: 1, toks: [{ c: "tag", t: "GtkBox" }, { t: "," }] },
-    { indent: 1, toks: [{ c: "tag", t: "GtkButton" }, { t: "," }] },
-    { indent: 1, toks: [{ c: "tag", t: "GtkLabel" }, { t: "," }] },
     {
-        toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/gtk"' }],
+        indent: 1,
+        toks: [
+            { c: "tag", t: "GtkApplication" },
+            { t: ", " },
+            { c: "tag", t: "GtkApplicationWindow" },
+            { t: ", " },
+            { c: "tag", t: "GtkLabel" },
+            { t: "," },
+        ],
     },
+    { toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/gtk"' }, { t: ";" }] },
     {
         toks: [
             { c: "kw", t: "import" },
             { t: " { " },
-            { c: "fn", t: "useState" },
+            { c: "fn", t: "createRoot" },
             { t: " } " },
             { c: "kw", t: "from" },
             { t: " " },
-            { c: "str", t: '"react"' },
+            { c: "str", t: '"@gtkx/react"' },
+            { t: ";" },
         ],
     },
     { toks: [] },
-    {
-        toks: [{ c: "kw", t: "const" }, { t: " " }, { c: "fn", t: "MainWindow" }, { t: " = () => {" }],
-    },
+    { toks: [{ c: "kw", t: "const" }, { t: " " }, { c: "fn", t: "App" }, { t: " = () => (" }] },
     {
         indent: 1,
-        toks: [{ c: "kw", t: "const" }, { t: " [count, setCount] = " }, { c: "fn", t: "useState" }, { t: "(0)" }],
+        toks: [
+            { c: "punct", t: "<" },
+            { c: "tag", t: "GtkApplication" },
+            { c: "punct", t: ">" },
+        ],
     },
-    { toks: [] },
-    { indent: 1, toks: [{ c: "kw", t: "return" }, { t: " (" }] },
     {
         indent: 2,
         toks: [
@@ -62,44 +57,13 @@ const code: { indent?: number; toks: Tok[] }[] = [
     },
     {
         indent: 3,
-        toks: [{ c: "punct", t: "<" }, { c: "tag", t: "GtkBox" }, { t: " spacing={20}" }, { c: "punct", t: ">" }],
-    },
-    {
-        indent: 4,
         toks: [
             { c: "punct", t: "<" },
             { c: "tag", t: "GtkLabel" },
-            { t: " label={" },
-            { c: "str", t: "`Count: " },
-            { t: "${" },
-            { t: "count" },
-            { t: "}" },
-            { c: "str", t: "`" },
-            { t: "} " },
-            { c: "punct", t: "/>" },
-        ],
-    },
-    {
-        indent: 4,
-        toks: [
-            { c: "punct", t: "<" },
-            { c: "tag", t: "GtkButton" },
-        ],
-    },
-    {
-        indent: 5,
-        toks: [{ t: "label=" }, { c: "str", t: '"Increment"' }],
-    },
-    {
-        indent: 5,
-        toks: [{ t: "onClicked={() => " }, { c: "fn", t: "setCount" }, { t: "((c) => c + 1)}" }],
-    },
-    { indent: 4, toks: [{ c: "punct", t: "/>" }] },
-    {
-        indent: 3,
-        toks: [
+            { c: "punct", t: ">" },
+            { t: "Hello from GTKX 👋" },
             { c: "punct", t: "</" },
-            { c: "tag", t: "GtkBox" },
+            { c: "tag", t: "GtkLabel" },
             { c: "punct", t: ">" },
         ],
     },
@@ -111,8 +75,28 @@ const code: { indent?: number; toks: Tok[] }[] = [
             { c: "punct", t: ">" },
         ],
     },
-    { indent: 1, toks: [{ t: ")" }] },
-    { toks: [{ t: "};" }] },
+    {
+        indent: 1,
+        toks: [
+            { c: "punct", t: "</" },
+            { c: "tag", t: "GtkApplication" },
+            { c: "punct", t: ">" },
+        ],
+    },
+    { toks: [{ t: ");" }] },
+    { toks: [] },
+    {
+        toks: [
+            { c: "fn", t: "createRoot" },
+            { t: "()." },
+            { c: "fn", t: "render" },
+            { t: "(" },
+            { c: "punct", t: "<" },
+            { c: "tag", t: "App" },
+            { c: "punct", t: " />" },
+            { t: ");" },
+        ],
+    },
 ];
 </script>
 
@@ -123,12 +107,12 @@ const code: { indent?: number; toks: Tok[] }[] = [
       <div class="hero__col">
         <p class="overline hero__eyebrow">// React · Linux · GTK4 · Adwaita · TypeScript</p>
         <h1 class="hero__title">
-          The <span class="gtkx-gradient-text">React</span> framework for Linux
+          The React framework for <span class="gtkx-gradient-text">Linux</span>
         </h1>
         <p class="hero__lede">
-          Write declarative JSX. GTKX renders it to real, native
-          <strong>GObjects</strong> (no webview, no Electron) powered by a native Rust core,
-          with GTK4 &amp; Adwaita support.
+          Write declarative JSX. GTKX renders it to native
+          <strong>GObjects</strong>, powered by a native Rust core,
+          with first-class GTK4 &amp; Adwaita support.
         </p>
         <div class="hero__cta">
           <Button size="lg" href="/guide/getting-started">
@@ -140,18 +124,9 @@ const code: { indent?: number; toks: Tok[] }[] = [
             View on GitHub
           </Button>
         </div>
-        <div id="install" class="hero__install">
-          <Tabs v-model="pm" variant="pill" :items="pms" controls="install-cmd" label="Package manager" />
-          <div id="install-cmd" role="tabpanel" :aria-label="`Install with ${pm}`">
-            <CodeBlock variant="terminal" :code="cmd" />
-          </div>
-          <p class="hero__note">
-            Scaffolds a complete, typed GTK4 + React app, ready to run.
-          </p>
-        </div>
       </div>
       <div class="hero__col hero__visual">
-        <CodeBlock title="src/app.tsx">
+        <CodeBlock title="src/index.tsx">
           <div class="hero__code">
             <div v-for="(ln, i) in code" :key="i" class="hcl" :style="{ paddingLeft: `${(ln.indent ?? 0) * 1.3}em` }">
               <span v-if="!ln.toks.length">&nbsp;</span>
@@ -159,6 +134,9 @@ const code: { indent?: number; toks: Tok[] }[] = [
             </div>
           </div>
         </CodeBlock>
+        <div id="install" class="hero__install">
+          <CodeBlock variant="terminal" :frame="false" :code="cmd" />
+        </div>
       </div>
     </div>
   </section>
@@ -209,26 +187,15 @@ const code: { indent?: number; toks: Tok[] }[] = [
   display: flex;
   gap: 0.8rem;
   flex-wrap: wrap;
-  margin-bottom: 2rem;
-}
-.hero__install {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  max-width: 27rem;
-}
-.hero__note {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  color: var(--text-3);
-  margin: 0.1rem 0 0;
-  line-height: 1.5;
 }
 .hero__col {
   min-width: 0;
 }
 .hero__visual {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 .hero__code {
   font-size: var(--text-sm);

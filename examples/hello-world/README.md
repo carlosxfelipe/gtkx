@@ -6,7 +6,7 @@ The smallest complete GTKX app: a window with a heading, a counter, and an Incre
 
 - `createRoot().render()` in `index.tsx`, with the component tree in `app.tsx`.
 - `GtkApplication` and `GtkApplicationWindow` written as JSX, using the intrinsic elements generated into `@gtkx/jsx/gtk`.
-- Ordinary React state: `useState` drives the text of a real `GtkLabel`.
+- Ordinary React state: `useState` drives the text of a `GtkLabel`.
 - Signals as props: `onClicked` on `GtkButton`, `onCloseRequest` on the window.
 - Widget properties as props, including `cssClasses` for the Adwaita style classes `title-1`, `title-2`, `suggested-action`, and `pill`.
 - Imperative values from `@gtkx/gi/gtk`, such as `Gtk.Orientation.VERTICAL` and `Gtk.Align.CENTER`.

@@ -68,8 +68,9 @@ const Fixed2Demo = () => {
                         labelRef.current = node;
                     }}
                     name="fixed-label"
-                    label="All fixed?"
-                />
+                >
+                    All fixed?
+                </Fixed.Child>
             </Fixed>
         </GtkScrolledWindow>
     );

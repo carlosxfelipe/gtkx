@@ -17,8 +17,16 @@ const naturalHeight = (widget: Gtk.Widget): number => widget.measure(Gtk.Orienta
 const GroupedLabels = ({ count, mode }: { count: 0 | 1 | 2; mode?: Gtk.SizeGroupMode }) => (
     <GtkBox>
         <SizeGroup mode={mode}>
-            {count >= 1 && <SizeGroup.Child component={GtkLabel} label="A" widthRequest={NARROW_WIDTH} />}
-            {count >= 2 && <SizeGroup.Child component={GtkLabel} label="B" widthRequest={WIDE_WIDTH} />}
+            {count >= 1 && (
+                <SizeGroup.Child component={GtkLabel} widthRequest={NARROW_WIDTH}>
+                    A
+                </SizeGroup.Child>
+            )}
+            {count >= 2 && (
+                <SizeGroup.Child component={GtkLabel} widthRequest={WIDE_WIDTH}>
+                    B
+                </SizeGroup.Child>
+            )}
         </SizeGroup>
     </GtkBox>
 );
@@ -59,18 +67,12 @@ describe("SizeGroup mode", () => {
         const GroupedLabelsWithMode = ({ mode }: { mode: Gtk.SizeGroupMode }): ReactNode => (
             <GtkBox>
                 <SizeGroup mode={mode}>
-                    <SizeGroup.Child
-                        component={GtkLabel}
-                        label="A"
-                        widthRequest={NARROW_WIDTH}
-                        heightRequest={TALL_HEIGHT}
-                    />
-                    <SizeGroup.Child
-                        component={GtkLabel}
-                        label="B"
-                        widthRequest={WIDE_WIDTH}
-                        heightRequest={SHORT_HEIGHT}
-                    />
+                    <SizeGroup.Child component={GtkLabel} widthRequest={NARROW_WIDTH} heightRequest={TALL_HEIGHT}>
+                        A
+                    </SizeGroup.Child>
+                    <SizeGroup.Child component={GtkLabel} widthRequest={WIDE_WIDTH} heightRequest={SHORT_HEIGHT}>
+                        B
+                    </SizeGroup.Child>
                 </SizeGroup>
             </GtkBox>
         );
@@ -92,10 +94,14 @@ describe("SizeGroup across subtrees", () => {
             <GtkBox>
                 <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
                     <GtkFrame label="Frame A">
-                        <SizeGroup.Child component={GtkLabel} label="A" widthRequest={NARROW_WIDTH} />
+                        <SizeGroup.Child component={GtkLabel} widthRequest={NARROW_WIDTH}>
+                            A
+                        </SizeGroup.Child>
                     </GtkFrame>
                     <GtkFrame label="Frame B">
-                        <SizeGroup.Child component={GtkLabel} label="B" widthRequest={WIDE_WIDTH} />
+                        <SizeGroup.Child component={GtkLabel} widthRequest={WIDE_WIDTH}>
+                            B
+                        </SizeGroup.Child>
                     </GtkFrame>
                 </SizeGroup>
             </GtkBox>
@@ -115,8 +121,12 @@ describe("SizeGroup.Child", () => {
         const App = () => (
             <GtkBox>
                 <SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-                    <SizeGroup.Child component={GtkLabel} ref={externalRef} label="A" widthRequest={NARROW_WIDTH} />
-                    <SizeGroup.Child component={GtkLabel} label="B" widthRequest={WIDE_WIDTH} />
+                    <SizeGroup.Child component={GtkLabel} ref={externalRef} widthRequest={NARROW_WIDTH}>
+                        A
+                    </SizeGroup.Child>
+                    <SizeGroup.Child component={GtkLabel} widthRequest={WIDE_WIDTH}>
+                        B
+                    </SizeGroup.Child>
                 </SizeGroup>
             </GtkBox>
         );
@@ -126,7 +136,7 @@ describe("SizeGroup.Child", () => {
     });
 
     it("throws when used outside a <SizeGroup>", async () => {
-        const Orphan = () => <SizeGroup.Child component={GtkLabel} label="orphan" />;
+        const Orphan = () => <SizeGroup.Child component={GtkLabel}>orphan</SizeGroup.Child>;
 
         await expect(render(<Orphan />)).rejects.toThrow("<SizeGroup.Child> must be a child of <SizeGroup>");
     });

@@ -6,7 +6,7 @@ description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informati
 
 Deleting a task in Tasks does not pop an "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate.
 
-GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it, and save the modal interruption for the one action that genuinely cannot be taken back.
+GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it. Save the modal interruption for the one action that genuinely cannot be taken back.
 
 ## The undo-first hierarchy
 
@@ -179,7 +179,9 @@ const confirmDelete = (): void => {
 
 Mounting the component shows the dialog; unmounting it closes the dialog. That is the whole contract, and the `<Dialog>` wrapper is what makes it true.
 
-A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window. `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop, the dialog widget to present, defaulting to `AdwDialog`, and attaches the ref to it itself. It renders that widget through a **portal to the top-level root**, not into the surrounding widget tree, and drives present/close from an effect. Here is the wrapper itself, from `packages/components/src/dialog.tsx`:
+A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window.
+
+`<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop, the dialog widget to present, defaulting to `AdwDialog`, and attaches the ref to it itself. It renders that widget through a **portal to the top-level root**, not into the surrounding widget tree, and drives present/close from an effect. Here is the wrapper itself, from `packages/components/src/dialog.tsx`:
 
 ```tsx
 export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogProps<C>): ReactNode => {
@@ -214,8 +216,8 @@ export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogPr
 };
 ```
 
-- **`<Component {...rest} ref={setRef} />`** renders the widget named by `component` (default `AdwDialog`) with the props you passed inline, and `Dialog` attaches the ref itself (merged with any ref you pass), so any dialog widget works without you wiring the ref.
-- **`createPortal(..., rootElement)`** mounts the dialog with no GTK4 parent instead of inline. `rootElement` is a marker, not a widget: portaling to it makes no attach call at all, so the dialog is created top-level. A dialog is a detached surface that GTK4 forbids from being parented into a layout, so it must not land inside the split view's widget hierarchy.
+- **`<Component {...rest} ref={setRef} />`** renders the widget named by `component` (default `AdwDialog`) with the props you passed inline. `Dialog` attaches the ref itself, merged with any ref you pass, so any dialog widget works without you wiring the ref.
+- **`createPortal(..., rootElement)`** leaves the dialog unparented. `rootElement` is a marker, not a widget: portaling to it makes no attach call at all, so the dialog is created top-level. `present(parent)` is what puts it on screen inside the parent window, and it parents the dialog itself, so the dialog has to reach that call clear of the split view's widget hierarchy.
 - **`useParentWindow()`** finds the enclosing `AdwApplicationWindow` so the dialog can be presented transient-for it (correct positioning, modality, focus). You can override the anchor with the `parent` prop, but omitting it, as every dialog in this app does, anchors to the current window.
 - **`present` on mount, `forceClose` on the effect cleanup.** When React mounts `<DeleteConfirmation>`, the effect runs and the dialog presents. When `setTaskToDelete(null)` unmounts it, the cleanup runs `forceClose()` and the dialog disappears. `forceClose` bypasses any close confirmation, which is what you want when React state, not the widget, owns whether the dialog is open.
 - **`onClose` mirrors user-initiated closes back to React.** Escape, the close button, and a swipe all make the widget emit `closed`; `Dialog` forwards that to your `onClose` so you can clear the state that mounted it. The `closingFromReact` guard skips the `closed` that its own `forceClose()` emits during unmount, so a React-driven close never re-fires `onClose`.
@@ -315,7 +317,9 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`applicationIcon="com.gtkx.tutorial"` is an icon name, not the application ID itself. GNOME apps install their icon under their application ID, so the two match here. The icon theme resolves the name to the app icon shipped under `data/icons/` (see [Packaging and Shipping](/tutorial/packaging) for how it is laid out and installed). `licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
+`applicationIcon="com.gtkx.tutorial"` is an icon name, not the application ID itself. GNOME apps install their icon under their application ID, so the two match here. The icon theme resolves the name to the app icon shipped under `data/icons/` (see [Packaging and Shipping](/tutorial/packaging) for how it is laid out and installed).
+
+`licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `developers` is a string array, and `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
 
 Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (signals dismissal only). About has no responses to choose, only a close, so there is nothing to branch on.
 

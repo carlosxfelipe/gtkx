@@ -8,7 +8,7 @@ Portals let a component render children into a container other than its JSX pare
 
 Use them for the GTK4 surfaces that refuse to nest. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` presented against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view.
 
-For a worked walkthrough of toasts, confirmations, and form dialogs in a real app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
+For a worked walkthrough of toasts, confirmations, and form dialogs in the Tasks app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
 
 ## createPortal
 
@@ -53,7 +53,7 @@ GTKX uses this mechanism internally. The `ListView`, `GridView`, `ColumnView`, a
 
 ## The root element
 
-`rootElement`, exported from `@gtkx/react`, is a singleton marker object, not a widget. It is the default container of `createRoot()`, which is why the entry point of a GTKX app passes no argument: the "root" of a native app is not an element in a page.
+`rootElement`, exported from `@gtkx/react`, is a singleton marker object, not a widget. It is the default container of `createRoot()`, which is why the entry point of a GTKX app passes no argument: the marker already names the top of the tree.
 
 Portaling to `rootElement` means "mount this with no GTK4 parent." No attach call is made on the native side; the widget is created top-level. That is exactly what windows and dialogs need, since GTK4 forbids them from being parented into a layout. Relationships between top-level windows are expressed with window properties instead, chiefly `transientFor`:
 
@@ -83,7 +83,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 const Notice = ({ onClose }: { onClose: () => void }) => (
     <Dialog onClose={onClose} title="Notice">
-        <GtkLabel label="Nothing to report." />
+        <GtkLabel>Nothing to report.</GtkLabel>
     </Dialog>
 );
 ```

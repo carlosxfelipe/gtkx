@@ -51,7 +51,7 @@ describe("accessible props - GValue marshaling regression (2)", () => {
             const [label, setLabel] = useState<Gtk.Label | null>(null);
             return (
                 <>
-                    <GtkLabel ref={setLabel} label="Description" />
+                    <GtkLabel ref={setLabel}>Description</GtkLabel>
                     <GtkEntry ref={entryRef} accessibleLabelledBy={label ? [label] : undefined} />
                 </>
             );

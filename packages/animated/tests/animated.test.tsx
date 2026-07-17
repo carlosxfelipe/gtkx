@@ -25,13 +25,14 @@ describe("animated components", () => {
         const onComplete = vi.fn();
         await render(
             <animated.GtkLabel
-                label="Enter"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.1 }}
                 onAnimationStart={onStart}
                 onAnimationComplete={onComplete}
-            />,
+            >
+                Enter
+            </animated.GtkLabel>,
         );
         await screen.findByText("Enter");
         await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
@@ -43,12 +44,9 @@ describe("animated components", () => {
     it("animates when the animate prop changes", async () => {
         const onComplete = vi.fn();
         const view = (x: number): ReactNode => (
-            <animated.GtkLabel
-                label="Move"
-                animate={{ x }}
-                transition={{ duration: 0.05 }}
-                onAnimationComplete={onComplete}
-            />
+            <animated.GtkLabel animate={{ x }} transition={{ duration: 0.05 }} onAnimationComplete={onComplete}>
+                Move
+            </animated.GtkLabel>
         );
         const { rerender } = await render(view(0));
         await screen.findByText("Move");
@@ -63,11 +61,12 @@ describe("animated components", () => {
         await render(
             <animated.GtkBox initial="hidden" animate="visible" variants={parentVariants}>
                 <animated.GtkLabel
-                    label="Child"
                     variants={childVariants}
                     transition={{ duration: 0.05 }}
                     onAnimationComplete={onComplete}
-                />
+                >
+                    Child
+                </animated.GtkLabel>
             </animated.GtkBox>,
         );
         await screen.findByText("Child");
@@ -82,15 +81,16 @@ describe("animated components", () => {
                     {show ? (
                         <animated.GtkLabel
                             key="toast"
-                            label="Toast"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.05 }}
-                        />
+                        >
+                            Toast
+                        </animated.GtkLabel>
                     ) : null}
                 </AnimatePresence>
-                <GtkLabel label="Anchor" />
+                <GtkLabel>Anchor</GtkLabel>
             </GtkBox>
         );
         const { rerender } = await render(view(true));
@@ -105,10 +105,12 @@ describe("animated components", () => {
             <GtkBox>
                 <AnimatePresence>
                     {show ? (
-                        <animated.GtkLabel key="gone" label="Gone" exit={{ opacity: 0, transition: { duration: 5 } }} />
+                        <animated.GtkLabel key="gone" exit={{ opacity: 0, transition: { duration: 5 } }}>
+                            Gone
+                        </animated.GtkLabel>
                     ) : null}
                 </AnimatePresence>
-                <GtkLabel label="Stay" />
+                <GtkLabel>Stay</GtkLabel>
             </GtkBox>
         );
         const { rerender } = await baseRender(view(true));

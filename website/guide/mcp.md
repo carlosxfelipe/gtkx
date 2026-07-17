@@ -4,7 +4,7 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 # MCP
 
-An AI coding agent working on a web app can open the page and read the DOM. A native GTK4 window offers no such handle: no HTML to parse, no DevTools to attach. `@gtkx/mcp` closes that gap. It is an MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to your live GTKX app.
+An AI coding agent working on a web app can open the page and read the DOM. `@gtkx/mcp` gives an agent the same handle on a running GTK4 window. It is an MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to your live GTKX app.
 
 Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent looks up exact props, signals, and method signatures instead of guessing.
 

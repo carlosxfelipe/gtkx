@@ -11,8 +11,12 @@ describe("render - Grid", () => {
 
         await render(
             <Grid ref={gridRef} columnSpacing={6} rowSpacing={4}>
-                <Grid.Child component={GtkLabel} column={0} row={0} label="A" />
-                <Grid.Child component={GtkLabel} column={1} row={1} label="B" />
+                <Grid.Child component={GtkLabel} column={0} row={0}>
+                    A
+                </Grid.Child>
+                <Grid.Child component={GtkLabel} column={1} row={1}>
+                    B
+                </Grid.Child>
             </Grid>,
         );
 
@@ -28,7 +32,9 @@ describe("render - Grid", () => {
 
         await render(
             <Grid ref={gridRef}>
-                <Grid.Child component={GtkLabel} column={0} row={0} columnSpan={2} rowSpan={2} label="wide" />
+                <Grid.Child component={GtkLabel} column={0} row={0} columnSpan={2} rowSpan={2}>
+                    wide
+                </Grid.Child>
             </Grid>,
         );
 
@@ -44,7 +50,9 @@ describe("render - Grid", () => {
         function App({ column }: { column: number }) {
             return (
                 <Grid ref={gridRef}>
-                    <Grid.Child component={GtkLabel} column={column} row={0} label="movable" />
+                    <Grid.Child component={GtkLabel} column={column} row={0}>
+                        movable
+                    </Grid.Child>
                 </Grid>
             );
         }
@@ -63,7 +71,13 @@ describe("render - Grid", () => {
 
         function App({ show }: { show: boolean }) {
             return (
-                <Grid ref={gridRef}>{show && <Grid.Child component={GtkLabel} column={0} row={0} label="A" />}</Grid>
+                <Grid ref={gridRef}>
+                    {show && (
+                        <Grid.Child component={GtkLabel} column={0} row={0}>
+                            A
+                        </Grid.Child>
+                    )}
+                </Grid>
             );
         }
 

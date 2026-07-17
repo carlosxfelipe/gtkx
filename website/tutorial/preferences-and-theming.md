@@ -130,7 +130,7 @@ GSettings needs `gschemas.compiled` before it can read a schema. Under `gtkx dev
 
 ## Applying the color scheme
 
-Persisting `color-scheme` is only half the job; something has to turn `"dark"` into an actually-dark UI. Adwaita centralizes light/dark on `Adw.StyleManager`, a process-wide singleton the application owns. The `theme.ts` helper is the entire bridge:
+Persisting `color-scheme` is only half the job; something has to turn the stored `"dark"` into a dark UI. Adwaita centralizes light/dark on `Adw.StyleManager`, a process-wide singleton the application owns. The `theme.ts` helper is the entire bridge:
 
 ```ts
 import * as Adw from "@gtkx/gi/adw";

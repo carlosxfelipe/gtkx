@@ -45,7 +45,7 @@ export type UserEvent = {
 
 const state = createInitialState();
 
-/** High-level helpers that simulate user interactions against widgets by dispatching the same events and gestures a real user would trigger. */
+/** High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers when someone clicks, types, or drags. */
 export const userEvent: UserEvent = {
     click,
     dblClick,

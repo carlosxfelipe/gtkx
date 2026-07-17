@@ -496,7 +496,6 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                 else refs.buttonRefs.current.delete(item.id);
             }}
             name={`item${item.id}`}
-            label={item.label}
             cssClasses={cx(itemStyle, ...getItemStyleClass(item.style))}
             controllers={
                 <>
@@ -535,7 +534,9 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                     />
                 </>
             }
-        />
+        >
+            {item.label}
+        </Fixed.Child>
     );
 };
 

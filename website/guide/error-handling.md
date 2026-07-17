@@ -26,12 +26,12 @@ const data = "not a key file";
 try {
     GLib.KeyFile.new().loadFromData(data, Buffer.byteLength(data), GLib.KeyFileFlags.NONE);
 } catch (error) {
-    error instanceof Error;      // true: it is a real JS Error
+    error instanceof Error;      // true: it is a JS Error
     error instanceof GLib.Error; // true: it is also a wrapped GError
 }
 ```
 
-Because it is a real `Error` subclass, it behaves like one everywhere: `String(error)` and `console.error(error)` print the message instead of an opaque object, and rethrowing or wrapping it works as expected. On top of the standard `Error` surface, a `GLib.Error` exposes the three fields of the underlying C struct:
+Because it is an `Error` subclass, it behaves like one everywhere: `String(error)` and `console.error(error)` print the message instead of an opaque object, and rethrowing or wrapping it works as expected. On top of the standard `Error` surface, a `GLib.Error` exposes the three fields of the underlying C struct:
 
 - **`message`** is the human-readable description, the same string GLib produced.
 - **`domain`** is the error domain as a numeric GQuark (`GLib.Quark` is `number`). Each library registers its own domains: file errors, GIO I/O errors, GTK4 dialog errors, and so on.

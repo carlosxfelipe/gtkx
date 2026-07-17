@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
 
 const twoLabelFragment = (firstRef: RefObject<Gtk.Label | null>, secondRef: RefObject<Gtk.Label | null>): ReactNode => (
     <>
-        <GtkLabel ref={firstRef} label="First" />
-        <GtkLabel ref={secondRef} label="Second" />
+        <GtkLabel ref={firstRef}>First</GtkLabel>
+        <GtkLabel ref={secondRef}>Second</GtkLabel>
     </>
 );
 
@@ -29,8 +29,8 @@ const renderActionRowWithPrefixAndSuffix = async (prefixLabel: string, suffixLab
 
     await render(
         actionRowInListBox(rowRef, {
-            prefix: <GtkLabel ref={prefixRef} label={prefixLabel} />,
-            suffix: <GtkLabel ref={suffixRef} label={suffixLabel} />,
+            prefix: <GtkLabel ref={prefixRef}>{prefixLabel}</GtkLabel>,
+            suffix: <GtkLabel ref={suffixRef}>{suffixLabel}</GtkLabel>,
         }),
     );
 
@@ -56,7 +56,7 @@ const renderToolbarWithSingleBar = async (bar: { topBar?: ReactNode; bottomBar?:
     const toolbarRef = createRef<Adw.ToolbarView>();
     const contentRef = createRef<Gtk.Label>();
 
-    await render(toolbarWithBar(toolbarRef, bar, <GtkLabel ref={contentRef} label="Content" />));
+    await render(toolbarWithBar(toolbarRef, bar, <GtkLabel ref={contentRef}>Content</GtkLabel>));
 
     return { toolbarRef, contentRef };
 };
@@ -114,7 +114,9 @@ describe("render - ContainerProp (2)", () => {
                             ref={rowRef}
                             title="Test Row"
                             suffix={Array.from({ length: count }, (_, i) => (
-                                <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]} label={`Label ${i}`} />
+                                <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]}>
+                                    Label {i}
+                                </GtkLabel>
                             ))}
                         />
                     </GtkListBox>
@@ -138,7 +140,7 @@ describe("render - ContainerProp (2)", () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
 
-            await render(actionRowInListBox(rowRef, { prefix: <GtkLabel ref={prefixRef} label="Prefix" /> }));
+            await render(actionRowInListBox(rowRef, { prefix: <GtkLabel ref={prefixRef}>Prefix</GtkLabel> }));
 
             expect(prefixRef.current).not.toBeNull();
         });
@@ -151,7 +153,7 @@ describe("render - ContainerProp (3)", () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
 
-            await render(actionRowInListBox(rowRef, { suffix: <GtkLabel ref={suffixRef} label="Suffix" /> }));
+            await render(actionRowInListBox(rowRef, { suffix: <GtkLabel ref={suffixRef}>Suffix</GtkLabel> }));
 
             expect(suffixRef.current).not.toBeNull();
         });
@@ -174,8 +176,8 @@ describe("render - ContainerProp (4)", () => {
 
             function App({ showPrefix }: { showPrefix: boolean }) {
                 return actionRowInListBox(rowRef, {
-                    prefix: showPrefix ? <GtkLabel ref={prefixRef} label="Prefix" /> : null,
-                    suffix: <GtkLabel ref={alwaysRef} label="Always" />,
+                    prefix: showPrefix ? <GtkLabel ref={prefixRef}>Prefix</GtkLabel> : null,
+                    suffix: <GtkLabel ref={alwaysRef}>Always</GtkLabel>,
                 });
             }
 
@@ -233,8 +235,8 @@ describe("render - ContainerProp (6)", () => {
                             title="Test Row"
                             prefix={
                                 <>
-                                    <GtkLabel ref={firstRef} label="First" />
-                                    {showSecond && <GtkLabel ref={secondRef} label="Second" />}
+                                    <GtkLabel ref={firstRef}>First</GtkLabel>
+                                    {showSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
                                 </>
                             }
                         />
@@ -405,7 +407,7 @@ describe("render - ContainerProp (11)", () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
 
-            await render(headerBarWithPack(headerBarRef, { start: <GtkLabel ref={startRef} label="Start" /> }));
+            await render(headerBarWithPack(headerBarRef, { start: <GtkLabel ref={startRef}>Start</GtkLabel> }));
 
             expect(startRef.current).not.toBeNull();
             expect(screen.getByText("Start")).toBeDefined();
@@ -415,7 +417,7 @@ describe("render - ContainerProp (11)", () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const endRef = createRef<Gtk.Label>();
 
-            await render(headerBarWithPack(headerBarRef, { end: <GtkLabel ref={endRef} label="End" /> }));
+            await render(headerBarWithPack(headerBarRef, { end: <GtkLabel ref={endRef}>End</GtkLabel> }));
 
             expect(endRef.current).not.toBeNull();
             expect(screen.getByText("End")).toBeDefined();
@@ -432,8 +434,8 @@ describe("render - ContainerProp (12)", () => {
 
             await render(
                 headerBarWithPack(headerBarRef, {
-                    start: <GtkLabel ref={startRef} label="Start" />,
-                    end: <GtkLabel ref={endRef} label="End" />,
+                    start: <GtkLabel ref={startRef}>Start</GtkLabel>,
+                    end: <GtkLabel ref={endRef}>End</GtkLabel>,
                 }),
             );
 
@@ -450,8 +452,8 @@ describe("render - ContainerProp (12)", () => {
                 return (
                     <GtkHeaderBar
                         ref={headerBarRef}
-                        titleWidget={<GtkLabel ref={alwaysRef} label="Always" />}
-                        start={showStart ? <GtkLabel ref={startRef} label="Start" /> : null}
+                        titleWidget={<GtkLabel ref={alwaysRef}>Always</GtkLabel>}
+                        start={showStart ? <GtkLabel ref={startRef}>Start</GtkLabel> : null}
                     />
                 );
             }
@@ -586,8 +588,8 @@ describe("render - ContainerProp (16)", () => {
                         ref={headerBarRef}
                         start={
                             <>
-                                <GtkLabel ref={firstRef} label="First" />
-                                {showSecond && <GtkLabel ref={secondRef} label="Second" />}
+                                <GtkLabel ref={firstRef}>First</GtkLabel>
+                                {showSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
                             </>
                         }
                     />
@@ -630,11 +632,11 @@ describe("render - ContainerProp (18)", () => {
                     topBar={
                         <>
                             <AdwHeaderBar />
-                            <GtkLabel ref={secondTopRef} label="Second Top Bar" />
+                            <GtkLabel ref={secondTopRef}>Second Top Bar</GtkLabel>
                         </>
                     }
                 >
-                    <GtkLabel ref={contentRef} label="Content" />
+                    <GtkLabel ref={contentRef}>Content</GtkLabel>
                 </AdwToolbarView>,
             );
 
@@ -649,7 +651,7 @@ describe("render - ContainerProp (18)", () => {
             function App({ showTop }: { showTop: boolean }) {
                 return (
                     <AdwToolbarView ref={toolbarRef} topBar={showTop ? <AdwHeaderBar /> : null}>
-                        <GtkLabel ref={contentRef} label="Content" />
+                        <GtkLabel ref={contentRef}>Content</GtkLabel>
                     </AdwToolbarView>
                 );
             }

@@ -11,7 +11,7 @@ head:
 
 <p style="opacity: 0.7; margin-top: -0.5rem;">July 14, 2026</p>
 
-GTKX 1.0.0-rc.1 is a ground-up rework of the framework since v0.21.0. What started as a React reconciler for a curated set of GTK4 widgets is now a general platform for driving GLib and GObject from TypeScript: real GObject instances, the entire introspected API surface of the libraries installed on your machine, and the React programming model on top.
+GTKX 1.0.0-rc.1 is a ground-up rework of the framework since v0.21.0. What started as a React reconciler for a curated set of GTK4 widgets is now a general platform for driving GLib and GObject from TypeScript: the GObject instances your JSX creates, the entire introspected API surface of the libraries installed on your machine, and the React programming model on top.
 
 This is a release candidate: the API described here is what 1.0 will ship.
 
@@ -32,7 +32,7 @@ export default defineConfig({
 
 Codegen emits two packages into `node_modules` and links them as `@gtkx/gi` and `@gtkx/jsx`, so you never install them from npm:
 
-- `@gtkx/gi/<namespace>` gives you real, fully typed TypeScript classes: `@gtkx/gi/gtk`, `@gtkx/gi/adw`, `@gtkx/gi/gio`, `@gtkx/gi/cairo`, and so on, with typed per-class signal maps, constructor-property interfaces, and interface mixins.
+- `@gtkx/gi/<namespace>` gives you fully typed TypeScript classes: `@gtkx/gi/gtk`, `@gtkx/gi/adw`, `@gtkx/gi/gio`, `@gtkx/gi/cairo`, and so on, with typed per-class signal maps, constructor-property interfaces, and interface mixins.
 - `@gtkx/jsx/<namespace>` gives you one React component per widget, with typed props.
 
 Set `libraries: "*"` and GTKX binds every introspection library it can find on the system, resolving transitive dependencies automatically. To bind WebKit, VTE, or GStreamer, install the development package and add it to the list. The bindings always match your installed GTK4, and a content fingerprint of the `.gir` files triggers regeneration when the system updates underneath you.
@@ -54,9 +54,9 @@ createRoot().render(
 );
 ```
 
-The reconciler was rewritten from roughly fifty hand-written per-widget node classes into a single generic reconciler that instantiates real GObject classes by type and drives child attachment from generated metadata.
+The reconciler was rewritten from roughly fifty hand-written per-widget node classes into a single generic reconciler that instantiates GObject classes by type and drives child attachment from generated metadata.
 
-Because every element is a real GObject, JSX composes in ways it could not before. Any element passed as a prop value is mounted and assigned to that property: a text view takes `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale takes `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative props.
+Because every element is a GObject, JSX composes in ways it could not before. Any element passed as a prop value is mounted and assigned to that property: a text view takes `buffer={<GtkTextBuffer>...</GtkTextBuffer>}`, a scale takes `adjustment={<GtkAdjustment .../>}`, and controllers, layout managers, and menu models are all declarative props.
 
 Signals are typed end to end, including `notify::<property>` details. A new `useSignal` hook connects handlers, and `useSetting` is now typed against imported GSettings schemas.
 
@@ -65,8 +65,8 @@ Signals are typed end to end, including `notify::<property>` details. A new `use
 Hand-written high-level components moved out of the reconciler into focused packages:
 
 - **`@gtkx/components`** ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, plus section headers on `ListView`, `ColumnView`, and `DropDown`, and tree expansion on `ListView` and `ColumnView`. It also ships a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and `Dialog` under `@gtkx/components/adw`.
-- **`@gtkx/navigation`** brings the React Navigation API to Adwaita: stack and split-view navigators over real `Adw.NavigationView` and `Adw.NavigationSplitView` widgets.
-- **`@gtkx/animated`** replaces the old animation elements with framer-motion running against real GTK4 widgets: an `animated` factory, `AnimatePresence` for exit animations, springs and easings, hover, tap, focus, and in-view variants, drag, and layout animations, all rendered as per-widget GTK4 CSS.
+- **`@gtkx/navigation`** brings the React Navigation API to Adwaita: stack and split-view navigators over `Adw.NavigationView` and `Adw.NavigationSplitView` widgets.
+- **`@gtkx/animated`** replaces the old animation elements with framer-motion running against GTK4 widgets: an `animated` factory, `AnimatePresence` for exit animations, springs and easings, hover, tap, focus, and in-view variants, drag, and layout animations, all rendered as per-widget GTK4 CSS.
 - **`@gtkx/css`** was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
@@ -81,7 +81,7 @@ OpenGL moved into its own `@gtkx/gl` package, generated from the Khronos registr
 
 The CLI is driven by `gtkx.config.ts`, and 1.0 fills out the toolchain around it:
 
-- **CLI and build:** `gtkx codegen` and `gtkx docs` commands, a supervised dev server that does real process restarts when a change is not Fast Refresh safe, a GResource-based asset pipeline (`import icon from "#data/icon.png"`), typed GSettings schema imports, and React Compiler on by default.
+- **CLI and build:** `gtkx codegen` and `gtkx docs` commands, a supervised dev server that restarts the process when a change is not Fast Refresh safe, a GResource-based asset pipeline (`import icon from "#data/icon.png"`), typed GSettings schema imports, and React Compiler on by default.
 - **Scaffolding:** a standalone `create-gtkx` initializer.
 - **Testing:** `@gtkx/testing` grew into a near-complete Testing Library port for GTK4, with the full `getBy`/`queryBy`/`findBy` matrix, widget matchers, automatic cleanup, Playwright-style actionability checks on every interaction, and a `userEvent` API that roughly doubled to cover clipboard, drag and drop, gestures, and scrolling. `@gtkx/vitest` swapped Xvfb for a per-worker headless Wayland compositor.
 - **AI and docs:** the `@gtkx/mcp` server gained tools and resources that let an AI assistant browse your project's generated API reference, and this site was rebuilt around a new [guide](/guide/why-gtkx), a hands-on [tutorial](/tutorial/) that takes a complete GNOME "Tasks" app all the way to a Flathub submission, and an [API reference](/reference/) covering the core packages.

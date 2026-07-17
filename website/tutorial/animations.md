@@ -1,5 +1,5 @@
 ---
-description: "Give the empty state a subtle fade with @gtkx/animated, and learn where motion belongs in a GNOME app: communicate real state changes, honor the system animation setting, and never re-animate what the toolkit already animates."
+description: "Give the empty state a subtle fade with @gtkx/animated, and learn where motion belongs in a GNOME app: communicate state changes, honor the system animation setting, and never re-animate what the toolkit already animates."
 ---
 
 # Animations
@@ -27,7 +27,7 @@ Back in [The Task List](./the-task-list) the content pane showed either the boxe
 
 Because nothing here is a `GtkStack`, that mount and unmount has no transition whatsoever. Delete your last task and the placeholder snaps into existence; add the first one back and it vanishes on the same frame the row appears. It reads as a glitch.
 
-The GNOME Human Interface Guidelines have no dedicated motion page; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle: "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change legible. Here a real state change (populated becomes empty, and back) is presented as a jarring swap, exactly the hard cut a transition exists to soften.
+The GNOME Human Interface Guidelines have no dedicated motion page; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle: "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change legible. Here a state change (populated becomes empty, and back) is presented as a jarring swap, exactly the hard cut a transition exists to soften.
 
 ::: info Why `AdwViewStack` does not fit
 Adwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `enable-transitions`. It does not fit here, because it assumes the two states are *mutually exclusive stacked views*. In this layout the list never goes away: it keeps showing its add-entry row even at zero tasks, and the status page is an additional sibling below it. There is no second view to crossfade against, so the right tool is an enter/exit animation on the status page alone.
@@ -67,7 +67,7 @@ Then the empty-state block itself, wrapped in `AnimatePresence` and rendered thr
 
 The animation props read like their web counterparts, because they are: the props are framer-motion's. `initial` is the state the widget starts from, `animate` is where it settles once present, and `exit` is where it goes on the way out. A target is opacity plus CSS transforms (and more; the guide lists the full set); here it is a plain opacity fade from `0` to `1`. A `transition` of `0.2` seconds makes it a short timed tween on the default `easeOut` curve. The `exit` target embeds a `transition` of its own that zeroes the duration on the way out; a later section explains that asymmetry.
 
-Under the hood, framer-motion's engine interpolates the value on its frame loop, and `@gtkx/animated` writes each frame's `opacity` as scoped GTK4 CSS on the widget. It is a real GTK4 widget animating, reached declaratively.
+Under the hood, framer-motion's engine interpolates the value on its frame loop, and `@gtkx/animated` writes each frame's `opacity` as scoped GTK4 CSS on the widget. What fades is the `AdwStatusPage` itself, Adwaita's own widget, styled frame by frame from props you declared in JSX.
 
 ## `AnimatePresence` is what makes `exit` possible
 
@@ -95,7 +95,7 @@ With a zero duration the exit completes immediately, and `AnimatePresence` drops
 
 `AnimatePresence initial={false}` is the small, important detail. By default `AnimatePresence` runs enter animations for children that are already present on its very first render. Launching straight into an empty view (a fresh install, or an empty Trash) would fade the placeholder in from transparent.
 
-But you did not just empty that list; it was already empty when the window opened. Fading it in there is motion with nothing to communicate, the decorative kind Be Considerate rejects. `initial={false}` mounts any first-render child directly in its `animate` state, while a status page that appears later, because you actually deleted your last task, still runs its `initial` to `animate` fade. Genuine state changes animate; initial conditions do not.
+But you did not just empty that list; it was already empty when the window opened. Fading it in there is motion with nothing to communicate, the decorative kind Be Considerate rejects. `initial={false}` mounts any first-render child directly in its `animate` state, while a status page that appears later, because you actually deleted your last task, still runs its `initial` to `animate` fade. State changes animate; initial conditions do not.
 
 ## Keeping the fade inside its view
 
@@ -141,9 +141,9 @@ Tasks ships no spring at all, because no surface in it qualifies. The clearest e
 The guardrail is as much a part of the lesson as the animation. The reason Tasks needed exactly one hand-written animation is that the toolkit already animates everything else, and overriding those is a step backward:
 
 - **The natively animated transitions.** `GtkSearchBar`, the selection `GtkActionBar` and `AdwToolbarView` bottom bar, `AdwNavigationView` push and pop, `AdwNavigationSplitView`'s collapse, `AdwToastOverlay` toasts, the `AdwToggleGroup` filter pill, and every Adwaita dialog animate themselves. Wrapping any of them in `animated` would fight the built-in transition for no gain, and for dialogs and navigation it would fight their lifecycle.
-- **The task rows.** This is the tempting one, and it is a trap. Reaching for `AnimatePresence` over the mapped rows to fade them in and out looks like the marquee use of the feature, but the `tasks` prop is the already filtered, sorted, and searched `visible` array. Its keyed set is rewritten wholesale on every search keystroke, every All/Open/Done toggle, and every sort change, so `AnimatePresence` could not tell "the user deleted one row" from "the filter changed" and would cascade an enter or exit across the entire list on each of them. That is precisely the re-animate-everything-on-every-view-change distraction Be Considerate warns against. It also would not even look right: a fade tweens opacity and transforms, which do not collapse a `GtkListBox` row's allocated height, so a faded-out row would leave its gap open until it unmounted and the neighbors snapped closed. And it would collide with the per-row drag controllers from the previous chapter. When a deletion needs feedback, Tasks already gives the better, more idiomatic answer: an undo toast.
+- **The task rows.** This is the tempting one, and it is a trap. Reaching for `AnimatePresence` over the mapped rows to fade them in and out looks like the marquee use of the feature, but the `tasks` prop is the already filtered, sorted, and searched `visible` array. Its keyed set is rewritten wholesale on every search keystroke, every All/Open/Done toggle, and every sort change, so `AnimatePresence` could not tell "you deleted one row" from "the filter changed" and would cascade an enter or exit across the entire list on each of them. That is precisely the re-animate-everything-on-every-view-change distraction Be Considerate warns against. It also would not even look right: a fade tweens opacity and transforms, which do not collapse a `GtkListBox` row's allocated height, so a faded-out row would leave its gap open until it unmounted and the neighbors snapped closed. And it would collide with the per-row drag controllers from the previous chapter. When a deletion needs feedback, Tasks already gives the better, more idiomatic answer: an undo toast.
 
-One animation, on the one boundary that had no transition and a real change to communicate. That is the entire motion budget a well-behaved GNOME app needs.
+One animation, on the one boundary that had no transition and a state change to communicate. That is the entire motion budget a well-behaved GNOME app needs.
 
 ## Next
 

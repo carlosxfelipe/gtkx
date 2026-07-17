@@ -6,7 +6,7 @@
 
 <p align="center">
   The React framework for Linux.<br />
-  Build GTK4 and Adwaita apps in TypeScript, with React components and hooks over real GObject widgets. No webview, no Electron.
+  Build GTK4 and Adwaita apps in TypeScript, with React components and hooks driving GNOME's own widgets. What you ship is a GNOME app.
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 
 ---
 
-GTKX generates fully typed bindings for the entire GTK4 and Adwaita surface directly from GObject-Introspection. On top of those bindings you get the React programming model: components and hooks driving real GObject instances, with Fast Refresh while you develop.
+GTKX generates fully typed bindings for the entire GTK4 and Adwaita surface directly from GObject-Introspection. On top of those bindings you get the React programming model: components and hooks driving GObject instances, with Fast Refresh while you develop.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
@@ -39,7 +39,7 @@ GTKX generates fully typed bindings for the entire GTK4 and Adwaita surface dire
 
 ## Demo
 
-The intrinsic elements in this snippet render real GTK4 widgets, and ordinary React hooks and events drive them:
+The intrinsic elements in this snippet render GTK4 widgets, and ordinary React hooks and events drive them:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -103,15 +103,15 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-### The full GNOME API surface, not a portable subset
+### The full GNOME API surface
 
-React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes GTK4, Adwaita, and any other GObject-Introspection library on your system, and is Linux-only by design.
+React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX exposes it: GTK4, Adwaita, and any other GObject-Introspection library on your system. Linux-only by design.
 
 ### Why Node.js, and why generated bindings
 
-GTKX runs on Node.js. The two established ways to reach GTK4 from JavaScript both come with trade-offs it set out to avoid: GJS uses SpiderMonkey, cutting you off from Node.js native modules and the npm ecosystem, while node-gtk is lightly maintained, built on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [why-gtkx guide](https://gtkx.dev/guide/why-gtkx) covers the comparison in full.
+GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [why-gtkx guide](https://gtkx.dev/guide/why-gtkx) covers the comparison in full.
 
-GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back, and they cover the whole GTK4 and Adwaita surface rather than a hand-picked subset.
+GTKX generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back. Codegen covers the whole GTK4 and Adwaita surface.
 
 At runtime, the native Rust core calls straight into the system GTK4, Adwaita, and GLib libraries through libffi, without loading libgirepository at all.
 

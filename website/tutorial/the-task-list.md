@@ -50,7 +50,7 @@ export const TaskList = ({ tasks, reorderable, addPlaceholder, onAddTask, empty,
 
 A few GTK4-isms to unpack for a React reader:
 
-- `orientation={Gtk.Orientation.VERTICAL}` is how a `GtkBox` stacks children. `Gtk.Orientation` is a real GI enum imported from `@gtkx/gi/gtk`; you pass the enum member, not a string. `vexpand` (a bare boolean) tells the box to claim all leftover vertical space, so the list fills the pane.
+- `orientation={Gtk.Orientation.VERTICAL}` is how a `GtkBox` stacks children. `Gtk.Orientation` is a GI enum imported from `@gtkx/gi/gtk`; you pass the enum member, not a string. `vexpand` (a bare boolean) tells the box to claim all leftover vertical space, so the list fills the pane.
 - **`AdwClamp`** is the Adwaita widget that caps content width and centers it. `maximumSize={640}` means "never let the list grow past 640px wide, no matter how wide the monitor is." This is the standard GNOME reading-width treatment: on a wide screen the boxed list sits centered instead of stretching edge to edge. The `margin*` props (universal on every widget) inset it from the pane edges.
 - `GtkScrolledWindow` with `vexpand` wraps the clamp so a long list scrolls.
 
@@ -112,7 +112,7 @@ Two things make this the idiomatic Adwaita list rather than a plain one:
 - **`cssClasses={["boxed-list"]}`** applies the `.boxed-list` style class, which turns a bare `GtkListBox` into the rounded, bordered card group you see all over GNOME Settings.
 - **`selectionMode={Gtk.SelectionMode.NONE}`** disables row selection. Boxed lists are not "pick one of these" lists; each row carries its own controls (a checkbox, a star, a delete button), so selecting the whole row would be meaningless.
 
-Children of a `GtkListBox` are appended in order. The rows here are, top to bottom: the inline add entry, one `TaskRow` per task, and (only when there are tasks) a trailing add button. React's `key={task.id}` gives each `TaskRow` a stable identity so the reconciler can move, insert, and remove real GTK4 widgets in place instead of rebuilding the list.
+Children of a `GtkListBox` are appended in order. The rows here are, top to bottom: the inline add entry, one `TaskRow` per task, and (only when there are tasks) a trailing add button. React's `key={task.id}` gives each `TaskRow` a stable identity so the reconciler can move, insert, and remove GTK4 widgets in place instead of rebuilding the list.
 
 ## The inline add row
 
@@ -314,7 +314,7 @@ const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sor
 <TaskList tasks={visible} reorderable={reorderable} /* ... */ />
 ```
 
-Filtering and sorting live in React state, not in a GTK4 list model. Your data transformations stay plain functions over arrays, exactly as in a web React app, and the reconciler turns the resulting list into real GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
+Filtering and sorting live in React state, not in a GTK4 list model. Your data transformations stay plain functions over arrays, exactly as in a web React app, and the reconciler turns the resulting list into GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
 
 ::: info
 Because the list is derived, `visibleTasks` recomputes on every render. At the size of a personal task list, that cost is negligible. If you ever needed to, you would memoize it with `useMemo`, the same React tool you already know, not a GTK4 model.

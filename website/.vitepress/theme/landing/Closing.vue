@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Button from "../components/Button.vue";
-import CodeBlock from "../components/CodeBlock.vue";
 import Icon from "../components/Icon.vue";
 import { LICENSE, REPO_URL } from "./content";
 </script>
@@ -41,9 +40,6 @@ import { LICENSE, REPO_URL } from "./content";
           Get started
           <template #icon-right><Icon name="arrow" :size="17" /></template>
         </Button>
-      </div>
-      <div class="cta__cmd">
-        <CodeBlock variant="terminal" code="npm create gtkx@rc" />
       </div>
     </div>
   </section>
@@ -125,11 +121,6 @@ import { LICENSE, REPO_URL } from "./content";
 .cta__actions {
   display: flex;
   justify-content: center;
-  margin-bottom: 1.4rem;
-}
-.cta__cmd {
-  max-width: 22rem;
-  margin: 0 auto;
 }
 @media (max-width: 720px) {
   .oss__inner {

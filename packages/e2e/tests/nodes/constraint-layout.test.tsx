@@ -115,7 +115,7 @@ describe("render - name-based target resolution (b)", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <GtkLabel name="a" label="first" />
+                    <GtkLabel name="a">first</GtkLabel>
                 </GtkBox>
                 <GtkBox
                     ref={secondRef}
@@ -130,7 +130,7 @@ describe("render - name-based target resolution (b)", () => {
                         </ConstraintLayout>
                     }
                 >
-                    <GtkLabel name="a" label="second" />
+                    <GtkLabel name="a">second</GtkLabel>
                 </GtkBox>
             </GtkBox>,
         );
@@ -167,7 +167,7 @@ describe("render - name-based target resolution (b)", () => {
             />,
             <>
                 <NamedLabel id="a" label="A" />
-                <GtkLabel name="super" label="Super" />
+                <GtkLabel name="super">Super</GtkLabel>
             </>,
         );
 
@@ -443,7 +443,7 @@ describe("render - name-based target lifecycle", () => {
     it("renders a named child without error when its host has no ConstraintLayout", async () => {
         await render(
             <GtkBox>
-                <GtkLabel name="orphan" label="Orphan" />
+                <GtkLabel name="orphan">Orphan</GtkLabel>
             </GtkBox>,
         );
 

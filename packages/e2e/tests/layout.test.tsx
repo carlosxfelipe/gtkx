@@ -26,7 +26,7 @@ describe("layout animations", () => {
                     onLayoutAnimationStart={onStart}
                     onLayoutAnimationComplete={onComplete}
                 >
-                    <GtkLabel label="Layout" />
+                    <GtkLabel>Layout</GtkLabel>
                 </animated.GtkBox>
             </GtkBox>
         );
@@ -53,11 +53,11 @@ describe("layout animations", () => {
                         heightRequest={80}
                         onLayoutAnimationStart={onStart}
                     >
-                        <GtkLabel label="Second" />
+                        <GtkLabel>Second</GtkLabel>
                     </animated.GtkBox>
                 ) : (
                     <animated.GtkBox key="a" layoutId="shared" widthRequest={100} heightRequest={40}>
-                        <GtkLabel label="First" />
+                        <GtkLabel>First</GtkLabel>
                     </animated.GtkBox>
                 )}
             </GtkBox>

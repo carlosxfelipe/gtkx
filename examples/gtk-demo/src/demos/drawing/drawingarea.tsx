@@ -201,7 +201,9 @@ const DrawingAreaDemo = () => {
             marginTop={16}
             marginBottom={16}
         >
-            <GtkLabel ref={setKnockoutLabel} label="Knockout groups" cssClasses={["heading"]} />
+            <GtkLabel ref={setKnockoutLabel} cssClasses={["heading"]}>
+                Knockout groups
+            </GtkLabel>
             <GtkFrame name="knockout-frame" vexpand>
                 <GtkDrawingArea
                     name="knockout-area"
@@ -213,7 +215,9 @@ const DrawingAreaDemo = () => {
                 />
             </GtkFrame>
 
-            <GtkLabel ref={setScribbleLabel} label="Scribble area" cssClasses={["heading"]} />
+            <GtkLabel ref={setScribbleLabel} cssClasses={["heading"]}>
+                Scribble area
+            </GtkLabel>
             <GtkFrame name="scribble-frame" vexpand>
                 <ScribbleArea accessibleLabelledBy={scribbleLabel ? [scribbleLabel] : undefined} />
             </GtkFrame>

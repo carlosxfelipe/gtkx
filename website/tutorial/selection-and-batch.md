@@ -4,7 +4,7 @@ description: "Implement GNOME's selection mode pattern, with a transformed heade
 
 # Selection Mode
 
-Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated *selection mode* for this, and it drives three parts of the UI: a selection header that replaces the titlebar, a bottom action bar that carries the batch actions, and one `selecting` boolean of React state behind both.
+Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated *selection mode* for this. It drives three parts of the UI: a selection header that replaces the titlebar, a bottom action bar that carries the batch actions, and one `selecting` boolean of React state behind both.
 
 The HIG reserves selection mode for large collections where at least three actions can be taken on the selected items, which is why Tasks ships Complete, Move, and Delete rather than only Complete and Delete. See [Selection & Edit Modes](https://developer.gnome.org/hig/patterns/containers/selection-mode.html).
 
@@ -12,7 +12,7 @@ The `AdwToolbarView` that frames the task list stays mounted throughout: it swap
 
 ## Entering via the `win.select` action
 
-Selection mode is toggled on by the window's `select` action, one of the five `<GSimpleAction>` elements `app.tsx` mounts in the `AdwApplicationWindow`'s `actions` slot, which is what makes its fully qualified name `win.select`. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) covers that scoping. The main menu's "Select Tasks" item activates it, and it runs whatever `onSelect` points at. Two pieces of state back the whole feature:
+Selection mode is toggled on by the window's `select` action, one of the five `<GSimpleAction>` elements `app.tsx` mounts in the `AdwApplicationWindow`'s `actions` slot. That slot is what makes its fully qualified name `win.select`. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) covers that scoping. The main menu's "Select Tasks" item activates it, and it runs whatever `onSelect` points at. Two pieces of state back the whole feature:
 
 ```tsx
 const [selecting, setSelecting] = useState(false);
@@ -43,7 +43,7 @@ The list page's toolbar view picks its top bar from two candidates: selection mo
 topBar={selecting ? selectionHeader : listHeader}
 ```
 
-The task editor's header never enters this choice. As [The Application Shell](/tutorial/app-shell) and [The Task Editor](/tutorial/the-task-editor) established, the editor's header belongs to the separate `Task` screen that is pushed on top of the list, so selection mode only ever competes with the list header.
+The task editor's header never enters this choice. As [The Application Shell](/tutorial/app-shell) and [The Task Editor](/tutorial/the-task-editor) established, the editor's header belongs to the separate `Task` screen that is pushed on top of the list, so selection mode only competes with the list header.
 
 The `selectionHeader` is a plain `AdwHeaderBar`, but configured to stop looking like the normal chrome:
 
@@ -210,7 +210,7 @@ How the pieces map:
 
 ## Recycled versus boxed: why a second kind of list
 
-Tasks deliberately renders its tasks two different ways, and selection mode is the reason to see them side by side. The normal `TaskList` view uses a `GtkListBox` styled as a boxed list, where every task is a fully realized `AdwActionRow`:
+Tasks deliberately renders its tasks two different ways, and selection mode is the reason to see them side by side. The normal `TaskList` view uses a `GtkListBox` styled as a boxed list, where every task is an `AdwActionRow`:
 
 ```tsx
 // components/task-list.tsx

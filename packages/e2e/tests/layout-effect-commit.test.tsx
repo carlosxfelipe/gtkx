@@ -14,7 +14,7 @@ describe("layout effects during commit", () => {
                 if (!label) throw new Error("expected the committed label ref");
                 label.setLabel(`${label.getLabel()}-adjusted`);
             }, []);
-            return <GtkLabel ref={labelRef} label="committed" />;
+            return <GtkLabel ref={labelRef}>committed</GtkLabel>;
         };
 
         await render(

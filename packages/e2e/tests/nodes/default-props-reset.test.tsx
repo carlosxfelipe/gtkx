@@ -22,28 +22,40 @@ const captureCriticals = async (domain: string, run: () => Promise<void>): Promi
 describe("default-props reset on removal", () => {
     it("resets a boolean property to its GIR default when the prop is removed", async () => {
         const ref = createRef<Gtk.Label>();
-        const { rerender } = await render(<GtkLabel ref={ref} label="x" selectable={true} />);
+        const { rerender } = await render(
+            <GtkLabel ref={ref} selectable={true}>
+                x
+            </GtkLabel>,
+        );
         expect(ref.current?.selectable).toBe(true);
 
-        await rerender(<GtkLabel ref={ref} label="x" />);
+        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
         expect(ref.current?.selectable).toBe(false);
     });
 
     it("resets an enum property to its GIR default", async () => {
         const ref = createRef<Gtk.Label>();
-        const { rerender } = await render(<GtkLabel ref={ref} label="x" ellipsize={Pango.EllipsizeMode.END} />);
+        const { rerender } = await render(
+            <GtkLabel ref={ref} ellipsize={Pango.EllipsizeMode.END}>
+                x
+            </GtkLabel>,
+        );
         expect(ref.current?.ellipsize).toBe(Pango.EllipsizeMode.END);
 
-        await rerender(<GtkLabel ref={ref} label="x" />);
+        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
         expect(ref.current?.ellipsize).toBe(Pango.EllipsizeMode.NONE);
     });
 
     it("resets a float property to its GIR default", async () => {
         const ref = createRef<Gtk.Label>();
-        const { rerender } = await render(<GtkLabel ref={ref} label="x" xalign={0.9} />);
+        const { rerender } = await render(
+            <GtkLabel ref={ref} xalign={0.9}>
+                x
+            </GtkLabel>,
+        );
         expect(ref.current?.xalign).toBeCloseTo(0.9);
 
-        await rerender(<GtkLabel ref={ref} label="x" />);
+        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
         expect(ref.current?.xalign).toBeCloseTo(0.5);
     });
 
@@ -63,10 +75,14 @@ describe("default-props reset on removal", () => {
 
     it("resets a property with no typed C accessor through the static GValue path", async () => {
         const ref = createRef<Gtk.Label>();
-        const { rerender } = await render(<GtkLabel ref={ref} label="x" widthRequest={200} />);
+        const { rerender } = await render(
+            <GtkLabel ref={ref} widthRequest={200}>
+                x
+            </GtkLabel>,
+        );
         expect(ref.current?.widthRequest).toBe(200);
 
-        await rerender(<GtkLabel ref={ref} label="x" />);
+        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
         expect(ref.current?.widthRequest).toBe(-1);
     });
 });

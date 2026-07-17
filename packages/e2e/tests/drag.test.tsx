@@ -57,7 +57,7 @@ describe("drag", () => {
                         if (value) widget = value;
                     }}
                 >
-                    <GtkLabel label="Draggable" />
+                    <GtkLabel>Draggable</GtkLabel>
                 </animated.GtkBox>
             </GtkBox>,
         );
@@ -91,7 +91,7 @@ describe("drag", () => {
                         if (value) widget = value;
                     }}
                 >
-                    <GtkLabel label="Clamped" />
+                    <GtkLabel>Clamped</GtkLabel>
                 </animated.GtkBox>
             </GtkBox>,
         );

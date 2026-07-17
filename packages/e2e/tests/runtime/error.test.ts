@@ -42,7 +42,7 @@ describe("checkError", () => {
         expect(thrown?.code).toBe(FILE_ERROR_NOENT);
     });
 
-    it("throws a genuine Error subclass named GLib.Error", () => {
+    it("throws an Error subclass named GLib.Error", () => {
         const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
 
         let thrown: unknown;

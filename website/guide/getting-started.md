@@ -1,14 +1,14 @@
 ---
-description: "Scaffold a GTKX app with npm create gtkx@rc, meet the CLI and the dev loop, and watch a real GTK4 window hot-reload as you edit TypeScript."
+description: "Scaffold a GTKX app with npm create gtkx@rc, meet the CLI and the dev loop, and watch a GTK4 window hot-reload as you edit TypeScript."
 ---
 
 # Getting Started
 
-Scaffold a project, meet the `gtkx` CLI, and watch a real GTK4 window hot-reload as you edit a `.tsx` file. GTKX apps are ordinary Node.js projects: no webview, no Electron main/renderer split, no bundler config to hand-write. The `gtkx` CLI wraps Vite, reads GObject-Introspection for GTK4 and Adwaita, and hands you typed React bindings for the entire native widget set.
+Scaffold a project, meet the `gtkx` CLI, and watch a GTK4 window hot-reload as you edit a `.tsx` file. A GTKX app is a GNOME app with an ordinary Node.js project around it: your `package.json`, your `src/`, and a CLI that brings its own Vite config. The CLI reads GObject-Introspection for GTK4 and Adwaita and hands you typed React bindings for the entire native widget set.
 
 ## What you need
 
-GTKX is Linux-only, because it renders through the system's real GTK4 and Adwaita. You need:
+GTKX is Linux-only, because it renders through the system's own GTK4 and Adwaita. You need:
 
 - Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries installed
 - Node.js 24 or later
@@ -59,7 +59,7 @@ cd my-app
 npm run dev
 ```
 
-A window opens. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK4 button. The [Tutorial](/tutorial/) tours a finished Tasks app built on the same foundation, so the structure below is the shape you will recognize there.
+A window opens. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a GTK4 button. The [Tutorial](/tutorial/) tours a finished Tasks app built on the same foundation, so the structure below is the shape you will recognize there.
 
 ::: tip
 The finished Tasks app lives at `examples/tutorial` in the GTKX repository. Every snippet in the [Tutorial](/tutorial/) is copied from that source, sometimes trimmed to the parts each chapter needs. You can run it, read ahead, or diff your work against it at any point.

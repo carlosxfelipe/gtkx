@@ -5,7 +5,7 @@ import Icon from "../components/Icon.vue";
 <template>
   <section class="show">
     <div class="show__head section-head">
-      <p class="overline">A real GNOME app</p>
+      <p class="overline">A GNOME app you can ship</p>
       <h2 class="show__title section-title">Built with GTKX, in the tutorial</h2>
       <p class="section-sub">
         The docs walk you through Tasks, a complete Adwaita app: adaptive split view, GSettings,

@@ -12,7 +12,7 @@ Tasks uses this everywhere its commands need more than one entry point. The hamb
 
 Every action string carries a scope prefix. Tasks uses both:
 
-- **`win.*`** actions belong to the window. They are the app's real commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
+- **`win.*`** actions belong to the window. They are the app's primary commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
 - **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires: its "Mark Complete" button and the default action that runs when you click the notification body. A notification is delivered to the whole application, not to any particular window, and it may arrive when no window is open. They live in the `actions` slot of `<AdwApplication>`.
 
 The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
@@ -103,7 +103,7 @@ The two `app.*` actions live in the `actions` slot of `<AdwApplication>`, mounte
 
 ## The primary menu: `<GtkMenuButton>` + declarative `<Menu>`
 
-The hamburger button in the header bar is a `GtkMenuButton` whose popup is a `GMenu` model, not a tree of widgets. A GMenu is a pure data model of labels and action names; GTK4 renders it into the actual popover for you. GTKX's `Menu` component (from `@gtkx/components`) builds that `Gio.Menu` from a plain array, and you hand it to the button's `menuModel` slot:
+The hamburger button in the header bar is a `GtkMenuButton` whose popup is a `GMenu` model, not a tree of widgets. A GMenu is a pure data model of labels and action names; GTK4 builds the popover from it for you. GTKX's `Menu` component (from `@gtkx/components`) builds that `Gio.Menu` from a plain array, and you hand it to the button's `menuModel` slot:
 
 ```tsx
 import { Menu } from "@gtkx/components";
@@ -208,7 +208,7 @@ controllers={
 }
 ```
 
-When `selecting` is false, `escapeEnabled` is false, so `Escape` resolves to `NeverTrigger` and passes through untouched; with the task editor open, the untouched key reaches the content stack's `AdwNavigationView`, whose built-in Escape handling pops the page. Enter selection mode and the next render swaps in the real `parseString("Escape")` trigger. The behavior tracks state with no imperative connect/disconnect.
+When `selecting` is false, `escapeEnabled` is false, so `Escape` resolves to `NeverTrigger` and passes through untouched. With the task editor open, that key reaches the content stack's `AdwNavigationView`, whose built-in Escape handling pops the page. Enter selection mode and the next render swaps in the `parseString("Escape")` trigger. The behavior tracks state with no imperative connect/disconnect.
 
 The `Delete` key is scoped differently: deleting only makes sense while a task is open, so the `Task` screen mounts its own `GtkShortcutController` through its toolbar view's `controllers` slot (shown in [The Task Editor](/tutorial/the-task-editor)). The shortcut exists exactly while the screen does, with no enabling flag at all.
 
@@ -238,7 +238,7 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
 
 Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX.
 
-An `accelerator` string is display text, not a binding, so a hand-written one has to be kept in sync with the real shortcut. Rows backed by an action can skip that. `AdwShortcutsItem` also takes an `actionName` prop that reads the accelerator back from whatever `actionAccels` registered, so `actionName="win.new"`, `actionName="win.preferences"`, and `actionName="win.shortcuts"` keep those three rows correct on their own.
+An `accelerator` string is display text, not a binding, so a hand-written one has to be kept in sync with the shortcut it describes. Rows backed by an action can skip that. `AdwShortcutsItem` also takes an `actionName` prop that reads the accelerator back from whatever `actionAccels` registered, so `actionName="win.new"`, `actionName="win.preferences"`, and `actionName="win.shortcuts"` keep those three rows correct on their own.
 
 The other three rows have no action to point at, so their `accelerator` has to be written by hand and kept in sync. `<Control>f` comes from the window's `AppShortcuts` controller, and `Delete` from the task screen's own controller. The "Close task" `Escape` comes from `AdwNavigationView`'s built-in pop rather than from any controller in Tasks.
 

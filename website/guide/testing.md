@@ -4,7 +4,7 @@ description: "Reference for @gtkx/testing and @gtkx/vitest: headless GTK4 setup,
 
 # Testing
 
-GTKX tests run against real GTK4. There is no fake widget tree and no mocked reconciler. `render` mounts your components into live GObject widgets inside a headless Wayland display. Queries walk the live widget tree and match on each widget's accessible role, name, and state, and `userEvent` dispatches the same gestures and key events a person would produce.
+GTKX tests run on the widget set GNOME ships. `render` mounts your components into GObject widgets inside a headless Wayland display, driving them through the same reconciler that runs your app in production. Queries walk that live widget tree and match on each widget's accessible role, name, and state, and `userEvent` dispatches the same gestures and key events a person would produce.
 
 The API is deliberately shaped like React Testing Library. If you have tested a React web app, you already know the model: query by role and accessible name, interact through user events, assert on what the user can observe.
 
@@ -45,7 +45,7 @@ Importing `@gtkx/testing` registers everything else for you: it hooks `afterEach
 
 ## Rendering and cleanup
 
-`render` is async and must be awaited, because mounting real widgets means flushing React's work through the live GTK4 loop before the promise resolves:
+`render` is async and must be awaited, because mounting widgets means flushing React's work through the live GTK4 loop before the promise resolves:
 
 ```tsx
 import { render, screen } from "@gtkx/testing";
@@ -103,11 +103,11 @@ Every `userEvent` helper first waits for the widget to be actionable, polling fo
 
 The surface, grouped by what it drives:
 
-- **Clicking**: `click`, `dblClick`, `tripleClick`. A `GtkButton` receives a real press/release gesture, a `GtkSwitch` toggles, and anything else is activated directly or through its nearest clickable ancestor.
-- **Text**: `type(widget, text, options?)`, `clear`, `copy`, `cut`, `paste(widget, text?)`. All five require a `Gtk.Editable` or `Gtk.TextView`. `copy` and `cut` write to the real clipboard, and `paste` reads from it when you omit `text`. The clipboard is reset between tests.
-- **Keyboard**: `keyboard(widget, input)` types characters and named keys (`{Enter}`, `{Tab}`, `{Escape}`, `{Backspace}`, arrows, `{Home}`, `{PageUp}`, `{F1}` through `{F12}`, and held modifiers like `{Control>}a{/Control}`). Key events are emitted on a key controller and matched against the widget's and its ancestors' shortcut controllers, so real GTK4 key bindings fire: an `{ArrowUp}` genuinely moves a `GtkScale`. `tab(widget, { shift })` moves focus.
-- **Pointer**: `pointer(widget, input)` supports left-button tokens only (`"click"`, `"down"`, `"up"`, and their `[MouseLeft]` forms). Pointer input goes through `GestureClick` controller signals rather than real `GdkEvent`s, so coordinates, motion, and other buttons cannot be synthesized headless.
-- **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The last five drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads real pointer coordinates; use `slide(range, value)` or `keyboard` for sliders.
+- **Clicking**: `click`, `dblClick`, `tripleClick`. A `GtkButton` receives a press/release gesture, a `GtkSwitch` toggles, and anything else is activated directly or through its nearest clickable ancestor.
+- **Text**: `type(widget, text, options?)`, `clear`, `copy`, `cut`, `paste(widget, text?)`. All five require a `Gtk.Editable` or `Gtk.TextView`. `copy` and `cut` write to the display's clipboard, and `paste` reads from it when you omit `text`. The clipboard is reset between tests.
+- **Keyboard**: `keyboard(widget, input)` types characters and named keys (`{Enter}`, `{Tab}`, `{Escape}`, `{Backspace}`, arrows, `{Home}`, `{PageUp}`, `{F1}` through `{F12}`, and held modifiers like `{Control>}a{/Control}`). Key events are emitted on a key controller and matched against the widget's and its ancestors' shortcut controllers, so GTK4 key bindings fire: an `{ArrowUp}` moves a `GtkScale`. `tab(widget, { shift })` moves focus.
+- **Pointer**: `pointer(widget, input)` supports left-button tokens only (`"click"`, `"down"`, `"up"`, and their `[MouseLeft]` forms). Pointer input goes through `GestureClick` controller signals rather than `GdkEvent`s, so coordinates, motion, and other buttons cannot be synthesized headless.
+- **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The last five drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads pointer coordinates the harness cannot synthesize; use `slide(range, value)` or `keyboard` for sliders.
 - **Drag and drop**: `drop(widget, content)` and `dragAndDrop(source, target, content)` deliver a `GObject.Value` (strings, numbers, and booleans are wrapped automatically) to the target's `GtkDropTarget`; `dragAndDrop` also verifies the source carries a `GtkDragSource`.
 - **Scrolling and selection**: `scroll(widget, { x, y })` adjusts the nearest scrollable's adjustments, `slide(range, value)` jumps a range, and `selectOptions` selects by index in `GtkListView`, `GtkGridView`, `GtkColumnView`, `GtkDropDown`, `GtkComboBox`, and `GtkListBox` (list views through their selection models); `deselectOptions` deselects in the list views and `GtkListBox`.
 
@@ -179,7 +179,7 @@ describe("Counter", () => {
 });
 ```
 
-Nothing here is simulated: the click drives a real `GtkGestureClick` on a real `GtkButton`, React re-renders, GTK4 relabels the `GtkLabel`, and `findByText` reads the result off the live widget. The same pattern scales from a counter to the full Tasks app in the [tutorial](/tutorial/testing).
+Every step runs the production path: the click drives a `GtkGestureClick` on a `GtkButton`, React re-renders, GTK4 relabels the `GtkLabel`, and `findByText` reads the result off the live widget. The same pattern scales from a counter to the full Tasks app in the [tutorial](/tutorial/testing).
 
 ## Next
 

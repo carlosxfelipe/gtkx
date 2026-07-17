@@ -12,11 +12,12 @@ const FadeList = ({ items, onExitComplete }: { items: string[]; onExitComplete: 
             {items.map((id) => (
                 <animated.GtkLabel
                     key={id}
-                    label={id}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.05 }}
-                />
+                >
+                    {id}
+                </animated.GtkLabel>
             ))}
         </AnimatePresence>
     </GtkBox>
@@ -46,17 +47,18 @@ describe("AnimatePresence (per-target exit transition)", () => {
         function App({ empty }: { empty: boolean }) {
             return (
                 <GtkBox>
-                    {empty ? null : <GtkLabel label="Row" />}
+                    {empty ? null : <GtkLabel>Row</GtkLabel>}
                     <AnimatePresence initial={false} onExitComplete={onExitComplete}>
                         {empty ? (
                             <animated.GtkLabel
                                 key="empty"
-                                label="Empty"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0, transition: { duration: 0 } }}
                                 transition={{ duration: 0.2 }}
-                            />
+                            >
+                                Empty
+                            </animated.GtkLabel>
                         ) : null}
                     </AnimatePresence>
                 </GtkBox>
@@ -101,13 +103,14 @@ describe("AnimatePresence (re-entry)", () => {
                         {show && (
                             <animated.GtkLabel
                                 key="reenter"
-                                label="Reenter"
                                 initial={false}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.3 }}
                                 onAnimationStart={onAnimationStart}
-                            />
+                            >
+                                Reenter
+                            </animated.GtkLabel>
                         )}
                     </AnimatePresence>
                 </GtkBox>
@@ -134,11 +137,12 @@ describe("AnimatePresence (wait mode)", () => {
                     <AnimatePresence mode="wait">
                         <animated.GtkLabel
                             key={id}
-                            label={id}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.1 }}
-                        />
+                        >
+                            {id}
+                        </animated.GtkLabel>
                     </AnimatePresence>
                 </GtkBox>
             );
@@ -168,11 +172,12 @@ describe("AnimatePresence (premature completion guard)", () => {
                         {items.map((id) => (
                             <animated.GtkLabel
                                 key={id}
-                                label={id === "keep" ? `keep-${tick}` : id}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.3 }}
-                            />
+                            >
+                                {id === "keep" ? `keep-${tick}` : id}
+                            </animated.GtkLabel>
                         ))}
                     </AnimatePresence>
                 </GtkBox>

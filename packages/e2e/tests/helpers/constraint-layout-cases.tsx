@@ -64,7 +64,11 @@ export const NamedLabel = ({
     id: string;
     label: string;
     labelRef?: RefObject<Gtk.Label | null>;
-}): ReactNode => <GtkLabel ref={labelRef} name={id} label={label} />;
+}): ReactNode => (
+    <GtkLabel ref={labelRef} name={id}>
+        {label}
+    </GtkLabel>
+);
 
 export const NamedButton = ({ id, label }: { id: string; label: string }): ReactNode => (
     <GtkButton name={id} label={label} />

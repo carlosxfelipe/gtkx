@@ -104,7 +104,7 @@ Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to
 
 ## DropDown
 
-`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus up to three factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection; `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
+`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus up to three factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
 
 ```tsx
 import { DropDown } from "@gtkx/components";
@@ -178,8 +178,12 @@ import * as Gsk from "@gtkx/gi/gsk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
 <Fixed>
-    <Fixed.Child component={GtkLabel} x={20} y={40} label="Placed at x/y" />
-    <Fixed.Child component={GtkLabel} transform={Gsk.Transform.new().rotate(45)} label="Rotated" />
+    <Fixed.Child component={GtkLabel} x={20} y={40}>
+        Placed at x/y
+    </Fixed.Child>
+    <Fixed.Child component={GtkLabel} transform={Gsk.Transform.new().rotate(45)}>
+        Rotated
+    </Fixed.Child>
 </Fixed>
 ```
 

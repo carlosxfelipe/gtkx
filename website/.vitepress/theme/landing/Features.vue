@@ -4,14 +4,14 @@ import Card from "../components/Card.vue";
 const features = [
     {
         icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
-        title: "Real native widgets",
-        body: "Every element is a real GObject: a GtkButton, an AdwHeaderBar. Your app is built from the same widgets GNOME ships.",
+        title: "Native widgets",
+        body: "Every element is a GObject: a GtkButton, an AdwHeaderBar. Your app is built from the same widgets GNOME ships.",
         href: "/tutorial/app-shell",
     },
     {
         icon: "M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3",
         title: "Powered by Rust",
-        body: "A native Rust core built on libffi calls into GTK4 and Adwaita directly, with widgets living in native memory instead of the JavaScript heap.",
+        body: "A native Rust core built on libffi calls into GTK4 and Adwaita directly, with your widgets living in native memory.",
         href: "/guide/why-gtkx",
     },
     {
@@ -29,7 +29,7 @@ const features = [
     {
         icon: "M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
         title: "Testing, built in",
-        body: "Query and drive real widgets in your tests. Every worker gets its own headless Wayland display, started and torn down for you. It runs on Vitest.",
+        body: "Query and drive GTK4 widgets in your tests. Every worker gets its own headless Wayland display, started and torn down for you. It runs on Vitest.",
         href: "/guide/testing",
     },
     {
@@ -46,7 +46,7 @@ const features = [
     <div class="features__head section-head">
       <p class="overline">Why GTKX</p>
       <h2 class="section-title">Native. Declarative. <span class="accent">Typed.</span></h2>
-      <p class="section-sub">Real GTK4 widgets, driven by React. No browser engine in the process.</p>
+      <p class="section-sub">GTK4 widgets, driven by React. What you ship is a GNOME app.</p>
     </div>
     <div class="features__grid">
       <Card v-for="f in features" :key="f.title" :href="f.href" interactive glow padding="1.6rem">

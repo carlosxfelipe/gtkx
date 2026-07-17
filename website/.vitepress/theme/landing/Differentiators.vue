@@ -22,10 +22,10 @@ test("increments on click", async () => {
     </div>
     <div class="diff__grid">
       <div class="diff__card">
-        <h3 class="diff__name">Test real widgets</h3>
+        <h3 class="diff__name">Test the widgets GNOME ships</h3>
         <p class="diff__body">
-          A Testing-Library harness over real GObjects: accessibility-first queries,
-          <code class="l-code">userEvent</code> through real GTK4 event controllers, and screenshots, all inside
+          A Testing-Library harness over GObjects: accessibility-first queries,
+          <code class="l-code">userEvent</code> through GTK4 event controllers, and screenshots, all inside
           React <code class="l-code">act()</code>, on a per-worker headless display.
         </p>
         <CodeBlock title="Counter.test.tsx" :code="testCode" />

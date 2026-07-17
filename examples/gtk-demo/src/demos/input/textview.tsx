@@ -128,7 +128,7 @@ function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<G
     const iter = buffer.getStartIter();
     buffer.insert(iter, "This buffer is shared by a set of nested text views.\n Nested view:\n", -1);
     const anchor = buffer.createChildAnchor(iter);
-    buffer.insert(iter, "\nDon't do this in real applications, please.\n", -1);
+    buffer.insert(iter, "\nDon't do this in production applications, please.\n", -1);
 
     const view = new Gtk.TextView();
     view.setBuffer(buffer);

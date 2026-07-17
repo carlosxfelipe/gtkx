@@ -139,7 +139,7 @@ The children are `AdwActionRow`s, and `AdwActionRow` subclasses `GtkListBoxRow` 
 />
 ```
 
-Passing `title` as a prop (not children) is the Adwaita convention: `AdwActionRow` is a preferences-style row where the title text is a real property, and GTKX surfaces it as a plain string prop.
+Passing `title` as a prop (not children) is the Adwaita convention: `AdwActionRow` is a preferences-style row where the title text is a GObject property, and GTKX surfaces it as a plain string prop.
 
 ### Colored list dots
 
@@ -256,10 +256,10 @@ useEffect(() => {
 }, [activeIndex]);
 ```
 
-`listRef` is a `useRef<Gtk.ListBox | null>(null)`; because `ref` on a GTKX component resolves to the live GI instance, `listRef.current` is a real `Gtk.ListBox` and you can call GTK4 methods on it directly (`getRowAtIndex`, `selectRow`). The effect keys off `activeIndex`, which is recomputed each render by matching `keyOf` against the incoming `selection` prop.
+`listRef` is a `useRef<Gtk.ListBox | null>(null)`; because `ref` on a GTKX component resolves to the live GI instance, `listRef.current` is a `Gtk.ListBox` and you can call GTK4 methods on it directly (`getRowAtIndex`, `selectRow`). The effect keys off `activeIndex`, which is recomputed each render by matching `keyOf` against the incoming `selection` prop.
 
 ::: info Breaking the echo
-These two directions form a loop: the effect calls `selectRow`, which makes the list box emit `row-selected`, which runs the `onRowSelected` handler. Without a guard that would fire `onSelect` right back with the value that just arrived. The guard `keyOf(entry.selection) !== keyOf(selection)` is what stops it: when the row that got selected already matches the current `selection` prop, the handler returns without calling `onSelect`. Real user clicks land on a *different* row, so `keyOf` differs and the update propagates; the programmatic echo lands on the same row, so `keyOf` matches and it is swallowed.
+These two directions form a loop: the effect calls `selectRow`, which makes the list box emit `row-selected`, which runs the `onRowSelected` handler. Without a guard that would fire `onSelect` right back with the value that just arrived. The guard `keyOf(entry.selection) !== keyOf(selection)` is what stops it: when the row that got selected already matches the current `selection` prop, the handler returns without calling `onSelect`. A user click lands on a *different* row, so `keyOf` differs and the update propagates; the programmatic echo lands on the same row, so `keyOf` matches and it is swallowed.
 :::
 
 ## Next

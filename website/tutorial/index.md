@@ -1,17 +1,17 @@
 ---
-description: "Tour a complete GNOME Tasks app built with GTKX, where real GTK4 and Adwaita widgets are rendered from the React components you already know."
+description: "Tour a complete GNOME Tasks app built with GTKX, where GTK4 and Adwaita widgets are rendered from the React components you already know."
 ---
 
 # Build a Tasks App with GTKX
 
-**Tasks** is a complete, real GNOME task manager (application ID `com.gtkx.tutorial`) built with GTKX. It looks and behaves like a native GNOME app because it *is* one: every list, row, header bar, and dialog you see is a real GTK4 or Adwaita widget, driven from React components you already know how to write.
+**Tasks** is a complete GNOME task manager (application ID `com.gtkx.tutorial`) built with GTKX. It looks and behaves like a native GNOME app because it *is* one: every list, row, header bar, and dialog you see is a GTK4 or Adwaita widget, driven from React components you already know how to write.
 
 <picture>
   <source srcset="/tasks-screenshot.webp" type="image/webp" />
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets taken from `examples/tutorial`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwHeaderBar`, `GtkListBox`, and friends.
+The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets taken from `examples/tutorial`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*. Your JSX becomes GObject instances: `AdwApplicationWindow`, `AdwHeaderBar`, `GtkListBox`, and friends.
 
 ## What Tasks is
 
@@ -50,7 +50,7 @@ createRoot().render(<App />);
 
 ## What GTKX is
 
-GTKX is a React reconciler that renders real GTK4 and Adwaita widgets instead of the DOM (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from three paths: `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `Dialog`, under `@gtkx/components/adw`), navigators from `@gtkx/navigation`, and animation helpers from `@gtkx/animated`.
+GTKX is a React reconciler that renders GTK4 and Adwaita widgets, the widget set GNOME ships (see [Why GTKX](/guide/why-gtkx)). The intrinsic elements you import throughout this tutorial come from three paths: `@gtkx/jsx/adw` for Adwaita, `@gtkx/jsx/gtk` for GTK4, and `@gtkx/jsx/gio` for Gio. High-level components come from `@gtkx/components` (with the Adwaita ones, like `Dialog`, under `@gtkx/components/adw`), navigators from `@gtkx/navigation`, and animation helpers from `@gtkx/animated`.
 
 ::: info React knowledge transfers directly
 State, effects, refs, context, keys, and controlled components all work exactly as they do on the web. The parts to learn are on the GTK4 side: which widget does what, how Adwaita's adaptive containers behave, and the handful of GTKX conventions for slots, refs, and signals. This tutorial leads with those.
@@ -98,7 +98,7 @@ This tutorial moves from the outside of the app inward, then out to shipping. Th
 13. [Testing the App](/tutorial/testing)
 14. [Packaging and Shipping](/tutorial/packaging)
 
-You can read it straight through or jump to whichever feature you need. Every page except [Testing the App](/tutorial/testing) quotes the actual source, so you can always open the matching file under `examples/tutorial` and follow along. The testing page's examples are illustrative rather than quoted.
+You can read it straight through or jump to whichever feature you need. Every page quotes the source, so you can always open the matching file under `examples/tutorial` and follow along.
 
 ## Next
 

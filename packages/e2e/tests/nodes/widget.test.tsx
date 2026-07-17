@@ -798,7 +798,7 @@ describe("widget - child management > GtkBox", () => {
             return (
                 <GtkBox>
                     {Array.from({ length: count }, (_, i) => (
-                        <GtkLabel key={`label-${i}`}>{`Label ${i}`}</GtkLabel>
+                        <GtkLabel key={`label-${i}`}>Label {i}</GtkLabel>
                     ))}
                 </GtkBox>
             );

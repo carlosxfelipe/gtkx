@@ -1,10 +1,10 @@
 ---
-description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine, and animate them declaratively with @gtkx/animated, which runs framer-motion against real GTK4 widgets."
+description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine, and animate them declaratively with @gtkx/animated, which runs framer-motion against GTK4 widgets."
 ---
 
 # CSS and Animations
 
-GTK4 styles widgets with a real CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
+GTK4 styles widgets with a CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
 
 Two packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is framer-motion for GTK4: you declare `initial`, `animate`, and `exit` targets on a widget (plus gestures, drag, and layout animations), and framer-motion's engine drives the frames, rendered as GTK4 CSS.
 
@@ -38,7 +38,7 @@ A single shared `Gtk.CssProvider` is attached to the default display at `STYLE_P
 
 ## GTK4 CSS is its own dialect
 
-The syntax is CSS, but the vocabulary is GTK4's. Selectors match widget node names (`window`, `button`, `entry`) rather than HTML tags. The set of supported properties is GTK4's own: there is no `display: flex`, because layout belongs to containers and layout managers. The theme exports its palette as CSS variables you reference with `var()`, as `alpha(var(--accent-bg-color), 0.08)` does above.
+The syntax is CSS, but the vocabulary is GTK4's. Selectors match widget node names: `window`, `button`, `entry`. The set of supported properties is GTK4's own: there is no `display: flex`, because layout belongs to containers and layout managers. The theme exports its palette as CSS variables you reference with `var()`, as `alpha(var(--accent-bg-color), 0.08)` does above.
 
 Treat the [GTK4 CSS overview](https://docs.gtk.org/gtk4/css-overview.html) and [property reference](https://docs.gtk.org/gtk4/css-properties.html) as the source of truth for what you can write, and the Adwaita [CSS variables](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/css-variables.html) as your palette. `@gtkx/css` also protects GTK4's older `@named-color` syntax from its own compiler: any `@identifier` that is not `define-color`, `import`, `keyframes`, or `media` is treated as a named color rather than an at-rule.
 
@@ -143,7 +143,7 @@ import { animated } from "@gtkx/animated";
 />;
 ```
 
-The engine is framer-motion's own, running its frame loop in JavaScript; `@gtkx/animated` renders each frame's values as GTK4 CSS instead of DOM styles. Each animated widget gets a unique `gtkx-anim-<id>` class. Its rule lives in a shared animation provider registered one priority above the `css()` provider, so animated values always win over your static styles. The class and its rule are removed on unmount.
+The engine is framer-motion's own, running its frame loop in JavaScript. `@gtkx/animated` renders each frame's values as GTK4 CSS. Each animated widget gets a unique `gtkx-anim-<id>` class. Its rule lives in a shared animation provider registered one priority above the `css()` provider, so animated values always win over your static styles. The class and its rule are removed on unmount.
 
 ## Tweens and springs
 
@@ -156,11 +156,12 @@ Both kinds accept `delay` in seconds, `repeat` (additional repetitions, `Infinit
 
 ```tsx
 <animated.GtkLabel
-    label="Bouncy"
     initial={{ x: -100 }}
     animate={{ x: 0 }}
     transition={{ type: "spring", damping: 6, stiffness: 200, mass: 1 }}
-/>;
+>
+    Bouncy
+</animated.GtkLabel>;
 ```
 
 ::: tip Reduced motion is handled globally
@@ -180,12 +181,13 @@ import { GtkBox } from "@gtkx/jsx/gtk";
         {showToast && (
             <animated.GtkLabel
                 key="toast"
-                label="Saved"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
                 transition={{ duration: 0.2 }}
-            />
+            >
+                Saved
+            </animated.GtkLabel>
         )}
     </AnimatePresence>
 </GtkBox>;
@@ -251,12 +253,12 @@ const areaRef = useRef<Gtk.Box | null>(null);
 
 <GtkBox ref={areaRef} heightRequest={200}>
     <animated.GtkBox drag dragConstraints={areaRef} dragElastic={0.2}>
-        <GtkLabel label="Drag me" />
+        <GtkLabel>Drag me</GtkLabel>
     </animated.GtkBox>
 </GtkBox>;
 ```
 
-The gesture is a real `Gtk.GestureDrag` in the capture phase. It claims the GTK4 event sequence only after the pointer has moved 3 pixels, so plain clicks fall through to the children: a draggable card with a button inside stays clickable.
+The gesture is a `Gtk.GestureDrag` in the capture phase. It claims the GTK4 event sequence only after the pointer has moved 3 pixels, so plain clicks fall through to the children: a draggable card with a button inside stays clickable.
 
 To start a drag from a handle rather than the widget itself, `useDragControls` returns a controls object you pass as `dragControls`, and `pointerEventFromController` converts a live GTK4 gesture into the pointer event that `start` expects:
 
@@ -277,7 +279,7 @@ const Card = () => {
                 }
             />
             <animated.GtkBox drag="y" dragControls={controls} dragListener={false}>
-                <GtkLabel label="Dragged by the handle" />
+                <GtkLabel>Dragged by the handle</GtkLabel>
             </animated.GtkBox>
         </GtkBox>
     );
@@ -292,7 +294,7 @@ The `layout` prop animates a widget between layouts. When a re-render moves or r
 
 ```tsx
 <animated.GtkBox layout>
-    <GtkLabel label="I glide when the layout shifts" />
+    <GtkLabel>I glide when the layout shifts</GtkLabel>
 </animated.GtkBox>;
 ```
 
