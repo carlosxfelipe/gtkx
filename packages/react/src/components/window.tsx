@@ -1,28 +1,34 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
+import { type ElementType, type ReactNode, type Ref, useCallback, useState } from "react";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 
-export const createWindowComponent = <P extends { children?: ReactNode }>(
-    Component: ElementType,
-): ((props: P) => ReactNode) => {
-    return (props: P): ReactNode => {
-        const externalRef = (props as { ref?: Ref<Gtk.Window | null> }).ref;
-        const [window, setWindow] = useState<Gtk.Window | null>(null);
-        const ref = useMergeRefs(externalRef, setWindow);
+type WindowComponentProps<T extends Gtk.Window> = {
+    ref?: Ref<T | null>;
+};
 
-        useLayoutEffect(() => {
-            if (!window) return;
+export const createWindowComponent = <T extends Gtk.Window>(
+    Component: ElementType,
+): ((props: WindowComponentProps<T>) => ReactNode) => {
+    return ({ ref, ...rest }: WindowComponentProps<T>): ReactNode => {
+        const [window, setWindow] = useState<T | null>(null);
+
+        const handleMount = useCallback((window: T) => {
             window.present();
+            setWindow(window);
+
             return () => {
                 window.setDefaultWidget(null);
                 window.destroy();
+                setWindow(null);
             };
-        }, [window]);
+        }, []);
+
+         const mergedRef = useMergeRefs(ref, handleMount);
 
         return (
             <ParentWindowContext.Provider value={window}>
-                <Component {...props} ref={ref} />
+                <Component ref={mergedRef} {...rest} />
             </ParentWindowContext.Provider>
         );
     };

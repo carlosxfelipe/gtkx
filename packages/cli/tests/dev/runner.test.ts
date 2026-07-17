@@ -55,7 +55,7 @@ const buildHarness = (
     const server = createFakeServer();
     const plugins = [
         { name: "gtkx:gsettings" },
-        { name: "gtkx:assets" },
+        { name: "gtkx:css" },
         { name: "gtkx:swc-refresh" },
         { name: "gtkx:refresh-runtime" },
         { name: "gtkx:react-dom-prebundle" },
@@ -150,7 +150,7 @@ describe("createDevRunner (vite config)", () => {
         const names = (config.plugins as Array<{ name: string }>).map((p) => p.name);
         expect(names).toEqual([
             "gtkx:gsettings",
-            "gtkx:assets",
+            "gtkx:css",
             "gtkx:swc-refresh",
             "gtkx:refresh-runtime",
             "gtkx:react-dom-prebundle",

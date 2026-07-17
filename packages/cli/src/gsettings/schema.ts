@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, type Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, type Dirent, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { sortStrings, warn } from "@gtkx/utils";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
+import { removeTempDir } from "../internal/staging-dir.js";
+import { compileSchemas } from "./compile.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
@@ -57,6 +60,19 @@ export const findSchemaFiles = (dataDir: string): string[] => {
     };
     walk(dataDir);
     return sortStrings(found);
+};
+
+export const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): string | null => {
+    if (dataDir === null) return null;
+    const schemaFiles = findSchemaFiles(join(root, dataDir));
+    if (schemaFiles.length === 0) return null;
+
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
+    for (const filePath of schemaFiles) stageSchema(dir, filePath);
+    compileSchemas(dir);
+    process.once("exit", () => removeTempDir(dir));
+
+    return dir;
 };
 
 export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");

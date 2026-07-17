@@ -107,7 +107,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
             "gtkx:gsettings",
             "gtkx:icons",
             "gtkx:gresources",
-            "gtkx:assets",
+            "gtkx:css",
             "gtkx:react-compiler",
             "gtkx:swc-refresh",
             "gtkx:refresh-runtime",

@@ -8,6 +8,8 @@ import { type CompositorId, type HeadlessOptions, STATIC_HEADLESS_ENV } from "./
 
 export type { CompositorId, HeadlessOptions };
 
+export const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
+
 /**
  * Options accepted by the {@link gtkx} Vitest plugin. Every headless display
  * setting is optional and falls back to a built-in default when omitted.
@@ -56,7 +58,7 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
                     env: STATIC_HEADLESS_ENV,
                     server: {
                         deps: {
-                            inline: [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/],
+                            inline: GTKX_INLINE_DEPS,
                         },
                     },
                 },

@@ -6,7 +6,6 @@ import { gtkxIcons } from "../../src/vite-plugins/icons.js";
 import { callOutputOptions, expectComposedAsyncBanner, expectComposedBanner } from "./output-options.js";
 
 type ConfigHook = (config: { root?: string }) => void;
-type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
 type BuildEndHook = (this: { emitFile: (asset: unknown) => void }) => void;
 
 const ICON_REL_PATH = join("icons", "hicolor", "scalable", "apps", "com.example.app.svg");
@@ -24,10 +23,9 @@ describe("gtkxIcons", () => {
         writeFileSync(full, "<svg/>");
     };
 
-    const configuredPlugin = (command: "build" | "serve"): ReturnType<typeof gtkxIcons> => {
+    const configuredPlugin = (): ReturnType<typeof gtkxIcons> => {
         const plugin = gtkxIcons();
         (plugin.config as ConfigHook)({ root: projectDir });
-        (plugin.configResolved as ConfigResolvedHook)({ command });
         return plugin;
     };
 
@@ -39,16 +37,17 @@ describe("gtkxIcons", () => {
         rmSync(projectDir, { recursive: true, force: true });
     });
 
-    it("returns a plugin with the expected name and pre-enforce", () => {
+    it("returns a plugin with the expected name, pre-enforce, and build-only apply", () => {
         const plugin = gtkxIcons();
         expect(plugin.name).toBe("gtkx:icons");
         expect(plugin.enforce).toBe("pre");
+        expect(plugin.apply).toBe("build");
     });
 
     it("emits every data icon as a build asset preserving the theme layout", () => {
         writeManifest();
         writeIcon();
-        const plugin = configuredPlugin("build");
+        const plugin = configuredPlugin();
         const emitFile = vi.fn();
 
         (plugin.buildEnd as BuildEndHook).call({ emitFile });
@@ -62,18 +61,7 @@ describe("gtkxIcons", () => {
 
     it("emits nothing without a data icons directory", () => {
         writeManifest();
-        const plugin = configuredPlugin("build");
-        const emitFile = vi.fn();
-
-        (plugin.buildEnd as BuildEndHook).call({ emitFile });
-
-        expect(emitFile).not.toHaveBeenCalled();
-    });
-
-    it("emits nothing outside build mode", () => {
-        writeManifest();
-        writeIcon();
-        const plugin = configuredPlugin("serve");
+        const plugin = configuredPlugin();
         const emitFile = vi.fn();
 
         (plugin.buildEnd as BuildEndHook).call({ emitFile });
@@ -84,7 +72,7 @@ describe("gtkxIcons", () => {
     it("prepends the XDG data dirs banner to build output options when icons exist", () => {
         writeManifest();
         writeIcon();
-        const plugin = configuredPlugin("build");
+        const plugin = configuredPlugin();
 
         const result = callOutputOptions(plugin, {});
 
@@ -95,7 +83,7 @@ describe("gtkxIcons", () => {
     it("keeps an existing banner ahead of nothing by combining both", () => {
         writeManifest();
         writeIcon();
-        const plugin = configuredPlugin("build");
+        const plugin = configuredPlugin();
 
         const result = callOutputOptions(plugin, { banner: "existing;" });
 
@@ -106,26 +94,18 @@ describe("gtkxIcons", () => {
     it("composes a function banner by prepending the XDG banner to its result", async () => {
         writeManifest();
         writeIcon();
-        await expectComposedBanner(configuredPlugin("build"), "XDG_DATA_DIRS");
+        await expectComposedBanner(configuredPlugin(), "XDG_DATA_DIRS");
     });
 
     it("awaits an async original banner function", async () => {
         writeManifest();
         writeIcon();
-        await expectComposedAsyncBanner(configuredPlugin("build"), "XDG_DATA_DIRS");
+        await expectComposedAsyncBanner(configuredPlugin(), "XDG_DATA_DIRS");
     });
 
     it("leaves output options untouched without icons", () => {
         writeManifest();
-        const plugin = configuredPlugin("build");
-
-        expect(callOutputOptions(plugin, {})).toBeUndefined();
-    });
-
-    it("leaves output options untouched outside build mode", () => {
-        writeManifest();
-        writeIcon();
-        const plugin = configuredPlugin("serve");
+        const plugin = configuredPlugin();
 
         expect(callOutputOptions(plugin, {})).toBeUndefined();
     });

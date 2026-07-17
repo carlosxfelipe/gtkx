@@ -57,6 +57,7 @@ export function gtkxNative(root: string): Plugin {
     return {
         name: "gtkx:native",
         enforce: "pre",
+        apply: "build",
 
         buildStart() {
             this.emitFile({ type: "asset", fileName: "gtkx.node", source: resolvePlatformBinary(projectRequire) });

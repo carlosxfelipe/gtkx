@@ -7,6 +7,7 @@ import { compileSchemas } from "../gsettings/compile.js";
 import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
 import { renderRuntimeModule } from "../gsettings/render.js";
 import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../gsettings/schema.js";
+import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
 import { createVirtualNamespace } from "./virtual-module.js";
@@ -191,11 +192,7 @@ export function gtkxGSettings(): Plugin {
 
         outputOptions(options) {
             if (!state.isBuild) return;
-            const existing = options.banner;
-            if (typeof existing === "function") {
-                return { ...options, banner: async (chunk) => `${SCHEMA_ENV_BANNER}\n${await existing(chunk)}` };
-            }
-            return { ...options, banner: existing ? `${SCHEMA_ENV_BANNER}\n${existing}` : SCHEMA_ENV_BANNER };
+            return prependBanner(options, SCHEMA_ENV_BANNER);
         },
 
         async resolveId(source, importer, options) {

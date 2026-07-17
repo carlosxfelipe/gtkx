@@ -131,8 +131,8 @@ const resolveElementComponent = (types: Set<string>): ElementComponentName | und
 const renderElementComponentExport = (glibName: string, wrapper: ElementComponentName | undefined): string => {
     const propsType = `${glibName}Props`;
     if (wrapper === undefined) {
-        return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent<${propsType}>(${sourceStringLiteral(glibName)});`;
+        return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent(${sourceStringLiteral(glibName)});`;
     }
     const annotation = `(props: ${propsType}) => ReactNode`;
-    return `export const ${glibName}: ${annotation} = ${wrapper}<${propsType}>(createElementComponent<${propsType}>(${sourceStringLiteral(glibName)}));`;
+    return `export const ${glibName}: ${annotation} = ${wrapper}(createElementComponent(${sourceStringLiteral(glibName)}));`;
 };

@@ -62,6 +62,9 @@ importers:
       '@gtkx/runtime':
         specifier: workspace:*
         version: link:packages/runtime
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:packages/vitest
       '@swc/core':
         specifier: ^1.15.43
         version: 1.15.43

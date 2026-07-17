@@ -1,61 +1,40 @@
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
-import { type ElementType, type ReactNode, type Ref, useCallback, useLayoutEffect, useState } from "react";
+import { type ElementType, type ReactNode, type Ref, useCallback, useState } from "react";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergeRefs } from "../hooks/use-merge-refs.js";
 
-type ApplicationOf<P> = P extends { ref?: Ref<infer T | null> }
-    ? T extends Gtk.Application
-        ? T
-        : Gtk.Application
-    : Gtk.Application;
-
-const useApplicationInstance = <T extends Gtk.Application>(
-    ref: Ref<T | null> | undefined,
-): [Gtk.Application | null, (instance: T | null) => void] => {
-    const [app, setApp] = useState<Gtk.Application | null>(null);
-    const [registeredApp, setRegisteredApp] = useState<Gtk.Application | null>(null);
-
-    const captureInstance = useCallback((instance: T | null) => {
-        setApp(instance);
-        if (!instance) setRegisteredApp(null);
-    }, []);
-    const captureApp = useMergeRefs<T>(ref, captureInstance);
-
-    useLayoutEffect(() => {
-        if (!app) return;
-        runApplication(app);
-        setRegisteredApp(app);
-        return () => {
-            quitApplication(app);
-        };
-    }, [app]);
-
-    return [registeredApp, captureApp] as const;
-};
-
-const ApplicationChildren = ({ app, children }: { app: Gtk.Application | null; children: ReactNode }): ReactNode =>
-    app && <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider>;
+const POST_ACTIVATE_PROPS = new Set(["menubar"])
 
 type ApplicationComponentProps<T extends Gtk.Application> = {
     applicationId?: string | null | undefined;
     children?: ReactNode | undefined;
-    menubar?: Gio.MenuModel | ReactNode | undefined;
     ref?: Ref<T | null> | undefined;
 };
 
-export const createApplicationComponent = <P extends ApplicationComponentProps<ApplicationOf<P>>>(
+export const createApplicationComponent = <T extends Gtk.Application>(
     Component: ElementType,
-): ((props: P) => ReactNode) => {
-    return (props: P): ReactNode => {
-        const { applicationId = defaultApplicationId, children, menubar, ref, ...rest } = props;
-        const [app, captureApp] = useApplicationInstance<ApplicationOf<P>>(ref);
-        const menubarProps = app ? { menubar } : {};
+): ((props: ApplicationComponentProps<T>) => ReactNode) => {
+    return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps<T>): ReactNode => {
+        const [app, setApp] = useState<T | null>(null);
+
+        const handleMount = useCallback((instance: T) => {
+            runApplication(instance);
+            setApp(instance);
+
+            return () => {
+                quitApplication(instance);
+                setApp(null);
+            };
+        }, []);
+
+        const mergedRef = useMergeRefs<T>(ref, handleMount);
+        const appliedProps = app ? rest : Object.fromEntries(Object.entries(rest).filter(([key]) => !POST_ACTIVATE_PROPS.has(key)));
+
         return (
-            <Component ref={captureApp} {...rest} applicationId={applicationId} {...menubarProps}>
-                <ApplicationChildren app={app}>{children}</ApplicationChildren>
+            <Component ref={mergedRef} applicationId={applicationId} {...appliedProps}>
+                {app ? <ApplicationContext.Provider value={app}>{children}</ApplicationContext.Provider> : null}
             </Component>
         );
     };

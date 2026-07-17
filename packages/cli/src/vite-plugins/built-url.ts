@@ -3,6 +3,7 @@ import type { Plugin } from "vite";
 export function gtkxBuiltUrl(assetBase?: string): Plugin {
     return {
         name: "gtkx:built-url",
+        apply: "build",
 
         config(userConfig) {
             if (userConfig.experimental?.renderBuiltUrl) {

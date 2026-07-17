@@ -7,6 +7,7 @@ export function gtkxSwcRefresh(): Plugin {
     return {
         name: "gtkx:swc-refresh",
         enforce: "pre",
+        apply: "serve",
 
         async transform(code, id, transformOptions) {
             if (!shouldTransformForRefresh(id, transformOptions)) {
@@ -44,6 +45,7 @@ export function gtkxRefreshRuntime(): Plugin {
     return {
         name: "gtkx:refresh-runtime",
         enforce: "post",
+        apply: "serve",
 
         resolveId(id) {
             if (id !== REFRESH_RUNTIME_SPECIFIER) return undefined;

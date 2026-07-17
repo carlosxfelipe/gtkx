@@ -4,12 +4,12 @@ import { createVirtualNamespace } from "./virtual-module.js";
 
 const CSS_RE = /\.css$/i;
 const INJECT_SUFFIX = "?inject";
-const VIRTUAL_PREFIX = "\0gtkx:";
+const VIRTUAL_PREFIX = "\0gtkx-css:";
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-export function gtkxAssets(): Plugin {
+export function gtkxCss(): Plugin {
     return {
-        name: "gtkx:assets",
+        name: "gtkx:css",
         enforce: "pre",
 
         async resolveId(source, importer, options) {

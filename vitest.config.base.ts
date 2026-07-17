@@ -1,3 +1,4 @@
+import { GTKX_INLINE_DEPS } from "@gtkx/vitest";
 import { defineConfig } from "vitest/config";
 
 export const sourceResolveConfig = defineConfig({
@@ -9,7 +10,7 @@ export const sourceResolveConfig = defineConfig({
     test: {
         server: {
             deps: {
-                inline: [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/],
+                inline: GTKX_INLINE_DEPS,
             },
         },
     },

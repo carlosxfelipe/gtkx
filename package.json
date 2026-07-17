@@ -30,6 +30,7 @@
         "@gtkx/runtime": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
         "@swc/core": "^1.15.43",
         "@types/node": "catalog:",
         "@types/react": "catalog:",

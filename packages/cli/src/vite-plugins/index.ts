@@ -1,7 +1,7 @@
 import { createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import type { Plugin } from "vite";
-import { gtkxAssets } from "./css.js";
+import { gtkxCss } from "./css.js";
 import { gtkxGResources } from "./gresources.js";
 import { gtkxGSettings } from "./gsettings.js";
 import { gtkxIcons } from "./icons.js";
@@ -14,7 +14,7 @@ export const gtkxVitePlugins = (mode?: string): Plugin[] => {
         gtkxGSettings(),
         gtkxIcons(),
         gtkxGResources(loadConfig),
-        gtkxAssets(),
+        gtkxCss(),
         gtkxReactCompiler(loadConfig),
     ];
 };
