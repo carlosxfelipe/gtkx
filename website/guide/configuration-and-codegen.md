@@ -127,7 +127,7 @@ Property setting alone cannot express everything GTK4 does. Adding a child is `a
 
 A rule references methods by their camelCase names, and each method call is either a bare string or `{ method, args }` where an argument is a reference (`"child"`, `"item"`, `"index"`, `"sibling"`), a React prop read (`{ prop }`), a list-item field with optional fallback (`{ field, or }`), or a constant (`{ literal }`). In `value` and `list` rules, a bare-string call whose method takes more than one parameter is expanded automatically: the parameters become `{ field }` arguments named after the GIR parameter names, with defaults inferred from the types (nullable becomes `null`, numeric `0`, boolean `false`). That expansion is also what types the prop: `GtkApplication`'s `actionAccels` rule points at `setAccelsForAction`, so the prop is typed as `{ detailedActionName: string; accels: string[] }[]` straight from the method signature.
 
-User rules go through the same machinery. `GtkFixed` has no built-in container rule, so its children fall back to a plain `setParent` and all land at the origin, with no prop to position them; one config entry fixes that:
+User rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, while the `cursor` property only accepts an already constructed `Gdk.Cursor`. One config entry turns the method into a prop:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
@@ -136,20 +136,14 @@ export default defineConfig({
     libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
     elementProps: {
-        GtkFixed: [
-            {
-                kind: "container",
-                prop: "children",
-                child: "GtkWidget",
-                append: { method: "put", args: ["child", { prop: "x" }, { prop: "y" }] },
-                remove: "remove",
-            },
-        ],
+        GtkWidget: [{ kind: "value", prop: "cursorName", call: "setCursorFromName" }],
     },
 });
 ```
 
-After the next codegen, `<GtkFixed>` positions each child with `put(child, x, y)`, reading `x` and `y` from the child's props; because the `{ prop }` arguments map to typed method parameters, those props are typed as `number` on the child. Every rule is validated against the GIR index when codegen runs: a type name that is not in your generated libraries, or a method that does not exist on the host type, fails with an error naming the exact `elementProps` path. `controlled-text` and `lazy` rules additionally require `prop` to name a property the GIR declares. `container`, `value`, and `list` rules define new props, so their `prop` can be any name. Your rules merge over the built-ins, with a user rule replacing a built-in that targets the same prop (and, for containers, the same child type), so you can also override built-in behavior, not only extend it.
+After the next codegen, every widget element accepts a `cursorName` prop, typed `string | null` straight from the method's parameter, and the reconciler calls `setCursorFromName` whenever the value changes. A rule declared on a type covers every element descending from it, which is how the built-in `controllers` rule on `GtkWidget` reaches all widgets. Every rule is validated against the GIR index when codegen runs: a type name that is not in your generated libraries, or a method that does not exist on the host type, fails with an error naming the exact `elementProps` path. `controlled-text` and `lazy` rules additionally require `prop` to name a property the GIR declares. `container`, `value`, and `list` rules define new props, so their `prop` can be any name. Your rules merge over the built-ins, with a user rule replacing a built-in that targets the same prop (and, for containers, the same child type), so you can also override built-in behavior, not only extend it.
+
+Rules realize a prop through method calls driven by that prop's value, and that is also their boundary: an API that needs per-child state applied through the parent and kept in sync afterwards, such as positioning children inside a `Gtk.Fixed`, is not expressible as a rule. That job belongs to the [`Fixed` and `Fixed.Child` components](/guide/components-and-hooks#fixed-and-fixed-child) from `@gtkx/components`.
 
 ::: tip
 The generated `ELEMENT_PROPS` metadata in `node_modules/.gtkx/jsx` shows the final merged and expanded rule set, which is the quickest way to see exactly what a built-in does before overriding it.
@@ -165,7 +159,7 @@ gtkx docs
 
 By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
 
-Three flags cover the knobs: `--out <dir>` changes the output directory, `--base-path <path>` changes the URL prefix used in links between pages, and `--force` regenerates even when the same fingerprint check that guards codegen says the pages are current. Because your `elementProps` feed the generator, custom rules like the `GtkFixed` container above appear in the generated pages too.
+Three flags cover the knobs: `--out <dir>` changes the output directory, `--base-path <path>` changes the URL prefix used in links between pages, and `--force` regenerates even when the same fingerprint check that guards codegen says the pages are current. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
 
 ## Next
 

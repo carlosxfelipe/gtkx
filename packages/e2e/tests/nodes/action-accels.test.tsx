@@ -39,18 +39,26 @@ const AccelsApp = ({ appRef, appId, actionAccels, windowActions, appActions }: A
 
 const renderAccels = (props: AccelsAppProps) => render(<AccelsApp {...props} />, { container: rootElement });
 
+const newWindowAction = <GSimpleAction name="new" onActivate={noop} />;
+
+const renderWinNewAccels = async (appRef: RefObject<Gtk.Application | null>, appId: string) => {
+    const rendered = await renderAccels({
+        appRef,
+        appId,
+        actionAccels: [{ detailedActionName: "win.new", accels: ["<Control>n"] }],
+        windowActions: newWindowAction,
+    });
+
+    expect(appRef.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
+
+    return rendered;
+};
+
 describe("GtkApplication actionAccels", () => {
     it("binds window-scoped accels from the actionAccels prop", async () => {
         const ref = createRef<Gtk.Application>();
 
-        await renderAccels({
-            appRef: ref,
-            appId: uniqueAppId(),
-            actionAccels: [{ detailedActionName: "win.new", accels: ["<Control>n"] }],
-            windowActions: <GSimpleAction name="new" onActivate={noop} />,
-        });
-
-        expect(ref.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
+        await renderWinNewAccels(ref, uniqueAppId());
     });
 
     it("binds application-scoped accels with multiple accelerators", async () => {
@@ -70,22 +78,9 @@ describe("GtkApplication actionAccels", () => {
         const ref = createRef<Gtk.Application>();
         const appId = uniqueAppId();
 
-        const { rerender } = await renderAccels({
-            appRef: ref,
-            appId,
-            actionAccels: [{ detailedActionName: "win.new", accels: ["<Control>n"] }],
-            windowActions: <GSimpleAction name="new" onActivate={noop} />,
-        });
-        expect(ref.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
+        const { rerender } = await renderWinNewAccels(ref, appId);
 
-        await rerender(
-            <AccelsApp
-                appRef={ref}
-                appId={appId}
-                actionAccels={[]}
-                windowActions={<GSimpleAction name="new" onActivate={noop} />}
-            />,
-        );
+        await rerender(<AccelsApp appRef={ref} appId={appId} actionAccels={[]} windowActions={newWindowAction} />);
         expect(ref.current?.getAccelsForAction("win.new")).toEqual([]);
     });
 });

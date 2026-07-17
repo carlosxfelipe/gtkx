@@ -148,13 +148,13 @@ describe("writeDocs with user element props and a custom base path", () => {
             outDir,
             basePath: "/docs/elements",
             elementProps: {
-                GtkFixed: [
+                GtkWindowGroup: [
                     {
                         kind: "container",
                         prop: "children",
-                        child: "GtkWidget",
-                        append: { method: "put", args: ["child", { prop: "x" }, { prop: "y" }] },
-                        remove: "remove",
+                        child: "GtkWindow",
+                        append: "addWindow",
+                        remove: "removeWindow",
                     },
                 ],
             },
@@ -162,9 +162,9 @@ describe("writeDocs with user element props and a custom base path", () => {
         expect(result.regenerated).toBe(true);
         const gtk = result.namespaces.find((namespace) => namespace.name === "Gtk");
         expect(gtk?.link).toBe("/docs/elements/gtk/");
-        const fixed = page(outDir, join("gtk", "fixed.md"));
-        expect(fixed).toContain("`children` accepts [GtkWidget](/docs/elements/gtk/widget) elements");
-        expect(fixed).toContain("`put()`");
+        const windowGroup = page(outDir, join("gtk", "window-group.md"));
+        expect(windowGroup).toContain("`children` accepts [GtkWindow](/docs/elements/gtk/window) elements");
+        expect(windowGroup).toContain("`addWindow()`");
         expect(existsSync(join(outDir, "manifest.json"))).toBe(true);
     });
 });

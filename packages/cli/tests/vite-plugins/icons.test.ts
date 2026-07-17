@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gtkxIcons } from "../../src/vite-plugins/icons.js";
-import { callOutputOptions } from "./output-options.js";
+import { callOutputOptions, expectComposedAsyncBanner, expectComposedBanner } from "./output-options.js";
 
 type ConfigHook = (config: { root?: string }) => void;
 type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
@@ -101,6 +101,18 @@ describe("gtkxIcons", () => {
 
         expect(result?.banner).toContain("XDG_DATA_DIRS");
         expect(result?.banner).toContain("existing;");
+    });
+
+    it("composes a function banner by prepending the XDG banner to its result", async () => {
+        writeManifest();
+        writeIcon();
+        await expectComposedBanner(configuredPlugin("build"), "XDG_DATA_DIRS");
+    });
+
+    it("awaits an async original banner function", async () => {
+        writeManifest();
+        writeIcon();
+        await expectComposedAsyncBanner(configuredPlugin("build"), "XDG_DATA_DIRS");
     });
 
     it("leaves output options untouched without icons", () => {

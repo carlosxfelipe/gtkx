@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { GtkApplication, GtkApplicationWindow, GtkBox } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, type GtkApplicationWindowProps, GtkBox } from "@gtkx/jsx/gtk";
 import { rootElement, useParentWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -9,30 +9,36 @@ import { describe, expect, it } from "vitest";
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.useparentwindowtest${nextAppId++}`;
 
+const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk.Window | null> => {
+    let windowInstance: Gtk.Window | null = null;
+
+    await render(
+        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            <GtkApplicationWindow
+                ref={(instance) => {
+                    windowInstance = instance;
+                }}
+                defaultWidth={100}
+                defaultHeight={100}
+                {...props}
+            />
+        </GtkApplication>,
+        { container: rootElement },
+    );
+
+    return windowInstance;
+};
+
 describe("useParentWindow", () => {
     it("returns the window provided by createWindowComponent", async () => {
         let captured: unknown = "unset";
-        let windowInstance: Gtk.Window | null = null;
 
         const Probe = () => {
             captured = useParentWindow();
             return null;
         };
 
-        await render(
-            <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                <GtkApplicationWindow
-                    ref={(instance) => {
-                        windowInstance = instance;
-                    }}
-                    defaultWidth={100}
-                    defaultHeight={100}
-                >
-                    <Probe />
-                </GtkApplicationWindow>
-            </GtkApplication>,
-            { container: rootElement },
-        );
+        const windowInstance = await renderProbedWindow({ children: <Probe /> });
 
         expect(windowInstance).not.toBeNull();
         expect(captured).toBe(windowInstance);
@@ -42,7 +48,6 @@ describe("useParentWindow", () => {
         let titlebarWindow: unknown = "unset";
         let controllerWindow: unknown = "unset";
         let actionWindow: unknown = "unset";
-        let windowInstance: Gtk.Window | null = null;
 
         const TitlebarProbe = () => {
             titlebarWindow = useParentWindow();
@@ -57,30 +62,20 @@ describe("useParentWindow", () => {
             return null;
         };
 
-        await render(
-            <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                <GtkApplicationWindow
-                    ref={(instance) => {
-                        windowInstance = instance;
-                    }}
-                    defaultWidth={100}
-                    defaultHeight={100}
-                    titlebar={
-                        <GtkBox>
-                            <TitlebarProbe />
-                        </GtkBox>
-                    }
-                    controllers={<ControllerProbe />}
-                    actions={
-                        <>
-                            <GSimpleAction name="noop" />
-                            <ActionProbe />
-                        </>
-                    }
-                />
-            </GtkApplication>,
-            { container: rootElement },
-        );
+        const windowInstance = await renderProbedWindow({
+            titlebar: (
+                <GtkBox>
+                    <TitlebarProbe />
+                </GtkBox>
+            ),
+            controllers: <ControllerProbe />,
+            actions: (
+                <>
+                    <GSimpleAction name="noop" />
+                    <ActionProbe />
+                </>
+            ),
+        });
 
         expect(windowInstance).not.toBeNull();
         expect(titlebarWindow).toBe(windowInstance);

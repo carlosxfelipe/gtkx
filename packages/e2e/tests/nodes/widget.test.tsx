@@ -20,9 +20,9 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { createRef, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 
 const render = (element: ReactNode) => baseRender(element);
 
@@ -33,6 +33,37 @@ const labelCount = (container: Gtk.Widget | null): number => {
 
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.widgettest${nextAppId++}`;
+
+const findClickButton = () => screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
+
+const clickExpectingCallCount = async (button: Gtk.Widget, handler: Mock, times: number): Promise<void> => {
+    await userEvent.click(button);
+    await waitFor(() => {
+        expect(handler).toHaveBeenCalledTimes(times);
+    });
+};
+
+const renderClickButtonAndClick = async (): Promise<Mock> => {
+    const handleClick = vi.fn();
+
+    await render(<GtkButton onClicked={handleClick} label="Click" />);
+
+    const button = await findClickButton();
+    await userEvent.click(button);
+
+    return handleClick;
+};
+
+const renderSwitchAndClick = async (props: ComponentProps<typeof GtkSwitch>): Promise<Gtk.Widget> => {
+    await render(<GtkSwitch {...props} />);
+
+    const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
+    await userEvent.click(switchWidget);
+
+    return switchWidget;
+};
+
+const labelItems = (items: string[]): ReactNode => items.map((item) => <GtkLabel key={item}>{item}</GtkLabel>);
 
 describe("widget - creation (1)", () => {
     describe("basic widgets", () => {
@@ -339,10 +370,7 @@ describe("widget - props (4)", () => {
         });
 
         it("finds switch by accessible role", async () => {
-            await render(<GtkSwitch />);
-
-            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
-            await userEvent.click(switchWidget);
+            await renderSwitchAndClick({});
 
             await waitFor(() => {
                 expect(screen.queryByRole(Gtk.AccessibleRole.SWITCH, { checked: true })).not.toBeNull();
@@ -354,12 +382,7 @@ describe("widget - props (4)", () => {
 describe("widget - signals (1)", () => {
     describe("connection", () => {
         it("connects onClicked handler to clicked signal", async () => {
-            const handleClick = vi.fn();
-
-            await render(<GtkButton onClicked={handleClick} label="Click" />);
-
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
-            await userEvent.click(button);
+            const handleClick = await renderClickButtonAndClick();
 
             await waitFor(() => {
                 expect(handleClick).toHaveBeenCalledTimes(1);
@@ -380,10 +403,7 @@ describe("widget - signals (1)", () => {
         it("connects onStateSet handler to state-set signal", async () => {
             const handleStateSet = vi.fn(() => false);
 
-            await render(<GtkSwitch onStateSet={handleStateSet} />);
-
-            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
-            await userEvent.click(switchWidget);
+            await renderSwitchAndClick({ onStateSet: handleStateSet });
 
             await waitFor(() => {
                 expect(handleStateSet).toHaveBeenCalledTimes(1);
@@ -403,18 +423,12 @@ describe("widget - signals (2)", () => {
 
             const { rerender } = await render(<App hasHandler={true} />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
-            await userEvent.click(button);
-            await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledTimes(1);
-            });
+            const button = await findClickButton();
+            await clickExpectingCallCount(button, handleClick, 1);
 
             await rerender(<App hasHandler={false} />);
 
-            await userEvent.click(button);
-            await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledTimes(1);
-            });
+            await clickExpectingCallCount(button, handleClick, 1);
         });
 
         it("disconnects handler when widget unmounted", async () => {
@@ -426,11 +440,8 @@ describe("widget - signals (2)", () => {
 
             const { rerender } = await render(<App showButton={true} />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
-            await userEvent.click(button);
-            await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledTimes(1);
-            });
+            const button = await findClickButton();
+            await clickExpectingCallCount(button, handleClick, 1);
 
             await rerender(<App showButton={false} />);
 
@@ -451,19 +462,13 @@ describe("widget - signals (3)", () => {
 
             const { rerender } = await render(<App useHandler1={true} />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
-            await userEvent.click(button);
-            await waitFor(() => {
-                expect(handler1).toHaveBeenCalledTimes(1);
-            });
+            const button = await findClickButton();
+            await clickExpectingCallCount(button, handler1, 1);
             expect(handler2).not.toHaveBeenCalled();
 
             await rerender(<App useHandler1={false} />);
 
-            await userEvent.click(button);
-            await waitFor(() => {
-                expect(handler2).toHaveBeenCalledTimes(1);
-            });
+            await clickExpectingCallCount(button, handler2, 1);
             expect(handler1).toHaveBeenCalledTimes(1);
         });
 
@@ -479,10 +484,7 @@ describe("widget - signals (3)", () => {
             await rerender(<App label="Second" />);
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
-            await userEvent.click(button);
-            await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledTimes(1);
-            });
+            await clickExpectingCallCount(button, handleClick, 1);
         });
     });
 });
@@ -492,10 +494,7 @@ describe("widget - signals (4)", () => {
         it("receives signal arguments in callback", async () => {
             const handleStateSet = vi.fn(() => false);
 
-            await render(<GtkSwitch onStateSet={handleStateSet} />);
-
-            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
-            await userEvent.click(switchWidget);
+            await renderSwitchAndClick({ onStateSet: handleStateSet });
 
             await waitFor(() => {
                 expect(handleStateSet).toHaveBeenCalledWith(true, expect.any(Gtk.Switch));
@@ -503,12 +502,7 @@ describe("widget - signals (4)", () => {
         });
 
         it("invokes the parameterless handler with the source widget", async () => {
-            const handleClick = vi.fn();
-
-            await render(<GtkButton onClicked={handleClick} label="Click" />);
-
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
-            await userEvent.click(button);
+            const handleClick = await renderClickButtonAndClick();
 
             await waitFor(() => {
                 expect(handleClick).toHaveBeenCalledWith(expect.any(Gtk.Button));
@@ -747,10 +741,7 @@ describe("widget - signals (11)", () => {
         it("connects onNotify handler for property changes", async () => {
             const handleNotify = vi.fn();
 
-            await render(<GtkSwitch onNotify={handleNotify} />);
-
-            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
-            await userEvent.click(switchWidget);
+            await renderSwitchAndClick({ onNotify: handleNotify });
 
             await waitFor(() => {
                 expect(handleNotify).toHaveBeenCalled();
@@ -760,10 +751,7 @@ describe("widget - signals (11)", () => {
         it("receives the changed ParamSpec and source widget in callback", async () => {
             const handleNotify = vi.fn();
 
-            await render(<GtkSwitch onNotify={handleNotify} />);
-
-            const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
-            await userEvent.click(switchWidget);
+            await renderSwitchAndClick({ onNotify: handleNotify });
 
             await waitFor(() => {
                 expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Switch));
@@ -857,13 +845,7 @@ describe("widget - auto-wrapping (2)", () => {
             const listBoxRef = createRef<Gtk.ListBox>();
 
             function App({ items }: { items: string[] }) {
-                return (
-                    <GtkListBox ref={listBoxRef}>
-                        {items.map((item) => (
-                            <GtkLabel key={item}>{item}</GtkLabel>
-                        ))}
-                    </GtkListBox>
-                );
+                return <GtkListBox ref={listBoxRef}>{labelItems(items)}</GtkListBox>;
             }
 
             const { rerender } = await render(<App items={["a", "b", "c"]} />);
@@ -875,13 +857,7 @@ describe("widget - auto-wrapping (2)", () => {
 
         it("reorders children", async () => {
             function App({ items }: { items: string[] }) {
-                return (
-                    <GtkListBox>
-                        {items.map((item) => (
-                            <GtkLabel key={item}>{item}</GtkLabel>
-                        ))}
-                    </GtkListBox>
-                );
+                return <GtkListBox>{labelItems(items)}</GtkListBox>;
             }
 
             const { rerender } = await render(<App items={["first", "second"]} />);
@@ -939,13 +915,7 @@ describe("widget - auto-wrapping (4)", () => {
             const flowBoxRef = createRef<Gtk.FlowBox>();
 
             function App({ items }: { items: string[] }) {
-                return (
-                    <GtkFlowBox ref={flowBoxRef}>
-                        {items.map((item) => (
-                            <GtkLabel key={item}>{item}</GtkLabel>
-                        ))}
-                    </GtkFlowBox>
-                );
+                return <GtkFlowBox ref={flowBoxRef}>{labelItems(items)}</GtkFlowBox>;
             }
 
             const { rerender } = await render(<App items={["a", "b", "c"]} />);

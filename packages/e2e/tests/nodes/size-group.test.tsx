@@ -138,6 +138,6 @@ describe("SizeGroup.Child", () => {
     it("throws when used outside a <SizeGroup>", async () => {
         const Orphan = () => <SizeGroup.Child component={GtkLabel}>orphan</SizeGroup.Child>;
 
-        await expect(render(<Orphan />)).rejects.toThrow("<SizeGroup.Child> must be a child of <SizeGroup>");
+        await expect(render(<Orphan />)).rejects.toThrow("useSizeGroupItem must be called inside <SizeGroup>");
     });
 });

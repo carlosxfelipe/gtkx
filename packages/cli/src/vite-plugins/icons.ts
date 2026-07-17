@@ -54,9 +54,12 @@ export function gtkxIcons(): Plugin {
         },
 
         outputOptions(options) {
-            if (!state.isBuild || typeof options.banner === "function") return;
+            if (!state.isBuild) return;
             if (findIconFiles(state.iconsDir).length === 0) return;
             const existing = options.banner;
+            if (typeof existing === "function") {
+                return { ...options, banner: async (chunk) => `${XDG_ENV_BANNER}\n${await existing(chunk)}` };
+            }
             return { ...options, banner: existing ? `${XDG_ENV_BANNER}\n${existing}` : XDG_ENV_BANNER };
         },
 

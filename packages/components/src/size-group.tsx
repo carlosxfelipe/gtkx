@@ -23,7 +23,7 @@ const SizeGroupContext = createContext<SizeGroupRegistry | null>(null);
 
 const useSizeGroupRegistry = (): SizeGroupRegistry => {
     const registry = useContext(SizeGroupContext);
-    if (!registry) throw new Error("<SizeGroup.Child> must be a child of <SizeGroup>");
+    if (!registry) throw new Error("useSizeGroupItem must be called inside <SizeGroup>");
     return registry;
 };
 

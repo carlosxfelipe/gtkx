@@ -7,7 +7,7 @@ const SCHEMA_COMPILE_TIMEOUT_MS = 30_000;
 
 export const compileSchemas = (dir: string): void => {
     try {
-        execFileSync(resolveCliTool(SCHEMA_COMPILER), [dir], {
+        execFileSync(resolveCliTool(SCHEMA_COMPILER), ["--strict", dir], {
             stdio: ["ignore", "pipe", "pipe"],
             timeout: SCHEMA_COMPILE_TIMEOUT_MS,
             encoding: "utf-8",

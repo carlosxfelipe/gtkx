@@ -58,6 +58,7 @@ type MemberOwner = {
     klass: GirClass;
     namespace: GirNamespace;
     origin: string | undefined;
+    glibName: string | undefined;
 };
 
 type PropEntry = {
@@ -115,10 +116,18 @@ const containerLine = (prop: ContainerProp, context: ElementPageContext): string
 };
 
 const childrenSection = (entry: GlibNamedClass, context: ElementPageContext): string[] => {
-    const overlays = context.elementProps[entry.glibName] ?? [];
-    const containers = overlays.filter((prop): prop is ContainerProp => prop.kind === "container");
-    const lines = containers.map((prop) => containerLine(prop, context));
-    if (lines.length === 0 && context.typegen.acceptsChildren(entry.glibName)) {
+    const lines: string[] = [];
+    const seen = new Set<string>();
+    for (const owner of memberOwners(entry, context)) {
+        if (owner.glibName === undefined) continue;
+        const overlays = context.elementProps[owner.glibName] ?? [];
+        const containers = overlays.filter(
+            (prop): prop is ContainerProp => prop.kind === "container" && !seen.has(prop.prop),
+        );
+        for (const prop of containers) lines.push(containerLine(prop, context));
+        for (const prop of containers) seen.add(prop.prop);
+    }
+    if (!seen.has("children") && context.typegen.acceptsChildren(entry.glibName)) {
         lines.push("- `children` accepts child elements.");
     }
     if (lines.length === 0) return [];
@@ -126,12 +135,16 @@ const childrenSection = (entry: GlibNamedClass, context: ElementPageContext): st
 };
 
 const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): MemberOwner[] => [
-    { klass: entry.klass, namespace: entry.namespace, origin: undefined },
-    ...newlyImplementedInterfaces(entry.klass, entry.namespace, context.library).map((iface) => ({
-        klass: iface.klass,
-        namespace: iface.namespace,
-        origin: glibNameOf(iface.klass),
-    })),
+    { klass: entry.klass, namespace: entry.namespace, origin: undefined, glibName: entry.glibName },
+    ...newlyImplementedInterfaces(
+        entry.klass,
+        entry.namespace,
+        context.library,
+        (glibName) => glibName !== undefined && context.typegen.containerPropNamesFor(glibName).length > 0,
+    ).map((iface) => {
+        const glibName = glibNameOf(iface.klass);
+        return { klass: iface.klass, namespace: iface.namespace, origin: glibName, glibName };
+    }),
 ];
 
 const propertyEntry = (
@@ -196,9 +209,12 @@ const withOverlayNote = (propEntry: PropEntry, note: string | undefined): PropEn
 };
 
 const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
-    const overlays = context.elementProps[entry.glibName] ?? [];
+    const owners = memberOwners(entry, context);
+    const overlays = owners.flatMap((owner) =>
+        owner.glibName === undefined ? [] : (context.elementProps[owner.glibName] ?? []),
+    );
     const entries: PropEntry[] = [];
-    for (const owner of memberOwners(entry, context)) {
+    for (const owner of owners) {
         for (const property of owner.klass.properties) {
             if (!property.introspectable) continue;
             const jsName = toCamelIdentifier(property.name);

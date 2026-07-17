@@ -1,10 +1,8 @@
 import { AnimatePresence, animated } from "@gtkx/animated";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render as baseRender, screen, waitFor } from "@gtkx/testing";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-
-const render = (element: ReactNode) => baseRender(element, { animations: true });
+import { render } from "./helpers/animated-render.js";
 
 const FadeList = ({ items, onExitComplete }: { items: string[]; onExitComplete: () => void }) => (
     <GtkBox>

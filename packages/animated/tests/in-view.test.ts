@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { parseViewportMargin, reachesViewportAmount } from "../src/features/in-view.js";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gtk from "@gtkx/gi/gtk";
+import type { MotionNodeOptions } from "motion-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { proxyFor } from "../src/bridge/widget-proxy.js";
+import { GtkInViewFeature, parseViewportMargin, reachesViewportAmount } from "../src/features/in-view.js";
 
 describe("parseViewportMargin", () => {
     it("returns zero margins when no margin is given", () => {
@@ -44,5 +48,113 @@ describe("reachesViewportAmount", () => {
     it("compares numeric amounts against the visible ratio", () => {
         expect(reachesViewportAmount(0.5, 0.49, 100)).toBe(false);
         expect(reachesViewportAmount(0.5, 0.5, 100)).toBe(true);
+    });
+});
+
+const createInViewFeature = (widget: Gtk.Widget, viewport: MotionNodeOptions["viewport"] = {}) => {
+    const onViewportEnter = vi.fn();
+    const onViewportLeave = vi.fn();
+    const setActive = vi.fn();
+    const props: MotionNodeOptions = { viewport, onViewportEnter, onViewportLeave };
+    const node = {
+        current: proxyFor(widget),
+        props,
+        prevProps: props,
+        animationState: { setActive },
+        getProps: () => props,
+    };
+    return { feature: new GtkInViewFeature(node), onViewportEnter, onViewportLeave, setActive };
+};
+
+const buildScrolledFixture = () => {
+    const scrolled = new Gtk.ScrolledWindow();
+    const label = new Gtk.Label();
+    scrolled.setChild(label);
+    return { scrolled, label };
+};
+
+const boundsAt = (x: number, y: number): [boolean, Graphene.Rect] => [true, new Graphene.Rect().init(x, y, 10, 10)];
+
+const mockViewportGeometry = (label: Gtk.Label, scrolled: Gtk.ScrolledWindow) => {
+    vi.spyOn(label, "getMapped").mockReturnValue(true);
+    const boundsSpy = vi.spyOn(label, "computeBounds").mockReturnValue(boundsAt(0, 0));
+    vi.spyOn(scrolled, "getWidth").mockReturnValue(100);
+    vi.spyOn(scrolled, "getHeight").mockReturnValue(100);
+    return boundsSpy;
+};
+
+describe("GtkInViewFeature", () => {
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    const expectAdjustmentSignalEvaluates = (emitSignal: (scrolled: Gtk.ScrolledWindow) => void): void => {
+        const { scrolled, label } = buildScrolledFixture();
+        const { feature } = createInViewFeature(label);
+        feature.mount();
+        const mappedSpy = vi.spyOn(label, "getMapped").mockReturnValue(false);
+
+        emitSignal(scrolled);
+
+        expect(mappedSpy).toHaveBeenCalled();
+        feature.unmount();
+    };
+
+    it("re-evaluates when an adjustment range changes", () => {
+        expectAdjustmentSignalEvaluates((scrolled) => scrolled.getHadjustment().emit("changed"));
+    });
+
+    it("re-evaluates when an adjustment value changes", () => {
+        expectAdjustmentSignalEvaluates((scrolled) => scrolled.getVadjustment().emit("value-changed"));
+    });
+
+    it("stops re-evaluating adjustment signals after unmount", () => {
+        const { scrolled, label } = buildScrolledFixture();
+        const { feature } = createInViewFeature(label);
+        feature.mount();
+        feature.unmount();
+        const mappedSpy = vi.spyOn(label, "getMapped");
+
+        scrolled.getHadjustment().emit("changed");
+        scrolled.getVadjustment().emit("value-changed");
+
+        expect(mappedSpy).not.toHaveBeenCalled();
+    });
+
+    it("emits enter and leave as range changes move the widget across the viewport", () => {
+        const { scrolled, label } = buildScrolledFixture();
+        const { feature, onViewportEnter, onViewportLeave, setActive } = createInViewFeature(label);
+        const boundsSpy = mockViewportGeometry(label, scrolled);
+        feature.mount();
+
+        scrolled.getHadjustment().emit("changed");
+        expect(onViewportEnter).toHaveBeenCalledTimes(1);
+        expect(setActive).toHaveBeenCalledWith("whileInView", true);
+
+        boundsSpy.mockReturnValue(boundsAt(500, 500));
+        scrolled.getHadjustment().emit("changed");
+        expect(onViewportLeave).toHaveBeenCalledTimes(1);
+        expect(setActive).toHaveBeenCalledWith("whileInView", false);
+        feature.unmount();
+    });
+
+    it("stops scheduling frame evaluations once a once viewport has entered", () => {
+        vi.useFakeTimers();
+        const { scrolled, label } = buildScrolledFixture();
+        const { feature, onViewportEnter } = createInViewFeature(label, { once: true });
+        mockViewportGeometry(label, scrolled);
+
+        const rafSpy = vi.spyOn(globalThis, "requestAnimationFrame");
+        feature.mount();
+        expect(rafSpy).toHaveBeenCalledTimes(1);
+
+        vi.advanceTimersByTime(100);
+        expect(onViewportEnter).toHaveBeenCalledTimes(1);
+
+        rafSpy.mockClear();
+        feature.mount();
+        expect(rafSpy).not.toHaveBeenCalled();
+        feature.unmount();
     });
 });

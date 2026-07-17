@@ -1,12 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
-import { type ReactNode, type Ref, useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, type Ref, useCallback, useMemo, useState } from "react";
 import { HeaderRenderHost, type TreeRenderContext } from "./cell.js";
 import { type ColumnDef, ColumnViewColumn } from "./column-view-column.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useCollectionModel } from "./hooks/use-collection-model.js";
-import { useInstalledModel } from "./hooks/use-installed-model.js";
+import { useCollectionWidget } from "./hooks/use-collection-widget.js";
 import { type ColumnRegistration, useSortHandler } from "./hooks/use-sort-handler.js";
 import type {
     CollectionItemSizeProps,
@@ -103,20 +101,7 @@ const buildRegistrations = <T,>(
 };
 
 const useColumnViewWiring = <T, S>(props: NormalizedColumnViewProps<T, S>): ColumnViewWiring<T, S> => {
-    const widgetRef = useRef<Gtk.ColumnView | null>(null);
-    const setRef = useMergeRefs<Gtk.ColumnView>(props.ref, widgetRef);
-
-    const collection = useCollectionModel<T, S>({
-        items: props.items,
-        sections: props.sections,
-        selectionMode: props.selectionMode,
-        selectedIds: props.selectedIds,
-        onSelectionChanged: props.onSelectionChanged,
-        expandedIds: props.expandedIds,
-        onExpandedChange: props.onExpandedChange,
-        renderHeader: props.renderHeader,
-    });
-    useInstalledModel(widgetRef, collection.installedModel, (widget, model) => widget.setModel(model));
+    const { widgetRef, setRef, collection } = useCollectionWidget<Gtk.ColumnView, T, S>(props);
 
     const useHeader = collection.useHeader;
     const headerStore = useCellContainers<Gtk.ColumnView>({

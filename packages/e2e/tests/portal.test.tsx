@@ -4,7 +4,7 @@ import * as GtkEnums from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useApplication } from "@gtkx/react";
 import { render, screen, within } from "@gtkx/testing";
-import { createRef, type ReactNode } from "react";
+import { createRef, type ReactNode, type Ref } from "react";
 import { describe, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
@@ -15,6 +15,30 @@ const uniqueAppId = (): string => `org.gtkx.portaltest${nextAppId++}`;
 const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string }) => {
     const app = useApplication();
     return <>{createPortal(children, app, portalKey)}</>;
+};
+
+const plainBox = (ref: Ref<Gtk.Box>): ReactNode => <GtkBox ref={ref} orientation={GtkEnums.Orientation.VERTICAL} />;
+
+const renderPortalIntoBox = async (
+    content: (box: Gtk.Box) => ReactNode,
+    boxTree: (ref: Ref<Gtk.Box>) => ReactNode = plainBox,
+): Promise<Gtk.Box> => {
+    const boxRef = createRef<Gtk.Box>();
+
+    function App() {
+        const box = boxRef.current;
+        return (
+            <>
+                {boxTree(boxRef)}
+                {box && content(box)}
+            </>
+        );
+    }
+
+    const { rerender } = await render(<App />);
+    await rerender(<App />);
+
+    return boxRef.current as Gtk.Box;
 };
 
 describe("createPortal (1)", () => {
@@ -32,22 +56,9 @@ describe("createPortal (1)", () => {
     });
 
     it("renders children into a specific container widget", async () => {
-        const boxRef = createRef<Gtk.Box>();
+        const box = await renderPortalIntoBox((target) => createPortal(<GtkLabel>In Portal</GtkLabel>, target));
 
-        function App() {
-            const box = boxRef.current;
-            return (
-                <>
-                    <GtkBox ref={boxRef} orientation={GtkEnums.Orientation.VERTICAL} />
-                    {box && createPortal(<GtkLabel>In Portal</GtkLabel>, box)}
-                </>
-            );
-        }
-
-        const { rerender } = await render(<App />);
-        await rerender(<App />);
-
-        within(boxRef.current as Gtk.Box).getByText("In Portal");
+        within(box).getByText("In Portal");
     });
 
     it("preserves key when provided", async () => {
@@ -116,45 +127,28 @@ describe("createPortal (2)", () => {
 
 describe("createPortal (3)", () => {
     it("handles multiple portals to same container", async () => {
-        const boxRef = createRef<Gtk.Box>();
+        const box = await renderPortalIntoBox((target) => (
+            <>
+                {createPortal(<GtkLabel>First</GtkLabel>, target)}
+                {createPortal(<GtkLabel>Second</GtkLabel>, target)}
+            </>
+        ));
 
-        function App() {
-            const box = boxRef.current;
-            return (
-                <>
-                    <GtkBox ref={boxRef} orientation={GtkEnums.Orientation.VERTICAL} />
-                    {box && createPortal(<GtkLabel>First</GtkLabel>, box)}
-                    {box && createPortal(<GtkLabel>Second</GtkLabel>, box)}
-                </>
-            );
-        }
-
-        const { rerender } = await render(<App />);
-        await rerender(<App />);
-
-        const box = within(boxRef.current as Gtk.Box);
-        box.getByText("First");
-        box.getByText("Second");
+        const queries = within(box);
+        queries.getByText("First");
+        queries.getByText("Second");
     });
 
     it("handles portal to nested container", async () => {
-        const innerBoxRef = createRef<Gtk.Box>();
+        const innerBox = await renderPortalIntoBox(
+            (target) => createPortal(<GtkButton label="Nested" />, target),
+            (ref) => (
+                <GtkBox orientation={GtkEnums.Orientation.VERTICAL}>
+                    <GtkBox ref={ref} orientation={GtkEnums.Orientation.VERTICAL} />
+                </GtkBox>
+            ),
+        );
 
-        function App() {
-            const innerBox = innerBoxRef.current;
-            return (
-                <>
-                    <GtkBox orientation={GtkEnums.Orientation.VERTICAL}>
-                        <GtkBox ref={innerBoxRef} orientation={GtkEnums.Orientation.VERTICAL} />
-                    </GtkBox>
-                    {innerBox && createPortal(<GtkButton label="Nested" />, innerBox)}
-                </>
-            );
-        }
-
-        const { rerender } = await render(<App />);
-        await rerender(<App />);
-
-        within(innerBoxRef.current as Gtk.Box).getByRole(GtkEnums.AccessibleRole.BUTTON, { name: "Nested" });
+        within(innerBox).getByRole(GtkEnums.AccessibleRole.BUTTON, { name: "Nested" });
     });
 });

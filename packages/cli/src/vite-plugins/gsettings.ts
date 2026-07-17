@@ -190,8 +190,11 @@ export function gtkxGSettings(): Plugin {
         },
 
         outputOptions(options) {
-            if (!state.isBuild || typeof options.banner === "function") return;
+            if (!state.isBuild) return;
             const existing = options.banner;
+            if (typeof existing === "function") {
+                return { ...options, banner: async (chunk) => `${SCHEMA_ENV_BANNER}\n${await existing(chunk)}` };
+            }
             return { ...options, banner: existing ? `${SCHEMA_ENV_BANNER}\n${existing}` : SCHEMA_ENV_BANNER };
         },
 

@@ -2,7 +2,7 @@ import type { RenderItemProps } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     COUNTER_BASELINE_TEXTS,
     COUNTER_SINGLE_UPDATE_TEXTS,
@@ -14,10 +14,12 @@ import {
     expectInitialOrder,
     expectLargeDatasetReorder,
     expectRapidReorder,
+    expectRenderItemFunctionUpdate,
     expectReorder,
     namedRows,
     RAPID_REORDER_ORDERS,
     renderCounterCell,
+    renderTestItemWithSpy,
 } from "../helpers/list-collection-render.js";
 import { renderGridView, renderListView } from "../helpers/list-fixtures.js";
 
@@ -130,23 +132,13 @@ describe("render - ListView (2)", () => {
 describe("render - ListView (3)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
-
-            await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
+            const renderItem = await renderTestItemWithSpy();
 
             expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test Item" } }));
         });
 
         it("updates when renderItem function changes", async () => {
-            const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel>{`First: ${item.name}`}</GtkLabel>,
-            });
-
-            await rerender([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel>,
-            });
-
-            expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
+            await expectRenderItemFunctionUpdate();
         });
     });
 

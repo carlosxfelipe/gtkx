@@ -2,14 +2,35 @@ import type { RenderItemProps } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen } from "@gtkx/testing";
 import type { ReactNode } from "react";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import { filterableIds } from "./filterable-items.js";
-import type { FixtureInput, NamedValue } from "./list-fixtures.js";
+import { type FixtureInput, type NamedValue, renderListView } from "./list-fixtures.js";
 
 export const expectAllVisibleOnce = (...texts: string[]): void => {
     for (const text of texts) {
         expect(screen.queryAllByText(text)).toHaveLength(1);
     }
+};
+
+export const namedLabelRenderItem = () =>
+    vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
+
+export const renderTestItemWithSpy = async (): Promise<ReturnType<typeof namedLabelRenderItem>> => {
+    const renderItem = namedLabelRenderItem();
+    await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
+    return renderItem;
+};
+
+export const expectRenderItemFunctionUpdate = async (): Promise<void> => {
+    const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
+        renderItem: ({ item }) => <GtkLabel>{`First: ${item.name}`}</GtkLabel>,
+    });
+
+    await rerender([{ id: "1", value: { name: "Test" } }], {
+        renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel>,
+    });
+
+    expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
 };
 
 export interface CollectionView {

@@ -1,4 +1,5 @@
 import "../motion-env.js";
+import type * as Gdk from "@gtkx/gi/gdk";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import { Feature, type MotionNodeOptions, type VisualElement } from "motion-dom";
@@ -107,6 +108,7 @@ export class GtkInViewFeature extends Feature<unknown> {
     private viewportWidget: Gtk.Widget | null = null;
     private observedWidget: Gtk.Widget | null = null;
     private adjustments: Gtk.Adjustment[] = [];
+    private layoutSurface: Gdk.Surface | null = null;
     private pendingFrame: number | null = null;
     private pendingEvaluations = 0;
 
@@ -133,6 +135,7 @@ export class GtkInViewFeature extends Feature<unknown> {
     };
 
     private scheduleEvaluate(): void {
+        if (this.isDormant()) return;
         this.pendingEvaluations = EVALUATION_FRAME_CHAIN;
         if (this.pendingFrame !== null) return;
         this.pendingFrame = requestAnimationFrame(this.onFrame);
@@ -153,20 +156,38 @@ export class GtkInViewFeature extends Feature<unknown> {
         this.adjustments = scrollAdjustmentsOf(viewport);
         for (const adjustment of this.adjustments) {
             adjustment.on("value-changed", this.onGeometryChanged);
+            adjustment.on("changed", this.onGeometryChanged);
         }
+        if (this.adjustments.length === 0) this.connectSurfaceLayout(viewport);
+    }
+
+    private connectSurfaceLayout(viewport: Gtk.Widget): void {
+        const surface = viewport.getNative()?.getSurface() ?? null;
+        if (!surface) return;
+        this.layoutSurface = surface;
+        surface.on("layout", this.onGeometryChanged);
     }
 
     private disconnectScroll(): void {
         for (const adjustment of this.adjustments) {
             adjustment.off("value-changed", this.onGeometryChanged);
+            adjustment.off("changed", this.onGeometryChanged);
         }
         this.adjustments = [];
+        if (this.layoutSurface) {
+            this.layoutSurface.off("layout", this.onGeometryChanged);
+            this.layoutSurface = null;
+        }
         this.viewportWidget = null;
+    }
+
+    private hasGeometrySubscription(): boolean {
+        return this.adjustments.length > 0 || this.layoutSurface !== null;
     }
 
     private syncViewport(widget: Gtk.Widget): Gtk.Widget {
         const viewport = resolveViewportWidget(widget, this.viewportOptions());
-        if (viewport !== this.viewportWidget) this.connectScroll(viewport);
+        if (viewport !== this.viewportWidget || !this.hasGeometrySubscription()) this.connectScroll(viewport);
         return viewport;
     }
 

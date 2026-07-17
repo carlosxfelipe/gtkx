@@ -5,7 +5,6 @@ import { GtkFixed, type GtkFixedProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
 import {
     createContext,
-    createElement,
     type ElementType,
     type ReactNode,
     type Ref,
@@ -39,10 +38,8 @@ export type FixedPlacementProps = {
 /** Positions a single child inside a {@link Fixed} at coordinates x and y, or by an explicit transform. */
 export type FixedChildProps<C extends ElementType> = PolymorphicChildProps<C, FixedPlacementProps>;
 
-const transformOf = (props: FixedPlacementProps): Gsk.Transform | null =>
-    props.transform !== undefined
-        ? props.transform
-        : Gsk.Transform.new().translate(Graphene.Point.create(props.x ?? 0, props.y ?? 0));
+const transformOf = (x: number, y: number, transform: Gsk.Transform | null | undefined): Gsk.Transform | null =>
+    transform !== undefined ? transform : Gsk.Transform.new().translate(Graphene.Point.create(x, y));
 
 const FixedChild = <C extends ElementType>(props: FixedChildProps<C>): ReactNode => {
     const fixed = useFixedInstance();
@@ -56,8 +53,9 @@ const FixedChild = <C extends ElementType>(props: FixedChildProps<C>): ReactNode
 
     useLayoutEffect(() => {
         const widget = widgetRef.current;
-        if (widget && fixed) fixed.setChildTransform(widget, transformOf({ x, y, transform }));
-    }, [fixed, x, y, transform]);
+        if (widget === null || fixed === null) return;
+        fixed.setChildTransform(widget, transformOf(x ?? 0, y ?? 0, transform));
+    });
 
     return <Component {...rest} ref={setWidget} />;
 };
@@ -72,10 +70,10 @@ export const Fixed: ((props: FixedProps) => ReactNode) & {
     ({ children, ref, ...rest }: FixedProps): ReactNode => {
         const [fixed, setFixed] = useState<Gtk.Fixed | null>(null);
         const mergedRef = useMergeRefs<Gtk.Fixed>(ref, setFixed);
-        return createElement(
-            GtkFixed,
-            { ...rest, ref: mergedRef },
-            createElement(FixedContext.Provider, { value: fixed }, children),
+        return (
+            <GtkFixed {...rest} ref={mergedRef}>
+                <FixedContext.Provider value={fixed}>{children}</FixedContext.Provider>
+            </GtkFixed>
         );
     },
     { Child: FixedChild },

@@ -164,6 +164,19 @@ fn integer_checked_to_stash_reports_fractional_separately_from_range() {
 }
 
 #[test]
+fn integer_checked_to_stash_reports_negative_fractional_separately_from_range() {
+    let err = IntegerCodec::I32
+        .checked_to_stash(-1.5)
+        .expect_err("a negative fractional value should fail");
+    let message = err.to_string();
+    assert_eq!(
+        message,
+        "Value -1.5 is not an integer, i32 expects a whole number"
+    );
+    assert!(!message.contains("out of range"));
+}
+
+#[test]
 fn integer_checked_to_stash_reports_non_finite_separately_from_range() {
     for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
         let err = IntegerCodec::I32

@@ -1,11 +1,10 @@
 import { animated } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-import { render as baseRender, screen, waitFor } from "@gtkx/testing";
+import { screen, waitFor } from "@gtkx/testing";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-const render = (element: ReactNode) => baseRender(element, { animations: true });
+import { render } from "./helpers/animated-render.js";
 
 describe("layout animations", () => {
     afterEach(() => {

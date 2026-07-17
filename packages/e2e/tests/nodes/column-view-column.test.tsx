@@ -404,6 +404,20 @@ describe("render - ColumnViewColumn (9)", () => {
     });
 });
 
+describe("render - ColumnViewColumn (13)", () => {
+    describe("column def ref", () => {
+        it("forwards a column def ref to the Gtk.ColumnViewColumn instance", async () => {
+            const columnViewRef = createRef<Gtk.ColumnView>();
+            const columnRef = createRef<Gtk.ColumnViewColumn>();
+
+            await renderColumns(columnViewRef, [{ ...defaultColumn("name", "Name"), ref: columnRef }]);
+
+            expect(columnRef.current).not.toBeNull();
+            expect(columnRef.current).toBe(getColumn(columnViewRef.current as Gtk.ColumnView, 0));
+        });
+    });
+});
+
 type ShowcasePerson = { name: string; role: string; salary: number };
 type ShowcaseSortColumn = "name" | "role" | "salary" | null;
 

@@ -9,33 +9,33 @@ const FILE_ERROR_NOENT = 5;
 
 const gerrorIn = (domain: number): GError => GError.newLiteral(domain, FILE_ERROR_NOENT, "missing file");
 
+const catchCheckError = (): unknown => {
+    const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
+
+    let thrown: unknown;
+    try {
+        checkError(ref);
+    } catch (error) {
+        thrown = error;
+    }
+
+    return thrown;
+};
+
 describe("checkError", () => {
     it("does nothing when the error ref is empty", () => {
         expect(() => checkError({ value: null })).not.toThrow();
     });
 
     it("throws the raw GError when the ref is populated", () => {
-        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
-
-        let thrown: unknown;
-        try {
-            checkError(ref);
-        } catch (error) {
-            thrown = error;
-        }
+        const thrown = catchCheckError();
 
         expect(thrown).toBeInstanceOf(GError);
     });
 
     it("surfaces the GError message, domain, and code on the thrown value", () => {
-        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
-
-        let thrown: GError | undefined;
-        try {
-            checkError(ref);
-        } catch (error) {
-            if (error instanceof GError) thrown = error;
-        }
+        const caught = catchCheckError();
+        const thrown = caught instanceof GError ? caught : undefined;
 
         expect(thrown?.message).toBe("missing file");
         expect(thrown?.domain).toBe(FILE_ERROR_DOMAIN);
@@ -43,43 +43,25 @@ describe("checkError", () => {
     });
 
     it("throws an Error subclass named GLib.Error", () => {
-        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
-
-        let thrown: unknown;
-        try {
-            checkError(ref);
-        } catch (error) {
-            thrown = error;
-        }
+        const thrown = catchCheckError();
 
         expect(thrown).toBeInstanceOf(Error);
         expect((thrown as Error).name).toBe("GLib.Error");
     });
 
     it("renders its message when inspected instead of an empty object", () => {
-        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
-
-        let thrown: unknown;
-        try {
-            checkError(ref);
-        } catch (error) {
-            thrown = error;
-        }
+        const thrown = catchCheckError();
 
         expect(String(thrown)).toContain("missing file");
         expect(inspect(thrown)).toContain("missing file");
     });
 
     it("attaches a stack trace pointing past checkError", () => {
-        const ref = { value: getHandle(gerrorIn(FILE_ERROR_DOMAIN)) };
+        const thrown = catchCheckError();
 
         let stack: string | undefined;
-        try {
-            checkError(ref);
-        } catch (error) {
-            if (typeof error === "object" && error !== null && "stack" in error && typeof error.stack === "string") {
-                stack = error.stack;
-            }
+        if (typeof thrown === "object" && thrown !== null && "stack" in thrown && typeof thrown.stack === "string") {
+            stack = thrown.stack;
         }
 
         expect(typeof stack).toBe("string");

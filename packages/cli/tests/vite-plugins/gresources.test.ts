@@ -158,21 +158,22 @@ describe("gtkxGResources (init module)", () => {
         expect(out).toContain("export function ensureRegistered");
     });
 
-    it("renders the dev-mode init module with refresh-capable resourceLoad", async () => {
-        if (!hasGlibCompileResources()) return;
+    it.skipIf(!hasGlibCompileResources())(
+        "renders the dev-mode init module with refresh-capable resourceLoad",
+        async () => {
+            const plugin = gtkxGResources();
+            await initPlugin(plugin, "serve", tmpDir, "org.gtk.Demo4");
 
-        const plugin = gtkxGResources();
-        await initPlugin(plugin, "serve", tmpDir, "org.gtk.Demo4");
+            const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+            (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
 
-        const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-        (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
-
-        const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
-        expect(out).toContain("resourcesUnregister");
-        expect(out).toContain("ensureRegistered");
-        expect(out).toContain("__refresh");
-        expect(out).toContain("gtkx-gresources-dev-");
-    });
+            const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
+            expect(out).toContain("resourcesUnregister");
+            expect(out).toContain("ensureRegistered");
+            expect(out).toContain("__refresh");
+            expect(out).toContain("gtkx-gresources-dev-");
+        },
+    );
 });
 
 describe("gtkxGResources (resource prefix)", () => {
@@ -232,9 +233,7 @@ describe("gtkxGResources (buildEnd)", () => {
         expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
-    it("compiles tracked assets into a single .gresource and emits it", async () => {
-        if (!hasGlibCompileResources()) return;
-
+    it.skipIf(!hasGlibCompileResources())("compiles tracked assets into a single .gresource and emits it", async () => {
         const plugin = gtkxGResources();
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
@@ -286,32 +285,34 @@ const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarnes
 describe("gtkxGResources (watcher: change event)", () => {
     setupTmpDir();
 
-    it("re-registers the GResource bundle when a tracked asset changes", async () => {
-        if (!hasGlibCompileResources()) return;
+    it.skipIf(!hasGlibCompileResources())(
+        "re-registers the GResource bundle when a tracked asset changes",
+        async () => {
+            const { assetPath, server, refresh } = await setupTrackedAssetServer("icon.png");
 
-        const { assetPath, server, refresh } = await setupTrackedAssetServer("icon.png");
+            server.watcher.emit("change", assetPath);
+            await waitTicks();
 
-        server.watcher.emit("change", assetPath);
-        await waitTicks();
-
-        expect(server.ssrLoadModule).toHaveBeenCalledWith(VIRTUAL_INIT);
-        expect(refresh).toHaveBeenCalled();
-    });
+            expect(server.ssrLoadModule).toHaveBeenCalledWith(VIRTUAL_INIT);
+            expect(refresh).toHaveBeenCalled();
+        },
+    );
 });
 
 describe("gtkxGResources (watcher: add event)", () => {
     setupTmpDir();
 
-    it("re-registers the bundle on the 'add' watcher event for a tracked asset", async () => {
-        if (!hasGlibCompileResources()) return;
+    it.skipIf(!hasGlibCompileResources())(
+        "re-registers the bundle on the 'add' watcher event for a tracked asset",
+        async () => {
+            const { assetPath, server, refresh } = await setupTrackedAssetServer("addme.png");
 
-        const { assetPath, server, refresh } = await setupTrackedAssetServer("addme.png");
+            server.watcher.emit("add", assetPath);
+            await waitTicks();
 
-        server.watcher.emit("add", assetPath);
-        await waitTicks();
-
-        expect(refresh).toHaveBeenCalled();
-    });
+            expect(refresh).toHaveBeenCalled();
+        },
+    );
 });
 
 describe("gtkxGResources (watcher: untracked event)", () => {
@@ -337,9 +338,7 @@ describe("gtkxGResources (watcher: untracked event)", () => {
 describe("gtkxGResources (watcher: refresh failure)", () => {
     setupTmpDir();
 
-    it("logs and swallows refresh errors so the watcher keeps running", async () => {
-        if (!hasGlibCompileResources()) return;
-
+    it.skipIf(!hasGlibCompileResources())("logs and swallows refresh errors so the watcher keeps running", async () => {
         const plugin = gtkxGResources();
         await initPlugin(plugin, "serve", tmpDir);
 

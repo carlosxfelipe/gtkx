@@ -67,26 +67,32 @@ describe("gtkxGSettingsWorkerEnv", () => {
         expect(plugin.enforce).toBe("pre");
     });
 
-    it("compiles the project schemas before the workers start and points them at the result", () => {
-        if (!hasGlibCompileSchemas()) return;
+    it.skipIf(!hasGlibCompileSchemas())(
+        "compiles the project schemas before the workers start and points them at the result",
+        () => {
+            writeProject(root, { dataDir: "data", schema: true });
 
-        writeProject(root, { dataDir: "data", schema: true });
+            const result = callConfig(root);
+            const schemaDir = result?.test?.env?.GSETTINGS_SCHEMA_DIR;
 
-        const result = callConfig(root);
-        const schemaDir = result?.test?.env?.GSETTINGS_SCHEMA_DIR;
+            expect(schemaDir).toMatch(/gtkx-schemas-/);
+            expect(existsSync(join(schemaDir ?? "", "gschemas.compiled"))).toBe(true);
+            expect(process.env.GTKX_DEV_SCHEMA_DIR).toBe(schemaDir);
+        },
+    );
 
-        expect(schemaDir).toMatch(/gtkx-schemas-/);
-        expect(existsSync(join(schemaDir ?? "", "gschemas.compiled"))).toBe(true);
-        expect(process.env.GTKX_DEV_SCHEMA_DIR).toBe(schemaDir);
-    });
-
-    it("prepends the compiled dir to an existing GSETTINGS_SCHEMA_DIR", () => {
-        if (!hasGlibCompileSchemas()) return;
-
+    it.skipIf(!hasGlibCompileSchemas())("prepends the compiled dir to an existing GSETTINGS_SCHEMA_DIR", () => {
         process.env.GSETTINGS_SCHEMA_DIR = "/existing/dir";
         writeProject(root, { dataDir: "data", schema: true });
 
         expect(callConfig(root)?.test?.env?.GSETTINGS_SCHEMA_DIR).toMatch(/^.*gtkx-schemas-.*:\/existing\/dir$/);
+    });
+
+    it.skipIf(!hasGlibCompileSchemas())("wraps compile failures for malformed schema XML", () => {
+        writeProject(root, { dataDir: "data", schema: false });
+        writeFileSync(join(root, "data", "com.example.broken.gschema.xml"), "<schemalist><schema id=");
+
+        expect(() => callConfig(root)).toThrowError(/glib-compile-schemas failed for /);
     });
 
     it("leaves the config untouched when the project declares no data directory", () => {

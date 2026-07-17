@@ -1,4 +1,5 @@
 import "../motion-env.js";
+import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createProjectionNode, type IProjectionNode, microtask } from "motion-dom";
 import { WidgetProxy } from "../bridge/widget-proxy.js";
@@ -11,18 +12,38 @@ interface RootAnchor {
 
 const subscribeToplevelLayout = (notify: () => void): (() => void) => {
     const toplevels = Gtk.Window.getToplevels();
-    const knownWidths = new WeakMap<object, number>();
+    const layoutHandlers = new Map<Gdk.Surface, (width: number, height: number) => void>();
+    const realizeHandlers = new Map<Gtk.Window, () => void>();
+    const subscribeSurface = (window: Gtk.Window, surface: Gdk.Surface): void => {
+        if (layoutHandlers.has(surface)) return;
+        let knownWidth = window.getWidth();
+        let knownHeight = window.getHeight();
+        setWindowMetrics({ innerWidth: knownWidth, innerHeight: knownHeight });
+        const onLayout = (width: number, height: number): void => {
+            const widthChanged = knownWidth !== 0 && knownWidth !== width;
+            const heightChanged = knownHeight !== 0 && knownHeight !== height;
+            knownWidth = width;
+            knownHeight = height;
+            setWindowMetrics({ innerWidth: width, innerHeight: height });
+            if (widthChanged || heightChanged) notify();
+        };
+        layoutHandlers.set(surface, onLayout);
+        surface.on("layout", onLayout);
+    };
     const subscribeWindow = (window: Gtk.Window): void => {
         const surface = window.getSurface();
-        if (!surface || knownWidths.has(surface)) return;
-        knownWidths.set(surface, window.getWidth());
-        setWindowMetrics({ innerWidth: window.getWidth(), innerHeight: window.getHeight() });
-        surface.on("layout", (width: number, height: number) => {
-            const previous = knownWidths.get(surface);
-            knownWidths.set(surface, width);
-            setWindowMetrics({ innerWidth: width, innerHeight: height });
-            if (previous !== undefined && previous !== 0 && previous !== width) notify();
-        });
+        if (surface) {
+            subscribeSurface(window, surface);
+            return;
+        }
+        if (realizeHandlers.has(window)) return;
+        const onRealize = (): void => {
+            window.off("realize", onRealize);
+            realizeHandlers.delete(window);
+            subscribeWindow(window);
+        };
+        realizeHandlers.set(window, onRealize);
+        window.on("realize", onRealize);
     };
     const scan = (): void => {
         const count = toplevels.getNItems();
@@ -35,6 +56,10 @@ const subscribeToplevelLayout = (notify: () => void): (() => void) => {
     toplevels.on("items-changed", scan);
     return () => {
         toplevels.off("items-changed", scan);
+        for (const [surface, handler] of layoutHandlers) surface.off("layout", handler);
+        layoutHandlers.clear();
+        for (const [window, handler] of realizeHandlers) window.off("realize", handler);
+        realizeHandlers.clear();
     };
 };
 

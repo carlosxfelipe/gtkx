@@ -1,11 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
-import { type ReactNode, type Ref, useRef } from "react";
+import type { ReactNode, Ref } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
 import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useCollectionModel } from "./hooks/use-collection-model.js";
-import { useInstalledModel } from "./hooks/use-installed-model.js";
+import { useCollectionWidget } from "./hooks/use-collection-widget.js";
 import type {
     CollectionItemSizeProps,
     ControlledExpansionProps,
@@ -59,19 +57,7 @@ interface ListViewWiring<T, S> {
 }
 
 const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListViewWiring<T, S> => {
-    const widgetRef = useRef<Gtk.ListView | null>(null);
-    const setRef = useMergeRefs<Gtk.ListView>(props.ref, widgetRef);
-
-    const collection = useCollectionModel<T, S>({
-        items: props.items,
-        sections: props.sections,
-        selectionMode: props.selectionMode,
-        selectedIds: props.selectedIds,
-        onSelectionChanged: props.onSelectionChanged,
-        expandedIds: props.expandedIds,
-        onExpandedChange: props.onExpandedChange,
-        renderHeader: props.renderHeader,
-    });
+    const { widgetRef, setRef, collection } = useCollectionWidget<Gtk.ListView, T, S>(props);
 
     const useHeader = collection.useHeader;
 
@@ -87,8 +73,6 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
         estimatedHeight: props.estimatedItemHeight,
         estimatedWidth: props.estimatedItemWidth,
     });
-
-    useInstalledModel(widgetRef, collection.installedModel, (widget, value) => widget.setModel(value));
 
     return {
         setRef,

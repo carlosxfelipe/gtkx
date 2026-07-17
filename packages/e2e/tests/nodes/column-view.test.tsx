@@ -15,6 +15,7 @@ import {
     expectLargeDatasetReorder,
     expectRapidReorder,
     expectReorder,
+    namedLabelRenderItem,
     namedRows,
     RAPID_REORDER_ORDERS,
 } from "../helpers/list-collection-render.js";
@@ -58,6 +59,21 @@ const labelCell = ({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{it
 
 const titleColumns = (titles: string[]): ColumnDef<{ name: string }>[] =>
     titles.map((title) => ({ id: title, title, renderCell: labelCell }));
+
+const singleNamedRow = [{ id: "1", value: { name: "First" } }];
+
+interface TitledColumnViewFixture {
+    ref: React.RefObject<Gtk.ColumnView>;
+    rerenderTitles: (titles: string[]) => Promise<void>;
+}
+
+const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnViewFixture> => {
+    const { ref, rerender } = await renderColumnView(singleNamedRow, { columns: titleColumns(titles) });
+    return {
+        ref,
+        rerenderTitles: (nextTitles) => rerender(singleNamedRow, { columns: titleColumns(nextTitles) }),
+    };
+};
 
 const orderedColumns = (ids: string[]): ColumnDef<{ name: string }>[] =>
     ids.map((id) => ({
@@ -196,7 +212,7 @@ const getColumnTitles = (columnView: Gtk.ColumnView): string[] =>
 describe("render - ColumnView (1)", () => {
     describe("GtkColumnView", () => {
         it("creates ColumnView widget", async () => {
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }]);
+            const { ref } = await renderColumnView(singleNamedRow);
 
             expect(ref.current).not.toBeNull();
         });
@@ -206,21 +222,15 @@ describe("render - ColumnView (1)", () => {
 describe("render - ColumnView (2)", () => {
     describe("ColumnViewColumn", () => {
         it("adds column with title", async () => {
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["Column Title"]),
-            });
+            const { ref } = await renderTitledColumnView(["Column Title"]);
 
             expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("inserts column before existing column", async () => {
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["First", "Last"]),
-            });
+            const { ref, rerenderTitles } = await renderTitledColumnView(["First", "Last"]);
 
-            await rerender([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["First", "Middle", "Last"]),
-            });
+            await rerenderTitles(["First", "Middle", "Last"]);
 
             expect(ref.current.getColumns()).not.toBeNull();
         });
@@ -237,17 +247,15 @@ describe("render - ColumnView (2)", () => {
         });
 
         it("removes column", async () => {
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["A", "B", "C"]),
-            });
+            const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C"]);
 
-            await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["A", "C"]) });
+            await rerenderTitles(["A", "C"]);
 
             expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("sets column properties (expand, fixedWidth)", async () => {
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
+            const { ref } = await renderColumnView(singleNamedRow, {
                 columns: [{ id: "props", title: "Props", expand: true, fixedWidth: 100, renderCell: labelCell }],
             });
 
@@ -255,11 +263,9 @@ describe("render - ColumnView (2)", () => {
         });
 
         it("updates column properties when props change", async () => {
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["Initial"]),
-            });
+            const { ref, rerenderTitles } = await renderTitledColumnView(["Initial"]);
 
-            await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["Updated"]) });
+            await rerenderTitles(["Updated"]);
 
             expect(ref.current.getColumns()).not.toBeNull();
         });
@@ -322,7 +328,7 @@ describe("render - ColumnView (3)", () => {
 describe("render - ColumnView (4)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
+            const renderItem = namedLabelRenderItem();
 
             await renderColumnView([{ id: "1", value: { name: "Test" } }], {
                 columns: [{ id: "name", title: "Name", renderCell: renderItem }],
@@ -336,13 +342,13 @@ describe("render - ColumnView (4)", () => {
 describe("render - ColumnView (5)", () => {
     describe("sorting", () => {
         it("sets sort column via sortColumn prop", async () => {
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], { sortColumn: "name" });
+            const { ref } = await renderColumnView(singleNamedRow, { sortColumn: "name" });
 
             expect(ref.current.getSorter()).not.toBeNull();
         });
 
         it("sets sort order via sortOrder prop", async () => {
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
+            const { ref } = await renderColumnView(singleNamedRow, {
                 sortColumn: "name",
                 sortOrder: Gtk.SortType.DESCENDING,
             });
@@ -353,7 +359,7 @@ describe("render - ColumnView (5)", () => {
         it("calls onSortChanged when sort changes", async () => {
             const onSortChanged = vi.fn();
 
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], { onSortChanged });
+            const { ref } = await renderColumnView(singleNamedRow, { onSortChanged });
 
             expect(ref.current).not.toBeNull();
         });
@@ -364,12 +370,12 @@ describe("render - ColumnView (5)", () => {
                 { id: "age", title: "Age", renderCell: labelCell },
             ];
 
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
+            const { ref, rerender } = await renderColumnView(singleNamedRow, {
                 columns,
                 sortColumn: "name",
             });
 
-            await rerender([{ id: "1", value: { name: "First" } }], { columns, sortColumn: "age" });
+            await rerender(singleNamedRow, { columns, sortColumn: "age" });
 
             expect(ref.current.getSorter()).not.toBeNull();
         });
@@ -681,42 +687,32 @@ describe("render - ColumnView (15)", () => {
 describe("render - ColumnView (16)", () => {
     describe("column reordering", () => {
         it("respects React declaration order for columns", async () => {
-            const { ref } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["C", "A", "B"]),
-            });
+            const { ref } = await renderTitledColumnView(["C", "A", "B"]);
 
             expect(getColumnTitles(ref.current)).toEqual(["C", "A", "B"]);
         });
 
         it("handles complete reversal of columns", async () => {
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["A", "B", "C", "D", "E"]),
-            });
+            const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C", "D", "E"]);
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C", "D", "E"]);
 
-            await rerender([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["E", "D", "C", "B", "A"]),
-            });
+            await rerenderTitles(["E", "D", "C", "B", "A"]);
             expect(getColumnTitles(ref.current)).toEqual(["E", "D", "C", "B", "A"]);
         });
 
         it("handles interleaved column reordering", async () => {
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["A", "B", "C", "D"]),
-            });
+            const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C", "D"]);
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C", "D"]);
 
-            await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["B", "D", "A", "C"]) });
+            await rerenderTitles(["B", "D", "A", "C"]);
             expect(getColumnTitles(ref.current)).toEqual(["B", "D", "A", "C"]);
         });
 
         it("handles rapid column reordering", async () => {
-            const { ref, rerender } = await renderColumnView([{ id: "1", value: { name: "First" } }], {
-                columns: titleColumns(["A", "B", "C"]),
-            });
-            await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["C", "A", "B"]) });
-            await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["B", "C", "A"]) });
-            await rerender([{ id: "1", value: { name: "First" } }], { columns: titleColumns(["A", "B", "C"]) });
+            const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C"]);
+            await rerenderTitles(["C", "A", "B"]);
+            await rerenderTitles(["B", "C", "A"]);
+            await rerenderTitles(["A", "B", "C"]);
 
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C"]);
         });

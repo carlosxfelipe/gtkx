@@ -3,8 +3,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
 import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
+import type { RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type FixtureInput, renderListView } from "../helpers/list-fixtures.js";
+import { expectRenderItemFunctionUpdate, renderTestItemWithSpy } from "../helpers/list-collection-render.js";
+import { type FixtureInput, type ListViewFixture, renderListView } from "../helpers/list-fixtures.js";
 
 interface Category {
     type: "category";
@@ -37,109 +39,168 @@ const expanderByName = (name: string): Gtk.TreeExpander =>
 const rowTexts = (container: Gtk.ListView | null): Array<string | null> =>
     container ? within(container).queryAllByRole(Gtk.AccessibleRole.LABEL).map(getWidgetNodeText) : [];
 
+const listRowByName = (name: string): Gtk.TreeListRow => {
+    const row = expanderByName(name).getListRow();
+    if (!row) throw new Error("Expected row to exist");
+    return row;
+};
+
+const setRowExpandedByName = async (name: string, expanded: boolean): Promise<void> => {
+    const row = listRowByName(name);
+    await act(() => row.setExpanded(expanded));
+};
+
+const waitForRowTexts = (ref: RefObject<Gtk.ListView>, expected: Array<string | null>): Promise<void> =>
+    waitFor(() => {
+        expect(rowTexts(ref.current)).toEqual(expected);
+    });
+
+const waitForSettledRowTexts = (ref: RefObject<Gtk.ListView>, expected: Array<string | null>): Promise<void> =>
+    waitFor(() => {
+        expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+        expect(rowTexts(ref.current)).toEqual(expected);
+    });
+
+const waitForVisibleOnce = (names: string[]): Promise<void> =>
+    waitFor(() => {
+        expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+        for (const name of names) {
+            expect(screen.queryAllByText(name)).toHaveLength(1);
+        }
+    });
+
+const waitForAllHidden = (names: string[]): Promise<void> =>
+    waitFor(() => {
+        for (const name of names) {
+            expect(screen.queryAllByText(name)).toHaveLength(0);
+        }
+    });
+
+const parentWithChild: FixtureInput<{ name: string }> = [
+    {
+        id: "parent",
+        value: { name: "Parent" },
+        children: [{ id: "child", value: { name: "Child" } }],
+    },
+];
+
+const parentWithTwoChildren: FixtureInput<{ name: string }> = [
+    {
+        id: "parent",
+        value: { name: "Parent" },
+        children: [
+            { id: "child1", value: { name: "Child 1" } },
+            { id: "child2", value: { name: "Child 2" } },
+        ],
+    },
+];
+
 type DemoItem = { name: string };
-const demoLeaf = (id: string, name: string) => ({ id, value: { name } });
-const demoChild = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
-const demoCat = (id: string, name: string, children: ReturnType<typeof demoChild>[]) => ({
+const leafNode = (id: string, name: string) => ({ id, value: { name } });
+const childNode = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
+const categoryNode = (id: string, name: string, children: ReturnType<typeof childNode>[]) => ({
     id,
     value: { name },
     children,
 });
 
 const demoFullTree: ItemNode<DemoItem>[] = [
-    demoLeaf("demo-intro", "GTK Demo"),
-    demoCat("cat-Benchmark", "Benchmark", [demoChild("demo-frames", "Frames"), demoChild("demo-themes", "Themes")]),
-    demoLeaf("demo-clipboard", "Clipboard"),
-    demoCat("cat-Constraints", "Constraints", [
-        demoChild("demo-interactive", "Interactive Constraints"),
-        demoChild("demo-simple", "Simple Constraints"),
-        demoChild("demo-vfl", "VFL"),
+    leafNode("demo-intro", "GTK Demo"),
+    categoryNode("cat-Benchmark", "Benchmark", [
+        childNode("demo-frames", "Frames"),
+        childNode("demo-themes", "Themes"),
     ]),
-    demoLeaf("demo-cursors", "Cursors"),
-    demoLeaf("demo-dialog", "Dialogs"),
-    demoLeaf("demo-dnd", "Drag-and-Drop"),
-    demoLeaf("demo-drawingarea", "Drawing Area"),
-    demoCat("cat-Entry", "Entry", [
-        demoChild("demo-password", "Password Entry"),
-        demoChild("demo-search-entry", "Search Entry"),
-        demoChild("demo-undo-entry", "Undo and Redo"),
+    leafNode("demo-clipboard", "Clipboard"),
+    categoryNode("cat-Constraints", "Constraints", [
+        childNode("demo-interactive", "Interactive Constraints"),
+        childNode("demo-simple", "Simple Constraints"),
+        childNode("demo-vfl", "VFL"),
     ]),
-    demoLeaf("demo-errorstates", "Error States"),
-    demoLeaf("demo-expander", "Expander"),
-    demoCat("cat-Fixed-Layout", "Fixed Layout", [
-        demoChild("demo-cube", "Cube"),
-        demoChild("demo-transforms", "Transformations"),
+    leafNode("demo-cursors", "Cursors"),
+    leafNode("demo-dialog", "Dialogs"),
+    leafNode("demo-dnd", "Drag-and-Drop"),
+    leafNode("demo-drawingarea", "Drawing Area"),
+    categoryNode("cat-Entry", "Entry", [
+        childNode("demo-password", "Password Entry"),
+        childNode("demo-search-entry", "Search Entry"),
+        childNode("demo-undo-entry", "Undo and Redo"),
     ]),
-    demoLeaf("demo-flowbox", "Flow Box"),
-    demoLeaf("demo-gestures", "Gestures"),
-    demoLeaf("demo-headerbar", "Header Bar"),
-    demoLeaf("demo-images", "Images"),
-    demoLeaf("demo-links", "Links"),
-    demoCat("cat-List-Box", "List Box", [
-        demoChild("demo-listbox-complex", "Complex"),
-        demoChild("demo-listbox-controls", "Controls"),
+    leafNode("demo-errorstates", "Error States"),
+    leafNode("demo-expander", "Expander"),
+    categoryNode("cat-Fixed-Layout", "Fixed Layout", [
+        childNode("demo-cube", "Cube"),
+        childNode("demo-transforms", "Transformations"),
     ]),
-    demoCat("cat-Lists", "Lists", [
-        demoChild("demo-alt-settings", "Alternative Settings"),
-        demoChild("demo-app-launcher", "Application launcher"),
-        demoChild("demo-characters", "Characters"),
-        demoChild("demo-colors", "Colors"),
-        demoChild("demo-file-browser", "File browser"),
-        demoChild("demo-minesweeper", "Minesweeper"),
-        demoChild("demo-selections", "Selections"),
-        demoChild("demo-settings", "Settings"),
-        demoChild("demo-weather", "Weather"),
-        demoChild("demo-words", "Words"),
+    leafNode("demo-flowbox", "Flow Box"),
+    leafNode("demo-gestures", "Gestures"),
+    leafNode("demo-headerbar", "Header Bar"),
+    leafNode("demo-images", "Images"),
+    leafNode("demo-links", "Links"),
+    categoryNode("cat-List-Box", "List Box", [
+        childNode("demo-listbox-complex", "Complex"),
+        childNode("demo-listbox-controls", "Controls"),
     ]),
-    demoCat("cat-OpenGL", "OpenGL", [
-        demoChild("demo-gears", "Gears"),
-        demoChild("demo-glarea", "OpenGL Area"),
-        demoChild("demo-shadertoy", "Shadertoy"),
+    categoryNode("cat-Lists", "Lists", [
+        childNode("demo-alt-settings", "Alternative Settings"),
+        childNode("demo-app-launcher", "Application launcher"),
+        childNode("demo-characters", "Characters"),
+        childNode("demo-colors", "Colors"),
+        childNode("demo-file-browser", "File browser"),
+        childNode("demo-minesweeper", "Minesweeper"),
+        childNode("demo-selections", "Selections"),
+        childNode("demo-settings", "Settings"),
+        childNode("demo-weather", "Weather"),
+        childNode("demo-words", "Words"),
     ]),
-    demoCat("cat-Overlay", "Overlay", [
-        demoChild("demo-decorative", "Decorative Overlay"),
-        demoChild("demo-interactive-overlay", "Interactive Overlay"),
+    categoryNode("cat-OpenGL", "OpenGL", [
+        childNode("demo-gears", "Gears"),
+        childNode("demo-glarea", "OpenGL Area"),
+        childNode("demo-shadertoy", "Shadertoy"),
     ]),
-    demoCat("cat-Paintable", "Paintable", [demoChild("demo-svg", "SVG")]),
-    demoLeaf("demo-panes", "Paned Widgets"),
-    demoCat("cat-Pango", "Pango", [
-        demoChild("demo-font-explorer", "Font Explorer"),
-        demoChild("demo-font-rendering", "Font Rendering"),
-        demoChild("demo-rotated-text", "Rotated Text"),
-        demoChild("demo-text-mask", "Text Mask"),
+    categoryNode("cat-Overlay", "Overlay", [
+        childNode("demo-decorative", "Decorative Overlay"),
+        childNode("demo-interactive-overlay", "Interactive Overlay"),
     ]),
-    demoLeaf("demo-pickers", "Pickers and Launchers"),
-    demoCat("cat-Printing", "Printing", [
-        demoChild("demo-page-setup", "Page Setup"),
-        demoChild("demo-printing", "Printing"),
+    categoryNode("cat-Paintable", "Paintable", [childNode("demo-svg", "SVG")]),
+    leafNode("demo-panes", "Paned Widgets"),
+    categoryNode("cat-Pango", "Pango", [
+        childNode("demo-font-explorer", "Font Explorer"),
+        childNode("demo-font-rendering", "Font Rendering"),
+        childNode("demo-rotated-text", "Rotated Text"),
+        childNode("demo-text-mask", "Text Mask"),
     ]),
-    demoLeaf("demo-revealer", "Revealer"),
-    demoLeaf("demo-scale", "Scales"),
-    demoLeaf("demo-shortcut-triggers", "Shortcut Triggers"),
-    demoLeaf("demo-shortcuts", "Shortcuts"),
-    demoLeaf("demo-sizegroup", "Size Groups"),
-    demoLeaf("demo-spinbutton", "Spin Buttons"),
-    demoLeaf("demo-spinner", "Spinner"),
-    demoLeaf("demo-stack", "Stack"),
-    demoLeaf("demo-sidebar", "Stack Sidebar"),
-    demoCat("cat-Text-View", "Text View", [
-        demoChild("demo-auto-scroll", "Automatic Scrolling"),
-        demoChild("demo-hypertext", "Hypertext"),
-        demoChild("demo-markup", "Markup"),
-        demoChild("demo-multi-views", "Multiple Views"),
-        demoChild("demo-tabs", "Tabs"),
-        demoChild("demo-undo-text", "Undo and Redo"),
+    leafNode("demo-pickers", "Pickers and Launchers"),
+    categoryNode("cat-Printing", "Printing", [
+        childNode("demo-page-setup", "Page Setup"),
+        childNode("demo-printing", "Printing"),
     ]),
-    demoCat("cat-Theming", "Theming", [
-        demoChild("demo-accordion", "CSS Accordion"),
-        demoChild("demo-css-basics", "CSS Basics"),
-        demoChild("demo-blend-modes", "CSS Blend Modes"),
-        demoChild("demo-multi-bg", "Multiple Backgrounds"),
-        demoChild("demo-animated-bg", "Animated Backgrounds"),
-        demoChild("demo-shadows", "Shadows"),
-        demoChild("demo-style-classes", "Style Classes"),
+    leafNode("demo-revealer", "Revealer"),
+    leafNode("demo-scale", "Scales"),
+    leafNode("demo-shortcut-triggers", "Shortcut Triggers"),
+    leafNode("demo-shortcuts", "Shortcuts"),
+    leafNode("demo-sizegroup", "Size Groups"),
+    leafNode("demo-spinbutton", "Spin Buttons"),
+    leafNode("demo-spinner", "Spinner"),
+    leafNode("demo-stack", "Stack"),
+    leafNode("demo-sidebar", "Stack Sidebar"),
+    categoryNode("cat-Text-View", "Text View", [
+        childNode("demo-auto-scroll", "Automatic Scrolling"),
+        childNode("demo-hypertext", "Hypertext"),
+        childNode("demo-markup", "Markup"),
+        childNode("demo-multi-views", "Multiple Views"),
+        childNode("demo-tabs", "Tabs"),
+        childNode("demo-undo-text", "Undo and Redo"),
     ]),
-    demoLeaf("demo-video-player", "Video Player"),
+    categoryNode("cat-Theming", "Theming", [
+        childNode("demo-accordion", "CSS Accordion"),
+        childNode("demo-css-basics", "CSS Basics"),
+        childNode("demo-blend-modes", "CSS Blend Modes"),
+        childNode("demo-multi-bg", "Multiple Backgrounds"),
+        childNode("demo-animated-bg", "Animated Backgrounds"),
+        childNode("demo-shadows", "Shadows"),
+        childNode("demo-style-classes", "Style Classes"),
+    ]),
+    leafNode("demo-video-player", "Video Player"),
 ];
 
 const allSettingCategories: Array<Category & { children: Setting[] }> = [
@@ -200,30 +261,46 @@ const allSettingCategories: Array<Category & { children: Setting[] }> = [
     },
 ];
 
+const appearanceChildNames = ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"];
+const notificationChildNames = ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"];
+
 type FilterItem = { type: "category"; name: string } | { type: "leaf"; name: string };
 
+const filterLeaf = (id: string, name: string): ItemNode<FilterItem> => ({ id, value: { type: "leaf", name } });
+
+const filterCategory = (id: string, name: string, children: [string, string][]): ItemNode<FilterItem> => ({
+    id,
+    value: { type: "category", name },
+    children: children.map(([childId, childName]) => ({
+        id: childId,
+        value: { type: "leaf", name: childName },
+        hideExpander: true,
+    })),
+});
+
 const fullItems: FixtureInput<FilterItem> = [
-    { id: "leaf-a", value: { type: "leaf", name: "Alpha" } },
-    {
-        id: "cat-b",
-        value: { type: "category", name: "Bravo" },
-        children: [
-            { id: "leaf-b1", value: { type: "leaf", name: "B-One" }, hideExpander: true },
-            { id: "leaf-b2", value: { type: "leaf", name: "B-Two" }, hideExpander: true },
-        ],
-    },
-    { id: "leaf-c", value: { type: "leaf", name: "Charlie" } },
-    {
-        id: "cat-d",
-        value: { type: "category", name: "Delta" },
-        children: [
-            { id: "leaf-d1", value: { type: "leaf", name: "D-One" }, hideExpander: true },
-            { id: "leaf-d2", value: { type: "leaf", name: "D-Two" }, hideExpander: true },
-            { id: "leaf-d3", value: { type: "leaf", name: "D-Three" }, hideExpander: true },
-        ],
-    },
-    { id: "leaf-e", value: { type: "leaf", name: "Echo" } },
+    filterLeaf("leaf-a", "Alpha"),
+    filterCategory("cat-b", "Bravo", [
+        ["leaf-b1", "B-One"],
+        ["leaf-b2", "B-Two"],
+    ]),
+    filterLeaf("leaf-c", "Charlie"),
+    filterCategory("cat-d", "Delta", [
+        ["leaf-d1", "D-One"],
+        ["leaf-d2", "D-Two"],
+        ["leaf-d3", "D-Three"],
+    ]),
+    filterLeaf("leaf-e", "Echo"),
 ];
+
+const deltaWithDTwo = [filterCategory("cat-d", "Delta", [["leaf-d2", "D-Two"]])];
+
+const alphaAndBravoBOne = [filterLeaf("leaf-a", "Alpha"), filterCategory("cat-b", "Bravo", [["leaf-b1", "B-One"]])];
+
+const filterToDelta = async ({ ref, rerender }: ListViewFixture<FilterItem>): Promise<void> => {
+    await rerender(deltaWithDTwo, { expandAll: true });
+    await waitForRowTexts(ref, ["Delta", "D-Two"]);
+};
 
 describe("render - ListView (tree) (1)", () => {
     describe("GtkListView (tree)", () => {
@@ -248,19 +325,7 @@ describe("render - ListView (tree) (2)", () => {
         });
 
         it("supports nested tree items", async () => {
-            const { ref } = await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        children: [
-                            { id: "child1", value: { name: "Child 1" } },
-                            { id: "child2", value: { name: "Child 2" } },
-                        ],
-                    },
-                ],
-                { expandAll: true },
-            );
+            const { ref } = await renderListView(parentWithTwoChildren, { expandAll: true });
 
             expect(ref.current).not.toBeNull();
         });
@@ -327,9 +392,7 @@ describe("render - ListView (tree) (3)", () => {
 describe("render - ListView (tree) (4)", () => {
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = vi.fn(({ item }: RenderItemProps<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
-
-            await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
+            const renderItem = await renderTestItemWithSpy();
 
             expect(renderItem).toHaveBeenCalled();
         });
@@ -339,30 +402,13 @@ describe("render - ListView (tree) (4)", () => {
                 <GtkLabel>{`${item.name} - depth: ${depth}`}</GtkLabel>
             ));
 
-            await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        children: [{ id: "child", value: { name: "Child" } }],
-                    },
-                ],
-                { renderItem, expandAll: true },
-            );
+            await renderListView(parentWithChild, { renderItem, expandAll: true });
 
             expect(screen.queryAllByText("Parent - depth: 0")).toHaveLength(1);
         });
 
         it("updates when renderItem function changes", async () => {
-            const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel>{`First: ${item.name}`}</GtkLabel>,
-            });
-
-            await rerender([{ id: "1", value: { name: "Test" } }], {
-                renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel>,
-            });
-
-            expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
+            await expectRenderItemFunctionUpdate();
         });
     });
 });
@@ -370,36 +416,15 @@ describe("render - ListView (tree) (4)", () => {
 describe("render - ListView (tree) (5)", () => {
     describe("controlled expansion (1)", () => {
         it("mounts a tree with rows expanded via expandedIds", async () => {
-            const { ref } = await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        children: [{ id: "child", value: { name: "Child" } }],
-                    },
-                ],
-                { expandAll: true },
-            );
+            const { ref } = await renderListView(parentWithChild, { expandAll: true });
 
             expect(ref.current).not.toBeNull();
         });
 
         it("shows children when rows are expanded via expandedIds", async () => {
-            const { ref } = await renderListView(
-                [
-                    {
-                        id: "parent",
-                        value: { name: "Parent" },
-                        children: [
-                            { id: "child1", value: { name: "Child 1" } },
-                            { id: "child2", value: { name: "Child 2" } },
-                        ],
-                    },
-                ],
-                { expandAll: true },
-            );
+            const { ref } = await renderListView(parentWithTwoChildren, { expandAll: true });
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
+            await waitForRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
         });
     });
 });
@@ -421,24 +446,13 @@ describe("render - ListView (tree) (6)", () => {
         });
 
         it("expands parent row to show children when expanded", async () => {
-            const { ref } = await renderListView([
-                {
-                    id: "parent",
-                    value: { name: "Parent" },
-                    children: [
-                        { id: "child1", value: { name: "Child 1" } },
-                        { id: "child2", value: { name: "Child 2" } },
-                    ],
-                },
-            ]);
+            const { ref } = await renderListView(parentWithTwoChildren);
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent"]));
+            await waitForRowTexts(ref, ["Parent"]);
 
-            const row = expanderByName("Parent").getListRow();
-            if (!row) throw new Error("Expected row to exist");
-            await act(() => row.setExpanded(true));
+            await setRowExpandedByName("Parent", true);
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
+            await waitForRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
         });
     });
 });
@@ -446,22 +460,14 @@ describe("render - ListView (tree) (6)", () => {
 describe("render - ListView (tree) (7)", () => {
     describe("controlled expansion (2)", () => {
         it("expands and collapses when expandedIds changes", async () => {
-            const items: FixtureInput<{ name: string }> = [
-                {
-                    id: "parent",
-                    value: { name: "Parent" },
-                    children: [{ id: "child", value: { name: "Child" } }],
-                },
-            ];
-
-            const { ref, rerender } = await renderListView(items, { expandedIds: [] });
+            const { ref, rerender } = await renderListView(parentWithChild, { expandedIds: [] });
             expect(rowTexts(ref.current)).toEqual(["Parent"]);
 
-            await rerender(items, { expandedIds: ["parent"] });
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent", "Child"]));
+            await rerender(parentWithChild, { expandedIds: ["parent"] });
+            await waitForRowTexts(ref, ["Parent", "Child"]);
 
-            await rerender(items, { expandedIds: [] });
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Parent"]));
+            await rerender(parentWithChild, { expandedIds: [] });
+            await waitForRowTexts(ref, ["Parent"]);
         });
     });
 });
@@ -512,63 +518,13 @@ describe("render - ListView (tree) (8)", () => {
 describe("render - ListView (tree) (9)", () => {
     describe("nested children rendering (1)", () => {
         it("renders all nested children with correct data after expansion", async () => {
-            const categories: Array<Category & { children: Setting[] }> = [
-                {
-                    type: "category",
-                    id: "appearance",
-                    name: "Appearance",
-                    children: [
-                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
-                        { type: "setting", id: "large-text", name: "Large Text" },
-                        { type: "setting", id: "animations", name: "Animations" },
-                        { type: "setting", id: "transparency", name: "Transparency" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "notifications",
-                    name: "Notifications",
-                    children: [
-                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
-                        { type: "setting", id: "sounds", name: "Notification Sounds" },
-                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
-                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "privacy",
-                    name: "Privacy",
-                    children: [
-                        { type: "setting", id: "location", name: "Location Services" },
-                        { type: "setting", id: "camera", name: "Camera Access" },
-                        { type: "setting", id: "microphone", name: "Microphone Access" },
-                        { type: "setting", id: "analytics", name: "Usage Analytics" },
-                    ],
-                },
-            ];
-
-            const { ref } = await renderListView(toTreeItems(categories));
+            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 3)));
 
             expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy"]);
 
-            const row = expanderByName("Notifications").getListRow();
-            if (!row) throw new Error("Expected row to exist");
+            await setRowExpandedByName("Notifications", true);
 
-            await act(() => row.setExpanded(true));
-
-            await waitFor(() => {
-                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(rowTexts(ref.current)).toEqual([
-                    "Appearance",
-                    "Notifications",
-                    "Alerts",
-                    "Notification Sounds",
-                    "Do Not Disturb",
-                    "Show Badge Count",
-                    "Privacy",
-                ]);
-            });
+            await waitForSettledRowTexts(ref, ["Appearance", "Notifications", ...notificationChildNames, "Privacy"]);
         });
     });
 });
@@ -576,32 +532,9 @@ describe("render - ListView (tree) (9)", () => {
 describe("render - ListView (tree) (10)", () => {
     describe("nested children rendering (2)", () => {
         it("renders all children with correct data when expanded via expandedIds", async () => {
-            const categories: Array<Category & { children: Setting[] }> = [
-                {
-                    type: "category",
-                    id: "notifications",
-                    name: "Notifications",
-                    children: [
-                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
-                        { type: "setting", id: "sounds", name: "Notification Sounds" },
-                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
-                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
-                    ],
-                },
-            ];
+            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(1, 2)), { expandAll: true });
 
-            const { ref } = await renderListView(toTreeItems(categories), { expandAll: true });
-
-            await waitFor(() => {
-                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(rowTexts(ref.current)).toEqual([
-                    "Notifications",
-                    "Alerts",
-                    "Notification Sounds",
-                    "Do Not Disturb",
-                    "Show Badge Count",
-                ]);
-            });
+            await waitForSettledRowTexts(ref, ["Notifications", ...notificationChildNames]);
         });
     });
 });
@@ -661,37 +594,11 @@ describe("render - ListView (tree) (11)", () => {
 describe("render - ListView (tree) (12)", () => {
     describe("settings tree regression (1)", () => {
         it("renders all children with non-null values on first expansion", async () => {
-            const categories: Array<Category & { children: Setting[] }> = [
-                {
-                    type: "category",
-                    id: "appearance",
-                    name: "Appearance",
-                    children: [
-                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
-                        { type: "setting", id: "large-text", name: "Large Text" },
-                        { type: "setting", id: "animations", name: "Enable Animations" },
-                        { type: "setting", id: "transparency", name: "Transparency Effects" },
-                    ],
-                },
-            ];
+            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
 
-            const { ref } = await renderListView(toTreeItems(categories));
+            await setRowExpandedByName("Appearance", true);
 
-            const row = expanderByName("Appearance").getListRow();
-            if (!row) throw new Error("Expected row to exist");
-
-            await act(() => row.setExpanded(true));
-
-            await waitFor(() => {
-                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(rowTexts(ref.current)).toEqual([
-                    "Appearance",
-                    "Dark Mode",
-                    "Large Text",
-                    "Enable Animations",
-                    "Transparency Effects",
-                ]);
-            });
+            await waitForSettledRowTexts(ref, ["Appearance", ...appearanceChildNames]);
         });
     });
 });
@@ -699,114 +606,61 @@ describe("render - ListView (tree) (12)", () => {
 describe("render - ListView (tree) (13)", () => {
     describe("settings tree regression (2)", () => {
         it("renders all children with non-null values when clicking TreeExpander", async () => {
-            const categories: Array<Category & { children: Setting[] }> = [
-                {
-                    type: "category",
-                    id: "appearance",
-                    name: "Appearance",
-                    children: [
-                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
-                        { type: "setting", id: "large-text", name: "Large Text" },
-                        { type: "setting", id: "animations", name: "Enable Animations" },
-                        { type: "setting", id: "transparency", name: "Transparency Effects" },
-                    ],
-                },
-            ];
+            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
 
-            const { ref } = await renderListView(toTreeItems(categories));
+            await setRowExpandedByName("Appearance", true);
 
-            const row = expanderByName("Appearance").getListRow();
-            if (!row) throw new Error("Expected row to exist");
-
-            await act(() => row.setExpanded(true));
-
-            await waitFor(() =>
-                expect(rowTexts(ref.current)).toEqual([
-                    "Appearance",
-                    "Dark Mode",
-                    "Large Text",
-                    "Enable Animations",
-                    "Transparency Effects",
-                ]),
-            );
+            await waitForRowTexts(ref, ["Appearance", ...appearanceChildNames]);
         });
     });
 });
 
 describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
     it("renders all children correctly after multiple expand/collapse cycles", async () => {
+        const allCategoryNames = ["Appearance", "Notifications", "Privacy", "Power", "Network"];
         const { ref } = await renderListView(toTreeItems(allSettingCategories));
 
-        expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
+        expect(rowTexts(ref.current)).toEqual(allCategoryNames);
 
         const expandAndVerify = async (categoryName: string, expectedChildren: string[]) => {
-            const row = expanderByName(categoryName).getListRow();
-            if (!row) throw new Error("Expected row to exist");
-            await act(() => row.setExpanded(true));
-
-            await waitFor(() => {
-                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                for (const childName of expectedChildren) {
-                    expect(screen.queryAllByText(childName)).toHaveLength(1);
-                }
-            });
+            await setRowExpandedByName(categoryName, true);
+            await waitForVisibleOnce(expectedChildren);
         };
 
-        const collapseRow = async (categoryName: string) => {
-            const row = expanderByName(categoryName).getListRow();
-            if (!row) throw new Error("Expected row to exist");
-            await act(() => row.setExpanded(false));
-        };
+        await expandAndVerify("Appearance", appearanceChildNames);
 
-        await expandAndVerify("Appearance", ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+        await setRowExpandedByName("Appearance", false);
+        await waitForRowTexts(ref, allCategoryNames);
 
-        await collapseRow("Appearance");
-        await waitFor(() =>
-            expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]),
-        );
+        await expandAndVerify("Appearance", appearanceChildNames);
 
-        await expandAndVerify("Appearance", ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+        await setRowExpandedByName("Appearance", false);
 
-        await collapseRow("Appearance");
+        await expandAndVerify("Notifications", notificationChildNames);
 
-        await expandAndVerify("Notifications", ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"]);
+        await setRowExpandedByName("Notifications", false);
 
-        await collapseRow("Notifications");
-
-        await expandAndVerify("Appearance", ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+        await expandAndVerify("Appearance", appearanceChildNames);
 
         await waitFor(() => expect(screen.queryAllByText("Loading...")).toHaveLength(0));
     });
 });
 
 describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
-    const twoCategories: Array<Category & { children: Setting[] }> = allSettingCategories.slice(0, 2);
-    const appearanceChildNames = ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"];
+    const assertChildrenVisible = () => waitForVisibleOnce(appearanceChildNames);
 
-    const assertChildrenVisible = () =>
-        waitFor(() => {
-            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-            for (const name of appearanceChildNames) {
-                expect(screen.queryAllByText(name)).toHaveLength(1);
-            }
-        });
-
-    const assertChildrenHidden = () =>
-        waitFor(() => {
-            for (const name of appearanceChildNames) {
-                expect(screen.queryAllByText(name)).toHaveLength(0);
-            }
-        });
+    const assertChildrenHidden = () => waitForAllHidden(appearanceChildNames);
 
     const toggleRow = async (row: Gtk.TreeListRow, expanded: boolean) => {
         await act(() => row.setExpanded(expanded));
     };
 
     it("third child does not remain stuck on Loading after expansion", async () => {
-        const { ref } = await renderListView(toTreeItems(twoCategories), { estimatedItemHeight: 48 });
+        const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 2)), {
+            estimatedItemHeight: 48,
+        });
 
-        const row = expanderByName("Appearance").getListRow();
-        if (!row) throw new Error("Expected row to exist");
+        const row = listRowByName("Appearance");
 
         for (let i = 0; i < 3; i++) {
             await toggleRow(row, true);
@@ -825,35 +679,22 @@ describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
 describe("render - ListView (tree) (16)", () => {
     describe("tree filtering (1)", () => {
         it("shows children after filtering from many root items to few", async () => {
-            const { ref, rerender } = await renderListView(fullItems, { expandAll: true });
+            const fixture = await renderListView(fullItems, { expandAll: true });
 
-            await waitFor(() =>
-                expect(rowTexts(ref.current)).toEqual([
-                    "Alpha",
-                    "Bravo",
-                    "B-One",
-                    "B-Two",
-                    "Charlie",
-                    "Delta",
-                    "D-One",
-                    "D-Two",
-                    "D-Three",
-                    "Echo",
-                ]),
-            );
+            await waitForRowTexts(fixture.ref, [
+                "Alpha",
+                "Bravo",
+                "B-One",
+                "B-Two",
+                "Charlie",
+                "Delta",
+                "D-One",
+                "D-Two",
+                "D-Three",
+                "Echo",
+            ]);
 
-            await rerender(
-                [
-                    {
-                        id: "cat-d",
-                        value: { type: "category", name: "Delta" },
-                        children: [{ id: "leaf-d2", value: { type: "leaf", name: "D-Two" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
-
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Delta", "D-Two"]));
+            await filterToDelta(fixture);
         });
     });
 });
@@ -861,36 +702,15 @@ describe("render - ListView (tree) (16)", () => {
 describe("render - ListView (tree) (17)", () => {
     describe("tree filtering (2)", () => {
         it("shows children after multiple filter transitions", async () => {
-            const { ref, rerender } = await renderListView(fullItems, { expandAll: true });
+            const fixture = await renderListView(fullItems, { expandAll: true });
 
-            await rerender(
-                [
-                    { id: "leaf-a", value: { type: "leaf", name: "Alpha" } },
-                    {
-                        id: "cat-b",
-                        value: { type: "category", name: "Bravo" },
-                        children: [{ id: "leaf-b1", value: { type: "leaf", name: "B-One" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
+            await fixture.rerender(alphaAndBravoBOne, { expandAll: true });
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]));
+            await waitForRowTexts(fixture.ref, ["Alpha", "Bravo", "B-One"]);
 
-            await rerender(fullItems, { expandAll: true });
+            await fixture.rerender(fullItems, { expandAll: true });
 
-            await rerender(
-                [
-                    {
-                        id: "cat-d",
-                        value: { type: "category", name: "Delta" },
-                        children: [{ id: "leaf-d2", value: { type: "leaf", name: "D-Two" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
-
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Delta", "D-Two"]));
+            await filterToDelta(fixture);
         });
     });
 });
@@ -898,38 +718,29 @@ describe("render - ListView (tree) (17)", () => {
 describe("render - ListView (tree) (18)", () => {
     describe("tree filtering (3)", () => {
         it("shows children after filtering a large tree with many root items", async () => {
-            type Item = { name: string };
-            const fullTree: ItemNode<Item>[] = [];
+            const fullTree: ItemNode<DemoItem>[] = [];
             for (let i = 0; i < 38; i++) {
                 if (i % 5 === 1) {
-                    fullTree.push({
-                        id: `cat-${i}`,
-                        value: { name: `Category ${i}` },
-                        children: Array.from({ length: 3 }, (_, j) => ({
-                            id: `child-${i}-${j}`,
-                            value: { name: `Child ${i}-${j}` },
-                            hideExpander: true,
-                        })),
-                    });
+                    fullTree.push(
+                        categoryNode(
+                            `cat-${i}`,
+                            `Category ${i}`,
+                            Array.from({ length: 3 }, (_, j) => childNode(`child-${i}-${j}`, `Child ${i}-${j}`)),
+                        ),
+                    );
                 } else {
-                    fullTree.push({ id: `leaf-${i}`, value: { name: `Leaf ${i}` } });
+                    fullTree.push(leafNode(`leaf-${i}`, `Leaf ${i}`));
                 }
             }
 
             const { ref, rerender } = await renderListView(fullTree, { expandAll: true, minContentHeight: 400 });
 
-            await rerender(
-                [
-                    {
-                        id: "cat-21",
-                        value: { name: "Category 21" },
-                        children: [{ id: "child-21-1", value: { name: "Child 21-1" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true, minContentHeight: 400 },
-            );
+            await rerender([categoryNode("cat-21", "Category 21", [childNode("child-21-1", "Child 21-1")])], {
+                expandAll: true,
+                minContentHeight: 400,
+            });
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]));
+            await waitForRowTexts(ref, ["Category 21", "Child 21-1"]);
         });
     });
 });
@@ -941,47 +752,38 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
             minContentHeight: 600,
         });
 
-        await rerender([demoCat("cat-Lists", "Lists", [demoChild("demo-weather", "Weather")])], {
+        await rerender([categoryNode("cat-Lists", "Lists", [childNode("demo-weather", "Weather")])], {
             expandAll: true,
             minContentHeight: 600,
         });
 
-        await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Lists", "Weather"]));
+        await waitForRowTexts(ref, ["Lists", "Weather"]);
     });
 });
 
 describe("render - ListView (tree) (20)", () => {
     describe("tree filtering (5)", () => {
         it("shows children after filtering demo-like tree with small viewport", async () => {
-            type Item = { name: string };
-            const leaf = (id: string, name: string) => ({ id, value: { name } });
-            const ch = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
-            const cat = (id: string, name: string, children: ReturnType<typeof ch>[]) => ({
-                id,
-                value: { name },
-                children,
-            });
-
-            const fullTree: ItemNode<Item>[] = [];
+            const fullTree: ItemNode<DemoItem>[] = [];
             for (let i = 0; i < 40; i++) {
                 if (i % 4 === 0) {
                     fullTree.push(
-                        cat(`cat-${i}`, `Category ${i}`, [
-                            ch(`ch-${i}-0`, `Child ${i}-0`),
-                            ch(`ch-${i}-1`, `Child ${i}-1`),
+                        categoryNode(`cat-${i}`, `Category ${i}`, [
+                            childNode(`ch-${i}-0`, `Child ${i}-0`),
+                            childNode(`ch-${i}-1`, `Child ${i}-1`),
                         ]),
                     );
                 } else {
-                    fullTree.push(leaf(`leaf-${i}`, `Leaf ${i}`));
+                    fullTree.push(leafNode(`leaf-${i}`, `Leaf ${i}`));
                 }
             }
 
             const viewport = { expandAll: true, minContentHeight: 100, maxContentHeight: 100 } as const;
             const { ref, rerender } = await renderListView(fullTree, viewport);
 
-            await rerender([cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")])], viewport);
+            await rerender([categoryNode("cat-36", "Category 36", [childNode("ch-36-0", "Child 36-0")])], viewport);
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]));
+            await waitForRowTexts(ref, ["Category 36", "Child 36-0"]);
         });
     });
 });
@@ -989,60 +791,26 @@ describe("render - ListView (tree) (20)", () => {
 describe("render - ListView (tree) (21)", () => {
     describe("tree filtering (6)", () => {
         it("shows children when transitioning from one filter to another without restoring full list", async () => {
-            const { ref, rerender } = await renderListView(fullItems, { expandAll: true });
+            const fixture = await renderListView(fullItems, { expandAll: true });
 
-            await rerender(
-                [
-                    { id: "leaf-a", value: { type: "leaf", name: "Alpha" } },
-                    {
-                        id: "cat-b",
-                        value: { type: "category", name: "Bravo" },
-                        children: [{ id: "leaf-b1", value: { type: "leaf", name: "B-One" }, hideExpander: true }],
-                    },
-                    {
-                        id: "cat-d",
-                        value: { type: "category", name: "Delta" },
-                        children: [{ id: "leaf-d1", value: { type: "leaf", name: "D-One" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
+            await fixture.rerender([...alphaAndBravoBOne, filterCategory("cat-d", "Delta", [["leaf-d1", "D-One"]])], {
+                expandAll: true,
+            });
 
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]));
+            await waitForRowTexts(fixture.ref, ["Alpha", "Bravo", "B-One", "Delta", "D-One"]);
 
-            await rerender(
-                [
-                    {
-                        id: "cat-d",
-                        value: { type: "category", name: "Delta" },
-                        children: [{ id: "leaf-d2", value: { type: "leaf", name: "D-Two" }, hideExpander: true }],
-                    },
-                ],
-                { expandAll: true },
-            );
-
-            await waitFor(() => expect(rowTexts(ref.current)).toEqual(["Delta", "D-Two"]));
+            await filterToDelta(fixture);
         });
     });
 });
 
 describe("render - ListView (tree) (22)", () => {
     describe("controlled expansion callbacks", () => {
-        const parentTree: FixtureInput<{ name: string }> = [
-            {
-                id: "parent",
-                value: { name: "Parent" },
-                children: [{ id: "child", value: { name: "Child" } }],
-            },
-        ];
-
         it("reports onExpandedChange when the user expands a row", async () => {
             const onExpandedChange = vi.fn();
-            const { ref } = await renderListView(parentTree, { expandedIds: [], onExpandedChange });
+            const { ref } = await renderListView(parentWithChild, { expandedIds: [], onExpandedChange });
 
-            const row = expanderByName("Parent").getListRow();
-            if (!row) throw new Error("Expected row to exist");
-            await act(() => row.setExpanded(true));
+            await setRowExpandedByName("Parent", true);
 
             await waitFor(() => expect(onExpandedChange).toHaveBeenCalledWith(["parent"]));
             expect(ref.current).not.toBeNull();
@@ -1053,7 +821,7 @@ describe("render - ListView (tree) (22)", () => {
                 <GtkLabel>{`${item.name}:${isExpanded}`}</GtkLabel>
             );
 
-            await renderListView(parentTree, { expandedIds: ["parent"], renderItem });
+            await renderListView(parentWithChild, { expandedIds: ["parent"], renderItem });
 
             await waitFor(() => expect(screen.queryAllByText("Parent:true")).toHaveLength(1));
         });

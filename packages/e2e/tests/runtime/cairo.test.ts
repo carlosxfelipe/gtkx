@@ -137,23 +137,22 @@ describe("Context — path operations: basic moves and lines", () => {
     });
 });
 
+const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
+    const ctx = createTestContext();
+    ctx.moveTo(0, 0);
+    curve(ctx);
+    const point = ctx.getCurrentPoint();
+    expect(point?.x).toBeCloseTo(30);
+    expect(point?.y).toBeCloseTo(30);
+};
+
 describe("Context — path operations: curves and arcs", () => {
     it("draws a curve", () => {
-        const ctx = createTestContext();
-        ctx.moveTo(0, 0);
-        ctx.curveTo(10, 10, 20, 20, 30, 30);
-        const point = ctx.getCurrentPoint();
-        expect(point?.x).toBeCloseTo(30);
-        expect(point?.y).toBeCloseTo(30);
+        expectCurveEndsAt30((ctx) => ctx.curveTo(10, 10, 20, 20, 30, 30));
     });
 
     it("draws a relative curve", () => {
-        const ctx = createTestContext();
-        ctx.moveTo(0, 0);
-        ctx.relCurveTo(10, 10, 20, 20, 30, 30);
-        const point = ctx.getCurrentPoint();
-        expect(point?.x).toBeCloseTo(30);
-        expect(point?.y).toBeCloseTo(30);
+        expectCurveEndsAt30((ctx) => ctx.relCurveTo(10, 10, 20, 20, 30, 30));
     });
 
     it("draws an arc", () => {

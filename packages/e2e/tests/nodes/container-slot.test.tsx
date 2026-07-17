@@ -61,6 +61,16 @@ const renderToolbarWithSingleBar = async (bar: { topBar?: ReactNode; bottomBar?:
     return { toolbarRef, contentRef };
 };
 
+const expectTwoLabelSlotMounts = async (build: (labels: ReactNode) => ReactNode): Promise<void> => {
+    const firstRef = createRef<Gtk.Label>();
+    const secondRef = createRef<Gtk.Label>();
+
+    await render(build(twoLabelFragment(firstRef, secondRef)));
+
+    expect(firstRef.current).not.toBeNull();
+    expect(secondRef.current).not.toBeNull();
+};
+
 const expectIndividualChildRemoval = async (
     renderApp: (showSecond: boolean) => ReactNode,
     firstRef: RefObject<Gtk.Label | null>,
@@ -197,25 +207,15 @@ describe("render - ContainerProp (4)", () => {
 describe("render - ContainerProp (5)", () => {
     describe("AdwActionRow (prefix/suffix) (5)", () => {
         it("adds multiple children as prefix via prefix", async () => {
-            const rowRef = createRef<Adw.ActionRow>();
-            const firstRef = createRef<Gtk.Label>();
-            const secondRef = createRef<Gtk.Label>();
-
-            await render(actionRowInListBox(rowRef, { prefix: twoLabelFragment(firstRef, secondRef) }));
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).not.toBeNull();
+            await expectTwoLabelSlotMounts((labels) =>
+                actionRowInListBox(createRef<Adw.ActionRow>(), { prefix: labels }),
+            );
         });
 
         it("adds multiple children as suffix via suffix", async () => {
-            const rowRef = createRef<Adw.ActionRow>();
-            const firstRef = createRef<Gtk.Label>();
-            const secondRef = createRef<Gtk.Label>();
-
-            await render(actionRowInListBox(rowRef, { suffix: twoLabelFragment(firstRef, secondRef) }));
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).not.toBeNull();
+            await expectTwoLabelSlotMounts((labels) =>
+                actionRowInListBox(createRef<Adw.ActionRow>(), { suffix: labels }),
+            );
         });
     });
 });
@@ -474,25 +474,13 @@ describe("render - ContainerProp (12)", () => {
 describe("render - ContainerProp (13)", () => {
     describe("GtkHeaderBar (start/end) (3)", () => {
         it("packs multiple children at start via start", async () => {
-            const headerBarRef = createRef<Gtk.HeaderBar>();
-            const firstRef = createRef<Gtk.Label>();
-            const secondRef = createRef<Gtk.Label>();
-
-            await render(headerBarWithPack(headerBarRef, { start: twoLabelFragment(firstRef, secondRef) }));
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).not.toBeNull();
+            await expectTwoLabelSlotMounts((labels) =>
+                headerBarWithPack(createRef<Gtk.HeaderBar>(), { start: labels }),
+            );
         });
 
         it("packs multiple children at end via end", async () => {
-            const headerBarRef = createRef<Gtk.HeaderBar>();
-            const firstRef = createRef<Gtk.Label>();
-            const secondRef = createRef<Gtk.Label>();
-
-            await render(headerBarWithPack(headerBarRef, { end: twoLabelFragment(firstRef, secondRef) }));
-
-            expect(firstRef.current).not.toBeNull();
-            expect(secondRef.current).not.toBeNull();
+            await expectTwoLabelSlotMounts((labels) => headerBarWithPack(createRef<Gtk.HeaderBar>(), { end: labels }));
         });
     });
 });
