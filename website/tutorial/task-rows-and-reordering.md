@@ -136,11 +136,13 @@ controllers={
         <>
             <GtkDragSource
                 actions={Gdk.DragAction.MOVE}
-                onPrepare={() =>
-                    Gdk.ContentProvider.newForValue(
+                onPrepare={(x, y, self) => {
+                    const row = self.getWidget();
+                    if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
+                    return Gdk.ContentProvider.newForValue(
                         GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id)),
-                    )
-                }
+                    );
+                }}
             />
             <GtkDropTarget
                 actions={Gdk.DragAction.MOVE}
@@ -164,6 +166,23 @@ The payload is a GObject value, not a JavaScript object. GTK4 drag-and-drop tran
 - `Gdk.ContentProvider.newForValue(...)` wraps that value into a content provider the drag can carry.
 
 On the receiving side, `GtkDropTarget.types` declares which `GObject.Type`s this target accepts (`[GObject.TYPE_STRING]`), which is what lets GTK4 light the row up as a valid drop only for matching drags. `onDrop` (the `drop` signal) receives the marshaled `GObject.Value`; `value.getString()` reads the dragged task's id back out, and the handler calls `onReorder(draggedId, task.id)`, moving the dragged task to this row's position. Returning `true` reports the drop as handled.
+
+## Set the drag icon, or GTK4 draws the payload
+
+`onPrepare` does one more job: it decides what the pointer carries during the drag. That is not decoration. With no icon set, GTK4 builds a default one out of the content provider's value, and a string-typed value becomes a label showing that string. The payload here is the task's id, so leaving the icon alone drags a small `t1` label around instead of the task.
+
+The fix is to hand the drag source a paintable of the row itself:
+
+```tsx
+const row = self.getWidget();
+if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
+```
+
+`self` is the drag source, since every JSX `on*` handler receives the emitter as its last argument, and `getWidget` returns the widget the controller is attached to, which is this row. `Gtk.WidgetPaintable.new(row)` wraps that live widget as a `Gdk.Paintable`, so the ghost under the cursor is a picture of the row being dragged, title and controls included.
+
+The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it. That grab point is why the icon is set here instead of in `onDragBegin`: `prepare` is the only signal that carries it, and GTK4 reads the icon back after both signals have run, so setting it this early still takes effect.
+
+`Math.round` is not cosmetic. Pointer coordinates arrive as GTK4 doubles and a real drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
 
 ## Closing the loop stays in React state
 

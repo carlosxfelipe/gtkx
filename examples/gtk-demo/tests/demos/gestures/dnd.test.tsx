@@ -316,6 +316,23 @@ describe("dndDemo item drag-source side effects", () => {
             expect(trash.getVisible()).toBe(false);
         });
     });
+
+    it("sets the drag icon from a fractional pointer hotspot", async () => {
+        await renderDemo(dndDemo);
+        const item1 = await findItemLabel("1");
+        const dragSource = findController(item1, Gtk.DragSource);
+        expect(dragSource).toBeInstanceOf(Gtk.DragSource);
+        if (!dragSource) return;
+
+        await act(() => {
+            dragSource.emit("prepare", 181.5, 7.5);
+        });
+        await act(() => {
+            dragSource.emit("drag-begin", null);
+        });
+
+        await waitFor(() => expect(item1.getOpacity()).toBeCloseTo(0.3, 2));
+    });
 });
 
 describe("dndDemo trash zone", () => {

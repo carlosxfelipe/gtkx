@@ -395,7 +395,7 @@ function useItemDragHandlers(args: DndHandlerArgs) {
         if (!button) return;
         const paintable = Gtk.WidgetPaintable.new(button);
         const { x, y } = refs.dragHotspotRef.current;
-        source.setIcon(paintable, x, y);
+        source.setIcon(paintable, Math.round(x), Math.round(y));
     };
 
     return { bringToFront, setDragIcon };
