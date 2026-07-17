@@ -12,6 +12,7 @@
         "dev": "gtkx dev",
         "build": "gtkx build",
         "codegen": "gtkx codegen",
+        "test": "vitest run",
         "typecheck": "gtkx codegen && tsc --noEmit",
         "start": "node dist/bundle.js",
         "bundle": "gtkx build && node scripts/bundle.ts",
@@ -32,9 +33,11 @@
     "devDependencies": {
         "@gtkx/cli": "^1.0.0-rc.1",
         "@gtkx/config": "^1.0.0-rc.1",
+        "@gtkx/testing": "^1.0.0-rc.1",
         "@types/node": "^24.13.3",
         "esbuild": "^0.28.1",
-        "postject": "1.0.0-alpha.6"
+        "postject": "1.0.0-alpha.6",
+        "vitest": "^4.1.10"
     },
     "allowScripts": {
         "esbuild": true,

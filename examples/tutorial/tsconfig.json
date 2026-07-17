@@ -9,7 +9,7 @@
         "resolveJsonModule": true,
         "types": ["node"],
         "outDir": "out-tsc",
-        "rootDir": "src"
+        "rootDir": "."
     },
-    "include": ["src/**/*"]
+    "include": ["src/**/*", "tests/**/*"]
 }

@@ -1,6 +1,6 @@
 import "../motion-env.js";
 import * as Gtk from "@gtkx/gi/gtk";
-import { createProjectionNode, type IProjectionNode } from "motion-dom";
+import { createProjectionNode, type IProjectionNode, microtask } from "motion-dom";
 import { WidgetProxy } from "../bridge/widget-proxy.js";
 import { setWindowMetrics } from "../motion-env.js";
 import { scheduleAfterGtkLayout } from "./frame-sync.js";
@@ -46,7 +46,28 @@ const GtkRootProjectionNodeBase = createProjectionNode<RootAnchor>({
 
 interface ProjectionChild {
     instance?: unknown;
+    children?: Set<ProjectionChild>;
 }
+
+const clockedWidgetIn = (nodes: Set<ProjectionChild>): Gtk.Widget | null => {
+    for (const node of nodes) {
+        const instance = node.instance;
+        if (instance instanceof WidgetProxy && instance.widget.getFrameClock() !== null) return instance.widget;
+        const nested = node.children ? clockedWidgetIn(node.children) : null;
+        if (nested) return nested;
+    }
+    return null;
+};
+
+const clockedToplevel = (): Gtk.Widget | null => {
+    const toplevels = Gtk.Window.getToplevels();
+    const count = toplevels.getNItems();
+    for (let index = 0; index < count; index += 1) {
+        const item = toplevels.getItem(index);
+        if (item instanceof Gtk.Window && item.getFrameClock() !== null) return item;
+    }
+    return null;
+};
 
 class GtkRootProjectionNode extends GtkRootProjectionNodeBase {
     constructor(latestValues: Record<string, string | number> = {}) {
@@ -60,19 +81,22 @@ class GtkRootProjectionNode extends GtkRootProjectionNodeBase {
 
     private frameClockWidget(): Gtk.Widget | null {
         const children: Set<ProjectionChild> = this.children;
-        for (const child of children) {
-            if (child.instance instanceof WidgetProxy) return child.instance.widget;
-        }
-        return null;
+        return clockedWidgetIn(children) ?? clockedToplevel();
     }
 
     override didUpdate(): void {
         if (this.updateScheduled) return;
         this.updateScheduled = true;
-        scheduleAfterGtkLayout(this.frameClockWidget(), () => {
+        const run = (): void => {
             this.updateScheduled = false;
             this.update();
-        });
+        };
+        const widget = this.frameClockWidget();
+        if (!widget) {
+            microtask.read(run);
+            return;
+        }
+        scheduleAfterGtkLayout(widget, run);
     }
 }
 

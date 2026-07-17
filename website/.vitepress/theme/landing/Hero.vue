@@ -22,82 +22,84 @@ const pms = [
 type Tok = { t: string; c?: string };
 const code: { indent?: number; toks: Tok[] }[] = [
     { toks: [{ c: "kw", t: "import" }, { t: " {" }] },
-    { indent: 1, toks: [{ c: "tag", t: "AdwApplication" }, { t: "," }] },
-    { indent: 1, toks: [{ c: "tag", t: "AdwApplicationWindow" }, { t: "," }] },
-    { indent: 1, toks: [{ c: "tag", t: "AdwHeaderBar" }, { t: "," }] },
-    { indent: 1, toks: [{ c: "tag", t: "AdwToolbarView" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "GtkApplicationWindow" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "GtkBox" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "GtkButton" }, { t: "," }] },
+    { indent: 1, toks: [{ c: "tag", t: "GtkLabel" }, { t: "," }] },
     {
-        toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/adw"' }],
+        toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/gtk"' }],
     },
     {
         toks: [
             { c: "kw", t: "import" },
             { t: " { " },
-            { c: "tag", t: "GtkLabel" },
+            { c: "fn", t: "useState" },
             { t: " } " },
             { c: "kw", t: "from" },
             { t: " " },
-            { c: "str", t: '"@gtkx/jsx/gtk"' },
+            { c: "str", t: '"react"' },
         ],
     },
     { toks: [] },
-    { toks: [{ c: "kw", t: "export function" }, { t: " " }, { c: "fn", t: "App" }, { t: "() {" }] },
+    {
+        toks: [{ c: "kw", t: "const" }, { t: " " }, { c: "fn", t: "MainWindow" }, { t: " = () => {" }],
+    },
+    {
+        indent: 1,
+        toks: [{ c: "kw", t: "const" }, { t: " [count, setCount] = " }, { c: "fn", t: "useState" }, { t: "(0)" }],
+    },
+    { toks: [] },
     { indent: 1, toks: [{ c: "kw", t: "return" }, { t: " (" }] },
     {
         indent: 2,
         toks: [
             { c: "punct", t: "<" },
-            { c: "tag", t: "AdwApplication" },
+            { c: "tag", t: "GtkApplicationWindow" },
+            { t: " title=" },
+            { c: "str", t: '"My App"' },
             { c: "punct", t: ">" },
         ],
     },
     {
         indent: 3,
+        toks: [{ c: "punct", t: "<" }, { c: "tag", t: "GtkBox" }, { t: " spacing={20}" }, { c: "punct", t: ">" }],
+    },
+    {
+        indent: 4,
         toks: [
             { c: "punct", t: "<" },
-            { c: "tag", t: "AdwApplicationWindow" },
-            { t: " title=" },
-            { c: "str", t: '"Tasks"' },
-            { c: "punct", t: ">" },
+            { c: "tag", t: "GtkLabel" },
+            { t: " label={" },
+            { c: "str", t: "`Count: " },
+            { t: "${" },
+            { t: "count" },
+            { t: "}" },
+            { c: "str", t: "`" },
+            { t: "} " },
+            { c: "punct", t: "/>" },
         ],
     },
     {
         indent: 4,
         toks: [
             { c: "punct", t: "<" },
-            { c: "tag", t: "AdwToolbarView" },
-            { t: " topBar={" },
-            { c: "punct", t: "<" },
-            { c: "tag", t: "AdwHeaderBar" },
-            { t: " />}" },
-            { c: "punct", t: ">" },
+            { c: "tag", t: "GtkButton" },
         ],
     },
     {
         indent: 5,
-        toks: [
-            { c: "punct", t: "<" },
-            { c: "tag", t: "GtkLabel" },
-            { c: "punct", t: ">" },
-            { t: "Hello from GTKX 👋" },
-            { c: "punct", t: "</" },
-            { c: "tag", t: "GtkLabel" },
-            { c: "punct", t: ">" },
-        ],
+        toks: [{ t: "label=" }, { c: "str", t: '"Increment"' }],
     },
     {
-        indent: 4,
-        toks: [
-            { c: "punct", t: "</" },
-            { c: "tag", t: "AdwToolbarView" },
-            { c: "punct", t: ">" },
-        ],
+        indent: 5,
+        toks: [{ t: "onClicked={() => " }, { c: "fn", t: "setCount" }, { t: "((c) => c + 1)}" }],
     },
+    { indent: 4, toks: [{ c: "punct", t: "/>" }] },
     {
         indent: 3,
         toks: [
             { c: "punct", t: "</" },
-            { c: "tag", t: "AdwApplicationWindow" },
+            { c: "tag", t: "GtkBox" },
             { c: "punct", t: ">" },
         ],
     },
@@ -105,12 +107,12 @@ const code: { indent?: number; toks: Tok[] }[] = [
         indent: 2,
         toks: [
             { c: "punct", t: "</" },
-            { c: "tag", t: "AdwApplication" },
+            { c: "tag", t: "GtkApplicationWindow" },
             { c: "punct", t: ">" },
         ],
     },
     { indent: 1, toks: [{ t: ")" }] },
-    { toks: [{ t: "}" }] },
+    { toks: [{ t: "};" }] },
 ];
 </script>
 
@@ -232,6 +234,7 @@ const code: { indent?: number; toks: Tok[] }[] = [
   font-size: var(--text-sm);
   line-height: 1.7;
   white-space: pre;
+  width: max-content;
 }
 .hcl {
   min-height: 1.7em;

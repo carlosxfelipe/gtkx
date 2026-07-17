@@ -3,7 +3,7 @@ import type { SyntheticEvent } from "../motion-env.js";
 import { toRootPoint } from "./geometry.js";
 
 /**
- * Builds a pointer event from a live GTK gesture, suitable for `DragControls.start`.
+ * Builds a pointer event from a live GTK4 gesture, suitable for `DragControls.start`.
  * Call it from a gesture signal handler (for example `GtkGestureDrag`'s `onDragBegin`)
  * on the drag handle widget.
  */

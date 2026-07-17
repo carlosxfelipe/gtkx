@@ -15,7 +15,8 @@ async function validateTutorial(env: NodeJS.ProcessEnv): Promise<void> {
     await runAsync("npm", ["run", "build"], { cwd: TUTORIAL_DIR, env });
     await verifyBuiltAppStarts(TUTORIAL_DIR);
     await runAsync("npm", ["run", "typecheck"], { cwd: TUTORIAL_DIR, env });
-    console.log("tutorial: install, build, run, and typecheck succeeded");
+    await runAsync("npm", ["run", "test"], { cwd: TUTORIAL_DIR, env });
+    console.log("tutorial: install, build, run, typecheck, and test succeeded");
 }
 
 async function main(): Promise<void> {

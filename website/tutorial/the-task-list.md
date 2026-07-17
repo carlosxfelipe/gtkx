@@ -69,10 +69,10 @@ A few GTK4-isms to unpack for a React reader:
 </GtkSearchBar>
 ```
 
-`GtkSearchBar` is the sliding container that reveals or hides the search field. Its `search-mode-enabled` GObject property controls whether the bar is open. GTKX exposes writable scalar GObject properties in two halves, a value prop and a notify handler, and since `search-mode-enabled` is writable you see both here:
+`GtkSearchBar` is the sliding container that reveals or hides the search field. Its `search-mode-enabled` GObject property controls whether the bar is open. Every scalar GObject property gets an `onNotify<Prop>` handler; writable ones additionally get a value prop, so `search-mode-enabled` shows up as both halves here:
 
 - `searchModeEnabled={search.mode}` is the **setter** side. React drives the bar open or closed.
-- `onNotifySearchModeEnabled` is the **notify** side. GTK4 fires `notify::search-mode-enabled` whenever the property changes (including when the user presses Escape to dismiss the bar), and GTKX surfaces that as an `onNotify<Prop>` handler. The value can be `null`, so the code coalesces with `enabled ?? false`.
+- `onNotifySearchModeEnabled` is the **notify** side. GTK4 fires `notify::search-mode-enabled` whenever the property changes, including when the user presses Escape to dismiss the bar. The value can be `null`, so the code coalesces with `enabled ?? false`.
 
 Wiring both halves back to the same state (`search.mode` / `search.onModeChange`) is what makes it a controlled component, exactly like a controlled `<input>` in React. This is the general GTKX pattern for two-way binding any GObject property.
 
@@ -109,8 +109,8 @@ onClicked={() => setSearchMode((mode) => !mode)}
 
 Two things make this the idiomatic Adwaita list rather than a plain one:
 
-- **`cssClasses={["boxed-list"]}`** applies the `.boxed-list` style class, which turns a bare `GtkListBox` into the rounded, bordered card group you see all over GNOME Settings. There is no `className` prop in GTKX; you always pass a string array to `cssClasses`.
-- **`selectionMode={Gtk.SelectionMode.NONE}`** disables row selection. Boxed lists are not "pick one of these" lists; each row carries its own controls (a checkbox, a star, a delete button), so selecting the whole row would be meaningless. `Gtk.SelectionMode.NONE` is the enum value that switches selection off.
+- **`cssClasses={["boxed-list"]}`** applies the `.boxed-list` style class, which turns a bare `GtkListBox` into the rounded, bordered card group you see all over GNOME Settings.
+- **`selectionMode={Gtk.SelectionMode.NONE}`** disables row selection. Boxed lists are not "pick one of these" lists; each row carries its own controls (a checkbox, a star, a delete button), so selecting the whole row would be meaningless.
 
 Children of a `GtkListBox` are appended in order. The rows here are, top to bottom: the inline add entry, one `TaskRow` per task, and (only when there are tasks) a trailing add button. React's `key={task.id}` gives each `TaskRow` a stable identity so the reconciler can move, insert, and remove real GTK4 widgets in place instead of rebuilding the list.
 
@@ -154,7 +154,7 @@ Assigning `self.text = ""` writes the GObject `text` property directly on the wi
 
 `AdwButtonRow` is a list row styled as a button, with an optional leading icon (`startIconName`). `"list-add-symbolic"` is a stock GNOME symbolic icon name, resolved from the icon theme at runtime; you never ship the asset yourself.
 
-Its `onActivated` handler calls `entryRef.current?.grabFocus()`. `grabFocus` is the standard GTK4 method that moves keyboard focus to a widget. Tapping this button at the bottom of a long list jumps you straight back up to the add field, ready to type. `entryRef.current` is the live `Adw.EntryRow` captured above. The optional chain guards the mount/unmount window where the ref is still `null`.
+Its `onActivated` handler calls `entryRef.current?.grabFocus()`. `grabFocus` is the standard GTK4 method that moves keyboard focus to a widget. Tapping this button at the bottom of a long list jumps you straight back up to the add field, ready to type. The optional chain guards the mount/unmount window where the ref is still `null`.
 
 This row only renders when there are tasks. When the list is empty the inline add row is already right there, so a second add affordance would be redundant.
 
@@ -215,7 +215,9 @@ const FilterToggle = ({ filter, onChange }: { filter: Filter; onChange: (value: 
 );
 ```
 
-`AdwToggleGroup` is the Adwaita segmented control (one button visibly pressed at a time). Each `AdwToggle` carries a `name` and a `label`. Rather than track which *index* is active, you drive it by name: `activeName` selects the pressed toggle, and `onNotifyActiveName` reports the new name when the user clicks. The guard (`name === "all" || ...`) narrows the incoming string to the `Filter` union before passing it up. The `.round` style class gives it the pill shape.
+`AdwToggleGroup` is the Adwaita segmented control (one button visibly pressed at a time). Each `AdwToggle` carries a `name` and a `label`. Rather than track which *index* is active, you drive it by name: `activeName` selects the pressed toggle, and `onNotifyActiveName` reports the new name when the user clicks.
+
+The guard (`name === "all" || ...`) narrows the incoming string to the `Filter` union before passing it up. The `.round` style class gives it the pill shape.
 
 What makes the filter *sticky* across launches is where its state lives. `app.tsx` reads and writes it through `useSetting`, GTKX's GSettings hook:
 
@@ -225,7 +227,7 @@ const [filter, setFilter] = useSetting(schema, "filter");
 titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
 ```
 
-`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The Preferences and Theming page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook is all it takes to persist this UI state.
+`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The [Preferences and Theming](/tutorial/preferences-and-theming) page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook is all it takes to persist this UI state.
 
 ## Where filtering happens: `select.ts`
 
@@ -312,10 +314,10 @@ const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sor
 <TaskList tasks={visible} reorderable={reorderable} /* ... */ />
 ```
 
-Doing filtering and sorting in React state, not in a GTK4 list model, is the whole architectural bet of GTKX: your data transformations are plain functions over arrays, exactly as they would be in a web React app, and the reconciler turns the resulting list into real GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
+Filtering and sorting live in React state, not in a GTK4 list model. Your data transformations stay plain functions over arrays, exactly as in a web React app, and the reconciler turns the resulting list into real GTK4 widgets. The `reorderable` prop you see passed through (`sortOrder === "manual" && !searchQuery && ...`) gates drag-to-reorder on the rows, which is the subject of the next page.
 
 ::: info
-Because the list is derived, `visibleTasks` recomputes on every render. For a personal task list that is trivially cheap. If you ever needed to, you would memoize it with `useMemo`, the same React tool you already know, not a GTK4 model.
+Because the list is derived, `visibleTasks` recomputes on every render. At the size of a personal task list, that cost is negligible. If you ever needed to, you would memoize it with `useMemo`, the same React tool you already know, not a GTK4 model.
 :::
 
 ## Next

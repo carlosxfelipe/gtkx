@@ -1,12 +1,12 @@
 ---
-description: "How GTKX renders GTK4 surfaces that live outside the widget tree: createPortal, the rootElement container, the Dialog component and AdwAlertDialog responses, and extra windows."
+description: "How GTKX renders GTK4 surfaces that live outside the widget tree: createPortal, the rootElement container, the Dialog component's mounting model, and extra windows."
 ---
 
 # Modals and Portals
 
-A React tree normally mirrors a containment hierarchy: each JSX child becomes a child widget of its JSX parent. GTK4 has surfaces that refuse to fit that shape. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` that gets *presented* against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view, not by you.
+Portals let a component render children into a container other than its JSX parent, while it keeps owning those children's state, props, and lifetime.
 
-In every one of these cases you still want React state to decide what exists and what it looks like. Portals are the bridge: they let a component render children into a container other than its JSX parent, while the component keeps owning those children's state, props, and lifetime.
+Use them for the GTK4 surfaces that refuse to nest. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` presented against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view.
 
 For a worked walkthrough of toasts, confirmations, and form dialogs in a real app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
 
@@ -17,10 +17,10 @@ For a worked walkthrough of toasts, confirmations, and form dialogs in a real ap
 ```ts
 import { createPortal } from "@gtkx/react";
 
-createPortal(children: ReactNode, container: Container, key?: string | null): ReactPortal
+createPortal(children: ReactNode, container: GObject.Object | RootElement, key?: string | null): ReactPortal
 ```
 
-A `Container` is either any live `GObject.Object` or the special `rootElement` marker described below. That definition is deliberately broad. The most common targets are:
+The container is either any live `GObject.Object` or the special `rootElement` marker described below. That definition is deliberately broad. The most common targets are:
 
 - **A widget you hold a ref to.** The children are attached to that widget exactly as if they had been written as its JSX children, using the same generated container logic (append, insert, reorder) that regular children use.
 - **The `Gtk.Application` object** from `useApplication()`, the natural home for extra windows.
@@ -45,10 +45,10 @@ const StatusArea = () => {
 };
 ```
 
-Everything you know about portals from React DOM carries over: the children stay in the *React* tree of the component that rendered them, so context, state, and effects flow from where the portal is written, not where the widgets land. Multiple portals can target the same container, portal contents update when props change, and removing the portal unmounts and destroys its widgets.
+React ownership carries over from React DOM: the children stay in the *React* tree of the component that rendered them, so context, state, and effects flow from where the portal is written, not where the widgets land. Multiple portals can target the same container, portal contents update when props change, and removing the portal unmounts and destroys its widgets.
 
 ::: info
-GTKX uses this mechanism internally. The `ListView`, `GridView`, and `ColumnView` components in `@gtkx/components` render your `renderItem` (or, for `ColumnView` columns, `renderCell`) output through portals into the cell containers that GTK4's list item factories create on demand. That is why fully declarative, stateful list cells work at all: each cell is a portal target.
+GTKX uses this mechanism internally. The `ListView`, `GridView`, `ColumnView`, and `DropDown` components in `@gtkx/components` render your `renderItem` (or, for `ColumnView` columns, `renderCell`) output through portals into the cell containers that GTK4's list item factories create on demand. That is why fully declarative, stateful list cells work at all: each cell is a portal target.
 :::
 
 ## The root element
@@ -79,72 +79,24 @@ Adwaita dialogs have an imperative API: you call `dialog.present(parent)` to sho
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog } from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 
-export const About = ({ onClose }: { onClose: () => void }) => (
-    <Dialog
-        component={AdwAboutDialog}
-        onClose={onClose}
-        applicationName="Tasks"
-        developerName="GTKX"
-        version="1.0.0"
-        licenseType={Gtk.License.MPL_2_0}
-    />
-);
-```
-
-Showing it is a conditional render, the same as any other component:
-
-```tsx
-{showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
-```
-
-`Dialog` takes a `component` prop naming the dialog widget to present, defaulting to `AdwDialog`; it must be an `Adw.Dialog` or any subclass (`AdwAboutDialog`, `AdwPreferencesDialog`, `AdwShortcutsDialog`, `AdwAlertDialog`). You pass that widget's own props and children directly on `<Dialog>`, and `Dialog` attaches the ref for you. The contract is: mounting presents the dialog against its parent and unmounting force-closes it, the optional `parent` prop (`Gtk.Window | null`) anchors it explicitly while an omitted `parent` resolves to the nearest enclosing window from `useParentWindow()` (pass `parent={null}` for no anchor), and `onClose` fires only on a genuine user dismissal (Escape, the close button, a swipe), never on React's own unmount. Pass `onClose` to clear the state that mounted the dialog, as `About` does above; without wiring it, React would still consider the dialog open after GTK4 has closed it. For how these dialogs drive a real app, see the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
-
-The same wrapper covers full preference surfaces. The tutorial's preferences dialog is an `AdwPreferencesDialog` with pages, groups, and rows as ordinary children, driven by [GSettings-backed state](/tutorial/preferences-and-theming):
-
-```tsx
-import { Dialog } from "@gtkx/components/adw";
-import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx/adw";
-
-export const Preferences = ({ onClose }: { onClose: () => void }) => (
-    <Dialog component={AdwPreferencesDialog} onClose={onClose} title="Preferences">
-        <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
-            <AdwPreferencesGroup title="Appearance">{/* rows */}</AdwPreferencesGroup>
-        </AdwPreferencesPage>
+const Notice = ({ onClose }: { onClose: () => void }) => (
+    <Dialog onClose={onClose} title="Notice">
+        <GtkLabel label="Nothing to report." />
     </Dialog>
 );
 ```
 
+Showing it is a conditional render, the same as any other component. `Dialog` takes a `component` prop naming the dialog widget to present, defaulting to `AdwDialog`, and accepts that widget's own props and children directly.
+
+The `component` prop, the `parent` anchor, the portal to the root, the present/forceClose effect, and the guard that keeps a React-driven close from re-firing `onClose` are all worked through in [Feedback and Dialogs](/tutorial/feedback-and-dialogs#how-a-dialog-gets-on-screen).
+
 ## Alert dialogs
 
-`Adw.AlertDialog` is the message-and-buttons modal: a heading, a body, and a set of responses. Its native API adds responses with `addResponse` and styles them with `setResponseAppearance`. Rendering `AdwAlertDialog` (from `@gtkx/jsx/adw`) makes the responses a declarative array instead, with no wrapper component:
+`Adw.AlertDialog` is the message-and-buttons modal. Passing `AdwAlertDialog` as `Dialog`'s `component` turns its imperative `addResponse`/`setResponseAppearance` calls into a declarative `responses` array, and the chosen button's `id` arrives on `onResponse`.
 
-```tsx
-import { Dialog } from "@gtkx/components/adw";
-import * as Adw from "@gtkx/gi/adw";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
-
-const ConfirmDialog = ({ onResponse }: { onResponse: (id: string) => void }) => (
-    <Dialog
-        component={AdwAlertDialog}
-        heading="Delete item?"
-        body="This cannot be undone."
-        defaultResponse="cancel"
-        closeResponse="cancel"
-        responses={[
-            { id: "cancel", label: "Cancel" },
-            { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
-        ]}
-        onResponse={onResponse}
-    />
-);
-```
-
-Each entry in `responses` declares one button: `id` is the string handed to `onResponse` when it is chosen, `label` is the button text, `appearance` takes an `Adw.ResponseAppearance` (`SUGGESTED` for the accent affirmative, `DESTRUCTIVE` for red), and `enabled` can disable a response while, say, a form inside the dialog is incomplete. `defaultResponse` binds a response to Return and `closeResponse` is what Escape resolves to, so pointing both at `"cancel"` keeps a destructive action from firing by accident.
-
-Responses are declared separately from the body, so any children become the dialog's body widget, which turns the alert dialog into a compact form container: the tutorial's [New List dialog](/tutorial/feedback-and-dialogs#the-new-list-dialog-a-form-in-an-alert-dialog) puts a `GtkEntry` and a row of color swatches inside one.
+The `responses` entry shape (`id`, `label`, `appearance`) and the `defaultResponse`/`closeResponse` safety pair are covered in [Confirming the irreversible](/tutorial/feedback-and-dialogs#confirming-the-irreversible). The same chapter builds a form inside an alert dialog in [the New List dialog](/tutorial/feedback-and-dialogs#the-new-list-dialog-a-form-in-an-alert-dialog).
 
 ## Finding the parent window
 

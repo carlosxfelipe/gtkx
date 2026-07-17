@@ -2,11 +2,9 @@ import "./motion-env.js";
 import "./features/register.js";
 
 export {
-    DragControls,
     LayoutGroup,
     MotionConfig,
     useAnimationFrame,
-    useDragControls,
     useIsPresent,
     useMotionValue,
     useMotionValueEvent,
@@ -21,12 +19,16 @@ export { type MotionValue, motionValue, type Transition, type VariantLabels } fr
 export { AnimatePresence, type AnimatePresenceMode, type AnimatePresenceProps } from "./animate-presence.js";
 export { type AnimatedComponent, animated } from "./animated.js";
 export { pointerEventFromController } from "./bridge/pointer-event.js";
+export { type DragControlOptions, type DragControls, useDragControls } from "./drag-controls.js";
 export type { SyntheticEvent } from "./motion-env.js";
 export type {
     AnimationProps,
     GtkAnimationValue,
+    GtkDragConstraintsBox,
     GtkMotionStyle,
     GtkTarget,
     GtkTargetAndTransition,
     GtkVariants,
+    GtkViewportOptions,
+    GtkWidgetRef,
 } from "./types.js";

@@ -4,9 +4,11 @@ description: "A map of the high-level components in @gtkx/components and the hoo
 
 # Components and Hooks
 
-Almost everything you render in a GTKX app is a generated intrinsic element: one typed export per GTK4 or Adwaita widget, produced by codegen from GObject-Introspection. Two hand-written packages sit directly on top of that layer: `@gtkx/components` wraps the GTK4 APIs that do not translate cleanly into props and children, and `@gtkx/react` ships the reconciler plus a small set of hooks for talking to live GObjects. This page maps both.
+Almost everything you render in a GTKX app is a generated intrinsic element: one typed export per GObject class in the GIR libraries you configure, produced by codegen from GObject-Introspection.
 
-Most of these components keep every intrinsic prop of the widget they wrap and forward `ref` to the raw GTK4 object. Run `gtkx docs` in your project for exhaustive per-element prop tables, and see the [API reference](/reference/) for the packages themselves.
+`@gtkx/react` sits under that layer: it ships the reconciler that mounts those elements, plus a small set of hooks for talking to live GObjects. `@gtkx/components` sits on top of it, wrapping the GTK4 APIs that do not translate cleanly into props and children. This page maps both.
+
+Most of these components take the props of the object they wrap, minus the ones they take over (a `ListView` has no `factory`), and forward `ref` to that object. Run `gtkx docs` in your project for exhaustive per-element prop tables, and see the [API reference](/reference/) for the packages themselves.
 
 ## Why @gtkx/components exists
 
@@ -25,8 +27,8 @@ The model-backed components (`ListView`, `GridView`, `ColumnView`, and `DropDown
 - `ItemNode<T>` is `{ id, value }`: a stable string id plus your data. Giving an item `children: ItemNode<T>[]` turns the collection into a tree; `hideExpander`, `indentForDepth`, and `indentForIcon` tune how tree rows are drawn.
 - `SectionNode<S, T>` is `{ id, value, data }`: a group of items rendered under a shared header. Every component accepts a flat `items` array; all but `GridView` also accept a `sections` array, with a `renderHeader={({ section }) => ...}` callback for the headers.
 - `RenderItemProps<T>` is what every `renderItem` callback receives: `{ item, index, depth?, isExpanded? }`. The last two are populated for tree rows.
-- Selection is controlled, keyed by id: `selectedIds: string[]` and `onSelectionChanged: (ids: string[]) => void`, with `selectionMode` choosing single or multiple selection (`DropDown` is single-select, so it uses `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
-- Expansion is controlled the same way for trees in `ListView` and `ColumnView`: `expandedIds: string[]` and `onExpandedChange: (ids: string[]) => void`.
+- Selection is keyed by id: `onSelectionChanged: (ids: string[]) => void` reports every change, passing `selectedIds: string[]` makes it controlled, and `selectionMode` picks the `Gtk.SelectionMode` (`DropDown` is single-select, so it uses `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
+- Expansion works the same way for trees in `ListView` and `ColumnView`: `onExpandedChange: (ids: string[]) => void` observes it, and `expandedIds: string[]` controls it.
 - `estimatedItemHeight` gives the recycler a size hint before cells render, keeping scrollbars stable in long lists. `ListView` and `GridView` also take `estimatedItemWidth`, where widths vary; `ColumnView` takes only height, and `DropDown` takes no size hints.
 
 The stable ids are what make this work across updates: selection, expansion, and cell identity survive any reordering or filtering of your arrays because they track ids, not positions.
@@ -50,7 +52,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Nest `children` inside your `ItemNode`s and add `expandedIds`/`onExpandedChange` and the same component renders a tree with expander arrows. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
+Give your `ItemNode`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
 
 ## GridView
 
@@ -168,7 +170,20 @@ import { GtkEntry } from "@gtkx/jsx/gtk";
 
 ## Fixed and Fixed.Child
 
-`Fixed` wraps `Gtk.Fixed`, the manual-positioning container. `Fixed.Child` places a widget at `x`/`y`, or accepts a full `transform: Gsk.Transform` (which overrides `x`/`y`) for rotation, scaling, and 3D placement; the fixed-layout demos in `examples/gtk-demo` assemble a 3D cube from six perspective-transformed faces and animate a rotating label per frame from the widget's frame clock.
+`Fixed` wraps `Gtk.Fixed`, the manual-positioning container. `Fixed.Child` places a widget at `x`/`y`, or accepts a full `transform: Gsk.Transform` (which overrides `x`/`y`) for rotation, scaling, and 3D placement:
+
+```tsx
+import { Fixed } from "@gtkx/components";
+import * as Gsk from "@gtkx/gi/gsk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+<Fixed>
+    <Fixed.Child component={GtkLabel} x={20} y={40} label="Placed at x/y" />
+    <Fixed.Child component={GtkLabel} transform={Gsk.Transform.new().rotate(45)} label="Rotated" />
+</Fixed>
+```
+
+In `examples/gtk-demo`, `fixed.tsx` assembles a 3D cube from six perspective-transformed faces, and `fixed2.tsx` animates a rotating label per frame from the widget's frame clock.
 
 ## SizeGroup
 
@@ -189,7 +204,13 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 ## ConstraintLayout
 
-`ConstraintLayout` builds a `Gtk.ConstraintLayout` for a container's `layoutManager` prop, replacing manual `Gtk.Constraint` and `Gtk.ConstraintGuide` construction. Widgets are referenced by their `name` prop, with `"super"` (or an omitted `target`/`source`) meaning the container itself; referencing an unknown name throws with a message telling you which `name` to set. `ConstraintLayout.Constraint` declares one relation (`targetAttribute`, optional `relation` defaulting to equality, `multiplier` defaulting to 1, `constant` defaulting to 0, and `strength` defaulting to required), `ConstraintLayout.Guide` declares an invisible spacer with min/natural/max sizes, and `ConstraintLayout.Vfl` applies Visual Format Language `lines`:
+`ConstraintLayout` builds a `Gtk.ConstraintLayout` for a container's `layoutManager` prop, replacing manual `Gtk.Constraint` and `Gtk.ConstraintGuide` construction. Widgets are referenced by their `name` prop, with `"super"` (or an omitted `target`/`source`) meaning the container itself. Referencing an unknown name throws with a message telling you which `name` to set.
+
+- `ConstraintLayout.Constraint` declares one relation. Only `targetAttribute` is required; `relation` defaults to equality, `sourceAttribute` to `NONE`, `multiplier` to 1, `constant` to 0, and `strength` to required.
+- `ConstraintLayout.Guide` declares an invisible spacer with min, natural, and max sizes.
+- `ConstraintLayout.Vfl` applies Visual Format Language `lines`.
+
+Below, a constraint pins the button's start edge 8 pixels from the container's, leaving `source` omitted so it resolves to the container:
 
 ```tsx
 import { ConstraintLayout } from "@gtkx/components";
@@ -214,11 +235,9 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 ## The Adwaita entry point: @gtkx/components/adw
 
-`@gtkx/components/adw` holds the components that depend on Adwaita.
+**`Dialog`** presents an Adwaita dialog (its `component`, defaulting to `AdwDialog`) while it is mounted and closes it on unmount, so dialog visibility becomes ordinary conditional rendering. See [Modals and Portals](/guide/modals-and-portals) for the present-on-mount, close-on-unmount contract, and [How a dialog gets on screen](/tutorial/feedback-and-dialogs#how-a-dialog-gets-on-screen) for the `onClose` wiring.
 
-**`Dialog`** presents an Adwaita dialog (its `component`, defaulting to `AdwDialog`) while it is mounted and closes it on unmount, so dialog visibility becomes ordinary conditional rendering. See [Modals and Portals](/guide/modals-and-portals) for the present-on-mount, close-on-unmount contract and the `onClose` wiring.
-
-**Alert dialogs** pass `AdwAlertDialog` (from `@gtkx/jsx/adw`) as `Dialog`'s `component`, declaring their buttons through the `responses` prop and delivering the chosen id to `onResponse`. See [Modals and Portals](/guide/modals-and-portals) for `responses`, `closeResponse`, and `onResponse`.
+**Alert dialogs** pass `AdwAlertDialog` (from `@gtkx/jsx/adw`) as `Dialog`'s `component`, declaring their buttons through the `responses` prop and delivering the chosen id to `onResponse`. See [Confirming the irreversible](/tutorial/feedback-and-dialogs#confirming-the-irreversible) for `responses`, `closeResponse`, and `onResponse`.
 
 **Navigation is its own package.** Page stacks and the adaptive sidebar/content layout are not components here: `@gtkx/navigation` provides React Navigation-style stack and split-view navigators backed by `Adw.NavigationView` and `Adw.NavigationSplitView`, with routes, params, and hooks. See [Navigation](/guide/navigation).
 
@@ -266,4 +285,4 @@ The remaining exports (`createRoot`, `quit`, `createPortal`, and `rootElement`) 
 
 ## Next
 
-Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, the `Dialog` component and `AdwAlertDialog` responses, and extra windows.
+Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The worked `Dialog` walkthrough lives in the tutorial's [Feedback and Dialogs](/tutorial/feedback-and-dialogs#how-a-dialog-gets-on-screen) chapter.

@@ -32,10 +32,10 @@ static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, ob
 function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection>;
 ```
 
-`loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills two out-parameters (the contents and an etag), so the promise resolves to all three at once. `choose` resolves to the response ID string you registered on the alert dialog. The static `Gio.DBusConnection.new` and the module-level `Gio.busGet` both start an async connection and resolve to the `Gio.DBusConnection`, reusing the same static and module-level `_finish` calls under the hood. The `_finish` calls (`loadContentsFinish`, `openFinish`, `newFinish`, `busGetFinish`, and so on) are still generated alongside the promise-returning ones, but there is no reason to call them yourself.
+`loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills three out-parameters (the contents, their length, and an etag). The length collapses into the contents array, so the promise resolves to the boolean, the contents, and the etag at once. `choose` resolves to the response ID string you registered on the alert dialog. The static `Gio.DBusConnection.new` and the module-level `Gio.busGet` both start an async connection and resolve to the `Gio.DBusConnection`, reusing the same static and module-level `_finish` calls under the hood. The `_finish` calls (`loadContentsFinish`, `openFinish`, `newFinish`, `busGetFinish`, and so on) are still generated alongside the promise-returning ones, but there is no reason to call them yourself.
 
 ::: info For ordinary file I/O, use node:fs
-`Gio.File` appears throughout this page because it is the classic GIO async surface, but it is not how a GTKX app should read its own files: for paths your app owns, `node:fs` (or `node:fs/promises` in async code) is simpler and idiomatic, as the tutorial's [JSON store](/tutorial/data-and-persistence) shows. `Gio.File` earns its keep when the file object comes from the platform, such as a `Gtk.FileDialog` result, which can name a document-portal path or a remote GVfs location that has no local path for `node:fs` to open.
+`Gio.File` appears throughout this page because it is the classic GIO async surface. It is not how a GTKX app should read its own files. For paths your app owns, `node:fs` (or `node:fs/promises` in async code) is simpler and idiomatic, as the tutorial's [JSON store](/tutorial/data-and-persistence) shows. `Gio.File` earns its keep when the file object comes from the platform. A `Gtk.FileDialog` result is the common case: it can name a document-portal path or a remote GVfs location that has no local path for `node:fs` to open.
 :::
 
 ## Awaiting in components
@@ -138,7 +138,7 @@ The `runWithTimeout` example above hits exactly that first case: when the deadli
 
 ## What stays callback-based
 
-Codegen promisifies a call when it either ends in `_async` with a matching `_finish` sibling (the classic GIO shape, like `g_file_load_contents_async` plus `g_file_load_contents_finish`) or takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix (the GTK4 dialog shape, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`). The rule is the same wherever the pair lives, on an instance, on a class as a static, or at module level. Two conditions keep it honest: the initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter, and the `_finish` sibling must consume only the `GAsyncResult` the callback delivers so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
+Codegen promisifies a call when it either ends in `_async` with a matching `_finish` sibling (the classic GIO shape, like `g_file_load_contents_async` plus `g_file_load_contents_finish`) or takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix (the GTK4 dialog shape, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`). Two conditions keep it honest: the initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter, and the `_finish` sibling must consume only the `GAsyncResult` the callback delivers so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
 
 A few shapes fall outside that rule and keep their raw callback form.
 
@@ -168,7 +168,7 @@ Whether a call returns a promise is determined by the callback-and-finish pair, 
 
 ## Rejections are GLib errors
 
-When an async operation fails, the `_finish` step raises a `GError`, and the promise rejects with a wrapped error object carrying the GLib `domain`, `code`, and `message`. Error enums like `Gio.IOErrorEnum` and `Gtk.DialogError` support `instanceof` against these wrapped errors by matching the domain, which is how the `isCancellation` check above works. Outside production builds, the rejection also carries a `cause` whose stack points at the line that started the operation, so an error that surfaces deep in the main loop still traces back to your `await` site.
+When an async operation fails, the `_finish` step raises a `GError`, and the promise rejects with the same wrapped error a synchronous call would have thrown. `try { await ... } catch` matches it by domain and code exactly as [Error Handling](/guide/error-handling#matching-errors-by-domain-and-code) describes, which is how the `isCancellation` check above works.
 
 ## Next
 

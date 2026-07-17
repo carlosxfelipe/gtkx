@@ -120,7 +120,7 @@ suffix={
 
 The star is a `GtkToggleButton` (a button that stays pressed), so like the checkbox it is controlled by `active={task.important}` and reads `self.active` back on toggle. Its icon swaps between the named system icons `starred-symbolic` and `non-starred-symbolic`. `cssClasses={["flat"]}` applies GTK4's `flat` button style class, which drops the button's background so it reads as an inline row control rather than a raised button.
 
-Delete is a plain `GtkButton` whose `onClicked` hands the whole `task` object to `onDelete`, which in the app raises an undo toast rather than deleting immediately.
+Delete is a plain `GtkButton` whose `onClicked` hands the whole `task` object to `onDelete`. In the app that moves the task to Trash behind an undo toast, or asks for confirmation when the task is already in Trash (see [Feedback and Dialogs](/tutorial/feedback-and-dialogs)).
 
 Because icon-only buttons have no visible text, each control gets an `accessibleLabel`. That sets the widget's accessible name so screen readers announce "Mark complete", "Toggle important", "Delete task" instead of an unlabeled button.
 
@@ -160,7 +160,7 @@ controllers={
 
 `actions={Gdk.DragAction.MOVE}` on both sides declares this a move (not a copy or link), which is what drives the move-cursor and the drop feedback.
 
-The payload is a GObject value, not a JavaScript object. GTK4 drag-and-drop transfers typed `GObject.Value` boxes so the same mechanism can carry data between processes and apps. `onPrepare` (the drag source's `prepare` signal) runs when a drag is about to begin and must return a `Gdk.ContentProvider` describing what is being dragged:
+The payload is a GObject value, not a JavaScript object. A drag carries a `Gdk.ContentProvider`, which offers its data as a typed `GObject.Value` for drops inside this process and, through GDK's content serializers, as mime types for drops in other applications. `onPrepare` (the drag source's `prepare` signal) runs when a drag is about to begin and must return a `Gdk.ContentProvider` describing what is being dragged:
 
 - `GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id))` boxes the task's id into a string-typed `GObject.Value`. The callback receives a fresh value already initialized to the given type; you fill it with the matching setter (`setString`).
 - `Gdk.ContentProvider.newForValue(...)` wraps that value into a content provider the drag can carry.
@@ -180,7 +180,7 @@ if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y)
 
 `self` is the drag source, since every JSX `on*` handler receives the emitter as its last argument, and `getWidget` returns the widget the controller is attached to, which is this row. `Gtk.WidgetPaintable.new(row)` wraps that live widget as a `Gdk.Paintable`, so the ghost under the cursor is a picture of the row being dragged, title and controls included.
 
-The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it. That grab point is why the icon is set here instead of in `onDragBegin`: `prepare` is the only signal that carries it, and GTK4 reads the icon back after both signals have run, so setting it this early still takes effect.
+The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it. That grab point is why the icon is set here instead of in `onDragBegin`: `prepare` is the only signal that carries it. GTK4 reads the icon back after both signals have run, so setting it this early still takes effect.
 
 `Math.round` is not cosmetic. Pointer coordinates arrive as GTK4 doubles and a real drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
 
@@ -200,13 +200,13 @@ That single state update is all it takes, because the rows are keyed children of
 </GtkListBox>
 ```
 
-When `reorder` returns a new array with the same keys in a new order, React diffs by key and sees every row as the *same* existing element that merely changed position. The reconciler therefore issues a single in-place move within the parent container instead of unmounting and rebuilding rows. The real `GtkWidget` (and its focus, state, and any in-flight animation) survives the reorder untouched.
+When `reorder` returns a new array with the same keys in a new order, React diffs by key and sees every row as the *same* existing element in a new position. The reconciler therefore repositions the existing widget inside its parent instead of unmounting the row and building a new one, so the `TaskRow` component and its React state are never torn down.
 
 ::: info Container move primitives
 How the reconciler performs that move depends on the container. A `GtkBox` exposes a dedicated `reorderChildAfter(child, sibling)` for exactly this, so a box moves the widget with one call. The `boxed-list` here is a `GtkListBox`, which auto-wraps any child that is not already a `GtkListBoxRow` and moves it via an indexed `insert`. Either way the widget is repositioned, never recreated.
 :::
 
-The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it and calls `onReorder` -> `reorder` re-splices the array and re-derives `position` -> keyed reconcile moves the real widget in place.** State stays the single source of truth from end to end.
+The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it and calls `onReorder` -> `reorder` re-splices the array and re-derives `position` -> keyed reconcile repositions the real widget.** State stays the single source of truth from end to end.
 
 ## Drag is enabled only when ordering is manual
 

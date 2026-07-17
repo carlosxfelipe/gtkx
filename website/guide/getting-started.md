@@ -1,5 +1,5 @@
 ---
-description: "Scaffold a GTKX app with npm create gtkx, meet the CLI and the dev loop, and watch a real GTK4 window hot-reload as you edit TypeScript."
+description: "Scaffold a GTKX app with npm create gtkx@rc, meet the CLI and the dev loop, and watch a real GTK4 window hot-reload as you edit TypeScript."
 ---
 
 # Getting Started
@@ -10,7 +10,7 @@ Scaffold a project, meet the `gtkx` CLI, and watch a real GTK4 window hot-reload
 
 GTKX is Linux-only, because it renders through the system's real GTK4 and Adwaita. You need:
 
-- Linux with the GTK4, Adwaita, and GLib development libraries installed
+- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries installed
 - Node.js 24 or later
 
 The native addon (`@gtkx/native`) ships prebuilt binaries for x64 and arm64 glibc Linux. On other platforms the install has no usable binary; you can build the addon from the GTKX repository yourself, which needs a Rust toolchain.
@@ -22,15 +22,15 @@ Start any new project with the official initializer:
 ::: code-group
 
 ```bash [npm]
-npm create gtkx@latest
+npm create gtkx@rc
 ```
 
 ```bash [pnpm]
-pnpm create gtkx
+pnpm create gtkx@rc
 ```
 
 ```bash [yarn]
-yarn create gtkx
+yarn create gtkx@rc
 ```
 
 :::
@@ -42,6 +42,16 @@ It prompts for a few things:
 - **Package manager**
 - **Use TypeScript?** and **Include testing setup (Vitest)?**
 
+Every prompt has a matching flag, so the scaffolder also runs without prompts:
+
+```bash
+npm create gtkx@rc -- my-app --yes --application-id com.example.myapp --package-manager pnpm --typescript --vitest
+```
+
+The project directory is a positional argument, and it is required once prompts are off. `--yes` and `--no-interactive` both disable prompting. Anything left unspecified falls back to a default: the application ID is derived from the project name, and TypeScript and Vitest are both on. The package manager is detected from the current directory, falling back to `pnpm`.
+
+`--package-manager` accepts `pnpm`, `npm`, or `yarn`, and `--no-typescript` scaffolds JavaScript instead. A target directory that already exists and is not empty stops the run: with prompts off, pass `--overwrite` to empty it first, keeping only `.git`. With prompts on, the scaffolder asks before overwriting, and `--overwrite` has no effect.
+
 Then:
 
 ```bash
@@ -49,7 +59,7 @@ cd my-app
 npm run dev
 ```
 
-A window opens. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK4 button. The [Tutorial](/tutorial/) builds the Tasks app on top of that same skeleton, so the structure below is what you'll be working in.
+A window opens. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a real GTK4 button. The [Tutorial](/tutorial/) tours a finished Tasks app built on the same foundation, so the structure below is the shape you will recognize there.
 
 ::: tip
 The finished Tasks app lives at `examples/tutorial` in the GTKX repository. Every snippet in the [Tutorial](/tutorial/) is copied from that source, sometimes trimmed to the parts each chapter needs. You can run it, read ahead, or diff your work against it at any point.
@@ -61,6 +71,7 @@ Here is what the scaffolder writes for the counter starter:
 
 ```
 my-app/
+├─ .gitignore            # node_modules/, dist/, *.log
 ├─ gtkx.config.ts        # application ID + which native libraries to bind
 ├─ package.json          # scripts, deps, the #data/* import
 ├─ tsconfig.json
@@ -94,7 +105,9 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. There's no container argument to pass because the "container" is the native application itself, not an element in a page. `<App />` is your top-level component. The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [The Application Shell](/tutorial/app-shell)). Either way, the application element picks up the `applicationId` from your config automatically.
+`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. The container argument is optional and defaults to `rootElement`, a singleton marker that stands for the top of the tree, so there is no node to look up before mounting. `<App />` is your top-level component.
+
+The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [The Application Shell](/tutorial/app-shell)). Either way, the application element picks up the `applicationId` from your config automatically.
 
 ::: info
 Note the `./app.js` import specifier even though the file is `app.tsx`. The project uses `"module": "NodeNext"`, which follows Node.js ESM resolution: you write the `.js` extension the compiler emits, and it resolves the `.tsx` source.
@@ -140,7 +153,7 @@ gtkx build      # production bundle in dist/
 gtkx codegen    # (re)generate the native bindings
 ```
 
-A fourth subcommand, `gtkx docs`, generates markdown reference pages for the JSX elements of the libraries declared in `gtkx.config.ts`; you'll rarely need it.
+Two more subcommands round out the CLI. `gtkx create` is the scaffolder you already ran through `npm create gtkx@rc`, and `gtkx docs` generates markdown reference pages for the JSX elements of the libraries declared in `gtkx.config.ts`; you'll rarely need either after setup.
 
 **`gtkx dev`** is what you'll run while building the app. It starts a Vite dev server wired to a supervisor that launches your GTK4 app and hot-reloads it. Edit a component, save, and the running window updates in place with React Fast Refresh: your `useState` survives the reload, so you don't lose the task you were mid-edit on. It also watches `gtkx.config.ts` and your schemas.
 
@@ -160,4 +173,4 @@ If your editor can't resolve `@gtkx/jsx/gtk` or `#data/...` right after cloning,
 
 ## Next
 
-With the project scaffolded and the dev loop running, continue to [Configuration and Codegen](/guide/configuration-and-codegen) for the full option and codegen reference. To build the Tasks app end to end, start the [Tutorial](/tutorial/).
+With the project scaffolded and the dev loop running, continue to [Configuration and Codegen](/guide/configuration-and-codegen) for the full option and codegen reference. To tour the Tasks app end to end, start the [Tutorial](/tutorial/).

@@ -13,7 +13,7 @@ Tasks uses this everywhere its commands need more than one entry point. The hamb
 Every action string carries a scope prefix. Tasks uses both:
 
 - **`win.*`** actions belong to the window. They are the app's real commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
-- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires, its "Mark Complete" button and the default action that runs when you click the notification body, because a notification is delivered to the whole application, not to any particular window, and may arrive when no window is even open. They live in the `actions` slot of `<AdwApplication>`.
+- **`app.*`** actions belong to the application itself. Tasks uses them only for the two commands a desktop notification fires: its "Mark Complete" button and the default action that runs when you click the notification body. A notification is delivered to the whole application, not to any particular window, and it may arrive when no window is open. They live in the `actions` slot of `<AdwApplication>`.
 
 The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
 
@@ -65,7 +65,7 @@ The scope prefix comes from *where* you mount these, not from the `name`. `AdwAp
             onAbout={() => setShowAbout(true)}
         />
     }
-    controllers={/* view shortcuts, below */}
+    // controllers: view shortcuts, below
 >
 ```
 
@@ -77,7 +77,7 @@ The `onActivate` handler receives `(parameter, self)`, where `parameter` is a `G
 
 ## Accelerators: `actionAccels` on `<AdwApplication>`
 
-An action has no keyboard shortcut until you register an accelerator for it. That registration is application-global, so it lives on `<AdwApplication>`, not on the window. GTKX surfaces it as the declarative `actionAccels` prop: an array mapping a `detailedActionName` to a list of accelerator strings.
+An action has no keyboard shortcut until you register an accelerator for it. That registration is application-global, so it lives on `<AdwApplication>`, not on the window. GTKX surfaces it as the declarative `actionAccels` prop: an array mapping a `detailedActionName` to a list of accelerator strings. Each entry becomes one `gtk_application_set_accels_for_action` call, binding those accelerators to the action by name, and dropping an entry from the array clears them again.
 
 ```tsx
 <AdwApplication
@@ -145,7 +145,7 @@ Two `GtkMenuButton` props matter for a primary menu: `iconName="open-menu-symbol
 const listHeader = (
     <AdwHeaderBar
         titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
-        start={/* ... */}
+        // start: the New Task and Search buttons
         end={<MainMenu />}
     />
 );
@@ -236,7 +236,11 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
 );
 ```
 
-Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX. The accelerator strings are documentation, not bindings, so keep them in sync with the real ones: `<Control>n`, `<Control>comma`, and `<Control>question` come from `actionAccels`, `<Control>f` from the app-level `GtkShortcutController`, `Delete` from the task screen's own controller, and the "Close task" `Escape` from `AdwNavigationView`'s built-in pop rather than any controller of ours.
+Each `AdwShortcutsSection` is a titled group, and each `AdwShortcutsItem` renders one row: a `title` plus its formatted `accelerator` (`"<Control>n"` displays as `Ctrl+N`). Both are ordinary declarative `children` containers, so there is no imperative `.add()` wiring, and the whole tree updates like any other JSX.
+
+An `accelerator` string is display text, not a binding, so a hand-written one has to be kept in sync with the real shortcut. Rows backed by an action can skip that. `AdwShortcutsItem` also takes an `actionName` prop that reads the accelerator back from whatever `actionAccels` registered, so `actionName="win.new"`, `actionName="win.preferences"`, and `actionName="win.shortcuts"` keep those three rows correct on their own.
+
+The other three rows have no action to point at, so their `accelerator` has to be written by hand and kept in sync. `<Control>f` comes from the window's `AppShortcuts` controller, and `Delete` from the task screen's own controller. The "Close task" `Escape` comes from `AdwNavigationView`'s built-in pop rather than from any controller in Tasks.
 
 `<Dialog>` (from `@gtkx/components/adw`, documented in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)) presents the dialog through a portal on mount and force-closes it on unmount, exactly like Preferences and About. It takes the dialog widget as its `component` prop (here `AdwShortcutsDialog`) and its `onClose` clears `showShortcuts` when the user dismisses the dialog. The action handler flips a state flag:
 

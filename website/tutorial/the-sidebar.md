@@ -162,18 +162,7 @@ The dot carries no information a screen reader needs to announce, so it is marke
 
 ### Count badges
 
-The trailing number is a `GtkLabel` styled with two stock classes:
-
-```tsx
-<GtkLabel
-    valign={Gtk.Align.CENTER}
-    cssClasses={["dimmed", "numeric"]}
->
-    {String(entry.count)}
-</GtkLabel>
-```
-
-`.numeric` switches the label to tabular (fixed-width) figures so counts stay aligned as they change. `.dimmed` de-emphasizes the text.
+The trailing number is a `GtkLabel` styled with two stock classes. `.numeric` switches the label to tabular (fixed-width) figures so counts stay aligned as they change, and `.dimmed` de-emphasizes the text.
 
 ::: tip `.dimmed`, not `.dim-label`
 Adwaita deprecated `.dim-label` in favor of `.dimmed`. Reach for `.dimmed` in new code; they achieve the same visual muting.
@@ -244,7 +233,7 @@ export const Sidebar = ({
     // ...
 ```
 
-A `GtkListBox` has its own native selection, so keeping it in agreement with a React prop is a two-way problem: user clicks must flow out to `onSelect`, and prop changes (for example, a keyboard shortcut jumping to Trash) must flow back into the widget. GTKX wires both directions explicitly.
+A `GtkListBox` has its own native selection, so keeping it in agreement with a React prop is a two-way problem. User clicks must flow out to `onSelect`, and prop changes must flow back into the widget: opening a task from a notification, for example, resets the selection to All Tasks. GTKX wires both directions explicitly.
 
 **Widget to React** happens in `onRowSelected`, the JSX form of the GtkListBox `row-selected` signal. Its first argument is the newly selected `Gtk.ListBoxRow` (or `null`):
 

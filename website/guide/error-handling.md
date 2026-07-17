@@ -45,7 +45,7 @@ The `domain` quark and `code` number are how GLib distinguishes "file not found"
 
 ### Error domain objects
 
-Any introspected enum that GLib marks as an error domain is generated as an `ErrorDomain` object: it carries the enum members as numeric constants and also works as the right-hand side of `instanceof`, matching any wrapped GError that belongs to that domain. The check is domain-only, so you combine it with a `code` comparison against the same object's members:
+Any introspected enum that GLib marks as an error domain is generated as an `ErrorDomain` object. It carries the enum members as numeric constants, and it also works as the right-hand side of `instanceof`, matching any wrapped GError that belongs to that domain. The check is domain-only, so you combine it with a `code` comparison against the same object's members:
 
 ```ts
 import * as GLib from "@gtkx/gi/glib";
@@ -90,7 +90,7 @@ The domain-object `instanceof` form is shorter and does not require knowing the 
 
 ## Synchronous calls: `try`/`catch`
 
-Any throwing binding can be wrapped in an ordinary `try`/`catch`, right next to plain JavaScript code that throws. This loader reads a `.desktop` launcher with `node:fs` and parses it with `GLib.KeyFile`, GLib's parser for the desktop-entry format, falling back to `null` when either step fails:
+Any throwing binding can be wrapped in an ordinary `try`/`catch`, right next to plain JavaScript code that throws. This loader reads a `.desktop` launcher with `node:fs` and parses it with `GLib.KeyFile`, GLib's parser for the .ini-like key files the desktop-entry format is built on, falling back to `null` when either step fails:
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -113,7 +113,7 @@ const loadLauncher = (path: string): Launcher | null => {
 };
 ```
 
-The division of labor is the usual GTKX split: the Node.js standard library owns the file I/O, and GLib is only involved for the desktop-entry format it alone understands. The `catch` covers both channels at once. `readFileSync` throws a plain Node.js `Error`, where a missing file surfaces with `code === "ENOENT"`; `loadFromData` and `getString` throw `GLib.Error`s in the `GLib.KeyFileError` domain: `PARSE` for malformed data, `KEY_NOT_FOUND` or `GROUP_NOT_FOUND` for an incomplete entry. Both are ordinary exceptions on the same channel, which is the point of the mapping: one recovery path handles native and JavaScript failures together.
+The division of labor is the usual GTKX split: the Node.js standard library owns the file I/O, and GLib is only involved for the desktop-entry format it alone understands. The `catch` covers both channels. `readFileSync` throws a plain Node.js `Error`, where a missing file surfaces with `code === "ENOENT"`. `loadFromData` and `getString` throw `GLib.Error`s in the `GLib.KeyFileError` domain: `PARSE` for malformed data, `KEY_NOT_FOUND` or `GROUP_NOT_FOUND` for an incomplete entry.
 
 The Tasks app from the tutorial needs even less: its JSON store in [Data and Persistence](/tutorial/data-and-persistence) is pure `node:fs` plus `JSON.parse`, with no GError in sight.
 
@@ -144,8 +144,6 @@ const handleOpenFile = async () => {
 
 The pattern to notice is matching on domain and code: each expected outcome is one `instanceof` plus a code check, and everything else falls through to the log. Which domain a canceled call rejects with depends on the API family, which [Async Operations](/guide/async-operations#cancellation-with-gio-cancellable) covers along with the rest of the `Gio.Cancellable` model.
 
-The final `error instanceof Error` check is the standard way to distinguish real errors (native or JavaScript) from arbitrary thrown values, and since `GLib.Error` extends `Error`, it covers GErrors too.
-
 ::: tip Rejections point at their call site
 A rejected native promise's `stack` describes the GIO completion callback, not your code. Outside production (`NODE_ENV !== "production"`), GTKX captures the stack of the code that started the async operation and attaches it as the rejection error's `cause`, so logging the error shows where the call originated.
 :::
@@ -162,7 +160,9 @@ const SHADER_ERROR = GLib.quarkFromString("my-app-shader-error-quark");
 area.setError(GLib.Error.newLiteral(SHADER_ERROR, 0, `Fragment shader compile error:\n${log}`));
 ```
 
-This is how the gtk-demo Shadertoy example reports GLSL compile failures to `Gtk.GLArea`, which then renders its error state. `GLib.quarkFromString` registers (or looks up) a domain quark for your own error domain; pick a unique, descriptive quark string, conventionally ending in `-quark`. A GError you construct behaves exactly like a caught one: it is an `Error` instance, it matches its domain object via `instanceof`, and you can throw it from your own code if you want callers to handle it with the same domain and code machinery.
+This is how the gtk-demo Shadertoy example reports GLSL compile failures to `Gtk.GLArea`, which then renders its error state. [OpenGL](/guide/opengl#reporting-failures-to-the-widget) covers that flow and the rest of `@gtkx/gl`. `GLib.quarkFromString` registers (or looks up) a quark for your own error domain. Pick a unique, descriptive string, conventionally ending in `-quark`.
+
+A GError you construct behaves exactly like a caught one. It is an `Error` instance, and it matches its domain object via `instanceof`. Throw it from your own code when you want callers to handle it with the same domain and code machinery.
 
 ## Next
 

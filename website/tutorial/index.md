@@ -11,42 +11,26 @@ description: "Tour a complete GNOME Tasks app built with GTKX, where real GTK4 a
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets copied straight from `examples/tutorial/src`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwHeaderBar`, `GtkListBox`, and friends.
+The app is already written. Rather than building it file by file, this tutorial tours the finished source and explains how each piece works, with snippets taken from `examples/tutorial`. You will recognize the shape immediately: `useState`, `useEffect`, `useRef`, props, keyed lists, controlled inputs. What is new is the *target*: instead of DOM nodes, your JSX renders `AdwApplicationWindow`, `AdwHeaderBar`, `GtkListBox`, and friends.
 
 ## What Tasks is
 
-The app centers on a split-view navigator from `@gtkx/navigation`, which drives an adaptive `Adw.NavigationSplitView`: a sidebar of smart views (All Tasks, Today, Important, Trash) plus user-created lists, next to a content pane that shows a boxed task list and pushes a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
+The app centers on a split-view navigator from `@gtkx/navigation`, which drives an adaptive `Adw.NavigationSplitView`. A sidebar of four smart views (All Tasks, Today, Important, Trash) plus the lists you create sits next to the content pane. That pane shows a boxed task list and pushes a task editor when you open a task. On a narrow window the two panes collapse into a single push/pop column, automatically.
 
-Here is the app root, the real `App` component from `app.tsx`, with the notification actions elided:
+The app root, the `App` component in `app.tsx`, is one `<AdwApplication>`. It provides the GTK4 application object, binds keyboard accelerators through its `actionAccels` prop, and hosts the app-scoped actions that desktop notifications call back into. Inside it sits a single `<TasksWindow>`, which [The Application Shell](/tutorial/app-shell) walks through line by line.
 
-```tsx
-export function App() {
-    const notify = useRef<NotifyHandlers>({ complete: () => {}, open: () => {} });
-    return (
-        <AdwApplication
-            actionAccels={[
-                { detailedActionName: "win.new", accels: ["<Control>n"] },
-                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
-            ]}
-            actions={/* app.complete-task and app.open-task GSimpleActions, wired through the notify ref */}
-        >
-            <TasksWindow notify={notify} />
-        </AdwApplication>
-    );
-}
-```
-
-`<AdwApplication>` provides the GTK4 application object. Its `actionAccels` prop wires keyboard accelerators to named actions. Inside it, `<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the navigation tree, a split-view navigator from `@gtkx/navigation`, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
+`<TasksWindow>` renders an `<AdwApplicationWindow>` whose body is the navigation tree, wrapped in an `<AdwToastOverlay>` so undo toasts can appear over everything:
 
 ```tsx
 <AdwApplicationWindow ref={windowRef} title="Tasks" /* ... */>
     <AdwToastOverlay ref={toastOverlayRef}>
         <NavigationContainer ref={navigationRef}>
             <Split.Navigator collapsed={collapsed}>
-                <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>{/* Sidebar */}</Split.Screen>
+                <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
+                    {() => <>{/* the sidebar */}</>}
+                </Split.Screen>
                 <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
-                    {/* the content stack: task list, editor, or selection view */}
+                    {() => <>{/* the content stack: task list, editor, or selection view */}</>}
                 </Split.Screen>
             </Split.Navigator>
         </NavigationContainer>
@@ -74,7 +58,7 @@ State, effects, refs, context, keys, and controlled components all work exactly 
 
 ## Prerequisites
 
-Working familiarity with **React** and **TypeScript** is all you bring to this tutorial. You do not need any prior GTK4, GObject, or C experience. For the system requirements (Linux with the GTK4, Adwaita, and GLib development libraries, plus Node.js 24 or newer), see [Getting Started](/guide/getting-started).
+Working familiarity with **React** and **TypeScript** is all you bring to this tutorial. You do not need any prior GTK4, GObject, or C experience. Tasks needs Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries, plus Node.js 24 or newer. For the full system requirements, see [Getting Started](/guide/getting-started).
 
 ## A tour of the features
 
@@ -91,9 +75,9 @@ Each feature in Tasks demonstrates a distinct GTKX or GTK4 capability. As you re
 | **Task editor** | A form for title, notes, due date, and an importance toggle | `AdwClamp`, preference-style rows, a `GtkCalendar`, and a `GtkTextView`, in a `TaskDetail` component |
 | **Preferences** | Appearance, default sort, reminder timing | An `AdwPreferencesDialog` rendered through a portal, with two-way `useSetting` bindings |
 | **Theming** | Follow the system theme, or force light / dark | `applyColorScheme` feeding `Adw.StyleManager` |
-| **Undo toasts** | "Moved to Trash" with an Undo button | `Adw.Toast` added imperatively to an `AdwToastOverlay` |
+| **Undo toasts** | `“Water the plants” moved to Trash`, with an Undo button | `Adw.Toast` added imperatively to an `AdwToastOverlay` |
 | **Desktop reminders** | A system notification when a task is due | A `useReminders` hook calling `app.sendNotification` (`Gio.Notification`), with app-scoped `GSimpleAction`s handling the notification buttons |
-| **Keyboard shortcuts** | `Ctrl+N`, `Ctrl+F`, `Escape`, `Delete` | `GtkShortcutController` + `GtkShortcut`, `actionAccels`, and `GSimpleAction` |
+| **Keyboard shortcuts** | `Ctrl+N`, `Ctrl+F`, `Ctrl+,`, `Ctrl+?`, `Escape`, `Delete` | `GtkShortcutController` + `GtkShortcut`, `actionAccels`, and `GSimpleAction` |
 
 ## How this tutorial is organized
 
@@ -114,7 +98,7 @@ This tutorial moves from the outside of the app inward, then out to shipping. Th
 13. [Testing the App](/tutorial/testing)
 14. [Packaging and Shipping](/tutorial/packaging)
 
-You can read it straight through or jump to whichever feature you need. Every page quotes the actual source, so you can always open the matching file under `examples/tutorial/src` and follow along.
+You can read it straight through or jump to whichever feature you need. Every page except [Testing the App](/tutorial/testing) quotes the actual source, so you can always open the matching file under `examples/tutorial` and follow along. The testing page's examples are illustrative rather than quoted.
 
 ## Next
 

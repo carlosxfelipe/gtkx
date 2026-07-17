@@ -63,7 +63,8 @@
                 "@gtkx/native#build",
                 "@gtkx/navigation#build",
                 "@gtkx/react#build",
-                "@gtkx/testing#build"
+                "@gtkx/testing#build",
+                "@gtkx/vitest#build"
             ],
             "inputs": [],
             "outputs": [".vitepress/dist/**"]

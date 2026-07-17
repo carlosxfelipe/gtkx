@@ -1,0 +1,42 @@
+# tutorial
+
+**Tasks**, the complete GNOME task manager built in the [GTKX tutorial](https://gtkx.dev/tutorial/). An adaptive split view puts smart views (All Tasks, Today, Important, Trash) and user-created lists in a sidebar, next to a task list that pushes an editor when you open a task.
+
+![The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right.](assets/screenshot.png)
+
+## What it demonstrates
+
+- Adaptive navigation with `@gtkx/navigation`: a split-view navigator and a stack navigator inside a `NavigationContainer`, with an `AdwBreakpoint` collapsing the two panes into one column on a narrow window.
+- Settings backed by a GSettings schema (`data/com.gtkx.tutorial.gschema.xml`), read and written with `useSetting` and `useBindSetting`, driving the Adwaita color scheme through `Adw.StyleManager`.
+- Actions, menus, and shortcuts: `GSimpleAction` elements wired to a menu button, `actionAccels`, and a `GtkShortcutController`.
+- Dialogs and feedback: preferences, an about dialog, a shortcuts window, delete confirmation, and toasts via `AdwToastOverlay`.
+- List animations with `@gtkx/animated` (`animated`, `AnimatePresence`) and styling with `@gtkx/css`.
+- Desktop notifications built with `Gio.Notification`, including action buttons that route back into the app.
+- Persistence to `$XDG_DATA_HOME` with the Node.js standard library, not a GLib API.
+- Packaging: a Node.js Single Executable Application under `scripts/`, and a Flatpak under [`flatpak/`](flatpak/README.md).
+
+`gtkx.config.ts` declares `Gtk-4.0` and `Adw-1`, with the application ID `com.gtkx.tutorial`.
+
+## Run it
+
+This example is deliberately excluded from the pnpm workspace. It installs `@gtkx/*` from the npm registry exactly as your own app would, so it uses **npm**:
+
+```sh
+npm install
+npm run dev
+```
+
+`npm run build` writes `dist/bundle.js`, which `npm start` runs with Node.js. `npm run bundle` and `npm run build:sea` produce a single executable.
+
+To validate it against the packages in this repository instead of the published ones, run this from the repository root:
+
+```sh
+pnpm tutorial
+```
+
+That publishes the workspace packages to a local registry, then installs, builds, runs, and typechecks the example against them.
+
+## Learn more
+
+- [The tutorial](https://gtkx.dev/tutorial/), which tours this source file by file
+- [Packaging](https://gtkx.dev/tutorial/packaging)

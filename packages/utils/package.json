@@ -1,7 +1,15 @@
 {
     "name": "@gtkx/utils",
     "version": "1.0.0-rc.1",
-    "description": "Cross-package utilities shared by GTKX runtime entry points",
+    "description": "Cross-package utilities shared by the GTKX packages and toolchain: logging, error formatting, string and class helpers",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "utils",
+        "linux",
+        "desktop"
+    ],
     "homepage": "https://gtkx.dev",
     "bugs": {
         "url": "https://github.com/gtkx-org/gtkx/issues"

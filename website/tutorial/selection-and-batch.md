@@ -6,25 +6,13 @@ description: "Implement GNOME's selection mode pattern, with a transformed heade
 
 Some actions only make sense in bulk: complete ten tasks at once, move a handful to another list, sweep several into the Trash. GNOME's Human Interface Guidelines have a dedicated *selection mode* for this, and it drives three parts of the UI: a selection header that replaces the titlebar, a bottom action bar that carries the batch actions, and one `selecting` boolean of React state behind both.
 
-The HIG recommends this pattern when several batch actions apply, which is why Tasks ships Complete, Move, and Delete rather than just Complete/Delete.
+The HIG reserves selection mode for large collections where at least three actions can be taken on the selected items, which is why Tasks ships Complete, Move, and Delete rather than only Complete and Delete. See [Selection & Edit Modes](https://developer.gnome.org/hig/patterns/containers/selection-mode.html).
 
 The `AdwToolbarView` that frames the task list stays mounted throughout: it swaps its top bar, mounts a bottom bar, and switches its body from `TaskList` to `SelectionView`. This page follows the `selecting` flag from the action that sets it, through the header and action bar it drives, down to the recycled list it renders.
 
 ## Entering via the `win.select` action
 
-Selection mode is toggled on by a `GSimpleAction`. In `app.tsx` the window's actions are declared in a small component, and each one is a named action with an `onActivate` handler:
-
-```tsx
-const WindowActions = ({ onNew, onSelect, /* ... */ }: { /* ... */ }) => (
-    <>
-        <GSimpleAction name="new" onActivate={onNew} />
-        <GSimpleAction name="select" onActivate={onSelect} />
-        {/* ... */}
-    </>
-);
-```
-
-Because these are mounted in the `AdwApplicationWindow`'s `actions` slot, the action's fully qualified name is `win.select`. Activating it (from the main menu) runs whatever `onSelect` points at. Two pieces of state back the whole feature:
+Selection mode is toggled on by the window's `select` action, one of the five `<GSimpleAction>` elements `app.tsx` mounts in the `AdwApplicationWindow`'s `actions` slot, which is what makes its fully qualified name `win.select`. [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts) covers that scoping. The main menu's "Select Tasks" item activates it, and it runs whatever `onSelect` points at. Two pieces of state back the whole feature:
 
 ```tsx
 const [selecting, setSelecting] = useState(false);
@@ -45,7 +33,7 @@ const cancelSelection = (): void => {
 };
 ```
 
-Entering starts with `showList()`, which navigates the content stack back to the `List` screen (popping any open task editor) so the content pane is free to show the selectable list, and starts from an empty selection. The Escape key also cancels: the app's global `GtkShortcutController` enables its `Escape` shortcut while `selecting`, and its handler calls `cancelSelection()`.
+Entering starts with `showList()`, which navigates the content stack back to the `List` screen and pops any open task editor, so the content pane is free to show the selectable list. `setSelectedIds([])` then starts selection mode from an empty selection. The Escape key also cancels: the app's global `GtkShortcutController` enables its `Escape` shortcut while `selecting`, and its handler calls `cancelSelection()`.
 
 ## Swapping the header bar
 
@@ -159,8 +147,6 @@ const listBody = selecting ? (
 );
 ```
 
-The task editor never appears in this ternary. `TaskDetail` lives on its own pushed `Task` screen, so `listBody` only ever switches between the selectable list and the normal one.
-
 `SelectionView` (in `components/selection-view.tsx`) is where GTKX's high-level `ListView` from `@gtkx/components` earns its keep:
 
 ```tsx
@@ -218,7 +204,7 @@ How the pieces map:
 
 - `items` is your data lifted into `{ id, value }` nodes. The `id` is the stable identity GTKX uses to track a row across updates and to key the selection; `value` is the `Task` object handed back to `renderItem` as `item`.
 - `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells GTKX to back the list with a `Gtk.MultiSelection` model (the default is `SINGLE`, a `Gtk.SingleSelection`). This is what lets the user select more than one row at a time.
-- Selection is **controlled**, exactly like a controlled input in React. `selectedIds` is the source of truth passed down, and `onSelectionChanged` reports the new array back up. Tasks routes `onSelectionChanged` straight into `setSelectedIds`, so a click on a row and a click on "Select All" both flow into the same state, which then drives the header count, the action bar's `sensitive` gating, and the batch handlers.
+- Selection is **controlled**, exactly like a controlled input in React. `selectedIds` is the source of truth passed down, and `onSelectionChanged` reports the new array back up. Tasks routes `onSelectionChanged` straight into `setSelectedIds`, so a click on a row and a click on "Select All" both flow into the same state. That state drives the header count, the action bar's `sensitive` gating, and the batch handlers.
 - `renderItem` is a normal React render function returning GTKX JSX. Here it builds a horizontal box: title stacked over a dimmed due-date caption, with a star icon on the trailing edge for important tasks.
 - `estimatedItemHeight={56}` gives each recycled cell's placeholder a size request before its content renders, which keeps scrolling and the scrollbar steady in a long list.
 
@@ -274,10 +260,10 @@ const deleteSelected = (): void => {
 };
 ```
 
-It snapshots the ids into a local `const ids = [...selectedIds]` first, because `cancelSelection()` clears `selectedIds` moments later and the toast's Undo callback fires long after that. The toast message pluralizes inline (`task` vs `tasks`), the `button-clicked` handler restores each id, and the toast is pushed onto the same `AdwToastOverlay` (`toastOverlayRef`) that the single-item delete uses. Batch delete and single-item delete (the row's trash button and the Delete shortcut) therefore share one recovery path.
+It copies the ids into a local `const ids = [...selectedIds]` first, so the Undo callback reads an explicit snapshot of what was selected. The copy is defensive rather than required: `setSelectedIds([])` installs a new array rather than emptying the captured one, so the closure would still hold the right ids without it. The toast message pluralizes inline (`task` vs `tasks`), the `button-clicked` handler restores each id, and the toast is pushed onto the same `AdwToastOverlay` (`toastOverlayRef`) that the single-item delete uses. Batch delete and single-item delete (the row's trash button and the Delete shortcut) therefore share one recovery path.
 
 ::: info
-`api.completeMany`, `api.moveToList`, and `api.trashMany` are thin array operations in `hooks/use-tasks.ts`: each maps over the task list and updates only the tasks whose id is in the passed array. `restore` flips a task's `deleted` flag back to `false`. None of these data operations touches a widget imperatively; they are all state in, re-render out.
+None of these data operations touches a widget imperatively; they are all state in, re-render out. [Data Model and Persistence](/tutorial/data-and-persistence#the-hook-state-plus-every-mutation) covers `completeMany`, `moveToList`, `trashMany`, and `restore`.
 :::
 
 ## Next

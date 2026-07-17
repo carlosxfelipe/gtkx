@@ -7,6 +7,7 @@
         "../packages/react",
         "../packages/components",
         "../packages/testing",
+        "../packages/vitest",
         "../packages/css",
         "../packages/animated",
         "../packages/navigation",
@@ -23,7 +24,8 @@
     },
     "out": "reference",
     "docsRoot": ".",
-    "readme": "none",
+    "readme": "./.vitepress/reference-intro.md",
+    "mergeReadme": true,
     "cleanOutputDir": true,
     "githubPages": false,
     "externalSymbolLinkMappings": {

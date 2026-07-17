@@ -39,7 +39,7 @@ GTKX generates fully typed bindings for the entire GTK4 and Adwaita surface dire
 
 ## Demo
 
-The JSX element types are real GTK4 widgets, and ordinary React hooks and events drive them:
+The intrinsic elements in this snippet render real GTK4 widgets, and ordinary React hooks and events drive them:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -103,7 +103,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-### All of GNOME, not a portable subset
+### The full GNOME API surface, not a portable subset
 
 React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX does the opposite: it exposes GTK4, Adwaita, and any other GObject-Introspection library on your system, and is Linux-only by design.
 
@@ -113,7 +113,7 @@ GTKX runs on Node.js. The two established ways to reach GTK4 from JavaScript bot
 
 GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back, and they cover the whole GTK4 and Adwaita surface rather than a hand-picked subset.
 
-At runtime, the Rust N-API addon calls straight into the system GTK4, Adwaita, and GLib libraries through libffi, without loading libgirepository at all.
+At runtime, the native Rust core calls straight into the system GTK4, Adwaita, and GLib libraries through libffi, without loading libgirepository at all.
 
 ## Quick start
 
@@ -122,10 +122,10 @@ GTKX is Linux-only and needs Node.js 24 or later. See [Requirements](#requiremen
 Scaffold a new app with the `create-gtkx` initializer:
 
 ```sh
-npm create gtkx@latest
+npm create gtkx@rc
 ```
 
-The same command works with other package managers: `pnpm create gtkx` or `yarn create gtkx`.
+The same command works with other package managers: `pnpm create gtkx@rc` or `yarn create gtkx@rc`.
 
 Then run your new app:
 
@@ -146,7 +146,7 @@ The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tu
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4, Adwaita, and GLib development libraries
+- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
 - Node.js 24 or later
 
 The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.

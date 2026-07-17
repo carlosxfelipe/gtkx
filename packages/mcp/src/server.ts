@@ -24,7 +24,7 @@ export const log: Logger = createLogger("mcp");
 
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
 const WIDGET_ID_DESCRIPTION =
-    "Widget ID obtained from `gtkx_get_widget_tree` or `gtkx_query_widgets`. IDs are only valid against a recent tree/query for the same app.";
+    "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops resolving once the widget is unmounted.";
 
 const applicationIdShape = { applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION) };
 const widgetIdShape = {
@@ -157,7 +157,8 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             name: "gtkx_get_widget_props",
             title: "Get widget properties",
             kind: "readOnly",
-            description: "Get all properties of a specific widget by its ID",
+            description:
+                "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, visibility, CSS classes, and the full subtree of descendant widgets. It does not return arbitrary GObject properties.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);

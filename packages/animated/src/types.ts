@@ -1,7 +1,8 @@
-import type { MotionNodeOptions, MotionValue, Transition } from "motion-dom";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type { DragElastic, MotionNodeOptions, MotionValue, Transition, ViewportOptions } from "motion-dom";
 
 /**
- * Style values the GTK CSS bridge can render. Keys use the camelCase motion naming
+ * Style values the GTK4 CSS bridge can render. Keys use the camelCase motion naming
  * (`backgroundColor`, `borderRadius`, transform keys like `x` or `scale`); values may be
  * static or driven by a {@link MotionValue}.
  */
@@ -28,6 +29,19 @@ export interface GtkTargetAndTransition extends GtkTarget {
 /** Named variants mapping labels to animation targets. */
 export type GtkVariants = Record<string, GtkTargetAndTransition>;
 
+/** A ref to the widget a drag or viewport option measures against. */
+export interface GtkWidgetRef {
+    current: Gtk.Widget | null;
+}
+
+/** Pixel offsets from the layout position, as accepted by `dragConstraints`. */
+export type GtkDragConstraintsBox = Exclude<DragElastic, boolean | number>;
+
+/** Viewport options for `whileInView`, with `root` measured against a widget rather than a DOM element. */
+export interface GtkViewportOptions extends Omit<ViewportOptions, "root"> {
+    root?: GtkWidgetRef;
+}
+
 type OverriddenMotionProps =
     | "initial"
     | "animate"
@@ -37,11 +51,13 @@ type OverriddenMotionProps =
     | "whileTap"
     | "whileFocus"
     | "whileInView"
-    | "whileDrag";
+    | "whileDrag"
+    | "dragConstraints"
+    | "viewport";
 
 /**
  * Props accepted by every animated component on top of the wrapped widget's own props:
- * framer-motion's animation, gesture, drag, viewport, and layout options plus a GTK `style`
+ * framer-motion's animation, gesture, drag, viewport, and layout options plus a GTK4 `style`
  * record.
  */
 export interface AnimationProps extends Omit<MotionNodeOptions, OverriddenMotionProps> {
@@ -54,5 +70,7 @@ export interface AnimationProps extends Omit<MotionNodeOptions, OverriddenMotion
     whileFocus?: string | GtkTargetAndTransition;
     whileInView?: string | GtkTargetAndTransition;
     whileDrag?: string | GtkTargetAndTransition;
+    dragConstraints?: false | GtkDragConstraintsBox | GtkWidgetRef;
+    viewport?: GtkViewportOptions;
     style?: GtkMotionStyle;
 }

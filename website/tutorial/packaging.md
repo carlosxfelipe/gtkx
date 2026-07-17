@@ -1,10 +1,10 @@
 ---
-description: "Ship the Tasks app: gtkx build, a self-contained binary, a Flatpak manifest, desktop entry and AppStream metadata, and Flathub submission."
+description: "Ship the Tasks app: gtkx build, a standalone binary, a Flatpak manifest, desktop entry and AppStream metadata, and Flathub submission."
 ---
 
 # Packaging and Shipping
 
-A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the compiled GSettings schema into something a user can install. This page turns the Tasks app into a self-contained binary and a Flatpak.
+A GTKX app is a Node.js program that renders native widgets, so shipping it means bundling the JavaScript, the native addon, and the compiled GSettings schema into something a user can install. This page turns the Tasks app into a standalone binary and a Flatpak.
 
 ## Building
 
@@ -14,13 +14,16 @@ A GTKX app is a Node.js program that renders native widgets, so shipping it mean
 npm run build   # gtkx build
 ```
 
-It writes three things to `dist/`:
+It writes four things to `dist/`:
 
 - `bundle.js`, the whole app as one JavaScript file,
 - `gtkx.node`, the native addon that bridges to GTK4,
-- `gschemas.compiled`, the compiled GSettings schema (emitted automatically because the app imports a `.gschema.xml`).
+- `gschemas.compiled`, the compiled GSettings schema (emitted automatically because the app imports a `.gschema.xml`),
+- `icons/`, the app icons copied from `data/icons/`.
 
 At this point you can already run the app with `node dist/bundle.js`, provided GTK4 and Adwaita are installed on the machine.
+
+`gtkx build` also takes `--asset-base <path>`, which resolves imported assets relative to the executable's directory instead of the bundle. Pass it when the binary and its data are installed to different prefixes, for example `gtkx build --asset-base ../share/my-app`.
 
 ## A single executable
 
@@ -147,7 +150,7 @@ npm run flatpak:lint
 # appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml
 ```
 
-### Build and run it
+## Build and run the Flatpak
 
 Vendor the dependencies, build in the sandbox, then install and run the result:
 
@@ -158,7 +161,7 @@ flatpak install --user flatpak-repo com.gtkx.tutorial
 flatpak run com.gtkx.tutorial
 ```
 
-This needs `flatpak` and `flatpak-builder` with the Flathub remote configured, plus `flatpak-node-generator`, `desktop-file-validate`, and `appstreamcli`. The [flatpak README](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/flatpak) lists them with install commands; each script also fails with the exact command to run when a tool is missing.
+This needs `flatpak` and `flatpak-builder` with the Flathub remote configured, plus `flatpak-node-generator`, `desktop-file-validate`, and `appstreamcli`. The [flatpak README](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/flatpak) lists them, and `flatpak:sources` fails with the `pipx` command to install `flatpak-node-generator` if it is missing.
 
 ## Submitting to Flathub
 
@@ -166,4 +169,4 @@ Once it builds and runs locally, open a pull request against the [flathub/flathu
 
 ## Next
 
-You have built, run, tested, and packaged a complete GTKX application. Explore the [full source on GitHub](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial) and start your own app with `npm create gtkx@latest`.
+You have built, run, tested, and packaged a complete GTKX application. Explore the [full source on GitHub](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial) and start your own app with `npm create gtkx@rc`.

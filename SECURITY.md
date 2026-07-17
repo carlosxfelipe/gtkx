@@ -20,7 +20,7 @@ If you discover a security vulnerability in GTKX, please report it responsibly:
 
 ### Disclosure Policy
 
-We follow coordinated disclosure. Once a fix is available, we will:
+GTKX follows coordinated disclosure. Once a fix is available, the maintainer will:
 
 1. Release the patched version
 2. Publish a security advisory on GitHub

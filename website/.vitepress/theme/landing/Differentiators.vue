@@ -4,7 +4,7 @@ import CodeBlock from "../components/CodeBlock.vue";
 
 const testCode = `import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
-import { Counter } from "./Counter";
+import { Counter } from "./Counter.js";
 
 test("increments on click", async () => {
   await render(<Counter />);

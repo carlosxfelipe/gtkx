@@ -19,7 +19,7 @@ const warnedKeys = new Set<string>();
 const warnUnsupported = (key: string): void => {
     if (process.env.NODE_ENV === "production" || warnedKeys.has(key)) return;
     warnedKeys.add(key);
-    log.warn(`"${key}" is not expressible in GTK CSS and was dropped from the animated style output`);
+    log.warn(`"${key}" is not expressible in GTK4 CSS and was dropped from the animated style output`);
 };
 
 const SUPPORTED_STYLE_KEYS = new Set([

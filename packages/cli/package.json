@@ -80,7 +80,8 @@
     "devDependencies": {
         "@gtkx/testing": "workspace:*",
         "@types/babel__core": "^7.20.5",
-        "@types/react-refresh": "^0.14.7"
+        "@types/react-refresh": "^0.14.7",
+        "vitest": "catalog:"
     },
     "peerDependencies": {
         "react": "^19"

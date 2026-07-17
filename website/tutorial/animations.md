@@ -1,12 +1,12 @@
 ---
-description: "Give the empty state a subtle fade with @gtkx/animated, and learn where motion belongs in a GNOME app: communicate real state changes, honor reduce motion, and never re-animate what the toolkit already animates."
+description: "Give the empty state a subtle fade with @gtkx/animated, and learn where motion belongs in a GNOME app: communicate real state changes, honor the system animation setting, and never re-animate what the toolkit already animates."
 ---
 
 # Animations
 
 This page adds one animation, a fade on the empty-state placeholder, and shows where motion does not belong in a GNOME app.
 
-Most of the motion in Tasks is not ours. Adwaita already animates the things that should move: the `Adw.NavigationView` behind your stack navigator slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
+Most of the motion in Tasks is not hand-written. Adwaita already animates the things that should move: the `Adw.NavigationView` behind your stack navigator slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
 
 Given a toolkit that already animates the important transitions, the scope is narrow: one hand-written animation, on the one screen in Tasks that would look wrong without it.
 
@@ -25,7 +25,9 @@ Back in [The Task List](./the-task-list) the content pane showed either the boxe
 </GtkBox>
 ```
 
-Because nothing here is a `GtkStack`, that mount and unmount has no transition whatsoever. Delete your last task and the placeholder snaps into existence; add the first one back and it vanishes on the same frame the row appears. It reads as a glitch, and it is the textbook case the GNOME Human Interface Guidelines describe. There is no dedicated "motion" page in the current HIG; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle, "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change legible, when it tells you that one thing gave way to another instead of hard-cutting between them. Here a real state change (populated becomes empty, and back) is presented as a jarring swap, exactly the hard cut a transition exists to soften.
+Because nothing here is a `GtkStack`, that mount and unmount has no transition whatsoever. Delete your last task and the placeholder snaps into existence; add the first one back and it vanishes on the same frame the row appears. It reads as a glitch.
+
+The GNOME Human Interface Guidelines have no dedicated motion page; the governing rule is the [Be Considerate](https://developer.gnome.org/hig/principles.html) principle: "Respect people's time and attention. Don't interrupt or distract them unnecessarily." Motion earns its place when it makes a change legible. Here a real state change (populated becomes empty, and back) is presented as a jarring swap, exactly the hard cut a transition exists to soften.
 
 ::: info Why `AdwViewStack` does not fit
 Adwaita's sanctioned tool for crossfading a placeholder is `AdwViewStack` with `enable-transitions`. It does not fit here, because it assumes the two states are *mutually exclusive stacked views*. In this layout the list never goes away: it keeps showing its add-entry row even at zero tasks, and the status page is an additional sibling below it. There is no second view to crossfade against, so the right tool is an enter/exit animation on the status page alone.
@@ -63,7 +65,7 @@ Then the empty-state block itself, wrapped in `AnimatePresence` and rendered thr
 </AnimatePresence>
 ```
 
-The animation props read like their web counterparts, because they are: the props are framer-motion's. `initial` is the state the widget starts from, `animate` is where it settles once present, and `exit` is where it goes on the way out. A target is opacity plus CSS transforms (and more; the guide lists the full set); here it is a plain opacity fade from `0` to `1`. A `transition` of `0.2` seconds makes it a short timed tween on the default `easeInOut` curve. The `exit` target embeds a `transition` of its own that zeroes the duration on the way out; a later section explains that asymmetry.
+The animation props read like their web counterparts, because they are: the props are framer-motion's. `initial` is the state the widget starts from, `animate` is where it settles once present, and `exit` is where it goes on the way out. A target is opacity plus CSS transforms (and more; the guide lists the full set); here it is a plain opacity fade from `0` to `1`. A `transition` of `0.2` seconds makes it a short timed tween on the default `easeOut` curve. The `exit` target embeds a `transition` of its own that zeroes the duration on the way out; a later section explains that asymmetry.
 
 Under the hood, framer-motion's engine interpolates the value on its frame loop, and `@gtkx/animated` writes each frame's `opacity` as scoped GTK4 CSS on the widget. It is a real GTK4 widget animating, reached declaratively.
 
@@ -71,7 +73,11 @@ Under the hood, framer-motion's engine interpolates the value on its frame loop,
 
 Without `AnimatePresence` there would be no exit animation at all. React removes a widget from the tree the instant its condition goes false, which leaves no frame in which to animate it leaving. `AnimatePresence` intercepts that: when `tasks.length === 0` flips to `false`, it holds the status page mounted, plays its `exit` target, and only then lets React drop it. Here that exit is deliberately instantaneous, as the next section explains, but the wrapper still earns its place twice over: it is what makes an `exit` target possible at all, and its `initial` prop is what keeps the enter fade off the first paint, covered right after.
 
-The one rule it imposes is a stable `key` on the child, because `AnimatePresence` tracks presence by key. Note that the key is a constant `"empty"`, not derived from the placeholder's contents. The same status page shows several messages depending on where you are (`No Tasks Yet`, `Trash Is Empty`, `No Results` while searching), all through the `empty` prop. Keeping the key constant across all of them is deliberate: switching from one empty message to another, for example typing in the search box while the results stay at zero, is a *prop update* on the same present widget, not a remount, so it does not re-fade. Only the populated-to-empty boundary animates, which is exactly the restraint the HIG asks for. Change the key to `empty.description`, which embeds the query text, and every no-results keystroke would flash the placeholder out and back in.
+The one rule it imposes is a stable `key` on the child, because `AnimatePresence` tracks presence by key. Note that the key is a constant `"empty"`, not derived from the placeholder's contents. The same status page shows several messages depending on where you are (`No Tasks Yet`, `Trash Is Empty`, `No Results` while searching), all through the `empty` prop.
+
+Keeping the key constant across all of them is deliberate. Switching from one empty message to another is a *prop update* on the same present widget, not a remount, so it does not re-fade. Typing in the search box while the results stay at zero is one such case.
+
+Only the populated-to-empty boundary animates, which is the restraint the HIG asks for. Change the key to `empty.description`, which embeds the query text, and every no-results keystroke would flash the placeholder out and back in.
 
 ## The exit is a cut, not a fade
 
@@ -87,7 +93,9 @@ With a zero duration the exit completes immediately, and `AnimatePresence` drops
 
 ## First paint should not animate
 
-`AnimatePresence initial={false}` is the small, important detail. By default `AnimatePresence` runs enter animations for children that are already present on its very first render, so launching straight into an empty view (a fresh install, or an empty Trash) would fade the placeholder in from transparent. But the user did not just empty that list; it was already empty when the window opened. Fading it in there is motion with nothing to communicate, the decorative kind Be Considerate rejects. `initial={false}` mounts any first-render child directly in its `animate` state, while a status page that appears later, because you actually deleted your last task, still runs its `initial` to `animate` fade. Genuine state changes animate; initial conditions do not.
+`AnimatePresence initial={false}` is the small, important detail. By default `AnimatePresence` runs enter animations for children that are already present on its very first render. Launching straight into an empty view (a fresh install, or an empty Trash) would fade the placeholder in from transparent.
+
+But you did not just empty that list; it was already empty when the window opened. Fading it in there is motion with nothing to communicate, the decorative kind Be Considerate rejects. `initial={false}` mounts any first-render child directly in its `animate` state, while a status page that appears later, because you actually deleted your last task, still runs its `initial` to `animate` fade. Genuine state changes animate; initial conditions do not.
 
 ## Keeping the fade inside its view
 
@@ -112,11 +120,15 @@ Changing the selection now unmounts the old `TaskList`, taking its `AnimatePrese
 
 Note what the key leaves out. The search query is not in it, or every keystroke would remount the list and destroy the focused search entry. The All/Open/Done filter is not in it either: filtering re-slices the same list you are already looking at, which is exactly the populated-to-empty boundary the fade was built to narrate. Only navigation, the switch to a different view, gets the hard remount.
 
-## Reduce motion is handled for you
+## The animation setting is handled for you
 
-`@gtkx/animated` watches the system "enable animations" accessibility setting and applies it to every animation, with no code of ours. When a user turns on Reduce Motion, the engine skips the animation to its final value: the status page appears and disappears instantly, and the `exit` still completes so the widget still unmounts cleanly. The swap becomes the hard cut it was before, which is the correct behavior for someone who asked for less motion.
+`@gtkx/animated` watches the system animation settings and applies them with no code in the app. When `gtk-enable-animations` is off, the engine skips every animation to its final value. The status page appears and disappears instantly, and the `exit` still completes so the widget unmounts cleanly. The swap becomes the hard cut it was before, which is correct for someone who asked for less motion.
 
-This is free only because the fade goes through `@gtkx/animated`. Hand-rolling the same motion on a raw timer would bypass the accessibility setting entirely; declaring it through the animation layer means Reduce Motion is respected by construction. (JavaScript timers keep their place for scheduling work; it is motion specifically that belongs on the animation layer.) When an animation carries essential meaning, `MotionConfig` with `reducedMotion="never"` opts a subtree out of reduced-motion handling, which a decorative fade never justifies.
+This is free only because the fade goes through `@gtkx/animated`. Hand-rolling the same motion on a raw timer would bypass the system setting entirely; declaring it through the animation layer means it is respected by construction. (JavaScript timers keep their place for scheduling work; it is motion specifically that belongs on the animation layer.)
+
+There is no per-subtree opt-out from `gtk-enable-animations` being off. When the system turns animations off, every animation in the app completes instantly, and no `MotionConfig` prop can restore this fade.
+
+The separate `gtk-interface-reduced-motion` setting drives framer-motion's reduced-motion handling, which `MotionConfig` does gate per subtree (`reducedMotion="user"` follows the setting, `"always"` forces it, and `"never"`, the default, ignores it). That handling only ever swaps size, position, and transform animations for instant ones, so it does not reach an opacity fade either way. See [CSS and Animations](/guide/css-and-animations) for both settings.
 
 ## Why a tween here, and not a spring
 

@@ -4,9 +4,9 @@ description: "The Tasks data layer, with JSON in the XDG data directory through 
 
 # Data Model and Persistence
 
-Tasks keeps two entirely separate stores, and the split is deliberate. The task list itself, everything the user creates and edits, lives as one JSON file in the XDG data directory, loaded once at startup and written back with `node:fs`. The handful of small UI preferences (filter, sort order, color scheme, window size) live in GSettings, the GNOME settings database. React state is the single source of truth while the app runs; both stores are where that state is serialized to and rehydrated from. This page walks that data layer end to end: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
+Tasks keeps its data in two separate stores: task content as one JSON file in the XDG data directory, and small UI preferences (filter, sort order, color scheme, window size) in GSettings. This page walks that data layer end to end: `types.ts` (the shapes), `store.ts` (JSON load and save), the `useTasks` hook (state plus every mutation), and the gschema that defines the preference keys.
 
-If you come from the web, none of it holds surprises: a GTKX app is an ordinary Node.js program, so file IO is `node:fs`, paths are `node:path`, and the npm ecosystem is a `package.json` entry away. The genuinely GNOME part is GSettings, a real, schema-validated key store GNOME ships rather than something you build.
+React state is the single source of truth while the app runs. Both stores are only where that state is serialized to and rehydrated from.
 
 ## The shapes
 
@@ -67,7 +67,7 @@ export type PersistedState = {
 };
 ```
 
-The XDG spec says per-user data files belong under `$XDG_DATA_HOME`, and that an unset or empty variable means `~/.local/share`, which is exactly what the `||` fallback expresses. Namespacing by the application ID puts the file at `~/.local/share/com.gtkx.tutorial/tasks.json`, where GNOME conventions expect it, and because the code honors `$XDG_DATA_HOME`, sandboxed packaging like Flatpak (which points the variable at the app's private data directory) redirects it automatically. `PersistedState` is the exact JSON envelope: a `version` number for migration, plus the `lists` and `tasks` arrays.
+The XDG spec says per-user data files belong under `$XDG_DATA_HOME`, and that an unset or empty variable means `~/.local/share`, which is exactly what the `||` fallback expresses. Namespacing by the application ID puts the file at `~/.local/share/com.gtkx.tutorial/tasks.json`, where GNOME conventions expect it. Because the code honors `$XDG_DATA_HOME`, sandboxed packaging redirects it automatically: Flatpak points the variable at the app's private data directory. `PersistedState` is the exact JSON envelope: a `version` number for migration, plus the `lists` and `tasks` arrays.
 
 ## First run: the seed
 
@@ -153,8 +153,10 @@ export const saveState = (state: PersistedState): void => {
 
 `mkdirSync` with `recursive: true` creates the namespaced directory (and any missing parent) on first save, and does nothing when it already exists. The temp-then-rename pair is the important part for durability.
 
-::: tip Write-then-rename is atomic
-A plain `writeFileSync` straight to `tasks.json` truncates the file before writing, so a crash or `SIGKILL` mid-write could leave it half-written. Writing the new contents to a temporary file in the same directory and then `renameSync`-ing it over the target closes that window: on POSIX systems, `rename(2)` within one filesystem atomically replaces the destination. A reader always sees either the complete old file or the complete new one, never a torn write. Same directory matters because `rename(2)` cannot cross filesystems (`renameSync` fails with `EXDEV` there), and writing the temp file next to the target guarantees both live on the same one.
+::: info Write-then-rename is atomic
+A plain `writeFileSync` straight to `tasks.json` truncates the file before writing, so a crash or `SIGKILL` mid-write could leave it half-written. Writing the new contents to a temporary file and then `renameSync`-ing it over the target closes that window: on POSIX systems, `rename(2)` within one filesystem atomically replaces the destination. A reader always sees either the complete old file or the complete new one, never a torn write.
+
+The temp file must sit in the same directory as the target, because `rename(2)` cannot cross filesystems (`renameSync` fails with `EXDEV`).
 :::
 
 ## The hook: state plus every mutation
@@ -215,7 +217,7 @@ const withDone = (task: Task, done: boolean): Task => ({
 
 ### Adding
 
-`addTask` trims the title, returns `null` if it is empty (so a blank entry row is a no-op), mints an id with the Web Crypto `crypto.randomUUID()`, appends the task at `position: tasks.length`, and returns the new id so the caller can immediately select or open it.
+`addTask` trims the title and returns `null` if it is empty, so a blank entry row is a no-op. It mints an id with the Web Crypto `crypto.randomUUID()`, appends the task at `position: tasks.length`, and returns the new id so the caller can open the task immediately.
 
 ```ts
 const addTask = (listId: string, title: string): string | null => {
@@ -349,29 +351,11 @@ The 500ms debounce is a safety net, not a clean exit. On a normal quit the app s
 const flush = (): void => saveState(state);
 ```
 
-The window wires it into its close handler. `handleClose` (in `app.tsx`) flushes the task data straight to disk, then quits:
-
-```tsx
-const handleClose = (): boolean => {
-    api.flush();
-    return quit();
-};
-```
-
-(The window size is not captured here. It is bound to GSettings continuously with `useBindSetting`, covered in [The Application Shell](/tutorial/app-shell).)
-
-```tsx
-<AdwApplicationWindow
-    // ...
-    onCloseRequest={handleClose}
->
-```
-
-`onCloseRequest` is the JSX form of the `GtkWindow::close-request` signal. `flush` runs `saveState` immediately, bypassing the debounce, so the file on disk always reflects the last state before the process exits.
+`flush` runs `saveState` immediately, bypassing the debounce, so the file on disk always reflects the last state before the process exits. The window's close handler calls it before quitting, wired through `onCloseRequest` in [The Application Shell](/tutorial/app-shell#the-window).
 
 ## The other store: GSettings for UI preferences
 
-Task data is JSON; UI preferences are GSettings. GSettings is GNOME's schema-defined settings database (backed by dconf), and it is the right home for small, discrete values that GTK4 and Adwaita already know how to bind to. It is the wrong home for the task list: dconf is not meant for large or frequently-churned blobs.
+Task data is JSON; UI preferences are GSettings. GSettings is GNOME's schema-defined settings database, backed by dconf. It is the right home for small, discrete values, because `Gio.Settings` can bind a key straight to any GObject property, including the properties of GTK4 and Adwaita widgets. It is the wrong home for the task list: dconf is not meant for large or frequently-churned blobs.
 
 The preference keys are declared in `data/com.gtkx.tutorial.gschema.xml`. Each key has a type, an optional constraint, a default, and human-readable summary/description text.
 
@@ -435,10 +419,12 @@ Two things worth calling out in the schema format:
 - **Constrained strings, two ways.** `filter` and `color-scheme` inline a `<choices>` list; `sort-order` references a top-level `<enum>` by id via `enum="..."`, and its `<default>` is one of the enum *nicks*, single-quoted. Both forms produce a key GSettings validates against its allowed set, so a write of an undeclared value is rejected.
 - **Ranged integer.** `reminder-minutes` is `type="i"` with a `<range min="0" max="1440"/>`, capping the reminder lead time to a day.
 
-Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. That is the whole contrast: **task data round-trips through JSON in the XDG data dir; only these lightweight preferences live in GSettings.** How components read and write these keys with the `useSetting` hook is covered in [Preferences and Theming](/tutorial/preferences-and-theming).
+Every key here is small, discrete UI state: which filter is active, how the list is sorted, the forced color scheme, reminder lead time, and the last window geometry. None of it is task content. How components read and write these keys with the `useSetting` hook is covered in [Preferences and Theming](/tutorial/preferences-and-theming).
 
 ::: info The data layer is plain Node.js
-GLib does export file helpers through `@gtkx/gi/glib`, but there is no reason to use them for ordinary IO: the store you just read would drop unchanged into any Node.js project. The same door swings the other way, too: outgrow the JSON file and you can swap `store.ts` for `better-sqlite3` or any other npm package without touching the rest of the app. This split is the rule of thumb for every GTKX app: use the Node.js standard library and the npm ecosystem for everything it covers (files, paths, timers, networking, subprocesses, crypto), and reach for the platform libraries only where GNOME provides something Node.js cannot, like GSettings, desktop notifications, actions, and dialogs.
+GLib does export file helpers through `@gtkx/gi/glib`, but there is no reason to use them for ordinary IO: the store you just read would drop unchanged into any Node.js project. The same door swings the other way, too: outgrow the JSON file and you can swap `store.ts` for `better-sqlite3` or any other npm package without touching the rest of the app.
+
+This split is the rule of thumb for every GTKX app. Use the Node.js standard library and the npm ecosystem for everything they cover: files, paths, timers, networking, subprocesses, crypto. Reach for the platform libraries only where GNOME provides something Node.js cannot, such as GSettings, desktop notifications, actions, and dialogs.
 :::
 
 ## Next

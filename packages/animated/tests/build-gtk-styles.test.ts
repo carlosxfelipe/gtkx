@@ -67,7 +67,7 @@ describe("buildGtkStyles + serializeGtkRule", () => {
         expect(rule).not.toContain("0.8");
     });
 
-    it("drops style keys GTK CSS cannot express", () => {
+    it("drops style keys GTK4 CSS cannot express", () => {
         const rule = ruleFor({ opacity: 1, width: 100, pointerEvents: "none" });
         expect(rule).not.toContain("width");
         expect(rule).not.toContain("pointer-events");
@@ -79,7 +79,7 @@ describe("buildGtkStyles + serializeGtkRule", () => {
         expect(ruleFor({ width: 100 })).toBe("");
     });
 
-    it("produces CSS that GTK parses without error across the supported value set", () => {
+    it("produces CSS that GTK4 parses without error across the supported value set", () => {
         const state = createGtkRenderState();
         buildGtkStyles(state, {
             x: 10,

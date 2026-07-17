@@ -4,7 +4,7 @@ description: "How the Tasks app builds its adaptive frame with AdwApplicationWin
 
 # The Application Shell
 
-Everything the app renders lives inside one `AdwApplicationWindow`. Its body is a navigation tree from `@gtkx/navigation` (see the [Navigation](/guide/navigation) guide): a split-view navigator holds the sidebar and content panes, and the content pane hosts a stack navigator for the list and the task editor. `app.tsx` builds that frame once, and everything the panes show follows from navigation state and React state.
+Everything the app renders lives inside one `AdwApplicationWindow`. Its body is a navigation tree from `@gtkx/navigation` (see the [Navigation](/guide/navigation) guide). A split-view navigator holds the sidebar and content panes, and the content pane hosts a stack navigator for the list and the task editor. `app.tsx` builds that frame once, and everything the panes show follows from navigation state and React state.
 
 The file is organized around two components. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
 
@@ -22,7 +22,7 @@ export function App() {
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
             ]}
-            actions={/* app.complete-task and app.open-task GSimpleActions, wired through the notify ref */}
+            actions={<>{/* app.complete-task and app.open-task GSimpleActions, wired through the notify ref */}</>}
         >
             <TasksWindow notify={notify} />
         </AdwApplication>
@@ -30,11 +30,9 @@ export function App() {
 }
 ```
 
-`actionAccels` is a declarative list prop. Each entry is `{ detailedActionName, accels }` and becomes one `gtk_application_set_accels_for_action` call, binding a keyboard accelerator to an action by name. The `win.` prefix means these accelerators fire actions installed on the **window** (`<GSimpleAction name="new">`, `preferences`, `shortcuts` live in the window's `actions` slot, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts)). So `Ctrl+N` triggers `win.new`, `Ctrl+,` opens preferences, `Ctrl+?` opens the shortcuts dialog, all wired from this one array.
+`actionAccels` binds keyboard accelerators to named actions. These three target window actions, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts).
 
-The two `<GSimpleAction>` elements in the application's `actions` slot are different: mounted on the application itself, they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the running app. Each declares `parameterType={GLib.VariantType.new("s")}`, meaning it takes a single string (a task id), which the handler pulls out with `parameter.getString()[0]`.
-
-Because the actions live at the application level but need to mutate window state, they route through a `notify` ref instead of calling into `TasksWindow` directly. `App` creates the ref, the two handlers read `notify.current.complete` / `notify.current.open`, and `TasksWindow` keeps `notify.current` pointed at live closures over its own state. This bridge is explained in full on the [Reminders and Notifications](/tutorial/notifications) page.
+The two `<GSimpleAction>` elements in the application's `actions` slot are mounted on the application itself rather than the window, so they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the app even when no window exists yet, which is why they cannot be `win.`-scoped. Because they live outside `TasksWindow`, they reach its state through the `notify` ref that `App` creates and passes down. [Reminders and Notifications](/tutorial/notifications) covers these actions, their parameter type, and the ref bridge in full.
 
 ## The window
 
@@ -48,7 +46,7 @@ return (
         widthRequest={360}
         heightRequest={294}
         onCloseRequest={handleClose}
-        breakpoints={/* an <AdwBreakpoint> that collapses the layout, shown below */}
+        breakpoints={<>{/* an <AdwBreakpoint> that collapses the layout, shown below */}</>}
         actions={<WindowActions /* new, select, preferences, shortcuts, about */ />}
         controllers={<AppShortcuts /* Ctrl+F, Escape */ />}
     >
@@ -100,7 +98,7 @@ Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addT
 
 ## The adaptive split view
 
-The body of the window is a navigation tree. Its root is a `NavigationContainer` from `@gtkx/navigation`, and inside it a split-view navigator renders the adaptive master/detail layout: on a wide screen the sidebar and content sit side by side; when collapsed it becomes a single column that navigates between them. The navigator is created once at module level, typed by the routes it holds:
+The body of the window is a navigation tree rooted in a `NavigationContainer` from `@gtkx/navigation`. Inside it, a split-view navigator renders the adaptive sidebar/content layout. On a wide screen the two panes sit side by side. When collapsed, the layout becomes a single column that navigates between them. The navigator is created once at module level, typed by the routes it holds:
 
 ```tsx
 type ShellParams = {
@@ -110,6 +108,8 @@ type ShellParams = {
 
 const Split = createSplitViewNavigator<ShellParams>();
 ```
+
+The container wraps the navigator, and the navigator's two screens become the sidebar and content panes:
 
 ```tsx
 <NavigationContainer ref={navigationRef}>
@@ -121,26 +121,26 @@ const Split = createSplitViewNavigator<ShellParams>();
     >
         <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
             {() => (
-                <AdwToolbarView topBar={<AdwHeaderBar start={/* New List button */} />}>
+                <AdwToolbarView topBar={<AdwHeaderBar start={<>{/* New List button */}</>} />}>
                     <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
                 </AdwToolbarView>
             )}
         </Split.Screen>
         <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
-            {() => /* the tasks stack, covered below */}
+            {() => <>{/* the tasks stack, covered below */}</>}
         </Split.Screen>
     </Split.Navigator>
 </NavigationContainer>
 ```
 
-The split-view navigator drives a real `Adw.NavigationSplitView` and takes exactly two screens: the first becomes the sidebar pane, the second the content pane. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. The sizing props pass through to the widget: `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}`, both in `sp`, the same text-scaling unit the breakpoint below uses.
+The split-view navigator drives a real `Adw.NavigationSplitView`. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}`, both in `sp`, the same text-scaling unit the breakpoint below uses.
 
 Both screens use render callbacks (`{() => ...}`) rather than `component`, because their content closes over `TasksWindow`'s state and handlers.
 
 Adaptivity splits between one controlled prop and navigation state:
 
-- **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It stays a controlled React prop, driven by the breakpoint below: the app owns when the layout collapses.
-- **Which pane is focused is navigation state.** Navigating to the `Tasks` route focuses the content pane, which on a collapsed layout slides it into view; the widget's own back motion (the back button or a swipe while collapsed) dispatches back to the `Sidebar` route. There is no `showContent` state to mirror by hand: the navigator keeps the widget and navigation state in lockstep.
+- **`collapsed`** decides whether the two panes are side by side (`false`) or stacked into one column (`true`). It is a controlled React prop, driven by the breakpoint below.
+- **Which pane is focused is navigation state.** Navigating to the `Tasks` route focuses the content pane, which on a collapsed layout slides it into view. There is no `showContent` state to mirror by hand; see [the split-view navigator](/guide/navigation#the-split-view-navigator) for how widget-driven back and navigation state stay in agreement.
 
 The `navigationRef` on the container comes from `useNavigationContainerRef()`. Handlers that live outside the screens (opening a task from a row, the sidebar's `selectSidebar`, the notification actions) navigate through it:
 
@@ -176,7 +176,7 @@ The split view collapses at a threshold, and that threshold is an `AdwBreakpoint
 
 `condition` is parsed once with `Adw.BreakpointCondition.parse`. When the window's width drops below the threshold, `onApply` fires; when it grows back, `onUnapply` fires. Both flip the `collapsed` state, which flows into the split view's `collapsed` prop: Adwaita reports the layout threshold, React owns whether the app is in its collapsed mode.
 
-The condition uses `sp` units rather than raw pixels. `sp` (scalable pixels) tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. Below 500sp the layout goes single-column; above it, side by side.
+The condition uses `sp` units rather than raw pixels. `sp` (scale independent pixels) tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. Below 500sp the layout goes single-column; above it, side by side.
 
 ## The content stack
 
@@ -190,6 +190,8 @@ type TasksStackParams = {
 
 const Stack = createStackNavigator<TasksStackParams>();
 ```
+
+The stack is rendered as the content pane's screen body:
 
 ```tsx
 <Stack.Navigator>
@@ -214,7 +216,7 @@ const Stack = createStackNavigator<TasksStackParams>();
             const task = tasks.find((entry) => entry.id === route.params.id);
             if (!task) return null;
             return (
-                <AdwToolbarView topBar={/* the detail header */}>
+                <AdwToolbarView topBar={<>{/* the detail header */}</>}>
                     <TaskDetail key={task.id} task={task} /* ... */ />
                 </AdwToolbarView>
             );
@@ -230,7 +232,7 @@ The two changes the pane can show split cleanly by kind, and that split is the w
 
 Each screen carries its own header inside its `AdwToolbarView`: the list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag, and the task screen builds its header inline from the task it looked up (the Important toggle and Delete button in `end`, with no back button, because the pushed page supplies one). The task screen and its header read the same `route.params.id`, so they can never disagree.
 
-Opening a task is `openTask(id)`; a programmatic back is `navigationRef.goBack()`. When the pop is instead driven by the widget itself (the back button, an edge-swipe, or Escape through the view's built-in `popOnEscape`), the navigator reduces it into navigation state, so the route leaves the stack to match the widget. There is no desync and no hand-written mirroring of a widget stack, because reconciling navigation state against the widget's live stack is exactly what the stack navigator does for you. The sidebar-to-content transition when collapsed follows the same principle one level up, through the split-view navigator's focused route.
+Opening a task is `openTask(id)`; a programmatic back is `navigationRef.goBack()`. Widget-driven pops (the back button, an edge-swipe, or Escape through `AdwNavigationView`'s `popOnEscape`) reduce into navigation state as well, so the route and the widget stack never disagree; [the stack navigator](/guide/navigation#the-stack-navigator) covers that reconciliation. The sidebar-to-content transition when collapsed follows the same principle one level up, through the split-view navigator's focused route.
 
 ## Next
 

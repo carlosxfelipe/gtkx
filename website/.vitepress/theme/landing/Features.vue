@@ -23,19 +23,19 @@ const features = [
     {
         icon: "M4 17l6-6-6-6M12 19h8",
         title: "Typed end to end",
-        body: "Every class, signal, and property is generated from GObject-Introspection. Autocomplete any library on your system.",
+        body: "Every class, signal, and property is generated from GObject-Introspection. Autocomplete any GObject-Introspection library on your system.",
         href: "/guide/why-gtkx",
     },
     {
         icon: "M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
         title: "Testing, built in",
-        body: "Query and drive real widgets in your tests, with no display server to wrangle. It runs on Vitest.",
+        body: "Query and drive real widgets in your tests. Every worker gets its own headless Wayland display, started and torn down for you. It runs on Vitest.",
         href: "/guide/testing",
     },
     {
         icon: "M12 8V4M9 4h6M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2M9 14h.01M15 14h.01",
         title: "Agentic MCP server",
-        body: "A built-in Model Context Protocol (MCP) server exposes your live app to AI agents, auto-registering when you run gtkx dev.",
+        body: "A Model Context Protocol (MCP) server exposes your live app to AI agents. Register it once with your agent, and gtkx dev connects your running app to it automatically.",
         href: "/guide/mcp",
     },
 ];

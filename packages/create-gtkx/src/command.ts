@@ -76,12 +76,13 @@ export const createCommand = defineCommand({
         },
         "no-interactive": {
             type: "boolean",
-            description: "Run without prompts, failing instead of asking",
+            description:
+                "Run without prompts, using the default for every option not passed on the command line (same as --yes)",
         },
         overwrite: {
             type: "boolean",
             alias: "force",
-            description: "Overwrite the target directory if it already exists",
+            description: "Overwrite the contents of a non-empty target directory when running without prompts",
         },
     },
     run: ({ args }) => runCreate(args),

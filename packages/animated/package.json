@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/animated",
     "version": "1.0.0-rc.1",
-    "description": "Framer Motion-powered animation for GTKX: the animated factory, AnimatePresence, gestures, drag, and layout animations rendered as GTK CSS",
+    "description": "Framer Motion-powered animation for GTKX: the animated factory, AnimatePresence, gestures, drag, and layout animations rendered as GTK4 CSS",
     "keywords": [
         "gtkx",
         "gtk",

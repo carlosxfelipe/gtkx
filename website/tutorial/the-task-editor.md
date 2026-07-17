@@ -8,33 +8,18 @@ Clicking a task in the list opens the editor: a title field, an Important switch
 
 ## The task screen
 
-The editor is a route. The content pane hosts a stack navigator (covered in [The Application Shell](/tutorial/app-shell)) with two screens, `List` and `Task`, and opening a task navigates to the `Task` route with the task's id as a param: `navigationRef.navigate("Tasks", { screen: "Task", params: { id } })`. The stack navigator pushes the page with an animation and an automatic back button; going back pops it. The screen receives its `route` and looks the task up from the id. From `app.tsx`:
+The editor is the `Task` route of the content stack, set up in [The Application Shell](/tutorial/app-shell#the-content-stack). `openTask(id)` navigates to it, and the task id travels in `route.params`. Both the screen body and its `options` callback look the task up from that id, so the page title and the form can never describe different tasks. That section shows the screen in outline; this page fills in what it elides, starting with the body from `app.tsx`:
 
 ```tsx
-<Stack.Screen
-    name="Task"
-    options={({ route }) => ({
-        title: tasks.find((task) => task.id === route.params.id)?.title ?? "Task",
-    })}
->
-    {({ route }) => {
-        const task = tasks.find((entry) => entry.id === route.params.id);
-        if (!task) return null;
-        return (
-            <AdwToolbarView topBar={/* the detail header, below */} controllers={/* the Delete shortcut, below */}>
-                <TaskDetail
-                    key={task.id}
-                    task={task}
-                    onUpdate={(fields) => api.updateTask(task.id, fields)}
-                    onSetImportant={(important) => api.setImportant(task.id, important)}
-                />
-            </AdwToolbarView>
-        );
-    }}
-</Stack.Screen>
+<AdwToolbarView topBar={<>{/* the detail header, below */}</>} controllers={<>{/* the Delete shortcut, below */}</>}>
+    <TaskDetail
+        key={task.id}
+        task={task}
+        onUpdate={(fields) => api.updateTask(task.id, fields)}
+        onSetImportant={(important) => api.setImportant(task.id, important)}
+    />
+</AdwToolbarView>
 ```
-
-The id in `route.params` is the single source of truth for which task is open. The screen body and the `options` callback both read it, so the page title and the form always describe the same task, and nothing in the shell holds a separate "selected task" state that could drift.
 
 The `key={task.id}` is the important part. React uses the key to decide whether a rendered element is "the same" component as last time. When you switch from task A to task B, the key changes, so React unmounts the old `TaskDetail` and mounts a brand new one. Every GTK4 widget inside is destroyed and rebuilt against B's data. The controlled props (the entry `text`, the buffer's text child, the calendar `date`) would re-sync on their own if you reused the instance, but the internal GTK4 state React never sees would carry A's editing session into B. Keying by id is how you get "remount on switch" for free.
 
@@ -66,9 +51,9 @@ The task screen carries its own header, built inline from the task it looked up 
 />
 ```
 
-`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page provides one automatically. Pressing it (or swiping back, or Escape) pops the widget, and the stack navigator reduces that pop into navigation state, so the `Task` route leaves the stack to match. A programmatic back is `navigationRef.goBack()`.
+`AdwHeaderBar` exposes `start` and `end` as slot props (they map to Adwaita's `pack_start` / `pack_end`). There is no back button here, because the pushed page supplies one; how a widget-driven pop feeds back into navigation state is covered in [The Application Shell](/tutorial/app-shell#the-content-stack).
 
-The screen also mounts its own shortcut controller through the toolbar view's `controllers` slot, binding the Delete key to `handleDelete(task)`. Because the controller lives on the task screen, the shortcut exists exactly while a task is open, with no enabling flag to track:
+The screen also mounts its own shortcut controller through the toolbar view's `controllers` slot, binding the Delete key to `handleDelete(task)`. `makeShortcut` is a local helper covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts#view-shortcuts-gtkshortcutcontroller-for-ephemeral-keys); its third argument gates the trigger. It is a constant `true` here because the controller lives on the task screen, so the shortcut exists exactly while a task is open, with no enabling flag to track:
 
 ```tsx
 controllers={
@@ -79,7 +64,9 @@ controllers={
 }
 ```
 
-`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance. The delete button's `handleDelete` moves the task to Trash, pops the editor, and shows an undo toast; it is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs).
+`GtkToggleButton` is a pressed/unpressed button. Its `active` prop reflects the task's star, and the `iconName` switches between the filled `starred-symbolic` and the outline `non-starred-symbolic` glyph. Note the handler is `onToggled` (the `toggled` signal), and the live widget arrives as `self`, so `self.active` is the new pressed state read straight off the GTK4 instance.
+
+The delete button calls `handleDelete(task)`, which branches on the task's state. A live task moves to Trash, the editor pops, and an undo toast appears. A task already in Trash instead opens a confirmation dialog for the permanent delete. Both paths are covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs).
 
 ## The editor shell: scroll, clamp, box
 
@@ -101,7 +88,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
 };
 ```
 
-`AdwClamp` is an Adwaita container with one job: cap the child's width at `maximumSize` (600px here) and center it, no matter how wide the window gets. It is the standard way to keep a form readable on a large monitor. Without it, the entry rows would stretch edge to edge. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
+[`AdwClamp`](/tutorial/the-task-list#the-outer-frame) caps and centers the child's width, here at `maximumSize={600}` rather than the list's 640. The margins keep it off the window chrome, and the vertical `GtkBox` with `spacing={18}` stacks the three sections with even gaps.
 
 `GtkScrolledWindow` with `vexpand` lets the whole form scroll when the notes push it past the window height. Both `AdwClamp` and `GtkScrolledWindow` are single-child containers, so their one child is passed as JSX children and placed via `set_child` under the hood.
 
@@ -129,7 +116,9 @@ The first section is an `AdwPreferencesGroup`, which renders its rows as a singl
 </AdwPreferencesGroup>
 ```
 
-`AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` adds a checkmark button that appears once you edit the text, and it commits on two paths: clicking that button, or pressing Enter while it is shown, fires `apply` (`onApply`); pressing Enter with no pending edit fires `entry-activated` (`onEntryActivated`). Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
+`AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` reveals a checkmark button as soon as you edit the text. Clicking it, or pressing Enter while it is shown, fires `apply` (`onApply`). Pressing Enter with no pending edit fires `entry-activated` (`onEntryActivated`) instead.
+
+Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
 
 `AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch state in GTKX: read the boolean out of the `notify` on the property, not a custom event.
 
@@ -185,7 +174,7 @@ The Due row shows GTK4's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenu
 
 `GtkCalendar`'s `date` property takes a `GLib.DateTime`. Passing `dueDate` opens the calendar on the task's current due date (or today, when undefined). Picking a day fires the `day-selected` signal (`onDaySelected`), and the handler reads the selection back off the live widget with `self.getDate()`, which returns a fresh `GLib.DateTime`.
 
-Converting that GLib date into a JS `Date` needs one adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. `getYear`, `getMonth`, and `getDayOfMonth` are `GLib.DateTime` accessors; the day is pinned to 18:00 local time (a 6 PM default reminder time), and the result is serialized back to ISO with `toISOString()`. Reaching for those accessors plus `getDate()` is deliberate: it is the non-deprecated calendar API (see the warning below), and the `GLib.DateTime` lives only long enough to be read before the due date becomes an ISO string again.
+Converting that GLib date into a JS `Date` needs one adjustment: GLib months are 1-based (January is 1), while `Date`'s month argument is 0-based, so the code subtracts one. `getYear`, `getMonth`, and `getDayOfMonth` are `GLib.DateTime` accessors. The day is pinned to 18:00 local time (the app's default due time, matching the seeded tasks in `store.ts`), and the result is serialized back to ISO with `toISOString()`. Reaching for those accessors plus `getDate()` is deliberate: it is the non-deprecated calendar API (see the warning below), and the `GLib.DateTime` lives only long enough to be read before the due date becomes an ISO string again.
 
 ::: warning Don't use `select_day`
 The older calendar API (`select_day`, plus the integer `day` / `month` / `year` properties) is deprecated since GTK 4.20. The non-deprecated path is the `date` property (a `GLib.DateTime`) for setting and `get_date()` for reading, which is exactly what this editor uses. The generated `@gtkx/gi/gtk` typings still expose the deprecated members because they strip GTK4's deprecation annotations, so it is on you to reach for `date` / `getDate` rather than `selectDay`.

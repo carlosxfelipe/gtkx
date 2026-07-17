@@ -4,7 +4,7 @@ description: "Reference for @gtkx/testing and @gtkx/vitest: headless GTK4 setup,
 
 # Testing
 
-GTKX tests run against real GTK4. There is no fake widget tree and no mocked reconciler. `render` mounts your components into live GObject widgets inside a headless Wayland display. Queries walk the actual accessibility tree GTK4 exposes to screen readers, and `userEvent` dispatches the same gestures and key events a person would produce.
+GTKX tests run against real GTK4. There is no fake widget tree and no mocked reconciler. `render` mounts your components into live GObject widgets inside a headless Wayland display. Queries walk the live widget tree and match on each widget's accessible role, name, and state, and `userEvent` dispatches the same gestures and key events a person would produce.
 
 The API is deliberately shaped like React Testing Library. If you have tested a React web app, you already know the model: query by role and accessible name, interact through user events, assert on what the user can observe.
 
@@ -12,7 +12,7 @@ Two packages divide the work. `@gtkx/testing` is the library you import in test 
 
 ## Setup
 
-A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) ships this config:
+A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx@rc`) ships this config:
 
 ```ts
 import gtkx from "@gtkx/cli/vitest-plugin";
@@ -82,7 +82,7 @@ Six query kinds, each in six variants (`getBy`, `getAllBy`, `queryBy`, `queryAll
 
 The variants have Testing Library semantics: `getBy*` returns synchronously and throws when nothing (or more than one thing) matches, `queryBy*` returns `null` when nothing matches (more than one match still throws), and `findBy*` polls until a match appears or the timeout elapses (1000 ms by default), which makes it the right default after any interaction that triggers a re-render. Every kind is also exported unbound, taking the container as its first argument.
 
-Roles are always `Gtk.AccessibleRole` enum values, never strings, because they are GTK4's own accessibility vocabulary: a `GtkButton` reports `BUTTON`, a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. The accessible name is computed the way assistive technology sees it: an explicit `accessibleLabel` wins, then the widget's own label, text, or title, then the joined text of its descendant labels (with mnemonic underscores stripped), then its tooltip. Widgets that are hidden or excluded from the accessibility tree are skipped unless you pass `{ hidden: true }`.
+Roles are always `Gtk.AccessibleRole` enum values, never strings, because they are GTK4's own accessibility vocabulary: a `GtkButton` reports `BUTTON`, a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. The accessible name is resolved in this order: an explicit `accessibleLabel` wins, then the widget's own label, text, or title, then the joined text of its descendant labels (with mnemonic underscores stripped), then its tooltip. Widgets that are hidden or excluded from the accessibility tree are skipped unless you pass `{ hidden: true }`.
 
 `ByRole` accepts the richest options object: `name` narrows by accessible name, and `checked`, `pressed`, `selected`, `expanded`, `level`, `busy`, `description`, and `value: { now, min, max, text }` narrow by accessible state read live from the widget (a `CHECKBOX` is checked when the underlying `GtkCheckButton` is active, a `ROW` is selected when GTK4's selection state flag is set, and so on).
 
@@ -99,12 +99,12 @@ expect(screen.queryByText("Deleted task")).toBeNull();
 
 ## Simulating input with userEvent
 
-Every `userEvent` helper first waits for the widget to be actionable, polling for up to 500 ms (configurable via `actionabilityTimeout`) until it is sensitive, its window has been allocated a size, it is mapped on screen, and its window is active. If any check never passes, the helper throws an error naming the failed condition, which turns "my click silently did nothing" into a precise diagnosis. The interaction itself runs inside React's `act`, so resulting state updates are flushed before the promise resolves.
+Every `userEvent` helper first waits for the widget to be actionable, polling for up to 500 ms (configurable via `actionabilityTimeout`). It always checks that the widget is sensitive. When the widget is rooted in a visible window, it also checks that the window has been allocated a size and that the widget is mapped on screen. The window must be active as well, unless the display reports no seat. If any check never passes, the helper throws an error naming the failed condition, which turns "my click silently did nothing" into a precise diagnosis. The interaction itself runs inside React's `act`, so resulting state updates are flushed before the promise resolves.
 
 The surface, grouped by what it drives:
 
 - **Clicking**: `click`, `dblClick`, `tripleClick`. A `GtkButton` receives a real press/release gesture, a `GtkSwitch` toggles, and anything else is activated directly or through its nearest clickable ancestor.
-- **Text**: `type(widget, text, options?)`, `clear`, `copy`, `cut`, `paste(widget, text?)`. These require a `Gtk.Editable` or `Gtk.TextView` and use the real clipboard, which is reset between tests.
+- **Text**: `type(widget, text, options?)`, `clear`, `copy`, `cut`, `paste(widget, text?)`. All five require a `Gtk.Editable` or `Gtk.TextView`. `copy` and `cut` write to the real clipboard, and `paste` reads from it when you omit `text`. The clipboard is reset between tests.
 - **Keyboard**: `keyboard(widget, input)` types characters and named keys (`{Enter}`, `{Tab}`, `{Escape}`, `{Backspace}`, arrows, `{Home}`, `{PageUp}`, `{F1}` through `{F12}`, and held modifiers like `{Control>}a{/Control}`). Key events are emitted on a key controller and matched against the widget's and its ancestors' shortcut controllers, so real GTK4 key bindings fire: an `{ArrowUp}` genuinely moves a `GtkScale`. `tab(widget, { shift })` moves focus.
 - **Pointer**: `pointer(widget, input)` supports left-button tokens only (`"click"`, `"down"`, `"up"`, and their `[MouseLeft]` forms). Pointer input goes through `GestureClick` controller signals rather than real `GdkEvent`s, so coordinates, motion, and other buttons cannot be synthesized headless.
 - **Gestures**: `hover`/`unhover`, `rotate`, `zoom`, `swipe`, `longPress`, `drag(widget, dx, dy)`. The last five drive a gesture controller that must already be attached to the widget. `drag` refuses a `Gtk.Range` because the built-in slider drag reads real pointer coordinates; use `slide(range, value)` or `keyboard` for sliders.
@@ -137,12 +137,12 @@ The four text matchers take a string or `RegExp` (`toHaveTextContent` matches su
 
 ## Debugging
 
-When a query fails, look at the tree the way the queries see it. `screen.debug()` (also `logWidget` and `prettyWidget` for arbitrary widgets) prints an HTML-like dump of the widget tree annotated with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget in the tree by role, which is the fastest way to answer "what role does this widget actually report?". `getSuggestedQuery(widget)` recommends the best query for a widget, preferring role, then label text, then the weaker kinds.
+When a query fails, look at the tree the way the queries see it. `screen.debug()` prints an HTML-like dump of the widget tree annotated with roles, names, and accessibility attributes. `logWidget(container)` prints the same dump for an arbitrary widget, and `prettyWidget(container)` returns it as a string instead of printing. `screen.logRoles()` groups every widget in the tree by role, which is the fastest way to answer "what role does this widget actually report?". `getSuggestedQuery(widget)` recommends the best query for a widget, preferring role, then label text, then the weaker kinds.
 
 For visual inspection, `screen.screenshot()` renders the window off-screen, writes the PNG to a temp file, logs a `file://` path you can open, and returns the base64 image data; the lower-level `screenshot(widget)` returns the data without saving. For poking at a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same tree dumps, queries, and screenshots to any MCP client.
 
 ::: tip
-`GTK_A11Y=test` is set by the Vitest plugin, and role queries read GTK4's accessibility tree directly. Tests written this way double as a basic accessibility audit: if `getByRole` cannot find your widget by name, a screen reader user cannot either.
+Role queries walk the widget tree and match each widget's GTK4 accessible role. The accessible name is resolved from the `accessibleLabel` prop, the widget's own label text, its descendant labels, or its tooltip. Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.
 :::
 
 ## A worked example

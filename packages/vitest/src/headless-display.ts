@@ -4,7 +4,10 @@ import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-type CompositorId = "sway" | "weston";
+/**
+ * Wayland compositors that can back a headless display.
+ */
+export type CompositorId = "sway" | "weston";
 
 export const DEFAULT_HEADLESS_SIZE = "1024x768";
 

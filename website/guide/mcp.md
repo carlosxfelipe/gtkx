@@ -6,7 +6,9 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 An AI coding agent working on a web app can open the page and read the DOM. A native GTK4 window offers no such handle: no HTML to parse, no DevTools to attach. `@gtkx/mcp` closes that gap. It is an MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to your live GTKX app.
 
-Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent can look up the exact props, signals, and method signatures it is coding against instead of guessing at them. Combined with the Fast Refresh loop of `gtkx dev`, this gives an agent the same edit, look, verify cycle you have as a human developer. Jump to [Setup](#setup) to register the server, or read on for how the two halves connect.
+Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent looks up exact props, signals, and method signatures instead of guessing.
+
+Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have. Jump to [Setup](#setup) to register the server, or read on for how the two halves connect.
 
 ## How it connects
 
@@ -14,19 +16,23 @@ The system has two halves that find each other through a Unix domain socket.
 
 The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your MCP client launches it as an ordinary stdio MCP server. On startup it also opens a socket at `$XDG_RUNTIME_DIR/gtkx-mcp.sock` (falling back to the system temporary directory) and waits for apps to register. Because the socket path is fixed, one server serves your whole session; a second instance refuses to start while the first is alive.
 
-The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process that connects to that same socket and registers with the app's application ID, process ID, and project root. If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server. Every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app; `gtkx_list_apps` and the API-reference tools take none.
+The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process. It connects to that same socket and registers the app's application ID, process ID, and project root.
 
-Interactions are not reimplemented for MCP. Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`. That means `@gtkx/testing` must be in your dev dependencies for every widget tool to work. Among the app-facing tools, only `gtkx_list_apps` gets by without it, and the API reference tools never touch the app. Projects scaffolded with the testing option already have it; otherwise install it:
+If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server. Every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app; `gtkx_list_apps` and the API-reference tools take none.
 
-```bash
-npm install -D @gtkx/testing
-```
+Interactions are not reimplemented for MCP. Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`.
 
 All of this is development tooling. The MCP client is part of the CLI's dev runner, not your application code, so `gtkx build` bundles none of it and a production app has nothing listening.
 
 ## Setup
 
-On the app side there is nothing to enable: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server. For Claude Code:
+`@gtkx/testing` must be resolvable from your project. Every widget tool except `gtkx_list_apps` loads it through your app's module graph and fails without it; the API reference tools never touch the app. Projects scaffolded with the testing option already have it. Otherwise install it:
+
+```bash
+npm install -D @gtkx/testing
+```
+
+Nothing else is needed on the app side: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server. For Claude Code:
 
 ```bash
 claude mcp add gtkx -- npx -y @gtkx/mcp
@@ -45,7 +51,7 @@ For any other MCP client, the standard `mcpServers` configuration looks like thi
 }
 ```
 
-The binary takes no arguments and has no configuration of its own; there is nothing else to set up. If the agent calls a tool before any app has connected, the error names the fix: "No GTKX application connected: start an app with 'gtkx dev' to connect".
+The binary takes no arguments and has no configuration of its own. If the agent calls a tool before any app has connected, the error names the fix: "No GTKX application connected: start an app with 'gtkx dev' to connect".
 
 ## The tools
 
@@ -71,7 +77,7 @@ The five read-only tools carry the MCP `readOnlyHint` annotation, so clients tha
 
 **`gtkx_list_apps`** lists every connected app with its application ID, process ID, and open windows (each with an ID and title). Pass `waitForApps: true` to block until at least one app registers, with `timeout` in milliseconds (default 10000). This is the natural first call in any session, especially right after launching `gtkx dev`, when the app may still be starting.
 
-**`gtkx_get_widget_tree`** returns the full widget hierarchy of an app as an indented, HTML-like tree: each widget appears as a tag named after its class, with its `id`, widget `name`, and accessible `role` as attributes, its text content nested inside, and `accessible-disabled` or `accessible-hidden` flags when a widget is insensitive or invisible. An excerpt looks like this:
+**`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. Each widget appears as a tag named after its class, with its `id`, widget `name`, and accessible `role` as attributes, and its text content nested inside. A widget that is insensitive or invisible also carries an `accessible-disabled` or `accessible-hidden` flag. The output is truncated at 7000 characters; raise the limit by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`. An excerpt looks like this:
 
 ```
 <Window id="0" name="GtkWindow" role="window">
@@ -89,9 +95,9 @@ The five read-only tools carry the MCP `readOnlyHint` annotation, so clients tha
 </Window>
 ```
 
-This is the map the agent navigates by, and the source of the widget IDs every other tool consumes.
+This is the map the agent navigates by, and the fullest source of the widget IDs that `gtkx_get_widget_props`, `gtkx_take_screenshot`, and the interaction tools take.
 
-**`gtkx_query_widgets`** finds widgets the way a test does, without dumping the whole tree. It takes `by` (one of `"role"`, `"text"`, `"name"`, `"labelText"`), a `value` to match, and an `options` object with `name` (filter by accessible name), `exact` (exact versus substring matching), and `timeout`. Role values are the `Gtk.AccessibleRole` member names:
+**`gtkx_query_widgets`** finds widgets the way a test does, without dumping the whole tree. It takes `by` (one of `"role"`, `"text"`, `"name"`, `"labelText"`), a `value` to match, and an `options` object with `exact` (exact versus substring matching), `timeout`, and `name` (accessible-name filter, honored only when `by` is `"role"`). Role values are the `Gtk.AccessibleRole` member names:
 
 ```json
 {
@@ -117,7 +123,7 @@ The three mutating tools carry the `destructiveHint` annotation, so clients that
 
 **`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first, which is how you replace a value instead of appending to it.
 
-**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions the higher-level tools do not cover: emitting `close-request` on a window, or a custom signal your code connects to. Each argument can be a raw value or a `{ type, value }` object, in which case the `value` is passed through.
+**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions `gtkx_click` and `gtkx_type` do not cover: emitting `close-request` on a window, or a custom signal your code connects to. Each argument can be a raw value or a `{ type, value }` object, in which case the `value` is passed through.
 
 ::: info
 Every widget tool call, inspection or interaction, is routed to the app with a 30 second timeout, so a hung app surfaces as a tool error rather than a stuck agent.
@@ -131,7 +137,9 @@ The three reference tools answer from the same GObject-Introspection data your b
 
 **`gtkx_search_api`** finds symbols by a case-insensitive substring of their name, with optional `namespace`, `kind`, and `limit` filters. Each match comes back with its namespace, kind, and a one-line summary, ready to feed into `gtkx_get_api_docs`.
 
-**`gtkx_get_api_docs`** returns the full reference page for one symbol as markdown. It accepts a qualified name (`Gtk.Button`, `Gtk.Orientation`, `GLib.Variant`), a JSX element name (`GtkButton`), or a bare name when it is unambiguous; if several symbols share a name, the error lists the candidates and a `kind` parameter disambiguates. Element pages are the same pages `gtkx docs` generates, covering props, signal handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest of the surface: a class page lists its hierarchy, constructors, static methods, properties, signals, and instance methods with exact TypeScript signatures; enum pages list members and values; record, callback, alias, function, and constant pages follow suit.
+**`gtkx_get_api_docs`** returns the full reference page for one symbol as markdown. It accepts a qualified name (`Gtk.Button`, `Gtk.Orientation`, `GLib.Variant`), a JSX element name (`GtkButton`), or a bare name when it is unambiguous. When several symbols share a name, the error lists the candidates, and a `kind` parameter disambiguates.
+
+Element pages match the ones `gtkx docs` generates: hierarchy, children, props, `on<Signal>` handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest. A class page lists its hierarchy, constructors, static methods, properties, signals, and instance methods with exact TypeScript signatures. Enum pages list members and values; record, callback, alias, function, and constant pages follow suit.
 
 The server resolves which project to document from the connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries and `elementProps`. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call takes a moment and later ones are instant.
 
@@ -152,5 +160,5 @@ The pattern generalizes: inspect to find IDs, interact, screenshot to verify, re
 
 ## Next
 
-- The [API reference](/reference/) documents the GTKX packages themselves. The generated bindings (`@gtkx/gi`, `@gtkx/jsx`) are specific to your project's configured libraries, which is what `gtkx_get_api_docs` reads; `gtkx docs` writes the same pages to disk.
+- The [API reference](/reference/) documents the GTKX packages themselves. The generated bindings (`@gtkx/gi`, `@gtkx/jsx`) are specific to your project's configured libraries, which is what `gtkx_get_api_docs` reads; `gtkx docs` writes the element pages of that same reference to disk.
 - The [tutorial's testing chapter](/tutorial/testing) applies the queries and events behind these tools to the Tasks app.

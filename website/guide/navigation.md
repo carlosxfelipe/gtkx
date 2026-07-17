@@ -16,8 +16,10 @@ import {
     createSplitViewNavigator,
     createStackNavigator,
     NavigationContainer,
+    type NavigatorScreenParams,
     type RouteProp,
     useNavigation,
+    useNavigationContainerRef,
     useRoute,
 } from "@gtkx/navigation";
 
@@ -60,11 +62,15 @@ const navigationRef = useNavigationContainerRef<TasksStackParams>();
 navigationRef.navigate("Task", { id });
 ```
 
-An app with several windows renders one navigation tree per window and wraps each in `NavigationIndependentTree`, so the trees do not contest a single parent container.
+`NavigationContainer` throws when it renders inside another container's React subtree, so what counts as nesting is decided by the React tree, not the widget tree. Windows rendered as siblings under the application each own their tree and need no wrapper.
+
+A window [portaled](/guide/modals-and-portals) from inside a screen is the nested case: portals preserve React context, so the inner container sees the outer one. Wrap the inner container in `NavigationIndependentTree` there. It clears the surrounding navigation context so the inner tree runs on its own, at the cost of being unable to navigate between the two trees.
 
 ## The stack navigator
 
-`Stack.Navigator` renders an `Adw.NavigationView` and reconciles the widget's page stack against navigation state: `navigate` and `push` push pages with the Adwaita slide animation, `goBack` and `popTo` pop them, and a state reset replaces the stack wholesale. The reconciliation runs in both directions. When the **widget** pops a page on its own (the header bar's back button, an edge swipe, Escape, or a long-press pop-to-page menu), the navigator dispatches the matching pop into navigation state, so `useNavigationState` and your `onStateChange` handler always agree with what is on screen.
+`Stack.Navigator` renders an `Adw.NavigationView` and reconciles the widget's page stack against navigation state. `navigate` and `push` push pages with the Adwaita slide animation, `goBack` and `popTo` pop them, and a state reset replaces the stack wholesale.
+
+The reconciliation runs in both directions. When the **widget** pops a page on its own, the navigator dispatches the matching pop into navigation state. `useNavigationState` and your `onStateChange` handler therefore always agree with what is on screen. Widget-initiated pops cover the header bar's back button, a swipe, <kbd>Escape</kbd>, <kbd>Alt</kbd>+<kbd>←</kbd>, the back mouse button, and the back button's context menu.
 
 Screen options are deliberately small, because Adwaita pages own their chrome:
 
@@ -98,7 +104,7 @@ A screen that needs data from the component rendering the navigator takes a rend
 
 ## The split-view navigator
 
-`Split.Navigator` renders an `Adw.NavigationSplitView` and takes exactly two screens: the first is the sidebar, the second is the content. Unlike a stack, both screens render at all times (side by side when expanded), so the navigator is backed by React Navigation's tab router rather than its stack router: navigation state tracks which pane is *focused*, which is also the pane a collapsed split view shows.
+`Split.Navigator` renders an `Adw.NavigationSplitView` and takes exactly two screens: the first is the sidebar, the second is the content. Unlike a stack, both screens render at all times, side by side when expanded. That is why the navigator is backed by React Navigation's tab router rather than its stack router: navigation state tracks which pane is *focused*, not which pages are piled up. The focused pane is also the one a collapsed split view shows.
 
 ```tsx
 type ShellParams = {
@@ -126,9 +132,9 @@ That one call focuses the content pane *and* pushes the task page in its stack. 
 
 ## Hooks
 
-The React Navigation core hooks re-export from `@gtkx/navigation`:
+`@gtkx/navigation` re-exports the React Navigation core hooks:
 
-- **`useNavigation()`** returns the navigation object for the enclosing screen: `navigate`, `goBack`, `push`, `popTo`, `setParams`, `setOptions`, and event subscription via `addListener`.
+- **`useNavigation()`** returns the navigation object for the enclosing screen: `navigate`, `goBack`, `setParams`, `setOptions`, and event subscription via `addListener`. Type it as `useNavigation<StackNavigationProp<TasksStackParams>>()` to reach the stack helpers (`push`, `pop`, `popTo`, `popToTop`, `replace`), or as `SplitViewNavigationProp` to reach `jumpTo`.
 - **`useRoute()`** returns the screen's route, including `params`.
 - **`useNavigationState(selector)`** subscribes to a slice of the navigator's state.
 - **`useIsFocused()`** and **`useFocusEffect(callback)`** track whether the screen is the focused one, re-running the effect on focus and cleaning up on blur.
@@ -138,11 +144,11 @@ The React Navigation core hooks re-export from `@gtkx/navigation`:
 
 ## Preventing removal
 
-`usePreventRemove(true, onAttempt)` does two things on a stack screen. It sets the page's `canPop` to `false`, so the back button disappears and the pop gesture and shortcuts are disabled up front. And if the page is popped anyway (something calls `pop()` on the widget directly), the dispatched pop is prevented, the `onAttempt` callback fires with the blocked action, and the navigator immediately pushes the page back: navigation state wins.
+`usePreventRemove(true, onAttempt)` does two things on a stack screen. It sets the page's `canPop` to `false`, so the back button disappears and the pop gesture and shortcuts are disabled up front. If the page is popped anyway, because something called `pop()` on the widget directly, the navigator's dispatched pop is prevented. The `onAttempt` callback fires with the blocked action. The navigator then pushes the page straight back, so navigation state wins.
 
 What it cannot do is Adwaita's "ask first, then maybe close" flow, because `Adw.NavigationView` has no vetoable pop: the widget notifies *after* a page is popped, so prevention for widget-initiated pops is block-up-front, not intercept-in-flight. For a genuine confirmation flow, reach for the surface Adwaita makes vetoable: present the question in a [`Dialog`](/guide/modals-and-portals), whose close attempt genuinely waits for an answer.
 
-## Where the old pieces live
+## What belongs in navigation state
 
 Navigation state (which page is open, which pane is focused) belongs to the navigators. App data referenced by routes travels in **params**: a task editor screen receives `{ id }` and looks the task up, rather than the shell hoisting a `selectedTask` into its own state. The [tutorial's application shell](/tutorial/app-shell) builds a complete adaptive app this way: a split-view navigator for the sidebar and content, a stack navigator inside the content pane, and a container ref for window-level actions.
 

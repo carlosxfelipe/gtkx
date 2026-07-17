@@ -1,5 +1,6 @@
 import gtkxVitest from "@gtkx/vitest";
 import type { Plugin } from "vite";
+import { gtkxGSettingsWorkerEnv } from "./vite-plugins/gsettings-worker-env.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 
 /**
@@ -8,6 +9,6 @@ import { gtkxVitePlugins } from "./vite-plugins/index.js";
  *
  * @returns The ordered array of Vite plugins to include in a Vitest configuration.
  */
-const gtkx = (): Plugin[] => [...gtkxVitePlugins(), gtkxVitest()];
+const gtkx = (): Plugin[] => [...gtkxVitePlugins(), gtkxGSettingsWorkerEnv(), gtkxVitest()];
 
 export default gtkx;
