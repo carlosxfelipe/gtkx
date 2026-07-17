@@ -35,18 +35,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compute CI image ref
-        run: echo "CI_IMAGE_REF=ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}" >> "$GITHUB_ENV"
-
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
       - name: Generate coverage
-        uses: ./.github/actions/run-in-container
+        uses: ./.github/actions/run-ci-command
         with:
           command: pnpm coverage
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0

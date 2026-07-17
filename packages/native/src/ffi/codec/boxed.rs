@@ -68,16 +68,15 @@ impl Encoder for BoxedCodec {
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if !self.ownership.is_full() || ptr.is_null() {
-            return Ok(ptr);
-        }
-        let Some(type_) = self.type_()? else {
-            anyhow::bail!(
-                "Cannot transfer ownership of boxed '{}': its GType cannot be resolved, so no copy can be made for the callee",
-                self.type_name
-            );
-        };
-        Ok(unsafe { Boxed::boxed_copy(type_, ptr) })
+        ref_for_full_transfer(self.ownership, ptr, |ptr| {
+            let Some(type_) = self.type_()? else {
+                anyhow::bail!(
+                    "Cannot transfer ownership of boxed '{}': its GType cannot be resolved, so no copy can be made for the callee",
+                    self.type_name
+                );
+            };
+            Ok(unsafe { Boxed::boxed_copy(type_, ptr) })
+        })
     }
 }
 
@@ -103,40 +102,22 @@ impl Decoder for BoxedCodec {
         })
     }
 
-    unsafe fn read_value<'e>(
-        &self,
-        env: &'e Env,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_non_null(env, ptr, |ptr| {
-            if self.free_fn_name.is_some() || self.caller_allocated {
-                return Ok(value::handle_to_unknown(
-                    env,
-                    Boxed::from_glib_borrow(ptr).into(),
-                )?);
-            }
-            Ok(value::handle_to_unknown(
+    read_value_non_null!(|self, env, ptr| {
+        if self.free_fn_name.is_some() || self.caller_allocated {
+            return Ok(value::handle_to_unknown(
                 env,
-                unsafe { Boxed::from_glib_none(self.type_()?, ptr, None) }?.into(),
-            )?)
-        })
-    }
+                Boxed::from_glib_borrow(ptr).into(),
+            )?);
+        }
+        Ok(value::handle_to_unknown(
+            env,
+            unsafe { Boxed::from_glib_none(self.type_()?, ptr, None) }?.into(),
+        )?)
+    });
 }
 
 impl PtrWriter for BoxedCodec {
-    fn write_return_to_ptr(
-        &self,
-        env: &Env,
-        ret: ffi::Slot,
-        value: &std::result::Result<Unknown<'_>, ()>,
-    ) {
-        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-            unsafe { self.ref_for_transfer(ptr) }
-                .report_err("Boxed return: cannot transfer ownership")
-                .unwrap_or(std::ptr::null_mut())
-        });
-    }
+    write_return_transferred!("Boxed return: cannot transfer ownership");
 
     fn write_value_to_ptr(
         &self,

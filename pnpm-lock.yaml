@@ -298,6 +298,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       react:
         specifier: ^19
         version: 19.2.7
@@ -463,6 +466,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@react-navigation/core':
         specifier: ^7.9.2
         version: 7.21.5(patch_hash=2bb51ba208007b8927006369a1b80d744711c5e784ab42929cd660d0da97bdfd)(react@19.2.7)

@@ -2,7 +2,13 @@ import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 
 import type { Demo } from "../types.js";
-import { BottomEdgeConstraint, ConstraintContainer, TopEdgeConstraint } from "./constraint-helpers.js";
+import {
+    BottomEdgeConstraint,
+    ConstraintContainer,
+    EndEdgeConstraint,
+    StartEdgeConstraint,
+    TopEdgeConstraint,
+} from "./constraint-helpers.js";
 import sourceCode from "./constraints.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
@@ -34,12 +40,7 @@ const renderSpaceGuide = () => (
 const renderHorizontalConstraints = () => (
     <>
         {renderSpaceGuide()}
-        <ConstraintLayout.Constraint
-            target="button1"
-            targetAttribute={A.START}
-            sourceAttribute={A.START}
-            constant={8}
-        />
+        <StartEdgeConstraint target="button1" />
         <ConstraintLayout.Constraint
             target="button1"
             targetAttribute={A.WIDTH}
@@ -58,14 +59,9 @@ const renderHorizontalConstraints = () => (
             source="button2"
             sourceAttribute={A.START}
         />
-        <ConstraintLayout.Constraint target="button2" targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
-        <ConstraintLayout.Constraint
-            target="button3"
-            targetAttribute={A.START}
-            sourceAttribute={A.START}
-            constant={8}
-        />
-        <ConstraintLayout.Constraint target="button3" targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
+        <EndEdgeConstraint target="button2" />
+        <StartEdgeConstraint target="button3" />
+        <EndEdgeConstraint target="button3" />
     </>
 );
 

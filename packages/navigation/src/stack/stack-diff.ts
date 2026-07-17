@@ -1,13 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
+import { isSameArray } from "@gtkx/utils";
 import type { PageRegistry } from "./page-registry.js";
-
-const sameTags = (a: string[], b: string[]): boolean => {
-    if (a.length !== b.length) return false;
-    for (let index = 0; index < a.length; index++) {
-        if (a[index] !== b[index]) return false;
-    }
-    return true;
-};
 
 const isPrefix = (prefix: string[], full: string[]): boolean =>
     prefix.length <= full.length && prefix.every((value, index) => value === full[index]);
@@ -38,7 +31,7 @@ const resolvePages = (desired: string[], registry: PageRegistry): Adw.Navigation
 
 export const applyStackDiff = (view: Adw.NavigationView, desired: string[], registry: PageRegistry): void => {
     const live = readLiveTags(view);
-    if (sameTags(live, desired)) return;
+    if (isSameArray(live, desired)) return;
     const desiredTop = desired[desired.length - 1];
 
     if (desiredTop !== undefined && desired.length === live.length + 1 && isPrefix(live, desired)) {

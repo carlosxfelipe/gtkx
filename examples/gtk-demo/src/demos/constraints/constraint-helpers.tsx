@@ -14,6 +14,14 @@ export const BottomEdgeConstraint = (): ReactNode => (
     <ConstraintLayout.Constraint target="button3" targetAttribute={A.BOTTOM} sourceAttribute={A.BOTTOM} constant={-8} />
 );
 
+export const StartEdgeConstraint = ({ target }: { target: string }): ReactNode => (
+    <ConstraintLayout.Constraint target={target} targetAttribute={A.START} sourceAttribute={A.START} constant={8} />
+);
+
+export const EndEdgeConstraint = ({ target }: { target: string }): ReactNode => (
+    <ConstraintLayout.Constraint target={target} targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
+);
+
 export const ConstraintContainer = ({
     layoutManager,
     controllers,

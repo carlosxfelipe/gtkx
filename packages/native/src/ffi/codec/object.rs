@@ -55,10 +55,9 @@ impl Encoder for ObjectCodec {
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if self.ownership.is_full() && !ptr.is_null() {
-            return Ok(unsafe { object_ref_full(ptr) });
-        }
-        Ok(ptr)
+        ref_for_full_transfer(self.ownership, ptr, |ptr| {
+            Ok(unsafe { object_ref_full(ptr) })
+        })
     }
 }
 
@@ -73,33 +72,17 @@ impl Decoder for ObjectCodec {
         })
     }
 
-    unsafe fn read_value<'e>(
-        &self,
-        env: &'e Env,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_non_null(env, ptr, |ptr| unsafe {
-            tracked_gobject_value(
-                env,
-                ptr as *mut glib::gobject_ffi::GObject,
-                Ownership::Borrowed,
-            )
-        })
-    }
+    read_value_non_null!(|self, env, ptr| unsafe {
+        tracked_gobject_value(
+            env,
+            ptr as *mut glib::gobject_ffi::GObject,
+            Ownership::Borrowed,
+        )
+    });
 }
 
 impl PtrWriter for ObjectCodec {
-    fn write_return_to_ptr(
-        &self,
-        env: &Env,
-        ret: ffi::Slot,
-        value: &std::result::Result<Unknown<'_>, ()>,
-    ) {
-        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| unsafe {
-            object_ref_full(ptr)
-        });
-    }
+    write_return_transferred!("Object return: cannot transfer ownership");
 
     fn write_value_to_ptr(
         &self,

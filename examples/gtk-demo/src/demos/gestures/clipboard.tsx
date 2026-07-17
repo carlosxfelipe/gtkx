@@ -25,6 +25,7 @@ import { useState } from "react";
 import { path as floppyBuddyPath } from "#data/demos/gestures/floppybuddy.gif";
 import { path as demo4LogoPath } from "#data/demos/gestures/org.gtk.Demo4.svg";
 import { path as portlandRosePath } from "#data/demos/gestures/portland-rose.jpg";
+import { buildRgba } from "../../build-rgba.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
 
@@ -56,15 +57,6 @@ function drawColorSwatch(cr: Context, width: number, height: number, rgba: Gdk.R
     cr.rectangle(0, 0, width, height);
     cr.fill();
 }
-
-const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
-    const rgba = new Gdk.RGBA();
-    rgba.red = red;
-    rgba.green = green;
-    rgba.blue = blue;
-    rgba.alpha = alpha;
-    return rgba;
-};
 
 const applyColorFromValue = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
     const rgba = value.getBoxed<Gdk.RGBA>();

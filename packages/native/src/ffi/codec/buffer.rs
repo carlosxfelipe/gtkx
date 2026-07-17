@@ -1,5 +1,4 @@
 use anyhow::bail;
-use libffi::middle as libffi;
 
 use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
@@ -39,14 +38,7 @@ impl Encoder for BufferCodec {
         }
     }
 
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::Stash> {
-        reject_return_codec("Buffer")
-    }
+    reject_return_codec!("Buffer");
 }
 
 impl Decoder for BufferCodec {}

@@ -1,7 +1,6 @@
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Fundamental, Handle, RefFn, UnrefFn};
-use crate::messaging::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
 pub struct FundamentalCodec {
@@ -49,13 +48,13 @@ impl Encoder for FundamentalCodec {
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if self.ownership.is_full() && !ptr.is_null() {
+        ref_for_full_transfer(self.ownership, ptr, |ptr| {
             let (ref_fn, _) = self.lookup_fns()?;
-            if let Some(ref_fn) = ref_fn {
-                return Ok(unsafe { ref_fn(ptr) });
+            match ref_fn {
+                Some(ref_fn) => Ok(unsafe { ref_fn(ptr) }),
+                None => Ok(ptr),
             }
-        }
-        Ok(ptr)
+        })
     }
 }
 
@@ -66,33 +65,15 @@ impl Decoder for FundamentalCodec {
         })
     }
 
-    unsafe fn read_value<'e>(
-        &self,
-        env: &'e Env,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_non_null(env, ptr, |ptr| {
-            let (ref_fn, unref_fn) = self.lookup_fns()?;
-            let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-            Ok(value::handle_to_unknown(env, fundamental.into())?)
-        })
-    }
+    read_value_non_null!(|self, env, ptr| {
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
+        Ok(value::handle_to_unknown(env, fundamental.into())?)
+    });
 }
 
 impl PtrWriter for FundamentalCodec {
-    fn write_return_to_ptr(
-        &self,
-        env: &Env,
-        ret: ffi::Slot,
-        value: &std::result::Result<Unknown<'_>, ()>,
-    ) {
-        self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-            unsafe { self.ref_for_transfer(ptr) }
-                .report_err("Fundamental return: cannot transfer ownership")
-                .unwrap_or(std::ptr::null_mut())
-        });
-    }
+    write_return_transferred!("Fundamental return: cannot transfer ownership");
 
     fn write_value_to_ptr(
         &self,

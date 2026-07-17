@@ -1,7 +1,6 @@
 use std::ffi::c_char;
 
 use anyhow::bail;
-use libffi::middle as libffi;
 
 use super::prelude::*;
 use crate::ffi::codec::Codec;
@@ -129,14 +128,7 @@ impl Encoder for RefCodec {
         }
     }
 
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::Stash> {
-        reject_return_codec("Ref")
-    }
+    reject_return_codec!("Ref");
 }
 
 impl Decoder for RefCodec {

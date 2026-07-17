@@ -88,87 +88,63 @@ jobs:
 
   lint:
     needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
+    if: &code-changed needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
       - name: Lint
-        uses: ./.github/actions/run-in-container
+        uses: ./.github/actions/run-ci-command
         with:
           command: pnpm lint
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+          image-ref: ${{ needs.image.outputs.ref }}
 
   test:
     needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
+    if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
       - name: Run tests
-        uses: ./.github/actions/run-in-container
+        uses: ./.github/actions/run-ci-command
         with:
           command: pnpm test
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+          image-ref: ${{ needs.image.outputs.ref }}
 
   typecheck:
     needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
+    if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
       - name: Typecheck
-        uses: ./.github/actions/run-in-container
+        uses: ./.github/actions/run-ci-command
         with:
           command: pnpm typecheck
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+          image-ref: ${{ needs.image.outputs.ref }}
 
   publish-e2e:
     needs: [changes, image]
-    if: needs.changes.outputs.code == 'true'
+    if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 50
-    env:
-      CI_IMAGE_REF: ${{ needs.image.outputs.ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-
       - name: Publish to Verdaccio, then scaffold, build, and test a consumer app
-        uses: ./.github/actions/run-in-container
+        uses: ./.github/actions/run-ci-command
         with:
           command: pnpm release-e2e
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+          image-ref: ${{ needs.image.outputs.ref }}
 
       - name: Publish to Verdaccio, then install, build, and run the tutorial app
         uses: ./.github/actions/run-in-container

@@ -1,9 +1,9 @@
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
+import { isSameArray } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import type { ItemResolver } from "../utils/item-resolver.js";
-import { sameIds } from "../utils/same-ids.js";
 
 type SelectionModelOptions<T, S> = {
     base: Gio.ListModel;
@@ -95,7 +95,7 @@ export const useSelectionModel = <T, S>(options: SelectionModelOptions<T, S>): G
         const callback = onChangedRef.current;
         if (!callback) return;
         const ids = readSelectedIds(model, resolverRef.current);
-        if (lastReportedRef.current !== null && sameIds(lastReportedRef.current, ids)) return;
+        if (lastReportedRef.current !== null && isSameArray(lastReportedRef.current, ids)) return;
         lastReportedRef.current = ids;
         callback(ids);
     };

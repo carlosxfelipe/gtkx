@@ -3,7 +3,13 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkGestureDrag } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-import { BottomEdgeConstraint, ConstraintContainer, TopEdgeConstraint } from "./constraint-helpers.js";
+import {
+    BottomEdgeConstraint,
+    ConstraintContainer,
+    EndEdgeConstraint,
+    StartEdgeConstraint,
+    TopEdgeConstraint,
+} from "./constraint-helpers.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
@@ -25,12 +31,7 @@ const renderDividerConstraints = (dividerOffset: number | null) => (
 
 const renderHorizontalConstraints = () => (
     <>
-        <ConstraintLayout.Constraint
-            target="button1"
-            targetAttribute={A.START}
-            sourceAttribute={A.START}
-            constant={8}
-        />
+        <StartEdgeConstraint target="button1" />
         <ConstraintLayout.Constraint
             target="button1"
             targetAttribute={A.END}
@@ -43,13 +44,8 @@ const renderHorizontalConstraints = () => (
             source="divider"
             sourceAttribute={A.END}
         />
-        <ConstraintLayout.Constraint target="button2" targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
-        <ConstraintLayout.Constraint
-            target="button3"
-            targetAttribute={A.START}
-            sourceAttribute={A.START}
-            constant={8}
-        />
+        <EndEdgeConstraint target="button2" />
+        <StartEdgeConstraint target="button3" />
         <ConstraintLayout.Constraint
             target="button3"
             targetAttribute={A.END}

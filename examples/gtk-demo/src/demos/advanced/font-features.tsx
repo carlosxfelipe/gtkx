@@ -1,6 +1,6 @@
 import { Grid } from "@gtkx/components";
 import { css } from "@gtkx/css";
-import * as Gdk from "@gtkx/gi/gdk";
+import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
@@ -29,6 +29,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import { buildRgba } from "../../build-rgba.js";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./font-features.tsx?raw";
 
@@ -257,15 +258,6 @@ interface PreviewSelection {
     start: number;
     end: number;
 }
-
-const buildRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA => {
-    const rgba = new Gdk.RGBA();
-    rgba.red = red;
-    rgba.green = green;
-    rgba.blue = blue;
-    rgba.alpha = alpha;
-    return rgba;
-};
 
 const createDefaultFgColor = () => buildRgba(0, 0, 0, 1);
 const createDefaultBgColor = () => buildRgba(1, 1, 1, 1);

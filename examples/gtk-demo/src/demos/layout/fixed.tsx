@@ -3,16 +3,11 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFrame, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { at } from "../../transform.js";
 import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
 import fixedCss from "./fixed.css?raw";
 import sourceCode from "./fixed.tsx?raw";
-
-const at = (x: number, y: number, transform?: Gsk.Transform | null): Gsk.Transform | null => {
-    let composed = Gsk.Transform.new().translate(Graphene.Point.create(x, y));
-    if (transform != null && composed !== null) composed = composed.transform(transform);
-    return composed;
-};
 
 const FACE_SIZE = 200;
 

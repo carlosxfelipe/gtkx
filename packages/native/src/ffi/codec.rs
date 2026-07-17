@@ -294,22 +294,10 @@ pub enum Codec {
 
 impl Codec {
     pub fn is_handle_backed(&self) -> bool {
-        match self {
-            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => true,
-            Codec::Integer(_)
-            | Codec::BigInt(_)
-            | Codec::Float(_)
-            | Codec::EnumFlags(_)
-            | Codec::String(_)
-            | Codec::Void(_)
-            | Codec::Boolean(_)
-            | Codec::Array(_)
-            | Codec::Buffer(_)
-            | Codec::HashTable(_)
-            | Codec::Callback(_)
-            | Codec::Ref(_)
-            | Codec::Unichar(_) => false,
-        }
+        matches!(
+            self,
+            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_)
+        )
     }
 }
 

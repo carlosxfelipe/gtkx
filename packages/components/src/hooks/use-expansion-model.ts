@@ -1,9 +1,9 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
+import { isSameArray } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import { type RowValue, rowIdOf } from "../utils/item-resolver.js";
-import { sameIds } from "../utils/same-ids.js";
 
 type ExpansionModelOptions<T> = {
     treeModel: Gtk.TreeListModel | null;
@@ -63,7 +63,7 @@ export const useExpansionModel = <T>(options: ExpansionModelOptions<T>): void =>
         const callback = onChangeRef.current;
         if (!callback) return;
         const ids = readExpandedIds(treeModel, rowValuesRef.current);
-        if (lastReportedRef.current !== null && sameIds(lastReportedRef.current, ids)) return;
+        if (lastReportedRef.current !== null && isSameArray(lastReportedRef.current, ids)) return;
         lastReportedRef.current = ids;
         callback(ids);
     };

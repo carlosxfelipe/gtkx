@@ -4,15 +4,10 @@ import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useRef } from "react";
+import { at } from "../../transform.js";
 import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
-
-const at = (x: number, y: number, transform?: Gsk.Transform | null): Gsk.Transform | null => {
-    let composed = Gsk.Transform.new().translate(Graphene.Point.create(x, y));
-    if (transform != null && composed !== null) composed = composed.transform(transform);
-    return composed;
-};
 
 const computeFixedTransform = (
     duration: number,

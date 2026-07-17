@@ -16,6 +16,14 @@ export const uniqBy = <T>(items: T[], key: (item: T) => string): T[] => {
     return result;
 };
 
+export const isSameArray = <T>(a: T[], b: T[]): boolean => {
+    if (a.length !== b.length) return false;
+    for (let index = 0; index < a.length; index++) {
+        if (a[index] !== b[index]) return false;
+    }
+    return true;
+};
+
 const compareStrings = (a: string, b: string): number => a.localeCompare(b);
 
 /**

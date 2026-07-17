@@ -24,16 +24,11 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
 import { path as trashSvgPath } from "#data/demos/gestures/user-trash-opening.gpa";
+import { at } from "../../transform.js";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
-
-const at = (x: number, y: number, transform?: Gsk.Transform | null): Gsk.Transform | null => {
-    let composed = Gsk.Transform.new().translate(Graphene.Point.create(x, y));
-    if (transform != null && composed !== null) composed = composed.transform(transform);
-    return composed;
-};
 
 const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();

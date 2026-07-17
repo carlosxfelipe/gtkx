@@ -5,7 +5,7 @@ import { GtkAdjustment, GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from 
 import { useParentWindow } from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
-import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
+import { createVertexBuffer, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./glarea.tsx?raw";
 
 const VERTEX_SHADER_GL = `#version 330
@@ -129,12 +129,7 @@ const initGL = (api: Gdk.GLAPI): GLState => {
     gl.deleteShader(vertexShader);
     gl.deleteShader(fragmentShader);
 
-    const vao = gl.genVertexArray();
-    gl.bindVertexArray(vao);
-
-    const vbo = gl.genBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    bufferFloatData(gl.ARRAY_BUFFER, VERTEX_DATA, gl.STATIC_DRAW);
+    const { vao, vbo } = createVertexBuffer(VERTEX_DATA);
 
     gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 8 * 4, 0);
     gl.enableVertexAttribArray(0);

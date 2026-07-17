@@ -28,14 +28,7 @@ pub struct CallbackCodec {
 }
 
 impl Encoder for CallbackCodec {
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::Stash> {
-        reject_return_codec("Callback")
-    }
+    reject_return_codec!("Callback");
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());

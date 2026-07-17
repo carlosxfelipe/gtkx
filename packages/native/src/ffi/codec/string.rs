@@ -56,17 +56,10 @@ impl Decoder for StringCodec {
         })
     }
 
-    unsafe fn read_value<'e>(
-        &self,
-        env: &'e Env,
-        ptr: *mut c_void,
-        _context: &str,
-    ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_non_null(env, ptr, |ptr| {
-            let string = unsafe { lossy_c_string(ptr as *const c_char) };
-            Ok(string.into_unknown(env)?)
-        })
-    }
+    read_value_non_null!(|self, env, ptr| {
+        let string = unsafe { lossy_c_string(ptr as *const c_char) };
+        Ok(string.into_unknown(env)?)
+    });
 }
 
 impl PtrWriter for StringCodec {

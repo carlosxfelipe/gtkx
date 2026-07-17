@@ -15,12 +15,70 @@ macro_rules! bail_expected {
 }
 pub(super) use bail_expected;
 
+macro_rules! reject_return_codec {
+    ($kind:expr) => {
+        fn call_cif(
+            &self,
+            _cif: &::libffi::middle::Cif,
+            _ptr: ::libffi::middle::CodePtr,
+            _args: &[::libffi::middle::Arg],
+        ) -> ::anyhow::Result<$crate::ffi::Stash> {
+            ::anyhow::bail!("{} codecs cannot be return codecs", $kind)
+        }
+    };
+}
+pub(super) use reject_return_codec;
+
+macro_rules! read_value_non_null {
+    (|$self_:ident, $env:ident, $ptr:ident| $body:expr) => {
+        unsafe fn read_value<'e>(
+            &$self_,
+            $env: &'e ::napi::Env,
+            $ptr: *mut ::std::ffi::c_void,
+            _context: &str,
+        ) -> ::anyhow::Result<::napi::bindgen_prelude::Unknown<'e>> {
+            $self_.decode_non_null($env, $ptr, |$ptr| $body)
+        }
+    };
+}
+pub(super) use read_value_non_null;
+
+macro_rules! write_return_transferred {
+    ($label:expr) => {
+        fn write_return_to_ptr(
+            &self,
+            env: &::napi::Env,
+            ret: $crate::ffi::Slot,
+            value: &::std::result::Result<::napi::bindgen_prelude::Unknown<'_>, ()>,
+        ) {
+            self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
+                $crate::messaging::error_reporter::ReportErr::report_err(
+                    unsafe { self.ref_for_transfer(ptr) },
+                    $label,
+                )
+                .unwrap_or(::std::ptr::null_mut())
+            });
+        }
+    };
+}
+pub(super) use write_return_transferred;
+
 pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
     unsafe { glib::GStr::from_ptr_lossy(ptr) }.to_string()
 }
 
-pub(super) fn reject_return_codec(kind: &str) -> anyhow::Result<ffi::Stash> {
-    ::anyhow::bail!("{kind} codecs cannot be return codecs")
+pub(super) fn ref_for_full_transfer<F>(
+    ownership: Ownership,
+    ptr: *mut c_void,
+    acquire: F,
+) -> anyhow::Result<*mut c_void>
+where
+    F: FnOnce(*mut c_void) -> anyhow::Result<*mut c_void>,
+{
+    if !ownership.is_full() || ptr.is_null() {
+        return Ok(ptr);
+    }
+    acquire(ptr)
 }
 
 pub(super) fn write_object_ptr(

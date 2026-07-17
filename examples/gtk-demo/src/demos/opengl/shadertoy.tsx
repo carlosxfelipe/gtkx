@@ -16,7 +16,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo } from "../types.js";
-import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
+import { createVertexBuffer, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
 const VERTEX_SHADER_SOURCE =
@@ -1126,6 +1126,15 @@ interface AnimState {
     mouse: [number, number, number, number];
 }
 
+const createInitialAnimState = (): AnimState => ({
+    firstFrameTime: 0,
+    firstFrame: 0,
+    time: 0,
+    timedelta: 0,
+    frame: 0,
+    mouse: [0, 0, 0, 0],
+});
+
 function useShaderTickCallback(animRef: React.RefObject<AnimState>, glAreaRef: React.RefObject<Gtk.GLArea | null>) {
     return (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const anim = animRef.current;
@@ -1158,15 +1167,7 @@ const releaseShaderState = (glStateRef: React.RefObject<GLState | null>) => {
     glStateRef.current = null;
 };
 
-const compileShaderProgram = (shaderCode: string): GLState => {
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    setShaderSource(vertexShader, buildVertexSource());
-    gl.compileShader(vertexShader);
-
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    setShaderSource(fragmentShader, buildFragmentSource(shaderCode));
-    gl.compileShader(fragmentShader);
-
+const linkShaderProgram = (vertexShader: number, fragmentShader: number): number => {
     const program = gl.createProgram();
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
@@ -1177,40 +1178,48 @@ const compileShaderProgram = (shaderCode: string): GLState => {
     gl.deleteShader(vertexShader);
     gl.deleteShader(fragmentShader);
 
-    const vao = gl.genVertexArray();
-    gl.bindVertexArray(vao);
+    return program;
+};
 
-    const vbo = gl.genBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    bufferFloatData(gl.ARRAY_BUFFER, QUAD_VERTICES, gl.STATIC_DRAW);
+const collectShaderUniforms = (program: number) => ({
+    resolution: gl.getUniformLocation(program, "iResolution"),
+    time: gl.getUniformLocation(program, "iTime"),
+    timedelta: gl.getUniformLocation(program, "iTimeDelta"),
+    frame: gl.getUniformLocation(program, "iFrame"),
+    mouse: gl.getUniformLocation(program, "iMouse"),
+});
+
+const compileShaderProgram = (shaderCode: string): GLState => {
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    setShaderSource(vertexShader, buildVertexSource());
+    gl.compileShader(vertexShader);
+
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    setShaderSource(fragmentShader, buildFragmentSource(shaderCode));
+    gl.compileShader(fragmentShader);
+
+    const program = linkShaderProgram(vertexShader, fragmentShader);
+
+    const { vao, vbo } = createVertexBuffer(QUAD_VERTICES);
     gl.bindBuffer(gl.ARRAY_BUFFER, 0);
     gl.bindVertexArray(0);
 
-    return {
-        program,
-        vao,
-        vbo,
-        uniforms: {
-            resolution: gl.getUniformLocation(program, "iResolution"),
-            time: gl.getUniformLocation(program, "iTime"),
-            timedelta: gl.getUniformLocation(program, "iTimeDelta"),
-            frame: gl.getUniformLocation(program, "iFrame"),
-            mouse: gl.getUniformLocation(program, "iMouse"),
-        },
-    };
+    return { program, vao, vbo, uniforms: collectShaderUniforms(program) };
 };
 
-const drawShaderFrame = (state: GLState, anim: AnimState, res: [number, number, number]) => {
+const drawShaderFrame = (state: GLState, anim: AnimState, resolution: [number, number, number]) => {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.useProgram(state.program);
 
-    if (state.uniforms.resolution >= 0) gl.uniform3f(state.uniforms.resolution, res[0], res[1], res[2]);
+    if (state.uniforms.resolution >= 0)
+        gl.uniform3f(state.uniforms.resolution, resolution[0], resolution[1], resolution[2]);
     if (state.uniforms.time >= 0) gl.uniform1f(state.uniforms.time, anim.time);
     if (state.uniforms.timedelta >= 0) gl.uniform1f(state.uniforms.timedelta, anim.timedelta);
     if (state.uniforms.frame >= 0) gl.uniform1i(state.uniforms.frame, anim.frame);
-    if (state.uniforms.mouse >= 0) gl.uniform4f(state.uniforms.mouse, 0, 0, 0, 0);
+    if (state.uniforms.mouse >= 0)
+        gl.uniform4f(state.uniforms.mouse, anim.mouse[0], anim.mouse[1], anim.mouse[2], anim.mouse[3]);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, state.vbo);
     gl.enableVertexAttribArray(0);
@@ -1226,38 +1235,31 @@ const drawShaderFrame = (state: GLState, anim: AnimState, res: [number, number, 
 interface RenderShaderArgs {
     glStateRef: React.RefObject<GLState | null>;
     animRef: React.RefObject<AnimState>;
-    resolutionRef: React.RefObject<[number, number, number]>;
+    resolution: [number, number, number];
     self: Gtk.GLArea;
     shaderCode: string;
 }
 
-const renderShaderPreview = ({ glStateRef, animRef, resolutionRef, self, shaderCode }: RenderShaderArgs): boolean => {
+const renderShaderFrame = ({ glStateRef, animRef, resolution, self, shaderCode }: RenderShaderArgs): boolean => {
     if (!glStateRef.current) {
         if (self.getError()) return false;
         glStateRef.current = compileShaderProgram(shaderCode);
     }
-    drawShaderFrame(glStateRef.current, animRef.current, resolutionRef.current);
+    drawShaderFrame(glStateRef.current, animRef.current, resolution);
     return true;
 };
 
 const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
-    const animRef = useRef<AnimState>({
-        firstFrameTime: 0,
-        firstFrame: 0,
-        time: 0,
-        timedelta: 0,
-        frame: 0,
-        mouse: [0, 0, 0, 0],
-    });
+    const animRef = useRef<AnimState>(createInitialAnimState());
     const resolutionRef = useRef<[number, number, number]>([64, 36, 1]);
 
     const tickCallback = useShaderTickCallback(animRef, glAreaRef);
     useTickCallback(glAreaRef, tickCallback);
     const handleUnrealize = () => releaseShaderState(glStateRef);
     const handleRender = (_context: Gdk.GLContext, self: Gtk.GLArea) =>
-        renderShaderPreview({ glStateRef, animRef, resolutionRef, self, shaderCode });
+        renderShaderFrame({ glStateRef, animRef, resolution: resolutionRef.current, self, shaderCode });
 
     const handleResize = (width: number, height: number) => {
         resolutionRef.current = [width, height, 1];
@@ -1282,14 +1284,7 @@ function useShadertoyRefs() {
     const glStateRef = useRef<GLState | null>(null);
     const sourceViewRef = useRef<Gtk.TextView | null>(null);
     const resolutionRef = useRef<[number, number, number]>([400, 300, 1]);
-    const animRef = useRef<AnimState>({
-        firstFrameTime: 0,
-        firstFrame: 0,
-        time: 0,
-        timedelta: 0,
-        frame: 0,
-        mouse: [0, 0, 0, 0],
-    });
+    const animRef = useRef<AnimState>(createInitialAnimState());
     return { glAreaRef, glStateRef, sourceViewRef, resolutionRef, animRef };
 }
 
@@ -1321,7 +1316,7 @@ const compileShadertoyShader = ({ glAreaRef, glStateRef, animRef, imageShader }:
 
     if (state.program) gl.deleteProgram(state.program);
     state.program = program;
-    state.uniforms = collectShadertoyUniforms(program);
+    state.uniforms = collectShaderUniforms(program);
 
     animRef.current.firstFrameTime = 0;
     animRef.current.firstFrame = 0;
@@ -1363,15 +1358,7 @@ const linkShadertoyProgram = ({
     vertexShader: number;
     fragmentShader: number;
 }): number | null => {
-    const program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-
-    gl.detachShader(program, vertexShader);
-    gl.detachShader(program, fragmentShader);
-    gl.deleteShader(vertexShader);
-    gl.deleteShader(fragmentShader);
+    const program = linkShaderProgram(vertexShader, fragmentShader);
 
     if (gl.getProgramiv(program, gl.LINK_STATUS) === 0) {
         const log = gl.getProgramInfoLog(program);
@@ -1380,56 +1367,6 @@ const linkShadertoyProgram = ({
         return null;
     }
     return program;
-};
-
-const collectShadertoyUniforms = (program: number) => ({
-    resolution: gl.getUniformLocation(program, "iResolution"),
-    time: gl.getUniformLocation(program, "iTime"),
-    timedelta: gl.getUniformLocation(program, "iTimeDelta"),
-    frame: gl.getUniformLocation(program, "iFrame"),
-    mouse: gl.getUniformLocation(program, "iMouse"),
-});
-
-interface RenderShadertoyArgs {
-    glStateRef: React.RefObject<GLState | null>;
-    animRef: React.RefObject<AnimState>;
-    resolution: [number, number, number];
-    self: Gtk.GLArea;
-    compiledCode: string;
-}
-
-const renderShadertoy = ({ glStateRef, animRef, resolution, self, compiledCode }: RenderShadertoyArgs): boolean => {
-    if (!glStateRef.current) {
-        if (self.getError()) return false;
-        glStateRef.current = compileShaderProgram(compiledCode);
-    }
-    drawShadertoyFrame(glStateRef.current, animRef.current, resolution);
-    return true;
-};
-
-const drawShadertoyFrame = (state: GLState, anim: AnimState, resolution: [number, number, number]) => {
-    gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-
-    gl.useProgram(state.program);
-
-    if (state.uniforms.resolution >= 0)
-        gl.uniform3f(state.uniforms.resolution, resolution[0], resolution[1], resolution[2]);
-    if (state.uniforms.time >= 0) gl.uniform1f(state.uniforms.time, anim.time);
-    if (state.uniforms.timedelta >= 0) gl.uniform1f(state.uniforms.timedelta, anim.timedelta);
-    if (state.uniforms.frame >= 0) gl.uniform1i(state.uniforms.frame, anim.frame);
-    if (state.uniforms.mouse >= 0)
-        gl.uniform4f(state.uniforms.mouse, anim.mouse[0], anim.mouse[1], anim.mouse[2], anim.mouse[3]);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, state.vbo);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    gl.disableVertexAttribArray(0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, 0);
-    gl.useProgram(0);
 };
 
 function useShadertoyDrag(glAreaRef: React.RefObject<Gtk.GLArea | null>, animRef: React.RefObject<AnimState>) {
@@ -1619,12 +1556,12 @@ function useShadertoyHandlers(refs: ReturnType<typeof useShadertoyRefs>, compile
     }, [compiledCode, refs]);
 
     const handleRender = (_context: Gdk.GLContext, self: Gtk.GLArea) =>
-        renderShadertoy({
+        renderShaderFrame({
             glStateRef: refs.glStateRef,
             animRef: refs.animRef,
             resolution: refs.resolutionRef.current,
             self,
-            compiledCode,
+            shaderCode: compiledCode,
         });
 
     const handleResize = (width: number, height: number) => {

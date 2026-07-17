@@ -48,6 +48,7 @@
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "@react-navigation/core": "^7.9.2",
         "@react-navigation/routers": "^7.6.0"
     },
