@@ -37,6 +37,7 @@ const guideSidebar = [
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
     { text: "Navigation", link: "/guide/navigation" },
     { text: "CSS and Animations", link: "/guide/css-and-animations" },
+    { text: "OpenGL", link: "/guide/opengl" },
     { text: "Testing", link: "/guide/testing" },
     { text: "MCP", link: "/guide/mcp" },
     { text: "API Reference", link: "/reference/" },

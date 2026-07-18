@@ -133,13 +133,13 @@ Every widget tool call, inspection or interaction, is routed to the app with a 3
 
 The reference tools answer from the same GObject-Introspection data your bindings are generated from, so what they document is exactly what `@gtkx/gi` and `@gtkx/jsx` export: the same camelCase methods, the same promisified async pairs, the same JSX props and `on<Signal>` handlers. They need no running app and no `@gtkx/testing`; the only requirement is a project with codegen enabled, since a `codegen: false` project has no generated bindings to document. They are all read-only.
 
-**`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists all of that namespace's symbols grouped by kind: JSX elements, classes, interfaces, records, enums, callbacks, aliases, functions, and constants.
+**`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists all of that namespace's symbols grouped by kind: JSX elements, classes, enums, and the rest.
 
 **`gtkx_search_api`** finds symbols by a case-insensitive substring of their name, with optional `namespace`, `kind`, and `limit` filters. Each match comes back with its namespace, kind, and a one-line summary, ready to feed into `gtkx_get_api_docs`.
 
 **`gtkx_get_api_docs`** returns the full reference page for one symbol as markdown. It accepts a qualified name (`Gtk.Button`, `Gtk.Orientation`, `GLib.Variant`), a JSX element name (`GtkButton`), or a bare name when it is unambiguous. When several symbols share a name, the error lists the candidates, and a `kind` parameter disambiguates.
 
-Element pages match the ones `gtkx docs` generates: hierarchy, children, props, `on<Signal>` handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest. A class page lists its hierarchy, constructors, static methods, properties, signals, and instance methods with exact TypeScript signatures. Enum pages list members and values; record, callback, alias, function, and constant pages follow suit.
+Element pages match the ones `gtkx docs` generates: hierarchy, children, props, `on<Signal>` handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest.
 
 The server resolves which project to document from the connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries and `elementProps`. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call takes a moment and later ones are instant.
 

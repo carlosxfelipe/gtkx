@@ -30,7 +30,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 
 `AdwPreferencesDialog` is an `Adw.Dialog` subclass, not an `Adw.Window`. You show an Adw.Dialog by calling `present(parent)` on it rather than by adding it to a tree. It then renders as an adaptive sheet, a centered floating dialog on desktop and a bottom sheet when the window is narrow. That imperative lifecycle is exactly what the `Dialog` wrapper from `@gtkx/components/adw` automates.
 
-Mounting `<Dialog>` presents the `AdwPreferencesDialog` on the parent window. Close it with Escape, the close button, or a swipe and it emits `closed`, which `Dialog` forwards to `onClose`. That sets `showPreferences` back to `false`, unmounting `<Preferences>` and closing the dialog. The wrapper's present/close lifecycle, its portal to the root, and the guard that stops a React-driven close from looping are covered in [Feedback and Dialogs](./feedback-and-dialogs#how-a-dialog-gets-on-screen).
+Mounting `<Dialog>` presents the `AdwPreferencesDialog` on the parent window; dismissing it forwards `closed` to `onClose`, which sets `showPreferences` back to `false` and unmounts `<Preferences>`. The wrapper's present/close lifecycle, its portal to the root, and the guard that stops a React-driven close from looping are covered in [Feedback and Dialogs](./feedback-and-dialogs#how-a-dialog-gets-on-screen).
 
 ::: info AdwDialog vs AdwWindow
 Older Adwaita code used `AdwPreferencesWindow` and `AdwWindow` subclasses that you toggled with a `visible` prop or `transient-for`. The `Adw.Dialog` family (since Adwaita 1.5) superseded them: dialogs are adaptive by default.

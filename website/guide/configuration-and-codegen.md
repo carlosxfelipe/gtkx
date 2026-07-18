@@ -1,5 +1,5 @@
 ---
-description: "The complete gtkx.config.ts option reference, what codegen generates into node_modules/.gtkx, how staleness is detected, and how GIR becomes the typed JSX prop model."
+description: "Configuring GTKX with gtkx.config.ts, what codegen generates into node_modules/.gtkx, how staleness is detected, and how GIR becomes the typed JSX prop model."
 ---
 
 # Configuration and Codegen
@@ -36,20 +36,13 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 ## Option reference
 
-| Option | Type | Default | Effect |
-| --- | --- | --- | --- |
-| `applicationId` | `string` (required) | none | The GApplication ID; defaults the `applicationId` prop of application elements |
-| `libraries` | `"*"` or `string[]` | `["Gtk-4.0"]` | GIR namespaces to generate bindings for |
-| `girPath` | `string[]` | none | Extra directories searched for `.gir` files |
-| `elementProps` | `Record<string, ElementProp[]>` | `{}` | Custom JSX prop rules merged over the built-ins |
-| `reactCompiler` | `boolean` or options object | enabled | React Compiler over your sources in the Vite build |
-| `codegen` | `boolean` | `true` | `false` disables generation and uses installed bindings |
+Every option, its type, and default is in the [@gtkx/config reference](/reference/@gtkx/config/). The ones worth explaining:
 
-**`applicationId`** is the only required option. It must satisfy `g_application_id_is_valid`: dot-separated reverse-DNS segments, each starting with a letter or underscore, at most 255 characters (for example `org.example.MyApp`). It identifies your app to D-Bus and GNOME, and it flows into your component tree automatically (see [How applicationId flows](#how-applicationid-flows) below).
+**`applicationId`** is the only required option. It must be a valid `g_application_id_is_valid` ID, reverse-DNS form such as `org.example.MyApp`. It identifies your app to D-Bus and GNOME, and it flows into your component tree automatically (see [How applicationId flows](#how-applicationid-flows) below).
 
 **`libraries`** lists GObject-Introspection namespaces in `Name-Version` form, such as `"Gtk-4.0"`, `"Adw-1"`, or `"GtkSource-5"`. Omitting it gives you `["Gtk-4.0"]`; naming libraries explicitly prepends `Gtk-4.0` unless your list already contains a `Gtk-` entry, because the GTK4 bindings are the foundation everything else builds on. The wildcard `"*"` discovers every `.gir` file on the search path and binds the highest version of each namespace, which pulls in the entire installed platform at once.
 
-**`girPath`** adds directories to the front of the `.gir` search path. The resolved order is: your `girPath` entries, then the colon-separated `GTKX_GIR_PATH` environment variable, then `/usr/share/gir-1.0`, then whatever `pkg-config --variable=girdir gobject-introspection-1.0` reports, with duplicates removed. You only need this when your GIR files live somewhere nonstandard, such as a locally built GTK4.
+**`girPath`** adds directories to the front of the `.gir` search path. You only need this when your GIR files live somewhere nonstandard, such as a locally built GTK4.
 
 **`reactCompiler`** controls the React Compiler, which is enabled by default. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
 
@@ -159,7 +152,7 @@ gtkx docs
 
 By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
 
-These flags cover the knobs: `--out <dir>` changes the output directory, `--base-path <path>` changes the URL prefix used in links between pages, and `--force` regenerates even when the same fingerprint check that guards codegen says the pages are current. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
+Run `gtkx docs --help` for the output-directory, base-path, and force flags. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
 
 ## Next
 

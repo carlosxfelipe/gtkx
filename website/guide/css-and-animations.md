@@ -122,13 +122,7 @@ Importing a plain `.css` file works too: the GTKX CLI compiles the import into a
 - The gesture targets (`whileHover`, `whileTap`, `whileFocus`, `whileInView`), `drag`, and the layout props, each covered in its own section below.
 - `onAnimationStart` and `onAnimationComplete` callbacks.
 
-A target may hold any value the GTK4 CSS bridge can render:
-
-- `opacity`.
-- Transforms: `x` and `y` (pixel translation), `scale`, `scaleX`, `scaleY`, `rotate` (degrees), `skew`, `skewX`, `skewY`, with `originX` and `originY` rendered as `transform-origin`.
-- Colors: `color`, `backgroundColor`, `borderColor`, `caretColor`, `outlineColor`.
-- Pixel values: `borderRadius` (and the per-corner radii), `borderWidth` (and the per-side widths), `minWidth`, `minHeight`, `margin` (and the per-side margins), `padding` (and the per-side paddings), `fontSize`, `letterSpacing`.
-- Passthrough strings: `filter` and `boxShadow`.
+A target holds any value the GTK4 CSS bridge can render: `opacity`, transforms (`x`, `y`, `scale`, `rotate`, and the rest), colors, box-model pixel values like `borderRadius` and `minWidth`, and passthrough `filter` and `boxShadow`. The [@gtkx/animated reference](/reference/@gtkx/animated/) lists every animatable value.
 
 A value can be a single target or a keyframe array. Anything outside that set is dropped with a one-time development warning, because GTK4 CSS cannot express it: there is no `width`, `height`, `top`, or `left`, so animate `minWidth`, `minHeight`, or a transform instead. An `animate` or `exit` target may also embed a `transition` of its own, which replaces the component's `transition` for the animation toward that target. An exit of `{ opacity: 0, transition: { duration: 0 } }` makes the leave instantaneous while the enter keeps its fade.
 
@@ -149,10 +143,7 @@ The engine is framer-motion's own, running its frame loop in JavaScript. `@gtkx/
 
 `transition` takes framer-motion's options, and `transition.type` selects the generator. Without an explicit transition, each value gets motion's default. A keyframe array of more than two values runs a 0.8 second tween. A transform runs on a spring, and everything else runs on a 0.3 second tween.
 
-- **Tween**: `duration` in seconds, `ease` as a named easing (such as `"easeOut"` or `"anticipate"`), a cubic-bezier array such as `[0.65, 0, 0.35, 1]`, or an easing function. A tween with a `duration` and no `ease` runs on `"easeOut"`.
-- **Spring**: `type: "spring"` with the physics parameters `stiffness`, `damping`, and `mass` (defaults 100, 10, 1) plus a starting `velocity`, or the perceptual pair `visualDuration` and `bounce` from which the physics are derived. `restDelta` and `restSpeed` control when the spring counts as settled.
-
-Both kinds accept `delay` in seconds, `repeat` (additional repetitions, `Infinity` repeats forever), `repeatType` (`"loop"`, `"reverse"`, or `"mirror"`, which mirrors the easing on the way back), and `repeatDelay`. Variants orchestrate children with `staggerChildren`, `delayChildren`, and `when`, exactly as framer-motion does on the web.
+A tween takes a `duration` and an `ease`; a spring takes physics (`stiffness`, `damping`, `mass`) or the perceptual `visualDuration`/`bounce` pair from which the physics are derived. Both accept `delay`, `repeat`, and repeat modes, and variants orchestrate children with staggering, exactly as framer-motion does on the web. The [`Transition` reference](/reference/@gtkx/animated/type-aliases/Transition) lists every option.
 
 ```tsx
 <animated.GtkLabel
@@ -193,13 +184,7 @@ import { GtkBox } from "@gtkx/jsx/gtk";
 </GtkBox>;
 ```
 
-`AnimatePresence` takes these props besides `children`:
-
-- `initial` (default `true`): whether children already present on the first render run their enter animations. Pass `false` to mount them directly in their `animate` state and animate only subsequent changes.
-- `mode`: how entering and exiting children overlap. `"sync"` (the default) runs both at once. `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. The web-only `"popLayout"` mode is not supported.
-- `onExitComplete`: fires once after all exiting children have finished, useful for sequencing work behind a departure.
-- `custom`: forwards a value to exiting children as their `custom` prop, so dynamic variants resolve against fresh data mid-exit.
-- `propagate`: lets an exit cascade through nested `AnimatePresence` components.
+Its `mode` prop controls how entering and exiting children overlap: `"sync"` (the default) runs both at once, and `"wait"` finishes every exit before the entering children mount, which is what you want when two views occupy the same slot. `initial={false}` skips the enter animations for children already present on the first render. See the [`AnimatePresenceProps` reference](/reference/@gtkx/animated/interfaces/AnimatePresenceProps) for `onExitComplete`, `custom`, and `propagate`.
 
 An instantaneous exit is not held for a fade. An exit is instantaneous when the child has no `exit` values, when its exit transition has a zero duration, or when animations are disabled system-wide. `AnimatePresence` removes such a child within a frame of the update that removed it from your JSX, so it never appears on screen next to its replacement content.
 
@@ -209,7 +194,7 @@ In tests, `render` from `@gtkx/testing` disables animations by default so assert
 
 ## Gestures
 
-The gesture targets apply while an interaction is active and reverse when it ends: `whileHover`, `whileTap`, `whileFocus`, and `whileInView`. Each has matching callbacks: `onHoverStart` and `onHoverEnd`; `onTapStart`, `onTap`, and `onTapCancel`; `onViewportEnter` and `onViewportLeave`.
+The gesture targets apply while an interaction is active and reverse when it ends: `whileHover`, `whileTap`, `whileFocus`, and `whileInView`. Each has matching start and end callbacks (`onTap`, `onHoverStart`, and so on).
 
 ```tsx
 <animated.GtkButton
@@ -222,12 +207,7 @@ The gesture targets apply while an interaction is active and reverse when it end
 
 The input is native: hover comes from a `Gtk.EventControllerMotion`, presses from a `Gtk.GestureClick` and `Gtk.GestureDrag` pair, and focus from a `Gtk.EventControllerFocus`, all attached to the widget and feeding framer-motion's own gesture logic. `whileFocus` activates only while the toplevel shows focus visibly, so it highlights keyboard navigation rather than every click, matching `:focus-visible` semantics on the web. Keyboard activation does not trigger `whileTap`: pressing a focused button with <kbd>Enter</kbd> or <kbd>Space</kbd> fires the button's own `onClicked` but not the tap gesture.
 
-`whileInView` activates while the widget is visible inside its scrollable viewport, which by default is the nearest ancestor `GtkScrolledWindow` (or the toplevel when there is none). Tune it with the `viewport` prop:
-
-- `root`: points at a different scroll container through a widget ref.
-- `margin`: grows or shrinks the viewport box (pixel values only).
-- `amount`: `"some"` (the default), `"all"`, or a ratio between 0 and 1.
-- `once`: keeps the state active after the first entry.
+`whileInView` activates while the widget is visible inside its scrollable viewport, which by default is the nearest ancestor `GtkScrolledWindow` (or the toplevel when there is none). Tune the trigger with the `viewport` prop: its scroll `root`, a `margin` around the viewport box, the `amount` that must be visible, and whether it fires `once`.
 
 ```tsx
 <animated.GtkImage
@@ -243,10 +223,8 @@ The input is native: hover comes from a `Gtk.EventControllerMotion`, presses fro
 `drag` makes a widget follow the pointer: `drag` alone allows both axes, `drag="x"` or `drag="y"` locks one. The remaining props tune the motion:
 
 - `dragConstraints`: bounds the motion, either as pixel offsets from the layout position (`{ left: 0, right: 240 }`) or as a ref to another widget whose bounds become the boundary.
-- `dragElastic` (0 to 1): how far the widget can be pulled past its constraints.
-- `dragMomentum` (default `true`): carries the release velocity into an inertia animation.
-- `dragSnapToOrigin`: animates the widget back to where it started.
-- `onDragStart`, `onDrag`, and `onDragEnd`: report progress.
+
+Tune the motion further with `dragElastic`, `dragMomentum`, and `dragSnapToOrigin`, and track progress with the `onDragStart`/`onDrag`/`onDragEnd` callbacks; the [`AnimationProps` reference](/reference/@gtkx/animated/interfaces/AnimationProps) documents each one.
 
 ```tsx
 const areaRef = useRef<Gtk.Box | null>(null);

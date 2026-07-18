@@ -64,13 +64,7 @@ try {
 }
 ```
 
-These domain objects are generated in any namespace whose library registers error domains. A few you will meet: `GLib.FileError`, `GLib.KeyFileError`, `GLib.MarkupError`, and `GLib.RegexError` from GLib; `Gio.IOErrorEnum`, `Gio.DBusError`, and `Gio.ResolverError` from GIO; `Gtk.DialogError` and `Gtk.BuilderError` from GTK4. Each looks like a plain enum:
-
-```ts
-Gtk.DialogError.FAILED;    // 0
-Gtk.DialogError.CANCELLED; // 1
-Gtk.DialogError.DISMISSED; // 2
-```
+These domain objects are generated in any namespace whose library registers error domains, such as `GLib.KeyFileError`, `Gio.IOErrorEnum`, and `Gtk.DialogError`. Each is a plain enum, so `Gtk.DialogError.DISMISSED` is just a number you compare a `code` against.
 
 A successful `instanceof` check against a domain object narrows the value's type to `{ domain, code, message }`, which is enough to branch on the code and log the message. It does not narrow to `GLib.Error`, so if you need methods like `matches` or `copy`, test `error instanceof GLib.Error` instead.
 
@@ -122,13 +116,7 @@ The Tasks app from the tutorial needs even less: its JSON store in [Data and Per
 Promisified methods reject with the same `GLib.Error` objects. The most common place you will handle one is a dialog, because GTK4 reports "the user dismissed it" as an error in the `Gtk.DialogError` domain. This is adapted from the pickers demo in `examples/gtk-demo`:
 
 ```tsx
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-
-const isCancellation = (error: unknown): boolean =>
-    (error instanceof Gtk.DialogError &&
-        (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)) ||
-    (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
 
 const handleOpenFile = async () => {
     const fileDialog = new Gtk.FileDialog();
@@ -136,7 +124,12 @@ const handleOpenFile = async () => {
         const file = await fileDialog.open(parentWindow, cancellable);
         setFile(file);
     } catch (error) {
-        if (isCancellation(error)) return;
+        if (
+            error instanceof Gtk.DialogError &&
+            (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)
+        ) {
+            return;
+        }
         if (error instanceof Error) console.error(error.message);
     }
 };

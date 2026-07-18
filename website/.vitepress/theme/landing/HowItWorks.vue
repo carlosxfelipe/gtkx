@@ -90,7 +90,7 @@ import { readFile } from "node:fs/promises";`;
         <h3 class="how__name">Your app is a Node.js process</h3>
         <p class="how__body">
           So npm works, and so does React. Navigation is React Navigation driving Adwaita pages.
-          Animation is Framer Motion. Styling is Emotion. The Node standard library handles files,
+          Animation is Framer Motion. Styling is Emotion-style CSS-in-JS. The Node standard library handles files,
           timers, and the network, and the rest of the registry is one install away.
         </p>
       </div>

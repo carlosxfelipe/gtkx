@@ -102,11 +102,7 @@ export function App() {
     const notify = useRef<NotifyHandlers>({ complete: () => {}, open: () => {} });
     return (
         <AdwApplication
-            actionAccels={[
-                { detailedActionName: "win.new", accels: ["<Control>n"] },
-                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
-            ]}
+            actionAccels={[/* window accelerators, shown in The Application Shell */]}
             actions={
                 <>
                     <GSimpleAction

@@ -24,12 +24,12 @@ The same goes for `Gtk.Grid.attach()`, `Gtk.Overlay.addOverlay()`, `Gtk.SizeGrou
 
 The model-backed components (`ListView`, `GridView`, `ColumnView`, and `DropDown`) share one set of types:
 
-- `ItemNode<T>` is `{ id, value }`: a stable string id plus your data. Giving an item `children: ItemNode<T>[]` turns the collection into a tree; `hideExpander`, `indentForDepth`, and `indentForIcon` tune how tree rows are drawn.
+- `ItemNode<T>` is `{ id, value }`: a stable string id plus your data. Giving an item `children: ItemNode<T>[]` turns the collection into a tree, with props to tune how tree rows are drawn.
 - `SectionNode<S, T>` is `{ id, value, data }`: a group of items rendered under a shared header. Every component accepts a flat `items` array; all but `GridView` also accept a `sections` array, with a `renderHeader={({ section }) => ...}` callback for the headers.
 - `RenderItemProps<T>` is what every `renderItem` callback receives: `{ item, index, depth?, isExpanded? }`. `depth` and `isExpanded` are populated for tree rows.
 - Selection is keyed by id: `onSelectionChanged: (ids: string[]) => void` reports every change, passing `selectedIds: string[]` makes it controlled, and `selectionMode` picks the `Gtk.SelectionMode` (`DropDown` is single-select, so it uses `selectedId: string | null` and `onSelectionChanged: (id: string) => void` instead).
 - Expansion works the same way for trees in `ListView` and `ColumnView`: `onExpandedChange: (ids: string[]) => void` observes it, and `expandedIds: string[]` controls it.
-- `estimatedItemHeight` gives the recycler a size hint before cells render, keeping scrollbars stable in long lists. `ListView` and `GridView` also take `estimatedItemWidth`, where widths vary; `ColumnView` takes only height, and `DropDown` takes no size hints.
+- `estimatedItemHeight` gives the recycler a size hint before cells render, keeping scrollbars stable in long lists; components take `estimatedItemWidth` too where widths vary.
 
 The stable ids are what make this work across updates: selection, expansion, and cell identity survive any reordering or filtering of your arrays because they track ids, not positions.
 
@@ -210,7 +210,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 `ConstraintLayout` builds a `Gtk.ConstraintLayout` for a container's `layoutManager` prop, replacing manual `Gtk.Constraint` and `Gtk.ConstraintGuide` construction. Widgets are referenced by their `name` prop, with `"super"` (or an omitted `target`/`source`) meaning the container itself. Referencing an unknown name throws with a message telling you which `name` to set.
 
-- `ConstraintLayout.Constraint` declares one relation. Only `targetAttribute` is required; the rest default, with `relation` defaulting to equality.
+- `ConstraintLayout.Constraint` declares one relation.
 - `ConstraintLayout.Guide` declares an invisible spacer with min, natural, and max sizes.
 - `ConstraintLayout.Vfl` applies Visual Format Language `lines`.
 

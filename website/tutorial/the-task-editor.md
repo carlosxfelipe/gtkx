@@ -166,7 +166,7 @@ The Due row shows GTK4's `GtkCalendar` inside a `GtkPopover` hung off a `GtkMenu
 />
 ```
 
-`AdwActionRow` gives you `prefix` and `suffix` slots (mapping to `add_prefix` / `add_suffix`). The whole picker lives in `suffix`: a small `GtkBox` holding an optional clear button and the menu button. The clear button only renders when there is a date to clear, and it writes `due: null`.
+The whole picker lives in the row's `suffix` slot: a small `GtkBox` holding an optional clear button and the menu button. The clear button only renders when there is a date to clear, and it writes `due: null`.
 
 `GtkMenuButton` shows a `popover` and toggles it on click. Its `label` is the formatted due date (`formatDue` turns the ISO string into "Today at 3:00 PM", "Tomorrow at ...", a weekday name, and so on), falling back to "Set date". `popover` is an object slot: you hand it a `GtkPopover` element and GTKX wires it in as the button's popover. Inside, `GtkPopover` is a single-child container holding the calendar.
 

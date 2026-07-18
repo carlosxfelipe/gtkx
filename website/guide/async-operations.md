@@ -12,18 +12,11 @@ The call keeps its own camelCase name, suffix and all: `load_contents_async` bec
 
 ## Generated signatures
 
-Promisification reshapes the signature. The callback parameter disappears, since the promise replaces it. The `Gio.Cancellable` parameter survives but becomes a trailing optional, so you only mention it when you need cancellation. And the return type is a `Promise` of whatever the `_finish` call returns, with C out-parameters folded into a tuple. These are the generated signatures, verbatim from `@gtkx/gi`:
+Promisification reshapes the signature. The callback parameter disappears, since the promise replaces it. The `Gio.Cancellable` parameter survives but becomes a trailing optional, so you only mention it when you need cancellation. And the return type is a `Promise` of whatever the `_finish` call returns, with C out-parameters folded into a tuple. For example:
 
 ```ts
 // Gio.File (instance method)
 loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string]>;
-queryInfoAsync(attributes: string, flags: FileQueryInfoFlags, ioPriority: number, cancellable?: Cancellable | null): Promise<FileInfo>;
-
-// Gtk.FileDialog (instance method)
-open(parent: Window | null, cancellable?: Gio.Cancellable | null): Promise<Gio.File>;
-
-// Adw.AlertDialog (instance method)
-choose(parent: Gtk.Widget | null, cancellable?: Gio.Cancellable | null): Promise<string>;
 
 // Gio.DBusConnection (static method)
 static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, observer: DBusAuthObserver | null, cancellable?: Cancellable | null): Promise<DBusConnection>;
@@ -34,7 +27,7 @@ function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBu
 
 `loadContentsAsync` shows the tuple folding: the C function returns a boolean and fills its out-parameters (the contents, their length, and an etag). The length collapses into the contents array, so the promise resolves to the boolean, the contents, and the etag at once.
 
-`choose` resolves to the response ID string you registered on the alert dialog. The static `Gio.DBusConnection.new` and the module-level `Gio.busGet` both start an async connection and resolve to the `Gio.DBusConnection`, reusing the same static and module-level `_finish` calls under the hood. The `_finish` calls (`loadContentsFinish`, `openFinish`, `newFinish`, `busGetFinish`, and so on) are still generated alongside the promise-returning ones, but there is no reason to call them yourself.
+The static `Gio.DBusConnection.new` and the module-level `Gio.busGet` reshape the same way, both resolving to the `Gio.DBusConnection`. The `_finish` siblings are still generated alongside the promise-returning calls, but there is no reason to call them yourself.
 
 ::: info For ordinary file I/O, use node:fs
 `Gio.File` appears throughout this page because it is the classic GIO async surface. It is not how a GTKX app should read its own files. For paths your app owns, `node:fs` (or `node:fs/promises` in async code) is simpler and idiomatic, as the tutorial's [JSON store](/tutorial/data-and-persistence) shows. `Gio.File` earns its keep when the file object comes from the platform. A `Gtk.FileDialog` result is the common case: it can name a document-portal path or a remote GVfs location that has no local path for `node:fs` to open.

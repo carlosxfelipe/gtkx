@@ -207,7 +207,7 @@ export const isToday = (iso: string | null): boolean => {
 };
 ```
 
-This is plain JavaScript: `Date` and ordinary arithmetic, no `GLib.DateTime`. The app keeps dates as ISO strings and JS `Date` objects throughout; `GLib.DateTime` appears only where a widget property demands it, such as `GtkCalendar`'s `date` prop on the editor page.
+This is plain JavaScript: `Date` and ordinary arithmetic, no `GLib.DateTime`.
 
 The smart-view and per-list counts are all computed from `active` tasks (not deleted, not done), so the badge reads like a GNOME "unfinished work" indicator, not a total. Trash is the exception: it counts every deleted task regardless of done state, since that pane shows deleted items in full.
 

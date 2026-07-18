@@ -98,7 +98,7 @@ Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addT
 
 ## The adaptive split view
 
-The body of the window is a navigation tree rooted in a `NavigationContainer` from `@gtkx/navigation`. Inside it, a split-view navigator renders the adaptive sidebar/content layout. On a wide screen the panes sit side by side. When collapsed, the layout becomes a single column that navigates between them. The navigator is created once at module level, typed by the routes it holds:
+The body of the window is a navigation tree rooted in a `NavigationContainer` from `@gtkx/navigation`. Inside it, a split-view navigator renders the adaptive sidebar/content layout. The navigator is created once at module level, typed by the routes it holds:
 
 ```tsx
 type ShellParams = {
@@ -180,7 +180,7 @@ The condition uses `sp` units rather than raw pixels. `sp` (scale independent pi
 
 ## The content stack
 
-The content pane hosts a stack navigator. It drives an `AdwNavigationView`: navigating to a route pushes its page with the Adwaita slide animation, going back pops it, and the pushed page automatically gets a back button and an edge-swipe. The stack is created at module level next to the split navigator, with the task id as a route param:
+The content pane hosts a stack navigator, which drives an `AdwNavigationView` (see [the stack navigator](/guide/navigation#the-stack-navigator)). It is created at module level next to the split navigator, with the task id as a route param:
 
 ```tsx
 type TasksStackParams = {
