@@ -1,4 +1,3 @@
-import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
@@ -8,34 +7,17 @@ import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-contai
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
-import {
-    asPolymorphicProps,
-    type ItemNode,
-    type PolymorphicComponentProps,
-    type RenderItemProps,
-    type SectionNode,
-} from "./types.js";
+import type { ItemNode, RenderItemProps, SectionNode, WidgetProps } from "./types.js";
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
-interface DropDownWidget extends Gtk.Widget {
-    getSelected(): number;
-    setSelected(position: number): void;
-    setModel(model: Gio.ListModel | null): void;
-    setFactory(factory: Gtk.ListItemFactory | null): void;
-    setListFactory(factory: Gtk.ListItemFactory | null): void;
-    setHeaderFactory(factory: Gtk.ListItemFactory | null): void;
-}
-
 export type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
 
-const itemFactoryInstaller = makeFactoryInstaller<DropDownWidget>((widget, factory) => widget.setFactory(factory));
+const itemFactoryInstaller = makeFactoryInstaller<Gtk.DropDown>((widget, factory) => widget.setFactory(factory));
 
-const listFactoryInstaller = makeFactoryInstaller<DropDownWidget>((widget, factory) =>
-    widget.setListFactory(factory),
-);
+const listFactoryInstaller = makeFactoryInstaller<Gtk.DropDown>((widget, factory) => widget.setListFactory(factory));
 
-const headerFactoryInstaller = makeFactoryInstaller<DropDownWidget>((widget, factory) =>
+const headerFactoryInstaller = makeFactoryInstaller<Gtk.DropDown>((widget, factory) =>
     widget.setHeaderFactory(factory),
 );
 
@@ -81,19 +63,14 @@ export type DropDownDeclarativeProps<T = unknown, S = unknown> = {
  * Props for {@link DropDown}. The backing widget is chosen through the `component` prop, defaulting to
  * GtkDropDown, and its own props combine with {@link DropDownDeclarativeProps}.
  */
-export type DropDownProps<
-    T = unknown,
-    S = unknown,
-    C extends ElementType = typeof GtkDropDown,
-> = PolymorphicComponentProps<
+export type DropDownProps<T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown> = WidgetProps<
     C,
-    DropDownWidget,
     DropDownDeclarativeProps<T, S>,
     "model" | "factory" | "listFactory" | "headerFactory"
 >;
 
-interface NormalizedDropDownProps<T, S, W extends DropDownWidget> {
-    ref: Ref<W | null> | undefined;
+interface NormalizedDropDownProps<T, S> {
+    ref: Ref<Gtk.DropDown | null> | undefined;
     items: ItemNode<T>[] | undefined;
     sections: SectionNode<S, T>[] | undefined;
     selectedId: string | null | undefined;
@@ -101,8 +78,8 @@ interface NormalizedDropDownProps<T, S, W extends DropDownWidget> {
     renderHeader: ((info: { section: S }) => ReactNode) | null | undefined;
 }
 
-interface DropDownWiring<T, S, W extends DropDownWidget> {
-    setRef: (value: W | null) => void;
+interface DropDownWiring<T, S> {
+    setRef: (value: Gtk.DropDown | null) => void;
     resolver: ItemResolver<T, S>;
     selectionResolver: ItemResolver<T, S>;
     headerResolver: ItemResolver<T, S>;
@@ -112,24 +89,22 @@ interface DropDownWiring<T, S, W extends DropDownWidget> {
     useHeader: boolean;
 }
 
-const useDropDownWiring = <T, S, W extends DropDownWidget>(
-    props: NormalizedDropDownProps<T, S, W>,
-): DropDownWiring<T, S, W> => {
-    const widgetRef = useRef<DropDownWidget | null>(null);
-    const [widget, setWidget] = useState<DropDownWidget | null>(null);
-    const captureWidget = useCallback((value: W | null) => {
+const useDropDownWiring = <T, S>(props: NormalizedDropDownProps<T, S>): DropDownWiring<T, S> => {
+    const widgetRef = useRef<Gtk.DropDown | null>(null);
+    const [widget, setWidget] = useState<Gtk.DropDown | null>(null);
+    const captureWidget = useCallback((value: Gtk.DropDown | null) => {
         widgetRef.current = value;
         setWidget(value);
     }, []);
-    const setRef = useMergeRefs<W>(props.ref, captureWidget);
+    const setRef = useMergeRefs<Gtk.DropDown>(props.ref, captureWidget);
 
     const listModel = useListModel<T, S>({ items: props.items, sections: props.sections });
 
     const useHeader = typeof props.renderHeader === "function";
 
-    const selectionStore = useCellContainers<DropDownWidget>({ object: widgetRef, installer: itemFactoryInstaller });
-    const listStore = useCellContainers<DropDownWidget>({ object: widgetRef, installer: listFactoryInstaller });
-    const headerStore = useCellContainers<DropDownWidget>({
+    const selectionStore = useCellContainers<Gtk.DropDown>({ object: widgetRef, installer: itemFactoryInstaller });
+    const listStore = useCellContainers<Gtk.DropDown>({ object: widgetRef, installer: listFactoryInstaller });
+    const headerStore = useCellContainers<Gtk.DropDown>({
         object: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
     });
@@ -181,20 +156,16 @@ export const DropDown = <T = unknown, S = unknown, C extends ElementType = typeo
         selectedId,
         onSelectionChanged,
         ...intrinsicProps
-    } = asPolymorphicProps<DropDownDeclarativeProps<T, S>, DropDownWidget>(props);
-    const Component = component ?? GtkDropDown;
+    } = props;
+    const Component: ElementType = component ?? GtkDropDown;
 
-    const renderItemFn = renderItem as DropDownItemRenderer<T> | null | undefined;
-    const renderListItemFn = renderListItem as DropDownItemRenderer<T> | null | undefined;
-    const renderHeaderFn = renderHeader as ((info: { section: S }) => ReactNode) | null | undefined;
-
-    const wiring = useDropDownWiring<T, S, DropDownWidget>({
+    const wiring = useDropDownWiring<T, S>({
         ref,
-        items: items as ItemNode<T>[] | undefined,
-        sections: sections as SectionNode<S, T>[] | undefined,
-        selectedId: selectedId as string | null | undefined,
-        onSelectionChanged: onSelectionChanged as ((id: string) => void) | null | undefined,
-        renderHeader: renderHeaderFn,
+        items,
+        sections,
+        selectedId,
+        onSelectionChanged,
+        renderHeader,
     });
 
     return (
@@ -203,18 +174,18 @@ export const DropDown = <T = unknown, S = unknown, C extends ElementType = typeo
             <CellRenderHost
                 store={wiring.selectionStore}
                 resolver={wiring.selectionResolver}
-                render={toItemRenderer<T, S>(renderItemFn)}
+                render={toItemRenderer<T, S>(renderItem)}
             />
             <CellRenderHost
                 store={wiring.listStore}
                 resolver={wiring.resolver}
-                render={toListRenderer<T, S>(renderListItemFn, renderItemFn)}
+                render={toListRenderer<T, S>(renderListItem, renderItem)}
             />
             <HeaderRenderHost
                 useHeader={wiring.useHeader}
                 store={wiring.headerStore}
                 resolver={wiring.headerResolver}
-                renderHeader={renderHeaderFn}
+                renderHeader={renderHeader}
             />
         </>
     );

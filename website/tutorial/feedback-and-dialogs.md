@@ -184,15 +184,14 @@ A GTK4 dialog is not a child widget you slot into a layout. It is a free-floatin
 `<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop, the dialog widget to present, defaulting to `AdwDialog`, and attaches the ref to it itself. It renders that widget through a **portal to the top-level root**, not into the surrounding widget tree, and drives present/close from an effect. Here is the wrapper itself, from `packages/components/src/dialog.tsx`:
 
 ```tsx
-export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogProps<C>): ReactNode => {
-    const { component, parent, onClose, ref, ...rest } = asPolymorphicProps<DialogOwnProps, DialogInstance>(props);
+export const Dialog = ({ component, parent, onClose, ref, ...rest }: DialogProps): ReactNode => {
     const Component = component ?? AdwDialog;
 
     const parentWindow = useParentWindow();
     const resolvedParent = parent === undefined ? parentWindow : parent;
-    const [dialog, setDialogState] = useState<DialogInstance | null>(null);
-    const captureDialog = useCallback<RefCallback<DialogInstance>>((instance) => setDialogState(instance), []);
-    const setRef = useMergeRefs<DialogInstance>(ref, captureDialog);
+    const [dialog, setDialogState] = useState<Adw.Dialog | null>(null);
+    const captureDialog = useCallback<RefCallback<Adw.Dialog>>((instance) => setDialogState(instance), []);
+    const setRef = useMergeRefs<Adw.Dialog>(ref, captureDialog);
     const closingFromReact = useRef(false);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;

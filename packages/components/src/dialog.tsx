@@ -12,10 +12,7 @@ import {
     useRef,
     useState,
 } from "react";
-import { asPolymorphicProps, type PolymorphicComponentProps } from "./types.js";
-
-/** A widget presented as a dialog and force-closed by {@link Dialog}, such as an Adw.Dialog. */
-export type DialogInstance = Adw.Dialog;
+import type { WidgetProps } from "./types.js";
 
 export type DialogOwnProps = {
     /** Widget to anchor the dialog to, defaulting to the enclosing window when omitted. */
@@ -26,27 +23,28 @@ export type DialogOwnProps = {
 
 /**
  * Props for {@link Dialog}. The dialog widget is chosen through the `component` prop, defaulting to
- * AdwDialog, and the remaining props are that component's own props.
+ * AdwDialog, and the remaining props are AdwDialog's own props.
  */
-export type DialogProps<C extends ElementType = typeof AdwDialog> = PolymorphicComponentProps<
-    C,
-    DialogInstance,
-    DialogOwnProps
->;
+export type DialogProps<C extends ElementType = typeof AdwDialog> = WidgetProps<C, DialogOwnProps>;
 
 /**
  * Presents its dialog widget through a portal: present on mount, force close on unmount, and
  * onClose on any user-initiated close.
  */
-export const Dialog = <C extends ElementType = typeof AdwDialog>(props: DialogProps<C>): ReactNode => {
-    const { component, parent, onClose, ref, ...rest } = asPolymorphicProps<DialogOwnProps, DialogInstance>(props);
-    const Component = component ?? AdwDialog;
+export const Dialog = <C extends ElementType = typeof AdwDialog>({
+    component,
+    parent,
+    onClose,
+    ref,
+    ...rest
+}: DialogProps<C>): ReactNode => {
+    const Component: ElementType = component ?? AdwDialog;
 
     const parentWindow = useParentWindow();
     const resolvedParent = parent === undefined ? parentWindow : parent;
-    const [dialog, setDialogState] = useState<DialogInstance | null>(null);
-    const captureDialog = useCallback<RefCallback<DialogInstance>>((instance) => setDialogState(instance), []);
-    const setRef = useMergeRefs<DialogInstance>(ref, captureDialog);
+    const [dialog, setDialogState] = useState<Adw.Dialog | null>(null);
+    const captureDialog = useCallback<RefCallback<Adw.Dialog>>((instance) => setDialogState(instance), []);
+    const setRef = useMergeRefs<Adw.Dialog>(ref, captureDialog);
     const closingFromReact = useRef(false);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;

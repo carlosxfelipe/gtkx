@@ -1,7 +1,7 @@
-import { DropDown, SizeGroup, useSizeGroupItem } from "@gtkx/components";
+import { DropDown, SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { type RefCallback, useCallback, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
 
@@ -18,21 +18,14 @@ interface DropdownRowProps {
 
 const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged }: DropdownRowProps) => {
     const [dropdown, setDropdown] = useState<Gtk.DropDown | null>(null);
-    const groupRef = useSizeGroupItem();
-    const ref = useCallback<RefCallback<Gtk.DropDown>>(
-        (node) => {
-            setDropdown(node);
-            return groupRef(node);
-        },
-        [groupRef],
-    );
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={10}>
             <GtkLabel useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdown}>
                 {labelText}
             </GtkLabel>
-            <DropDown
-                ref={ref}
+            <SizeGroup.Child
+                component={DropDown}
+                ref={setDropdown}
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.BASELINE_FILL}
                 selectedId={selectedId}

@@ -3,7 +3,7 @@ import { GtkGrid, type GtkGridProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
 import { Children, type ElementType, type ReactNode, type Ref, useRef } from "react";
 import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
-import { asPolymorphicProps, type PolymorphicChildProps } from "./types.js";
+import type { ChildProps } from "./types.js";
 
 const { Context: GridContext, useParentRef: useGridRef } = createParentContext<Gtk.Grid>(
     "<Grid.Child> must be a child of <Grid>",
@@ -22,7 +22,7 @@ export type GridPlacement = {
 };
 
 /** Places a single child inside a {@link Grid} at a column and row, optionally spanning multiple cells. */
-export type GridChildProps<C extends ElementType> = PolymorphicChildProps<C, GridPlacement>;
+export type GridChildProps<C extends ElementType> = ChildProps<C, GridPlacement>;
 
 type Placement = { column: number; row: number; columnSpan: number; rowSpan: number };
 
@@ -36,10 +36,17 @@ const placementOf = (props: GridPlacement): Placement => ({
 const samePlacement = (a: Placement, b: Placement): boolean =>
     a.column === b.column && a.row === b.row && a.columnSpan === b.columnSpan && a.rowSpan === b.rowSpan;
 
-const GridChild = <C extends ElementType>(props: GridChildProps<C>): ReactNode => {
+const GridChild = <C extends ElementType>({
+    component,
+    column,
+    row,
+    columnSpan,
+    rowSpan,
+    ref,
+    ...rest
+}: GridChildProps<C>): ReactNode => {
     const gridRef = useGridRef();
-    const { component, column, row, columnSpan, rowSpan, ref, ...rest } = asPolymorphicProps<GridPlacement>(props);
-    const Component = component;
+    const Component: ElementType = component;
     return usePlacedChild<Gtk.Widget, Placement>({
         render: (placeRef) => <Component {...rest} ref={placeRef} />,
         ref,

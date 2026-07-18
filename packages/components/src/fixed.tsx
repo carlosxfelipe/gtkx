@@ -15,7 +15,7 @@ import {
     useRef,
     useState,
 } from "react";
-import { asPolymorphicProps, type PolymorphicChildProps } from "./types.js";
+import type { ChildProps } from "./types.js";
 
 const FixedContext = createContext<Gtk.Fixed | null | undefined>(undefined);
 
@@ -36,15 +36,21 @@ export type FixedPlacementProps = {
 };
 
 /** Positions a single child inside a {@link Fixed} at coordinates x and y, or by an explicit transform. */
-export type FixedChildProps<C extends ElementType> = PolymorphicChildProps<C, FixedPlacementProps>;
+export type FixedChildProps<C extends ElementType> = ChildProps<C, FixedPlacementProps>;
 
 const transformOf = (x: number, y: number, transform: Gsk.Transform | null | undefined): Gsk.Transform | null =>
     transform !== undefined ? transform : Gsk.Transform.new().translate(Graphene.Point.create(x, y));
 
-const FixedChild = <C extends ElementType>(props: FixedChildProps<C>): ReactNode => {
+const FixedChild = <C extends ElementType>({
+    component,
+    x,
+    y,
+    transform,
+    ref,
+    ...rest
+}: FixedChildProps<C>): ReactNode => {
     const fixed = useFixedInstance();
-    const { component, x, y, transform, ref, ...rest } = asPolymorphicProps<FixedPlacementProps>(props);
-    const Component = component;
+    const Component: ElementType = component;
     const widgetRef = useRef<Gtk.Widget | null>(null);
     const captureWidget = useCallback<RefCallback<Gtk.Widget>>((node) => {
         widgetRef.current = node;

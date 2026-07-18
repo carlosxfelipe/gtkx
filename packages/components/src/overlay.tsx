@@ -3,7 +3,7 @@ import { GtkOverlay, type GtkOverlayProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
 import { Children, type ElementType, isValidElement, type ReactNode, type Ref, useRef } from "react";
 import { createParentContext, usePlacedChild } from "./hooks/use-placed-child.js";
-import { asPolymorphicProps, type PolymorphicChildProps } from "./types.js";
+import type { ChildProps } from "./types.js";
 
 const { Context: OverlayContext, useParentRef: useOverlayRef } = createParentContext<Gtk.Overlay>(
     "<Overlay.Child> must be a child of <Overlay>",
@@ -20,7 +20,7 @@ export type OverlayPlacementProps = {
 };
 
 /** Adds a single widget as an overlay on top of an {@link Overlay}'s main child. */
-export type OverlayChildProps<C extends ElementType> = PolymorphicChildProps<C, OverlayPlacementProps>;
+export type OverlayChildProps<C extends ElementType> = ChildProps<C, OverlayPlacementProps>;
 
 type OverlayPlacement = { measure: boolean; clipOverlay: boolean };
 
@@ -32,10 +32,15 @@ const placementOf = (props: OverlayPlacementProps): OverlayPlacement => ({
 const samePlacement = (a: OverlayPlacement, b: OverlayPlacement): boolean =>
     a.measure === b.measure && a.clipOverlay === b.clipOverlay;
 
-const OverlayChild = <C extends ElementType>(props: OverlayChildProps<C>): ReactNode => {
+const OverlayChild = <C extends ElementType>({
+    component,
+    measure,
+    clipOverlay,
+    ref,
+    ...rest
+}: OverlayChildProps<C>): ReactNode => {
     const overlayRef = useOverlayRef();
-    const { component, measure, clipOverlay, ref, ...rest } = asPolymorphicProps<OverlayPlacementProps>(props);
-    const Component = component;
+    const Component: ElementType = component;
     return usePlacedChild<Gtk.Widget, OverlayPlacement>({
         render: (placeRef) => <Component {...rest} ref={placeRef} />,
         ref,

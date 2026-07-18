@@ -11,7 +11,7 @@ import {
     useContext,
     useRef,
 } from "react";
-import { asPolymorphicProps, type PolymorphicChildProps } from "./types.js";
+import type { ChildProps } from "./types.js";
 
 type SizeGroupRegistry = {
     addWidget: (widget: Gtk.Widget) => void;
@@ -23,20 +23,8 @@ const SizeGroupContext = createContext<SizeGroupRegistry | null>(null);
 
 const useSizeGroupRegistry = (): SizeGroupRegistry => {
     const registry = useContext(SizeGroupContext);
-    if (!registry) throw new Error("useSizeGroupItem must be called inside <SizeGroup>");
+    if (!registry) throw new Error("<SizeGroup.Child> must be a child of <SizeGroup>");
     return registry;
-};
-
-export const useSizeGroupItem = (): RefCallback<Gtk.Widget> => {
-    const registry = useSizeGroupRegistry();
-    return useCallback<RefCallback<Gtk.Widget>>(
-        (widget) => {
-            if (widget === null) return;
-            registry.addWidget(widget);
-            return () => registry.removeWidget(widget);
-        },
-        [registry],
-    );
 };
 
 /** Props for {@link SizeGroup}. */
@@ -48,13 +36,20 @@ export type SizeGroupProps = {
 };
 
 /** Adds a single widget, rendered by the given component, to the enclosing {@link SizeGroup}. */
-export type SizeGroupChildProps<C extends ElementType> = PolymorphicChildProps<C>;
+export type SizeGroupChildProps<C extends ElementType> = ChildProps<C>;
 
-const SizeGroupChild = <C extends ElementType>(props: SizeGroupChildProps<C>): ReactNode => {
-    const groupRef = useSizeGroupItem();
-    const { component, ref, ...rest } = asPolymorphicProps(props);
-    const Component = component;
-    const setWidget = useMergeRefs<Gtk.Widget>(ref, groupRef);
+const SizeGroupChild = <C extends ElementType>({ component, ref, ...rest }: SizeGroupChildProps<C>): ReactNode => {
+    const registry = useSizeGroupRegistry();
+    const joinGroup = useCallback<RefCallback<Gtk.Widget>>(
+        (widget) => {
+            if (widget === null) return;
+            registry.addWidget(widget);
+            return () => registry.removeWidget(widget);
+        },
+        [registry],
+    );
+    const Component: ElementType = component;
+    const setWidget = useMergeRefs<Gtk.Widget>(ref, joinGroup);
     return <Component {...rest} ref={setWidget} />;
 };
 

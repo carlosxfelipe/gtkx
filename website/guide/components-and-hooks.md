@@ -204,7 +204,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 </SizeGroup>
 ```
 
-`SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example). When a member is rendered by a high-level component rather than an intrinsic element, call `useSizeGroupItem()` inside the `SizeGroup` and attach the returned ref callback to the widget.
+`SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example). The `component` prop accepts high-level components such as `DropDown` as well as intrinsic elements.
 
 ## ConstraintLayout
 

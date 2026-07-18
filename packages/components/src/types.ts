@@ -1,41 +1,15 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ComponentProps, ComponentPropsWithRef, ElementType, Ref } from "react";
+import type { ComponentPropsWithRef, ElementType } from "react";
 
-/** The widget instance a component exposes through its ref prop. */
-export type WidgetOf<C extends ElementType> =
-    ComponentProps<C> extends { ref?: Ref<infer W | null> | undefined } ? W : never;
+/** Props of a container's Child component: the widget to render, its own props, and any placement props. */
+export type ChildProps<C extends ElementType, Placement = unknown> = Placement & {
+    component: C;
+} & Omit<ComponentPropsWithRef<C>, keyof Placement>;
 
-export type PolymorphicBody<C extends ElementType, Own, ExtraOmit extends string> = Own &
-    Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
-
-type ValidComponent<C extends ElementType, Widget extends Gtk.Widget> = [WidgetOf<C>] extends [never]
-    ? never
-    : WidgetOf<C> extends Widget
-      ? C
-      : never;
-
-export type PolymorphicChildProps<C extends ElementType, Own = unknown> = {
-    component: ValidComponent<C, Gtk.Widget>;
-} & PolymorphicBody<C, Own, never>;
-
-export type PolymorphicComponentProps<
-    C extends ElementType,
-    Widget extends Gtk.Widget,
-    Own,
-    ExtraOmit extends string = never,
-> = {
-    component?: ValidComponent<C, Widget>;
-} & PolymorphicBody<C, Own, ExtraOmit>;
-
-export type PolymorphicRuntimeProps<Own = unknown, W extends Gtk.Widget = Gtk.Widget> = Own & {
-    component: ElementType;
-    ref?: Ref<W | null> | undefined;
-    [key: string]: unknown;
-};
-
-export const asPolymorphicProps = <Own = unknown, W extends Gtk.Widget = Gtk.Widget>(
-    props: unknown,
-): PolymorphicRuntimeProps<Own, W> => props as PolymorphicRuntimeProps<Own, W>;
+/** Props of a component whose backing widget defaults to one type but can be swapped through `component`. */
+export type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends string = never> = Own & {
+    component?: C;
+} & Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
 
 /**
  * A single item in a collection model, identified by a stable id and holding an

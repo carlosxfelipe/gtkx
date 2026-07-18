@@ -15,17 +15,15 @@ export { GridView, type GridViewDeclarativeProps, type GridViewProps } from "./g
 export { ListView, type ListViewDeclarativeProps, type ListViewProps } from "./list-view.js";
 export { Menu, type MenuItemsProps, type MenuProps } from "./menu.js";
 export { Overlay, type OverlayChildProps, type OverlayPlacementProps, type OverlayProps } from "./overlay.js";
-export { SizeGroup, type SizeGroupChildProps, type SizeGroupProps, useSizeGroupItem } from "./size-group.js";
+export { SizeGroup, type SizeGroupChildProps, type SizeGroupProps } from "./size-group.js";
 export type {
+    ChildProps,
     CollectionItemSizeProps,
     ControlledExpansionProps,
     ControlledSelectionProps,
     ItemNode,
     MenuEntry,
-    PolymorphicBody,
-    PolymorphicChildProps,
-    PolymorphicComponentProps,
     RenderItemProps,
     SectionNode,
-    WidgetOf,
+    WidgetProps,
 } from "./types.js";
