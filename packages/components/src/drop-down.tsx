@@ -4,7 +4,7 @@ import { GtkDropDown, GtkLabel } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
 import { type ElementType, type ReactNode, type Ref, useCallback, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer } from "./cell.js";
-import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useDropDownSelection } from "./hooks/use-drop-down-selection.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import { useListModel } from "./hooks/use-list-model.js";
@@ -29,20 +29,15 @@ interface DropDownWidget extends Gtk.Widget {
 
 export type DropDownItemRenderer<T> = (props: RenderItemProps<T>) => ReactNode;
 
-const itemFactoryInstaller: FactoryInstaller<DropDownWidget> = {
-    install: (widget, factory) => widget.setFactory(factory),
-    uninstall: (widget) => widget.setFactory(null),
-};
+const itemFactoryInstaller = makeFactoryInstaller<DropDownWidget>((widget, factory) => widget.setFactory(factory));
 
-const listFactoryInstaller: FactoryInstaller<DropDownWidget> = {
-    install: (widget, factory) => widget.setListFactory(factory),
-    uninstall: (widget) => widget.setListFactory(null),
-};
+const listFactoryInstaller = makeFactoryInstaller<DropDownWidget>((widget, factory) =>
+    widget.setListFactory(factory),
+);
 
-const headerFactoryInstaller: FactoryInstaller<DropDownWidget> = {
-    install: (widget, factory) => widget.setHeaderFactory(factory),
-    uninstall: (widget) => widget.setHeaderFactory(null),
-};
+const headerFactoryInstaller = makeFactoryInstaller<DropDownWidget>((widget, factory) =>
+    widget.setHeaderFactory(factory),
+);
 
 const defaultRenderer: CellRenderer<unknown, unknown> = (value) => {
     if (value === undefined || value === null) return null;

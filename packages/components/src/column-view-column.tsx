@@ -3,15 +3,12 @@ import { GtkColumnViewColumn, type GtkColumnViewColumnProps } from "@gtkx/jsx/gt
 import { useMergeRefs } from "@gtkx/react/internal";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
-import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useHeaderMenu } from "./hooks/use-header-menu.js";
 import type { RenderItemProps } from "./types.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
-const factoryInstaller: FactoryInstaller<Gtk.ColumnViewColumn> = {
-    install: (column, factory) => column.setFactory(factory),
-    uninstall: (column) => column.setFactory(null),
-};
+const factoryInstaller = makeFactoryInstaller<Gtk.ColumnViewColumn>((column, factory) => column.setFactory(factory));
 
 export type ColumnDefDeclarativeProps<T = unknown> = {
     title: string;

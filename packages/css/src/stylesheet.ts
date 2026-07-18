@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";
-import { registerProviderForDefaultDisplay } from "./provider.js";
+import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./provider.js";
 
 const log = createLogger("css");
 
@@ -13,11 +13,7 @@ export class StyleSheet {
         if (this.provider) return this.provider;
         const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
-        if (process.env.NODE_ENV !== "production") {
-            provider.on("parsing-error", (section, error) => {
-                log.warn(`GTK4 rejected CSS at ${section.toString()}: ${error.message}`);
-            });
-        }
+        attachParsingErrorLogger(provider, log, "CSS");
         return provider;
     }
 

@@ -1,5 +1,6 @@
 import { type Display, DisplayManager } from "@gtkx/gi/gdk";
 import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk";
+import type { Logger } from "@gtkx/utils";
 
 /**
  * Creates a {@link CssProvider} and attaches it to the default display, or to
@@ -26,4 +27,12 @@ export const registerProviderForDefaultDisplay = (
     }
 
     return provider;
+};
+
+export const attachParsingErrorLogger = (provider: CssProvider, log: Logger, subject: string): void => {
+    if (process.env.NODE_ENV !== "production") {
+        provider.on("parsing-error", (section, error) => {
+            log.warn(`GTK4 rejected ${subject} at ${section.toString()}: ${error.message}`);
+        });
+    }
 };

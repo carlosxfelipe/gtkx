@@ -1,8 +1,15 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkListView, type GtkListViewProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, Ref } from "react";
-import { type CellRenderer, CellRenderHost, HeaderRenderHost, itemRenderer, type TreeRenderContext } from "./cell.js";
-import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import {
+    type CellRenderer,
+    CellRenderHost,
+    createTreeRenderContext,
+    HeaderRenderHost,
+    itemRenderer,
+    type TreeRenderContext,
+} from "./cell.js";
+import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionWidget } from "./hooks/use-collection-widget.js";
 import type {
     CollectionItemSizeProps,
@@ -15,15 +22,11 @@ import type {
 import type { CellContainerStore } from "./utils/cell-container-store.js";
 import type { ItemResolver } from "./utils/item-resolver.js";
 
-const factoryInstaller: FactoryInstaller<Gtk.ListView> = {
-    install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
-    uninstall: (widget: Gtk.ListView) => widget.setFactory(null),
-};
+const factoryInstaller = makeFactoryInstaller<Gtk.ListView>((widget, factory) => widget.setFactory(factory));
 
-const headerFactoryInstaller: FactoryInstaller<Gtk.ListView> = {
-    install: (widget: Gtk.ListView, factory: Gtk.SignalListItemFactory) => widget.setHeaderFactory(factory),
-    uninstall: (widget: Gtk.ListView) => widget.setHeaderFactory(null),
-};
+const headerFactoryInstaller = makeFactoryInstaller<Gtk.ListView>((widget, factory) =>
+    widget.setHeaderFactory(factory),
+);
 
 export type ListViewDeclarativeProps<T = unknown, S = unknown> = CollectionItemSizeProps &
     ControlledSelectionProps &
@@ -127,11 +130,7 @@ export const ListView = <T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         estimatedItemWidth,
     } as NormalizedListViewProps<T, S>);
 
-    const treeContext: TreeRenderContext = {
-        controlled: expandedIds !== undefined && expandedIds !== null,
-        expandedIds: new Set(expandedIds ?? []),
-        rowId: wiring.rowId,
-    };
+    const treeContext: TreeRenderContext = createTreeRenderContext(expandedIds, wiring.rowId);
     const cellRenderer: CellRenderer<T, S> = itemRenderer<T, S>(renderItem, treeContext);
 
     return (

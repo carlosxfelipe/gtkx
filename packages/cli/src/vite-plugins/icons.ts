@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { info } from "@gtkx/utils";
 import type { Plugin, UserConfig } from "vite";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 
 const ICONS_DIR = "icons";
 
@@ -18,20 +19,8 @@ type PluginState = {
     iconsDir: string | null;
 };
 
-type IconFile = {
-    absPath: string;
-    rel: string;
-};
-
-const findIconFiles = (iconsDir: string | null): IconFile[] => {
-    if (iconsDir === null || !existsSync(iconsDir)) return [];
-    return readdirSync(iconsDir, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile())
-        .map((entry) => {
-            const absPath = join(entry.parentPath, entry.name);
-            return { absPath, rel: relative(iconsDir, absPath) };
-        });
-};
+const findIconFiles = (iconsDir: string | null): ListedFile[] =>
+    iconsDir === null ? [] : listFilesRecursive(iconsDir);
 
 export function gtkxIcons(): Plugin {
     const state: PluginState = {

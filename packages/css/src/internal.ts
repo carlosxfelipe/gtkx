@@ -1,1 +1,1 @@
-export { registerProviderForDefaultDisplay } from "./provider.js";
+export { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./provider.js";

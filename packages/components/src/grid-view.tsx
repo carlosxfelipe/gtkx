@@ -3,15 +3,12 @@ import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
 import { useMergeRefs } from "@gtkx/react/internal";
 import { type ReactNode, type Ref, useRef } from "react";
 import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
-import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionModel } from "./hooks/use-collection-model.js";
 import { useInstalledModel } from "./hooks/use-installed-model.js";
 import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, RenderItemProps } from "./types.js";
 
-const factoryInstaller: FactoryInstaller<Gtk.GridView> = {
-    install: (widget: Gtk.GridView, factory: Gtk.SignalListItemFactory) => widget.setFactory(factory),
-    uninstall: (widget: Gtk.GridView) => widget.setFactory(null),
-};
+const factoryInstaller = makeFactoryInstaller<Gtk.GridView>((widget, factory) => widget.setFactory(factory));
 
 export type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
     ControlledSelectionProps & {

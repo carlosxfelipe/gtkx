@@ -96,6 +96,15 @@ export type TreeRenderContext = {
     rowId: (row: Gtk.TreeListRow) => string | undefined;
 };
 
+export const createTreeRenderContext = (
+    expandedIds: string[] | null | undefined,
+    rowId: (row: Gtk.TreeListRow) => string | undefined,
+): TreeRenderContext => ({
+    controlled: expandedIds !== undefined && expandedIds !== null,
+    expandedIds: new Set(expandedIds ?? []),
+    rowId,
+});
+
 const treeFields = (
     treeRow: Gtk.TreeListRow | null,
     context: TreeRenderContext | undefined,

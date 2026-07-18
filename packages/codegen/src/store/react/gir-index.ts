@@ -68,18 +68,18 @@ export const findMethod = (context: GirIndex, typeName: string, camelName: strin
     return undefined;
 };
 
-export const hasMethod = (context: GirIndex, typeName: string, camelName: string): boolean => {
+const chainSome = (context: GirIndex, typeName: string, predicate: (klass: GirClass) => boolean): boolean => {
     const entry = context.index.get(typeName);
     if (entry === undefined) return false;
-    return chainOf(context, entry).some((klass) =>
-        klass.methods.some((method) => method.introspectable && toCamelIdentifier(method.name) === camelName),
-    );
+    return chainOf(context, entry).some(predicate);
 };
 
-export const hasProperty = (context: GirIndex, typeName: string, camelName: string): boolean => {
-    const entry = context.index.get(typeName);
-    if (entry === undefined) return false;
-    return chainOf(context, entry).some((klass) =>
+export const hasMethod = (context: GirIndex, typeName: string, camelName: string): boolean =>
+    chainSome(context, typeName, (klass) =>
+        klass.methods.some((method) => method.introspectable && toCamelIdentifier(method.name) === camelName),
+    );
+
+export const hasProperty = (context: GirIndex, typeName: string, camelName: string): boolean =>
+    chainSome(context, typeName, (klass) =>
         klass.properties.some((property) => toCamelIdentifier(property.name) === camelName),
     );
-};

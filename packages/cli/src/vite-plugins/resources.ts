@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import { error, formatChildProcessError, info } from "@gtkx/utils";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
+import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
@@ -117,15 +118,8 @@ const reregisterDevBundle = async (state: PluginState): Promise<void> => {
     mod.__refresh?.();
 };
 
-const scanDataAssets = (dataDir: string): { absPath: string; rel: string }[] => {
-    if (!existsSync(dataDir)) return [];
-    return readdirSync(dataDir, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && ASSET_RE.test(entry.name))
-        .map((entry) => {
-            const absPath = join(entry.parentPath, entry.name);
-            return { absPath, rel: relative(dataDir, absPath) };
-        });
-};
+const scanDataAssets = (dataDir: string): ListedFile[] =>
+    listFilesRecursive(dataDir, (name) => ASSET_RE.test(name));
 
 const primeDevBundle = (state: PluginState): void => {
     if (state.dataDir === null) return;

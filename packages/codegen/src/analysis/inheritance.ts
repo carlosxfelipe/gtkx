@@ -59,15 +59,23 @@ export const forEachAncestor = (
     }
 };
 
+const forEachInheritedProperty = (
+    context: ModuleContext,
+    klass: GirClass,
+    visit: (owner: GirClass, property: GirProperty) => void,
+): void => {
+    forEachAncestor(context, klass, (ancestor, interfaces) => {
+        for (const property of ancestor.klass.properties) visit(ancestor.klass, property);
+        for (const iface of interfaces) {
+            for (const property of iface.klass.properties) visit(iface.klass, property);
+        }
+    });
+};
+
 export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): GirProperty[] => {
     const seen = new Set<string>();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
-    forEachAncestor(context, klass, (ancestor, interfaces) => {
-        for (const property of ancestor.klass.properties) seen.add(toCamelIdentifier(property.name));
-        for (const iface of interfaces) {
-            for (const property of iface.klass.properties) seen.add(toCamelIdentifier(property.name));
-        }
-    });
+    forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
     const result: GirProperty[] = [];
     for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
         for (const property of iface.klass.properties) {
@@ -125,12 +133,7 @@ export const collectInheritedPropertyTypes = (context: ModuleContext, klass: Gir
         const tsType = resolveAccessorType(context, property, owner.methods);
         if (tsType !== undefined) types.set(jsName, tsType);
     };
-    forEachAncestor(context, klass, (ancestor, interfaces) => {
-        for (const property of ancestor.klass.properties) record(ancestor.klass, property);
-        for (const iface of interfaces) {
-            for (const property of iface.klass.properties) record(iface.klass, property);
-        }
-    });
+    forEachInheritedProperty(context, klass, record);
     return types;
 };
 

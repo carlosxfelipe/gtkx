@@ -67,6 +67,11 @@ function getQuarkForSignalDetail(signal: string): number {
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
+const getSignalId = (instance: object, signal: string): number => {
+    const type: bigint = (instance as TypedClass).__type__;
+    return gSignalLookup(getSignalBaseName(signal), type) as number;
+};
+
 function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
     const key = `${type}\0${getSignalBaseName(signal)}`;
     return connectCache(
@@ -93,8 +98,7 @@ export function connectSignal(instance: object, signal: string, spec: SignalConn
 }
 
 export function blockMatchedSignalHandlers(instance: object, signal: string): void {
-    const type: bigint = (instance as TypedClass).__type__;
-    const signalId = gSignalLookup(getSignalBaseName(signal), type) as number;
+    const signalId = getSignalId(instance, signal);
     gSignalHandlersBlockMatched(getHandle(instance), 1, signalId, 0, undefined, undefined, undefined);
 }
 
@@ -117,8 +121,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
  * @param returnDescriptor Descriptor for the signal's return value, omitted when it returns void.
  */
 export function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
-    const type: bigint = (instance as TypedClass).__type__;
-    const signalId = gSignalLookup(getSignalBaseName(signal), type) as number;
+    const signalId = getSignalId(instance, signal);
     const detail = getQuarkForSignalDetail(signal);
     const values: ExternalObject<Handle>[] = [toValue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];

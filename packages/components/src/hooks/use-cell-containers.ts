@@ -24,6 +24,13 @@ export type FactoryInstaller<W extends GObject.Object> = {
     uninstall(widget: W): void;
 };
 
+export const makeFactoryInstaller = <W extends GObject.Object>(
+    setFactory: (widget: W, factory: Gtk.SignalListItemFactory | null) => void,
+): FactoryInstaller<W> => ({
+    install: (widget, factory) => setFactory(widget, factory),
+    uninstall: (widget) => setFactory(widget, null),
+});
+
 type CellContainersOptions<W extends GObject.Object> = {
     object: ObjectProp<W>;
     installer: FactoryInstaller<W>;

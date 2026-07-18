@@ -5,6 +5,7 @@ import {
     invalidRequestError,
     methodNotFoundError,
     noAppConnectedError,
+    type ProtocolError,
 } from "./protocol/errors.js";
 import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/schemas.js";
 import { type AppConnections, ConnectionClosedError, type ProtocolConnection } from "./transport.js";
@@ -114,20 +115,14 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         } else if (request.method === "app.unregister") {
             this.handleUnregister(connection, request);
         } else {
-            this.connections.send(connection.id, {
-                id: request.id,
-                error: methodNotFoundError(request.method).toErrorObject(),
-            });
+            this.sendError(connection, request, methodNotFoundError(request.method));
         }
     }
 
     private handleRegister(connection: ProtocolConnection, request: Request): void {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
         if (!parseResult.success) {
-            this.connections.send(connection.id, {
-                id: request.id,
-                error: invalidRequestError(parseResult.error.message).toErrorObject(),
-            });
+            this.sendError(connection, request, invalidRequestError(parseResult.error.message));
             return;
         }
 
@@ -157,6 +152,13 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
             result: { success: true },
         };
         this.connections.send(connection.id, response);
+    }
+
+    private sendError(connection: ProtocolConnection, request: Request, error: ProtocolError): void {
+        this.connections.send(connection.id, {
+            id: request.id,
+            error: error.toErrorObject(),
+        });
     }
 
     private removeApp(connection: ProtocolConnection): void {

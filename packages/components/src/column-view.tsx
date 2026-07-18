@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, type GtkColumnViewProps } from "@gtkx/jsx/gtk";
 import { type ReactNode, type Ref, useCallback, useMemo, useState } from "react";
-import { HeaderRenderHost, type TreeRenderContext } from "./cell.js";
+import { createTreeRenderContext, HeaderRenderHost, type TreeRenderContext } from "./cell.js";
 import { type ColumnDef, ColumnViewColumn } from "./column-view-column.js";
-import { type FactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
+import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
 import { useCollectionWidget } from "./hooks/use-collection-widget.js";
 import { type ColumnRegistration, useSortHandler } from "./hooks/use-sort-handler.js";
 import type {
@@ -18,10 +18,9 @@ import type { ItemResolver } from "./utils/item-resolver.js";
 
 export type { ColumnDef, ColumnDefDeclarativeProps } from "./column-view-column.js";
 
-const headerFactoryInstaller: FactoryInstaller<Gtk.ColumnView> = {
-    install: (widget, factory) => widget.setHeaderFactory(factory),
-    uninstall: (widget) => widget.setHeaderFactory(null),
-};
+const headerFactoryInstaller = makeFactoryInstaller<Gtk.ColumnView>((widget, factory) =>
+    widget.setHeaderFactory(factory),
+);
 
 export type ColumnViewSortProps = {
     sortColumn?: string | null | undefined;
@@ -126,11 +125,7 @@ const useColumnViewWiring = <T, S>(props: NormalizedColumnViewProps<T, S>): Colu
 
     const expandedIds = props.expandedIds;
     const tree = useMemo<TreeRenderContext>(
-        () => ({
-            controlled: expandedIds !== undefined && expandedIds !== null,
-            expandedIds: new Set(expandedIds ?? []),
-            rowId: collection.rowId,
-        }),
+        () => createTreeRenderContext(expandedIds, collection.rowId),
         [expandedIds, collection.rowId],
     );
 
