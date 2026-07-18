@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type { MotionNodeOptions } from "motion-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { proxyFor } from "../src/bridge/widget-proxy.js";
-import { GtkInViewFeature, parseViewportMargin, reachesViewportAmount } from "../src/features/in-view.js";
+import { InViewFeature, parseViewportMargin, reachesViewportAmount } from "../src/features/in-view.js";
 
 describe("parseViewportMargin", () => {
     it("returns zero margins when no margin is given", () => {
@@ -63,7 +63,7 @@ const createInViewFeature = (widget: Gtk.Widget, viewport: MotionNodeOptions["vi
         animationState: { setActive },
         getProps: () => props,
     };
-    return { feature: new GtkInViewFeature(node), onViewportEnter, onViewportLeave, setActive };
+    return { feature: new InViewFeature(node), onViewportEnter, onViewportLeave, setActive };
 };
 
 const buildScrolledFixture = () => {
@@ -83,7 +83,7 @@ const mockViewportGeometry = (label: Gtk.Label, scrolled: Gtk.ScrolledWindow) =>
     return boundsSpy;
 };
 
-describe("GtkInViewFeature", () => {
+describe("InViewFeature", () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();

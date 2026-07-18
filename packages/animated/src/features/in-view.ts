@@ -2,11 +2,12 @@ import "../motion-env.js";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
-import { Feature, type MotionNodeOptions, type VisualElement } from "motion-dom";
+import type { MotionNodeOptions } from "motion-dom";
 import { rootWidgetOf } from "../bridge/geometry.js";
 import { WidgetProxy } from "../bridge/widget-proxy.js";
+import { WidgetFeature } from "./widget-feature.js";
 
-export interface GtkViewportEntry {
+export interface ViewportEntry {
     isIntersecting: boolean;
     intersectionRatio: number;
     target: Gtk.Widget;
@@ -102,7 +103,7 @@ const VIEWPORT_OPTION_NAMES: ("amount" | "margin" | "root")[] = ["amount", "marg
 
 const EVALUATION_FRAME_CHAIN = 2;
 
-export class GtkInViewFeature extends Feature<unknown> {
+export class InViewFeature extends WidgetFeature {
     private isInView = false;
     private hasEnteredView = false;
     private viewportWidget: Gtk.Widget | null = null;
@@ -111,15 +112,6 @@ export class GtkInViewFeature extends Feature<unknown> {
     private layoutSurface: Gdk.Surface | null = null;
     private pendingFrame: number | null = null;
     private pendingEvaluations = 0;
-
-    constructor(node: unknown) {
-        super(node as VisualElement<unknown>);
-    }
-
-    private currentProxy(): WidgetProxy | null {
-        const current = this.node.current;
-        return current instanceof WidgetProxy ? current : null;
-    }
 
     private viewportOptions(): ViewportOptions {
         return this.node.getProps().viewport ?? {};
@@ -211,7 +203,7 @@ export class GtkInViewFeature extends Feature<unknown> {
         const props = this.node.getProps();
         const callback = isIntersecting ? props.onViewportEnter : props.onViewportLeave;
         if (!callback) return;
-        const entry: GtkViewportEntry = { isIntersecting, intersectionRatio: ratio, target: widget };
+        const entry: ViewportEntry = { isIntersecting, intersectionRatio: ratio, target: widget };
         callback(entry);
     }
 

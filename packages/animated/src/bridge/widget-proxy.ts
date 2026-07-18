@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
-    type GtkMotionWindow,
+    type MotionWindow,
     motionWindow,
     type SyntheticEventListener,
     type SyntheticEventListenerOptions,
@@ -34,7 +34,7 @@ export interface AppliedProjectionDelta {
 
 export class WidgetProxy extends SyntheticEventTarget {
     widget: Gtk.Widget;
-    ownerDocument: { defaultView: GtkMotionWindow };
+    ownerDocument: { defaultView: MotionWindow };
     appliedProjectionDelta: AppliedProjectionDelta | null = null;
 
     constructor(widget: Gtk.Widget) {

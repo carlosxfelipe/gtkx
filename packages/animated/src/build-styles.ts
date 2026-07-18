@@ -10,7 +10,7 @@ import {
     type ValueType,
 } from "motion-dom";
 
-export type GtkRenderState = HTMLRenderState;
+export type RenderState = HTMLRenderState;
 
 const log = createLogger("animated");
 
@@ -59,14 +59,14 @@ const SUPPORTED_STYLE_KEYS = new Set([
     "transformOrigin",
 ]);
 
-export const createGtkRenderState = (): GtkRenderState => ({
+export const createRenderState = (): RenderState => ({
     style: {},
     transform: {},
     transformOrigin: {},
     vars: {},
 });
 
-export const buildGtkStyles = (state: GtkRenderState, latestValues: ResolvedValues): void => {
+export const buildStyles = (state: RenderState, latestValues: ResolvedValues): void => {
     buildHTMLStyles(state, latestValues);
 };
 
@@ -78,7 +78,7 @@ const EXTRA_VALUE_TYPES: Record<string, ValueType> = {
     letterSpacing: px,
 };
 
-export const serializeGtkStyle = (style: ResolvedValues): string => {
+export const serializeStyle = (style: ResolvedValues): string => {
     const declarations: string[] = [];
     const hidden = style.visibility === "hidden";
     for (const key in style) {
@@ -101,11 +101,11 @@ export const serializeGtkStyle = (style: ResolvedValues): string => {
     return declarations.join(" ");
 };
 
-export const serializeGtkRule = (className: string, state: GtkRenderState): string => {
+export const serializeRule = (className: string, state: RenderState): string => {
     for (const key in state.vars) {
         warnUnsupported(key);
     }
-    const body = serializeGtkStyle(state.style);
+    const body = serializeStyle(state.style);
     if (body.length === 0) return "";
     return `.${className} { ${body} }`;
 };

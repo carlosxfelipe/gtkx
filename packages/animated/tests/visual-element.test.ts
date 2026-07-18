@@ -3,15 +3,15 @@ import { animateVisualElement, type MotionNodeOptions, motionValue, type TargetA
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { animationStyleSheet } from "../src/animation-css-provider.js";
 import { proxyFor } from "../src/bridge/widget-proxy.js";
-import { createGtkRenderState } from "../src/build-gtk-styles.js";
-import { GtkVisualElement } from "../src/gtk-visual-element.js";
+import { createRenderState } from "../src/build-styles.js";
+import { WidgetVisualElement } from "../src/visual-element.js";
 
 const asProps = (props: Record<string, unknown>): MotionNodeOptions => props;
 
-const createElement = (className: string, props: Record<string, unknown> = {}): GtkVisualElement =>
-    new GtkVisualElement(
+const createElement = (className: string, props: Record<string, unknown> = {}): WidgetVisualElement =>
+    new WidgetVisualElement(
         {
-            visualState: { latestValues: {}, renderState: createGtkRenderState() },
+            visualState: { latestValues: {}, renderState: createRenderState() },
             props,
             presenceContext: null,
             reducedMotionConfig: "never",
@@ -20,7 +20,7 @@ const createElement = (className: string, props: Record<string, unknown> = {}): 
         { className },
     );
 
-describe("GtkVisualElement", () => {
+describe("WidgetVisualElement", () => {
     afterEach(() => {
         vi.restoreAllMocks();
     });
@@ -52,7 +52,7 @@ describe("GtkVisualElement", () => {
 
     it("merges static style under animated values when building", () => {
         const element = createElement("gtkx-anim-build");
-        const state = createGtkRenderState();
+        const state = createRenderState();
         element.build(state, { opacity: 0.25 }, asProps({ style: { opacity: 0.9, backgroundColor: "#336699" } }));
         expect(state.style.opacity).toBe(0.25);
         expect(state.style.backgroundColor).toBe("#336699");

@@ -1,4 +1,4 @@
-import { registerProviderForDefaultDisplay } from "@gtkx/css/internal";
+import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "@gtkx/css/internal";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";
@@ -32,11 +32,7 @@ export class AnimationStyleSheet {
         if (this.provider) return this.provider;
         const provider = registerProviderForDefaultDisplay(ANIMATION_PROVIDER_PRIORITY);
         this.provider = provider;
-        if (process.env.NODE_ENV !== "production") {
-            provider.on("parsing-error", (section, error) => {
-                log.warn(`GTK4 rejected animation CSS at ${section.toString()}: ${error.message}`);
-            });
-        }
+        attachParsingErrorLogger(provider, log, "animation CSS");
         return provider;
     }
 

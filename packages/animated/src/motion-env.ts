@@ -48,14 +48,14 @@ export class SyntheticEventTarget {
     }
 }
 
-export interface GtkMotionMediaQueryList {
+export interface MotionMediaQueryList {
     matches: boolean;
     addEventListener(type: string, listener: SyntheticEventListener): void;
     removeEventListener(type: string, listener: SyntheticEventListener): void;
 }
 
-export interface GtkMotionWindow extends SyntheticEventTarget {
-    matchMedia(query: string): GtkMotionMediaQueryList;
+export interface MotionWindow extends SyntheticEventTarget {
+    matchMedia(query: string): MotionMediaQueryList;
     innerWidth: number;
     innerHeight: number;
     scrollX: number;
@@ -83,13 +83,13 @@ export const setReducedMotionMatches = (matches: boolean): void => {
     }
 };
 
-class GtkMotionWindowImpl extends SyntheticEventTarget implements GtkMotionWindow {
+class MotionWindowImpl extends SyntheticEventTarget implements MotionWindow {
     innerWidth = 0;
     innerHeight = 0;
     scrollX = 0;
     scrollY = 0;
 
-    matchMedia(_query: string): GtkMotionMediaQueryList {
+    matchMedia(_query: string): MotionMediaQueryList {
         if (!matchMediaInitialized) {
             matchMediaInitialized = true;
             for (const hook of matchMediaInitHooks.splice(0)) hook();
@@ -151,7 +151,7 @@ if (globalThis.cancelAnimationFrame === undefined) {
 }
 
 if (globalThis.window === undefined) {
-    globalThis.window = new GtkMotionWindowImpl();
+    globalThis.window = new MotionWindowImpl();
 }
 
 if (globalThis.document === undefined) {
@@ -178,7 +178,7 @@ if (globalThis.getComputedStyle === undefined) {
     globalThis.getComputedStyle = () => ({});
 }
 
-export const motionWindow: GtkMotionWindow = globalThis.window;
+export const motionWindow: MotionWindow = globalThis.window;
 
 export interface WindowMetrics {
     innerWidth?: number;

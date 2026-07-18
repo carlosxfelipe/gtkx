@@ -77,7 +77,7 @@ impl UvApi {
 
 thread_local! {
     static UV_API: Cell<Option<UvApi>> = const { Cell::new(None) };
-    static GTK_LOOP: RefCell<Option<GtkLoop>> = const { RefCell::new(None) };
+    static MAIN_LOOP: RefCell<Option<MainLoop>> = const { RefCell::new(None) };
 }
 
 fn uv() -> UvApi {
@@ -167,7 +167,7 @@ fn wakeup_for(timeout: c_int, sources_ready: bool, has_unwatchable_fds: bool) ->
     }
 }
 
-struct GtkLoop {
+struct MainLoop {
     uv_loop: *mut c_void,
     ctx: *mut GMainContext,
     prepare: *mut c_void,
@@ -177,7 +177,7 @@ struct GtkLoop {
     n_fds: usize,
 }
 
-impl GtkLoop {
+impl MainLoop {
     fn arm_wakeups(&mut self) {
         let mut max_priority: c_int = 0;
         let prepared_ready = unsafe { g_main_context_prepare(self.ctx, &mut max_priority) } != 0;
@@ -285,7 +285,7 @@ impl GtkLoop {
 }
 
 unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
-    let Some(ctx) = GTK_LOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
+    let Some(ctx) = MAIN_LOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
         return;
     };
 
@@ -295,12 +295,12 @@ unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
         crate::messaging::node_env::run_dispatch_scope(|| {
             dispatched = unsafe { g_main_context_iteration(ctx, GFALSE) } != 0;
         });
-        if !dispatched || Instant::now() >= deadline || GTK_LOOP.with_borrow(Option::is_none) {
+        if !dispatched || Instant::now() >= deadline || MAIN_LOOP.with_borrow(Option::is_none) {
             break;
         }
     }
 
-    GTK_LOOP.with_borrow_mut(|slot| {
+    MAIN_LOOP.with_borrow_mut(|slot| {
         if let Some(state) = slot.as_mut() {
             state.arm_wakeups();
         }
@@ -312,7 +312,7 @@ unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
 
 pub fn install(env: &Env) -> napi::Result<()> {
-    if GTK_LOOP.with_borrow(Option::is_some) {
+    if MAIN_LOOP.with_borrow(Option::is_some) {
         return Ok(());
     }
 
@@ -360,8 +360,8 @@ pub fn install(env: &Env) -> napi::Result<()> {
         (uv.unreference)(timer);
     }
 
-    GTK_LOOP.with(|slot| {
-        *slot.borrow_mut() = Some(GtkLoop {
+    MAIN_LOOP.with(|slot| {
+        *slot.borrow_mut() = Some(MainLoop {
             uv_loop,
             ctx,
             prepare,
@@ -399,7 +399,7 @@ fn fail_install(
 }
 
 pub fn set_keep_alive(enable: bool) {
-    GTK_LOOP.with_borrow(|slot| {
+    MAIN_LOOP.with_borrow(|slot| {
         if let Some(state) = slot.as_ref() {
             let uv = uv();
             unsafe {
@@ -414,7 +414,7 @@ pub fn set_keep_alive(enable: bool) {
 }
 
 pub fn teardown() {
-    let ctx = GTK_LOOP.with_borrow_mut(|slot| {
+    let ctx = MAIN_LOOP.with_borrow_mut(|slot| {
         let state = slot.take()?;
         for handle in state.pollers.into_values() {
             close_uv_handle(handle);

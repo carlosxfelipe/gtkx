@@ -3,10 +3,10 @@ import { createElementComponent } from "@gtkx/react/internal";
 import { MotionContext } from "framer-motion";
 import { getFeatureDefinitions, isControllingVariants, isVariantLabel, type MotionNodeOptions } from "motion-dom";
 import { type ComponentType, createElement, type JSX, type ReactNode, type Ref, useContext, useMemo } from "react";
-import type { GtkVisualElement } from "./gtk-visual-element.js";
 import { splitMotionProps } from "./split-motion-props.js";
 import type { AnimationProps } from "./types.js";
-import { useGtkMotionElement } from "./use-gtk-motion-element.js";
+import { useMotionElement } from "./use-motion-element.js";
+import type { WidgetVisualElement } from "./visual-element.js";
 
 /** A component that accepts the props `P` of the wrapped widget plus {@link AnimationProps}. */
 export type AnimatedComponent<P> = (props: P & AnimationProps) => ReactNode;
@@ -22,8 +22,8 @@ type AnimatedIntrinsics = {
 type InitialVariant = false | string | string[];
 type AnimateVariant = string | string[];
 
-interface GtkMotionContextValue {
-    visualElement?: GtkVisualElement;
+interface MotionContextValue {
+    visualElement?: WidgetVisualElement;
     initial?: InitialVariant;
     animate?: AnimateVariant;
 }
@@ -31,7 +31,7 @@ interface GtkMotionContextValue {
 const asDependency = (prop: InitialVariant | AnimateVariant | undefined): string | boolean | undefined =>
     Array.isArray(prop) ? prop.join(" ") : prop;
 
-const getCurrentTreeVariants = (props: MotionNodeOptions, context: GtkMotionContextValue): GtkMotionContextValue => {
+const getCurrentTreeVariants = (props: MotionNodeOptions, context: MotionContextValue): MotionContextValue => {
     if (isControllingVariants(props)) {
         const { initial, animate } = props;
         return {
@@ -46,8 +46,8 @@ const getCurrentTreeVariants = (props: MotionNodeOptions, context: GtkMotionCont
     };
 };
 
-const useGtkMotionContext = (props: MotionNodeOptions, visualElement: GtkVisualElement): GtkMotionContextValue => {
-    const parentContext = useContext(MotionContext) as GtkMotionContextValue;
+const useMotionContext = (props: MotionNodeOptions, visualElement: WidgetVisualElement): MotionContextValue => {
+    const parentContext = useContext(MotionContext) as MotionContextValue;
     const { initial, animate } = getCurrentTreeVariants(props, parentContext);
     return useMemo(
         () => ({
@@ -80,8 +80,8 @@ const animatedFactory = <P extends object>(Component: (props: P) => ReactNode): 
     const Animated = (props: P & AnimationProps): ReactNode => {
         const externalRef = (props as { ref?: Ref<Gtk.Widget | null> }).ref;
         const { motionProps, widgetProps } = splitMotionProps(props);
-        const { element, mergedRef } = useGtkMotionElement(motionProps, externalRef);
-        const context = useGtkMotionContext(motionProps, element);
+        const { element, mergedRef } = useMotionElement(motionProps, externalRef);
+        const context = useMotionContext(motionProps, element);
         const MeasureLayout = getMeasureLayout(motionProps);
         return createElement(
             MotionContext.Provider,

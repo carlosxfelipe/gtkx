@@ -16,9 +16,9 @@ import {
 import { animationStyleSheet } from "./animation-css-provider.js";
 import { rootWidgetOf } from "./bridge/geometry.js";
 import type { AppliedProjectionDelta, WidgetProxy } from "./bridge/widget-proxy.js";
-import { buildGtkStyles, type GtkRenderState, serializeGtkRule } from "./build-gtk-styles.js";
+import { buildStyles, type RenderState, serializeRule } from "./build-styles.js";
 
-export interface GtkVisualElementOptions {
+export interface WidgetVisualElementOptions {
     className: string;
 }
 
@@ -50,7 +50,7 @@ const recordAppliedProjection = (instance: WidgetProxy, projection?: ProjectionS
     };
 };
 
-export class GtkVisualElement extends VisualElement<WidgetProxy, GtkRenderState, GtkVisualElementOptions> {
+export class WidgetVisualElement extends VisualElement<WidgetProxy, RenderState, WidgetVisualElementOptions> {
     type = "gtk";
 
     sortInstanceNodePosition(): number {
@@ -83,12 +83,12 @@ export class GtkVisualElement extends VisualElement<WidgetProxy, GtkRenderState,
         return undefined;
     }
 
-    removeValueFromRenderState(key: string, renderState: GtkRenderState): void {
+    removeValueFromRenderState(key: string, renderState: RenderState): void {
         delete renderState.vars[key];
         delete renderState.style[key];
     }
 
-    build(renderState: GtkRenderState, latestValues: ResolvedValues, props: MotionNodeOptions): void {
+    build(renderState: RenderState, latestValues: ResolvedValues, props: MotionNodeOptions): void {
         const style = styleOf(props);
         let merged = latestValues;
         if (style) {
@@ -99,18 +99,18 @@ export class GtkVisualElement extends VisualElement<WidgetProxy, GtkRenderState,
             }
             Object.assign(merged, latestValues);
         }
-        buildGtkStyles(renderState, merged);
+        buildStyles(renderState, merged);
     }
 
     renderInstance(
         instance: WidgetProxy,
-        renderState: GtkRenderState,
+        renderState: RenderState,
         styleProp?: MotionStyle,
         projection?: ProjectionStyles,
     ): void {
         projection?.applyProjectionStyles(renderState.style, styleProp);
         recordAppliedProjection(instance, projection);
-        animationStyleSheet.set(this.options.className, serializeGtkRule(this.options.className, renderState));
+        animationStyleSheet.set(this.options.className, serializeRule(this.options.className, renderState));
     }
 
     override scrapeMotionValuesFromProps(

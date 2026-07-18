@@ -22,13 +22,13 @@ import {
 } from "react";
 import { animationStyleSheet } from "./animation-css-provider.js";
 import { proxyFor, WidgetProxy } from "./bridge/widget-proxy.js";
-import { createGtkRenderState, type GtkRenderState } from "./build-gtk-styles.js";
-import { GtkVisualElement } from "./gtk-visual-element.js";
+import { createRenderState, type RenderState } from "./build-styles.js";
 import { ensureSettingsBridge } from "./settings-bridge.js";
+import { WidgetVisualElement } from "./visual-element.js";
 
-const useGtkVisualState = makeUseVisualState<WidgetProxy, GtkRenderState>({
+const useVisualState = makeUseVisualState<WidgetProxy, RenderState>({
     scrapeMotionValuesFromProps: scrapeHTMLMotionValuesFromProps,
-    createRenderState: createGtkRenderState,
+    createRenderState: createRenderState,
 });
 
 const sanitizeId = (id: string): string => id.replace(/[^a-zA-Z0-9]/g, "");
@@ -60,19 +60,19 @@ const normalizeDragConstraints = (props: MotionNodeOptions): MotionNodeOptions =
 const needsProjection = (props: MotionNodeOptions): boolean =>
     Boolean(props.layout || props.layoutId !== undefined || props.drag);
 
-const getClosestProjectingNode = (element: GtkVisualElement | undefined): IProjectionNode | undefined => {
+const getClosestProjectingNode = (element: WidgetVisualElement | undefined): IProjectionNode | undefined => {
     if (!element) return undefined;
     if (element.projection) return element.projection;
-    const parent = element.parent instanceof GtkVisualElement ? element.parent : undefined;
+    const parent = element.parent instanceof WidgetVisualElement ? element.parent : undefined;
     return getClosestProjectingNode(parent);
 };
 
-const ensureProjection = (element: GtkVisualElement, props: MotionNodeOptions): void => {
+const ensureProjection = (element: WidgetVisualElement, props: MotionNodeOptions): void => {
     if (element.projection || !needsProjection(props)) return;
     const definitions = getFeatureDefinitions();
     const ProjectionNodeConstructor = definitions.drag?.ProjectionNode ?? definitions.layout?.ProjectionNode;
     if (!ProjectionNodeConstructor) return;
-    const parent = element.parent instanceof GtkVisualElement ? element.parent : undefined;
+    const parent = element.parent instanceof WidgetVisualElement ? element.parent : undefined;
     element.projection = new ProjectionNodeConstructor(element.latestValues, getClosestProjectingNode(parent));
     const { layoutId, layout, drag, dragConstraints, layoutScroll, layoutRoot, layoutCrossfade } = props;
     element.projection.setOptions({
@@ -88,26 +88,26 @@ const ensureProjection = (element: GtkVisualElement, props: MotionNodeOptions): 
     if (element.current) element.projection.mount(element.current);
 };
 
-export interface GtkMotionElement {
-    element: GtkVisualElement;
+export interface MotionElement {
+    element: WidgetVisualElement;
     mergedRef: RefCallback<Gtk.Widget>;
 }
 
-export const useGtkMotionElement = (
+export const useMotionElement = (
     rawProps: MotionNodeOptions,
     externalRef: Ref<Gtk.Widget | null> | undefined,
-): GtkMotionElement => {
+): MotionElement => {
     const props = normalizeDragConstraints(rawProps);
-    const visualState = useGtkVisualState(props, false);
+    const visualState = useVisualState(props, false);
     const { visualElement: parent } = useContext(MotionContext);
     const presenceContext = useContext(PresenceContext);
     const motionConfig = useContext(MotionConfigContext);
     const className = `gtkx-anim-${sanitizeId(useId())}`;
 
-    const elementRef = useRef<GtkVisualElement | null>(null);
+    const elementRef = useRef<WidgetVisualElement | null>(null);
     if (elementRef.current === null) {
         ensureSettingsBridge();
-        const options: VisualElementOptions<WidgetProxy, GtkRenderState> = {
+        const options: VisualElementOptions<WidgetProxy, RenderState> = {
             visualState,
             props,
             presenceContext,
@@ -116,7 +116,7 @@ export const useGtkMotionElement = (
             ...(motionConfig.reducedMotion !== undefined ? { reducedMotionConfig: motionConfig.reducedMotion } : {}),
             ...(motionConfig.skipAnimations !== undefined ? { skipAnimations: motionConfig.skipAnimations } : {}),
         };
-        elementRef.current = new GtkVisualElement(options, { className });
+        elementRef.current = new WidgetVisualElement(options, { className });
     }
     const element = elementRef.current;
     ensureProjection(element, props);

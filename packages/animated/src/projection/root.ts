@@ -1,10 +1,10 @@
 import "../motion-env.js";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { scheduleAfterLayout } from "@gtkx/react/internal";
 import { createProjectionNode, type IProjectionNode, microtask } from "motion-dom";
 import { WidgetProxy } from "../bridge/widget-proxy.js";
 import { setWindowMetrics } from "../motion-env.js";
-import { scheduleAfterGtkLayout } from "./frame-sync.js";
 
 interface RootAnchor {
     kind: "gtkx-projection-root";
@@ -63,7 +63,7 @@ const subscribeToplevelLayout = (notify: () => void): (() => void) => {
     };
 };
 
-const GtkRootProjectionNodeBase = createProjectionNode<RootAnchor>({
+const RootProjectionNodeBase = createProjectionNode<RootAnchor>({
     attachResizeListener: (_anchor, notify) => subscribeToplevelLayout(notify),
     measureScroll: () => ({ x: 0, y: 0 }),
     checkIsScrollRoot: () => true,
@@ -94,7 +94,7 @@ const clockedToplevel = (): Gtk.Widget | null => {
     return null;
 };
 
-class GtkRootProjectionNode extends GtkRootProjectionNodeBase {
+class RootProjectionNode extends RootProjectionNodeBase {
     constructor(latestValues: Record<string, string | number> = {}) {
         super(latestValues);
         const baseCheckUpdateFailed = this.checkUpdateFailed;
@@ -121,15 +121,15 @@ class GtkRootProjectionNode extends GtkRootProjectionNodeBase {
             microtask.read(run);
             return;
         }
-        scheduleAfterGtkLayout(widget, run);
+        scheduleAfterLayout(widget, run);
     }
 }
 
-let rootNode: GtkRootProjectionNode | null = null;
+let rootNode: RootProjectionNode | null = null;
 
 export const getRootProjectionNode = (): IProjectionNode => {
     if (!rootNode) {
-        rootNode = new GtkRootProjectionNode({});
+        rootNode = new RootProjectionNode({});
         rootNode.mount({ kind: "gtkx-projection-root" });
     }
     return rootNode as IProjectionNode;

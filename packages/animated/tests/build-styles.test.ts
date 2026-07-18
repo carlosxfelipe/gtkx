@@ -1,11 +1,11 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
-import { buildGtkStyles, createGtkRenderState, serializeGtkRule } from "../src/build-gtk-styles.js";
+import { buildStyles, createRenderState, serializeRule } from "../src/build-styles.js";
 
 const ruleFor = (latestValues: Record<string, string | number>): string => {
-    const state = createGtkRenderState();
-    buildGtkStyles(state, latestValues);
-    return serializeGtkRule("anim", state);
+    const state = createRenderState();
+    buildStyles(state, latestValues);
+    return serializeRule("anim", state);
 };
 
 const parseErrors = (css: string): string[] => {
@@ -18,7 +18,7 @@ const parseErrors = (css: string): string[] => {
     return errors;
 };
 
-describe("buildGtkStyles + serializeGtkRule", () => {
+describe("buildStyles + serializeRule", () => {
     it("serializes individual transform values into one transform declaration", () => {
         const rule = ruleFor({ x: 10, y: 4, scale: 1.2, rotate: 3, skewX: 1 });
         expect(rule).toContain("transform:");
@@ -30,10 +30,10 @@ describe("buildGtkStyles + serializeGtkRule", () => {
     });
 
     it("resets transform to none when transform values disappear", () => {
-        const state = createGtkRenderState();
-        buildGtkStyles(state, { x: 10 });
-        buildGtkStyles(state, {});
-        expect(serializeGtkRule("anim", state)).toContain("transform: none;");
+        const state = createRenderState();
+        buildStyles(state, { x: 10 });
+        buildStyles(state, {});
+        expect(serializeRule("anim", state)).toContain("transform: none;");
     });
 
     it("strips the z component from transform-origin", () => {
@@ -58,10 +58,10 @@ describe("buildGtkStyles + serializeGtkRule", () => {
     });
 
     it("maps visibility hidden to opacity 0", () => {
-        const state = createGtkRenderState();
-        buildGtkStyles(state, { opacity: 0.8 });
+        const state = createRenderState();
+        buildStyles(state, { opacity: 0.8 });
         state.style.visibility = "hidden";
-        const rule = serializeGtkRule("anim", state);
+        const rule = serializeRule("anim", state);
         expect(rule).toContain("opacity: 0;");
         expect(rule).not.toContain("visibility");
         expect(rule).not.toContain("0.8");
@@ -80,8 +80,8 @@ describe("buildGtkStyles + serializeGtkRule", () => {
     });
 
     it("produces CSS that GTK4 parses without error across the supported value set", () => {
-        const state = createGtkRenderState();
-        buildGtkStyles(state, {
+        const state = createRenderState();
+        buildStyles(state, {
             x: 10,
             y: 4,
             scale: 1.2,
@@ -109,7 +109,7 @@ describe("buildGtkStyles + serializeGtkRule", () => {
             filter: "blur(4px)",
             boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.3)",
         });
-        const rule = serializeGtkRule("anim", state);
+        const rule = serializeRule("anim", state);
         expect(parseErrors(rule)).toEqual([]);
     });
 });

@@ -3,7 +3,7 @@ use test_support as helpers;
 use native::ffi::library_cache::FfiCache;
 
 #[test]
-fn gtk_thread_state_default_initializes_correctly() {
+fn thread_state_default_initializes_correctly() {
     helpers::run(|| {
         FfiCache::with(|state| {
             assert!(state.libs.is_empty());

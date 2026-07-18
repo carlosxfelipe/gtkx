@@ -1,21 +1,11 @@
 import "../motion-env.js";
 import * as Gtk from "@gtkx/gi/gtk";
-import { Feature, type VisualElement } from "motion-dom";
 import { rootWidgetOf } from "../bridge/geometry.js";
-import { WidgetProxy } from "../bridge/widget-proxy.js";
+import { WidgetFeature } from "./widget-feature.js";
 
-export class GtkFocusFeature extends Feature<unknown> {
+export class FocusFeature extends WidgetFeature {
     private controller: Gtk.EventControllerFocus | null = null;
     private isActive = false;
-
-    constructor(node: unknown) {
-        super(node as VisualElement<unknown>);
-    }
-
-    private currentProxy(): WidgetProxy | null {
-        const current = this.node.current;
-        return current instanceof WidgetProxy ? current : null;
-    }
 
     private onFocusEnter = (): void => {
         const proxy = this.currentProxy();

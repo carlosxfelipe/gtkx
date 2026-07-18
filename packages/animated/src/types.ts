@@ -6,10 +6,10 @@ import type { DragElastic, MotionNodeOptions, MotionValue, Transition, ViewportO
  * (`backgroundColor`, `borderRadius`, transform keys like `x` or `scale`); values may be
  * static or driven by a {@link MotionValue}.
  */
-export type GtkMotionStyle = Record<string, string | number | MotionValue<string> | MotionValue<number>>;
+export type AnimatedStyle = Record<string, string | number | MotionValue<string> | MotionValue<number>>;
 
 /** A single animatable value: a static value, a keyframe array, or a motion value. */
-export type GtkAnimationValue =
+export type AnimationValue =
     | string
     | number
     | Array<string | number | null>
@@ -17,29 +17,29 @@ export type GtkAnimationValue =
     | MotionValue<string>;
 
 /** An animation target: animatable values keyed by style name. */
-export interface GtkTarget {
-    [key: string]: GtkAnimationValue | Transition | undefined;
+export interface Target {
+    [key: string]: AnimationValue | Transition | undefined;
 }
 
 /** An animation target with an optional per-target transition override. */
-export interface GtkTargetAndTransition extends GtkTarget {
+export interface TargetAndTransition extends Target {
     transition?: Transition;
 }
 
 /** Named variants mapping labels to animation targets. */
-export type GtkVariants = Record<string, GtkTargetAndTransition>;
+export type Variants = Record<string, TargetAndTransition>;
 
 /** A ref to the widget a drag or viewport option measures against. */
-export interface GtkWidgetRef {
+export interface WidgetRef {
     current: Gtk.Widget | null;
 }
 
 /** Pixel offsets from the layout position, as accepted by `dragConstraints`. */
-export type GtkDragConstraintsBox = Exclude<DragElastic, boolean | number>;
+export type DragConstraintsBox = Exclude<DragElastic, boolean | number>;
 
 /** Viewport options for `whileInView`, with `root` measured against a widget rather than a DOM element. */
-export interface GtkViewportOptions extends Omit<ViewportOptions, "root"> {
-    root?: GtkWidgetRef;
+export interface WidgetViewportOptions extends Omit<ViewportOptions, "root"> {
+    root?: WidgetRef;
 }
 
 type OverriddenMotionProps =
@@ -61,16 +61,16 @@ type OverriddenMotionProps =
  * record.
  */
 export interface AnimationProps extends Omit<MotionNodeOptions, OverriddenMotionProps> {
-    initial?: boolean | string | string[] | GtkTarget;
-    animate?: string | string[] | GtkTargetAndTransition;
-    exit?: string | string[] | GtkTargetAndTransition;
-    variants?: GtkVariants;
-    whileHover?: string | GtkTargetAndTransition;
-    whileTap?: string | GtkTargetAndTransition;
-    whileFocus?: string | GtkTargetAndTransition;
-    whileInView?: string | GtkTargetAndTransition;
-    whileDrag?: string | GtkTargetAndTransition;
-    dragConstraints?: false | GtkDragConstraintsBox | GtkWidgetRef;
-    viewport?: GtkViewportOptions;
-    style?: GtkMotionStyle;
+    initial?: boolean | string | string[] | Target;
+    animate?: string | string[] | TargetAndTransition;
+    exit?: string | string[] | TargetAndTransition;
+    variants?: Variants;
+    whileHover?: string | TargetAndTransition;
+    whileTap?: string | TargetAndTransition;
+    whileFocus?: string | TargetAndTransition;
+    whileInView?: string | TargetAndTransition;
+    whileDrag?: string | TargetAndTransition;
+    dragConstraints?: false | DragConstraintsBox | WidgetRef;
+    viewport?: WidgetViewportOptions;
+    style?: AnimatedStyle;
 }

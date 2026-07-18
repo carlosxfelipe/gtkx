@@ -1,9 +1,9 @@
 import "../motion-env.js";
 import { domMax } from "framer-motion";
 import { type MotionNodeOptions, setFeatureDefinitions } from "motion-dom";
-import { GtkWidgetProjectionNode } from "../projection/node.js";
-import { GtkFocusFeature } from "./focus.js";
-import { GtkInViewFeature } from "./in-view.js";
+import { WidgetProjectionNode } from "../projection/node.js";
+import { FocusFeature } from "./focus.js";
+import { InViewFeature } from "./in-view.js";
 
 const hasAny =
     (...keys: (keyof MotionNodeOptions)[]): ((props: MotionNodeOptions) => boolean) =>
@@ -15,7 +15,7 @@ const bundled = <T>(feature: T | undefined, slot: string): T => {
     return feature;
 };
 
-export const registerGtkFeatures = (): void => {
+export const registerFeatures = (): void => {
     setFeatureDefinitions({
         animation: {
             isEnabled: hasAny(
@@ -39,10 +39,10 @@ export const registerGtkFeatures = (): void => {
             isEnabled: hasAny("whileTap", "onTap", "onTapStart", "onTapCancel"),
             Feature: bundled(domMax.tap?.Feature, "tap"),
         },
-        focus: { isEnabled: hasAny("whileFocus"), Feature: GtkFocusFeature },
+        focus: { isEnabled: hasAny("whileFocus"), Feature: FocusFeature },
         inView: {
             isEnabled: hasAny("whileInView", "onViewportEnter", "onViewportLeave"),
-            Feature: GtkInViewFeature,
+            Feature: InViewFeature,
         },
         pan: {
             isEnabled: hasAny("onPan", "onPanStart", "onPanSessionStart", "onPanEnd"),
@@ -51,15 +51,15 @@ export const registerGtkFeatures = (): void => {
         drag: {
             isEnabled: hasAny("drag", "dragControls"),
             Feature: bundled(domMax.drag?.Feature, "drag"),
-            ProjectionNode: GtkWidgetProjectionNode,
+            ProjectionNode: WidgetProjectionNode,
             MeasureLayout: bundled(domMax.drag?.MeasureLayout, "drag MeasureLayout"),
         },
         layout: {
             isEnabled: hasAny("layout", "layoutId"),
-            ProjectionNode: GtkWidgetProjectionNode,
+            ProjectionNode: WidgetProjectionNode,
             MeasureLayout: bundled(domMax.layout?.MeasureLayout, "layout MeasureLayout"),
         },
     });
 };
 
-registerGtkFeatures();
+registerFeatures();

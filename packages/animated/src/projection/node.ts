@@ -13,7 +13,7 @@ const scrollOffsetsOf = (widget: Gtk.Widget): Point2D => {
     return { x: 0, y: 0 };
 };
 
-const GtkWidgetProjectionNodeBase: ReturnType<typeof createProjectionNode<WidgetProxy>> =
+const WidgetProjectionNodeBase: ReturnType<typeof createProjectionNode<WidgetProxy>> =
     createProjectionNode<WidgetProxy>({
         measureScroll: (proxy) => scrollOffsetsOf(proxy.widget),
         checkIsScrollRoot: () => false,
@@ -21,7 +21,7 @@ const GtkWidgetProjectionNodeBase: ReturnType<typeof createProjectionNode<Widget
         defaultParent: () => getRootProjectionNode(),
     });
 
-export class GtkWidgetProjectionNode extends GtkWidgetProjectionNodeBase {
+export class WidgetProjectionNode extends WidgetProjectionNodeBase {
     override willUpdate(shouldNotifyListeners?: boolean): void {
         if (this.isLayoutDirty && !this.snapshot) this.isLayoutDirty = false;
         super.willUpdate(shouldNotifyListeners);

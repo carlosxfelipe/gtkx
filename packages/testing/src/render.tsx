@@ -4,6 +4,7 @@ import {
     createReconcilerRoot,
     isRootElement,
     type ReconcilerRoot,
+    scheduleAfterLayout,
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
@@ -31,33 +32,11 @@ const activeRenders = new Set<ActiveRender>();
 
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
-const LAYOUT_FLUSH_FALLBACK_MS = 500;
 
-const flushLayout = (window: Gtk.Window | null): Promise<void> => {
-    if (window === null || window.getFrameClock() === null || window.getWidth() > 0) return Promise.resolve();
-    return new Promise((resolve) => {
-        let done = false;
-        let cleanup: (() => void) | null = null;
-        const finish = (): void => {
-            if (done) return;
-            done = true;
-            cleanup?.();
-            resolve();
-        };
-        const fallback = setTimeout(finish, LAYOUT_FLUSH_FALLBACK_MS);
-        const tickId = window.addTickCallback(() => {
-            if (window.getWidth() === 0) return true;
-            clearTimeout(fallback);
-            cleanup = null;
-            finish();
-            return false;
-        });
-        cleanup = () => {
-            clearTimeout(fallback);
-            window.removeTickCallback(tickId);
-        };
+const flushLayout = (window: Gtk.Window | null): Promise<void> =>
+    new Promise((resolve) => {
+        scheduleAfterLayout(window, resolve, { settled: (widget) => widget.getWidth() > 0 });
     });
-};
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
     await runInAct(() => {

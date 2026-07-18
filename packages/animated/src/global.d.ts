@@ -1,7 +1,7 @@
-import type { GtkMotionWindow } from "./motion-env.js";
+import type { MotionWindow } from "./motion-env.js";
 
 declare global {
-    var window: GtkMotionWindow;
+    var window: MotionWindow;
     var document: object;
     var requestAnimationFrame: (callback: (time: number) => void) => number;
     var cancelAnimationFrame: (handle: number) => void;

@@ -22,13 +22,13 @@ export { pointerEventFromController } from "./bridge/pointer-event.js";
 export { type DragControlOptions, type DragControls, useDragControls } from "./drag-controls.js";
 export type { SyntheticEvent } from "./motion-env.js";
 export type {
+    AnimatedStyle,
     AnimationProps,
-    GtkAnimationValue,
-    GtkDragConstraintsBox,
-    GtkMotionStyle,
-    GtkTarget,
-    GtkTargetAndTransition,
-    GtkVariants,
-    GtkViewportOptions,
-    GtkWidgetRef,
+    AnimationValue,
+    DragConstraintsBox,
+    Target,
+    TargetAndTransition,
+    Variants,
+    WidgetRef,
+    WidgetViewportOptions,
 } from "./types.js";
