@@ -135,7 +135,7 @@ The `runWithTimeout` example above hits exactly that first case: when the deadli
 
 Codegen promisifies a call in either of these shapes. The classic GIO shape ends in `_async` with a matching `_finish` sibling, like `g_file_load_contents_async` plus `g_file_load_contents_finish`. The GTK4 dialog shape takes an `AsyncReadyCallback` and has a `_finish` sibling without the suffix, like `gtk_file_dialog_open` plus `gtk_file_dialog_open_finish`.
 
-These conditions keep it honest. The initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter. The `_finish` sibling must consume only the `GAsyncResult` the callback delivers, so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
+These conditions are strict. The initiating call must take exactly one `AsyncReadyCallback` and no other callback parameter. The `_finish` sibling must consume only the `GAsyncResult` the callback delivers, so the promise can supply it. Calls ending in `_finish` are never promisified themselves.
 
 A few shapes fall outside that rule and keep their raw callback form.
 

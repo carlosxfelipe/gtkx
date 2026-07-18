@@ -46,6 +46,15 @@ function runCapture(command: string, args: string[]): Promise<string> {
     });
 }
 
+function createGtkxVersion(): string {
+    const manifestPath = join(PACKAGES_DIR, "create-gtkx", "package.json");
+    const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (typeof manifest.version !== "string") {
+        throw new Error(`create-gtkx has no version in ${manifestPath}`);
+    }
+    return manifest.version;
+}
+
 function publishablePackageNames(): string[] {
     const names: string[] = [];
     for (const entry of readdirSync(PACKAGES_DIR)) {
@@ -122,7 +131,7 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
     const language = variant.typescript ? "TypeScript" : "JavaScript";
     const scaffoldArgs = [
         "create",
-        "gtkx",
+        `gtkx@${createGtkxVersion()}`,
         variant.appName,
         "--",
         "--application-id",

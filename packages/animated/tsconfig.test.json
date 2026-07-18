@@ -1,6 +1,9 @@
 {
     "extends": "../../tsconfig.test.json",
-    "include": ["${configDir}/tests/**/*.ts", "${configDir}/tests/**/*.tsx", "${configDir}/src/global.d.ts"],
+    "compilerOptions": {
+        "exactOptionalPropertyTypes": false,
+        "lib": ["esnext", "dom"]
+    },
     "references": [
         {
             "path": "./tsconfig.lib.json"
@@ -12,7 +15,7 @@
             "path": "../react/tsconfig.lib.json"
         },
         {
-            "path": "../utils/tsconfig.lib.json"
+            "path": "../testing/tsconfig.lib.json"
         },
         {
             "path": "../vitest/tsconfig.lib.json"

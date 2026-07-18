@@ -270,7 +270,7 @@ const updateTask = (id: string, fields: Partial<Pick<Task, "title" | "notes" | "
     patch(id, fields);
 ```
 
-`setDone` and `toggleDone` go through `withDone` to keep the completion timestamp honest. `updateTask` is the editor's catch-all: its `fields` type is narrowed to just the user-editable fields, so the form cannot accidentally patch `done` or `position`.
+`setDone` and `toggleDone` go through `withDone` to keep the completion timestamp in sync. `updateTask` is the editor's catch-all: its `fields` type is narrowed to just the user-editable fields, so the form cannot accidentally patch `done` or `position`.
 
 ### Trash, restore, delete
 

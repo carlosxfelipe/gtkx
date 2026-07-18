@@ -1,123 +1,182 @@
-import "./motion-env.js";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type {
+    AnyResolvedKeyframe,
+    Box,
+    CreateVisualElement,
+    IProjectionNode,
+    MotionProps,
+    MotionValue,
+    ResolvedValues,
+} from "motion/react";
 import {
-    type AnyResolvedKeyframe,
+    buildHTMLStyles,
+    convertBoundingBoxToBox,
     createBox,
     defaultTransformValue,
     isMotionValue,
-    type MotionNodeOptions,
-    type MotionStyle,
-    type MotionValue,
-    type ResolvedValues,
-    removeAxisDelta,
     scrapeHTMLMotionValuesFromProps,
+    transformBox,
     transformProps,
     VisualElement,
-} from "motion-dom";
-import { animationStyleSheet } from "./animation-css-provider.js";
-import { rootWidgetOf } from "./bridge/geometry.js";
-import type { AppliedProjectionDelta, WidgetProxy } from "./bridge/widget-proxy.js";
-import { buildStyles, type RenderState, serializeRule } from "./build-styles.js";
+} from "motion/react";
+import type { MotionStyle } from "motion-dom";
+import { buildDeclarations, styleRegistry } from "./style-registry.js";
 
-export interface WidgetVisualElementOptions {
-    className: string;
-}
-
-interface StyledProps extends MotionNodeOptions {
-    style?: MotionStyle;
-}
-
-interface ProjectionStyles {
-    applyProjectionStyles(targetStyle: ResolvedValues, styleProp?: MotionStyle): void;
-    projectionDelta?: AppliedProjectionDelta;
-}
-
-type Box = ReturnType<typeof createBox>;
-
-const styleOf = (props: MotionNodeOptions): MotionStyle | undefined => (props as StyledProps).style;
-
-const isIdentityDelta = (delta: AppliedProjectionDelta): boolean =>
-    delta.x.translate === 0 && delta.y.translate === 0 && delta.x.scale === 1 && delta.y.scale === 1;
-
-const recordAppliedProjection = (instance: WidgetProxy, projection?: ProjectionStyles): void => {
-    const delta = projection?.projectionDelta;
-    if (!delta || isIdentityDelta(delta)) {
-        instance.appliedProjectionDelta = null;
-        return;
-    }
-    instance.appliedProjectionDelta = {
-        x: { ...delta.x },
-        y: { ...delta.y },
-    };
+export type GtkRenderState = {
+    style: ResolvedValues;
+    transform: ResolvedValues;
+    transformOrigin: { originX?: string; originY?: string; originZ?: string };
+    vars: Record<string, string | number>;
 };
 
-export class WidgetVisualElement extends VisualElement<WidgetProxy, RenderState, WidgetVisualElementOptions> {
-    type = "gtk";
+export const createRenderState = (): GtkRenderState => ({
+    style: {},
+    transform: {},
+    transformOrigin: {},
+    vars: {},
+});
 
-    sortInstanceNodePosition(): number {
-        return 0;
+export const measureWidgetBounds = (widget: Gtk.Widget): Box => {
+    const root = widget.getRoot();
+    if (!root) return createBox();
+    const [contained, rect] = widget.computeBounds(root as unknown as Gtk.Widget);
+    if (!contained) return createBox();
+    const x = rect.getX();
+    const y = rect.getY();
+    return convertBoundingBoxToBox({ left: x, top: y, right: x + rect.getWidth(), bottom: y + rect.getHeight() });
+};
+
+const widgetPath = (widget: Gtk.Widget): Gtk.Widget[] => {
+    const path: Gtk.Widget[] = [];
+    let current: Gtk.Widget | null = widget;
+    while (current) {
+        path.unshift(current);
+        current = current.getParent();
     }
+    return path;
+};
 
-    measureInstanceViewportBox(instance: WidgetProxy): Box {
-        const widget = instance.widget;
-        const [ok, rect] = widget.computeBounds(rootWidgetOf(widget));
-        if (!ok) return createBox();
-        const box: Box = {
-            x: { min: rect.getX(), max: rect.getX() + rect.getWidth() },
-            y: { min: rect.getY(), max: rect.getY() + rect.getHeight() },
-        };
-        const applied = instance.appliedProjectionDelta;
-        if (applied) {
-            removeAxisDelta(box.x, applied.x.translate, applied.x.scale, applied.x.origin);
-            removeAxisDelta(box.y, applied.y.translate, applied.y.scale, applied.y.origin);
+export const compareWidgetOrder = (a: Gtk.Widget, b: Gtk.Widget): number => {
+    if (a === b) return 0;
+    const pathA = widgetPath(a);
+    const pathB = widgetPath(b);
+    const length = Math.min(pathA.length, pathB.length);
+    for (let depth = 0; depth < length; depth += 1) {
+        if (pathA[depth] === pathB[depth]) continue;
+        if (depth === 0) return 0;
+        let sibling = pathA[depth]?.getNextSibling() ?? null;
+        while (sibling) {
+            if (sibling === pathB[depth]) return -1;
+            sibling = sibling.getNextSibling();
         }
-        return box;
+        return 1;
     }
+    return pathA.length < pathB.length ? -1 : 1;
+};
 
-    getBaseTargetFromProps(props: MotionNodeOptions, key: string): AnyResolvedKeyframe | MotionValue | undefined {
-        return styleOf(props)?.[key];
+const applyCanTarget = (instance: Gtk.Widget, output: Record<string, string | number>): void => {
+    const pointerEvents = output.pointerEvents;
+    delete output.pointerEvents;
+    if (pointerEvents !== undefined) {
+        instance.setCanTarget(pointerEvents !== "none");
     }
+};
 
-    readValueFromInstance(instance: WidgetProxy, key: string): AnyResolvedKeyframe | null | undefined {
-        if (key === "opacity") return instance.widget.opacity;
+export class GtkVisualElement extends VisualElement<Gtk.Widget, GtkRenderState, Record<string, never>> {
+    type = "gtk";
+    styleClass: string | null = null;
+    private childSubscription: VoidFunction | undefined;
+
+    readValueFromInstance(instance: Gtk.Widget, key: string): AnyResolvedKeyframe | null | undefined {
         if (transformProps.has(key)) return defaultTransformValue(key);
+        if (key === "opacity") return instance.getOpacity();
         return undefined;
     }
 
-    removeValueFromRenderState(key: string, renderState: RenderState): void {
-        delete renderState.vars[key];
+    getBaseTargetFromProps(props: MotionProps, key: string): AnyResolvedKeyframe | MotionValue | undefined {
+        const style = props.style as Record<string, AnyResolvedKeyframe | MotionValue> | undefined;
+        return style ? style[key] : undefined;
+    }
+
+    sortInstanceNodePosition(a: Gtk.Widget, b: Gtk.Widget): number {
+        return compareWidgetOrder(a, b);
+    }
+
+    measureInstanceViewportBox(instance: Gtk.Widget): Box {
+        const box = measureWidgetBounds(instance);
+        transformBox(box, this.latestValues);
+        return box;
+    }
+
+    removeValueFromRenderState(key: string, renderState: GtkRenderState): void {
         delete renderState.style[key];
-    }
-
-    build(renderState: RenderState, latestValues: ResolvedValues, props: MotionNodeOptions): void {
-        const style = styleOf(props);
-        let merged = latestValues;
-        if (style) {
-            merged = {};
-            for (const key in style) {
-                const value = style[key];
-                if (value !== undefined && !isMotionValue(value)) merged[key] = value;
-            }
-            Object.assign(merged, latestValues);
-        }
-        buildStyles(renderState, merged);
-    }
-
-    renderInstance(
-        instance: WidgetProxy,
-        renderState: RenderState,
-        styleProp?: MotionStyle,
-        projection?: ProjectionStyles,
-    ): void {
-        projection?.applyProjectionStyles(renderState.style, styleProp);
-        recordAppliedProjection(instance, projection);
-        animationStyleSheet.set(this.options.className, serializeRule(this.options.className, renderState));
+        delete renderState.vars[key];
     }
 
     override scrapeMotionValuesFromProps(
-        props: MotionNodeOptions,
-        prevProps: MotionNodeOptions,
+        props: MotionProps,
+        prevProps: MotionProps,
         visualElement?: VisualElement,
     ): { [key: string]: MotionValue | AnyResolvedKeyframe } {
         return scrapeHTMLMotionValuesFromProps(props, prevProps, visualElement);
     }
+
+    build(renderState: GtkRenderState, latestValues: ResolvedValues, props: MotionProps): void {
+        buildHTMLStyles(renderState, latestValues, props.transformTemplate);
+    }
+
+    renderInstance(
+        instance: Gtk.Widget,
+        renderState: GtkRenderState,
+        styleProp?: MotionStyle,
+        projection?: IProjectionNode,
+    ): void {
+        const output: Record<string, string | number> = {};
+        if (styleProp) {
+            for (const key in styleProp) {
+                const value = (styleProp as Record<string, unknown>)[key];
+                if (value === undefined || value === null || isMotionValue(value)) continue;
+                output[key] = value as string | number;
+            }
+        }
+        Object.assign(output, renderState.vars, renderState.style);
+        projection?.applyProjectionStyles(output as unknown as CSSStyleDeclaration, styleProp);
+        applyCanTarget(instance, output);
+        let className = this.styleClass;
+        if (className === null) {
+            className = styleRegistry.allocateClass();
+            this.styleClass = className;
+            instance.addCssClass(className);
+        }
+        styleRegistry.setRule(className, buildDeclarations(output));
+    }
+
+    override handleChildMotionValue(): void {
+        if (this.childSubscription) {
+            this.childSubscription();
+            this.childSubscription = undefined;
+        }
+        const { children } = this.props as { children?: unknown };
+        if (isMotionValue(children)) {
+            this.childSubscription = children.on("change", (latest) => {
+                const instance = this.current;
+                if (instance && "label" in instance) Reflect.set(instance, "label", String(latest));
+            });
+        }
+    }
+
+    override unmount(): void {
+        if (this.styleClass !== null) {
+            styleRegistry.removeRule(this.styleClass);
+            this.current?.removeCssClass(this.styleClass);
+            this.styleClass = null;
+        }
+        super.unmount();
+    }
 }
+
+export const createGtkVisualElement: CreateVisualElement = (_Component, options) =>
+    new GtkVisualElement(
+        options as unknown as ConstructorParameters<typeof GtkVisualElement>[0],
+        {},
+    ) as unknown as ReturnType<CreateVisualElement>;

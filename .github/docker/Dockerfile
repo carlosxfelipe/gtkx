@@ -76,8 +76,14 @@ COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
 ARG NODE24_VERSION=24.18.0
+ARG TARGETARCH
 RUN set -eux \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.xz" \
+    && case "${TARGETARCH}" in \
+        amd64) node_arch=x64 ;; \
+        arm64) node_arch=arm64 ;; \
+        *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-${node_arch}.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \
     && node --version | grep -q "v${NODE24_VERSION}"
 

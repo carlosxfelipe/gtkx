@@ -1,15 +1,16 @@
 {
     "name": "@gtkx/animated",
     "version": "1.0.0-rc.1",
-    "description": "Framer Motion-powered animation for GTKX: the animated factory, AnimatePresence, gestures, drag, and layout animations rendered as GTK4 CSS",
+    "description": "Motion (framer-motion) for GTKX: animated widgets, presence-aware enter and exit, gestures, drag, and layout animations for GTK4",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
-        "framer-motion",
-        "motion",
-        "animation",
+        "adwaita",
         "react",
+        "motion",
+        "framer-motion",
+        "animation",
         "linux",
         "desktop"
     ],
@@ -34,10 +35,10 @@
         }
     },
     "sideEffects": [
-        "./src/motion-env.ts",
-        "./dist/motion-env.js",
-        "./src/features/register.ts",
-        "./dist/features/register.js"
+        "./src/environment.ts",
+        "./src/bootstrap.ts",
+        "./dist/environment.js",
+        "./dist/bootstrap.js"
     ],
     "files": [
         "dist",
@@ -55,7 +56,7 @@
         "@gtkx/css": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "framer-motion": "^12.42.2",
+        "motion": "^12.42.2",
         "motion-dom": "^12.42.2"
     },
     "devDependencies": {

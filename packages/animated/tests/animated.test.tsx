@@ -1,122 +1,257 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-import { render as baseRender, screen, waitFor } from "@gtkx/testing";
-import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnimatePresence, animated } from "../src/index.js";
+import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { act, render, screen, waitFor } from "@gtkx/testing";
+import { createRef } from "react";
+import { describe, expect, it, vi } from "vitest";
+import type { DragControls } from "../src/index.js";
+import { AnimatePresence, animated, motionValue, pointerEventFromController, useDragControls } from "../src/index.js";
+import { buildDeclarations } from "../src/style-registry.js";
 
-const render = (element: ReactNode) => baseRender(element, { animations: true });
+const motionControllersOf = (widget: Gtk.Widget): Gtk.EventControllerMotion[] => {
+    const found: Gtk.EventControllerMotion[] = [];
+    const controllers = widget.observeControllers();
+    for (let index = 0; index < controllers.getNItems(); index += 1) {
+        const controller = controllers.getItem(index);
+        if (controller instanceof Gtk.EventControllerMotion) found.push(controller);
+    }
+    return found;
+};
 
-describe("animated components", () => {
-    afterEach(() => {
-        vi.restoreAllMocks();
+const animClassOf = (widget: Gtk.Widget): string | undefined =>
+    widget.getCssClasses().find((name) => name.startsWith("gtkx-anim-"));
+
+const lastRuleFor = (spy: ReturnType<typeof vi.spyOn>, className: string): string | undefined => {
+    for (let index = spy.mock.calls.length - 1; index >= 0; index -= 1) {
+        const css = spy.mock.calls[index]?.[0] as string;
+        const rule = css.split("\n").find((line) => line.startsWith(`.${className} `));
+        if (rule) return rule;
+    }
+    return undefined;
+};
+
+describe("buildDeclarations", () => {
+    it("translates style keys into GTK4 CSS declarations", () => {
+        expect(buildDeclarations({ backgroundColor: "red", opacity: 0.5, borderRadius: 4 })).toBe(
+            "background-color: red;opacity: 0.5;border-radius: 4px;",
+        );
     });
 
-    it("memoizes wrappers per component and per intrinsic name", () => {
-        const Component = (): null => null;
-        expect(animated.create(Component)).toBe(animated.create(Component));
-        expect(animated.GtkLabel).toBe(animated.GtkLabel);
-        expect(animated.GtkLabel).not.toBe(animated.GtkButton);
+    it("keeps only the 2D components of transform-origin", () => {
+        expect(buildDeclarations({ transformOrigin: "50% 50% 0" })).toBe("transform-origin: 50% 50%;");
     });
 
-    it("runs an enter animation through the CSS sheet", async () => {
-        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-        const onStart = vi.fn();
-        const onComplete = vi.fn();
+    it("drops properties GTK4 CSS does not support", () => {
+        expect(buildDeclarations({ width: 100, position: "absolute", transform: "translateX(2px)" })).toBe(
+            "transform: translateX(2px);",
+        );
+    });
+
+    it("maps hidden visibility to zero opacity", () => {
+        expect(buildDeclarations({ visibility: "hidden" })).toBe("opacity: 0;");
+        expect(buildDeclarations({ visibility: "visible" })).toBe("");
+    });
+
+    it("passes CSS variables through untouched", () => {
+        expect(buildDeclarations({ "--accent": "#ff0000" })).toBe("--accent: #ff0000;");
+    });
+});
+
+describe("animated", () => {
+    it("animates opacity from initial to animate", async () => {
+        const spy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        const ref = createRef<Gtk.Label | null>();
+        const completed = vi.fn();
+
         await render(
             <animated.GtkLabel
+                ref={ref}
+                label="fade"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.1 }}
-                onAnimationStart={onStart}
-                onAnimationComplete={onComplete}
-            >
-                Enter
-            </animated.GtkLabel>,
+                transition={{ duration: 0.05 }}
+                onAnimationComplete={completed}
+            />,
+            { animations: true },
         );
-        await screen.findByText("Enter");
-        await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
-        expect(onStart).toHaveBeenCalled();
-        const sheets = loadSpy.mock.calls.map((call) => String(call[0]));
-        expect(sheets.some((css) => css.includes("gtkx-anim") && css.includes("opacity"))).toBe(true);
+
+        const widget = screen.getByText("fade");
+        await waitFor(() => expect(completed).toHaveBeenCalled());
+        const className = animClassOf(widget);
+        expect(className).toBeDefined();
+        await waitFor(() => {
+            expect(lastRuleFor(spy, className as string)).toContain("opacity: 1");
+        });
     });
 
-    it("animates when the animate prop changes", async () => {
-        const onComplete = vi.fn();
-        const view = (x: number): ReactNode => (
-            <animated.GtkLabel animate={{ x }} transition={{ duration: 0.05 }} onAnimationComplete={onComplete}>
-                Move
-            </animated.GtkLabel>
-        );
-        const { rerender } = await render(view(0));
-        await screen.findByText("Move");
-        rerender(view(40));
-        await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
-    });
+    it("renders transforms as GTK CSS transform functions", async () => {
+        const spy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        const completed = vi.fn();
 
-    it("propagates variants from parent to child", async () => {
-        const onComplete = vi.fn();
-        const parentVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
-        const childVariants = { hidden: { x: -10 }, visible: { x: 0 } };
         await render(
-            <animated.GtkBox initial="hidden" animate="visible" variants={parentVariants}>
-                <animated.GtkLabel
-                    variants={childVariants}
-                    transition={{ duration: 0.05 }}
-                    onAnimationComplete={onComplete}
+            <animated.GtkLabel
+                label="move"
+                initial={{ x: 0 }}
+                animate={{ x: 40, scale: 1.5 }}
+                transition={{ duration: 0.05 }}
+                onAnimationComplete={completed}
+            />,
+            { animations: true },
+        );
+
+        const widget = screen.getByText("move");
+        await waitFor(() => expect(completed).toHaveBeenCalled());
+        const className = animClassOf(widget) as string;
+        await waitFor(() => {
+            const rule = lastRuleFor(spy, className);
+            expect(rule).toContain("translateX(40px)");
+            expect(rule).toContain("scale(1.5)");
+        });
+    });
+
+    it("applies static style values through the stylesheet", async () => {
+        const spy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+
+        await render(<animated.GtkLabel label="styled" style={{ backgroundColor: "rgb(255,0,0)" }} />, {
+            animations: true,
+        });
+
+        const widget = screen.getByText("styled");
+        await waitFor(() => {
+            const className = animClassOf(widget) as string;
+            expect(lastRuleFor(spy, className)).toContain("background-color: rgb(255,0,0)");
+        });
+    });
+
+    it("drives motion values passed through style", async () => {
+        const spy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        const opacity = motionValue(0.25);
+
+        await render(<animated.GtkLabel label="valued" style={{ opacity }} />, { animations: true });
+
+        const widget = screen.getByText("valued");
+        await waitFor(() => {
+            const className = animClassOf(widget) as string;
+            expect(lastRuleFor(spy, className)).toContain("opacity: 0.25");
+        });
+
+        opacity.set(0.75);
+        await waitFor(() => {
+            const className = animClassOf(widget) as string;
+            expect(lastRuleFor(spy, className)).toContain("opacity: 0.75");
+        });
+    });
+
+    it("wraps arbitrary components through animated.create", async () => {
+        const AnimatedButton = animated.create(GtkButton);
+        const completed = vi.fn();
+
+        await render(
+            <AnimatedButton
+                label="press"
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.05 }}
+                onAnimationComplete={completed}
+            />,
+            { animations: true },
+        );
+
+        const widget = screen.getByRole(Gtk.AccessibleRole.BUTTON);
+        await waitFor(() => expect(completed).toHaveBeenCalled());
+        expect(animClassOf(widget)).toBeDefined();
+    });
+
+    it("runs exit animations through AnimatePresence", async () => {
+        const exited = vi.fn();
+
+        const App = ({ show }: { show: boolean }) => (
+            <AnimatePresence onExitComplete={exited}>
+                {show ? (
+                    <animated.GtkLabel
+                        key="content"
+                        label="leaving"
+                        initial={false}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.05 }}
+                    />
+                ) : null}
+            </AnimatePresence>
+        );
+
+        const { rerender } = await render(<App show={true} />, { animations: true });
+        expect(screen.getByText("leaving")).toBeDefined();
+
+        await rerender(<App show={false} />);
+        await waitFor(() => expect(exited).toHaveBeenCalled());
+        expect(screen.queryByText("leaving")).toBeNull();
+    });
+
+    it("starts drags from drag controls with pointer tracking on the window", async () => {
+        const x = motionValue(0);
+        const boxRef = createRef<Gtk.Box | null>();
+        let controls: DragControls | null = null;
+
+        const Fixture = () => {
+            controls = useDragControls();
+            return (
+                <animated.GtkBox
+                    ref={boxRef}
+                    drag="x"
+                    _dragX={x}
+                    dragControls={controls}
+                    dragListener={false}
+                    dragMomentum={false}
                 >
-                    Child
-                </animated.GtkLabel>
-            </animated.GtkBox>,
-        );
-        await screen.findByText("Child");
-        await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
+                    <GtkLabel label="handle-target" />
+                </animated.GtkBox>
+            );
+        };
+
+        await render(<Fixture />, { animations: true });
+        const widget = boxRef.current as Gtk.Box;
+        const root = widget.getRoot() as unknown as Gtk.Widget;
+        const preexisting = new Set(motionControllersOf(root));
+
+        act(() => {
+            controls?.start({ pageX: 5, pageY: 5 } as PointerEvent);
+        });
+        const motionController = motionControllersOf(root).find((controller) => !preexisting.has(controller));
+        expect(motionController).toBeDefined();
+
+        act(() => {
+            motionController?.emit("motion", 65, 5);
+        });
+        await waitFor(() => expect(x.get()).toBeCloseTo(60));
+
+        act(() => {
+            controls?.cancel();
+        });
+        expect(motionControllersOf(root)).toHaveLength(preexisting.size);
     });
 
-    it("plays exit animations before AnimatePresence removes a child", async () => {
-        const onExitComplete = vi.fn();
-        const view = (show: boolean): ReactNode => (
-            <GtkBox>
-                <AnimatePresence onExitComplete={onExitComplete}>
-                    {show ? (
-                        <animated.GtkLabel
-                            key="toast"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.05 }}
-                        >
-                            Toast
-                        </animated.GtkLabel>
-                    ) : null}
-                </AnimatePresence>
-                <GtkLabel>Anchor</GtkLabel>
-            </GtkBox>
-        );
-        const { rerender } = await render(view(true));
-        await screen.findByText("Toast");
-        rerender(view(false));
-        await waitFor(() => expect(onExitComplete).toHaveBeenCalledTimes(1), { timeout: 2000 });
-        await waitFor(() => expect(screen.queryByText("Toast")).toBeNull());
+    it("converts a controller into a pointer event for dragControls.start", async () => {
+        const ref = createRef<Gtk.Button | null>();
+        await render(<animated.GtkButton ref={ref} label="handle" animate={{ opacity: 1 }} />, { animations: true });
+        const widget = ref.current as Gtk.Button;
+        const gesture = new Gtk.GestureDrag();
+        widget.addController(gesture);
+
+        const event = pointerEventFromController(gesture);
+        expect(event.target).toBe(widget);
+        expect(typeof event.pageX).toBe("number");
+        expect(typeof event.pageY).toBe("number");
     });
 
-    it("removes exiting children promptly when animations are disabled", async () => {
-        const view = (show: boolean): ReactNode => (
-            <GtkBox>
-                <AnimatePresence>
-                    {show ? (
-                        <animated.GtkLabel key="gone" exit={{ opacity: 0, transition: { duration: 5 } }}>
-                            Gone
-                        </animated.GtkLabel>
-                    ) : null}
-                </AnimatePresence>
-                <GtkLabel>Stay</GtkLabel>
-            </GtkBox>
-        );
-        const { rerender } = await baseRender(view(true));
-        await screen.findByText("Gone");
-        rerender(view(false));
-        await waitFor(() => expect(screen.queryByText("Gone")).toBeNull(), { timeout: 2000 });
-        expect(screen.queryByText("Stay")).not.toBeNull();
+    it("forwards widget props and refs untouched", async () => {
+        const ref = createRef<Gtk.Button | null>();
+        const onClicked = vi.fn();
+
+        await render(<animated.GtkButton ref={ref} label="real" onClicked={onClicked} animate={{ opacity: 1 }} />, {
+            animations: true,
+        });
+
+        expect(ref.current).toBeInstanceOf(Gtk.Button);
+        ref.current?.emit("clicked");
+        expect(onClicked).toHaveBeenCalled();
     });
 });

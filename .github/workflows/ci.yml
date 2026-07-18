@@ -39,9 +39,73 @@ jobs:
               - '**'
               - '!**/*.md'
 
+  # The image is built once per architecture on a native runner (QEMU emulation
+  # would have to compile weston and cargo-llvm-cov, which blows any sane budget)
+  # and the per-arch digests are merged into one manifest list by `image-manifest`.
+  # arm64 exists for publish.yml's native addon build on ubuntu-24.04-arm.
   image:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        if: &can-push github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push CI image by digest
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .github/docker
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=image,name=ghcr.io/gtkx-org/gtkx-ci,push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+          cache-from: type=gha,scope=ci-image-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=ci-image-${{ matrix.arch }}
+
+      - name: Export the digest
+        if: *can-push
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+
+      - name: Upload the digest
+        if: *can-push
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-image-digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Always runs so downstream jobs get `ref` even on fork PRs, where nothing was
+  # pushed and `pull-image` falls back to building the Dockerfile locally.
+  image-manifest:
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: write
@@ -55,39 +119,47 @@ jobs:
         id: meta
         run: |
           ref="ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}"
-          tags="$ref"
+          tags="--tag $ref"
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            tags=$(printf '%s\n%s' "$ref" "ghcr.io/gtkx-org/gtkx-ci:latest")
+            tags="$tags --tag ghcr.io/gtkx-org/gtkx-ci:latest"
           fi
           {
             echo "ref=$ref"
-            echo "tags<<EOF"
-            echo "$tags"
-            echo "EOF"
+            echo "tags=$tags"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - name: Download the per-arch digests
+        if: *can-push
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: ci-image-digest-*
+          merge-multiple: true
+          path: /tmp/digests
 
       - name: Log in to GHCR
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: *can-push
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push CI image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .github/docker
-          push: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=ci-image
-          cache-to: type=gha,mode=max,scope=ci-image
+      - name: Merge the digests into a multi-arch manifest list
+        if: *can-push
+        shell: bash
+        working-directory: /tmp/digests
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          REF: ${{ steps.meta.outputs.ref }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2046,SC2086
+          docker buildx imagetools create $TAGS \
+            $(printf 'ghcr.io/gtkx-org/gtkx-ci@sha256:%s ' *)
+          docker buildx imagetools inspect "$REF"
 
   lint:
-    needs: [changes, image]
+    needs: [changes, image-manifest]
     if: &code-changed needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -99,10 +171,10 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm lint
-          image-ref: ${{ needs.image.outputs.ref }}
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
 
   test:
-    needs: [changes, image]
+    needs: [changes, image-manifest]
     if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -114,10 +186,10 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm test
-          image-ref: ${{ needs.image.outputs.ref }}
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
 
   typecheck:
-    needs: [changes, image]
+    needs: [changes, image-manifest]
     if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -129,10 +201,10 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm typecheck
-          image-ref: ${{ needs.image.outputs.ref }}
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
 
   publish-e2e:
-    needs: [changes, image]
+    needs: [changes, image-manifest]
     if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 50
@@ -144,7 +216,7 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm release-e2e
-          image-ref: ${{ needs.image.outputs.ref }}
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Publish to Verdaccio, then install, build, and run the tutorial app
         uses: ./.github/actions/run-in-container
@@ -177,7 +249,7 @@ jobs:
             apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev gobject-introspection libgirepository1.0-dev >/dev/null
             cp /usr/share/gir-1.0/*.gir /gir/
           '
-          echo "GIR files: $(ls gir | wc -l)"
+          echo "GIR files: $(find gir -type f -name '*.gir' | wc -l)"
 
       - name: Upload the GIR artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

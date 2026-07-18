@@ -26,7 +26,9 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # Budgeted for `pull-image`'s fallback build, which compiles weston from
+    # source when the release commit's image tag is absent from GHCR.
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -35,6 +37,7 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm turbo run build --filter=@gtkx/native
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
 
       - name: Upload native binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -73,3 +76,4 @@ jobs:
         with:
           command: pnpm release
           extra-env: NPM_CONFIG_PROVENANCE
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}

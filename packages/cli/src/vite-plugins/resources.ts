@@ -118,8 +118,7 @@ const reregisterDevBundle = async (state: PluginState): Promise<void> => {
     mod.__refresh?.();
 };
 
-const scanDataAssets = (dataDir: string): ListedFile[] =>
-    listFilesRecursive(dataDir, (name) => ASSET_RE.test(name));
+const scanDataAssets = (dataDir: string): ListedFile[] => listFilesRecursive(dataDir, (name) => ASSET_RE.test(name));
 
 const primeDevBundle = (state: PluginState): void => {
     if (state.dataDir === null) return;

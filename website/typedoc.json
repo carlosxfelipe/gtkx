@@ -22,6 +22,7 @@
         "skipErrorChecking": true,
         "readme": "none"
     },
+    "sanitizeComments": true,
     "out": "reference",
     "docsRoot": ".",
     "readme": "./.vitepress/reference-intro.md",

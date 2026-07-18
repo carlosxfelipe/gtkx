@@ -112,7 +112,7 @@ Importing a plain `.css` file works too: the GTKX CLI compiles the import into a
 
 ## Animating widgets with `animated`
 
-`@gtkx/animated` wraps any widget so that it accepts framer-motion's animation props. Access an intrinsic element through the `animated` proxy (`animated.GtkLabel`, `animated.GtkButton`, any element whose instance is a `Gtk.Widget`), or wrap a custom component with `animated(MyComponent)`. The wrapped component takes everything the original takes, plus:
+`@gtkx/animated` wraps any widget so that it accepts framer-motion's animation props. Access an intrinsic element through the `animated` proxy (`animated.GtkLabel`, `animated.GtkButton`, any element whose instance is a `Gtk.Widget`), or wrap a custom component with `animated.create(MyComponent)`. The wrapped component takes everything the original takes, plus:
 
 - `initial`: the state the widget starts from before its enter animation, or `false` to skip the enter animation and apply `animate` directly.
 - `animate`: the state the widget animates to while present. Changing it starts a new animation, but only when the new target is not shallow-equal to the previous one.
@@ -205,7 +205,7 @@ The gesture targets apply while an interaction is active and reverse when it end
 />;
 ```
 
-The input is native: hover comes from a `Gtk.EventControllerMotion`, presses from a `Gtk.GestureClick` and `Gtk.GestureDrag` pair, and focus from a `Gtk.EventControllerFocus`, all attached to the widget and feeding framer-motion's own gesture logic. `whileFocus` activates only while the toplevel shows focus visibly, so it highlights keyboard navigation rather than every click, matching `:focus-visible` semantics on the web. Keyboard activation does not trigger `whileTap`: pressing a focused button with <kbd>Enter</kbd> or <kbd>Space</kbd> fires the button's own `onClicked` but not the tap gesture.
+The input is native: hover comes from a `Gtk.EventControllerMotion`, presses from a `Gtk.GestureClick`, and focus from a `Gtk.EventControllerFocus`, all attached to the widget and feeding framer-motion's own gesture logic. `whileFocus` activates only while the toplevel shows focus visibly, so it highlights keyboard navigation rather than every click, matching `:focus-visible` semantics on the web. Keyboard activation does not trigger `whileTap`: pressing a focused button with <kbd>Enter</kbd> or <kbd>Space</kbd> fires the button's own `onClicked` but not the tap gesture.
 
 `whileInView` activates while the widget is visible inside its scrollable viewport, which by default is the nearest ancestor `GtkScrolledWindow` (or the toplevel when there is none). Tune the trigger with the `viewport` prop: its scroll `root`, a `margin` around the viewport box, the `amount` that must be visible, and whether it fires `once`.
 
@@ -224,7 +224,7 @@ The input is native: hover comes from a `Gtk.EventControllerMotion`, presses fro
 
 - `dragConstraints`: bounds the motion, either as pixel offsets from the layout position (`{ left: 0, right: 240 }`) or as a ref to another widget whose bounds become the boundary.
 
-Tune the motion further with `dragElastic`, `dragMomentum`, and `dragSnapToOrigin`, and track progress with the `onDragStart`/`onDrag`/`onDragEnd` callbacks; the [`AnimationProps` reference](/reference/@gtkx/animated/interfaces/AnimationProps) documents each one.
+Tune the motion further with `dragElastic`, `dragMomentum`, and `dragSnapToOrigin`, and track progress with the `onDragStart`/`onDrag`/`onDragEnd` callbacks; the [`MotionProps` reference](/reference/@gtkx/animated/interfaces/MotionProps) documents each one.
 
 ```tsx
 const areaRef = useRef<Gtk.Box | null>(null);
