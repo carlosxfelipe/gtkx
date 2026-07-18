@@ -62,13 +62,13 @@ const useListViewWiring = <T, S>(props: NormalizedListViewProps<T, S>): ListView
     const useHeader = collection.useHeader;
 
     const itemStore = useCellContainers<Gtk.ListView>({
-        target: widgetRef,
+        object: widgetRef,
         installer: factoryInstaller,
         estimatedHeight: props.estimatedItemHeight,
         estimatedWidth: props.estimatedItemWidth,
     });
     const headerStore = useCellContainers<Gtk.ListView>({
-        target: useHeader ? widgetRef : null,
+        object: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
         estimatedHeight: props.estimatedItemHeight,
         estimatedWidth: props.estimatedItemWidth,

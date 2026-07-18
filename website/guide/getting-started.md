@@ -35,22 +35,13 @@ yarn create gtkx@rc
 
 :::
 
-It prompts for a few things:
+It prompts for the project directory, an application ID in reverse-domain form (the D-Bus name GNOME uses to identify your app, like `com.gtkx.tutorial`), your package manager, and whether to include TypeScript and a Vitest testing setup.
 
-- **Project directory** (for example `my-app`)
-- **Application ID** in reverse-domain notation (for example `com.example.myapp`). This is the D-Bus name GNOME uses to identify your app, so it must look like `com.gtkx.tutorial`, not `tutorial`.
-- **Package manager**
-- **Use TypeScript?** and **Include testing setup (Vitest)?**
-
-Every prompt has a matching flag, so the scaffolder also runs without prompts:
+Every prompt has a matching flag, so you can skip the questions for a scripted or CI setup:
 
 ```bash
-npm create gtkx@rc -- my-app --yes --application-id com.example.myapp --package-manager pnpm --typescript --vitest
+npm create gtkx@rc -- my-app --yes --application-id com.example.myapp
 ```
-
-The project directory is a positional argument, and it is required once prompts are off. `--yes` and `--no-interactive` both disable prompting. Anything left unspecified falls back to a default: the application ID is derived from the project name, and TypeScript and Vitest are both on. The package manager is detected from the current directory, falling back to `pnpm`.
-
-`--package-manager` accepts `pnpm`, `npm`, or `yarn`, and `--no-typescript` scaffolds JavaScript instead. A target directory that already exists and is not empty stops the run: with prompts off, pass `--overwrite` to empty it first, keeping only `.git`. With prompts on, the scaffolder asks before overwriting, and `--overwrite` has no effect.
 
 Then:
 
@@ -59,11 +50,7 @@ cd my-app
 npm run dev
 ```
 
-A window opens. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`. That is the whole "hello world": React state driving a GTK4 button. The [Tutorial](/tutorial/) tours a finished Tasks app built on the same foundation, so the structure below is the shape you will recognize there.
-
-::: tip
-The finished Tasks app lives at `examples/tutorial` in the GTKX repository. Every snippet in the [Tutorial](/tutorial/) is copied from that source, sometimes trimmed to the parts each chapter needs. You can run it, read ahead, or diff your work against it at any point.
-:::
+This launches the app and opens its window. The generated starter is a tiny counter: its `src/app.tsx` renders a `GtkApplicationWindow` with a `GtkLabel` and a `GtkButton` whose `onClicked` bumps `useState`, so React state drives a GTK4 button. The [Tutorial](/tutorial/) tours a finished Tasks app built on the same foundation, so the structure below is the shape you will recognize there.
 
 ## Project structure
 
@@ -86,7 +73,7 @@ my-app/
 
 This tree assumes the default prompts (TypeScript and Vitest testing, both default to yes). A JavaScript project drops `tsconfig.json` and `src/gtkx-env.d.ts`; declining the testing setup drops `vitest.config.ts` and `tests/app.test.tsx`.
 
-You will not find a `@gtkx/gi` or `@gtkx/jsx` folder checked in anywhere. Those are the typed native bindings, and they are **generated** into `node_modules/.gtkx` (more on that below), which is git-ignored along with `node_modules` and `dist`. That directory is why importing from `@gtkx/jsx/gtk` resolves even though you never installed it as a dependency.
+The `@gtkx/gi` and `@gtkx/jsx` typed native bindings are **generated** into `node_modules/.gtkx` (more on that below), which is git-ignored along with `node_modules` and `dist`. You never check them into your project. That directory is why importing from `@gtkx/jsx/gtk` resolves even though you never installed it as a dependency.
 
 ## Configuration
 
@@ -105,7 +92,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. The container argument is optional and defaults to `rootElement`, a singleton marker that stands for the top of the tree, so there is no node to look up before mounting. `<App />` is your top-level component.
+`createRoot()` from `@gtkx/react` returns a root with the familiar `render(element)` / `unmount()` pair. The container argument is optional and defaults to the top of the tree, so there is no node to look up before mounting. `<App />` is your top-level component.
 
 The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [The Application Shell](/tutorial/app-shell)). Either way, the application element picks up the `applicationId` from your config automatically.
 
@@ -128,16 +115,16 @@ The first reference pulls in `vite/client` plus type declarations for every asse
 
 The counter starter installs these runtime dependencies:
 
-- **`@gtkx/react`** ships the reconciler plus hooks and helpers (`createRoot`, `useApplication`, `useSetting`, `useSignal`, `createPortal`, `quit`, ...).
+- **`@gtkx/react`** ships the reconciler plus the hooks and helpers for mounting and driving the tree, like `createRoot` and `useSignal`.
 - **`@gtkx/css`** is CSS-in-JS for GTK4's CSS (a `css` tagged template that feeds a widget's `cssClasses`).
 - **`@gtkx/runtime`** is the hand-written FFI runtime the generated bindings call into; it depends on and re-exports parts of `@gtkx/native`, the prebuilt addon.
 - **`react`** is plain React 19. GTKX is a custom reconciler, not a fork.
 
 The completed Tasks app adds more runtime dependencies in the chapters that first need them:
 
-- **`@gtkx/components`** provides high-level React components over the harder GTK4 APIs, notably the model-backed collection components `ListView`, `ColumnView`, `GridView`, and `DropDown`, plus a declarative `Menu` builder over `Gio.Menu`.
+- **`@gtkx/components`** provides high-level React components over the harder GTK4 APIs, like the model-backed collection views and a declarative `Menu` builder. See [Components and Hooks](/guide/components-and-hooks).
 - **`@gtkx/navigation`** provides React Navigation-powered navigators (stack and split view) backed by Adwaita widgets. See [Navigation](/guide/navigation).
-- **`@gtkx/animated`** brings framer-motion to native widgets: declarative enter/exit animations, gestures, drag, and layout animations. See [CSS and Animations](/guide/css-and-animations).
+- **`@gtkx/animated`** brings framer-motion to native widgets. See [CSS and Animations](/guide/css-and-animations).
 
 `@gtkx/cli` and `@gtkx/config` are dev-only: the CLI is the `gtkx` binary, and `@gtkx/config` provides `defineConfig`.
 

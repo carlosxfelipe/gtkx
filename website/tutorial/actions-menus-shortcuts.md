@@ -15,7 +15,7 @@ Every action string carries a scope prefix. Tasks uses both:
 - **`win.*`** actions belong to the window. They are the app's primary commands (new task, preferences, about) and their accelerators only fire while that window has focus. They live in the window's `actions` slot.
 - **`app.*`** actions belong to the application itself. Tasks uses them only for the commands a desktop notification fires: its "Mark Complete" button and the default action that runs when you click the notification body. A notification is delivered to the whole application, not to any particular window, and it may arrive when no window is open. They live in the `actions` slot of `<AdwApplication>`.
 
-The scope prefix is not cosmetic: it selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
+The scope prefix selects *which* action map GTK4 looks in when it resolves a `detailed-action-name` from a menu item or a notification button.
 
 ## Window actions: `<GSimpleAction>` in the `actions` slot
 

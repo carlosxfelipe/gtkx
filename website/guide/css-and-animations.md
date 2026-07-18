@@ -149,7 +149,7 @@ The engine is framer-motion's own, running its frame loop in JavaScript. `@gtkx/
 
 `transition` takes framer-motion's options, and `transition.type` selects the generator. Without an explicit transition, each value gets motion's default. A keyframe array of more than two values runs a 0.8 second tween. A transform runs on a spring, and everything else runs on a 0.3 second tween.
 
-- **Tween**: `duration` in seconds, `ease` as a named easing (`"linear"`, `"easeIn"`, `"easeOut"`, `"easeInOut"`, `"circIn"`, `"circOut"`, `"circInOut"`, `"backIn"`, `"backOut"`, `"backInOut"`, `"anticipate"`), a cubic-bezier array such as `[0.65, 0, 0.35, 1]`, or an easing function. A tween with a `duration` and no `ease` runs on `"easeOut"`.
+- **Tween**: `duration` in seconds, `ease` as a named easing (such as `"easeOut"` or `"anticipate"`), a cubic-bezier array such as `[0.65, 0, 0.35, 1]`, or an easing function. A tween with a `duration` and no `ease` runs on `"easeOut"`.
 - **Spring**: `type: "spring"` with the physics parameters `stiffness`, `damping`, and `mass` (defaults 100, 10, 1) plus a starting `velocity`, or the perceptual pair `visualDuration` and `bounce` from which the physics are derived. `restDelta` and `restSpeed` control when the spring counts as settled.
 
 Both kinds accept `delay` in seconds, `repeat` (additional repetitions, `Infinity` repeats forever), `repeatType` (`"loop"`, `"reverse"`, or `"mirror"`, which mirrors the easing on the way back), and `repeatDelay`. Variants orchestrate children with `staggerChildren`, `delayChildren`, and `when`, exactly as framer-motion does on the web.

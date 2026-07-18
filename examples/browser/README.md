@@ -4,7 +4,7 @@ A compact web browser. An Adwaita window wraps a `WebKitWebView`, with back, for
 
 ## What it demonstrates
 
-- Binding a third-party GObject-Introspection library: adding `WebKit-6.0` to `libraries` in `gtkx.config.ts` is all it takes to get `WebKitWebView` as an intrinsic element from `@gtkx/jsx/webkit` and the `WebKit` namespace from `@gtkx/gi/webkit`, both fully typed.
+- Binding a third-party GObject-Introspection library: adding `WebKit-6.0` to `libraries` in `gtkx.config.ts` provides `WebKitWebView` as an intrinsic element from `@gtkx/jsx/webkit` and the `WebKit` namespace from `@gtkx/gi/webkit`, both fully typed.
 - Adwaita layout with `AdwToolbarView` and `AdwHeaderBar`, including the `topBar`, `titleWidget`, and `start` widget props.
 - A `ref` to the live `WebKit.WebView` for imperative calls that do not belong in state: `loadUri`, `goBack`, `goForward`, `reload`, and `stopLoading`.
 - Signals and property notifications as props: `onLoadChanged` reads `canGoBack()` and `getUri()` off the emitter, and `onNotifyEstimatedLoadProgress` tracks load progress.

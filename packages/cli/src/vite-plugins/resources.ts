@@ -9,7 +9,7 @@ import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
-import { renderInitModule } from "./gresource-init-module.js";
+import { renderInitModule } from "./resource-init-module.js";
 import {
     BUNDLE_FILENAME,
     escapeXml,
@@ -18,7 +18,7 @@ import {
     REL_SEPARATOR,
     toVirtualId,
     VIRTUAL_INIT,
-} from "./gresource-shared.js";
+} from "./resource-shared.js";
 
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 
@@ -51,7 +51,7 @@ type PluginState = {
 };
 
 const compileBundle = (state: PluginState, outputPath: string): Buffer =>
-    withStagingDir("gresources", (dir) => {
+    withStagingDir("resources", (dir) => {
         const manifest = stageBundle(dir, state.entries);
         return runCompiler(dir, manifest, outputPath);
     });
@@ -95,7 +95,7 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
 
 const ensureStagingDir = (state: PluginState): void => {
     if (!state.devStagingDir) {
-        state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-gresources-dev-"));
+        state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-resources-dev-"));
         state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
     }
 };
@@ -183,7 +183,7 @@ const emitBuildBundle = (
     state: PluginState,
 ): void => {
     if (!state.isBuild || state.entries.size === 0) return;
-    const compiled = withStagingDir("gresources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
+    const compiled = withStagingDir("resources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
     ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
     info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
 };
@@ -217,7 +217,7 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
     server.watcher.on("add", onFileEvent);
 };
 
-export function gtkxGResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
+export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: "",
         isBuild: false,
@@ -231,7 +231,7 @@ export function gtkxGResources(loadConfig: ConfigLoader = createConfigLoader()):
     };
 
     return {
-        name: "gtkx:gresources",
+        name: "gtkx:resources",
         enforce: "pre",
 
         config(config: UserConfig) {

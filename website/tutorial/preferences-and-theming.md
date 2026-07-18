@@ -28,7 +28,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`AdwPreferencesDialog` is an `Adw.Dialog` subclass, not an `Adw.Window`. An Adw.Dialog is not shown by adding it to a tree: you call `present(parent)` on it. It then renders as an adaptive sheet, a centered floating dialog on desktop and a bottom sheet when the window is narrow. That imperative lifecycle is exactly what the `Dialog` wrapper from `@gtkx/components/adw` automates.
+`AdwPreferencesDialog` is an `Adw.Dialog` subclass, not an `Adw.Window`. You show an Adw.Dialog by calling `present(parent)` on it rather than by adding it to a tree. It then renders as an adaptive sheet, a centered floating dialog on desktop and a bottom sheet when the window is narrow. That imperative lifecycle is exactly what the `Dialog` wrapper from `@gtkx/components/adw` automates.
 
 Mounting `<Dialog>` presents the `AdwPreferencesDialog` on the parent window. Close it with Escape, the close button, or a swipe and it emits `closed`, which `Dialog` forwards to `onClose`. That sets `showPreferences` back to `false`, unmounting `<Preferences>` and closing the dialog. The wrapper's present/close lifecycle, its portal to the root, and the guard that stops a React-driven close from looping are covered in [Feedback and Dialogs](./feedback-and-dialogs#how-a-dialog-gets-on-screen).
 
@@ -108,7 +108,7 @@ The reminder row is a spin button rather than a combo:
 />
 ```
 
-`AdwSpinRow` needs a `Gtk.Adjustment` to define its numeric range, and GTKX lets you pass one as a JSX element into the object-valued `adjustment` prop. `lower`/`upper` bound the value at 0 to 1440 minutes (a full day), and `stepIncrement={5}` is the click step.
+`AdwSpinRow` needs a `Gtk.Adjustment` to define its numeric range, and GTKX lets you pass one as a JSX element into the object-valued `adjustment` prop. `lower` and `upper` bound the value (here up to a full day early), and `stepIncrement` sets the click step.
 
 The number is reported through the property notification `onNotifyValue`, which fires whenever the row's `value` property changes. The `onChanged` signal the row inherits from `Gtk.Editable` fires on text edits and hands back only the widget, not the parsed number. Notify handlers receive `value | null`, so the `value ?? 30` guards the null case before writing back the integer setting.
 

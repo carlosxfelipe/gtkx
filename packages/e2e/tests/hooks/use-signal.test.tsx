@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type GObjectTarget, useSignal } from "@gtkx/react";
+import { type ObjectProp, useSignal } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -66,22 +66,22 @@ describe("useSignal (targets)", () => {
         expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it("follows a ref target across widget replacement", async () => {
+    it("follows a ref across widget replacement", async () => {
         const first = new Gtk.Button();
         const second = new Gtk.Button();
         const ref: { current: Gtk.Button | null } = { current: first };
         const handler = vi.fn();
 
         const { rerender } = await renderHook(
-            ({ target }: { target: GObjectTarget<Gtk.Button> }) => useSignal(target, "clicked", handler),
-            { initialProps: { target: ref as GObjectTarget<Gtk.Button> } },
+            ({ object }: { object: ObjectProp<Gtk.Button> }) => useSignal(object, "clicked", handler),
+            { initialProps: { object: ref as ObjectProp<Gtk.Button> } },
         );
 
         await act(() => first.emit("clicked"));
         expect(handler).toHaveBeenCalledTimes(1);
 
         ref.current = second;
-        await rerender({ target: ref });
+        await rerender({ object: ref });
 
         await act(() => first.emit("clicked"));
         expect(handler).toHaveBeenCalledTimes(1);

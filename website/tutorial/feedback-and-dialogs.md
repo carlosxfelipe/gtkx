@@ -4,7 +4,7 @@ description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informati
 
 # Feedback and Dialogs
 
-Deleting a task in Tasks does not pop an "Are you sure?" box. It quietly moves the task to Trash and slides up a toast with an **Undo** button. That is deliberate.
+Deleting a task in Tasks moves it to Trash and slides up a toast with an **Undo** button, rather than popping an "Are you sure?" box.
 
 GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it. Save the modal interruption for the one action that genuinely cannot be taken back.
 
@@ -73,7 +73,7 @@ const closeTaskIfOpen = (id: string): void => {
 The batch case in `deleteSelected` is the same shape, restoring a list of ids and pluralizing the message. [Selection Mode](/tutorial/selection-and-batch#batch-actions-and-the-shared-undo-flow) walks through it.
 
 ::: tip
-`AdwToastOverlay` shows one toast at a time and times each out after about five seconds (a toast will not disappear while it is hovered or focused). Both delete paths, single and batch, funnel into this one recovery mechanism, so there is a single "undo a delete" story in the app instead of two.
+`AdwToastOverlay` shows one toast at a time and times each out after a few seconds (a toast will not disappear while it is hovered or focused). Both delete paths, single and batch, funnel into this one recovery mechanism, so there is a single "undo a delete" story in the app instead of two.
 :::
 
 ## Confirming the irreversible
@@ -177,7 +177,7 @@ const confirmDelete = (): void => {
 ) : null}
 ```
 
-Mounting the component shows the dialog; unmounting it closes the dialog. That is the whole contract, and the `<Dialog>` wrapper is what makes it true.
+Mounting the component shows the dialog and unmounting it closes the dialog, which is the complete contract that the `<Dialog>` wrapper implements.
 
 A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window.
 

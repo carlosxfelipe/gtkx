@@ -91,7 +91,7 @@ The new row is matched by role and name rather than by text: an `AdwActionRow` t
 
 ## Drag and drop
 
-`@gtkx/testing` can synthesize the drag-to-reorder gesture from the [Task Rows](/tutorial/task-rows-and-reordering) chapter. Every row carries a `GtkDragSource` and `GtkDropTarget` whenever manual sort order is active (the default) and neither a search nor the Trash view is showing. `userEvent.dragAndDrop` verifies the source's drag source, then delivers the payload to the target's drop target as a marshaled `GObject.Value`. A string argument is wrapped in a `TYPE_STRING` value, which is exactly what the row's `onDrop` reads back with `value.getString()`:
+`@gtkx/testing` can synthesize the drag-to-reorder gesture from the [Task Rows](/tutorial/task-rows-and-reordering) chapter. Every row carries a `GtkDragSource` and `GtkDropTarget` whenever manual sort order is active (the default) and neither a search nor the Trash view is showing. `userEvent.dragAndDrop` drags the source onto the target, wrapping the string argument in a `TYPE_STRING` `GObject.Value`, which is exactly what the row's `onDrop` reads back with `value.getString()`:
 
 ```tsx
 it("reorders tasks by dragging", async () => {

@@ -15,7 +15,7 @@ const COMPARATOR_CALLBACK_TYPES = new Set([
     "GLib.EqualFuncFull",
 ]);
 
-const GOBJECT_ITEM_COMPARATOR_OWNERS = new Set(["Gtk.CustomSorter"]);
+const OBJECT_ITEM_COMPARATOR_OWNERS = new Set(["Gtk.CustomSorter"]);
 
 const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined => {
     const name = context.library.nameOf(ref);
@@ -31,11 +31,11 @@ const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
     });
 };
 
-const comparesGobjectItems = (context: ModuleContext, fn: GirFunction): boolean => {
+const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean => {
     const ownerRef = fn.instance?.type ?? fn.returnValue.type;
     if (ownerRef === undefined) return false;
     const owner = qualifiedName(context, ownerRef);
-    if (owner !== undefined && GOBJECT_ITEM_COMPARATOR_OWNERS.has(owner)) return true;
+    if (owner !== undefined && OBJECT_ITEM_COMPARATOR_OWNERS.has(owner)) return true;
     return implementsListModel(context, ownerRef);
 };
 
@@ -55,7 +55,7 @@ const itemComparatorCallback = (
     if (resolved?.kind !== "callback") return undefined;
     const name = qualifiedName(context, parameter.type);
     if (name === undefined || !COMPARATOR_CALLBACK_TYPES.has(name)) return undefined;
-    return comparesGobjectItems(context, fn) ? resolved.value : undefined;
+    return comparesObjectItems(context, fn) ? resolved.value : undefined;
 };
 
 export const itemComparatorArgDescriptors = (

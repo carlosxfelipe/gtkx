@@ -54,7 +54,7 @@ export const TaskRow = ({ task, reorderable, onToggleDone, onToggleImportant, on
 
 ## The strikethrough title uses Pango markup, not CSS
 
-GTK4 CSS supports `text-decoration-line`, but you can't easily target an `AdwActionRow`'s internal title label to apply it. To strike out a completed task's title you wrap it in Pango markup, GTK4's inline text-formatting syntax (`<s>` for strikethrough, `<b>`, `<i>`, `<span foreground="...">`, and so on), which the row's title label parses:
+GTK4 CSS supports `text-decoration-line`, but you can't easily target an `AdwActionRow`'s internal title label to apply it. To strike out a completed task's title you wrap it in Pango markup, GTK4's inline text-formatting syntax (`<s>` marks strikethrough), which the row's title label parses:
 
 ```tsx
 const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
@@ -62,7 +62,7 @@ const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(ta
 <AdwActionRow title={title} useMarkup /* ... */ />
 ```
 
-`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is not optional for any user-supplied title: a task titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the markup-significant characters before they reach Pango:
+`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is required for any user-supplied title: a task titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the markup-significant characters before they reach Pango:
 
 ```ts
 export const escapeMarkup = (value: string): string =>
@@ -169,7 +169,7 @@ On the receiving side, `GtkDropTarget.types` declares which `GObject.Type`s this
 
 ## Set the drag icon, or GTK4 draws the payload
 
-`onPrepare` does one more job: it decides what the pointer carries during the drag. That is not decoration. With no icon set, GTK4 builds a default one out of the content provider's value, and a string-typed value becomes a label showing that string. The payload here is the task's id, so leaving the icon alone drags a small `t1` label around instead of the task.
+`onPrepare` does one more job: it decides what the pointer carries during the drag. With no icon set, GTK4 builds a default one out of the content provider's value, and a string-typed value becomes a label showing that string. The payload here is the task's id, so leaving the icon alone drags a small `t1` label around instead of the task.
 
 The fix is to hand the drag source a paintable of the row itself:
 
@@ -182,7 +182,7 @@ if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y)
 
 The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it. That grab point is why the icon is set here instead of in `onDragBegin`: `prepare` is the only signal that carries it. GTK4 reads the icon back after both signals have run, so setting it this early still takes effect.
 
-`Math.round` is not cosmetic. Pointer coordinates arrive as GTK4 doubles and a drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
+`Math.round` here is required: pointer coordinates arrive as GTK4 doubles and a drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
 
 ## Closing the loop stays in React state
 

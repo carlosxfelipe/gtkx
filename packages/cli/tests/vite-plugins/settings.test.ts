@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
+import { gtkxSettings } from "../../src/vite-plugins/settings.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
 import { callOutputOptions, expectComposedAsyncBanner, expectComposedBanner } from "./output-options.js";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
@@ -33,23 +33,23 @@ const stubLoadContext = () => ({
     emitFile: vi.fn(),
 });
 
-const callResolveIdGsettings = async (
+const callResolveIdSettings = async (
     resolve: (source: string) => Promise<{ id: string; external?: boolean } | null>,
     source: string,
 ): Promise<string | undefined | null> => {
-    const plugin = gtkxGSettings();
+    const plugin = gtkxSettings();
     return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
 };
 
-describe("gtkxGSettings (plugin shape and init)", () => {
+describe("gtkxSettings (plugin shape and init)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
-        const plugin = gtkxGSettings();
-        expect(plugin.name).toBe("gtkx:gsettings");
+        const plugin = gtkxSettings();
+        expect(plugin.name).toBe("gtkx:settings");
         expect(plugin.enforce).toBe("pre");
     });
 
     it("prepends the schema-env banner to build output options", () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
         const result = callOutputOptions(plugin, {});
         expect(result?.banner).toContain("GSETTINGS_SCHEMA_DIR");
@@ -57,32 +57,32 @@ describe("gtkxGSettings (plugin shape and init)", () => {
     });
 
     it("leaves output options untouched outside build mode", () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
         expect(callOutputOptions(plugin, {})).toBeUndefined();
     });
 
     it("composes a function banner by prepending the schema-env banner to its result", async () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
         await expectComposedBanner(plugin, "GSETTINGS_SCHEMA_DIR");
     });
 
     it("awaits an async original banner function", async () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
         await expectComposedAsyncBanner(plugin, "GSETTINGS_SCHEMA_DIR");
     });
 });
 
-describe("gtkxGSettings (resolveId)", () => {
+describe("gtkxSettings (resolveId)", () => {
     it("resolveId ignores non-schema ids", async () => {
-        const result = await callResolveIdGsettings(() => Promise.resolve({ id: "" }), "./some.module.ts");
+        const result = await callResolveIdSettings(() => Promise.resolve({ id: "" }), "./some.module.ts");
         expect(result).toBeUndefined();
     });
 
     it("resolveId returns null when the resolve hook reports external", async () => {
-        const result = await callResolveIdGsettings(
+        const result = await callResolveIdSettings(
             () => Promise.resolve({ id: "/abs.gschema.xml", external: true }),
             "./x.gschema.xml",
         );
@@ -90,23 +90,23 @@ describe("gtkxGSettings (resolveId)", () => {
     });
 
     it("resolveId returns the virtual prefix + resolved id for schema imports", async () => {
-        const resolved = await callResolveIdGsettings(
+        const resolved = await callResolveIdSettings(
             () => Promise.resolve({ id: "/schema/path.gschema.xml" }),
             "./path.gschema.xml",
         );
-        expect(resolved).toBe("\0gtkx-gsettings:/schema/path.gschema.xml");
+        expect(resolved).toBe("\0gtkx-settings:/schema/path.gschema.xml");
     });
 });
 
-describe("gtkxGSettings (load)", () => {
+describe("gtkxSettings (load)", () => {
     it("load returns undefined for non-virtual ids", () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         const result = (plugin.load as LoadHook).call(stubLoadContext(), "/regular/path/file.ts");
         expect(result).toBeUndefined();
     });
 
     it.skipIf(!hasGlibCompileSchemas())("load builds JS exports from a multi-schema file in build mode", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-test-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-test-"));
         const schemaPath = join(tmp, "test.gschema.xml");
         writeFileSync(
             schemaPath,
@@ -122,10 +122,10 @@ describe("gtkxGSettings (load)", () => {
         );
 
         try {
-            const plugin = gtkxGSettings();
+            const plugin = gtkxSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
 
-            const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`) as string;
+            const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-settings:${schemaPath}`) as string;
 
             expect(code).toContain(
                 `export const com_example_alpha = { id: "com.example.alpha", path: null, keys: keys_0 };`,
@@ -141,14 +141,14 @@ describe("gtkxGSettings (load)", () => {
     });
 });
 
-describe("gtkxGSettings (load errors)", () => {
+describe("gtkxSettings (load errors)", () => {
     it.skipIf(!hasGlibCompileSchemas())("load reports an error when the file has no schemas", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-no-schemas-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-no-schemas-"));
         const schemaPath = join(tmp, "empty.gschema.xml");
         writeFileSync(schemaPath, `<schemalist></schemalist>`);
 
         try {
-            const plugin = gtkxGSettings();
+            const plugin = gtkxSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
 
             const errorMock = vi.fn<(message: string) => never>(() => {
@@ -158,7 +158,7 @@ describe("gtkxGSettings (load errors)", () => {
             expect(() =>
                 (plugin.load as LoadHook).call(
                     { error: errorMock, emitFile: vi.fn() },
-                    `\0gtkx-gsettings:${schemaPath}`,
+                    `\0gtkx-settings:${schemaPath}`,
                 ),
             ).toThrow();
             expect(errorMock).toHaveBeenCalled();
@@ -168,16 +168,16 @@ describe("gtkxGSettings (load errors)", () => {
     });
 });
 
-describe("gtkxGSettings (buildEnd)", () => {
+describe("gtkxSettings (buildEnd)", () => {
     it("buildEnd is a no-op when no schemas were queued", () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
 
         expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
     it.skipIf(!hasGlibCompileSchemas())("buildEnd emits a compiled gschemas asset for queued schemas", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-buildend-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-buildend-"));
         const schemaPath = join(tmp, "build.gschema.xml");
         writeFileSync(
             schemaPath,
@@ -190,9 +190,9 @@ describe("gtkxGSettings (buildEnd)", () => {
         );
 
         try {
-            const plugin = gtkxGSettings();
+            const plugin = gtkxSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-settings:${schemaPath}`);
 
             expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, "gschemas.compiled");
         } finally {
@@ -241,52 +241,52 @@ const setupDataDir = (tmp: string): string => {
 
 type EnvPluginInit = {
     dataDir: string;
-    plugin: ReturnType<typeof gtkxGSettings>;
+    plugin: ReturnType<typeof gtkxSettings>;
     envPath: string;
 };
 
 const initSchemaEnvPlugin = (tmp: string, seedSchemas?: (dataDir: string) => void): EnvPluginInit => {
     const dataDir = setupDataDir(tmp);
     seedSchemas?.(dataDir);
-    const plugin = gtkxGSettings();
+    const plugin = gtkxSettings();
     (plugin.config as ConfigHook).call(plugin, { root: tmp });
     (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
     const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
     return { dataDir, plugin, envPath };
 };
 
-const gsettingsVirtualId = (schemaPath: string): string => `\0gtkx-gsettings:${schemaPath}`;
+const settingsVirtualId = (schemaPath: string): string => `\0gtkx-settings:${schemaPath}`;
 
-const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxGSettings>; virtualId: string } => {
-    const plugin = gtkxGSettings();
+const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxSettings>; virtualId: string } => {
+    const plugin = gtkxSettings();
     (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-    const virtualId = gsettingsVirtualId(schemaPath);
+    const virtualId = settingsVirtualId(schemaPath);
     (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
     return { plugin, virtualId };
 };
 
-describe("gtkxGSettings (dev-mode load: fresh schema dir)", () => {
+describe("gtkxSettings (dev-mode load: fresh schema dir)", () => {
     setupSchemaDirEnv();
 
     it.skipIf(!hasGlibCompileSchemas())(
         "compiles a schema into a temp dir and prepends it to GSETTINGS_SCHEMA_DIR in serve mode",
         () => {
-            const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-dev-"));
+            const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-dev-"));
             const schemaPath = writeSchema(tmp, "dev.gschema.xml", "com.example.dev");
 
             try {
-                const plugin = gtkxGSettings();
+                const plugin = gtkxSettings();
                 (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
 
                 const code = (plugin.load as LoadHook).call(
                     stubLoadContext(),
-                    `\0gtkx-gsettings:${schemaPath}`,
+                    `\0gtkx-settings:${schemaPath}`,
                 ) as string;
                 expect(code).toContain(
                     `export const com_example_dev = { id: "com.example.dev", path: null, keys: keys_0 };`,
                 );
                 expect(code).toContain("export default com_example_dev;");
-                expect(code).not.toContain("gtkx-gsettings-init");
+                expect(code).not.toContain("gtkx-settings-init");
 
                 expect(process.env.GSETTINGS_SCHEMA_DIR).toBeDefined();
                 const first = process.env.GSETTINGS_SCHEMA_DIR?.split(":")[0];
@@ -298,12 +298,12 @@ describe("gtkxGSettings (dev-mode load: fresh schema dir)", () => {
     );
 });
 
-describe("gtkxGSettings (dev-mode load: existing schema dir)", () => {
+describe("gtkxSettings (dev-mode load: existing schema dir)", () => {
     setupSchemaDirEnv();
 
     it.skipIf(!hasGlibCompileSchemas())("appends to an existing GSETTINGS_SCHEMA_DIR when one is already set", () => {
         process.env.GSETTINGS_SCHEMA_DIR = "/existing/dir";
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-dev-existing-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-dev-existing-"));
         const schemaPath = writeSchema(tmp, "dev.gschema.xml", "com.example.dev2");
 
         try {
@@ -316,9 +316,9 @@ describe("gtkxGSettings (dev-mode load: existing schema dir)", () => {
     });
 });
 
-describe("gtkxGSettings (handleHotUpdate: untracked)", () => {
+describe("gtkxSettings (handleHotUpdate: untracked)", () => {
     it("ignores files that were never tracked", () => {
-        const plugin = gtkxGSettings();
+        const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
 
         const server = {
@@ -337,11 +337,11 @@ describe("gtkxGSettings (handleHotUpdate: untracked)", () => {
     });
 });
 
-describe("gtkxGSettings (handleHotUpdate: tracked match)", () => {
+describe("gtkxSettings (handleHotUpdate: tracked match)", () => {
     it.skipIf(!hasGlibCompileSchemas())(
         "recompiles the schema dir and invalidates the matching module when a tracked file changes",
         () => {
-            const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-hmr-"));
+            const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-hmr-"));
             const schemaPath = writeSchema(tmp, "hmr.gschema.xml", "com.example.hmr");
 
             try {
@@ -371,11 +371,11 @@ describe("gtkxGSettings (handleHotUpdate: tracked match)", () => {
     );
 });
 
-describe("gtkxGSettings (closeBundle)", () => {
+describe("gtkxSettings (closeBundle)", () => {
     setupSchemaDirEnv();
 
     it.skipIf(!hasGlibCompileSchemas())("releases the dev-mode schema dir", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-close-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-close-"));
         const schemaPath = writeSchema(tmp, "close.gschema.xml", "com.example.close");
 
         try {
@@ -394,11 +394,11 @@ describe("gtkxGSettings (closeBundle)", () => {
     });
 });
 
-describe("gtkxGSettings (configureServer)", () => {
+describe("gtkxSettings (configureServer)", () => {
     setupSchemaDirEnv();
 
     it.skipIf(!hasGlibCompileSchemas())("releases the schema dir when the http server closes", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-server-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-server-"));
         const schemaPath = writeSchema(tmp, "srv.gschema.xml", "com.example.srv");
 
         try {
@@ -419,9 +419,9 @@ describe("gtkxGSettings (configureServer)", () => {
     });
 });
 
-describe("gtkxGSettings (schema env emission)", () => {
+describe("gtkxSettings (schema env emission)", () => {
     it("emits the project env.d.ts from schemas under the #data import root", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-env-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-env-"));
         try {
             const { envPath } = initSchemaEnvPlugin(tmp, (dataDir) => {
                 writeSchema(dataDir, "com.example.envtest.gschema.xml", "com.example.envtest");
@@ -436,7 +436,7 @@ describe("gtkxGSettings (schema env emission)", () => {
     });
 
     it("refreshes the env.d.ts when the watcher reports schema file changes", () => {
-        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-env-watch-"));
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-env-watch-"));
         try {
             const { dataDir, plugin, envPath } = initSchemaEnvPlugin(tmp);
             expect(readFileSync(envPath, "utf-8")).not.toContain("declare module");
@@ -453,11 +453,11 @@ describe("gtkxGSettings (schema env emission)", () => {
     });
 });
 
-describe("gtkxGSettings (handleHotUpdate: tracked orphan)", () => {
+describe("gtkxSettings (handleHotUpdate: tracked orphan)", () => {
     it.skipIf(!hasGlibCompileSchemas())(
         "returns undefined when the tracked module is not present in the module graph",
         () => {
-            const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-hmr-orphan-"));
+            const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-hmr-orphan-"));
             const schemaPath = writeSchema(tmp, "orphan.gschema.xml", "com.example.orphan");
 
             try {

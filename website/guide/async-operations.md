@@ -8,7 +8,7 @@ GIO's async operations come in callback-and-finish pairs: a call taking a `Gio.A
 
 Codegen detects every pair, whether it is an instance method, a static method, or a module-level function, by reading the same GObject-Introspection data that defines the C API.
 
-The call keeps its own camelCase name. There is no renaming and no suffix stripping: `load_contents_async` becomes `loadContentsAsync`, `Gtk.FileDialog`'s `open` stays `open`, and `g_bus_get` is `Gio.busGet`. If you know the C API or the GJS one, you already know what the call is named here.
+The call keeps its own camelCase name, suffix and all: `load_contents_async` becomes `loadContentsAsync`, `Gtk.FileDialog`'s `open` stays `open`, and `g_bus_get` is `Gio.busGet`. If you know the C API or the GJS one, you already know what the call is named here.
 
 ## Generated signatures
 

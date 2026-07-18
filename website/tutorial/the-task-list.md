@@ -25,7 +25,7 @@ type TaskListProps = {
 };
 ```
 
-`tasks` arrives already filtered, searched, and sorted (more on that at the end). This component never decides *which* tasks to show; it only lays them out.
+`tasks` arrives already filtered, searched, and sorted (more on that at the end). This component only lays out the tasks it is handed.
 
 ## The outer frame
 
@@ -227,7 +227,7 @@ const [filter, setFilter] = useSetting(schema, "filter");
 titleWidget={<FilterToggle filter={filter} onChange={setFilter} />}
 ```
 
-`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The [Preferences and Theming](/tutorial/preferences-and-theming) page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook is all it takes to persist this UI state.
+`useSetting(schema, "filter")` returns a `[value, setValue]` tuple, just like `useState`, but the value is persisted in GSettings (the GNOME settings store) and typed from the compiled schema. Change the filter, quit, relaunch, and the same tab is still selected. The [Preferences and Theming](/tutorial/preferences-and-theming) page covers `useSetting` in depth; here it is enough to see that a segmented toggle plus one hook persists this UI state.
 
 ## Where filtering happens: `select.ts`
 

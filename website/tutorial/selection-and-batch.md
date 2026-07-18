@@ -147,7 +147,7 @@ const listBody = selecting ? (
 );
 ```
 
-`SelectionView` (in `components/selection-view.tsx`) is where GTKX's high-level `ListView` from `@gtkx/components` earns its keep:
+`SelectionView` (in `components/selection-view.tsx`) uses GTKX's high-level `ListView` from `@gtkx/components`:
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -203,7 +203,7 @@ export const SelectionView = ({
 How the pieces map:
 
 - `items` is your data lifted into `{ id, value }` nodes. The `id` is the stable identity GTKX uses to track a row across updates and to key the selection; `value` is the `Task` object handed back to `renderItem` as `item`.
-- `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells GTKX to back the list with a `Gtk.MultiSelection` model (the default is `SINGLE`, a `Gtk.SingleSelection`). This is what lets the user select more than one row at a time.
+- `selectionMode={Gtk.SelectionMode.MULTIPLE}` tells GTKX to back the list with a `Gtk.MultiSelection` model. This is what lets the user select more than one row at a time.
 - Selection is **controlled**, exactly like a controlled input in React. `selectedIds` is the source of truth passed down, and `onSelectionChanged` reports the new array back up. Tasks routes `onSelectionChanged` straight into `setSelectedIds`, so a click on a row and a click on "Select All" both flow into the same state. That state drives the header count, the action bar's `sensitive` gating, and the batch handlers.
 - `renderItem` is a normal React render function returning GTKX JSX. Here it builds a horizontal box: title stacked over a dimmed due-date caption, with a star icon on the trailing edge for important tasks.
 - `estimatedItemHeight={56}` gives each recycled cell's placeholder a size request before its content renders, which keeps scrolling and the scrollbar steady in a long list.
@@ -244,7 +244,7 @@ const moveSelected = (listId: string): void => {
 };
 ```
 
-Delete is the interesting one, because it reuses the exact undo-toast flow that single-task deletion uses (the toast idiom itself is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)). Rather than confirm an irreversible action, it soft-deletes and offers Undo:
+Delete is the interesting one, because it reuses the exact undo-toast flow that single-task deletion uses (the toast idiom itself is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs)). It soft-deletes and offers Undo instead of confirming an irreversible action:
 
 ```tsx
 const deleteSelected = (): void => {

@@ -1,11 +1,11 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { prependSchemaDir, stageAndCompileProjectSchemas } from "../gsettings/schema.js";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
-export function gtkxGSettingsWorkerEnv(): Plugin {
+export function gtkxSettingsWorkerEnv(): Plugin {
     return {
-        name: "gtkx:gsettings-worker-env",
+        name: "gtkx:settings-worker-env",
         enforce: "pre",
 
         config(config: UserConfig) {

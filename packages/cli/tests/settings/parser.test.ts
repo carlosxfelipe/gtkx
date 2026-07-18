@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSchemaXml, SchemaParseError } from "../../src/gsettings/parser.js";
+import { parseSchemaXml, SchemaParseError } from "../../src/settings/parser.js";
 
 const FILE = "test.gschema.xml";
 

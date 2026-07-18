@@ -190,7 +190,7 @@ const handleAxisChanged = (value: number) => {
 
 With `autoRender` (the default), the render signal is emitted every time the widget draws. Setting `autoRender={false}` keeps the previous frame's contents until you call `queueRender()`, which suits a scene that changes seldom and costs a lot to draw.
 
-For continuous animation, drive frames from the frame clock rather than from React. The Gears demo registers a tick callback on the area with `Gtk.Widget.addTickCallback`, advances its rotation in a ref on each tick, and calls `queueRender()`. State changes once every 500 milliseconds there, only to publish the measured frame rate to a label.
+For continuous animation, drive frames from the frame clock rather than from React. The Gears demo registers a tick callback on the area with `Gtk.Widget.addTickCallback`, advances its rotation in a ref on each tick, and calls `queueRender()`. State changes rarely there, only to publish the measured frame rate to a label.
 
 ## Reporting failures to the widget
 

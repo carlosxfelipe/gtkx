@@ -39,7 +39,7 @@ The app root, the `App` component in `app.tsx`, is one `<AdwApplication>`. It pr
 </AdwApplicationWindow>
 ```
 
-That is the entire skeleton. The window mounts from a short entry point (`index.tsx`):
+That tree is the entire window skeleton, and it mounts from a short entry point (`index.tsx`):
 
 ```tsx
 import { createRoot } from "@gtkx/react";

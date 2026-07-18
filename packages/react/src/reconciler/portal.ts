@@ -1,7 +1,7 @@
 import type { ReactNode, ReactPortal } from "react";
 import type { Container } from "./types.js";
 
-type GObjectPortal = ReactPortal & {
+type ObjectPortal = ReactPortal & {
     $$typeof: symbol;
     containerInfo: Container;
     implementation: null;
@@ -15,7 +15,7 @@ type GObjectPortal = ReactPortal & {
  * @param key An optional React key for the portal.
  */
 export const createPortal = (children: ReactNode, container: Container, key?: string | null): ReactPortal => {
-    const portal: GObjectPortal = {
+    const portal: ObjectPortal = {
         $$typeof: Symbol.for("react.portal"),
         type: "",
         props: { children },

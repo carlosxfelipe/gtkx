@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { type GObjectTarget, useProperty } from "@gtkx/react";
+import { type ObjectProp, useProperty } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -86,38 +86,38 @@ describe("useProperty (targets)", () => {
         });
     });
 
-    it("follows a ref target as it is populated and cleared", async () => {
+    it("follows a ref as it is populated and cleared", async () => {
         const label = new Gtk.Label({ label: "Hello" });
         const ref: { current: Gtk.Label | null } = { current: null };
 
         const { result, rerender } = await renderHook(
-            ({ target }: { target: GObjectTarget<Gtk.Label> }) => useProperty(target, "label"),
-            { initialProps: { target: ref as GObjectTarget<Gtk.Label> } },
+            ({ object }: { object: ObjectProp<Gtk.Label> }) => useProperty(object, "label"),
+            { initialProps: { object: ref as ObjectProp<Gtk.Label> } },
         );
 
         expect(result.current).toBeUndefined();
 
         ref.current = label;
-        await rerender({ target: ref });
+        await rerender({ object: ref });
         expect(result.current).toBe("Hello");
 
         ref.current = null;
-        await rerender({ target: ref });
+        await rerender({ object: ref });
         expect(result.current).toBeUndefined();
     });
 
-    it("re-reads and resubscribes when the target is replaced", async () => {
+    it("re-reads and resubscribes when the object is replaced", async () => {
         const first = new Gtk.Label({ label: "First" });
         const second = new Gtk.Label({ label: "Second" });
 
         const { result, rerender } = await renderHook(
-            ({ target }: { target: GObjectTarget<Gtk.Label> }) => useProperty(target, "label"),
-            { initialProps: { target: first as GObjectTarget<Gtk.Label> } },
+            ({ object }: { object: ObjectProp<Gtk.Label> }) => useProperty(object, "label"),
+            { initialProps: { object: first as ObjectProp<Gtk.Label> } },
         );
 
         expect(result.current).toBe("First");
 
-        await rerender({ target: second });
+        await rerender({ object: second });
         expect(result.current).toBe("Second");
 
         await act(() => first.setLabel("Stale"));

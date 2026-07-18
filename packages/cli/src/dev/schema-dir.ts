@@ -1,4 +1,4 @@
-import { prependSchemaDir, stageAndCompileProjectSchemas } from "../gsettings/schema.js";
+import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
 export const prepareDevSchemaDir = (root: string, dataDir: string | null): string | null => {
     const dir = stageAndCompileProjectSchemas(root, dataDir);

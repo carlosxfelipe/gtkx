@@ -32,7 +32,7 @@ export const buildReminder = (task: Task): Gio.Notification => {
 Reading it against the Gio API:
 
 - `Gio.Notification.new(title)` is the static constructor. GObject-Introspection method names come through as camelCase, so `g_notification_set_body` is `setBody`, `set_priority` is `setPriority`, and so on.
-- `Gio.NotificationPriority.HIGH` is the enum (`NORMAL`, `LOW`, `HIGH`, `URGENT`). `HIGH` asks the shell to show it more prominently, which is right for a time-sensitive reminder.
+- `Gio.NotificationPriority.HIGH` asks the shell to show the notification more prominently, which is right for a time-sensitive reminder.
 - `addButtonWithTarget(label, action, target)` adds a button that invokes `app.complete-task` with a `GLib.Variant` payload. `setDefaultActionAndTarget(action, target)` is what fires when the user clicks the notification body itself, here `app.open-task`.
 - The target is always `GLib.Variant.newString(task.id)`. Gio actions carry at most one parameter, a `GLib.Variant`, so the task id is boxed into a string variant. The `*WithTarget` variants take the variant directly instead of forcing you to escape the id into a detailed action string like `app.open-task::<id>`.
 
@@ -91,7 +91,7 @@ useReminders(tasks, reminderMinutes, sendReminder);
 
 `useApplication()` returns the live `Gtk.Application` from the nearest `<AdwApplication>` ancestor. `Gtk.Application` is a `Gio.Application`, so it carries `sendNotification(id, notification)`.
 
-The first argument to `sendNotification` is a notification **id**, and it is keyed to `task.id` on purpose. When the shell receives a second notification with an id it already has for this app, it **replaces** the first rather than stacking a duplicate. So if the sweep ever re-fires for the same task (across an app restart, say, where the in-memory `notified` set is empty again), the user sees one updated reminder, not a pile. `sendReminder` is wrapped in `useCallback` keyed on `app` so its identity is stable, keeping the hook's effect from re-subscribing on every render.
+The first argument to `sendNotification` is a notification **id**, and it is keyed to `task.id` on purpose. When the shell receives a second notification with an id it already has for this app, it **replaces** the first rather than stacking a duplicate. So if the sweep ever re-fires for the same task (across an app restart, say, where the in-memory `notified` set is empty again), the user sees one updated reminder. `sendReminder` is wrapped in `useCallback` keyed on `app` so its identity is stable, keeping the hook's effect from re-subscribing on every render.
 
 ## Installing the app-scoped actions
 

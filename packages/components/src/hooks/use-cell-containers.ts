@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { type GObjectTarget, useTargetRegistration } from "@gtkx/react/internal";
+import { type ObjectProp, useObjectAttachment } from "@gtkx/react/internal";
 import { useRef } from "react";
 import { CellContainerStore } from "../utils/cell-container-store.js";
 
@@ -25,7 +25,7 @@ export type FactoryInstaller<W extends GObject.Object> = {
 };
 
 type CellContainersOptions<W extends GObject.Object> = {
-    target: GObjectTarget<W>;
+    object: ObjectProp<W>;
     installer: FactoryInstaller<W>;
     estimatedHeight?: number | undefined;
     estimatedWidth?: number | undefined;
@@ -37,7 +37,7 @@ const applyEstimatedSize = (child: Gtk.Widget, height: number | undefined, width
 };
 
 export const useCellContainers = <W extends GObject.Object>(options: CellContainersOptions<W>): CellContainerStore => {
-    const { target, installer, estimatedHeight, estimatedWidth } = options;
+    const { object, installer, estimatedHeight, estimatedWidth } = options;
     const storeRef = useRef<CellContainerStore | null>(null);
     if (storeRef.current === null) storeRef.current = new CellContainerStore();
     const store = storeRef.current;
@@ -73,13 +73,13 @@ export const useCellContainers = <W extends GObject.Object>(options: CellContain
     }
     const factory = factoryRef.current;
 
-    useTargetRegistration<W, { widget: W }>(target, {
+    useObjectAttachment<W, { widget: W }>(object, {
         attach: (widget) => {
             installerRef.current.install(widget, factory);
             return { widget };
         },
-        detach: (registration) => installerRef.current.uninstall(registration.widget),
-        isSame: (registration, widget) => registration.widget === widget,
+        detach: (attachment) => installerRef.current.uninstall(attachment.widget),
+        isSame: (attachment, widget) => attachment.widget === widget,
     });
 
     return store;

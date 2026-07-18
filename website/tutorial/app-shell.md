@@ -71,7 +71,7 @@ useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-`useBindSetting` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced in [Data Model and Persistence](/tutorial/data-and-persistence). On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The target is the `windowRef`, which the hook resolves once the window mounts.
+`useBindSetting` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced in [Data Model and Persistence](/tutorial/data-and-persistence). On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The bound object is the `windowRef`, which the hook resolves once the window mounts.
 
 That leaves the close handler doing only close-time work: flushing unsaved tasks and quitting.
 
@@ -180,7 +180,7 @@ The condition uses `sp` units rather than raw pixels. `sp` (scale independent pi
 
 ## The content stack
 
-The content pane hosts a stack navigator. It drives an `AdwNavigationView`: navigating to a route pushes its page with the Adwaita slide animation, going back pops it, and the pushed page gets a back button and an edge-swipe for free. The stack is created at module level next to the split navigator, with the task id as a route param:
+The content pane hosts a stack navigator. It drives an `AdwNavigationView`: navigating to a route pushes its page with the Adwaita slide animation, going back pops it, and the pushed page automatically gets a back button and an edge-swipe. The stack is created at module level next to the split navigator, with the task id as a route param:
 
 ```tsx
 type TasksStackParams = {
@@ -225,7 +225,7 @@ The stack is rendered as the content pane's screen body:
 </Stack.Navigator>
 ```
 
-What the pane can show splits cleanly by kind, and that split is the whole point:
+What the pane can show splits cleanly by kind:
 
 - **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it gets its own route: `navigate("Task", { id })` pushes it, and which task it shows travels in `route.params`, not in shell state. The screen looks its task up from the id; the `options` callback does the same to put the task's title on the page.
 - **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one screen (`List`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the route never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed route would be the wrong shape.

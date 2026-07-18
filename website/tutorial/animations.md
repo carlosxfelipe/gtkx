@@ -6,7 +6,7 @@ description: "Give the empty state a subtle fade with @gtkx/animated, and learn 
 
 This page adds one animation, a fade on the empty-state placeholder, and shows where motion does not belong in a GNOME app.
 
-Most of the motion in Tasks is not hand-written. Adwaita already animates the things that should move: the `Adw.NavigationView` behind your stack navigator slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
+Most of the motion in Tasks comes from the toolkit, not code you write. Adwaita already animates the things that should move: the `Adw.NavigationView` behind your stack navigator slides the task editor in over the list, `AdwToastOverlay` slides the undo toast up from the bottom, `GtkSearchBar` reveals its entry, the selection action bar slides in through `AdwToolbarView`, and every dialog animates its own present and dismiss. You get all of that by using the widgets, with no animation code at all.
 
 Given a toolkit that already animates the important transitions, the scope is narrow: one hand-written animation, on the one screen in Tasks that would look wrong without it.
 

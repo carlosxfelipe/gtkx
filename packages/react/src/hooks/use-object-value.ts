@@ -1,33 +1,33 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import { useCallback, useRef, useSyncExternalStore } from "react";
-import { type GObjectTarget, resolveGObjectTarget } from "../utils/gobject-target.js";
+import { type ObjectProp, resolveObjectProp } from "../utils/object-prop.js";
 
-type GObjectValueCache<T extends GObject.Object, V> = {
-    target: T | null;
+type ObjectValueCache<T extends GObject.Object, V> = {
+    object: T | null;
     signal: string;
     value: V;
 };
 
-export function useGObjectValue<T extends GObject.Object, V>(
-    target: GObjectTarget<T>,
+export function useObjectValue<T extends GObject.Object, V>(
+    object: ObjectProp<T>,
     signal: string,
-    read: (target: T | null) => V,
+    read: (object: T | null) => V,
 ): V {
-    const resolved = resolveGObjectTarget(target);
+    const resolved = resolveObjectProp(object);
     const readRef = useRef(read);
     readRef.current = read;
-    const cacheRef = useRef<GObjectValueCache<T, V> | null>(null);
+    const cacheRef = useRef<ObjectValueCache<T, V> | null>(null);
 
-    const readNow = useCallback((): GObjectValueCache<T, V> => {
-        const cache = { target: resolved, signal, value: readRef.current(resolved) };
+    const readNow = useCallback((): ObjectValueCache<T, V> => {
+        const cache = { object: resolved, signal, value: readRef.current(resolved) };
         cacheRef.current = cache;
         return cache;
     }, [resolved, signal]);
 
     const getSnapshot = useCallback((): V => {
         const cache = cacheRef.current;
-        if (cache !== null && cache.target === resolved && cache.signal === signal) {
+        if (cache !== null && cache.object === resolved && cache.signal === signal) {
             return cache.value;
         }
         return readNow().value;

@@ -25,25 +25,25 @@ export type CArrayType = {
     fixedSize: number | undefined;
 };
 
-export type GListType = {
+export type ListType = {
     kind: "list";
     flavor: ListFlavor;
     element: TypeId;
 };
 
-export type GHashTableType = {
+export type HashTableType = {
     kind: "hashtable";
     key: TypeId;
     value: TypeId;
 };
 
-export type StructuralType = PrimitiveType | VarargsType | CArrayType | GListType | GHashTableType;
+export type StructuralType = PrimitiveType | VarargsType | CArrayType | ListType | HashTableType;
 
 export type ParseContext = {
     nsId: number;
     findType(name: string): TypeId;
     addPrimitive(category: PrimitiveCategory): TypeId;
     addVarargs(): TypeId;
-    addContainer(type: CArrayType | GListType | GHashTableType): TypeId;
+    addContainer(type: CArrayType | ListType | HashTableType): TypeId;
     addAnonymousCallback(node: RawNode): TypeId;
 };

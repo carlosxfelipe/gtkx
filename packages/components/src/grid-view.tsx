@@ -67,7 +67,7 @@ export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
     });
 
     const itemStore = useCellContainers<Gtk.GridView>({
-        target: widgetRef,
+        object: widgetRef,
         installer: factoryInstaller,
         estimatedHeight: estimatedItemHeight,
         estimatedWidth: estimatedItemWidth,

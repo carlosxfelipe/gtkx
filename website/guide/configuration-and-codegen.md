@@ -51,7 +51,7 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`girPath`** adds directories to the front of the `.gir` search path. The resolved order is: your `girPath` entries, then the colon-separated `GTKX_GIR_PATH` environment variable, then `/usr/share/gir-1.0`, then whatever `pkg-config --variable=girdir gobject-introspection-1.0` reports, with duplicates removed. You only need this when your GIR files live somewhere nonstandard, such as a locally built GTK4.
 
-**`reactCompiler`** controls the React Compiler, which is enabled by default with its target fixed to React 19. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
+**`reactCompiler`** controls the React Compiler, which is enabled by default. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
 
 **`codegen: false`** turns generation off entirely: the CLI deletes the local `node_modules/.gtkx/gi` and `node_modules/.gtkx/jsx` stores along with the `@gtkx/gi` and `@gtkx/jsx` links, and module resolution falls through to bindings installed as a regular dependency. This is for consuming a prebuilt binding package instead of generating against the local system.
 

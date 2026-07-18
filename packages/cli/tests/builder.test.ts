@@ -85,9 +85,9 @@ describe("build (plugin order)", () => {
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames).toEqual([
             "gtkx:config",
-            "gtkx:gsettings",
+            "gtkx:settings",
             "gtkx:icons",
-            "gtkx:gresources",
+            "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",
             "gtkx:built-url",
@@ -103,9 +103,9 @@ describe("build (plugin order)", () => {
         expect(pluginNames[0]).toBe("user-plugin");
         expect(pluginNames.slice(1)).toEqual([
             "gtkx:config",
-            "gtkx:gsettings",
+            "gtkx:settings",
             "gtkx:icons",
-            "gtkx:gresources",
+            "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",
             "gtkx:built-url",

@@ -54,7 +54,7 @@ export const ColumnViewColumn = <T = unknown>(props: ColumnViewColumnProps<T>): 
     const captureColumn = useMergeRefs<Gtk.ColumnViewColumn>(ref, setColumn);
 
     const store = useCellContainers<Gtk.ColumnViewColumn>({
-        target: column,
+        object: column,
         installer: factoryInstaller,
         estimatedHeight: estimatedItemHeight,
     });

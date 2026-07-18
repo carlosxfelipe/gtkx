@@ -71,7 +71,7 @@ The XDG spec says per-user data files belong under `$XDG_DATA_HOME`, and that an
 
 ## First run: the seed
 
-When there is no file yet, the app has to start from something. `seed()` returns a `PersistedState` with example lists and tasks, so a fresh install opens onto a populated list instead of an empty screen. `isoInDays` builds due dates relative to today (18:00), and `make` fills in the boilerplate fields so each task literal only spells out what differs.
+When there is no file yet, the app has to start from something. `seed()` returns a `PersistedState` with example lists and tasks, so a fresh install opens onto a populated list instead of an empty screen. `isoInDays` builds due dates relative to today, and `make` fills in the boilerplate fields so each task literal only spells out what differs.
 
 ```ts
 const seed = (): PersistedState => {
@@ -113,7 +113,7 @@ const seed = (): PersistedState => {
 };
 ```
 
-The color values (`#3584e4`, `#2ec27e`, `#e66100`) are from GNOME's standard color palette, so the seeded lists match the platform look.
+The color values are from GNOME's standard color palette, so the seeded lists match the platform look.
 
 ## Loading: seed, corruption, and version guard in one function
 
@@ -184,7 +184,7 @@ Passing `loadState` (the function reference, not `loadState()`) is the lazy-init
 
 ### The debounced save effect
 
-There is no explicit "save" button and no save call inside the actions. Instead, one effect watches `state` and writes it 500ms after the last change:
+Saving is automatic, with no explicit "save" button and no save call inside the actions. One effect watches `state` and writes it 500ms after the last change:
 
 ```ts
 useEffect(() => {

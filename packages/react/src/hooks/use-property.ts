@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { GObjectTarget } from "../utils/gobject-target.js";
 import { propToNotifySignal } from "../utils/notify-name.js";
-import { useGObjectValue } from "./use-gobject-value.js";
+import type { ObjectProp } from "../utils/object-prop.js";
+import { useObjectValue } from "./use-object-value.js";
 
 /**
  * The readable property keys of `T`: string keys that are neither methods nor dunder-wrapped internals.
@@ -19,13 +19,13 @@ type ReadableKey<T> = {
 /**
  * Subscribes to a GObject property and returns its current value, re-rendering when the property changes.
  *
- * @param target The GObject (or ref to one) whose property to observe.
- * @param propertyName The name of a readable property on the target.
- * @returns The current property value, or `undefined` when the target is not resolved.
+ * @param object The GObject (or ref to one) whose property to observe.
+ * @param propertyName The name of a readable property on the object.
+ * @returns The current property value, or `undefined` when the object is not resolved.
  */
 export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
-    target: GObjectTarget<T>,
+    object: ObjectProp<T>,
     propertyName: K,
 ): T[K] | undefined {
-    return useGObjectValue(target, propToNotifySignal(propertyName), (obj) => (obj ? obj[propertyName] : undefined));
+    return useObjectValue(object, propToNotifySignal(propertyName), (obj) => (obj ? obj[propertyName] : undefined));
 }

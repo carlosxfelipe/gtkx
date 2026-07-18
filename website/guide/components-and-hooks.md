@@ -75,7 +75,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 ## ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view never disagrees with your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
 
 ```tsx
 import { ColumnView, type ColumnDef } from "@gtkx/components";
@@ -138,7 +138,7 @@ Actions and the `"app."`/`"win."` prefixes are covered in the tutorial's [action
 
 ## Grid and Grid.Child
 
-`Grid` wraps `Gtk.Grid`, whose placement API is `attach(child, column, row, width, height)`. `Grid.Child` expresses one placement declaratively: `column`, `row`, `columnSpan`, and `rowSpan` (spans default to 1). Name the placed widget with the `component` prop and pass its props inline:
+`Grid` wraps `Gtk.Grid`, whose placement API is `attach(child, column, row, width, height)`. `Grid.Child` expresses one placement declaratively: `column`, `row`, `columnSpan`, and `rowSpan`. Name the placed widget with the `component` prop and pass its props inline:
 
 ```tsx
 import { Grid } from "@gtkx/components";
@@ -243,19 +243,19 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 **Alert dialogs** pass `AdwAlertDialog` (from `@gtkx/jsx/adw`) as `Dialog`'s `component`, declaring their buttons through the `responses` prop and delivering the chosen id to `onResponse`. See [Confirming the irreversible](/tutorial/feedback-and-dialogs#confirming-the-irreversible) for `responses`, `closeResponse`, and `onResponse`.
 
-**Navigation is its own package.** Page stacks and the adaptive sidebar/content layout are not components here: `@gtkx/navigation` provides React Navigation-style stack and split-view navigators backed by `Adw.NavigationView` and `Adw.NavigationSplitView`, with routes, params, and hooks. See [Navigation](/guide/navigation).
+**Navigation is its own package.** Page stacks and the adaptive sidebar/content layout come from `@gtkx/navigation`, which provides React Navigation-style stack and split-view navigators backed by `Adw.NavigationView` and `Adw.NavigationSplitView`, with routes, params, and hooks. See [Navigation](/guide/navigation).
 
 **`DropDown` as a combo row**: pass `component={AdwComboRow}` to apply the `DropDown` model (`items`, `selectedId`, `onSelectionChanged`, the same renderer props) to `Adw.ComboRow`, the preferences-style row with an embedded drop-down. The Tasks app's theme and sort-order pickers in [Preferences and Theming](/tutorial/preferences-and-theming) use it.
 
 ## Hooks from @gtkx/react
 
-`@gtkx/react` exports a set of hooks for talking to live GObjects. All of the object-observing ones accept a `GObjectTarget<T>`: a live instance, a React ref to one, or `null`/`undefined`, so you can pass a `useRef` directly and the hook attaches when the widget mounts and detaches when it goes away.
+`@gtkx/react` exports a set of hooks for talking to live GObjects. All of the object-observing ones accept an `ObjectProp<T>`: a live instance, a React ref to one, or `null`/`undefined`, so you can pass a `useRef` directly and the hook attaches when the widget mounts and detaches when it goes away.
 
 **`useApplication(): Gtk.Application`** returns the running application object from the nearest application element, and throws when called outside one. Use it for application-level imperative calls such as `sendNotification` or `addAction`.
 
 **`useParentWindow(): Gtk.Window | null`** returns the nearest ancestor window, or `null` when there is none. It is how components like `Dialog` find their default anchor without threading a window prop through the tree.
 
-**`useProperty(target, propertyName)`** subscribes to `notify::<property>` on a GObject and returns the property's current value, re-rendering on change and returning `undefined` while the target is unresolved. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
+**`useProperty(object, propertyName)`** subscribes to `notify::<property>` on a GObject and returns the property's current value, re-rendering on change and returning `undefined` while the object is unresolved. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
 
 **`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SchemaRef` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
 
@@ -266,14 +266,14 @@ import schema from "#data/com.gtkx.tutorial.gschema.xml";
 const [filter, setFilter] = useSetting(schema, "filter");
 ```
 
-**`useBindSetting(schema, key, target, property, flags?)`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the target is mounted. The Tasks app persists its window geometry this way:
+**`useBindSetting(schema, key, object, property, flags?)`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
 
 ```tsx
 useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-**`useSignal(target, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the target changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):
+**`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):
 
 ```tsx
 import { useSignal } from "@gtkx/react";

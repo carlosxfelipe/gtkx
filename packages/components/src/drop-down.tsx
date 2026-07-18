@@ -132,14 +132,14 @@ const useDropDownWiring = <T, S, W extends DropDownWidget>(
 
     const useHeader = typeof props.renderHeader === "function";
 
-    const selectionStore = useCellContainers<DropDownWidget>({ target: widgetRef, installer: itemFactoryInstaller });
-    const listStore = useCellContainers<DropDownWidget>({ target: widgetRef, installer: listFactoryInstaller });
+    const selectionStore = useCellContainers<DropDownWidget>({ object: widgetRef, installer: itemFactoryInstaller });
+    const listStore = useCellContainers<DropDownWidget>({ object: widgetRef, installer: listFactoryInstaller });
     const headerStore = useCellContainers<DropDownWidget>({
-        target: useHeader ? widgetRef : null,
+        object: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
     });
 
-    useInstalledModel(widgetRef, listModel.model, (target, value) => target.setModel(value));
+    useInstalledModel(widgetRef, listModel.model, (widget, value) => widget.setModel(value));
 
     const selectedPosition = useDropDownSelection<T, S>({
         widget,

@@ -11,5 +11,5 @@ export type { AccessibleProps } from "./reconciler/accessible.js";
 export { createPortal } from "./reconciler/portal.js";
 export { createRoot, quit, type Root } from "./reconciler/render.js";
 export { type RootElement, rootElement } from "./reconciler/root-element.js";
-export type { GObjectTarget } from "./utils/gobject-target.js";
+export type { ObjectProp } from "./utils/object-prop.js";
 export type { TextAnchorProps, TextPaintableProps } from "./utils/wrapper-node-jsx.js";

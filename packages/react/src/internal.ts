@@ -1,8 +1,8 @@
 export { createApplicationComponent } from "./components/application.js";
 export { createWindowComponent } from "./components/window.js";
-export { useGObjectValue } from "./hooks/use-gobject-value.js";
 export { useMergeRefs } from "./hooks/use-merge-refs.js";
-export { useTargetRegistration } from "./hooks/use-target-registration.js";
+export { useObjectAttachment } from "./hooks/use-object-attachment.js";
+export { useObjectValue } from "./hooks/use-object-value.js";
 export { setReconcilerErrorHandler } from "./reconciler/reconciler-error-handler.js";
 export { createReconcilerRoot, type ReconcilerRoot } from "./reconciler/reconciler-root.js";
 export { isRootElement } from "./reconciler/root-element.js";
@@ -20,4 +20,4 @@ export {
 } from "./reconciler/wrapper-protocol.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
 export { createElementComponent, createLazyElementComponent } from "./utils/create-element-component.js";
-export { type GObjectTarget, resolveGObjectTarget } from "./utils/gobject-target.js";
+export { type ObjectProp, resolveObjectProp } from "./utils/object-prop.js";

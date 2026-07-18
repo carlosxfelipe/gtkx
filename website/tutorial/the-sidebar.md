@@ -105,7 +105,7 @@ return (
 
 There is no `className` in GTKX; you attach style classes through `cssClasses`, which is always a `string[]`. `.navigation-sidebar` is a stock Adwaita class that restyles a `GtkListBox` into the flat, tinted sidebar look (no card borders, hover/selection styled for a nav rail). The list box uses its default single-selection behavior, which is exactly what a navigation rail wants: one active destination at a time.
 
-The children are `AdwActionRow`s, and `AdwActionRow` subclasses `GtkListBoxRow` (via `AdwPreferencesRow`), so the reconciler appends each one to the list box directly and `row.getIndex()` inside `onRowSelected` maps one-to-one onto the index into `entries`. Only a non-row child, such as a bare `GtkLabel`, would get wrapped in a `GtkListBoxRow` before insertion.
+The children are `AdwActionRow`s, and `AdwActionRow` subclasses `GtkListBoxRow`, so the reconciler appends each one to the list box directly and `row.getIndex()` inside `onRowSelected` maps one-to-one onto the index into `entries`. Only a non-row child, such as a bare `GtkLabel`, would get wrapped in a `GtkListBoxRow` before insertion.
 
 ## Rows: prefix and suffix slots
 
@@ -158,7 +158,7 @@ export const listDot = (color: string): string => css`
 
 You place that class name into the widget's `cssClasses` array. Because `listDot` is called with the list's color at render time, each list gets its own generated, deduplicated class. The GTK4 CSS itself, and how it differs from web CSS, is covered in [CSS and Animations](/guide/css-and-animations).
 
-The dot carries no information a screen reader needs to announce, so it is marked decorative with `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. That removes the empty box from the accessibility tree, leaving the row's title as the only thing announced. `valign={Gtk.Align.CENTER}` keeps the 12px dot vertically centered against the taller row.
+The dot carries no information a screen reader needs to announce, so it is marked decorative with `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. That removes the empty box from the accessibility tree, leaving the row's title as the only thing announced. `valign={Gtk.Align.CENTER}` keeps the small dot vertically centered against the taller row.
 
 ### Count badges
 

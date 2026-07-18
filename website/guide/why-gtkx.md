@@ -46,7 +46,7 @@ const Counter = () => {
 };
 ```
 
-`GtkButton` is not a name GTKX invented: it is the GObject class, and `onClicked` is its `clicked` signal. `@gtkx/gi` and `@gtkx/jsx` are per-project bindings the CLI generates, not packages you install from npm.
+`GtkButton` is the GObject class itself, and `onClicked` is its `clicked` signal. `@gtkx/gi` and `@gtkx/jsx` are per-project bindings the CLI generates, not packages you install from npm.
 
 ## Why Node.js, and why generated bindings
 

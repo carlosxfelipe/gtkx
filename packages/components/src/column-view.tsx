@@ -105,7 +105,7 @@ const useColumnViewWiring = <T, S>(props: NormalizedColumnViewProps<T, S>): Colu
 
     const useHeader = collection.useHeader;
     const headerStore = useCellContainers<Gtk.ColumnView>({
-        target: useHeader ? widgetRef : null,
+        object: useHeader ? widgetRef : null,
         installer: headerFactoryInstaller,
         estimatedHeight: props.estimatedItemHeight,
     });

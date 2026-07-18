@@ -3,16 +3,16 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { error, errorMessage, info } from "@gtkx/utils";
 import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
-import { compileSchemas } from "../gsettings/compile.js";
-import { parseSchemaXml, SchemaParseError } from "../gsettings/parser.js";
-import { renderRuntimeModule } from "../gsettings/render.js";
-import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../gsettings/schema.js";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
+import { compileSchemas } from "../settings/compile.js";
+import { parseSchemaXml, SchemaParseError } from "../settings/parser.js";
+import { renderRuntimeModule } from "../settings/render.js";
+import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../settings/schema.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
-const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
+const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
@@ -161,7 +161,7 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.on("unlink", refreshSchemaTypes);
 };
 
-export function gtkxGSettings(): Plugin {
+export function gtkxSettings(): Plugin {
     const state: PluginState = {
         schemaDir: null,
         rootDir: null,
@@ -173,7 +173,7 @@ export function gtkxGSettings(): Plugin {
     };
 
     return {
-        name: "gtkx:gsettings",
+        name: "gtkx:settings",
         enforce: "pre",
 
         config(config: UserConfig) {

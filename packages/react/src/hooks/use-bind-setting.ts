@@ -1,35 +1,35 @@
 import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import { toKebabCase } from "@gtkx/utils";
-import type { GObjectTarget } from "../utils/gobject-target.js";
+import type { ObjectProp } from "../utils/object-prop.js";
+import { useObjectAttachment } from "./use-object-attachment.js";
 import { type SchemaRef, useSettingsInstance } from "./use-setting.js";
-import { useTargetRegistration } from "./use-target-registration.js";
 
 export function useBindSetting<K extends object, P extends keyof K & string>(
     schema: SchemaRef<K>,
     key: P,
-    target: GObjectTarget<GObject.Object>,
+    object: ObjectProp<GObject.Object>,
     property: string,
     flags?: Gio.SettingsBindFlags,
 ): void;
 export function useBindSetting(
     schema: SchemaRef,
     key: string,
-    target: GObjectTarget<GObject.Object>,
+    object: ObjectProp<GObject.Object>,
     property: string,
     flags: Gio.SettingsBindFlags = Gio.SettingsBindFlags.DEFAULT,
 ): void {
     const settings = useSettingsInstance(schema);
     const propertyName = toKebabCase(property);
 
-    useTargetRegistration<GObject.Object, GObject.Object>(target, {
-        attach: (object) => {
-            settings.bind(key, object, propertyName, flags);
-            return object;
+    useObjectAttachment<GObject.Object, GObject.Object>(object, {
+        attach: (obj) => {
+            settings.bind(key, obj, propertyName, flags);
+            return obj;
         },
-        detach: (object) => {
-            Gio.Settings.unbind(object, propertyName);
+        detach: (obj) => {
+            Gio.Settings.unbind(obj, propertyName);
         },
-        isSame: (registration, current) => registration === current,
+        isSame: (attachment, current) => attachment === current,
     });
 }

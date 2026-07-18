@@ -120,7 +120,7 @@ const Split = createSplitViewNavigator<ShellParams>();
 </Split.Navigator>;
 ```
 
-`navigate("Tasks")` focuses the content pane; on a collapsed layout that slides it into view (the widget's `show-content`). The widget's own back motion (the back button or a swipe while collapsed) dispatches back to the sidebar route. `goBack()` from the content does the same, because the router's back behavior is pinned to the initial route. `collapsed` stays a controlled prop: the app decides when the layout collapses, typically from an `AdwBreakpoint`, and the navigator follows. All other `AdwNavigationSplitView` props (`sidebarWidthFraction`, `minSidebarWidth`, `maxSidebarWidth`, `sidebarPosition`, and the rest) pass through, and each pane's `Adw.NavigationPage` title comes from the screen's `title` option.
+`navigate("Tasks")` focuses the content pane; on a collapsed layout that slides it into view (the widget's `show-content`). The widget's own back motion (the back button or a swipe while collapsed) dispatches back to the sidebar route. `goBack()` from the content does the same, because the router's back behavior is pinned to the initial route. `collapsed` stays a controlled prop: the app decides when the layout collapses, typically from an `AdwBreakpoint`, and the navigator follows. All other `AdwNavigationSplitView` props pass through, and each pane's `Adw.NavigationPage` title comes from the screen's `title` option.
 
 Nesting follows React Navigation's standard shape: render a stack navigator as the content screen and address its screens through `NavigatorScreenParams`:
 
@@ -134,7 +134,7 @@ That one call focuses the content pane *and* pushes the task page in its stack. 
 
 `@gtkx/navigation` re-exports the React Navigation core hooks:
 
-- **`useNavigation()`** returns the navigation object for the enclosing screen: `navigate`, `goBack`, `setParams`, `setOptions`, and event subscription via `addListener`. Type it as `useNavigation<StackNavigationProp<TasksStackParams>>()` to reach the stack helpers (`push`, `pop`, `popTo`, `popToTop`, `replace`), or as `SplitViewNavigationProp` to reach `jumpTo`.
+- **`useNavigation()`** returns the navigation object for the enclosing screen: `navigate`, `goBack`, `setParams`, `setOptions`, and event subscription via `addListener`. Type it as `useNavigation<StackNavigationProp<TasksStackParams>>()` to reach the stack helpers like `push` and `popTo`, or as `SplitViewNavigationProp` to reach `jumpTo`.
 - **`useRoute()`** returns the screen's route, including `params`.
 - **`useNavigationState(selector)`** subscribes to a slice of the navigator's state.
 - **`useIsFocused()`** and **`useFocusEffect(callback)`** track whether the screen is the focused one, re-running the effect on focus and cleaning up on blur.

@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import { useCallback, useMemo } from "react";
 import { resolveAccessor } from "../utils/settings-accessor.js";
-import { useGObjectValue } from "./use-gobject-value.js";
+import { useObjectValue } from "./use-object-value.js";
 
 /**
  * A typed reference to a GSettings schema: its id, path, and the mapping of typed keys to their setting names.
@@ -34,7 +34,7 @@ export function useSetting(schema: SchemaRef, key: string): [unknown, (value: un
     const accessor = resolveAccessor(schema.keys[key], key, schema.id);
     const settings = useSettingsInstance(schema);
 
-    const value = useGObjectValue(settings, `changed::${key}`, () => accessor.read(settings, key));
+    const value = useObjectValue(settings, `changed::${key}`, () => accessor.read(settings, key));
 
     const set = useCallback(
         (newValue: unknown) => {

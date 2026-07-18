@@ -3,8 +3,8 @@ import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type Config, type ElementProp, loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
-import { emitSchemaEnv } from "../gsettings/schema.js";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseSchemaXml } from "../../src/gsettings/parser.js";
-import { renderEnvModule, renderRuntimeModule } from "../../src/gsettings/render.js";
+import { parseSchemaXml } from "../../src/settings/parser.js";
+import { renderEnvModule, renderRuntimeModule } from "../../src/settings/render.js";
 
 const parse = (xml: string, fileName = "test.gschema.xml") => parseSchemaXml(xml, fileName);
 

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gtkxGSettingsWorkerEnv } from "../../src/vite-plugins/gsettings-worker-env.js";
+import { gtkxSettingsWorkerEnv } from "../../src/vite-plugins/settings-worker-env.js";
 
 type ConfigHook = (config: { root?: string }) => { test?: { env?: Record<string, string> } } | undefined;
 
@@ -36,11 +36,11 @@ const writeProject = (root: string, options: { dataDir: string | null; schema: b
 };
 
 const callConfig = (root: string): ReturnType<ConfigHook> => {
-    const plugin = gtkxGSettingsWorkerEnv();
+    const plugin = gtkxSettingsWorkerEnv();
     return (plugin.config as ConfigHook)({ root });
 };
 
-describe("gtkxGSettingsWorkerEnv", () => {
+describe("gtkxSettingsWorkerEnv", () => {
     let root: string;
     let previousSchemaDir: string | undefined;
     let previousRunnerDir: string | undefined;
@@ -62,8 +62,8 @@ describe("gtkxGSettingsWorkerEnv", () => {
     });
 
     it("returns a plugin with the expected name and pre-enforce", () => {
-        const plugin = gtkxGSettingsWorkerEnv();
-        expect(plugin.name).toBe("gtkx:gsettings-worker-env");
+        const plugin = gtkxSettingsWorkerEnv();
+        expect(plugin.name).toBe("gtkx:settings-worker-env");
         expect(plugin.enforce).toBe("pre");
     });
 

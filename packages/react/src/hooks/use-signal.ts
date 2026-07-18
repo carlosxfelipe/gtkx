@@ -1,8 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import { useRef } from "react";
-import type { GObjectTarget } from "../utils/gobject-target.js";
-import { useTargetRegistration } from "./use-target-registration.js";
+import type { ObjectProp } from "../utils/object-prop.js";
+import { useObjectAttachment } from "./use-object-attachment.js";
 
 type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
 
@@ -50,21 +50,21 @@ type SignalSubscription = {
 };
 
 /**
- * Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the target changes.
+ * Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes.
  *
- * @param target The GObject (or ref to one) to connect to.
+ * @param object The GObject (or ref to one) to connect to.
  * @param signal The signal name, optionally with a detail suffix.
  * @param handler The callback invoked when the signal is emitted.
  * @param options Connection options such as running after the default handler or invoking immediately.
  */
 export function useSignal<T extends GObject.Object, S extends SignalNameOf<T>>(
-    target: GObjectTarget<T>,
+    object: ObjectProp<T>,
     signal: S,
     handler: SignalHandlerFor<T, S>,
     options?: UseSignalOptions,
 ): void;
 export function useSignal(
-    target: GObjectTarget<GObject.Object>,
+    object: ObjectProp<GObject.Object>,
     signal: string,
     handler: AnySignalHandler,
     options?: UseSignalOptions,
@@ -74,7 +74,7 @@ export function useSignal(
     const after = options?.after ?? false;
     const immediate = options?.immediate ?? false;
 
-    useTargetRegistration<GObject.Object, SignalSubscription>(target, {
+    useObjectAttachment<GObject.Object, SignalSubscription>(object, {
         attach: (obj) => {
             const listener: SignalHandler = (...args) => handlerRef.current(...args);
             obj.on(signal, listener, after);

@@ -73,7 +73,7 @@ describe("gtkxCss (load)", () => {
         expect(out).toContain(`injectGlobal(${JSON.stringify("body { color: red; }")});`);
     });
 
-    it("load returns undefined for non-virtual ids (binary assets handled by gtkx:gresources)", () => {
+    it("load returns undefined for non-virtual ids (binary assets handled by gtkx:resources)", () => {
         const plugin = gtkxCss();
         expect((plugin.load as LoadHook)("/abs/path/logo.png")).toBeUndefined();
         expect((plugin.load as LoadHook)("/abs/path/module.ts")).toBeUndefined();

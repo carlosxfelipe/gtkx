@@ -11,7 +11,7 @@ import {
 import { parseGirFile, type RawNode } from "./parse.js";
 import type { PrimitiveCategory } from "./primitives.js";
 import type { GirType } from "./type.js";
-import type { CArrayType, GHashTableType, GListType, ParseContext, TypeId } from "./type-id.js";
+import type { CArrayType, HashTableType, ListType, ParseContext, TypeId } from "./type-id.js";
 import { splitOptionalNamespace } from "./type-ref.js";
 
 const INTERNAL_NS_ID = 0;
@@ -126,7 +126,7 @@ export class Library {
             findType: (name) => this.findTypeByName(nsId, name),
             addPrimitive: (category) => this.addPrimitive(category),
             addVarargs: () => this.addVarargs(),
-            addContainer: (type: CArrayType | GListType | GHashTableType) => this.addAnonymousType(nsId, type),
+            addContainer: (type: CArrayType | ListType | HashTableType) => this.addAnonymousType(nsId, type),
             addAnonymousCallback: (node) =>
                 this.addAnonymousType(nsId, {
                     kind: "callback",

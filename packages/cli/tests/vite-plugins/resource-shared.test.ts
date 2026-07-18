@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapeXml } from "../../src/vite-plugins/gresource-shared.js";
+import { escapeXml } from "../../src/vite-plugins/resource-shared.js";
 
 describe("escapeXml (internal)", () => {
     it("escapes < to &lt;", () => {

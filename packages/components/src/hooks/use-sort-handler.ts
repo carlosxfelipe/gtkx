@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type GObjectTarget, resolveGObjectTarget } from "@gtkx/react/internal";
+import { type ObjectProp, resolveObjectProp } from "@gtkx/react/internal";
 import { useLayoutEffect, useRef } from "react";
 
 export type ColumnRegistration = {
@@ -9,7 +9,7 @@ export type ColumnRegistration = {
 };
 
 type SortHandlerOptions = {
-    columnView: GObjectTarget<Gtk.ColumnView>;
+    columnView: ObjectProp<Gtk.ColumnView>;
     sortColumn: string | null | undefined;
     sortOrder: Gtk.SortType | null | undefined;
     onSortChanged: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
@@ -94,7 +94,7 @@ export const useSortHandler = (options: SortHandlerOptions): void => {
     };
 
     useLayoutEffect(() => {
-        const view = resolveGObjectTarget(columnView);
+        const view = resolveObjectProp(columnView);
         if (view === null) return;
         ensureColumnSorters(columns, activeId);
         suppressRef.current = true;

@@ -33,7 +33,7 @@ export default defineConfig({
 
 - an isolated `XDG_RUNTIME_DIR`
 - a dedicated `dbus-daemon` session bus
-- a headless Wayland compositor (weston with the pixman software renderer by default, or sway)
+- a headless Wayland compositor (weston by default, or sway)
 
 Every worker gets its own compositor and bus, so tests in different files cannot interfere through shared display state, and the whole stack is torn down when the worker exits.
 

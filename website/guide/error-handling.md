@@ -12,7 +12,7 @@ Every generated binding for a throwing C function (anything marked `throws` in t
 
 The same model carries over to asynchronous calls. GIO-style async methods are promisified, so a failed operation rejects its promise with the same error object a synchronous call would have thrown. `try { await ... } catch` handles both identically. The promise model itself, including cancellation, is covered in [Async Operations](/guide/async-operations).
 
-Failures that are not GErrors, such as passing an argument the native Rust core cannot convert, surface as plain JavaScript `Error`s rather than `GLib.Error` instances. Most errors in a GTKX app are not GErrors at all: `node:fs` throws Node.js errors with string codes like `"ENOENT"`, `fetch` rejects with a `TypeError`, and `JSON.parse` throws a `SyntaxError`. GErrors appear only when a GI binding fails, and they land on the same `try`/`catch` channel as everything else.
+Failures that are not GErrors, such as passing an argument the native Rust core cannot convert, surface as plain JavaScript `Error`s rather than `GLib.Error` instances. Most errors in a GTKX app are ordinary JavaScript errors, not GErrors: `node:fs` throws Node.js errors with string codes like `"ENOENT"`, `fetch` rejects with a `TypeError`, and `JSON.parse` throws a `SyntaxError`. GErrors appear only when a GI binding fails, and they land on the same `try`/`catch` channel as everything else.
 
 ## What you catch: `GLib.Error`
 

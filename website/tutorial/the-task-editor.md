@@ -8,7 +8,7 @@ Clicking a task in the list opens the editor: a title field, an Important switch
 
 ## The task screen
 
-The editor is the `Task` route of the content stack, set up in [The Application Shell](/tutorial/app-shell#the-content-stack). `openTask(id)` navigates to it, and the task id travels in `route.params`. Both the screen body and its `options` callback look the task up from that id, so the page title and the form can never describe different tasks. That section shows the screen in outline; this page fills in what it elides, starting with the body from `app.tsx`:
+The editor is the `Task` route of the content stack, set up in [The Application Shell](/tutorial/app-shell#the-content-stack). `openTask(id)` navigates to it, and the task id travels in `route.params`. Both the screen body and its `options` callback look the task up from that id, so the page title and the form always describe the same task. That section shows the screen in outline; this page fills in what it elides, starting with the body from `app.tsx`:
 
 ```tsx
 <AdwToolbarView topBar={<>{/* the detail header, below */}</>} controllers={<>{/* the Delete shortcut, below */}</>}>
@@ -118,7 +118,7 @@ The first section is an `AdwPreferencesGroup`, which renders its rows as a singl
 
 `AdwEntryRow` is a labeled text field styled as a list row. `showApplyButton` reveals a checkmark button as soon as you edit the text. Clicking it, or pressing Enter while it is shown, fires `apply` (`onApply`). Pressing Enter with no pending edit fires `entry-activated` (`onEntryActivated`) instead.
 
-Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it, not on every character. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
+Both read the committed text off the live widget with `self.text` and push it up through `onUpdate`. There is no per-keystroke `onChanged` handler wired to `onUpdate` here, so the title is written only when you explicitly apply it. The `text={task.title}` binding stays controlled and re-syncs whenever the committed title changes.
 
 `AdwSwitchRow` is an action row with a `GtkSwitch` on the trailing edge. The row has no `toggled` signal; instead you listen to the property change with `onNotifyActive`, which is the `notify::active` handler. Its first argument is the new value (typed `boolean | null`, hence the `?? false`). This is the general pattern for switch state in GTKX: read the boolean out of the `notify` on the property, not a custom event.
 

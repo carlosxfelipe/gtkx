@@ -22,12 +22,12 @@ const renderGtypeExpression = (
     return `resolveType(${sourceStringLiteral(lib)}, ${sourceStringLiteral(getType)})`;
 };
 
-type GTypeSource = {
+type TypeSource = {
     glibGetType: string | undefined;
     glibTypeName: string | undefined;
 };
 
-export const gtypeExprFor = (context: ModuleContext, source: GTypeSource): string | undefined =>
+export const gtypeExprFor = (context: ModuleContext, source: TypeSource): string | undefined =>
     source.glibGetType === undefined
         ? undefined
         : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);

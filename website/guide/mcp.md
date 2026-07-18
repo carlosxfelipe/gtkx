@@ -20,7 +20,7 @@ The **app half** lives inside `gtkx dev`. When your entry module mounts an appli
 
 If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server. Every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app; `gtkx_list_apps` and the API-reference tools take none.
 
-Interactions are not reimplemented for MCP. Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`.
+Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`.
 
 All of this is development tooling. The MCP client is part of the CLI's dev runner, not your application code, so `gtkx build` bundles none of it and a production app has nothing listening.
 
@@ -109,7 +109,7 @@ This is the map the agent navigates by, and the fullest source of the widget IDs
 
 That call finds every button whose accessible name is "New List" and returns each match with its ID and serialized properties. These are the same queries as `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` in `@gtkx/testing`, with the same matching semantics, so anything you have learned about querying in tests transfers directly.
 
-**`gtkx_get_widget_props`** takes a `widgetId` and returns that widget's serialized state: `id`, `type`, `role`, `name`, `text`, `sensitive`, `visible`, `cssClasses`, and `children`. Use it to check a single widget without re-fetching the tree, for example to confirm a button became insensitive or a row picked up a CSS class.
+**`gtkx_get_widget_props`** takes a `widgetId` and returns that widget's serialized state. Use it to check a single widget without re-fetching the tree, for example to confirm a button became insensitive (its `sensitive` flag) or a row picked up a CSS class (its `cssClasses`).
 
 **`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine, creating directories as needed, which is how agents save screenshots into a repository for documentation or visual comparison. A screenshot shows results but cannot be clicked; widget IDs for interaction always come from the tree or a query.
 
@@ -152,7 +152,7 @@ Here is what the loop looks like when an agent verifies a change to the [Tasks a
 1. The agent calls `gtkx_list_apps` with `waitForApps: true` and sees `com.gtkx.tutorial` with a window titled "Tasks".
 2. It calls `gtkx_get_widget_tree` and reads the shape of the UI: the `AdwNavigationSplitView`, the sidebar rows, the task list, each with an ID.
 3. It calls `gtkx_query_widgets` with `by: "role"`, `value: "BUTTON"`, `options: { name: "New List" }` to pin down the exact button, then `gtkx_click` on the returned ID.
-4. The dialog opens. The agent re-fetches the tree (the dialog's widgets are new, with new IDs), finds the name entry, and calls `gtkx_type` with `clear: true` and the text "Groceries".
+4. The dialog opens, so the agent re-fetches the tree (the dialog's widgets are new, with new IDs), finds the name entry, and calls `gtkx_type` with `clear: true` and the text "Groceries".
 5. It clicks the confirm button, then calls `gtkx_take_screenshot` with a `path` under the project to capture the sidebar showing the new list, and reads the returned image to confirm the row rendered correctly.
 6. You ask for the list rows to gain a subtitle. The agent calls `gtkx_get_api_docs` with `AdwActionRow` to check the exact prop name and type, edits the component, `gtkx dev` applies it with Fast Refresh, and one more screenshot confirms the result, all without restarting the app or losing its state.
 
