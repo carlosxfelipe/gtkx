@@ -65,9 +65,5 @@
     },
     "devDependencies": {
         "@napi-rs/cli": "^3.7.3"
-    },
-    "optionalDependencies": {
-        "@gtkx/native-linux-x64-gnu": "1.0.0-rc.1",
-        "@gtkx/native-linux-arm64-gnu": "1.0.0-rc.1"
     }
 }
