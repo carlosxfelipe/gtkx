@@ -4,19 +4,19 @@ description: "Store preferences in GSettings, add a preferences dialog, sort the
 
 # Preferences and the System Theme
 
-Deleting is recoverable now, with a toast for the reversible case and a dialog for the permanent one, and the sidebar can grow a new list ([Deleting Without Fear](/tutorial/trash-and-toasts)). This chapter cashes in the promise made back in [Saving Tasks Between Runs](/tutorial/saving-to-disk): user content lives in a JSON file, and preferences live somewhere else. You will build that somewhere else, put a preferences dialog in front of it, sort the task list by it, and let the window follow the desktop's light or dark theme.
+Deletion is recoverable now, with a toast for the reversible case and a dialog for the permanent one ([Deleting Without Fear](/tutorial/trash-and-toasts)). This chapter makes good on the split promised in [Saving Tasks Between Runs](/tutorial/saving-to-disk): user content lives in a JSON file, preferences live in GSettings.
 
 ## Preferences are not user data
 
-Your tasks are open-ended: there could be three or three thousand, each an object whose shape only your app understands. A JSON file suits that perfectly.
+Your tasks are open-ended: any number of them, each an object whose shape only your app understands. A JSON file suits that.
 
-A preference is the opposite. The theme is one of a closed set of names. The reminder lead time is a whole number of minutes with a floor and a ceiling. The window width is a pixel count. Every one of them has a type, a default, and a range of legal values, and the desktop itself has a stake in them: `gsettings` can read and write them from a terminal, `dconf-editor` can browse them, and resetting an application to factory settings means clearing them.
+A preference is the opposite. The theme is one of a closed set of names, the reminder lead time is a whole number of minutes with a floor and a ceiling, the window width is a pixel count. Each has a type, a default, and a range of legal values, and the desktop has a stake in them: `gsettings` can read and write them from a terminal, `dconf-editor` can browse them, and resetting an application to factory settings means clearing them.
 
-GSettings gives you exactly that: a declared schema with types, defaults, and constraints, a per-user database behind it, and change notification when a value moves. A JSON blob gives you none of it. So preferences go in GSettings, and that split holds for the rest of the tutorial.
+GSettings gives you that: a declared schema with types, defaults, and constraints, a per-user database behind it, and change notification when a value moves. A JSON blob gives you none of it.
 
 ## Declaring the schema
 
-GSettings will not let you read or write a key you have not declared. The declaration is an XML schema file, and it lives in your project's `data/` directory.
+GSettings will not let you read or write a key you have not declared. The declaration is an XML schema file in your project's `data/` directory.
 
 Create `data/com.gtkx.tutorial.gschema.xml`:
 
@@ -65,13 +65,13 @@ Create `data/com.gtkx.tutorial.gschema.xml`:
 </schemalist>
 ```
 
-The schema `id` is your application ID, and the `path` is that ID with slashes instead of dots. That is the convention GNOME expects, and it is why a reverse-DNS application ID had to be settled in the first chapter.
+The schema `id` is your application ID, and the `path` is that ID with slashes instead of dots. That is the convention GNOME expects, and why a reverse-DNS application ID had to be settled in the first chapter.
 
-Two forms of constraint appear here. `color-scheme` is a plain string key with an inline `<choices>` list, which is right when the legal values are just strings. `sort-order` refers to a top-level `<enum>` by id, which pairs each name with a stored integer, so the value on disk is compact and the name you write in code stays readable. An enum key's `<default>` is the nick in single quotes, not the number. `reminder-minutes` takes a `<range>` instead, capping the lead time at a day.
+`color-scheme` uses an inline `<choices>` list, which fits when the legal values are just strings. `sort-order` refers to a top-level `<enum>` by id, pairing each name with a stored integer, so the value on disk is compact and the name you write in code stays readable. An enum key's `<default>` is the nick in single quotes, not the number. `reminder-minutes` takes a `<range>`, capping the lead time at a day.
 
-Constraints are worth the extra lines because GSettings enforces them at the point of writing: a write outside the declared choices or range is rejected. A value you read back from a settings key is therefore already legal, and you never have to validate it on the way in.
+Constraints earn their lines because GSettings enforces them at the point of writing: a write outside the declared choices or range is rejected. A value you read back is therefore already legal, and never needs validating on the way in.
 
-The two window keys are not something the user ever picks. They are the app remembering itself, which is the same kind of small typed value, so they belong here too.
+The window keys are not something the user picks. They are the app remembering itself, the same kind of small typed value, so they belong here too.
 
 ## Importing the schema
 
@@ -94,19 +94,23 @@ Now any file can pull the schema in by its path:
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 ```
 
-That import is not the XML text. It is the generated module, and it carries the key types with it, so `"sort-order"` resolves to the union `"manual" | "due-date" | "title" | "created"` and `"window-width"` resolves to `number`. Misspell a key name and the type checker catches it before the app runs.
+That import is not the XML text, it is the generated module, and it carries the key types: `"sort-order"` resolves to the union `"manual" | "due-date" | "title" | "created"`, `"window-width"` to `number`. Misspell a key name and the type checker catches it before the app runs.
+
+::: warning `Failed to resolve import "#data/com.gtkx.tutorial.gschema.xml"`
+Subpath imports live in `package.json`. Add the `imports` block and save it: Vite drops its cached view of that file, so the next save of the module that imports the schema resolves `#data/*` through the new mapping. Nothing about the dev server changes.
+
+The schema XML itself is watched. The first import compiles it and logs `Compiled GSettings schema: com.gtkx.tutorial.gschema.xml`; every later edit to the keys is just a save, logged as `Recompiled GSettings schema: com.gtkx.tutorial.gschema.xml`.
+:::
 
 ::: warning Settings schema is not installed?
-If the app dies at startup with `GLib-GIO-ERROR **: Settings schema 'com.gtkx.tutorial' is not installed`, the compiled schema is not on the search path. Two usual causes: the file is not under `data/`, which is the only directory scanned, or you are running `node dist/bundle.js` directly instead of through `npm run dev`. Restart `npm run dev` after creating the file, since schemas are compiled during dev startup rather than watched into existence mid-session.
+If the app dies at startup with `GLib-GIO-ERROR **: Settings schema 'com.gtkx.tutorial' is not installed`, the compiled schema is not on the search path. Either the file is not under `data/`, which is the only directory scanned, or you are running `node dist/bundle.js` directly instead of through `npm run dev`.
 :::
 
 ## Binding first
 
 Start with the window size, because it needs no dialog and no code of your own.
 
-`useBindSetting` ties a GSettings key to a GObject property on a live widget, in both directions and for as long as the widget exists. Give it the schema, the key, a ref to the widget, and the property name in camelCase.
-
-In `src/components/window.tsx`:
+`useBindSetting` ties a GSettings key to a GObject property on a live widget, in both directions and for as long as the widget exists. Give it the schema, the key, a ref to the widget, and the property name in camelCase, in `src/components/window.tsx`:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
@@ -131,13 +135,17 @@ export const Window = () => {
         >
 ```
 
-That is the whole feature. The window applies the stored width and height when it is created, and writes the new numbers back when the user resizes it. There is no save handler, no close handler, and no restore effect anywhere in your app, because the binding is the mechanism rather than a trigger for one.
+That is the whole feature. No save handler, no close handler, no restore effect, because the binding is the mechanism rather than a trigger for one.
 
-`useBindSetting` has no return value on purpose. There is nothing to render: the property on the widget is the value, and React never needs to know it changed.
+`useBindSetting` has no return value on purpose. The property on the widget is the value, and React never needs to know it changed.
+
+::: warning The window keeps opening at 900x600
+The property argument is a plain string, so the type checker cannot tell a real property from a plausible-looking one. A name the widget does not have prints `g_settings_bind: no property 'width' on class 'AdwApplicationWindow'` in the terminal running the dev server, and the binding then does nothing at all. The names here are `defaultWidth` and `defaultHeight`, which the hook converts to `default-width` and `default-height` for you.
+:::
 
 ## Reading and writing a value
 
-Not every preference has a widget property waiting for it. The theme is applied by a process-wide manager, and the sort order is consumed by a plain function. For those, `useSetting` gives you the value and a setter, in the shape a React developer already knows:
+Not every preference has a widget property waiting for it. The theme is applied by a process-wide manager, and the sort order is consumed by a plain function. For those, `useSetting` gives you a value and a setter:
 
 ```tsx
 const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
@@ -147,9 +155,7 @@ It reads the current value, re-renders the component whenever that key changes (
 
 ## Sorting
 
-The list has an order today, but only the one tasks happened to be created in. Now that a preference can hold a choice, make the order a choice.
-
-Add the type to `src/types.ts`:
+The list's order today is whatever order tasks were created in. Make it a choice instead. Add the type to `src/types.ts`:
 
 ```diff
  export type Filter = "all" | "open" | "done";
@@ -185,7 +191,7 @@ const byOrder =
     };
 ```
 
-Due date sends tasks without a due date to the end, where an undated task counts as not urgent rather than infinitely urgent, and breaks ties on the stored `position` so the order within a day stays stable. Title and creation date compare with `localeCompare`, which orders accented characters the way the user's language expects rather than by code point. Due dates and creation stamps are ISO strings, which sort correctly as plain text, which is one of the reasons the model stores them that way. `manual` falls through to `position`, which is still insertion order today; the next chapter gives the user a way to set it.
+Due date sends undated tasks to the end, counting them as not urgent rather than infinitely urgent, and breaks ties on the stored `position` so the order within a day stays stable. Title and creation date compare with `localeCompare`, which orders accented characters the way the user's language expects rather than by code point. Due dates and creation stamps are ISO strings, which sort correctly as plain text: one reason the model stores them that way. `manual` falls through to `position`.
 
 `visibleTasks` gains the option and one call:
 
@@ -221,13 +227,49 @@ The caller supplies the setting. In `src/components/task-list.tsx`:
 +    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
 ```
 
-This is the line drawn back in [Smart Views, Filters, and Search](/tutorial/smart-views-and-search), now visible from both sides. The filter is what the interface is doing right now, so it lives in the UI slice and starts fresh each launch. The sort order is a decision the user made about how they want to work, so it lives in GSettings and comes back tomorrow.
+## The command that opens it
+
+Preferences reaches the user the way every other command does: a named action, an accelerator, and a menu item. <kbd>Ctrl</kbd>+<kbd>,</kbd> is the GNOME convention, and every desktop user already tries it.
+
+Add the kind to `src/types.ts`:
+
+```diff
+-export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "delete-task";
++export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "delete-task" | "preferences";
+```
+
+Add the action in `src/components/window-actions.tsx`:
+
+```diff
+     <GSimpleAction name="about" onActivate={() => showDialog("about")} />
++    <GSimpleAction name="preferences" onActivate={() => showDialog("preferences")} />
+```
+
+Give it its accelerator in `src/app.tsx`:
+
+```diff
+     actionAccels={[
+         { detailedActionName: "win.new", accels: ["<Control>n"] },
++        { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
+         { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
+     ]}
+```
+
+The accelerator string spells the key rather than printing it: `comma` is the GDK key name, and `<Control>,` does not parse.
+
+And put it in the menu, in `src/components/main-menu.tsx`:
+
+```diff
+     { section: [{ label: "New Task", action: "win.new" }] },
++    { section: [{ label: "Preferences", action: "win.preferences" }] },
+     { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
+```
+
+The menu item draws `Ctrl+,` down its right edge without being told, because it reads the accelerator you just registered against the same action name.
 
 ## The dialog
 
-`win.preferences` and its <kbd>Ctrl</kbd>+<kbd>,</kbd> accelerator already exist, and `dialogs.tsx` already knows how to mount whichever dialog the store names. The dialog itself is what is missing.
-
-Adwaita has a dedicated shape for this. `AdwPreferencesDialog` holds one or more `AdwPreferencesPage` elements, each shown with its own icon, and each page holds `AdwPreferencesGroup` elements that render as titled boxed lists. You get GNOME's preferences layout by nesting the right elements rather than by styling anything.
+`AdwPreferencesDialog` holds `AdwPreferencesPage` elements, each shown with its own icon, and each page holds `AdwPreferencesGroup` elements that render as titled boxed lists. You get GNOME's preferences layout by nesting the right elements rather than by styling anything.
 
 Create `src/components/preferences.tsx`:
 
@@ -296,15 +338,17 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-Three things in there are new.
+`DropDown` from `@gtkx/components` takes a `component` prop naming what it renders into. A bare `GtkDropDown` is the plain widget; `AdwComboRow` is the same choice presented as a row inside a preferences group, which is what belongs here. `selectedId` drives the selection and `onSelectionChanged` reports the id the user picked: the controlled-widget pairing from [Completing, Starring, and Deleting](/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
 
-`DropDown` from `@gtkx/components` takes a `component` prop naming what it renders into. A bare `GtkDropDown` is the plain widget; `AdwComboRow` is the same choice presented as a row inside a preferences group, which is what belongs here. The choices are a plain array of `id` and `value` pairs, `selectedId` drives the selection, and `onSelectionChanged` reports the id the user picked. It is the controlled-widget pairing from [Completing, Starring, and Deleting](/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
+`AdwSpinRow` takes its bounds through a `GtkAdjustment` in the `adjustment` slot, the same JSX-valued-prop shape as `topBar` and `prefix`. The adjustment carries the value, the floor, the ceiling, and the step, which is why the row itself takes none of them. The lead time it sets has no effect yet: the sweep that reads it arrives in [Reminders That Reach the Desktop](/tutorial/reminders).
 
-`AdwSpinRow` takes its bounds through a `GtkAdjustment` in the `adjustment` slot, the same JSX-valued-prop shape as `topBar` and `prefix`. The adjustment carries the value, the floor, the ceiling, and the step, which is why the row itself takes none of them. The lead time it sets has no effect yet: the sweep that reads it arrives in [Reminders That Reach the Desktop](/tutorial/reminders), and there is no need to hold that mechanism in your head to finish this chapter. Wire the row up now and the reminder chapter will find a value waiting.
+::: warning `g_settings_set_value: value for key 'reminder-minutes' in schema 'com.gtkx.tutorial' is outside of valid range`
+The adjustment's `lower` and `upper` live in this component, and the key's `<range min>` and `<range max>` live in the XML, and GSettings enforces its own range on every write. Raise the spin row's ceiling past `1440` on its own and the row will happily show 2000 while the write is refused and the stored value stays where it was. Move both bounds together.
+:::
 
-The type guards are the third. `onSelectionChanged` hands back a bare `string`, because a drop-down of arbitrary items cannot know your key's type. The setter wants one of the declared names. `isScheme` and `isSort` narrow the string to that union, so the write type-checks without a cast and an id that is not a legal value is quietly ignored. That is the general shape whenever a widget's loose type meets a generated literal union.
+`onSelectionChanged` hands back a bare `string`, because a drop-down of arbitrary items cannot know your key's type, while the setter wants one of the declared names. `isScheme` and `isSort` narrow the string to that union, so the write type-checks without a cast and an illegal id is ignored. That is the general shape whenever a widget's loose type meets a generated literal union.
 
-Finally, let the dialog switch reach it. In `src/components/dialogs.tsx`:
+Let the dialog switch reach it, in `src/components/dialogs.tsx`:
 
 ```diff
 +import { Preferences } from "./preferences.js";
@@ -318,13 +362,13 @@ Finally, let the dialog switch reach it. In `src/components/dialogs.tsx`:
 +            return <Preferences onClose={close} />;
 ```
 
-It follows the same contract as the other two: mounting the component presents the dialog, `onClosed` calls back so the store can clear the state that mounted it, and unmounting closes it.
+Same contract as the other dialogs: mounting the component presents it, `onClosed` calls back so the store can clear the state that mounted it, and unmounting closes it.
 
 ## Applying the theme
 
 The theme picker writes a string. Something has to turn that string into a repaint.
 
-Adwaita's light and dark handling belongs to `Adw.StyleManager`, and the default manager covers the whole process. It is not a widget, it is not in your tree, and there is nothing to render, so setting the scheme is a call rather than a prop.
+Adwaita's light and dark handling belongs to `Adw.StyleManager`, and the default manager covers the whole process. It is not a widget and not in your tree, so setting the scheme is a call rather than a prop.
 
 Create `src/theme.ts`:
 
@@ -343,7 +387,7 @@ export const applyColorScheme = (value: string): void => {
 };
 ```
 
-`DEFAULT` is the value that earns the "Follow system" label. It hands the decision back to the desktop, so when the user flips GNOME to dark, or their night schedule does it at sunset, your window follows along with no further work from you. `FORCE_LIGHT` and `FORCE_DARK` override that for the users who want your app to disagree with their desktop.
+`DEFAULT` earns the "Follow system" label: it hands the decision back to the desktop, so when the user flips GNOME to dark, or their night schedule does it at sunset, your window follows along. `FORCE_LIGHT` and `FORCE_DARK` override that for users who want your app to disagree with their desktop.
 
 Call it from an effect on the setting, in `src/components/window.tsx`:
 
@@ -360,13 +404,11 @@ export const Window = () => {
     }, [colorScheme]);
 ```
 
-An effect is the right tool here precisely because the target is outside React. `useSetting` re-renders the window when the key changes, the effect notices the new value in its dependency list, and the call reaches out to process-wide state that no render produces.
+An effect is the right tool because the target is outside React. `useSetting` re-renders the window when the key changes, the effect sees the new value in its dependency list, and the call reaches out to process-wide state that no render produces.
 
 ## Run it
 
-```bash
-npm run dev
-```
+Save `window.tsx`. The window on your desktop is still the one you opened at the start of the tutorial, with the theme effect now in it.
 
 Press <kbd>Ctrl</kbd>+<kbd>,</kbd>. The Preferences dialog slides in over the window with a General page, an Appearance group holding Theme, and a Tasks group holding Sort order and Reminder lead time.
 
@@ -374,7 +416,7 @@ Set Theme to Dark. The window repaints immediately, dialog and all, while the di
 
 Set Sort order to Title and close the dialog. The task list is alphabetical, and it stays alphabetical as you switch between lists and smart views.
 
-Resize the window to something distinctly wide, quit, and start it again. It comes back at the size you left it, still sorted by title, still on the theme you chose. From another terminal, compile the schema and ask GSettings directly:
+Now the part only a fresh process can prove. Resize the window to something distinctly wide and quit it. That ends the dev session too, so start it again with `npm run dev`. The window comes back at the size you left it, still sorted by title, still on the theme you chose. From another terminal, compile the schema and ask GSettings directly:
 
 ```bash
 glib-compile-schemas data
@@ -387,16 +429,6 @@ GSETTINGS_SCHEMA_DIR=data gsettings get com.gtkx.tutorial window-width
 
 The number matches the width you dragged the window to, and it is your desktop's settings database answering, not your app.
 
-## Summary
-
-- **Preferences and user content have different homes.** Open-ended data the user typed goes in the JSON file; a small closed set of typed values goes in GSettings, where the desktop can read, reset, and constrain it.
-- **The schema is the contract.** Declared types, defaults, `<choices>`, an `<enum>`, and a `<range>` mean a write outside the legal values is rejected, so a value you read is already valid.
-- **A generated module carries the key types.** Importing the schema through the `#data/*` subpath turns key names into checked strings and constrained keys into literal unions.
-- **`useBindSetting` removes save and restore code entirely.** The window size is a two-way binding between a key and a widget property, with no handler of your own.
-- **`useSetting` is the tuple form for everything else.** It reads live, writes through, and re-renders every component watching that key.
-- **The sort order is a preference and the filter is view state.** One persists, the other starts fresh, and the same `visibleTasks` function consumes both.
-- **The theme is process-wide.** `Adw.StyleManager` is not a widget, so an effect applies the setting, and `DEFAULT` hands light and dark back to the desktop.
-
 ## Next
 
-[Dragging Tasks Into Order](/tutorial/drag-to-reorder)
+[Dragging Tasks Into Order](/tutorial/drag-to-reorder) lets you reorder rows by hand, but only in the views where a manual order means anything.

@@ -4,11 +4,11 @@ description: "Navigate into a task and edit its title, importance, due date, and
 
 # Opening a Task
 
-In [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) you got everything the store already holds onto the screen, sliced by view, filter, and query. Rows can be ticked, starred, and thrown away, and a task is still just a title: the `notes`, `due`, `createdAt`, and `completedAt` fields you have been carrying since chapter four have nowhere to be seen or set. This chapter turns the content pane into an editor for one task, and writes every field on it through a single store action.
+In [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) you sliced the store by view, filter, and query. A task on screen is still just a title: `notes`, `due`, `createdAt`, and `completedAt` have nowhere to be seen or set. This chapter turns the content pane into an editor for one task, writing every field through a single store action.
 
 ## Opening and closing
 
-A task is open or it is not, and that is view state, so it belongs in the UI slice next to `selection`. Opening also has to show the content pane, because on a collapsed layout the editor is a different page rather than a neighboring column.
+Which task is open is view state, so it belongs in the UI slice next to `selection`. Opening also has to show the content pane, because on a collapsed layout the editor is a different page rather than a neighboring column.
 
 In `src/store/ui.ts`, add the field and the two actions:
 
@@ -47,9 +47,9 @@ In `src/store/ui.ts`, add the field and the two actions:
 +    closeTask: () => set({ selectedTaskId: null }),
 ```
 
-`select` clears `selectedTaskId` along with the search, so switching to another list closes whatever was open rather than leaving an editor for a task the sidebar no longer points at.
+`select` clears `selectedTaskId` along with the search, so switching lists closes whatever was open rather than leaving an editor for a task the sidebar no longer points at.
 
-Now let a row open itself. An `AdwActionRow` does not respond to a click until you say it may: `activatable` makes the whole row a target, and `onActivated` fires when it is clicked or when it takes Return from the keyboard.
+An `AdwActionRow` does not respond to a click until you say it may: `activatable` makes the whole row a target, and `onActivated` fires when it is clicked or takes Return from the keyboard.
 
 In `src/components/task-row.tsx`, pull `openTask` out of the store and mark the row:
 
@@ -70,7 +70,7 @@ In `src/components/task-row.tsx`, pull `openTask` out of the store and mark the 
              prefix={
 ```
 
-The pane itself branches. `selectedTaskId` names a task; the pane looks it up in `tasks` and, when it finds one, renders an editor instead of the list.
+The pane looks `selectedTaskId` up in `tasks` and, when it finds a match, renders an editor instead of the list.
 
 In `src/components/content-pane.tsx`, read the new state and add the branch above the existing return:
 
@@ -100,13 +100,13 @@ export const ContentPane = () => {
 };
 ```
 
-Looking the task up rather than storing it is what keeps the editor live: every store write produces a new task object, the pane finds it, and the fields you are about to add redraw with no subscription of their own. It is also why going back needs no teardown. `closeTask` clears one field, the lookup fails on the next render, and the list is what renders.
+Looking the task up rather than storing it keeps the editor live: every store write produces a new task object, the pane finds it, and the fields you are about to add redraw with no subscription of their own. It is also why going back needs no teardown. `closeTask` clears one field, the lookup fails on the next render, and the list renders.
 
-`AdwWindowTitle` is the widget a header bar wants in `titleWidget` when the title is plain text: it handles the title typography Adwaita expects.
+`AdwWindowTitle` is the widget a header bar wants in `titleWidget` for plain text: it handles the title typography Adwaita expects.
 
 ## One action, many fields
 
-The editor writes four different fields. You could add `setTitle`, `setNotes`, and `setDue` next to `setDone` and `setImportant`, and you would then add another action every time the editor grows a control. Instead take a patch: an object holding whichever fields changed, merged into the task.
+Adding `setTitle`, `setNotes`, and `setDue` next to `setDone` and `setImportant` means a new action every time the editor grows a control. Take a patch instead: an object holding whichever fields changed, merged into the task.
 
 In `src/store/tasks.ts`, add `updateTask` to the slice type and to the creator:
 
@@ -121,15 +121,11 @@ In `src/store/tasks.ts`, add `updateTask` to the slice type and to the creator:
 +    updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
 ```
 
-`Partial<Pick<...>>` is doing real work here. `Pick` lists exactly the fields the editor may touch, so a typo like `dueDate` is a type error and a write to `id`, `createdAt`, or `done` will not compile. `Partial` then makes each of them optional, so a caller sends only what changed. `setDone` and `setImportant` stay as they are: they are not free-form edits, and `setDone` has the extra job of stamping `completedAt`.
-
-Every control in the rest of this chapter calls `updateTask`.
+`Partial<Pick<...>>` is doing real work. `Pick` lists exactly the fields the editor may touch, so a typo like `dueDate` is a type error and a write to `id`, `createdAt`, or `done` will not compile. `Partial` makes each optional, so a caller sends only what changed. `setDone` and `setImportant` stay: they are not free-form edits, and `setDone` has the extra job of stamping `completedAt`.
 
 ## The form
 
-Create the editor as its own component taking the task as a prop. It is a scroller wrapping an `AdwClamp`, which caps content width and centers it, so the form stays readable when the window is wide. Inside, a vertical box holds one block per band of the form.
-
-`AdwPreferencesGroup` is the container Adwaita uses for a titled block of rows. It draws the boxed-list frame for you, so rows placed in it get the rounded card, the separators, and the spacing without any styling of your own.
+The editor is a scroller wrapping an `AdwClamp`, which caps content width and centers it, so the form stays readable when the window is wide. `AdwPreferencesGroup` is the container Adwaita uses for a titled block of rows: it draws the boxed-list frame, so rows placed in it get the rounded card, the separators, and the spacing without styling of your own.
 
 Create `src/components/task-detail.tsx`:
 
@@ -158,7 +154,7 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 
 ### The title
 
-`AdwEntryRow` is an editable row: the title is the label and the row's `text` is the value. `showApplyButton` puts a checkmark at the end of the row that lights up once the text differs from what was there, and `onApply` fires when it is clicked. `onEntryActivated` fires on Return, so both ways of finishing an edit commit.
+`AdwEntryRow` is an editable row: the title is the label and `text` is the value. `showApplyButton` puts a checkmark at the end of the row that lights up once the text differs, and `onApply` fires when it is clicked. `onEntryActivated` fires on Return, so both ways of finishing an edit commit.
 
 In `src/components/task-detail.tsx`, fill the first group:
 
@@ -175,12 +171,12 @@ In `src/components/task-detail.tsx`, fill the first group:
 ```
 
 ::: warning Cursor jumps to the end while typing the title?
-You wired the write to a per-keystroke signal such as `onNotifyText` or `onChanged` instead of `onApply`. Each keystroke stores a new title, the store pushes a new `text` back down, and setting `text` on an entry moves the cursor to the end, so editing anywhere but the end of the string becomes impossible. Commit on apply and on Return, and the entry owns its own text until you are done with it.
+You wired the write to a per-keystroke signal such as `onNotifyText` or `onChanged` instead of `onApply`. Each keystroke stores a new title, the store pushes a new `text` back down, and setting `text` on an entry moves the cursor to the end, so editing anywhere but the end becomes impossible. Commit on apply and on Return, and the entry owns its text until you are done with it.
 :::
 
 ### Importance
 
-`AdwSwitchRow` is a row whose value is a switch, and that value lives in the plain GObject property `active`. There is no dedicated "the user flipped it" signal to listen to, so listen to the property instead: any GObject property `foo` emits `notify::foo` when it changes, and GTKX exposes that as the `onNotifyFoo` prop.
+`AdwSwitchRow` keeps its value in the plain GObject property `active`. There is no dedicated "the user flipped it" signal, so listen to the property instead: any GObject property `foo` emits `notify::foo` when it changes, and GTKX exposes that as the `onNotifyFoo` prop.
 
 In `src/components/task-detail.tsx`, add the row under the title:
 
@@ -192,15 +188,13 @@ In `src/components/task-detail.tsx`, add the row under the title:
                         />
 ```
 
-A notify handler receives the new value first, and that value is nullable, because the property is read back through the generic GObject machinery which can hand you nothing. `?? false` is how you settle it. You will see the same shape on every `onNotify*` handler in the app.
+A notify handler receives the new value first, and that value is nullable, because the property is read back through the generic GObject machinery which can hand you nothing. `?? false` settles it, and every `onNotify*` handler in the app has the same shape.
 
-The switch writes through `setImportant`, the same action the star in the row uses, so flipping it also relights the star waiting for you in the list.
+The switch writes through `setImportant`, the same action the star uses, so flipping it also relights the star in the list.
 
 ### The due date
 
-A due date needs a picker, and a picker needs somewhere to appear. `GtkMenuButton` is a button that shows a popover, and its `popover` slot takes that popover as JSX: a container slot is a prop taking JSX that attaches it somewhere other than the child list, so the calendar is a child of the popover and the popover belongs to the button.
-
-The button's label is the current date, formatted, and a clear button sits beside it only while there is something to clear.
+`GtkMenuButton` is a button that shows a popover, and its `popover` slot takes that popover as JSX, so the calendar is a child of the popover and the popover belongs to the button. The button's label is the current date, formatted, and a clear button sits beside it only while there is something to clear.
 
 In `src/components/task-detail.tsx`, add the third row to the group:
 
@@ -244,7 +238,7 @@ In `src/components/task-detail.tsx`, add the third row to the group:
                         />
 ```
 
-The date crosses two type systems, so it is converted at both ends. Your store keeps an ISO string, which is what survives a round trip through JSON. `GtkCalendar` wants a `GLib.DateTime`. Build one at the top of the component, where a task with no due date simply gets no date at all.
+The date crosses two type systems, so it converts at both ends. The store keeps an ISO string, which survives a round trip through JSON; `GtkCalendar` wants a `GLib.DateTime`. Build one at the top of the component, where a task with no due date gets no date at all.
 
 In `src/components/task-detail.tsx`:
 
@@ -260,10 +254,10 @@ GLib months are one-based, January being 1, and JavaScript `Date` months are zer
 :::
 
 ::: warning Deprecation warnings from GtkCalendar?
-`GtkCalendar` also carries integer `day`, `month`, and `year` properties and a `select_day` method, and those are deprecated as of GTK 4.20. Set the whole date through the `date` property and read it back with `getDate()`, as above, and nothing deprecated is touched.
+`GtkCalendar`'s integer `day`, `month`, and `year` properties and its `select_day` method are deprecated as of GTK 4.20. Set the whole date through the `date` property and read it back with `getDate()`, as above, and nothing deprecated is touched.
 :::
 
-`formatDue` turns the stored string into that label, and it is the same function the row subtitle wants, so it goes in `src/format.ts` beside `isToday` and reuses the `startOfDay` helper already there. `formatDateTime` is the plainer one, for the timestamps at the bottom of the form.
+`formatDue` turns the stored string into that label, and the row subtitle wants the same function, so it goes in `src/format.ts` beside `isToday` and reuses the `startOfDay` helper already there. `formatDateTime` is the plainer one, for the timestamps at the bottom of the form.
 
 In `src/format.ts`, add both:
 
@@ -288,7 +282,7 @@ export const formatDateTime = (iso: string | null): string => {
 };
 ```
 
-Returning `null` for a task with no due date is deliberate: it lets each caller decide what "no date" looks like. The menu button falls back to `"Set date"`, and the row falls back to no subtitle at all.
+Returning `null` for a task with no due date lets each caller decide what "no date" looks like. The menu button falls back to `"Set date"`, and the row to no subtitle at all.
 
 In `src/components/task-row.tsx`, add the subtitle:
 
@@ -303,7 +297,7 @@ In `src/components/task-row.tsx`, add the subtitle:
 
 ### Notes
 
-Notes are multi-line, so this is a `GtkTextView` rather than an entry. A text view keeps its content in a `GtkTextBuffer`, which is not a widget: it is a separate object holding the text, the cursor, and the undo history. GTKX exposes it as the `buffer` slot, and the buffer's text is its JSX child.
+Notes are multi-line, so this is a `GtkTextView`. A text view keeps its content in a `GtkTextBuffer`, which is not a widget but a separate object holding the text, the cursor, and the undo history. GTKX exposes it as the `buffer` slot, and the buffer's text is its JSX child.
 
 In `src/components/task-detail.tsx`, add a second block after the group:
 
@@ -337,9 +331,21 @@ In `src/components/task-detail.tsx`, add a second block after the group:
                     </GtkBox>
 ```
 
-`getText` takes the range to read as two iterators, start to end, and the trailing `false` says to leave out invisible markup. `enableUndo` is the cheapest feature in the app: the buffer keeps its own edit history, so Ctrl+Z and Ctrl+Shift+Z work in the notes field for one prop.
+`getText` takes the range to read as two iterators, start to end, and the trailing `false` leaves out invisible markup. `enableUndo` gives the buffer its own edit history, so Ctrl+Z and Ctrl+Shift+Z work in the notes field.
 
-The `card` style class gives the scroller the framed look Adwaita uses for a content box. The padding inside it is yours.
+::: warning Cursor jumps to the end of the notes box on every keystroke, and Ctrl+Z does nothing?
+The buffer's JSX child is fed from the store. When a child changes, GTKX rebuilds the buffer: it deletes everything and reinserts the text inside `beginIrreversibleAction`, which leaves the cursor at the end and drops what you typed out of the undo stack. Since `onChanged` writes each keystroke to the store, `{task.notes}` comes straight back down and triggers that rebuild.
+
+Read the notes once and let the buffer own them from then on:
+
+```tsx
+const [initialNotes] = useState(task.notes);
+```
+
+Render `{initialNotes}` as the buffer's child. The `key={task.id}` added later in this chapter remounts `TaskDetail` per task, so the seed is re-read whenever you open a different one.
+:::
+
+The `card` style class gives the scroller the framed look Adwaita uses for a content box. The padding inside is yours.
 
 In `src/styles.ts`, add the class beside `listDot`:
 
@@ -355,7 +361,7 @@ export const detailNotes = css`
 
 ### Timestamps
 
-The last group is read-only. `createdAt` was stamped by `addTask` and `completedAt` by `setDone`, and neither has been visible until now. The `property` style class is Adwaita's convention for a row whose subtitle is the value: it swaps the emphasis so the value reads larger than the label.
+The last group is read-only: `createdAt` stamped by `addTask`, `completedAt` by `setDone`. The `property` style class is Adwaita's convention for a row whose subtitle is the value: it swaps the emphasis so the value reads larger than the label.
 
 In `src/components/task-detail.tsx`, add the final group:
 
@@ -378,11 +384,9 @@ In `src/components/task-detail.tsx`, add the final group:
 
 ## Switching tasks cleanly
 
-The editor holds state React knows nothing about: where the cursor sits in the title entry, the buffer's undo stack, and which month the calendar is showing. Go back, open a different task, and React sees the same `TaskDetail` in the same position and updates its props. The widgets survive, and so does all of that.
+The editor holds state React knows nothing about: where the cursor sits in the title entry, the buffer's undo stack, which month the calendar is showing. Go back, open a different task, and React sees the same `TaskDetail` in the same position and updates its props. The widgets survive, and so does all of that.
 
-Give the editor a key, and they do not.
-
-In `src/components/content-pane.tsx`:
+In `src/components/content-pane.tsx`, give the editor a key:
 
 ```tsx
 -                <TaskDetail task={task} />
@@ -393,7 +397,7 @@ A changed key is React's instruction to throw the old tree away and build a new 
 
 ## The detail header bar
 
-The editor needs a way out, and the two commands you would otherwise scroll for belong up top. In the header bar's `start` and `end` slots, add a back button, the star, and delete.
+The editor needs a way out, and the commands you would otherwise scroll for belong up top. In the header bar's `start` and `end` slots, add a back button, the star, and delete.
 
 In `src/components/content-pane.tsx`, grow the branch:
 
@@ -435,40 +439,26 @@ In `src/components/content-pane.tsx`, grow the branch:
     }
 ```
 
-Read `setImportant` and `moveToTrash` from the store at the top of the component, the same way the pane already reads `closeTask`. Deleting from here leaves the editor open over a task that is now in the trash, which is untidy. That is a real gap and you can leave it open for now: [Deleting Without Fear](/tutorial/trash-and-toasts) gives every delete in the app an undo toast and a confirmation, and closes the editor along the way.
+Read `setImportant` and `moveToTrash` from the store at the top of the component, the same way the pane already reads `closeTask`. Deleting from here leaves the editor open over a task that is now in the trash. Leave that gap open: [Deleting Without Fear](/tutorial/trash-and-toasts) gives every delete an undo toast and a confirmation, and closes the editor along the way.
 
 The header title comes from the task, so applying a new title updates the header with it.
 
 ## Run it
 
-```sh
-npm run dev
-```
-
-Four things to check.
+Save the files. The window on your desktop already has the editor in it.
 
 1. Click any task row. The content pane becomes a form with Title, Important, and Due at the top, a Notes box, and a Created timestamp at the bottom. The header bar shows the task's title with a back arrow on the left.
 2. Change the title and press Enter. The header title follows immediately. Click the back arrow and the list is showing again, with the new title on the row.
-3. Open a task and click Set date. A calendar drops down. Pick today. The button reads `Today at 6:00 PM`, a clear button appears beside it, and going back puts the same text under the row's title. Open the task again and click the clear button: the subtitle disappears from the row entirely rather than leaving a blank gap.
+3. Open a task and click Set date. A calendar drops down; pick today. The button reads `Today at 6:00 PM`, a clear button appears beside it, and going back puts the same text under the row's title. Open the task again and click the clear button: the subtitle disappears from the row entirely rather than leaving a blank gap.
 4. Type into Notes and press Ctrl+Z: the last thing you typed is undone. Go back, open a different task, and the notes box holds that task's notes with none of the previous undo history. Press Ctrl+Z there and nothing happens.
 
-Everything you set survives a restart, because the store still persists on every write.
+The store still persists on every write, so what the editor sets is on disk before you go anywhere. After setting a due date, read it back:
 
-## Summary
+```bash
+jq '.state.tasks[] | select(.due != null) | {title, due}' ~/.local/share/com.gtkx.tutorial/tasks.json
+```
 
-**A row opens a task by writing one field.** `activatable` plus `onActivated` sets `selectedTaskId`, and the content pane branches on whether it finds a matching task.
-
-**Closing needs no teardown.** `closeTask` clears the field, the lookup fails, and the list renders instead.
-
-**One patch action serves every field.** `updateTask(id, fields)` takes a `Partial<Pick<...>>`, so the fields the editor may write are checked by the type system and no new action is needed per control.
-
-**Adwaita rows carry the form.** `AdwPreferencesGroup` frames them, `AdwEntryRow` with `showApplyButton` commits on apply and on Return instead of per keystroke, and `AdwSwitchRow` reports through `onNotifyActive`, whose value is nullable.
-
-**A container slot attaches JSX somewhere other than the child list.** `popover` holds the calendar, `buffer` holds the notes text, `suffix` holds the due-date controls.
-
-**Dates convert at both edges.** An ISO string in the store, a `GLib.DateTime` for `GtkCalendar`, and one-based GLib months against zero-based JavaScript months.
-
-**A changed key remounts.** `key={task.id}` keeps cursor position, undo history, and the visible calendar month from leaking between tasks.
+The ISO string is the one the calendar produced.
 
 ## Checkpoint
 
@@ -606,4 +596,4 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 
 ## Next
 
-[Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts) turns the commands scattered across these buttons into GObject actions, puts them in a primary menu, and binds them to keys.
+[Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts) turns the commands scattered across these buttons into GActions, puts them in a primary menu, and binds them to keys.

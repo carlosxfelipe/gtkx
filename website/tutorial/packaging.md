@@ -4,11 +4,11 @@ description: "Give the finished app an icon, a desktop entry, AppStream metadata
 
 # Appendix B: Making It a Real Application
 
-The app is finished: [Appendix A](/tutorial/testing) left you with a suite that proves it. This appendix is follow-on work of a different kind. Nothing here changes what the app does. It closes the gap between something that runs from your project directory and something that installs, appears in the overview under its own icon, and carries the metadata a software center expects.
+The app is finished: [Appendix A](/tutorial/testing) left you with a suite that proves it. Nothing here changes what the app does. It closes the gap between something that runs from your project directory and something that installs, appears in the overview under its own icon, and carries the metadata a software center expects.
 
 ## What the build produces
 
-Run the production build:
+Leave the dev server where it is. `gtkx build` writes to `dist/`, which the dev server never reads, so the two coexist.
 
 ```bash
 npm run build
@@ -36,15 +36,13 @@ dist/bundle.js                                                   3,784.98 kB │
 [gtkx] Build complete: dist/bundle.js
 ```
 
-Four kinds of artifact land in `dist/`. `bundle.js` is every module you wrote plus React, zustand, and the GTKX runtime, in one file. `gtkx.node` is the native addon that bridges JavaScript to GTK4. `gschemas.compiled` is the binary form of the GSettings schema you wrote in [Preferences and the System Theme](/tutorial/preferences-and-theming), compiled by `glib-compile-schemas` during the build. `icons/` is a copy of `data/icons/`, laid out exactly as it was.
+Everything but the bundle is found at runtime relative to the executable: the bundle prepends its own directory to `GSETTINGS_SCHEMA_DIR` and to `XDG_DATA_DIRS`, and loads `gtkx.node` from beside `process.execPath`. Keep them together and the app is self-contained. Copy `bundle.js` alone somewhere else and the settings schema goes missing on the first `useSetting` call.
 
-Those last three are found at runtime relative to the executable: the bundle prepends its own directory to `GSETTINGS_SCHEMA_DIR` and to `XDG_DATA_DIRS`, and loads `gtkx.node` from beside `process.execPath`. Keep them together and the app is self-contained. Copy `bundle.js` alone somewhere else and the settings schema goes missing on the first `useSetting` call.
-
-`node dist/bundle.js` runs it on any machine with GTK4 and Adwaita installed. That is already shippable. It is not yet a program a user can double-click.
+`node dist/bundle.js` runs it on any machine with GTK4 and Adwaita installed. That is shippable, but not yet a program a user can double-click.
 
 ## A single executable
 
-Node.js can embed a script into a copy of the `node` binary as a [Single Executable Application](https://nodejs.org/api/single-executable-applications.html). The result is one file that needs no `node` on the target machine. Three scripts in `package.json` get you there:
+Node.js can embed a script into a copy of the `node` binary as a [Single Executable Application](https://nodejs.org/api/single-executable-applications.html), giving one file that needs no `node` on the target machine:
 
 ```json
 "scripts": {
@@ -54,7 +52,7 @@ Node.js can embed a script into a copy of the `node` binary as a [Single Executa
 }
 ```
 
-`bundle` re-emits the app as CommonJS at `dist/bundle.cjs`, because a single executable cannot use ESM. `bundle:postject` vendors the `postject` CLI into `vendor/postject.cjs`, so the injection step works with no network access. `build:sea` produces the blob, copies your `node` binary to `dist/app`, and injects the blob into it.
+`bundle` re-emits the app as CommonJS, because a single executable cannot use ESM. `bundle:postject` vendors the `postject` CLI locally, so the injection step works offline.
 
 `sea-config.json` tells Node.js what to embed:
 
@@ -67,7 +65,7 @@ Node.js can embed a script into a copy of the `node` binary as a [Single Executa
 }
 ```
 
-Run the three in order:
+Run them in order:
 
 ```bash
 npm run bundle && npm run bundle:postject && npm run build:sea
@@ -84,14 +82,14 @@ To run: ./dist/app
 ```
 
 ::: warning The binary starts and immediately exits, or reports a missing main script
-The blob is appended to the `node` binary as an ELF section. Anything that rewrites the section table destroys it, and `strip` is the usual culprit: a packaging pipeline that strips debug symbols from installed binaries will corrupt the embedded application while leaving a file that still looks like a valid executable. Leave the binary unstripped.
+The blob is appended to the `node` binary as an ELF section, so anything that rewrites the section table destroys it while leaving a file that still looks like a valid executable. `strip` is the usual culprit, which is why the Flatpak manifest in [Appendix C](/tutorial/flatpak) sets `strip: false` and `no-debuginfo: true`. If you move the binary through a packaging pipeline of your own, keep it unstripped.
 
 The injection also depends on a sentinel string compiled into `node` itself, which is why `scripts/build-sea.sh` passes `--sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2` to `postject`. Keep that value exactly as written.
 :::
 
 ## The desktop entry
 
-A desktop entry is what makes the app a thing the desktop knows about rather than a path you type. It is an INI file whose name matches the application ID.
+A desktop entry makes the app something the desktop knows about rather than a path you type. It is an INI file whose name matches the application ID.
 
 Create `flatpak/com.gtkx.tutorial.desktop`:
 
@@ -113,20 +111,34 @@ DBusActivatable=true
 
 `Exec` is the command, so the binary has to be installed under that name and on `PATH`. `Icon` is the application ID, which is how it resolves against the icon theme. `Categories` decides where the app files itself in a launcher that groups by category, and `Keywords` adds search terms beyond the name.
 
-The last two keys are earned by features you built. `X-GNOME-UsesNotifications=true` is what gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `DBusActivatable=true` lets the desktop start the app over D-Bus instead of by running `Exec` directly, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed: the desktop activates the application by its ID, delivers the action, and the app handles it on startup.
+`X-GNOME-UsesNotifications=true` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `DBusActivatable=true` lets the desktop start the app over D-Bus instead of by running `Exec` directly, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed: the desktop activates the application by its ID, delivers the action, and the app handles it on startup.
+
+::: warning Mark Complete does nothing while the app is closed, and the session log says the name was not provided by any .service files
+`DBusActivatable=true` states that the app can be reached by its ID, but D-Bus can only honor that if it has an activation file for the name. Without one the notification daemon calls `ActivateAction` on `com.gtkx.tutorial`, no process owns the name, and the call fails: the button looks dead while the app is running fine the moment you launch it by hand.
+
+Create `flatpak/com.gtkx.tutorial.service`:
+
+```ini
+[D-BUS Service]
+Name=com.gtkx.tutorial
+Exec=/home/you/.local/bin/gtkx-tutorial --gapplication-service
+```
+
+Install it to `~/.local/share/dbus-1/services/com.gtkx.tutorial.service`. `Exec` has to be an absolute path, since D-Bus starts the process itself and does not consult your shell. `--gapplication-service` tells `GApplication` to start in service mode, handling the action without presenting a window and exiting once it goes idle. Flatpak writes this file from the manifest, so only your own prefix needs it written by hand.
+:::
 
 ## Icons
 
-The build copies `data/icons/` verbatim, so the layout you write there is the layout that ships. Use the same shape as the system icon theme:
+The build copies `data/icons/` verbatim, so the layout you write is the layout that ships. Use the same shape as the system icon theme:
 
 ```
 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
 ```
 
-`hicolor` is the fallback theme every icon theme inherits from, `scalable` is where SVGs go, and `apps` is the context. The file name is the application ID, which is what both the desktop entry's `Icon` key and the About dialog's `applicationIcon` prop look up. Because the tree already matches the theme, installing it is a plain recursive copy into a share directory.
+`hicolor` is the fallback theme every icon theme inherits from, `scalable` is where SVGs go, and `apps` is the context. The file name is the application ID, which both the desktop entry's `Icon` key and the About dialog's `applicationIcon` prop look up. Because the tree already matches the theme, installing it is a plain recursive copy into a share directory.
 
-The full-color icon is a 128 by 128 SVG. The symbolic variant is a separate 16 by 16 drawing, deliberately simplified, in a single flat fill so the desktop can recolor it for a dark header bar or a notification badge.
+The full-color icon is a 128 by 128 SVG. The symbolic variant is a separate 16 by 16 drawing in a single flat fill, so the desktop can recolor it for a dark header bar or a notification badge.
 
 `data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg`:
 
@@ -139,12 +151,12 @@ The full-color icon is a 128 by 128 SVG. The symbolic variant is a separate 16 b
 ```
 
 ::: details Why does the symbolic icon have a hardcoded color?
-The desktop recolors symbolic icons by replacing the fill, and `#241f31` is the conventional value it looks for. Draw the shape in that color and it will come out white on a dark panel and dark on a light one. A symbolic icon with several fills, gradients, or strokes will not recolor cleanly, which is why the shape is reduced to two flat paths.
+GTK4 treats an icon as symbolic based on the `-symbolic.svg` suffix, then draws it in the current foreground color, overriding the fill the file declares. So `#241f31` is not a value GTK reads: it is the Adwaita dark foreground, chosen so the file looks correct in an image viewer and matches what GTK draws on a light background. Drop the suffix and the same file stops recoloring, staying dark on a dark panel. Gradients and strokes do not come out as drawn once the override applies, which is why the shape is reduced to flat paths.
 :::
 
 ## AppStream metadata
 
-A software center needs more than a name and an icon: a summary, a description, licenses, screenshots, and a release history. That lives in an AppStream metainfo file, and it is also what Flathub validates on submission.
+A software center needs more than a name and an icon. That extra material lives in an AppStream metainfo file, which is also what Flathub validates on submission.
 
 Create `flatpak/com.gtkx.tutorial.metainfo.xml`:
 
@@ -200,7 +212,7 @@ Create `flatpak/com.gtkx.tutorial.metainfo.xml`:
 </component>
 ```
 
-Three identifiers have to agree with each other: `id` is the application ID you set in `gtkx.config.ts`, `launchable` names the desktop entry file, and `provides`/`binary` names the command in `Exec`. `metadata_license` covers this XML file, `project_license` covers the app. Screenshot images are fetched over the network by the software center, so they need public URLs rather than local paths. `branding` gives a software center accent colors to theme the listing with.
+The identifiers have to agree: `id` is the application ID you set in `gtkx.config.ts`, `launchable` names the desktop entry file, and `provides`/`binary` names the command in `Exec`. `metadata_license` covers this XML file, `project_license` covers the app. A software center fetches screenshot images over the network, so they need public URLs rather than local paths. `branding` gives a software center accent colors to theme the listing with.
 
 Both files have validators, wired up as one script:
 
@@ -208,7 +220,7 @@ Both files have validators, wired up as one script:
 npm run flatpak:lint
 ```
 
-That runs `desktop-file-validate` on the entry and `appstreamcli validate --no-net` on the metainfo. Fix what they report before you install anything: a malformed entry is silently ignored by the desktop, and you will be left guessing why the app never shows up.
+That runs `desktop-file-validate` on the entry and `appstreamcli validate --no-net` on the metainfo. Fix what they report before you install anything: the desktop silently ignores a malformed entry, leaving you to guess why the app never shows up.
 
 ## Installing into a user prefix
 
@@ -225,7 +237,7 @@ update-desktop-database ~/.local/share/applications
 gtk4-update-icon-cache -f -t ~/.local/share/icons/hicolor
 ```
 
-The binary, the native addon, and the compiled schema go into the same directory because that is where the running executable looks for them. The icon tree copies straight across, since `data/icons/hicolor/` was already in theme layout. The two cache commands tell the desktop to notice the new files immediately rather than at the next login.
+The binary, the native addon, and the compiled schema share a directory because that is where the running executable looks for them. The cache commands tell the desktop to notice the new files immediately rather than at the next login.
 
 ## Run it
 
@@ -235,10 +247,6 @@ Then install with the commands above, open the overview, and type **Tasks**. The
 
 For the negative check, move `dist/gschemas.compiled` out of `~/.local/bin` and launch again from a terminal. The app aborts on the first settings read with a GLib error naming the `com.gtkx.tutorial` schema as not installed. Put the file back and it starts.
 
-## Summary
-
-`gtkx build` emits the bundle, the native addon, the compiled schema, and the icons, and the running app resolves the last three relative to its own executable. Node's single executable support folds the bundle into a copy of `node`, giving one file to install, as long as nothing strips it. A desktop entry makes the app launchable by name and declares that it sends notifications and can be activated over D-Bus. An icon tree in theme layout and an AppStream metainfo file supply everything a launcher and a software center display.
-
 ## Next
 
-Appendix C takes this same set of files and builds them into a sandboxed, distributable package: [Shipping It on Flathub](/tutorial/flatpak).
+Appendix C builds this same set of files into a sandboxed, distributable package: [Shipping It on Flathub](/tutorial/flatpak).
