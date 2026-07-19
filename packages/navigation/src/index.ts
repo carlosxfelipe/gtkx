@@ -134,6 +134,11 @@ export { useLinkTo } from "./links/use-link-to.js";
 export { useScrollToTop, type VerticallyScrollable } from "./links/use-scroll-to-top.js";
 export { useWindowTitle, type WindowTitleFormatter } from "./links/use-window-title.js";
 export { NavigationContainer, type NavigationContainerProps } from "./navigation-container.js";
+export {
+    type NavigationPageHeaderOptions,
+    NavigatorHeader,
+    type NavigatorHeaderOptions,
+} from "./navigator-header.js";
 export type {
     NavigatorComponents,
     NavigatorNavigationProp,

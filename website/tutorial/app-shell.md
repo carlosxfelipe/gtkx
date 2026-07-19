@@ -84,14 +84,13 @@ const handleClose = (): boolean => {
             minSidebarWidth={220}
             maxSidebarWidth={300}
         >
-            <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
-                {() => (
-                    <AdwToolbarView topBar={<AdwHeaderBar start={<>{/* New List button */}</>} />}>
-                        <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
-                    </AdwToolbarView>
-                )}
+            <Split.Screen
+                name="Sidebar"
+                options={{ title: "Tasks", headerLeft: <>{/* New List button */}</> }}
+            >
+                {() => <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />}
             </Split.Screen>
-            <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
+            <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists), headerShown: false }}>
                 {() => <>{/* the tasks stack, covered below */}</>}
             </Split.Screen>
         </Split.Navigator>
@@ -100,6 +99,8 @@ const handleClose = (): boolean => {
 ```
 
 The `<AdwToastOverlay>` wrapping the tree is where the undo toasts in [Feedback and Dialogs](/tutorial/feedback-and-dialogs) land. `titleFor(selection, lists)` names the content pane "Today", "Important", or a user list's name, while the list header shows the filter toggles as its title widget.
+
+Each navigator screen gets its [header](/guide/navigation#headers) from the navigator, so the sidebar declares its New List button as `headerLeft` and renders only the sidebar itself. The content pane sets `headerShown: false` because it hosts the tasks stack, whose own screens bring the headers.
 
 ```tsx
 const openTask = (id: string): void => {
@@ -135,37 +136,34 @@ The condition uses `sp` (scale independent pixels), which tracks the text scale 
 
 ```tsx
 <Stack.Navigator>
-    <Stack.Screen name="List" options={{ title: titleFor(selection, lists) }}>
+    <Stack.Screen
+        name="List"
+        options={{
+            title: titleFor(selection, lists),
+            header: selecting ? selectionHeader : listHeader,
+        }}
+    >
         {() => (
-            <AdwToolbarView
-                topBar={selecting ? selectionHeader : listHeader}
-                bottomBar={selecting ? selectionActionBar : undefined}
-                revealBottomBars={selecting}
-            >
+            <AdwToolbarView bottomBar={selectionActionBar} revealBottomBars={selecting}>
                 {listBody}
             </AdwToolbarView>
         )}
     </Stack.Screen>
-    <Stack.Screen
-        name="Task"
-        options={({ route }) => ({
-            title: tasks.find((task) => task.id === route.params.id)?.title ?? "Task",
-        })}
-    >
+    <Stack.Screen name="Task" options={taskOptions}>
         {({ route }) => {
-            const task = tasks.find((entry) => entry.id === route.params.id);
+            const task = findTask(route.params.id);
             if (!task) return null;
             return (
-                <AdwToolbarView topBar={<>{/* the detail header */}</>}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand controllers={<>{/* the Delete shortcut */}</>}>
                     <TaskDetail key={task.id} task={task} /* ... */ />
-                </AdwToolbarView>
+                </GtkBox>
             );
         }}
     </Stack.Screen>
 </Stack.Navigator>
 ```
 
-Opening a task is a drill-down onto the `Task` route, while list versus selection is a mode toggle: the batch-select mode stays on the `List` screen, whose body swaps between `<TaskList>` and `<SelectionView>`. Each screen carries its own header inside its `AdwToolbarView`, and the list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag; the task screen's header is covered in [The Task Editor](/tutorial/the-task-editor).
+Opening a task is a drill-down onto the `Task` route, while list versus selection is a mode toggle: the batch-select mode stays on the `List` screen, whose body swaps between `<TaskList>` and `<SelectionView>`. The list screen has a title widget of its own, so it hands the navigator a whole header bar through the `header` option and picks between `listHeader` and `selectionHeader` from the `selecting` flag. Its `AdwToolbarView` is left holding the selection action bar, which reveals under the body. The task screen builds its header from options instead, covered in [The Task Editor](/tutorial/the-task-editor).
 
 ## Next
 

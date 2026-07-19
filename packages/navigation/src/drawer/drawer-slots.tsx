@@ -1,6 +1,7 @@
 import { AdwBin, AdwViewStack } from "@gtkx/jsx/adw";
 import type { Route } from "@react-navigation/core";
 import type { ReactElement, ReactNode } from "react";
+import { NavigatorHeader } from "../navigator-header.js";
 import { renderViewStackPage } from "../view-stack-page.js";
 import type { DrawerContentProps, DrawerDescriptor } from "./types.js";
 
@@ -14,8 +15,18 @@ const DrawerSidebar = (props: DrawerSlotsInput): ReactElement => {
     return <AdwBin>{render(content)}</AdwBin>;
 };
 
-const renderDrawerPage = (route: Route<string>, descriptor: DrawerDescriptor | undefined): ReactNode =>
-    descriptor ? renderViewStackPage(route, descriptor.options, descriptor.render()) : null;
+const renderDrawerPage = (route: Route<string>, descriptor: DrawerDescriptor | undefined): ReactNode => {
+    if (!descriptor) return null;
+    const title = descriptor.options.title ?? route.name;
+
+    return renderViewStackPage(
+        route,
+        descriptor.options,
+        <NavigatorHeader options={descriptor.options} title={title}>
+            {descriptor.render()}
+        </NavigatorHeader>,
+    );
+};
 
 const DrawerViewStack = (props: DrawerSlotsInput): ReactElement => (
     <AdwViewStack visibleChildName={props.focusedKey}>

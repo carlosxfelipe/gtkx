@@ -74,7 +74,7 @@ A window [portaled](/guide/modals-and-portals) from inside a screen is the neste
 
 The reconciliation runs in both directions. When the **widget** pops a page on its own, the navigator dispatches the matching pop into navigation state. `useNavigationState` and your `onStateChange` handler therefore always agree with what is on screen. Widget-initiated pops cover the header bar's back button, a swipe, <kbd>Escape</kbd>, <kbd>Alt</kbd>+<kbd>←</kbd>, the back mouse button, and the back button's context menu.
 
-Screen options are deliberately small, because Adwaita pages own their chrome:
+Screen options describe the page itself, alongside the [header options](#headers) every navigator screen shares:
 
 - **`title`** sets the `Adw.NavigationPage` title, which the header bar displays and the next page's back button names. It defaults to the route name.
 - **`canPop`** set to `false` disables the page's back button, pop gestures, and shortcuts.
@@ -88,7 +88,7 @@ A modal route never enters the widget's page stack, so the pages beneath it stay
 
 A stack needs at least one route with the default `"page"` presentation, since a dialog has no page to sit on.
 
-There is no navigator-owned header. Each screen composes its own `AdwToolbarView` with an `AdwHeaderBar`, exactly as it would anywhere else in GTKX; the pushed page's back button appears in it automatically. Navigator-level props pass straight through to the `AdwNavigationView` widget: `popOnEscape`, `animateTransitions`, sizing, CSS classes, and the `ref` resolves to the live `Adw.NavigationView`.
+Navigator-level props pass straight through to the `AdwNavigationView` widget: `popOnEscape`, `animateTransitions`, sizing, CSS classes, and the `ref` resolves to the live `Adw.NavigationView`.
 
 Screens receive `route` and `navigation` props, or reach the same objects from anywhere in the subtree with hooks:
 
@@ -97,11 +97,7 @@ const TaskScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<RouteProp<TasksStackParams, "Task">>();
     const { id } = route.params;
-    return (
-        <AdwToolbarView topBar={<AdwHeaderBar />}>
-            <TaskDetail id={id} onDone={() => navigation.goBack()} />
-        </AdwToolbarView>
-    );
+    return <TaskDetail id={id} onDone={() => navigation.goBack()} />;
 };
 ```
 
@@ -112,6 +108,43 @@ A screen that needs data from the component rendering the navigator takes a rend
     {() => <TaskList tasks={visible} onOpen={(id) => navigationRef.navigate("Task", { id })} />}
 </Stack.Screen>
 ```
+
+## Headers
+
+Screens of a stack, split-view or drawer navigator get an Adwaita header bar from the navigator, so a screen renders its content and describes its chrome through options. A stack page's back button appears in that header automatically.
+
+- **`headerTitle`** and **`headerSubtitle`** set the header's `Adw.WindowTitle`. `headerTitle` falls back to `title`, which falls back to the route name.
+- **`headerLeft`** and **`headerRight`** pack widgets at the start and end of the header bar.
+- **`headerSearchBar`** adds a second top bar below the header bar, where a `GtkSearchBar` belongs.
+- **`headerTransparent`** extends the screen's content under the header bar, and **`headerShadowVisible`** picks a raised or flat top bar.
+- **`headerBackVisible`** set to `false` hides a page's back button while leaving pop gestures and shortcuts alone, which is what `canPop` disables.
+
+```tsx
+<Stack.Screen
+    name="Task"
+    component={TaskScreen}
+    options={{
+        title: task.title,
+        headerRight: <GtkButton iconName="user-trash-symbolic" onClicked={() => remove(task)} />,
+    }}
+/>
+```
+
+`header` supplies the top bar itself, for chrome the options do not describe: a custom title widget, hidden window controls, an `AdwHeaderBar` configured any way you like.
+
+```tsx
+options={{ header: <AdwHeaderBar titleWidget={<FilterToggle filter={filter} onChange={setFilter} />} /> }}
+```
+
+`headerShown: false` renders the screen's content bare. A screen hosting a nested navigator wants that, since the inner navigator's screens bring their own headers:
+
+```tsx
+<Split.Screen name="Tasks" component={TasksStack} options={{ headerShown: false }} />
+```
+
+Header appearance is CSS: style classes and [`@gtkx/css`](/guide/css-and-animations) reach the header bar and its contents.
+
+Tab screens have no header options, because an `Adw.ViewStack` is switched from a single header bar above it rather than one header per page.
 
 ## The split-view navigator
 
@@ -131,7 +164,7 @@ const Split = createSplitViewNavigator<ShellParams>();
 </Split.Navigator>;
 ```
 
-`navigate("Tasks")` focuses the content pane; on a collapsed layout that slides it into view (the widget's `show-content`). The widget's own back motion (the back button or a swipe while collapsed) dispatches back to the sidebar route. `goBack()` from the content does the same, because the router's back behavior is pinned to the initial route. `collapsed` stays a controlled prop: the app decides when the layout collapses, typically from an `AdwBreakpoint`, and the navigator follows. All other `AdwNavigationSplitView` props pass through, and each pane's `Adw.NavigationPage` title comes from the screen's `title` option.
+`navigate("Tasks")` focuses the content pane; on a collapsed layout that slides it into view (the widget's `show-content`). The widget's own back motion (the back button or a swipe while collapsed) dispatches back to the sidebar route. `goBack()` from the content does the same, because the router's back behavior is pinned to the initial route. `collapsed` stays a controlled prop: the app decides when the layout collapses, typically from an `AdwBreakpoint`, and the navigator follows. All other `AdwNavigationSplitView` props pass through, and each pane is an `Adw.NavigationPage` carrying its own title and [header](#headers).
 
 Nesting follows React Navigation's standard shape: render a stack navigator as the content screen and address its screens through `NavigatorScreenParams`:
 
@@ -184,7 +217,7 @@ const Drawer = createDrawerNavigator<MailParams>();
 
 While the view is uncollapsed the sidebar is a permanent pane and drawer status is idle. While it is collapsed the sidebar becomes an overlay driven by that status: `navigation.openDrawer()`, `closeDrawer()` and `toggleDrawer()` move it, navigating to another route closes it, and `goBack()` closes it before it touches the route. Drive `collapsed` from an `AdwBreakpoint` and the navigator follows the widget, including collapses the widget performs on its own.
 
-`useDrawerStatus()` reports the router's status. That status stays `"closed"` while an uncollapsed sidebar is on screen, which is the honest answer for a permanent pane; drawer content that needs to tell the two apart reads `collapsed` from its props. Content screens all live in an Adwaita view stack, so they stay mounted as you move between them.
+`useDrawerStatus()` reports the router's status. That status stays `"closed"` while an uncollapsed sidebar is on screen, which is the honest answer for a permanent pane; drawer content that needs to tell the two apart reads `collapsed` from its props. Content screens all live in an Adwaita view stack, so they stay mounted as you move between them. Each one carries a [header](#headers); the sidebar toggle that reveals a collapsed drawer goes in its `headerLeft`.
 
 ## Deep linking
 

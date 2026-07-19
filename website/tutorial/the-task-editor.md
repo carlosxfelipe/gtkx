@@ -11,43 +11,48 @@ Clicking a task opens the editor, a routed screen holding the title field, the I
 The editor is the `Task` route of the content stack, set up in [The Application Shell](/tutorial/app-shell#the-content-stack). `openTask(id)` navigates to it, and the task id travels in `route.params`, so both the screen body and its `options` callback look up the same task. Here is the body from `app.tsx`:
 
 ```tsx
-<AdwToolbarView topBar={<>{/* the detail header, below */}</>} controllers={<>{/* the Delete shortcut, below */}</>}>
+<GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand controllers={<>{/* the Delete shortcut, below */}</>}>
     <TaskDetail
         key={task.id}
         task={task}
         onUpdate={(fields) => api.updateTask(task.id, fields)}
         onSetImportant={(important) => api.setImportant(task.id, important)}
     />
-</AdwToolbarView>
+</GtkBox>
 ```
 
 Switching tasks changes the `key`, so React remounts `TaskDetail` and no GTK4 editing state (cursor position, undo history, the visible calendar month) carries over from the previous task.
 
 ## The detail header
 
-The task screen carries its own header, built inline from the task it looked up and passed as the `topBar` of its `AdwToolbarView`:
+The stack navigator supplies the header, and `taskOptions` describes it. The same lookup that names the page also builds the star toggle and the delete button as [`headerRight`](/guide/navigation#headers):
 
 ```tsx
-<AdwHeaderBar
-    end={
-        <>
-            <GtkToggleButton
-                iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
-                active={task.important}
-                tooltipText="Important"
-                onToggled={(self) => api.setImportant(task.id, self.active)}
-            />
-            <GtkButton
-                iconName="user-trash-symbolic"
-                tooltipText="Delete (Delete)"
-                onClicked={() => handleDelete(task)}
-            />
-        </>
-    }
-/>
+const taskOptions = ({ route }: { route: RouteProp<TasksStackParams, "Task"> }): StackScreenOptions => {
+    const task = findTask(route.params.id);
+    if (!task) return { title: "Task" };
+    return {
+        title: task.title,
+        headerRight: (
+            <>
+                <GtkToggleButton
+                    iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                    active={task.important}
+                    tooltipText="Important"
+                    onToggled={(self) => api.setImportant(task.id, self.active)}
+                />
+                <GtkButton
+                    iconName="user-trash-symbolic"
+                    tooltipText="Delete (Delete)"
+                    onClicked={() => handleDelete(task)}
+                />
+            </>
+        ),
+    };
+};
 ```
 
-The screen also mounts its own [shortcut controller](/tutorial/actions-menus-shortcuts#view-shortcuts-gtkshortcutcontroller-for-ephemeral-keys) through the toolbar view's `controllers` slot, binding the Delete key to `handleDelete(task)`:
+The screen also mounts its own [shortcut controller](/tutorial/actions-menus-shortcuts#view-shortcuts-gtkshortcutcontroller-for-ephemeral-keys) through the body's `controllers` slot, binding the Delete key to `handleDelete(task)`:
 
 ```tsx
 controllers={

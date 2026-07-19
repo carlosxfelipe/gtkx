@@ -1,6 +1,5 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
@@ -150,11 +149,7 @@ describe("stack navigator - nested Escape propagation", () => {
     });
 });
 
-const HeaderScreen = ({ text }: { text: string }): ReactNode => (
-    <AdwToolbarView topBar={<AdwHeaderBar />}>
-        <GtkLabel>{text}</GtkLabel>
-    </AdwToolbarView>
-);
+const HeaderScreen = ({ text }: { text: string }): ReactNode => <GtkLabel>{text}</GtkLabel>;
 
 const HeaderList = (): ReactNode => <HeaderScreen text="List Content" />;
 const HeaderTask = (): ReactNode => <HeaderScreen text="Task Content" />;

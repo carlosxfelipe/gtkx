@@ -29,8 +29,10 @@ The main menu's "Select Tasks" item and the [Escape shortcut](/tutorial/actions-
 
 ## The header bar and action bar
 
+Selection mode swaps the whole header bar, so the `List` screen passes one to the navigator through the [`header` option](/guide/navigation#headers):
+
 ```tsx
-topBar={selecting ? selectionHeader : listHeader}
+header: selecting ? selectionHeader : listHeader,
 ```
 
 ```tsx

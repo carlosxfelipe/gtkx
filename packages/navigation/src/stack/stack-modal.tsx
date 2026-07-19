@@ -1,6 +1,7 @@
 import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
+import { NavigatorHeader } from "../navigator-header.js";
 import type { StackPresentation, StackScreenOptions } from "./types.js";
 import { useRoutePrevented } from "./use-prevent-remove.js";
 
@@ -25,10 +26,11 @@ export const StackModal = ({ routeKey, routeName, options, onDismiss, children }
     };
 
     const handleClose = (): void => onDismiss(routeKey);
+    const title = options.title ?? routeName;
 
     return (
         <Dialog
-            title={options.title ?? routeName}
+            title={title}
             canClose={canClose}
             presentationMode={presentationModeFor(options.presentation ?? "page")}
             contentWidth={options.contentWidth}
@@ -37,7 +39,9 @@ export const StackModal = ({ routeKey, routeName, options, onDismiss, children }
             onClose={handleClose}
             onCloseAttempt={handleCloseAttempt}
         >
-            {children}
+            <NavigatorHeader options={options} title={title}>
+                {children}
+            </NavigatorHeader>
         </Dialog>
     );
 };

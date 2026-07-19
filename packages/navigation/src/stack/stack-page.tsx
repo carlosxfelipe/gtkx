@@ -1,6 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwNavigationPage } from "@gtkx/jsx/adw";
 import { Activity, type ReactNode, useCallback, useRef } from "react";
+import { NavigatorHeader } from "../navigator-header.js";
 import { installPageBackAction } from "./stack-back.js";
 import type { PageTransitionHandlers } from "./stack-pages.js";
 import type { StackScreenOptions } from "./types.js";
@@ -22,77 +23,56 @@ type StackPageProps = {
     children: ReactNode;
 };
 
-const connectTransitions = (page: Adw.NavigationPage, emit: () => StackTransitionEmitter): (() => void) => {
-    const showing = (): void => emit()(false, false);
-    const shown = (): void => emit()(true, false);
-    const hiding = (): void => emit()(false, true);
-    const hidden = (): void => emit()(true, true);
-
-    page.on("showing", showing);
-    page.on("shown", shown);
-    page.on("hiding", hiding);
-    page.on("hidden", hidden);
-
-    return () => {
-        page.off("showing", showing);
-        page.off("shown", shown);
-        page.off("hiding", hiding);
-        page.off("hidden", hidden);
-    };
+type TransitionProps = {
+    onShowing: () => void;
+    onShown: () => void;
+    onHiding: () => void;
+    onHidden: () => void;
 };
 
-const attachPage = (
-    page: Adw.NavigationPage,
-    emit: () => StackTransitionEmitter,
-    back: () => () => void,
-): (() => void) => {
-    const releaseTransitions = connectTransitions(page, emit);
-    const releaseAction = installPageBackAction(page, () => back()());
-    return () => {
-        releaseTransitions();
-        releaseAction();
-    };
-};
+const transitionProps = (emit: StackTransitionEmitter, handlers: PageTransitionHandlers): TransitionProps => ({
+    onShowing: () => emit(false, false),
+    onShown: () => emit(true, false),
+    onHiding: () => {
+        handlers.onHiding();
+        emit(false, true);
+    },
+    onHidden: () => {
+        handlers.onHidden();
+        emit(true, true);
+    },
+});
 
-const usePageRef = (
-    emit: StackTransitionEmitter,
-    onBack: () => void,
-): ((page: Adw.NavigationPage | null) => (() => void) | undefined) => {
-    const emitRef = useRef(emit);
+const useBackRef = (onBack: () => void): ((page: Adw.NavigationPage | null) => (() => void) | undefined) => {
     const backRef = useRef(onBack);
-    emitRef.current = emit;
     backRef.current = onBack;
 
     return useCallback(
         (page: Adw.NavigationPage | null) =>
-            page === null
-                ? undefined
-                : attachPage(
-                      page,
-                      () => emitRef.current,
-                      () => backRef.current,
-                  ),
+            page === null ? undefined : installPageBackAction(page, () => backRef.current()),
         [],
     );
 };
 
 export const StackPage = ({ routeName, identity, options, handlers, children }: StackPageProps): ReactNode => {
-    const pageRef = usePageRef(identity.onTransition, identity.onBack);
+    const pageRef = useBackRef(identity.onBack);
+    const title = options.title ?? routeName;
 
     return (
         <AdwNavigationPage
             ref={pageRef}
             tag={identity.tag}
-            title={options.title ?? routeName}
+            title={title}
             canPop={options.canPop}
-            onHiding={handlers.onHiding}
-            onHidden={handlers.onHidden}
+            {...transitionProps(identity.onTransition, handlers)}
         >
-            {options.freezeOnBlur ? (
-                <Activity mode={identity.focused ? "visible" : "hidden"}>{children}</Activity>
-            ) : (
-                children
-            )}
+            <NavigatorHeader options={options} title={title}>
+                {options.freezeOnBlur ? (
+                    <Activity mode={identity.focused ? "visible" : "hidden"}>{children}</Activity>
+                ) : (
+                    children
+                )}
+            </NavigatorHeader>
         </AdwNavigationPage>
     );
 };

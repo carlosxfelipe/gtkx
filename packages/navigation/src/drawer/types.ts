@@ -8,6 +8,7 @@ import type {
     DrawerStatus,
 } from "@react-navigation/routers";
 import type { ReactElement, ReactNode, Ref } from "react";
+import type { NavigatorHeaderOptions } from "../navigator-header.js";
 import type {
     NavigatorComponents,
     NavigatorNavigationProp,
@@ -15,7 +16,7 @@ import type {
     NavigatorScreenProps,
 } from "../navigator-types.js";
 
-export type DrawerScreenOptions = {
+export type DrawerScreenOptions = NavigatorHeaderOptions & {
     title?: string;
 };
 

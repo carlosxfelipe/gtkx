@@ -3,6 +3,7 @@ import type { AdwNavigationSplitViewProps } from "@gtkx/jsx/adw";
 import type { EventMapCore, ParamListBase } from "@react-navigation/core";
 import type { TabActionHelpers, TabNavigationState, TabRouterOptions } from "@react-navigation/routers";
 import type { Ref } from "react";
+import type { NavigationPageHeaderOptions } from "../navigator-header.js";
 import type {
     NavigatorComponents,
     NavigatorNavigationProp,
@@ -10,7 +11,7 @@ import type {
     NavigatorScreenProps,
 } from "../navigator-types.js";
 
-export type SplitViewScreenOptions = {
+export type SplitViewScreenOptions = NavigationPageHeaderOptions & {
     title?: string;
     canPop?: boolean;
     iconName?: string;

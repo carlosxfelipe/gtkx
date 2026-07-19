@@ -8,6 +8,7 @@ import {
     type TabRouterOptions,
 } from "@react-navigation/routers";
 import type { ReactElement, ReactNode } from "react";
+import { NavigatorHeader } from "../navigator-header.js";
 import { definedNavigatorOptions } from "../navigator-options.js";
 import type { SplitViewStaticConfig } from "../static/navigator-configs.js";
 import type { StaticNavigator } from "../static/types.js";
@@ -30,15 +31,17 @@ const resolvePane = (route: PaneRoute | undefined, descriptors: Record<string, P
     return { route, descriptor };
 };
 
-const renderPage = ({ route, descriptor }: Pane, children: ReactNode): ReactElement => (
-    <AdwNavigationPage
-        tag={route.key}
-        title={descriptor.options.title ?? route.name}
-        canPop={descriptor.options.canPop}
-    >
-        {children}
-    </AdwNavigationPage>
-);
+const renderPage = ({ route, descriptor }: Pane, children: ReactNode): ReactElement => {
+    const title = descriptor.options.title ?? route.name;
+
+    return (
+        <AdwNavigationPage tag={route.key} title={title} canPop={descriptor.options.canPop}>
+            <NavigatorHeader options={descriptor.options} title={title}>
+                {children}
+            </NavigatorHeader>
+        </AdwNavigationPage>
+    );
+};
 
 const renderContent = (panes: Pane[], focused: Pane): ReactElement =>
     renderPage(

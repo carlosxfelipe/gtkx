@@ -3,6 +3,7 @@ import type { AdwNavigationViewProps } from "@gtkx/jsx/adw";
 import type { EventMapCore, ParamListBase } from "@react-navigation/core";
 import type { StackActionHelpers, StackNavigationState } from "@react-navigation/routers";
 import type { Ref } from "react";
+import type { NavigationPageHeaderOptions } from "../navigator-header.js";
 import type {
     NavigatorComponents,
     NavigatorNavigationProp,
@@ -12,7 +13,7 @@ import type {
 
 export type StackPresentation = "page" | "modal" | "bottomSheet";
 
-export type StackScreenOptions = {
+export type StackScreenOptions = NavigationPageHeaderOptions & {
     title?: string;
     tag?: string;
     canPop?: boolean;

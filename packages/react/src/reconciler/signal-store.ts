@@ -13,9 +13,11 @@ const UNBLOCKED_SIGNALS = new Set([
     "render",
     "input",
     "output",
+    "showing",
+    "shown",
+    "hiding",
+    "hidden",
 ]);
-
-let blockDepth = 0;
 
 type SignalBinding = {
     instance: GObject.Object;
@@ -25,6 +27,8 @@ type SignalBinding = {
 
 export class SignalStore {
     private instanceHandlers: Map<GObject.Object, Map<string, number>> = new Map();
+
+    private blockDepth: number = 0;
 
     private getInstanceMap(instance: GObject.Object): Map<string, number> {
         let instanceMap = this.instanceHandlers.get(instance);
@@ -37,7 +41,7 @@ export class SignalStore {
 
     private gateHandler(handler: SignalHandler, signal: string, instance: GObject.Object): SignalHandler {
         return (...args: unknown[]) => {
-            if (blockDepth > 0 && !UNBLOCKED_SIGNALS.has(signal)) {
+            if (this.blockDepth > 0 && !UNBLOCKED_SIGNALS.has(signal)) {
                 return;
             }
             return handler(...args, instance);
@@ -83,11 +87,11 @@ export class SignalStore {
     }
 
     public block(): void {
-        blockDepth += 1;
+        this.blockDepth += 1;
     }
 
     public unblock(): void {
-        if (blockDepth > 0) blockDepth -= 1;
+        if (this.blockDepth > 0) this.blockDepth -= 1;
     }
 }
 
