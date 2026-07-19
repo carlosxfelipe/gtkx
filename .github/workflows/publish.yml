@@ -36,7 +36,7 @@ jobs:
       - name: Build native binary
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm turbo run build --filter=@gtkx/native
+          command: pnpm turbo run build --filter=@gtkx/native --force
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
 
       - name: Upload native binary
@@ -44,6 +44,7 @@ jobs:
         with:
           name: native-linux-${{ matrix.arch }}-gnu
           path: packages/native/native.linux-${{ matrix.arch }}-gnu.node
+          if-no-files-found: error
 
   publish:
     needs: build-native
