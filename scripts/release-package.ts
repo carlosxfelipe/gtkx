@@ -26,10 +26,14 @@ const releasePackage = (): void => {
     const tag = distTagForVersion(manifest.version ?? "");
 
     try {
-        const result = spawnSync("pnpm", ["publish", "--access", "public", "--no-git-checks", "--tag", tag], {
-            cwd: packageDir,
-            stdio: "inherit",
-        });
+        const result = spawnSync(
+            "pnpm",
+            ["publish", "--access", "public", "--no-git-checks", "--provenance", "--tag", tag],
+            {
+                cwd: packageDir,
+                stdio: "inherit",
+            },
+        );
         if (result.error) throw result.error;
         if (result.status !== 0) {
             throw new Error(`pnpm publish failed with exit code ${result.status ?? "unknown"}`);
