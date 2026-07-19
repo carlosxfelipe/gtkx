@@ -1,7 +1,7 @@
-import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { publishPackage } from "./pnpm-publish.js";
 import { distTagForVersion, type PackageManifest, stripDevArtifacts } from "./publish-manifest.js";
 
 const findRepoRoot = (start: string): string => {
@@ -26,27 +26,7 @@ const releasePackage = (): void => {
     const tag = distTagForVersion(manifest.version ?? "");
 
     try {
-        const result = spawnSync(
-            "pnpm",
-            ["publish", "--access", "public", "--no-git-checks", "--provenance", "--tag", tag],
-            {
-                cwd: packageDir,
-                stdio: ["inherit", "pipe", "pipe"],
-                encoding: "utf8",
-            },
-        );
-        process.stdout.write(result.stdout ?? "");
-        process.stderr.write(result.stderr ?? "");
-        if (result.error) throw result.error;
-        if (result.status !== 0) {
-            const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
-            const alreadyPublished = /cannot publish over|EPUBLISHCONFLICT|previously published version/i.test(output);
-            if (alreadyPublished) {
-                console.log(`${manifest.name ?? "package"}@${manifest.version ?? ""} is already published, skipping`);
-            } else {
-                throw new Error(`pnpm publish failed with exit code ${result.status ?? "unknown"}`);
-            }
-        }
+        publishPackage(packageDir, tag);
     } finally {
         writeFileSync(manifestPath, original);
     }

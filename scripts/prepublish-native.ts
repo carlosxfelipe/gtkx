@@ -1,15 +1,30 @@
-import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { publishPackage } from "./pnpm-publish.js";
 import { distTagForVersion, type PackageManifest } from "./publish-manifest.js";
 
-const manifest = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as PackageManifest;
-process.env.npm_config_tag = distTagForVersion(manifest.version ?? "");
+const packageDir = process.cwd();
+const manifestPath = join(packageDir, "package.json");
+const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
+const tag = distTagForVersion(manifest.version ?? "");
 
-execSync("pnpm config set git-checks false", { stdio: "inherit" });
+const npmDir = join(packageDir, "npm");
+const artifactsDir = join(packageDir, "artifacts");
+const optionalDependencies: { [name: string]: string } = {};
 
-execSync("napi prepublish -t npm --no-gh-release", {
-    cwd: process.cwd(),
-    stdio: "inherit",
-});
+for (const platform of readdirSync(npmDir)) {
+    const platformDir = join(npmDir, platform);
+    const binary = `native.${platform}.node`;
+    copyFileSync(join(artifactsDir, binary), join(platformDir, binary));
+
+    const platformManifest = JSON.parse(readFileSync(join(platformDir, "package.json"), "utf8")) as PackageManifest;
+    if (platformManifest.name !== undefined && platformManifest.version !== undefined) {
+        optionalDependencies[platformManifest.name] = platformManifest.version;
+    }
+
+    publishPackage(platformDir, tag);
+}
+
+manifest.optionalDependencies = optionalDependencies;
+writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
