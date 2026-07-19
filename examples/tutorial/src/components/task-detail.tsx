@@ -12,6 +12,7 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { useState } from "react";
 import { formatDateTime, formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
 import { detailNotes } from "../styles.js";
@@ -20,6 +21,7 @@ import type { Task } from "../types.js";
 export const TaskDetail = ({ task }: { task: Task }) => {
     const updateTask = useStore((state) => state.updateTask);
     const setImportant = useStore((state) => state.setImportant);
+    const [initialNotes] = useState(task.notes);
     const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null) : undefined;
 
     return (
@@ -99,7 +101,7 @@ export const TaskDetail = ({ task }: { task: Task }) => {
                                             })
                                         }
                                     >
-                                        {task.notes}
+                                        {initialNotes}
                                     </GtkTextBuffer>
                                 }
                             />

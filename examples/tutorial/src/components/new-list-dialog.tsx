@@ -37,7 +37,10 @@ export const NewListDialog = () => {
                             active={color === swatch}
                             cssClasses={["flat"]}
                             accessibleLabel={`Color ${swatch}`}
-                            onClicked={() => setColor(swatch)}
+                            onClicked={(self) => {
+                                self.active = true;
+                                setColor(swatch);
+                            }}
                         >
                             <GtkBox
                                 widthRequest={22}
