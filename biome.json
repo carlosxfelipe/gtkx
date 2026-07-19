@@ -150,6 +150,16 @@
                     }
                 }
             }
+        },
+        {
+            "includes": ["packages/navigation/src/typing.ts"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noEmptyInterface": "off"
+                    }
+                }
+            }
         }
     ],
     "vcs": {

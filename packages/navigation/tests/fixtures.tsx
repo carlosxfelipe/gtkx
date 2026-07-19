@@ -53,6 +53,7 @@ type RenderStackOptions = {
     initialState?: InitialState;
     taskComponent?: () => ReactNode;
     taskOptions?: StackScreenOptions;
+    animations?: boolean;
 };
 
 export type StackHarness = {
@@ -80,6 +81,7 @@ export const renderStack = async (options: RenderStackOptions = {}): Promise<Sta
                 />
             </Stack.Navigator>
         </NavigationContainer>,
+        { ...(options.animations !== undefined && { animations: options.animations }) },
     );
 
     return { viewRef, navigationRef, view: () => requireView(viewRef) };

@@ -22,6 +22,7 @@
         "skipErrorChecking": true,
         "readme": "none"
     },
+    "intentionallyNotExported": ["FlatType", "ParamListForScreens", "ParamListForGroups"],
     "sanitizeComments": true,
     "out": "reference",
     "docsRoot": ".",

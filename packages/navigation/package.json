@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/navigation",
     "version": "1.0.0-rc.1",
-    "description": "React Navigation-powered navigators for GTKX: stack and split-view navigation backed by Adwaita widgets",
+    "description": "React Navigation-powered navigators for GTKX: stack, tab, drawer and split-view navigation backed by Adwaita widgets",
     "keywords": [
         "gtkx",
         "gtk",
@@ -47,6 +47,8 @@
         "node": ">=24"
     },
     "dependencies": {
+        "@gtkx/components": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@react-navigation/core": "^7.9.2",

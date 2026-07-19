@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/gi/adw";
-import type { AdwNavigationSplitViewProps } from "@gtkx/jsx/adw";
+import type { AdwViewStackProps } from "@gtkx/jsx/adw";
 import type { EventMapCore, ParamListBase } from "@react-navigation/core";
 import type { TabActionHelpers, TabNavigationState, TabRouterOptions } from "@react-navigation/routers";
 import type { Ref } from "react";
@@ -10,17 +10,20 @@ import type {
     NavigatorScreenProps,
 } from "../navigator-types.js";
 
-export type SplitViewScreenOptions = {
+export type TabBackBehavior = NonNullable<TabRouterOptions["backBehavior"]>;
+
+export type TabScreenOptions = {
     title?: string;
-    canPop?: boolean;
     iconName?: string;
     badgeNumber?: number;
     needsAttention?: boolean;
 };
 
-export type SplitViewNavigationEventMap = EventMapCore<TabNavigationState<ParamListBase>>;
+export type TabNavigationEventMap = EventMapCore<TabNavigationState<ParamListBase>> & {
+    tabPress: { data: undefined; canPreventDefault: true };
+};
 
-export type SplitViewNavigationProp<
+export type TabNavigationProp<
     ParamList extends ParamListBase = ParamListBase,
     RouteName extends keyof ParamList = keyof ParamList,
     NavigatorID extends string | undefined = undefined,
@@ -29,44 +32,37 @@ export type SplitViewNavigationProp<
     RouteName,
     NavigatorID,
     TabNavigationState<ParamList>,
-    SplitViewScreenOptions,
-    SplitViewNavigationEventMap,
+    TabScreenOptions,
+    TabNavigationEventMap,
     TabActionHelpers<ParamList>
 >;
 
-export type SplitViewScreenProps<
+export type TabScreenProps<
     ParamList extends ParamListBase,
     RouteName extends keyof ParamList = keyof ParamList,
     NavigatorID extends string | undefined = undefined,
-> = NavigatorScreenProps<SplitViewNavigationProp<ParamList, RouteName, NavigatorID>, ParamList, RouteName>;
+> = NavigatorScreenProps<TabNavigationProp<ParamList, RouteName, NavigatorID>, ParamList, RouteName>;
 
-export type SplitViewNavigatorProps<ParamList extends ParamListBase = ParamListBase> = Omit<
-    AdwNavigationSplitViewProps,
-    | "children"
-    | "ref"
-    | "sidebar"
-    | "content"
-    | "showContent"
-    | "onNotifyShowContent"
-    | "onNotifyContent"
-    | "onNotifySidebar"
+export type TabNavigatorProps<ParamList extends ParamListBase = ParamListBase> = Omit<
+    AdwViewStackProps,
+    "children" | "ref" | "visibleChild" | "visibleChildName" | "onNotifyVisibleChildName"
 > &
     NavigatorOptions<
         ParamList,
         TabNavigationState<ParamList>,
-        SplitViewScreenOptions,
-        SplitViewNavigationEventMap,
+        TabScreenOptions,
+        TabNavigationEventMap,
         TabActionHelpers<ParamList>
     > &
     Pick<TabRouterOptions, "backBehavior"> & {
-        ref?: Ref<Adw.NavigationSplitView | null>;
+        ref?: Ref<Adw.ViewStack | null>;
     };
 
-export type SplitViewNavigatorComponents<ParamList extends ParamListBase> = NavigatorComponents<
+export type TabNavigatorComponents<ParamList extends ParamListBase> = NavigatorComponents<
     ParamList,
-    SplitViewNavigatorProps<ParamList>,
+    TabNavigatorProps<ParamList>,
     TabNavigationState<ParamList>,
-    SplitViewScreenOptions,
-    SplitViewNavigationEventMap,
+    TabScreenOptions,
+    TabNavigationEventMap,
     TabActionHelpers<ParamList>
 >;

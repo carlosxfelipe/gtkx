@@ -120,7 +120,7 @@ describe("split-view navigator", () => {
         expect(harness.navigationRef.getRootState().index).toBe(0);
     });
 
-    it("throws unless it has exactly two screens", async () => {
+    it("throws without a content screen", async () => {
         await expect(
             render(
                 <NavigationContainer>
@@ -129,7 +129,7 @@ describe("split-view navigator", () => {
                     </Split.Navigator>
                 </NavigationContainer>,
             ),
-        ).rejects.toThrow(/exactly two screens/);
+        ).rejects.toThrow(/at least one content screen/);
     });
 
     it("hosts a nested stack navigator in the content pane (tutorial shape)", async () => {

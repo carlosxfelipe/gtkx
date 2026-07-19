@@ -506,6 +506,12 @@ importers:
 
   packages/navigation:
     dependencies:
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../components
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
@@ -519,9 +525,6 @@ importers:
         specifier: ^7.6.0
         version: 7.6.0(patch_hash=3536b8ea252b90d3387b8c9325a57af564648988e93acb928f756af2b03ea82f)
     devDependencies:
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../config
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing

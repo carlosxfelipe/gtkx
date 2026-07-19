@@ -1,9 +1,10 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, render, screen } from "@gtkx/testing";
-import { createRef } from "react";
+import { act, render, screen, waitFor } from "@gtkx/testing";
+import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
+    CommonActions,
     createNavigationContainerRef,
     createStackNavigator,
     NavigationContainer,
@@ -185,6 +186,198 @@ describe("stack navigator - widget-initiated pops", () => {
         expect(harness.navigationRef.getRootState().routes).toHaveLength(2);
         expect(liveTags(harness.view())).toHaveLength(2);
         expect(harness.view().getVisiblePageTag()).toBe(harness.navigationRef.getRootState().routes[1]?.key);
+    });
+});
+
+const THREE_DEEP_INITIAL_STATE = {
+    index: 2,
+    routes: [{ name: "List" }, { name: "Task", params: { id: "1" } }, { name: "Task", params: { id: "2" } }],
+};
+
+const routeKeys = (harness: StackHarness): string[] =>
+    harness.navigationRef.getRootState().routes.map((route) => route.key);
+
+const requireKey = (harness: StackHarness, index: number): string => {
+    const key = routeKeys(harness)[index];
+    if (key === undefined) throw new Error(`Missing route key at index ${index}`);
+    return key;
+};
+
+const renderThreeDeepStack = async (): Promise<StackHarness> => {
+    const harness = await renderStack({ initialState: THREE_DEEP_INITIAL_STATE });
+    await screen.findByText("Task 2");
+    return harness;
+};
+
+type ResetRoute = { key?: string; name: string; params?: { id: string } };
+
+const resetTo = async (harness: StackHarness, routes: ResetRoute[]): Promise<void> => {
+    await act(() => {
+        harness.navigationRef.dispatch(CommonActions.reset({ index: routes.length - 1, routes }));
+    });
+};
+
+const waitForLiveTags = async (harness: StackHarness): Promise<void> => {
+    await waitFor(() => {
+        expect(liveTags(harness.view())).toEqual(routeKeys(harness));
+    });
+};
+
+const expectConverged = (harness: StackHarness): void => {
+    const keys = routeKeys(harness);
+    expect(liveTags(harness.view())).toEqual(keys);
+    expect(harness.view().getVisiblePageTag()).toBe(keys[keys.length - 1]);
+};
+
+const expectReleased = async (harness: StackHarness, keys: string[]): Promise<void> => {
+    await waitFor(() => {
+        for (const key of keys) expect(harness.view().findPage(key)).toBeNull();
+    });
+};
+
+describe("stack navigator - diff convergence", () => {
+    it("leaves the widget stack untouched when desired equals live", async () => {
+        let bump: (() => void) | undefined;
+        const BumpScreen = () => {
+            const [count, setCount] = useState(0);
+            bump = () => {
+                setCount((current) => current + 1);
+            };
+            return <GtkLabel>{`Bumped ${count}`}</GtkLabel>;
+        };
+        const harness = await renderStack({ taskComponent: BumpScreen });
+
+        await openTask(harness, "42", "Bumped 0");
+
+        const replaced = vi.fn();
+        harness.view().on("replaced", replaced);
+        const tagsBefore = liveTags(harness.view());
+        const visibleBefore = harness.view().getVisiblePageTag();
+
+        await act(() => {
+            bump?.();
+        });
+        await screen.findByText("Bumped 1");
+
+        expect(liveTags(harness.view())).toEqual(tagsBefore);
+        expect(harness.view().getVisiblePageTag()).toBe(visibleBefore);
+        expect(replaced).not.toHaveBeenCalled();
+    });
+
+    it("keeps a widget-popped page parented until it emits hidden", async () => {
+        const harness = await renderStack({ animations: true });
+
+        await openTask(harness, "42", "Task 42");
+        const poppedKey = requireKey(harness, 1);
+
+        await act(() => {
+            harness.view().pop();
+        });
+
+        expect(harness.view().findPage(poppedKey)).not.toBeNull();
+        expect(liveTags(harness.view())).toHaveLength(1);
+
+        await expectReleased(harness, [poppedKey]);
+        expect(liveTags(harness.view())).toHaveLength(1);
+    });
+
+    it("swaps the top page on replace", async () => {
+        const harness = await renderStack();
+
+        await openTask(harness, "42", "Task 42");
+        const bottomKey = requireKey(harness, 0);
+        const replacedKey = requireKey(harness, 1);
+
+        await act(() => {
+            harness.navigationRef.dispatch(StackActions.replace("Task", { id: "99" }));
+        });
+        await screen.findByText("Task 99");
+
+        const keys = routeKeys(harness);
+        expect(keys[0]).toBe(bottomKey);
+        expect(keys[1]).not.toBe(replacedKey);
+        expectConverged(harness);
+        expect(liveTags(harness.view())).toHaveLength(2);
+        await expectReleased(harness, [replacedKey]);
+    });
+
+    it("converges and releases old pages on an arbitrary reset", async () => {
+        const harness = await renderStack();
+
+        await openTask(harness, "42", "Task 42");
+        const oldKeys = routeKeys(harness);
+
+        await resetTo(harness, [
+            { name: "Task", params: { id: "8" } },
+            { name: "Task", params: { id: "9" } },
+        ]);
+        await screen.findByText("Task 9");
+
+        const keys = routeKeys(harness);
+        expect(keys).toHaveLength(2);
+        for (const key of keys) expect(oldKeys).not.toContain(key);
+        expectConverged(harness);
+        await expectReleased(harness, oldKeys);
+        expect(liveTags(harness.view())).toEqual(routeKeys(harness));
+    });
+
+    it("converges on a reorder that is neither a prefix nor an append", async () => {
+        const harness = await renderThreeDeepStack();
+
+        const [listKey, firstKey, secondKey] = routeKeys(harness);
+        if (listKey === undefined || firstKey === undefined || secondKey === undefined)
+            throw new Error("Missing route keys");
+
+        await resetTo(harness, [
+            { key: secondKey, name: "Task", params: { id: "2" } },
+            { key: listKey, name: "List" },
+            { key: firstKey, name: "Task", params: { id: "1" } },
+        ]);
+
+        await waitForLiveTags(harness);
+        expect(routeKeys(harness)).toEqual([secondKey, listKey, firstKey]);
+        expectConverged(harness);
+    });
+
+    it("builds a three deep initial state in one render", async () => {
+        const harness = await renderThreeDeepStack();
+
+        expect(liveTags(harness.view())).toEqual(routeKeys(harness));
+        expect(liveTags(harness.view())).toHaveLength(3);
+        expectVisibleTop(harness, 3);
+    });
+
+    it("collapses to a single page on popToTop", async () => {
+        const harness = await renderThreeDeepStack();
+
+        await act(() => {
+            harness.navigationRef.dispatch(StackActions.popToTop());
+        });
+        await screen.findByText("List Content");
+
+        expect(liveTags(harness.view())).toHaveLength(1);
+        expectConverged(harness);
+    });
+
+    it("converges across rapid successive stack changes", async () => {
+        const harness = await renderStack();
+
+        await act(() => {
+            harness.navigationRef.dispatch(StackActions.push("Task", { id: "1" }));
+            harness.navigationRef.dispatch(StackActions.push("Task", { id: "2" }));
+            harness.navigationRef.dispatch(StackActions.push("Task", { id: "3" }));
+        });
+        await screen.findByText("Task 3");
+        expectConverged(harness);
+
+        await act(() => {
+            harness.navigationRef.dispatch(StackActions.pop(2));
+            harness.navigationRef.dispatch(StackActions.push("Task", { id: "4" }));
+        });
+        await screen.findByText("Task 4");
+
+        await waitForLiveTags(harness);
+        expectConverged(harness);
     });
 });
 

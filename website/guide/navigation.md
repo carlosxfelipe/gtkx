@@ -1,5 +1,5 @@
 ---
-description: "Stack and split-view navigation with @gtkx/navigation: React Navigation's model driving Adw.NavigationView and Adw.NavigationSplitView."
+description: "Stack, tab, drawer and split-view navigation with @gtkx/navigation: React Navigation's model driving Adwaita widgets."
 ---
 
 # Navigation
@@ -10,6 +10,8 @@ These navigators ship today:
 
 - **`createStackNavigator`** drives an `Adw.NavigationView`: a page stack with slide animations, an automatic back button, edge-swipe back, and Escape-to-pop.
 - **`createSplitViewNavigator`** drives an `Adw.NavigationSplitView`: the adaptive sidebar/content layout that collapses to a single column on narrow windows.
+- **`createTabNavigator`** drives an `Adw.ViewStack`: a fixed set of views you switch between, paired with a view switcher you place yourself.
+- **`createDrawerNavigator`** drives an `Adw.OverlaySplitView`: a sidebar that is a permanent pane when there is room and an overlay when there is not.
 
 ```tsx
 import {
@@ -76,6 +78,15 @@ Screen options are deliberately small, because Adwaita pages own their chrome:
 
 - **`title`** sets the `Adw.NavigationPage` title, which the header bar displays and the next page's back button names. It defaults to the route name.
 - **`canPop`** set to `false` disables the page's back button, pop gestures, and shortcuts.
+- **`presentation`** set to `"modal"` or `"bottomSheet"` presents the route as an `Adw.Dialog` instead of pushing a page. `contentWidth`, `contentHeight` and `followsContentSize` size that dialog and are inert for a plain page.
+
+A modal route never enters the widget's page stack, so the pages beneath it stay exactly as they were. Closing the dialog dispatches the matching pop, and navigating the route away in React dismisses the dialog:
+
+```tsx
+<Stack.Screen name="Edit" component={EditScreen} options={{ presentation: "modal", title: "Edit Task" }} />
+```
+
+A stack needs at least one route with the default `"page"` presentation, since a dialog has no page to sit on.
 
 There is no navigator-owned header. Each screen composes its own `AdwToolbarView` with an `AdwHeaderBar`, exactly as it would anywhere else in GTKX; the pushed page's back button appears in it automatically. Navigator-level props pass straight through to the `AdwNavigationView` widget: `popOnEscape`, `animateTransitions`, sizing, CSS classes, and the `ref` resolves to the live `Adw.NavigationView`.
 
@@ -130,6 +141,68 @@ navigationRef.navigate("Tasks", { screen: "Task", params: { id } });
 
 That one call focuses the content pane *and* pushes the task page in its stack. Note the focus semantics on an expanded layout: both panes are visible, but only the focused route is "focused" in navigation terms, which is what `useIsFocused` and the `focus`/`blur` events report.
 
+## The tab navigator
+
+`Tab.Navigator` renders an `Adw.ViewStack`, one page per screen, and binds the visible page to the focused route. Every screen stays realized, so switching tabs preserves scroll position and widget state. It runs on React Navigation's tab router, and `backBehavior` is yours to pick: the router's default `"firstRoute"` sends `goBack()` to the first tab, `"history"` walks back through the tabs you visited, `"none"` ignores it.
+
+```tsx
+const Tab = createTabNavigator<ShellParams>();
+
+<Tab.Navigator backBehavior="history">
+    <Tab.Screen name="Inbox" component={Inbox} options={{ title: "Inbox", iconName: "mail-symbolic", badgeNumber: unread }} />
+    <Tab.Screen name="Settings" component={Settings} options={{ title: "Settings", iconName: "preferences-system-symbolic" }} />
+</Tab.Navigator>;
+```
+
+The switcher is not part of the navigator, because an `AdwViewSwitcher` belongs in a header bar and an `AdwViewSwitcherBar` in a toolbar, both above the navigator in the tree. Hold the stack in state and hand it to whichever switcher you want:
+
+```tsx
+const [stack, setStack] = useState<Adw.ViewStack | null>(null);
+
+<AdwToolbarView topBar={<AdwHeaderBar titleWidget={<AdwViewSwitcher stack={stack} />} />}>
+    <Tab.Navigator ref={setStack}>{/* ... */}</Tab.Navigator>
+</AdwToolbarView>;
+```
+
+Clicking the switcher moves navigation state, and `navigate()` moves the switcher. Screen options map onto the `Adw.ViewStackPage`: `title`, `iconName`, `badgeNumber`, and `needsAttention`.
+
+## The drawer navigator
+
+`Drawer.Navigator` renders an `Adw.OverlaySplitView`. Every screen is a content screen, and the drawer itself is a `drawerContent` render prop rather than a screen, because drawer status is orthogonal to which route is focused: the drawer can be open or closed over any route.
+
+```tsx
+const Drawer = createDrawerNavigator<MailParams>();
+
+<Drawer.Navigator
+    collapsed={collapsed}
+    drawerContent={({ navigation, state }) => <MailSidebar navigation={navigation} state={state} />}
+>
+    <Drawer.Screen name="Inbox" component={Inbox} />
+    <Drawer.Screen name="Archive" component={Archive} />
+</Drawer.Navigator>;
+```
+
+While the view is uncollapsed the sidebar is a permanent pane and drawer status is idle. While it is collapsed the sidebar becomes an overlay driven by that status: `navigation.openDrawer()`, `closeDrawer()` and `toggleDrawer()` move it, navigating to another route closes it, and `goBack()` closes it before it touches the route. Drive `collapsed` from an `AdwBreakpoint` and the navigator follows the widget, including collapses the widget performs on its own.
+
+`useDrawerStatus()` reports the router's status. That status stays `"closed"` while an uncollapsed sidebar is on screen, which is the honest answer for a permanent pane; drawer content that needs to tell the two apart reads `collapsed` from its props. Content screens all live in an Adwaita view stack, so they stay mounted as you move between them.
+
+## Deep linking
+
+`NavigationContainer` takes a `linking` prop that maps URIs onto navigation state:
+
+```tsx
+<NavigationContainer
+    linking={{ config: { screens: { List: "list", Task: "tasks/:id" } } }}
+    fallback={<AdwSpinner />}
+>
+```
+
+`prefixes` defaults to your application ID as a scheme, lowercased: an app with the ID `com.example.Tasks` answers `com.example.tasks://`. That is the reverse-DNS private-use scheme [RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252) recommends for native apps, and it is already unique because application IDs are. Set `prefixes` explicitly to answer something else, such as a hosted `https://` address alongside the custom scheme. An application ID containing an underscore has no default, because GLib permits underscores in application IDs and RFC 3986 forbids them in a scheme; those apps must pass `prefixes` themselves.
+
+A URI present at launch resolves into `initialState` before the tree mounts, so the app opens directly on the linked route with no visible redirect. URIs that arrive later, from a second launch of the same application ID, come through `Gio.Application`'s `open` signal and are dispatched into the live tree. Give the application `Gio.ApplicationFlags.HANDLES_OPEN` for that path to work, and claim the scheme in your [`.desktop` entry](/tutorial/packaging).
+
+A desktop app has no address bar, so the reverse direction is a hook rather than an automatic write: `useLinkPath()` gives the path for the focused route and `useLinkURL()` prefixes it with `prefixes[0]`. Use them to build a "copy link" action or a window subtitle.
+
 ## Hooks
 
 `@gtkx/navigation` re-exports the React Navigation core hooks:
@@ -139,6 +212,8 @@ That one call focuses the content pane *and* pushes the task page in its stack. 
 - **`useNavigationState(selector)`** subscribes to a slice of the navigator's state.
 - **`useIsFocused()`** and **`useFocusEffect(callback)`** track whether the screen is the focused one, re-running the effect on focus and cleaning up on blur.
 - **`usePreventRemove(shouldPrevent, callback)`** marks the screen as not removable while a condition holds (unsaved changes, a running operation).
+- **`useDrawerStatus()`** reports whether the enclosing drawer navigator is open or closed.
+- **`useLinkPath()`** and **`useLinkURL()`** render the focused route back into a path or a full URI.
 
 `CommonActions`, `StackActions`, and `TabActions` are also re-exported for dispatching raw actions through `navigation.dispatch` or a container ref.
 
@@ -146,7 +221,9 @@ That one call focuses the content pane *and* pushes the task page in its stack. 
 
 `usePreventRemove(true, onAttempt)` guards removal on a stack screen. It sets the page's `canPop` to `false`, so the back button disappears and the pop gesture and shortcuts are disabled up front. If the page is popped anyway, because something called `pop()` on the widget directly, the navigator's dispatched pop is prevented. The `onAttempt` callback fires with the blocked action. The navigator then pushes the page straight back, so navigation state wins.
 
-What it cannot do is Adwaita's "ask first, then maybe close" flow, because `Adw.NavigationView` has no vetoable pop: the widget notifies *after* a page is popped, so prevention for widget-initiated pops is block-up-front, not intercept-in-flight. For a confirmation flow, reach for the surface Adwaita makes vetoable: present the question in a [`Dialog`](/guide/modals-and-portals), whose close attempt genuinely waits for an answer.
+What it cannot do on a page is Adwaita's "ask first, then maybe close" flow, because `Adw.NavigationView` has no vetoable pop: `can-pop` is consulted inside GTK, which swallows the gesture without telling anyone, and the `popped` signal arrives only after a page is gone. Prevention for widget-initiated pops is therefore block-up-front, not intercept-in-flight.
+
+A route presented as a modal does deliver the full flow, because `Adw.Dialog` is vetoable: the guarded route keeps `can-close` false, the dialog's close attempt fires your callback, and you answer with a confirmation before dispatching the pop yourself.
 
 ## What belongs in navigation state
 

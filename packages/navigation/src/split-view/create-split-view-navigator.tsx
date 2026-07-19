@@ -1,4 +1,4 @@
-import { AdwNavigationPage, AdwNavigationSplitView } from "@gtkx/jsx/adw";
+import { AdwNavigationPage, AdwNavigationSplitView, AdwViewStack } from "@gtkx/jsx/adw";
 import { createNavigatorFactory, type ParamListBase, useNavigationBuilder } from "@react-navigation/core";
 import {
     type TabActionHelpers,
@@ -9,6 +9,9 @@ import {
 } from "@react-navigation/routers";
 import type { ReactElement, ReactNode } from "react";
 import { definedNavigatorOptions } from "../navigator-options.js";
+import type { SplitViewStaticConfig } from "../static/navigator-configs.js";
+import type { StaticNavigator } from "../static/types.js";
+import { renderViewStackPage } from "../view-stack-page.js";
 import type {
     SplitViewNavigationEventMap,
     SplitViewNavigatorComponents,
@@ -20,31 +23,44 @@ type PaneRoute = { key: string; name: string };
 type PaneDescriptor = { options: SplitViewScreenOptions; render(): ReactNode };
 type Pane = { route: PaneRoute; descriptor: PaneDescriptor };
 
-const resolvePanes = (routes: PaneRoute[], descriptors: Record<string, PaneDescriptor>): [Pane, Pane] => {
-    const [sidebarRoute, contentRoute] = routes;
-    if (!sidebarRoute || !contentRoute || routes.length !== 2) {
-        throw new Error("The split-view navigator requires exactly two screens: the sidebar and the content");
-    }
-    const sidebarDescriptor = descriptors[sidebarRoute.key];
-    const contentDescriptor = descriptors[contentRoute.key];
-    if (!sidebarDescriptor || !contentDescriptor) {
-        throw new Error("The split-view navigator is missing a descriptor for one of its screens");
-    }
-    return [
-        { route: sidebarRoute, descriptor: sidebarDescriptor },
-        { route: contentRoute, descriptor: contentDescriptor },
-    ];
+const resolvePane = (route: PaneRoute | undefined, descriptors: Record<string, PaneDescriptor>): Pane => {
+    if (!route) throw new Error("The split-view navigator requires a sidebar screen and at least one content screen");
+    const descriptor = descriptors[route.key];
+    if (!descriptor) throw new Error("The split-view navigator is missing a descriptor for one of its screens");
+    return { route, descriptor };
 };
 
-const renderPane = ({ route, descriptor }: Pane): ReactElement => (
-    <AdwNavigationPage tag={route.key} title={descriptor.options.title ?? route.name}>
-        {descriptor.render()}
+const renderPage = ({ route, descriptor }: Pane, children: ReactNode): ReactElement => (
+    <AdwNavigationPage
+        tag={route.key}
+        title={descriptor.options.title ?? route.name}
+        canPop={descriptor.options.canPop}
+    >
+        {children}
     </AdwNavigationPage>
 );
 
+const renderContent = (panes: Pane[], focused: Pane): ReactElement =>
+    renderPage(
+        focused,
+        <AdwViewStack visibleChildName={focused.route.key}>
+            {panes.map((pane) => renderViewStackPage(pane.route, pane.descriptor.options, pane.descriptor.render()))}
+        </AdwViewStack>,
+    );
+
 const SplitViewNavigator = (props: SplitViewNavigatorProps): ReactNode => {
-    const { ref, id, initialRouteName, children, layout, screenListeners, screenOptions, screenLayout, ...viewProps } =
-        props;
+    const {
+        ref,
+        id,
+        initialRouteName,
+        backBehavior,
+        children,
+        layout,
+        screenListeners,
+        screenOptions,
+        screenLayout,
+        ...viewProps
+    } = props;
 
     const { state, descriptors, navigation, NavigationContent } = useNavigationBuilder<
         TabNavigationState<ParamListBase>,
@@ -55,18 +71,20 @@ const SplitViewNavigator = (props: SplitViewNavigatorProps): ReactNode => {
     >(TabRouter, {
         children,
         id,
-        backBehavior: "initialRoute",
+        backBehavior: backBehavior ?? "initialRoute",
         ...definedNavigatorOptions({ initialRouteName, layout, screenListeners, screenOptions, screenLayout }),
     });
 
-    const [sidebar, content] = resolvePanes(state.routes, descriptors);
-    const showContent = state.index === 1;
+    const sidebar = resolvePane(state.routes[0], descriptors);
+    const contentPanes = state.routes.slice(1).map((route) => resolvePane(route, descriptors));
+    const showContent = state.index > 0;
+    const focusedContent = resolvePane(state.routes[showContent ? state.index : 1], descriptors);
 
     const handleNotifyShowContent = (value: boolean | null): void => {
         const next = value ?? false;
         if (next === showContent) return;
         navigation.dispatch({
-            ...TabActions.jumpTo(next ? content.route.name : sidebar.route.name),
+            ...TabActions.jumpTo(next ? focusedContent.route.name : sidebar.route.name),
             target: state.key,
         });
     };
@@ -78,12 +96,14 @@ const SplitViewNavigator = (props: SplitViewNavigatorProps): ReactNode => {
                 {...viewProps}
                 showContent={showContent}
                 onNotifyShowContent={handleNotifyShowContent}
-                sidebar={renderPane(sidebar)}
-                content={renderPane(content)}
+                sidebar={renderPage(sidebar, sidebar.descriptor.render())}
+                content={renderContent(contentPanes, focusedContent)}
             />
         </NavigationContent>
     );
 };
 
-export const createSplitViewNavigator = <ParamList extends ParamListBase>(): SplitViewNavigatorComponents<ParamList> =>
-    createNavigatorFactory(SplitViewNavigator)();
+export const createSplitViewNavigator: {
+    <ParamList extends ParamListBase>(): SplitViewNavigatorComponents<ParamList>;
+    <const Config extends SplitViewStaticConfig>(config: Config): StaticNavigator<Config, SplitViewNavigatorProps>;
+} = (config?: SplitViewStaticConfig) => createNavigatorFactory(SplitViewNavigator)(config);
