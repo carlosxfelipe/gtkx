@@ -105,14 +105,12 @@ const code: Line[] = [
     <span class="glow" />
     <div class="hero__grid stack-md">
       <div class="hero__col">
-        <p class="overline hero__eyebrow">// React · Linux · GTK4 · Adwaita · TypeScript</p>
+        <p class="overline hero__eyebrow">// React · Linux · TypeScript · GLib · Rust</p>
         <h1 class="hero__title">
           The React framework for <span class="gtkx-gradient-text">Linux</span>
         </h1>
         <p class="hero__lede">
-          Write declarative JSX. GTKX renders it to native
-          <strong>GObjects</strong>, powered by a native Rust core,
-          with first-class GTK4 &amp; Adwaita support.
+          Write declarative React apps like you're used to. Ship <strong>native</strong> Linux apps, with first-class GTK4 and Adwaita support.
         </p>
         <div class="hero__cta">
           <Button size="lg" href="/guide/getting-started">

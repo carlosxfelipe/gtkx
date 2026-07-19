@@ -145,19 +145,6 @@ The server resolves which project to document from the connected app: apps repor
 
 The same pages are also published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page, with completion wired up for both namespace and symbol names.
 
-## A session in practice
-
-Here is what the loop looks like when an agent verifies a change to the [Tasks app](/tutorial/) from the tutorial. You (or the agent) have `gtkx dev` running in the project.
-
-1. The agent calls `gtkx_list_apps` with `waitForApps: true` and sees `com.gtkx.tutorial` with a window titled "Tasks".
-2. It calls `gtkx_get_widget_tree` and reads the shape of the UI: the `AdwNavigationSplitView`, the sidebar rows, the task list, each with an ID.
-3. It calls `gtkx_query_widgets` with `by: "role"`, `value: "BUTTON"`, `options: { name: "New List" }` to pin down the exact button, then `gtkx_click` on the returned ID.
-4. The dialog opens, so the agent re-fetches the tree (the dialog's widgets are new, with new IDs), finds the name entry, and calls `gtkx_type` with `clear: true` and the text "Groceries".
-5. It clicks the confirm button, then calls `gtkx_take_screenshot` with a `path` under the project to capture the sidebar showing the new list, and reads the returned image to confirm the row rendered correctly.
-6. You ask for the list rows to gain a subtitle. The agent calls `gtkx_get_api_docs` with `AdwActionRow` to check the exact prop name and type, edits the component, `gtkx dev` applies it with Fast Refresh, and one more screenshot confirms the result, all without restarting the app or losing its state.
-
-The pattern generalizes: inspect to find IDs, interact, screenshot to verify, repeat. Because the queries and events are the same primitives as `@gtkx/testing`, a flow the agent has just exercised by hand translates directly into a regression test, which is a productive division of labor: explore interactively over MCP, then codify what matters in Vitest. The [testing guide](/guide/testing) covers that side.
-
 ## Next
 
 - The [API reference](/reference/) documents the GTKX packages themselves. The generated bindings (`@gtkx/gi`, `@gtkx/jsx`) are specific to your project's configured libraries, which is what `gtkx_get_api_docs` reads; `gtkx docs` writes the element pages of that same reference to disk.

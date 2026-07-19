@@ -4,9 +4,7 @@ description: "Style native widgets with the @gtkx/css tagged template and GTK4's
 
 # CSS and Animations
 
-GTK4 styles widgets with a CSS engine of its own, and every widget carries a list of CSS classes through its `css-classes` property, which GTKX exposes as the `cssClasses` prop on every JSX element.
-
-These packages build on that foundation. `@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is framer-motion for GTK4: you declare `initial`, `animate`, and `exit` targets on a widget (plus gestures, drag, and layout animations), and framer-motion's engine drives the frames, rendered as GTK4 CSS.
+`@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves. `@gtkx/animated` is framer-motion for GTK4: you declare `initial`, `animate`, and `exit` targets on a widget (plus gestures, drag, and layout animations), and framer-motion's engine drives the frames, rendered as GTK4 CSS.
 
 ## The `css` tagged template
 
@@ -35,43 +33,6 @@ export const addRow = css`
 Interpolation is ordinary JavaScript: `listDot` produces one class per distinct color and reuses the class when called with the same color again. You can also interpolate a previously generated class name into another `css` call, and its styles are inlined rather than referenced, exactly as Emotion composition works.
 
 A single shared `Gtk.CssProvider` is attached to the default display at `STYLE_PROVIDER_PRIORITY_APPLICATION`. Every `css` call appends its rules to one stylesheet string, and updates are batched per microtask into a single `loadFromString` reload, so a render pass that creates a dozen styles costs one provider update. In development, the provider's `parsing-error` signal is logged as a warning, so a property GTK4 does not understand tells you immediately instead of failing silently.
-
-## GTK4 CSS is its own dialect
-
-The syntax is CSS, but the vocabulary is GTK4's. Selectors match widget node names: `window`, `button`, `entry`. The set of supported properties is GTK4's own: there is no `display: flex`, because layout belongs to containers and layout managers. The theme exports its palette as CSS variables you reference with `var()`, as `alpha(var(--accent-bg-color), 0.08)` does above.
-
-Treat the [GTK4 CSS overview](https://docs.gtk.org/gtk4/css-overview.html) and [property reference](https://docs.gtk.org/gtk4/css-properties.html) as the source of truth for what you can write, and the Adwaita [CSS variables](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/css-variables.html) as your palette. `@gtkx/css` also protects GTK4's older `@named-color` syntax from its own compiler: any `@identifier` that is not `define-color`, `import`, `keyframes`, or `media` is treated as a named color rather than an at-rule.
-
-Nesting works like Emotion, with `&` referring to the generated class:
-
-```tsx
-import { css } from "@gtkx/css";
-import { GtkProgressBar } from "@gtkx/jsx/gtk";
-
-const progressStyle = css`
-    &.hidden {
-        opacity: 0;
-    }
-`;
-
-<GtkProgressBar fraction={progress} cssClasses={[progressStyle, "hidden"]} />;
-```
-
-Toggle the `hidden` class on the widget to hide the progress bar and drop it again to reveal it.
-
-`@keyframes` blocks are written inline inside the template and emitted as top-level rules, so a class can carry its own animation:
-
-```ts
-const rainbow = css`
-    animation: rainbow 1s infinite linear;
-
-    @keyframes rainbow {
-        0% { background: linear-gradient(0deg, red, orange, yellow, green, blue, purple); }
-        50% { background: linear-gradient(180deg, red, orange, yellow, green, blue, purple); }
-        100% { background: linear-gradient(360deg, red, orange, yellow, green, blue, purple); }
-    }
-`;
-```
 
 ## Combining classes with `cx`
 

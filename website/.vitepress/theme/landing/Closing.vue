@@ -11,8 +11,7 @@ import { LICENSE, REPO_URL } from "./content";
         <p class="overline">Free and open source</p>
         <h2 class="oss__title">Built in the open, on the GNOME stack</h2>
         <p class="oss__body">
-          GTKX is {{ LICENSE }}-licensed and developed in public. Bring your widgets,
-          file an issue, ship a PR.
+          GTKX is {{ LICENSE }}-licensed and developed in public. We're open to contributions, and we welcome feedback and questions on GitHub.
         </p>
       </div>
       <div class="oss__cta">
@@ -23,22 +22,6 @@ import { LICENSE, REPO_URL } from "./content";
         <Button variant="ghost" :href="`${REPO_URL}/tree/main/examples`">
           Browse examples
           <template #icon-right><Icon name="external" :size="15" /></template>
-        </Button>
-      </div>
-    </div>
-  </section>
-
-  <section class="cta">
-    <span class="glow" />
-    <div class="cta__inner">
-      <h2 class="cta__title">Start building native Linux apps today</h2>
-      <p class="cta__sub">
-        One command scaffolds everything: typed widgets, Fast Refresh, an optional Vitest setup, and production bundling.
-      </p>
-      <div class="cta__actions">
-        <Button size="lg" href="/guide/getting-started">
-          Get started
-          <template #icon-right><Icon name="arrow" :size="17" /></template>
         </Button>
       </div>
     </div>
@@ -85,42 +68,6 @@ import { LICENSE, REPO_URL } from "./content";
   display: flex;
   gap: 0.7rem;
   flex-wrap: wrap;
-}
-.cta {
-  position: relative;
-  overflow: hidden;
-  margin-top: clamp(1rem, 3vw, 2rem);
-}
-.cta .glow {
-  opacity: 1;
-}
-.cta__inner {
-  position: relative;
-  z-index: 1;
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: clamp(3rem, 7vw, 6rem) clamp(1rem, 4vw, 2.5rem);
-  text-align: center;
-}
-.cta__title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(2rem, 4.5vw, 3.2rem);
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  margin: 0;
-  color: var(--text-1);
-}
-.cta__sub {
-  font-family: var(--font-body);
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
-  color: var(--text-2);
-  margin: 1rem auto 1.8rem;
-  max-width: 30rem;
-}
-.cta__actions {
-  display: flex;
-  justify-content: center;
 }
 @media (max-width: 720px) {
   .oss__inner {

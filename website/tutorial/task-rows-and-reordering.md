@@ -4,11 +4,11 @@ description: "Each task is an AdwActionRow with checkbox, star, and delete contr
 
 # Task Rows and Drag-to-Reorder
 
-Each task in the list is one `AdwActionRow`. In Adwaita an action row is a preferences-style row with a title, an optional subtitle, and slots on either end for small controls: a leading `prefix` and a trailing `suffix`. Dropped into a `GtkListBox` styled with the `boxed-list` CSS class, a stack of these rows becomes the rounded, separated card that every GNOME app uses for short editable lists.
+Each task is one `AdwActionRow` in the boxed list, carrying a checkbox, a star, a delete button, and the drag controllers that reorder it.
 
-`TaskRow` fills that row with a done checkbox, a strikethrough title, a star, a delete button, and (when ordering is manual) the event controllers that make it draggable.
+## The row
 
-The whole component is one JSX tree with no imperative widget code. Here is the shell, from `components/task-row.tsx`:
+Here is the shell, from `components/task-row.tsx`:
 
 ```tsx
 import * as Gdk from "@gtkx/gi/gdk";
@@ -19,20 +19,17 @@ import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButto
 import { escapeMarkup, formatDue } from "../format.js";
 import type { Task } from "../types.js";
 
-export type TaskRowHandlers = {
-    onToggleDone: (id: string, done: boolean) => void;
-    onToggleImportant: (id: string, important: boolean) => void;
-    onDelete: (task: Task) => void;
-    onOpen: (id: string) => void;
-    onReorder: (draggedId: string, targetId: string) => void;
-};
+// ... TaskRowHandlers and TaskRowProps
 
-type TaskRowProps = TaskRowHandlers & {
-    task: Task;
-    reorderable: boolean;
-};
-
-export const TaskRow = ({ task, reorderable, onToggleDone, onToggleImportant, onDelete, onOpen, onReorder }: TaskRowProps) => {
+export const TaskRow = ({
+    task,
+    reorderable,
+    onToggleDone,
+    onToggleImportant,
+    onDelete,
+    onOpen,
+    onReorder,
+}: TaskRowProps) => {
     const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
 
     return (
@@ -48,32 +45,18 @@ export const TaskRow = ({ task, reorderable, onToggleDone, onToggleImportant, on
 };
 ```
 
-`activatable` makes the whole row body clickable, and `onActivated` (the `activated` signal, which the row emits on click or Enter) opens the task in the editor. The controls in the prefix and suffix sit *on top of* that activatable body: clicking the checkbox toggles done without opening the editor, because GTK4 routes the click to the inner widget first.
+### Title and subtitle
 
-`subtitle` shows a humanized due date. `formatDue` returns `string | null`: a formatted date when the task has a due date, or `null` when it does not. The `?? undefined` normalizes that empty case to `undefined`, so a task with no due date has no subtitle line.
-
-## The strikethrough title uses Pango markup, not CSS
-
-GTK4 CSS supports `text-decoration-line`, but you can't easily target an `AdwActionRow`'s internal title label to apply it. To strike out a completed task's title you wrap it in Pango markup, GTK4's inline text-formatting syntax (`<s>` marks strikethrough), which the row's title label parses:
-
-```tsx
-const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
-// ...
-<AdwActionRow title={title} useMarkup /* ... */ />
-```
-
-`AdwPreferencesRow` interprets its title as Pango markup by default (the `use-markup` property defaults to true), and the explicit `useMarkup` prop documents that this row relies on it. That default is exactly why `escapeMarkup` is required for any user-supplied title: a task titled `<b>` or `Q&A` would be parsed as broken markup and either render wrong or fail. `escapeMarkup` neutralizes the markup-significant characters before they reach Pango:
+The strikethrough on a completed task comes from Pango markup, GTK4's inline text-formatting syntax, which the row's title label parses. `escapeMarkup` neutralizes the markup-significant characters in the user-supplied title before it is wrapped in the trusted `<s>` tags:
 
 ```ts
 export const escapeMarkup = (value: string): string =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 ```
 
-So the pattern is: escape the untrusted title first, then wrap the escaped result in your own trusted `<s>` tags. Never the other way around.
+`formatDue` returns `string | null`, so `?? undefined` leaves a task without a due date with no subtitle line.
 
-## The done checkbox: controlled, and idempotent by reading the widget
-
-The prefix slot holds a `GtkCheckButton`. It is a controlled widget: its `active` state is driven from `task.done`, so React state is always the source of truth for whether the box is checked.
+### The prefix checkbox
 
 ```tsx
 prefix={
@@ -86,15 +69,9 @@ prefix={
 }
 ```
 
-A couple of GTK4 details.
+The handler reads `self.active`, the checkbox's state after the toggle.
 
-`valign={Gtk.Align.CENTER}` keeps the checkbox vertically centered against a row that may grow to two lines when it has a subtitle. Alignment enums like `Gtk.Align` come from `@gtkx/gi/gtk`, the raw GI import you reach for whenever a prop wants an enum value or you need a live widget class.
-
-The `onToggled` handler reads `self.active` rather than computing `!task.done`. Every JSX `on*` signal handler receives the live GI widget instance as its last argument (here named `self`), so `self.active` is the checkbox's actual state *after* the toggle. Reading it back keeps the write idempotent: whatever GTK4 now shows is exactly what gets persisted, with no chance of the handler and the widget disagreeing. The handler forwards to `api.setDone(id, done)`, which sets `done` and stamps `completedAt`.
-
-## The star and delete controls live in the suffix
-
-The suffix takes more than one widget, so it is a fragment. Adwaita packs each child into the trailing end of the row via `addSuffix`, in order.
+### The suffix controls
 
 ```tsx
 suffix={
@@ -118,17 +95,13 @@ suffix={
 }
 ```
 
-The star is a `GtkToggleButton` (a button that stays pressed), so like the checkbox it is controlled by `active={task.important}` and reads `self.active` back on toggle. Its icon swaps between the named system icons `starred-symbolic` and `non-starred-symbolic`. `cssClasses={["flat"]}` applies GTK4's `flat` button style class, which drops the button's background so it reads as an inline row control rather than a raised button.
+The star swaps its icon between `starred-symbolic` and `non-starred-symbolic`. Delete hands the whole `task` object to `onDelete`, which moves it to Trash or asks for confirmation ([Feedback and Dialogs](/tutorial/feedback-and-dialogs)).
 
-Delete is a plain `GtkButton` whose `onClicked` hands the whole `task` object to `onDelete`. In the app that moves the task to Trash behind an undo toast, or asks for confirmation when the task is already in Trash (see [Feedback and Dialogs](/tutorial/feedback-and-dialogs)).
+## Drag to reorder
 
-Because icon-only buttons have no visible text, each control gets an `accessibleLabel`. That sets the widget's accessible name so screen readers announce "Mark complete", "Toggle important", "Delete task" instead of an unlabeled button.
+### The drag source and drop target
 
-## Drag-to-reorder mounts its controllers
-
-Reordering is a drag-and-drop gesture, and in GTK4 drag and drop is implemented by event controllers: a `GtkDragSource` on the widget you can pick up, and a `GtkDropTarget` on the widget you can drop onto. Every row is both, so the whole boxed list is one uniform drag surface.
-
-Controllers are not children of a widget; they attach to it through the universal `controllers` slot that every `GtkWidget` exposes. `TaskRow` renders that slot conditionally, so a row that is not currently reorderable gets no drag machinery at all:
+Every row carries a `GtkDragSource` and a `GtkDropTarget`, mounted only while `reorderable` is true:
 
 ```tsx
 controllers={
@@ -158,67 +131,29 @@ controllers={
 }
 ```
 
-`actions={Gdk.DragAction.MOVE}` on both sides declares this a move (not a copy or link), which is what drives the move-cursor and the drop feedback.
+The payload is the task's id boxed into a string-typed `GObject.Value`, and returning `true` from `onDrop` reports the drop as handled.
 
-The payload is a GObject value, not a JavaScript object. A drag carries a `Gdk.ContentProvider`, which offers its data as a typed `GObject.Value` for drops inside this process and, through GDK's content serializers, as mime types for drops in other applications. `onPrepare` (the drag source's `prepare` signal) runs when a drag is about to begin and must return a `Gdk.ContentProvider` describing what is being dragged:
+### The drag icon
 
-- `GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id))` boxes the task's id into a string-typed `GObject.Value`. The callback receives a fresh value already initialized to the given type; you fill it with the matching setter (`setString`).
-- `Gdk.ContentProvider.newForValue(...)` wraps that value into a content provider the drag can carry.
+`onPrepare` also sets what the pointer carries during the drag: `Gtk.WidgetPaintable.new(row)` makes the ghost a picture of the row itself. The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it.
 
-On the receiving side, `GtkDropTarget.types` declares which `GObject.Type`s this target accepts (`[GObject.TYPE_STRING]`), which is what lets GTK4 light the row up as a valid drop only for matching drags. `onDrop` (the `drop` signal) receives the marshaled `GObject.Value`; `value.getString()` reads the dragged task's id back out, and the handler calls `onReorder(draggedId, task.id)`, moving the dragged task to this row's position. Returning `true` reports the drop as handled.
-
-## Set the drag icon, or GTK4 draws the payload
-
-`onPrepare` does one more job: it decides what the pointer carries during the drag. With no icon set, GTK4 builds a default one out of the content provider's value, and a string-typed value becomes a label showing that string. The payload here is the task's id, so leaving the icon alone drags a small `t1` label around instead of the task.
-
-The fix is to hand the drag source a paintable of the row itself:
-
-```tsx
-const row = self.getWidget();
-if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
-```
-
-`self` is the drag source, since every JSX `on*` handler receives the emitter as its last argument, and `getWidget` returns the widget the controller is attached to, which is this row. `Gtk.WidgetPaintable.new(row)` wraps that live widget as a `Gdk.Paintable`, so the ghost under the cursor is a picture of the row being dragged, title and controls included.
-
-The `x` and `y` that `prepare` hands you are the point inside the row where the drag started, and passing them to `setIcon` as the hotspot pins the ghost to the cursor exactly where you grabbed it. That grab point is why the icon is set here instead of in `onDragBegin`: `prepare` is the only signal that carries it. GTK4 reads the icon back after both signals have run, so setting it this early still takes effect.
-
-`Math.round` here is required: pointer coordinates arrive as GTK4 doubles and a drag routinely starts at something like `181.5`, but `setIcon` takes 32-bit integer hotspot coordinates. GTKX will not quietly truncate a fractional value to fit a narrower type, so passing the raw `x` and `y` throws `Value 181.5 is out of range for i32` the moment you pick a row up. Whenever you feed a pointer coordinate into an integer-typed GTK4 setter, round it yourself.
-
-## Closing the loop stays in React state
-
-`onReorder` does not touch any widget. It forwards to `reorder` in the `use-tasks` hook, whose pure array splice and the `reindex` that rewrites every task's `position` field are covered on the [Data Model and Persistence](/tutorial/data-and-persistence) page.
-
-That single state update is all it takes, because the rows are keyed children of the same container. In `task-list.tsx` the rows render inside a `boxed-list` `GtkListBox`, each with `key={task.id}`:
-
-```tsx
-<GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-    {/* add-task entry row */}
-    {tasks.map((task) => (
-        <TaskRow key={task.id} task={task} reorderable={reorderable} {...row} />
-    ))}
-    {/* trailing "Add Task" row */}
-</GtkListBox>
-```
-
-When `reorder` returns a new array with the same keys in a new order, React diffs by key and sees every row as the *same* existing element in a new position. The reconciler therefore repositions the existing widget inside its parent instead of unmounting the row and building a new one, so the `TaskRow` component and its React state are never torn down.
-
-::: info Container move primitives
-How the reconciler performs that move depends on the container. A `GtkBox` exposes a dedicated `reorderChildAfter(child, sibling)` for exactly this, so a box moves the widget with one call. The `boxed-list` here is a `GtkListBox`, which auto-wraps any child that is not already a `GtkListBoxRow` and moves it via an indexed `insert`. Either way the widget is repositioned, never recreated.
+::: warning
+`setIcon` takes 32-bit integer hotspot coordinates while pointer coordinates arrive as GTK4 doubles, so the raw `x` and `y` throw `Value 181.5 is out of range for i32`. Round any pointer coordinate you feed into an integer-typed GTK4 setter.
 :::
 
-The full round trip: **drag the row -> `prepare` boxes the id -> `drop` reads it and calls `onReorder` -> `reorder` re-splices the array and re-derives `position` -> keyed reconcile repositions the existing widget.** State stays the single source of truth from end to end.
+`onReorder` calls the hook's [`reorder`](/tutorial/data-and-persistence#the-hook-state-plus-every-mutation), which re-splices the array and re-derives every `position`. Because the rows are keyed by `task.id`, the reconciler repositions the existing widgets instead of rebuilding them.
 
-## Drag is enabled only when ordering is manual
+### Enabling drag
 
-The `reorderable` prop is not always on. Reordering by hand only makes sense when the list is in manual order and shows a stable set of rows, so `app.tsx` computes it from these conditions:
+`app.tsx` computes `reorderable` from the current view:
 
 ```tsx
 const reorderable =
     sortOrder === "manual" && !searchQuery && !(selection.kind === "smart" && selection.view === "trash");
 ```
 
-Dragging is off when a sort order is imposed (the array position would be meaningless), when a search filter hides rows (you would be reordering an incomplete view), and in Trash (deleted tasks have no order to keep). When `reorderable` is `false`, `TaskRow` renders `undefined` into the `controllers` slot, so the drag source and drop target are never mounted and the rows are inert to drag.
+It gates the `controllers` slot, so rows under a sort order, a search filter, or Trash mount no drag machinery.
 
 ## Next
 
-Continue to [Animations](/tutorial/animations) to give the empty state a subtle fade, and to see where hand-written motion belongs in a GNOME app.
+Continue to [Animations](/tutorial/animations).

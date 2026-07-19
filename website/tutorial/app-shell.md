@@ -4,13 +4,11 @@ description: "How the Tasks app builds its adaptive frame with AdwApplicationWin
 
 # The Application Shell
 
-Everything the app renders lives inside one `AdwApplicationWindow`. Its body is a navigation tree from `@gtkx/navigation` (see the [Navigation](/guide/navigation) guide). A split-view navigator holds the sidebar and content panes, and the content pane hosts a stack navigator for the list and the task editor. `app.tsx` builds that frame once, and everything the panes show follows from navigation state and React state.
-
-The file is organized around `App` and `TasksWindow`. `App` is the exported application root and the home of app-scoped actions; `TasksWindow` is a local component holding the single window and all of the UI state. Everything else in the tutorial hangs off this shell.
+`app.tsx` builds the window, a split-view navigator for the sidebar and content panes, and a stack navigator inside the content pane.
 
 ## The application root
 
-The outermost element is `<AdwApplication>`, a component from `@gtkx/jsx/adw` that you configure through props. Importing the Adwaita bindings runs `adw_init` at module load, which sets up the global `AdwStyleManager`; the component itself starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
+The outermost element is `<AdwApplication>`, which starts the `Gtk.Application` when it mounts and provides it to `useApplication()` anywhere in the tree.
 
 ```tsx
 export function App() {
@@ -30,13 +28,11 @@ export function App() {
 }
 ```
 
-`actionAccels` binds keyboard accelerators to named actions. These target window actions, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts).
-
-The `<GSimpleAction>` elements in the application's `actions` slot are mounted on the application itself rather than the window, so they register as **app-scoped** actions (`app.complete-task`, `app.open-task`) through the application's action map. They exist so desktop notification buttons can call back into the app even when no window exists yet, which is why they cannot be `win.`-scoped. Because they live outside `TasksWindow`, they reach its state through the `notify` ref that `App` creates and passes down. [Reminders and Notifications](/tutorial/notifications) covers these actions, their parameter type, and the ref bridge in full.
+The accelerators target window actions, covered in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts); the actions in this slot are app-scoped and belong to [Reminders and Notifications](/tutorial/notifications).
 
 ## The window
 
-`TasksWindow` renders a single `<AdwApplicationWindow>`. This is an Adwaita window: freeform (no separate title bar; the header bars live inside the content), and it takes its child content through the `content` object prop, which the children here route into automatically.
+`TasksWindow` renders a single `<AdwApplicationWindow>`, an Adwaita freeform window whose header bars live inside the content.
 
 ```tsx
 return (
@@ -55,25 +51,16 @@ return (
 );
 ```
 
-A few things to note for a GTK4 newcomer:
-
-- **`ref={windowRef}`** gives you the live `Adw.ApplicationWindow` instance (`useRef<Adw.ApplicationWindow | null>(null)`). It is the target for the window-size bindings below.
-- **`widthRequest={360}` and `heightRequest={294}`** set the minimum window size. This is the GNOME phone-form-factor floor: the app is guaranteed to work down to a 360x294 window, which is what forces the layout to prove it collapses gracefully.
-- **`breakpoints`** is a slot that attaches an `<AdwBreakpoint>` to the window, covered below.
-- **`actions`** and **`controllers`** are `ReactNode` slots. `controllers` is present on every widget; `actions` on anything that is an action map (`Gio.ActionMap`), which includes the application and application windows (`AdwApplicationWindow` / `GtkApplicationWindow`), but not a plain `GtkWindow`. `actions` holds `<GSimpleAction>` elements (here the `win.*` actions the accelerators above target); `controllers` holds event controllers like the global shortcut controller. Both are detailed in [Actions, Menus, and Shortcuts](/tutorial/actions-menus-shortcuts).
+`widthRequest={360}` and `heightRequest={294}` set the GNOME phone-form-factor floor, which forces the layout to prove it collapses gracefully. The `actions`, `controllers`, and `breakpoints` props are `ReactNode` slots, holding `<GSimpleAction>` elements, event controllers, and `<AdwBreakpoint>` children respectively.
 
 ### Persisting window size
-
-The window's size is bound to GSettings with `useBindSetting`, which wires a `Gio.Settings` key to a GObject property in both directions:
 
 ```tsx
 useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-`useBindSetting` binds the `window-width` setting to the window's `default-width` property (and `window-height` to `default-height`). `schema` is the app's GSettings schema, imported from its gschema XML file and introduced in [Data Model and Persistence](/tutorial/data-and-persistence). On startup the hook seeds the property from the stored value, so the window opens at its last size; while the app runs it writes any change back. Because GTK4 keeps `default-width` and `default-height` at the un-maximized size, the restored size is always the normal window size, never a maximized one. The bound object is the `windowRef`, which the hook resolves once the window mounts.
-
-That leaves the close handler doing only close-time work: flushing unsaved tasks and quitting.
+The window size is persisted to GSettings and restored on startup, so the close handler only does close-time work.
 
 ```tsx
 const handleClose = (): boolean => {
@@ -82,67 +69,37 @@ const handleClose = (): boolean => {
 };
 ```
 
-`onCloseRequest` maps to the GTK4 `close-request` signal. `api.flush()` writes any pending task changes to disk; `api` is the task-store API returned by `useTasks`, covered in the next chapter. `quit()` from `@gtkx/react` unmounts every active render root, which disposes the window and ends the app.
+`api.flush()` writes pending task changes to disk, and `quit()` from `@gtkx/react` unmounts every active render root, which disposes the window and ends the app.
 
-## The toast overlay
+## The navigation tree
 
-Immediately inside the window is an `<AdwToastOverlay>`. It wraps the entire layout and holds nothing of its own except a ref:
+### The adaptive split view
 
 ```tsx
 <AdwToastOverlay ref={toastOverlayRef}>
-    {/* the split view */}
+    <NavigationContainer ref={navigationRef}>
+        <Split.Navigator
+            collapsed={collapsed}
+            sidebarWidthFraction={0.25}
+            minSidebarWidth={220}
+            maxSidebarWidth={300}
+        >
+            <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
+                {() => (
+                    <AdwToolbarView topBar={<AdwHeaderBar start={<>{/* New List button */}</>} />}>
+                        <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
+                    </AdwToolbarView>
+                )}
+            </Split.Screen>
+            <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
+                {() => <>{/* the tasks stack, covered below */}</>}
+            </Split.Screen>
+        </Split.Navigator>
+    </NavigationContainer>
 </AdwToastOverlay>
 ```
 
-Toasts are added imperatively, not declaratively: `toastOverlayRef.current?.addToast(Adw.Toast.new(...))`. That is how the undo affordance works: when a task is trashed, the handler builds a toast with an "Undo" button and pushes it onto the overlay. The overlay lives here at the top of the shell so any handler in the window can reach it through the ref. The undo flow itself is covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs).
-
-## The adaptive split view
-
-The body of the window is a navigation tree rooted in a `NavigationContainer` from `@gtkx/navigation`. Inside it, a split-view navigator renders the adaptive sidebar/content layout. The navigator is created once at module level, typed by the routes it holds:
-
-```tsx
-type ShellParams = {
-    Sidebar: undefined;
-    Tasks: NavigatorScreenParams<TasksStackParams> | undefined;
-};
-
-const Split = createSplitViewNavigator<ShellParams>();
-```
-
-The container wraps the navigator, and the navigator's screens become the sidebar and content panes:
-
-```tsx
-<NavigationContainer ref={navigationRef}>
-    <Split.Navigator
-        collapsed={collapsed}
-        sidebarWidthFraction={0.25}
-        minSidebarWidth={220}
-        maxSidebarWidth={300}
-    >
-        <Split.Screen name="Sidebar" options={{ title: "Tasks" }}>
-            {() => (
-                <AdwToolbarView topBar={<AdwHeaderBar start={<>{/* New List button */}</>} />}>
-                    <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
-                </AdwToolbarView>
-            )}
-        </Split.Screen>
-        <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists) }}>
-            {() => <>{/* the tasks stack, covered below */}</>}
-        </Split.Screen>
-    </Split.Navigator>
-</NavigationContainer>
-```
-
-The split-view navigator drives an `Adw.NavigationSplitView`. Each screen's `title` option names its `Adw.NavigationPage`, so the content pane is named "Today", "Important", or a user list's name via `titleFor(selection, lists)`; the list header itself shows the filter toggles as its title widget rather than this text. `sidebarWidthFraction={0.25}` asks for a quarter of the window, clamped between `minSidebarWidth={220}` and `maxSidebarWidth={300}`, both in `sp`, the same text-scaling unit the breakpoint below uses.
-
-Both screens use render callbacks (`{() => ...}`) rather than `component`, because their content closes over `TasksWindow`'s state and handlers.
-
-Adaptivity splits between one controlled prop and navigation state:
-
-- **`collapsed`** decides whether the panes are side by side (`false`) or stacked into one column (`true`). It is a controlled React prop, driven by the breakpoint below.
-- **Which pane is focused is navigation state.** Navigating to the `Tasks` route focuses the content pane, which on a collapsed layout slides it into view. There is no `showContent` state to mirror by hand; see [the split-view navigator](/guide/navigation#the-split-view-navigator) for how widget-driven back and navigation state stay in agreement.
-
-The `navigationRef` on the container comes from `useNavigationContainerRef()`. Handlers that live outside the screens (opening a task from a row, the sidebar's `selectSidebar`, the notification actions) navigate through it:
+The `<AdwToastOverlay>` wrapping the tree is where the undo toasts in [Feedback and Dialogs](/tutorial/feedback-and-dialogs) land. `titleFor(selection, lists)` names the content pane "Today", "Important", or a user list's name, while the list header shows the filter toggles as its title widget.
 
 ```tsx
 const openTask = (id: string): void => {
@@ -154,11 +111,9 @@ const showList = (): void => {
 };
 ```
 
-`openTask` addresses a screen *inside* the content pane's nested stack (the `{ screen, params }` shape is `NavigatorScreenParams`): one call focuses the content pane and pushes the task page. `selectSidebar` ends with `showList()`, which focuses the content pane on the list; on a collapsed layout that slides the content into view, and if a task page was open it pops back to the list, all from one navigate call.
+`selectSidebar` ends with `showList()`, so selecting a sidebar row focuses the content pane and pops any open editor back to the list.
 
-## The breakpoint
-
-The split view collapses at a threshold, and that threshold is an `AdwBreakpoint`. In plain Adwaita a breakpoint is added to a window and, when its condition matches, emits `apply` / `unapply` (and can apply property setters). GTKX exposes this declaratively: the window's `breakpoints` slot takes one or more `<AdwBreakpoint>` children, each with a `condition` and `onApply` / `onUnapply` handlers.
+### The breakpoint
 
 ```tsx
 <AdwApplicationWindow
@@ -174,24 +129,9 @@ The split view collapses at a threshold, and that threshold is an `AdwBreakpoint
 >
 ```
 
-`condition` is parsed once with `Adw.BreakpointCondition.parse`. When the window's width drops below the threshold, `onApply` fires; when it grows back, `onUnapply` fires. Both flip the `collapsed` state, which flows into the split view's `collapsed` prop: Adwaita reports the layout threshold, React owns whether the app is in its collapsed mode.
+The condition uses `sp` (scale independent pixels), which tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text.
 
-The condition uses `sp` units rather than raw pixels. `sp` (scale independent pixels) tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. Below 500sp the layout goes single-column; above it, side by side.
-
-## The content stack
-
-The content pane hosts a stack navigator, which drives an `AdwNavigationView` (see [the stack navigator](/guide/navigation#the-stack-navigator)). It is created at module level next to the split navigator, with the task id as a route param:
-
-```tsx
-type TasksStackParams = {
-    List: undefined;
-    Task: { id: string };
-};
-
-const Stack = createStackNavigator<TasksStackParams>();
-```
-
-The stack is rendered as the content pane's screen body:
+### The content stack
 
 ```tsx
 <Stack.Navigator>
@@ -225,15 +165,8 @@ The stack is rendered as the content pane's screen body:
 </Stack.Navigator>
 ```
 
-What the pane can show splits cleanly by kind:
-
-- **Opening a task is a drill-down.** The detail view is genuinely deeper than the list, so it gets its own route: `navigate("Task", { id })` pushes it, and which task it shows travels in `route.params`, not in shell state. The screen looks its task up from the id; the `options` callback does the same to put the task's title on the page.
-- **List versus selection is a mode toggle, not a drill-down.** The batch-select mode shows the same tasks as the plain list, with checkable rows and a different header. It is not deeper, so it stays on one screen (`List`) whose body swaps between `<TaskList>` and `<SelectionView>`. Because the route never changes, that swap is a plain React re-render with zero stack operations. A stack models "deeper", not "a different mode over the same data", so forcing selection mode into a pushed route would be the wrong shape.
-
-Each screen carries its own header inside its `AdwToolbarView`. The list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag. The task screen builds its header inline from the task it looked up: the Important toggle and Delete button in `end`, with no back button, because the pushed page supplies one. The task screen and its header read the same `route.params.id`, so they can never disagree.
-
-Opening a task is `openTask(id)`; a programmatic back is `navigationRef.goBack()`. Widget-driven pops (the back button, an edge-swipe, or Escape through `AdwNavigationView`'s `popOnEscape`) reduce into navigation state as well, so the route and the widget stack never disagree; [the stack navigator](/guide/navigation#the-stack-navigator) covers that reconciliation. The sidebar-to-content transition when collapsed follows the same principle one level up, through the split-view navigator's focused route.
+Opening a task is a drill-down onto the `Task` route, while list versus selection is a mode toggle: the batch-select mode stays on the `List` screen, whose body swaps between `<TaskList>` and `<SelectionView>`. Each screen carries its own header inside its `AdwToolbarView`, and the list screen picks between `listHeader` and `selectionHeader` from the `selecting` flag; the task screen's header is covered in [The Task Editor](/tutorial/the-task-editor).
 
 ## Next
 
-Continue to [Data Model and Persistence](/tutorial/data-and-persistence), which introduces the types, the store, and the `useTasks` hook this chapter already leans on.
+Continue to [Data Model and Persistence](/tutorial/data-and-persistence).

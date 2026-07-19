@@ -1,26 +1,14 @@
 ---
-description: "GNOME's undo-first feedback hierarchy: toasts with Undo, informational dialogs, and a destructive alert only where undo is impossible."
+description: "Undo toasts pushed through an AdwToastOverlay ref, plus the confirmation, New List, and About dialogs mounted through the Dialog wrapper."
 ---
 
 # Feedback and Dialogs
 
-Deleting a task in Tasks moves it to Trash and slides up a toast with an **Undo** button, rather than popping an "Are you sure?" box.
-
-GNOME's Human Interface Guidelines put reversibility first: if an action can be undone, let the user do it and undo it. Save the modal interruption for the one action that genuinely cannot be taken back.
-
-## The undo-first hierarchy
-
-Different surfaces, different weights:
-
-- **Undo toast** for reversible destructive actions. Delete a task, delete a batch: the task goes to Trash, a toast offers Undo, and the app never blocks. This is the common path.
-- **Destructive alert dialog** for the one irreversible action: deleting a task permanently from Trash. Here undo is impossible, so a modal confirm is warranted.
-- **Informational dialogs** (New List, About, Preferences) for input and metadata, not for destruction.
-
-The payoff for a React developer is that a toast and a dialog map onto different GTKX idioms. Toasts are **imperative**: you build one and hand it to an overlay through a ref, because a toast is ephemeral and lives outside the component tree. Dialogs are **declarative**: you mount a component and it presents; you unmount it and it closes.
+This chapter covers the undo toast shown after a delete, the confirmation dialog guarding permanent deletion, the New List form, and the About dialog.
 
 ## Undo toasts
 
-Toasts are shown by an `AdwToastOverlay` that wraps the window content. The overlay is a single-child container (it draws one toast at a time over whatever it wraps), so in `app.tsx` it sits just inside the window and wraps the whole navigation tree:
+Toasts are pushed imperatively through a ref, while dialogs are mounted declaratively as components. The `AdwToastOverlay` that receives them wraps the whole navigation tree in `app.tsx`:
 
 ```tsx
 const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
@@ -34,7 +22,7 @@ const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 </AdwToastOverlay>
 ```
 
-You do not render toasts as JSX children. There is no `<AdwToast>` in the tree. A toast appears in response to an event, times out, and is gone, so GTKX exposes `AdwToastOverlay` through a `ref` and you add toasts imperatively. Here is the single-task delete handler:
+The single-task delete handler builds a toast, gives it an Undo button, and hands it to the overlay:
 
 ```tsx
 const handleDelete = (task: Task): void => {
@@ -51,45 +39,13 @@ const handleDelete = (task: Task): void => {
 };
 ```
 
-A few things are happening:
+`once` fires the restore callback a single time, matching the toast's single Undo click.
 
-1. **`Adw.Toast.new(title)`** constructs the toast with its message. `Adw.Toast` comes from `@gtkx/gi/adw`, the raw GI namespace, because a toast is not a widget you place, it is an object you build.
-2. **`toast.buttonLabel = "Undo"`** adds the action button. Setting `buttonLabel` is what makes the toast show a button at all. An informational toast with no button leaves it unset.
-3. **`toast.once("button-clicked", ...)`** connects the restore callback. `once` (not `on`) fires it at most one time, which is exactly right: the user can click Undo once, and after that the toast is done. The callback calls back into the task API to restore the trashed task.
-4. **`toastOverlayRef.current?.addToast(toast)`** hands the finished toast to the overlay, which animates it in, queues it if another is showing, and dismisses it after its timeout.
+## Dialogs
 
-Before the toast, `closeTaskIfOpen(task.id)` checks the navigation ref's current route and pops the task editor when the trashed task is the one open, so the content pane falls back to the list:
+### Confirming the irreversible
 
-```tsx
-const closeTaskIfOpen = (id: string): void => {
-    if (!navigationRef.isReady()) return;
-    const current = navigationRef.getCurrentRoute();
-    if (current?.name === "Task" && (current.params as TasksStackParams["Task"]).id === id) {
-        navigationRef.goBack();
-    }
-};
-```
-
-The batch case in `deleteSelected` is the same shape, restoring a list of ids and pluralizing the message. [Selection Mode](/tutorial/selection-and-batch#batch-actions-and-the-shared-undo-flow) walks through it.
-
-::: tip
-`AdwToastOverlay` shows one toast at a time and times each out after a few seconds (a toast will not disappear while it is hovered or focused). Both delete paths, single and batch, funnel into this one recovery mechanism, so there is a single "undo a delete" story in the app instead of two.
-:::
-
-## Confirming the irreversible
-
-Look again at the first two lines of `handleDelete`:
-
-```tsx
-if (task.deleted) {
-    setTaskToDelete(task);
-    return;
-}
-```
-
-If the task is already in Trash (`task.deleted`), there is nothing left to soft-delete: the next delete is permanent. So instead of a toast, `handleDelete` sets `taskToDelete` state, which mounts the confirmation dialog. This is the one place in the app that asks before acting.
-
-`delete-confirmation.tsx` is short and worth reading whole:
+A task already in Trash has nothing left to soft-delete, so `handleDelete` sets `taskToDelete` instead of showing a toast, and that state mounts `delete-confirmation.tsx`:
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
@@ -125,107 +81,11 @@ export const DeleteConfirmation = ({
 };
 ```
 
-`AdwAlertDialog` (the intrinsic element from `@gtkx/jsx/adw`, passed as `Dialog`'s `component`) declares its responses (the buttons) through the `responses` prop rather than an imperative `addResponse` call. Each entry is an object:
+`responses` declares the buttons as `{ id, label, appearance }` entries, and the chosen `id` comes back on `onResponse`. `defaultResponse` and `closeResponse` bind Return and Escape to Cancel, so neither key can delete.
 
-- **`id`** is what comes back to `onResponse`. Here `"delete"` runs `onConfirm`, everything else runs `onCancel`.
-- **`label`** is the button text. Use a specific verb ("Delete"), not "OK", so the button reads clearly on its own.
-- **`appearance: Adw.ResponseAppearance.DESTRUCTIVE`** paints the Delete button red. `SUGGESTED` (used by New List below) paints it as the accent affirmative; leaving it unset gives a neutral button.
+### The New List dialog: a form in an alert dialog
 
-Safety properties keep the destructive button from firing by accident:
-
-- **`defaultResponse="cancel"`** makes Cancel the response bound to Return, so hitting Enter cannot delete.
-- **`closeResponse="cancel"`** makes Escape (and any other dismissal) resolve to Cancel.
-
-The Cancel response is declared before Delete, which is also the on-screen order: the safe choice sits to the left of the affirmative in a left-to-right layout.
-
-`onResponse` fires once with the chosen `id` and the app closes the dialog by clearing state. Back in `app.tsx`, `onConfirm` is `confirmDelete`:
-
-```tsx
-const confirmDelete = (): void => {
-    if (!taskToDelete) return;
-    api.deleteForever(taskToDelete.id);
-    closeTaskIfOpen(taskToDelete.id);
-    setTaskToDelete(null);
-};
-```
-
-`deleteForever` removes it; `setTaskToDelete(null)` unmounts the dialog. `onCancel` does `setTaskToDelete(null)`, unmounting without deleting.
-
-## How a dialog gets on screen
-
-`DeleteConfirmation` is mounted conditionally at the bottom of the window, next to the other dialogs:
-
-```tsx
-{/* ... */}
-{showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
-{/* ... */}
-{showNewList ? (
-    <NewListDialog
-        onAdd={(name, color) => {
-            api.addList(name, color);
-            setShowNewList(false);
-        }}
-        onCancel={() => setShowNewList(false)}
-    />
-) : null}
-{taskToDelete ? (
-    <DeleteConfirmation
-        taskTitle={taskToDelete.title}
-        onConfirm={confirmDelete}
-        onCancel={() => setTaskToDelete(null)}
-    />
-) : null}
-```
-
-Mounting the component shows the dialog and unmounting it closes the dialog, which is the complete contract that the `<Dialog>` wrapper implements.
-
-A GTK4 dialog is not a child widget you slot into a layout. It is a free-floating `Adw.Dialog` that you `present(parent)` to show and `forceClose()` to dismiss, anchored to a parent window.
-
-`<Dialog>` from `@gtkx/components/adw` bridges that imperative API to React's declarative lifecycle. It takes a `component` prop, the dialog widget to present, defaulting to `AdwDialog`, and attaches the ref to it itself. It renders that widget through a **portal to the top-level root**, not into the surrounding widget tree, and drives present/close from an effect. Here is the wrapper itself, from `packages/components/src/dialog.tsx`:
-
-```tsx
-export const Dialog = ({ component, parent, onClose, ref, ...rest }: DialogProps): ReactNode => {
-    const Component = component ?? AdwDialog;
-
-    const parentWindow = useParentWindow();
-    const resolvedParent = parent === undefined ? parentWindow : parent;
-    const [dialog, setDialogState] = useState<Adw.Dialog | null>(null);
-    const captureDialog = useCallback<RefCallback<Adw.Dialog>>((instance) => setDialogState(instance), []);
-    const setRef = useMergeRefs<Adw.Dialog>(ref, captureDialog);
-    const closingFromReact = useRef(false);
-    const onCloseRef = useRef(onClose);
-    onCloseRef.current = onClose;
-
-    useLayoutEffect(() => {
-        if (!dialog) return;
-        closingFromReact.current = false;
-        dialog.present(resolvedParent);
-        return () => {
-            closingFromReact.current = true;
-            dialog.forceClose();
-        };
-    }, [dialog, resolvedParent]);
-
-    useSignal(dialog, "closed", () => {
-        if (closingFromReact.current) return;
-        onCloseRef.current?.();
-    });
-
-    return createPortal(<Component {...rest} ref={setRef} />, rootElement);
-};
-```
-
-- **`<Component {...rest} ref={setRef} />`** renders the widget named by `component` (default `AdwDialog`) with the props you passed inline. `Dialog` attaches the ref itself, merged with any ref you pass, so any dialog widget works without you wiring the ref.
-- **`createPortal(..., rootElement)`** leaves the dialog unparented. `rootElement` is a marker, not a widget: portaling to it makes no attach call at all, so the dialog is created top-level. `present(parent)` is what puts it on screen inside the parent window, and it parents the dialog itself, so the dialog has to reach that call clear of the split view's widget hierarchy.
-- **`useParentWindow()`** finds the enclosing `AdwApplicationWindow` so the dialog can be presented transient-for it (correct positioning, modality, focus). You can override the anchor with the `parent` prop, but omitting it, as every dialog in this app does, anchors to the current window.
-- **`present` on mount, `forceClose` on the effect cleanup.** When React mounts `<DeleteConfirmation>`, the effect runs and the dialog presents. When `setTaskToDelete(null)` unmounts it, the cleanup runs `forceClose()` and the dialog disappears. `forceClose` bypasses any close confirmation, which is what you want when React state, not the widget, owns whether the dialog is open.
-- **`onClose` mirrors user-initiated closes back to React.** Escape, the close button, and a swipe all make the widget emit `closed`; `Dialog` forwards that to your `onClose` so you can clear the state that mounted it. The `closingFromReact` guard skips the `closed` that its own `forceClose()` emits during unmount, so a React-driven close never re-fires `onClose`.
-
-Everything presentable this way (`AdwAlertDialog`, `AdwAboutDialog`, `AdwPreferencesDialog`) extends `Adw.Dialog`, so it satisfies the `present`/`forceClose` contract `<Dialog>` requires, and the `component` prop's type only accepts such a widget. Preferences uses the identical pattern: `preferences.tsx` passes an `AdwPreferencesDialog` as the same `<Dialog>`'s `component`, presented and closed by the same `showPreferences` state toggle. One wrapper covers every modal in the app.
-
-## The New List dialog: a form in an alert dialog
-
-An alert dialog is not limited to a heading and body text. Its children become the dialog body, so `new-list-dialog.tsx` puts an entry and a row of color swatches inside the same `AdwAlertDialog` used for confirmation:
+An alert dialog's children become its body, so `new-list-dialog.tsx` puts an entry and a row of color swatches inside the same `AdwAlertDialog`:
 
 ```tsx
 const PALETTE = ["#3584e4", "#2ec27e", "#e66100", "#9141ac", "#e01b24", "#f5c211"];
@@ -258,22 +118,7 @@ export const NewListDialog = ({
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
                 <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
                 <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                    {PALETTE.map((swatch) => (
-                        <GtkToggleButton
-                            key={swatch}
-                            active={color === swatch}
-                            cssClasses={["flat"]}
-                            accessibleLabel={`Color ${swatch}`}
-                            onClicked={() => setColor(swatch)}
-                        >
-                            <GtkBox
-                                widthRequest={22}
-                                heightRequest={22}
-                                cssClasses={[listDot(swatch)]}
-                                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                            />
-                        </GtkToggleButton>
-                    ))}
+                    {/* ... one GtkToggleButton per PALETTE swatch, active={color === swatch} ... */}
                 </GtkBox>
             </GtkBox>
         </Dialog>
@@ -281,15 +126,9 @@ export const NewListDialog = ({
 };
 ```
 
-The form is ordinary controlled React: local `name` and `color` state feed the widgets, and the widgets write back. `onChanged={(self) => setName(self.text)}` on the `GtkEntry` reads the live text off `self`, because GTKX's JSX signal props pass the emitting widget as the last handler argument. Each swatch is a `GtkToggleButton` whose `active` compares against `color`. When the user picks "Add", `onResponse` reads the current `name` and `color` out of state and calls `onAdd`.
+The form is ordinary controlled React, and `activatesDefault` on the entry makes Return trigger the default response, which `defaultResponse="add"` points at Add.
 
-Small details make it feel native. **`activatesDefault`** on the entry means pressing Return in the text field triggers the default response, and `defaultResponse="add"` makes that Add. So you can type a name and hit Enter without reaching for the mouse. **`Adw.ResponseAppearance.SUGGESTED`** styles Add as the accent affirmative (blue), the counterpart to the destructive red on the delete confirm.
-
-The swatches also show the accessibility pattern for decorative content: the visible colored square is a `GtkBox` marked `accessibleRole={Gtk.AccessibleRole.PRESENTATION}` (it is pure decoration, hidden from assistive tech), while the meaning lives on the button's ``accessibleLabel={`Color ${swatch}`}``.
-
-## The About dialog
-
-`AdwAboutDialog` is a purpose-built widget: give it your app's metadata and it renders the standard GNOME about screen, credits, license, and links included. `about.tsx` is entirely declarative, no imperative calls:
+### The About dialog
 
 ```tsx
 import { Dialog } from "@gtkx/components/adw";
@@ -316,12 +155,38 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`applicationIcon="com.gtkx.tutorial"` is an icon name, not the application ID itself. GNOME apps install their icon under their application ID, so the two match here. The icon theme resolves the name to the app icon shipped under `data/icons/` (see [Packaging and Shipping](/tutorial/packaging) for how it is laid out and installed).
+`applicationIcon` is an icon name that happens to match the application ID, resolved from the icons installed in [Packaging and Shipping](/tutorial/packaging).
 
-`licenseType={Gtk.License.MPL_2_0}` (an enum from `@gtkx/gi/gtk`) lets the dialog render the correct license text and link without you supplying the prose. `website`/`issueUrl` become the standard action links. `onClose` on `<Dialog>` fires when the dialog is dismissed; here it flips `showAbout` back to false, which unmounts `<About>` and, through the `<Dialog>` cleanup, force-closes the underlying widget.
+### How a dialog gets on screen
 
-Note the difference between `onResponse` on an alert dialog (fires with the chosen response id) and `onClose` on About (signals dismissal only). About has no responses to choose, only a close, so there is nothing to branch on.
+The dialogs are mounted conditionally at the bottom of the window:
+
+```tsx
+{/* ... */}
+{showAbout ? <About onClose={() => setShowAbout(false)} /> : null}
+{/* ... */}
+{showNewList ? (
+    <NewListDialog
+        onAdd={(name, color) => {
+            api.addList(name, color);
+            setShowNewList(false);
+        }}
+        onCancel={() => setShowNewList(false)}
+    />
+) : null}
+{taskToDelete ? (
+    <DeleteConfirmation
+        taskTitle={taskToDelete.title}
+        onConfirm={confirmDelete}
+        onCancel={() => setTaskToDelete(null)}
+    />
+) : null}
+```
+
+Mounting the component presents the dialog and unmounting it closes the dialog, which is the contract `<Dialog>` from `@gtkx/components/adw` implements.
+
+`component` names the dialog widget to present, defaulting to `AdwDialog`, and `<Dialog>` attaches the ref to it itself. The widget is rendered through a portal to the root element rather than into the surrounding widget tree, so it stays top-level until `present(parent)` puts it on screen; `parent` overrides the anchor, and omitting it uses the enclosing `AdwApplicationWindow`. `onClose` reports user-initiated closes (Escape, the close button, a swipe) so you can clear the state that mounted the dialog, and it stays quiet when React itself unmounts the dialog.
 
 ## Next
 
-Continue to [Testing the App](/tutorial/testing) to see how the accessibility metadata set on these dialogs and rows makes the whole app queryable, and how `@gtkx/testing` drives it with user events.
+Continue to [Testing the App](/tutorial/testing).

@@ -1,14 +1,10 @@
 ---
-description: "Testing GTKX components headlessly: the render, query, and userEvent model, with a worked example."
+description: "Testing GTKX components headlessly: the render, query, and userEvent model, with a simple example."
 ---
 
 # Testing
 
-GTKX tests run on the widget set GNOME ships. `render` mounts your components into GObject widgets inside a headless Wayland display, driving them through the same reconciler that runs your app in production. Queries walk that live widget tree and match on each widget's accessible role, name, and state, and `userEvent` dispatches the same gestures and key events a person would produce.
-
-The API is deliberately shaped like React Testing Library. If you have tested a React web app, you already know the model: query by role and accessible name, interact through user events, assert on what the user can observe.
-
-Separate packages divide the work. `@gtkx/testing` is the library you import in test files: `render`, `screen`, `userEvent`, `fireEvent`, `waitFor`, and a set of widget-aware matchers. `@gtkx/vitest` is a Vitest plugin that gives every test worker its own isolated GTK4 display. For a walkthrough of testing a complete app, see the [tutorial's testing chapter](/tutorial/testing); the full `@gtkx/testing` and `@gtkx/vitest` API lives in the [API reference](/reference/@gtkx/testing/).
+GTKX ships with a React Testing Library-inspired testing package, which provides the same API adapted to GTK4 patterns.
 
 ## Setup
 
@@ -26,8 +22,6 @@ export default defineConfig({
     },
 });
 ```
-
-`@gtkx/cli/vitest-plugin` combines the CLI's Vite plugins (the same ones `gtkx dev` and `gtkx build` use: the resolved app config and JSX metadata, GResource and GSettings modules, CSS imports, and the React Compiler) with the `@gtkx/vitest` plugin, which handles the headless display setup.
 
 `@gtkx/vitest` injects a preload script into each worker process that boots a private headless environment before any test code loads:
 
@@ -143,7 +137,7 @@ For visual inspection, `screen.screenshot()` renders the window off-screen, writ
 Role queries walk the widget tree and match each widget's GTK4 accessible role. The accessible name is resolved from the `accessibleLabel` prop, the widget's own label text, its descendant labels, or its tooltip. Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.
 :::
 
-## A worked example
+## A simple example
 
 A minimal counter component, tested end to end. The component under test is ordinary application code; the test renders it, finds the button by role, clicks it, and asserts on the resulting label text:
 

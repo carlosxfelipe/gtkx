@@ -31,67 +31,36 @@ import { readFile } from "node:fs/promises";`;
     <div class="how__step">
       <div class="how__text">
         <span class="how__num">01</span>
-        <h3 class="how__name">If it is a GObject, you can write it in JSX</h3>
-        <p class="how__body">
-          Element types are GObject class names. Props are their properties,
-          <code class="l-code">on*</code> handlers are their signals. Nested GObjects go in props,
-          so a header bar or an adjustment is an element too, not an object you build on the side.
-        </p>
-        <Callout type="tip">
-          This reaches past widgets. A scale's adjustment prop is typed
-          <code class="l-code">Gtk.Adjustment | ReactElement</code>, so the whole GObject graph is
-          declarative. Which props take elements is generated, and you can add your own rules
-          through <code class="l-code">elementProps</code>.
-        </Callout>
-      </div>
-      <CodeBlock title="src/app.tsx" :code="appCode" lang="tsx" />
-    </div>
-
-    <div class="how__step how__step--rev">
-      <div class="how__text">
-        <span class="how__num">02</span>
-        <h3 class="how__name">Codegen binds the libraries you name</h3>
+        <h3 class="how__name">Your app config drives the codegen</h3>
         <p class="how__body">
           Name the GObject-Introspection libraries you want and codegen reads them off your
-          system, emitting typed bindings for exactly those namespaces. WebKit, GtkSourceView,
-          or your own library bind the same way GTK4 does. Set
-          <code class="l-code">"*"</code> to bind the whole installed platform.
-        </p>
-        <p class="how__body">
-          The bindings track your machine: upgrade GTK4 and the changed introspection data
-          regenerates them.
+          system, emitting typed bindings for exactly those namespaces.
         </p>
       </div>
       <CodeBlock title="gtkx.config.ts" :code="configCode" lang="ts" />
     </div>
 
+    <div class="how__step  how__step--rev">
+      <div class="how__text">
+        <span class="how__num">02</span>
+        <h3 class="how__name">If it is a GObject, you can write it in JSX</h3>
+        <p class="how__body">
+          Element types are GObject type names. Nested GObjects go in props,
+          so a header bar or an adjustment is an element too, not an object you build on the side.
+        </p>
+      </div>
+      <CodeBlock title="src/app.tsx" :code="appCode" lang="tsx" />
+    </div>
+
     <div class="how__step">
       <div class="how__text">
         <span class="how__num">03</span>
-        <h3 class="how__name">Typed from introspection, not by hand</h3>
+        <h3 class="how__name">Harness the full power of the Node ecosystem</h3>
         <p class="how__body">
-          Every class, property, signal, and enum comes from the same introspection data GNOME
-          ships. Nothing is hand-maintained, so nothing drifts: the types and the metadata the
-          reconciler applies at runtime are emitted by one pass. Pass an enum a string and
-          <code class="l-code">tsc</code> tells you before the window opens.
-        </p>
-      </div>
-      <CodeBlock variant="terminal">
-        <div class="tdim">$ tsc --noEmit</div>
-        <div class="terr">src/app.tsx(3,35): error TS2322:</div>
-        <div class="terr">Type 'string' is not assignable to</div>
-        <div class="terr">type 'Orientation | null | undefined'.</div>
-      </CodeBlock>
-    </div>
-
-    <div class="how__step how__step--rev">
-      <div class="how__text">
-        <span class="how__num">04</span>
-        <h3 class="how__name">Your app is a Node.js process</h3>
-        <p class="how__body">
-          So npm works, and so does React. Navigation is React Navigation driving Adwaita pages.
-          Animation is Framer Motion. Styling is Emotion-style CSS-in-JS. The Node standard library handles files,
-          timers, and the network, and the rest of the registry is one install away.
+          GTKX runs on vanilla Node. So all npm packages work, and so does React.
+          Navigation is React Navigation driving Adwaita pages.
+          Animation is Framer Motion.
+          Styling is Emotion.
         </p>
       </div>
       <CodeBlock title="src/app.tsx" :code="ecosystemCode" lang="tsx" />

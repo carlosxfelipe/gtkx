@@ -4,7 +4,7 @@ description: "Configuring GTKX with gtkx.config.ts, what codegen generates into 
 
 # Configuration and Codegen
 
-Everything GTKX knows about your project comes from one file: `gtkx.config.ts`. The CLI reads it, resolves the GObject-Introspection data for the libraries you name, and generates the typed bindings your code imports. If you have not scaffolded a project yet, start with [Getting Started](/guide/getting-started); this page picks up where its codegen section leaves off.
+Codegen is driven from `gtkx.config.ts`, which declares which libraries to generate bindings for, and your application ID.
 
 ## The config file
 
@@ -19,24 +19,11 @@ export default defineConfig({
 });
 ```
 
-The config file can also default-export a function `(env) => config`, where `env.mode` is the mode the CLI is running in: `gtkx dev` loads the config with mode `development` and `gtkx build` with mode `production`. Export that function directly rather than wrapping it in `defineConfig`, which types its argument as a config object. Mode-specific overrides can instead live inline as `$`-prefixed layers that deep-merge over the base when that mode is active:
-
-```ts
-import { defineConfig } from "@gtkx/config";
-
-export default defineConfig({
-    applicationId: "com.gtkx.tutorial",
-    $development: {
-        applicationId: "com.gtkx.tutorial.Devel",
-    },
-});
-```
-
 For sharing a base config across packages, `mergeConfig(base, override)` deep-merges configs with the override winning on conflict.
 
 ## Option reference
 
-Every option, its type, and default is in the [@gtkx/config reference](/reference/@gtkx/config/). The ones worth explaining:
+Every option, its type, and default is in the [@gtkx/config reference](/reference/@gtkx/config/). The basic ones are:
 
 **`applicationId`** is the only required option. It must be a valid `g_application_id_is_valid` ID, reverse-DNS form such as `org.example.MyApp`. It identifies your app to D-Bus and GNOME, and it flows into your component tree automatically (see [How applicationId flows](#how-applicationid-flows) below).
 
@@ -45,10 +32,6 @@ Every option, its type, and default is in the [@gtkx/config reference](/referenc
 **`girPath`** adds directories to the front of the `.gir` search path. You only need this when your GIR files live somewhere nonstandard, such as a locally built GTK4.
 
 **`reactCompiler`** controls the React Compiler, which is enabled by default. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
-
-**`codegen: false`** turns generation off entirely: the CLI deletes the local `node_modules/.gtkx/gi` and `node_modules/.gtkx/jsx` stores along with the `@gtkx/gi` and `@gtkx/jsx` links, and module resolution falls through to bindings installed as a regular dependency. This is for consuming a prebuilt binding package instead of generating against the local system.
-
-**`elementProps`** deserves its own section; see [Customizing elements with elementProps](#customizing-elements-with-elementprops).
 
 ## What codegen emits
 
@@ -104,11 +87,20 @@ Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, a
 - **Object-typed props also accept elements.** A writable, non-construct-only property whose type is itself a GObject class accepts a `ReactElement` in addition to an instance, so you can write `sidebar={<AdwNavigationPage ... />}` and let the reconciler construct and manage the child. The one exception is `child` on widgets with a `setChild` method, where JSX `children` already covers the element case.
 - **Signals become `on` handlers.** Every signal becomes `on` plus the UpperCamelCase signal name (`clicked` becomes `onClicked`, `row-activated` becomes `onRowActivated`), and the handler receives the signal's parameters followed by `self`, the widget instance, with parameter types rendered from the GIR.
 - **`ref` yields the native instance.** Every element accepts `ref?: Ref<Self | null>`, where `Self` is the `@gtkx/gi` class (`Gtk.Button`, `Adw.ToastOverlay`). This is your escape hatch to the full imperative API.
-- **`children` and named slots.** Every element whose class descends from `GtkWidget` accepts `children?: ReactNode`, whether or not it has a container rule. A non-widget type accepts children only when it has a use for them: `GtkApplication` takes its windows, and `GtkTextBuffer` and `GtkTextTag` take their text content, while `GtkSettings` and `GtkAdjustment` take none. A [container rule](#customizing-elements-with-elementprops) under any other prop name adds that name as its own `ReactNode` prop alongside `children`, which is why `AdwToolbarView` takes `topBar` and `bottomBar` and `AdwHeaderBar` takes `start` and `end`.
-- **Construct-only props apply once.** Props backed by construct-only GIR properties are typed like any other but participate only in construction; the reconciler skips them on updates, so changing one on a mounted element has no effect.
-- **Removing a prop restores the GIR default.** The metadata records the default value each property declares in the GIR, and when a prop disappears between renders the reconciler resets the property to that default instead of leaving the last value behind. Your JSX therefore describes the widget's full state, exactly as it would in React DOM.
 
-## Customizing elements with elementProps
+## Generating element reference docs
+
+The same pipeline that generates the bindings can document them. `gtkx docs` loads the GIR data for your configured libraries, applies your `elementProps` rules, and writes one markdown page per JSX element:
+
+```bash
+gtkx docs
+```
+
+By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
+
+Run `gtkx docs --help` for the output-directory, base-path, and force flags. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
+
+## Advanced: Customizing elements with elementProps
 
 Property setting alone cannot express everything GTK4 does. Adding a child is `append` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with element prop rules: small declarative records that tell the reconciler which method calls realize a given JSX prop. A large built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more), and `elementProps` in your config layers your own rules on top. The kinds are:
 
@@ -117,8 +109,6 @@ Property setting alone cannot express everything GTK4 does. Adding a child is `a
 - **`controlled-text`**: a text property kept in controlled-input sync with the user's edits, as the built-in `GtkEditable` rule does for `text`.
 - **`lazy`**: a property applied after construction rather than during it, optionally deferred until a `lookup` method succeeds; `GtkStack`'s `visibleChildName` waits for `getChildByName` to find the named child.
 - **`list`**: an array prop mapped to per-item calls: `add` per item, plus optional `remove` and `clear`. `GtkScale`'s `marks` uses `addMark` and `clearMarks`.
-
-A rule references methods by their camelCase names, and each method call is either a bare string or `{ method, args }` where an argument is a reference (`"child"`, `"item"`, `"index"`, `"sibling"`), a React prop read (`{ prop }`), a list-item field with optional fallback (`{ field, or }`), or a constant (`{ literal }`). In `value` and `list` rules, a bare-string call whose method takes more than one parameter is expanded automatically: the parameters become `{ field }` arguments named after the GIR parameter names, with defaults inferred from the types (nullable becomes `null`, numeric `0`, boolean `false`). That expansion is also what types the prop: `GtkApplication`'s `actionAccels` rule points at `setAccelsForAction`, so the prop is typed as `{ detailedActionName: string; accels: string[] }[]` straight from the method signature.
 
 User rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, while the `cursor` property only accepts an already constructed `Gdk.Cursor`. One config entry turns the method into a prop:
 
@@ -134,25 +124,7 @@ export default defineConfig({
 });
 ```
 
-After the next codegen, every widget element accepts a `cursorName` prop, typed `string | null` straight from the method's parameter, and the reconciler calls `setCursorFromName` whenever the value changes. A rule declared on a type covers every element descending from it, which is how the built-in `controllers` rule on `GtkWidget` reaches all widgets. Every rule is validated against the GIR index when codegen runs: a type name that is not in your generated libraries, or a method that does not exist on the host type, fails with an error naming the exact `elementProps` path. `controlled-text` and `lazy` rules additionally require `prop` to name a property the GIR declares. `container`, `value`, and `list` rules define new props, so their `prop` can be any name. Your rules merge over the built-ins, with a user rule replacing a built-in that targets the same prop (and, for containers, the same child type), so you can also override built-in behavior, not only extend it.
-
-Rules realize a prop through method calls driven by that prop's value, and that is also their boundary: an API that needs per-child state applied through the parent and kept in sync afterwards, such as positioning children inside a `Gtk.Fixed`, is not expressible as a rule. That job belongs to the [`Fixed` and `Fixed.Child` components](/guide/components-and-hooks#fixed-and-fixed-child) from `@gtkx/components`.
-
-::: tip
-The generated `ELEMENT_PROPS` metadata in `node_modules/.gtkx/jsx` shows the final merged and expanded rule set, which is the quickest way to see exactly what a built-in does before overriding it.
-:::
-
-## Generating element reference docs
-
-The same pipeline that generates the bindings can document them. `gtkx docs` loads the GIR data for your configured libraries, applies your `elementProps` rules, and writes one markdown page per JSX element:
-
-```bash
-gtkx docs
-```
-
-By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
-
-Run `gtkx docs --help` for the output-directory, base-path, and force flags. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
+After the next codegen, every widget element accepts a `cursorName` prop, typed `string | null` straight from the method's parameter, and the reconciler calls `setCursorFromName` whenever the value changes. A rule declared on a type covers every element descending from it, which is how the built-in `controllers` rule on `GtkWidget` reaches all widgets.
 
 ## Next
 

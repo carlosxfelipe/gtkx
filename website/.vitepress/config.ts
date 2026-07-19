@@ -4,8 +4,7 @@ import { defineConfig, type HeadConfig } from "vitepress";
 import typedocSidebar from "../reference/typedoc-sidebar.json";
 
 const title = "GTKX";
-const description =
-    "Write declarative JSX. GTKX renders it to GObject instances, GNOME's own GTK4 and Adwaita widgets, powered by a native Rust core. What you ship is a GNOME app.";
+const description = "Write declarative JSX. GTKX renders it to GObject instances, powered by a native Rust core.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 

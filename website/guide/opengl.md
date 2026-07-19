@@ -45,7 +45,7 @@ Realize and unrealize come from `Gtk.Widget`, so they track the widget's lifetim
 
 Several props shape the context before it exists. `useEs` asks for an OpenGL ES context, `allowedApis` restricts which APIs may be chosen, and `hasDepthBuffer` and `hasStencilBuffer` add those attachments to the framebuffer. Once the area is realized, `area.getApi()` tells you what you actually got.
 
-## A worked example
+## A simple example
 
 This is the gtk-demo OpenGL Area demo, which draws one shaded triangle. Compiling a shader shows the generated commands and the info log override together:
 
@@ -197,10 +197,12 @@ For continuous animation, drive frames from the frame clock rather than from Rea
 `Gtk.GLArea` renders an error state of its own when you hand it a GError, which is how the Shadertoy demo surfaces a GLSL compile failure instead of drawing:
 
 ```ts
+const SHADER_ERROR = GLib.quarkFromString("my-app-shader-error-quark");
+
 area.setError(GLib.Error.newLiteral(SHADER_ERROR, 0, `Fragment shader compile error:\n${log}`));
 ```
 
-Pass `null` to clear it once the shader compiles. [Error Handling](/guide/error-handling#constructing-gerrors-yourself) covers `GLib.Error.newLiteral` and registering your own error domain.
+`GLib.Error.newLiteral(domain, code, message)` builds a GError, and `GLib.quarkFromString` registers (or looks up) a quark for your own error domain: pick a unique, descriptive string, conventionally ending in `-quark`. Pass `null` to `setError` to clear it once the shader compiles. [Error Handling](/guide/error-handling) covers matching the GErrors that bindings throw at you.
 
 ## Next
 

@@ -6,10 +6,6 @@ description: "How GTKX renders GTK4 surfaces that live outside the widget tree: 
 
 Portals let a component render children into a container other than its JSX parent, while it keeps owning those children's state, props, and lifetime.
 
-Use them for the GTK4 surfaces that refuse to nest. A dialog is not a child of the button that opened it; it is a free-floating `Adw.Dialog` presented against a window. A second window has no parent widget at all. The cells of a `Gtk.ListView` are created by a factory the moment they scroll into view.
-
-For a worked walkthrough of toasts, confirmations, and form dialogs in the Tasks app, read the [Feedback and Dialogs](/tutorial/feedback-and-dialogs) tutorial chapter.
-
 ## createPortal
 
 `createPortal` from `@gtkx/react` has the same shape as its React DOM namesake, with GTK4 containers in place of DOM nodes:

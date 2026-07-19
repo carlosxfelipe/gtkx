@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import CodeBlock from "../components/CodeBlock.vue";
 import Tabs from "../components/Tabs.vue";
 
-const tab = ref("dev");
+const tab = ref("create");
 
 const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: string[] }> = {
     create: {
@@ -39,7 +39,7 @@ const active = computed(() => STEPS[tab.value]);
 <template>
   <section id="platform" class="platform">
     <div class="platform__head section-head">
-      <p class="overline">One CLI, the whole lifecycle</p>
+      <p class="overline">A unified CLI for development</p>
       <h2 class="platform__title section-title">Scaffold, develop, ship: <span class="accent">one tool</span></h2>
     </div>
     <div class="platform__panel">

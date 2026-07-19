@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Closing from "./Closing.vue";
 import { REPO_URL } from "./content";
-import Differentiators from "./Differentiators.vue";
 import Ecosystem from "./Ecosystem.vue";
 import Features from "./Features.vue";
 import Footer from "./Footer.vue";
@@ -28,7 +27,6 @@ import Showcase from "./Showcase.vue";
       <HowItWorks />
       <Platform />
       <Showcase />
-      <Differentiators />
       <Closing />
     </main>
     <Footer />

@@ -68,50 +68,7 @@ These domain objects are generated in any namespace whose library registers erro
 
 A successful `instanceof` check against a domain object narrows the value's type to `{ domain, code, message }`, which is enough to branch on the code and log the message. It does not narrow to `GLib.Error`, so if you need methods like `matches` or `copy`, test `error instanceof GLib.Error` instead.
 
-### The `matches` method
-
-`GLib.Error` also has GLib's own comparison, `matches(domain, code)`, which checks domain and code in one call. It takes the raw quark, which you can obtain with `GLib.quarkFromString`:
-
-```ts
-import * as GLib from "@gtkx/gi/glib";
-
-if (error instanceof GLib.Error && error.matches(GLib.quarkFromString("g-key-file-error-quark"), GLib.KeyFileError.PARSE)) {
-    // not a valid key file
-}
-```
-
-The domain-object `instanceof` form is shorter and does not require knowing the quark string, so prefer it; `matches` earns its keep when you already hold a quark, for example one you registered yourself.
-
-## Synchronous calls: `try`/`catch`
-
-Any throwing binding can be wrapped in an ordinary `try`/`catch`, right next to plain JavaScript code that throws. This loader reads a `.desktop` launcher with `node:fs` and parses it with `GLib.KeyFile`, GLib's parser for the .ini-like key files the desktop-entry format is built on, falling back to `null` when either step fails:
-
-```ts
-import { readFileSync } from "node:fs";
-import * as GLib from "@gtkx/gi/glib";
-
-type Launcher = { name: string; exec: string };
-
-const loadLauncher = (path: string): Launcher | null => {
-    try {
-        const data = readFileSync(path, "utf8");
-        const keyFile = GLib.KeyFile.new();
-        keyFile.loadFromData(data, Buffer.byteLength(data), GLib.KeyFileFlags.NONE);
-        return {
-            name: keyFile.getString("Desktop Entry", "Name"),
-            exec: keyFile.getString("Desktop Entry", "Exec"),
-        };
-    } catch {
-        return null;
-    }
-};
-```
-
-The division of labor is the usual GTKX split: the Node.js standard library owns the file I/O, and GLib is only involved for the desktop-entry format it alone understands. The `catch` covers both channels. `readFileSync` throws a plain Node.js `Error`, where a missing file surfaces with `code === "ENOENT"`. `loadFromData` and `getString` throw `GLib.Error`s in the `GLib.KeyFileError` domain: `PARSE` for malformed data, `KEY_NOT_FOUND` or `GROUP_NOT_FOUND` for an incomplete entry.
-
-The Tasks app from the tutorial needs even less: its JSON store in [Data and Persistence](/tutorial/data-and-persistence) is pure `node:fs` plus `JSON.parse`, with no GError in sight.
-
-## Asynchronous calls: rejected promises
+## Asynchronous calls
 
 Promisified methods reject with the same `GLib.Error` objects. The most common place you will handle one is a dialog, because GTK4 reports "the user dismissed it" as an error in the `Gtk.DialogError` domain. This is adapted from the pickers demo in `examples/gtk-demo`:
 
@@ -135,29 +92,6 @@ const handleOpenFile = async () => {
 };
 ```
 
-The pattern to notice is matching on domain and code: each expected outcome is one `instanceof` plus a code check, and everything else falls through to the log. Which domain a canceled call rejects with depends on the API family, which [Async Operations](/guide/async-operations#cancellation-with-gio-cancellable) covers along with the rest of the `Gio.Cancellable` model.
-
-::: tip Rejections point at their call site
-A rejected native promise's `stack` describes the GIO completion callback, not your code. Outside production (`NODE_ENV !== "production"`), GTKX captures the stack of the code that started the async operation and attaches it as the rejection error's `cause`, so logging the error shows where the call originated.
-:::
-
-## Constructing GErrors yourself
-
-Some APIs consume GErrors rather than produce them. `GLib.Error.newLiteral(domain, code, message)` builds one, and the `GLib.Error` constructor accepts the same fields as optional props:
-
-```ts
-import * as GLib from "@gtkx/gi/glib";
-
-const SHADER_ERROR = GLib.quarkFromString("my-app-shader-error-quark");
-
-area.setError(GLib.Error.newLiteral(SHADER_ERROR, 0, `Fragment shader compile error:\n${log}`));
-```
-
-This is how the gtk-demo Shadertoy example reports GLSL compile failures to `Gtk.GLArea`, which then renders its error state. [OpenGL](/guide/opengl#reporting-failures-to-the-widget) covers that flow and the rest of `@gtkx/gl`. `GLib.quarkFromString` registers (or looks up) a quark for your own error domain. Pick a unique, descriptive string, conventionally ending in `-quark`.
-
-A GError you construct behaves exactly like a caught one. It is an `Error` instance, and it matches its domain object via `instanceof`. Throw it from your own code when you want callers to handle it with the same domain and code machinery.
-
 ## Next
 
 - [Components and Hooks](/guide/components-and-hooks) is next in the guide, covering how GTKX widgets compose and the hooks that drive them.
-- Run `gtkx docs` in your project to generate reference pages for every element your libraries provide; throwing methods appear there as ordinary methods, with the error parameter already absorbed.
