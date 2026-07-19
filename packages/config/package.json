@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/config",
     "version": "1.0.0-rc.1",
-    "description": "gtkx.config.ts schema, validation, and loader shared by the GTKX toolchain",
+    "description": "gtkx.config.ts schema, loader, and the element-prop mapping language shared across the GTKX toolchain",
     "keywords": [
         "gtkx",
         "gtk",

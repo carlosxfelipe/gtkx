@@ -1,6 +1,7 @@
 {
     "name": "@gtkx/e2e",
     "version": "0.0.0",
+    "description": "Internal integration tests and benchmarks covering the GTKX reconciler, runtime, native FFI, and OpenGL bindings",
     "private": true,
     "type": "module",
     "scripts": {

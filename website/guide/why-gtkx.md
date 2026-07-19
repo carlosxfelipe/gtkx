@@ -1,15 +1,16 @@
 ---
-description: "What GTKX is, why it exists, and how it compares to GJS, node-gtk, and portable subsets like React Native."
+title: "Why GTKX"
+description: "What GTKX is, why it exists, and how it compares to GJS and node-gtk."
 ---
 
 # Why GTKX
 
-GTK4 and Adwaita are mature, and GtkBuilder XML can lay out an interface and bind properties into it. The widget tree it builds is still fixed: keeping that structure in sync with your application state is left to imperative code you write yourself, and nothing hot-reloads the interface as you work. GTKX adds that missing layer, and the tooling around it, on top of the stack you already know:
+GTK4 and Adwaita are mature, and GtkBuilder XML can lay out an interface and bind properties into it. The widget tree it builds is still fixed: keeping that structure in sync with your application state is left to imperative code you write yourself, and nothing refreshes the interface as you work. GTKX adds that missing layer, and the tooling around it, on top of the stack you already know:
 
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling and high-level list, grid, and dialog components,
+- CSS-in-JS styling, high-level list and grid components, and dialogs that present on mount,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
@@ -23,8 +24,13 @@ node-gtk does run on Node.js, but it is lightly maintained, and strict types are
 
 GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back.
 
+A GTKX app is an ordinary Node.js process, so you do everyday work with the Node standard library and npm. Use `node:fs` for files, `fetch` for HTTP, `setTimeout` and `setInterval` for timers, and any package on the registry for the rest. The generated GLib and Gio bindings come in only where the GNOME platform itself is the point: GSettings, desktop notifications, actions, and the `Gio.File` objects a file dialog hands back.
+
+At runtime, the native Rust core acquires the default GLib main context on the Node.js thread and drives it from the libuv event loop, so GTK and your JavaScript share a single thread and every native mutation happens on it. Calls into the system GTK4 and Adwaita libraries go through libffi directly, since the introspection data is consumed when your bindings are generated rather than loaded while the app runs.
+
 ## Next
 
 - [Getting Started](/guide/getting-started): scaffold an app and run the dev loop.
-- [Tutorial](/tutorial/): build a complete GNOME Tasks app, from the application shell to Flathub submission.
-- [Components and Hooks](/guide/components-and-hooks): the model behind intrinsic elements, high-level components, and signals.
+- [Configuration and Codegen](/guide/configuration-and-codegen): how `gtkx.config.ts` drives codegen, and how GIR becomes the typed JSX prop model behind every intrinsic element.
+- [Tutorial](/tutorial/): build Tasks, a complete GNOME task manager, from your first window to Flathub submission.
+- [Components and Hooks](/guide/components-and-hooks): the high-level components in `@gtkx/components` and the hooks in `@gtkx/react`.

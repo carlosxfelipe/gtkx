@@ -1,5 +1,6 @@
 ---
-description: "How GLib's GError model maps onto JavaScript exceptions in GTKX: catching thrown GErrors, matching them by domain and code, and constructing your own."
+title: "Error Handling"
+description: "How GLib's GError model maps onto JavaScript exceptions in GTKX: catching thrown GErrors and matching them by domain and code."
 ---
 
 # Error Handling
@@ -41,9 +42,7 @@ Its `name` is `"GLib.Error"`, and it carries a `stack` captured at the point of 
 
 ## Matching errors by domain and code
 
-The `domain` quark and `code` number are how GLib distinguishes "file not found" from "permission denied" from "the user closed the dialog". GTKX lets you match them by domain object or by the `matches` method.
-
-### Error domain objects
+The `domain` quark and `code` number are how GLib distinguishes "file not found" from "permission denied" from "the user closed the dialog". GTKX generates a domain object for each of these, so you match them with `instanceof` and a `code` comparison.
 
 Any introspected enum that GLib marks as an error domain is generated as an `ErrorDomain` object. It carries the enum members as numeric constants, and it also works as the right-hand side of `instanceof`, matching any wrapped GError that belongs to that domain. The check is domain-only, so you combine it with a `code` comparison against the same object's members:
 
@@ -64,34 +63,16 @@ try {
 }
 ```
 
-These domain objects are generated in any namespace whose library registers error domains, such as `GLib.KeyFileError`, `Gio.IOErrorEnum`, and `Gtk.DialogError`. Each is a plain enum, so `Gtk.DialogError.DISMISSED` is just a number you compare a `code` against.
+These domain objects are generated in any namespace whose library registers error domains, such as `GLib.KeyFileError`, `Gio.IOErrorEnum`, and `Gtk.DialogError`. `Gtk.DialogError.DISMISSED` is just a number you compare a `code` against.
 
 A successful `instanceof` check against a domain object narrows the value's type to `{ domain, code, message }`, which is enough to branch on the code and log the message. It does not narrow to `GLib.Error`, so if you need methods like `matches` or `copy`, test `error instanceof GLib.Error` instead.
 
+To build a GError of your own rather than catch one, see [OpenGL](/guide/opengl#reporting-failures-to-the-widget), where a `Gtk.GLArea` is handed a custom error to display.
+
 ## Asynchronous calls
 
-Promisified methods reject with the same `GLib.Error` objects. The most common place you will handle one is a dialog, because GTK4 reports "the user dismissed it" as an error in the `Gtk.DialogError` domain. This is adapted from the pickers demo in `examples/gtk-demo`:
-
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-
-const handleOpenFile = async () => {
-    const fileDialog = new Gtk.FileDialog();
-    try {
-        const file = await fileDialog.open(parentWindow, cancellable);
-        setFile(file);
-    } catch (error) {
-        if (
-            error instanceof Gtk.DialogError &&
-            (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)
-        ) {
-            return;
-        }
-        if (error instanceof Error) console.error(error.message);
-    }
-};
-```
+Promisified methods reject with the same `GLib.Error` objects, so the domain-and-code check above is exactly what a `catch` around an `await` does. The most common place you will write one is a dialog, because GTK4 reports "the user dismissed it" as an error in the `Gtk.DialogError` domain rather than as a return value. [Async Operations](/guide/async-operations#awaiting-async-operations) walks a `Gtk.FileDialog` through that catch, and [Cancellation with Gio.Cancellable](/guide/async-operations#cancellation-with-gio-cancellable) covers the `CANCELLED` code you match the same way.
 
 ## Next
 
-- [Components and Hooks](/guide/components-and-hooks) is next in the guide, covering how GTKX widgets compose and the hooks that drive them.
+Continue with [Components and Hooks](/guide/components-and-hooks) for how GTKX widgets compose and the hooks that drive them.

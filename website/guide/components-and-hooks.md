@@ -1,16 +1,25 @@
 ---
+title: "Components and Hooks"
 description: "A map of the high-level components in @gtkx/components and the hooks exported by @gtkx/react."
 ---
 
 # Components and Hooks
 
-Most of what GTKX offers is available through the intrinsic elements generated automatically from codegen. However, for some more complex widgets that don't map cleanly to a declarative model by default, GTKX adds a hand-written layer on top via `@gtkx/components`, exposing advanced functionality through custom components and hooks.
+Most of what GTKX offers reaches you through the intrinsic elements codegen generates. Some widgets carry an imperative API that does not map onto props alone: a model plus factories, an attach call with coordinates, a size group you join from elsewhere in the tree. `@gtkx/components` is a hand-written layer that gives those a declarative shape, and `@gtkx/react` ships the hooks that bridge GObject state into React.
+
+`@gtkx/components` is a separate install:
+
+```bash
+npm install @gtkx/components@rc
+```
+
+The hooks in [Hooks](#hooks) below come from `@gtkx/react`, which every GTKX project already has.
 
 ## List components
 
 ### ListView
 
-`ListView<T, S>` wraps `Gtk.ListView` and removes its `model`, `factory`, and `headerFactory` props: you pass data and a renderer instead. This is the Tasks app's multiple-selection view, adapted from `examples/tutorial`:
+`ListView<T, S>` wraps `Gtk.ListView` and removes its `model`, `factory`, and `headerFactory` props: you pass data and a renderer instead. Selection is controlled, so `selectedIds` and `onSelectionChanged` keep it in React state:
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -28,6 +37,8 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 ```
 
 Give your `ItemNode`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
+
+To group rows under headers, pass `sections` in place of `items`. Each `SectionNode` holds its own `data` array of `ItemNode`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
 
 ### GridView
 
@@ -79,7 +90,7 @@ Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to
 
 ### DropDown
 
-`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus separate factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
+`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus separate factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection, or `sections` plus `renderHeader` when the popup rows should be grouped. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
 
 ```tsx
 import { DropDown } from "@gtkx/components";
@@ -90,6 +101,8 @@ import { DropDown } from "@gtkx/components";
     onSelectionChanged={(id) => setSourceType(id)}
 />
 ```
+
+The backing widget comes from the `component` prop. Leave it out for a plain `Gtk.DropDown`, or pass `AdwComboRow` to present the same choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
 
 ## Menu
 
@@ -214,21 +227,17 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 </GtkBox>
 ```
 
-## The Adwaita entry point: @gtkx/components/adw
-
-**`Dialog`** presents an Adwaita dialog (its `component`, defaulting to `AdwDialog`) while it is mounted and closes it on unmount, so dialog visibility becomes ordinary conditional rendering. See [Modals and Portals](/guide/modals-and-portals) for the present-on-mount, close-on-unmount contract, and [Mounting dialogs](/tutorial/actions-menus-shortcuts#mounting-dialogs) for the `onClose` wiring.
-
 ## Hooks
 
 **`useApplication(): Gtk.Application`** returns the running application object from the nearest application element, and throws when called outside one. Use it for application-level imperative calls such as `sendNotification` or `addAction`.
 
-**`useParentWindow(): Gtk.Window | null`** returns the nearest ancestor window, or `null` when there is none. It is how components like `Dialog` find their default anchor without threading a window prop through the tree.
+**`useParentWindow(): Gtk.Window | null`** returns the nearest ancestor window, or `null` when there is none. See [Finding the parent window](/guide/modals-and-portals#finding-the-parent-window).
 
 **`useProperty(object, propertyName)`** subscribes to a GObject property and returns its current value, re-rendering on change and returning `undefined` while the object is unresolved. The name is the camelCase property name, completed and typed from the bindings, and the notify detail it listens on is derived from it. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
 
 **`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SchemaRef` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
 
-```tsx
+```ts
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 
@@ -237,17 +246,19 @@ const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
 
 **`useBindSetting(schema, key, object, property, flags?)`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
 
-```tsx
+```ts
 useBindSetting(schema, "window-width", windowRef, "defaultWidth");
 useBindSetting(schema, "window-height", windowRef, "defaultHeight");
 ```
 
-**`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):
+**`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. The handler receives the signal's own arguments and nothing else: unlike a JSX `on*` prop, it is not passed the emitting object, which you already hold. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):
 
-```tsx
+```ts
 import { useSignal } from "@gtkx/react";
 
-useSignal(window, "notify::fullscreened", () => setFullscreened(window.current?.isFullscreen() ?? false), { immediate: true });
+useSignal(windowRef, "notify::fullscreened", () => setFullscreened(windowRef.current?.isFullscreen() ?? false), {
+    immediate: true,
+});
 ```
 
 ## Next

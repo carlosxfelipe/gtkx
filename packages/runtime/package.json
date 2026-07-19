@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/runtime",
     "version": "1.0.0-rc.1",
-    "description": "Hand-written FFI runtime for GTKX: GObject lifecycle, GValue marshalling, signals, and the class registry the generated bindings call into",
+    "description": "FFI runtime the generated GTKX bindings call into: type descriptors, GValue marshalling, signals, GObject lifecycle",
     "keywords": [
         "gtkx",
         "gtk",

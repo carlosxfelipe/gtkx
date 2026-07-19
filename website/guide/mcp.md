@@ -1,4 +1,5 @@
 ---
+title: "MCP"
 description: "Give AI coding agents eyes and hands on your running app: the @gtkx/mcp server exposes the widget tree, queries, clicks, typing, screenshots, and a searchable API reference for your generated bindings over the Model Context Protocol."
 ---
 
@@ -29,13 +30,13 @@ All of this is development tooling. The MCP client is part of the CLI's dev runn
 `@gtkx/testing` must be resolvable from your project. Every widget tool except `gtkx_list_apps` loads it through your app's module graph and fails without it; the API reference tools never touch the app. Projects scaffolded with the testing option already have it. Otherwise install it:
 
 ```bash
-npm install -D @gtkx/testing
+npm install -D @gtkx/testing@rc
 ```
 
 Nothing else is needed on the app side: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server. For Claude Code:
 
 ```bash
-claude mcp add gtkx -- npx -y @gtkx/mcp
+claude mcp add gtkx -- npx -y @gtkx/mcp@rc
 ```
 
 For any other MCP client, the standard `mcpServers` configuration looks like this:
@@ -45,7 +46,7 @@ For any other MCP client, the standard `mcpServers` configuration looks like thi
     "mcpServers": {
         "gtkx": {
             "command": "npx",
-            "args": ["-y", "@gtkx/mcp"]
+            "args": ["-y", "@gtkx/mcp@rc"]
         }
     }
 }
@@ -62,7 +63,7 @@ The server groups its tools into inspection, interaction, and the API reference:
 | `gtkx_list_apps` | Inspection | List connected apps and their open windows |
 | `gtkx_get_widget_tree` | Inspection | Dump an app's widget hierarchy with IDs |
 | `gtkx_query_widgets` | Inspection | Find widgets by role, text, name, or label |
-| `gtkx_get_widget_props` | Inspection | Read one widget's serialized properties |
+| `gtkx_get_widget_props` | Inspection | Read one widget's summary and its subtree |
 | `gtkx_take_screenshot` | Inspection | Capture a window as a PNG |
 | `gtkx_click` | Interaction | Click a widget |
 | `gtkx_type` | Interaction | Type into an editable widget |
@@ -79,7 +80,7 @@ The read-only tools carry the MCP `readOnlyHint` annotation, so clients that gat
 
 **`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. Each widget appears as a tag named after its class, with its `id`, widget `name`, and accessible `role` as attributes, and its text content nested inside. A widget that is insensitive or invisible also carries an `accessible-disabled` or `accessible-hidden` flag. The output is truncated at 7000 characters; raise the limit by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`. An excerpt looks like this:
 
-```
+```html
 <Window id="0" name="GtkWindow" role="window">
   <Box id="1" name="GtkBox" role="generic">
     <Label id="2" name="GtkLabel" role="label">
@@ -109,7 +110,7 @@ This is the map the agent navigates by, and the fullest source of the widget IDs
 
 That call finds every button whose accessible name is "New List" and returns each match with its ID and serialized properties. These are the same queries as `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` in `@gtkx/testing`, with the same matching semantics, so anything you have learned about querying in tests transfers directly.
 
-**`gtkx_get_widget_props`** takes a `widgetId` and returns that widget's serialized state. Use it to check a single widget without re-fetching the tree, for example to confirm a button became insensitive (its `sensitive` flag) or a row picked up a CSS class (its `cssClasses`).
+**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget, plus the same summary for every widget beneath it: type, accessible role, name, text, sensitivity, visibility, and CSS classes. That fixed set is what the tool reads, not arbitrary GObject properties, so use it to re-check one branch of the interface after an interaction, for example to confirm a button became insensitive (its `sensitive` flag) or a row picked up a CSS class (its `cssClasses`).
 
 **`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine, creating directories as needed, which is how agents save screenshots into a repository for documentation or visual comparison. A screenshot shows results but cannot be clicked; widget IDs for interaction always come from the tree or a query.
 
@@ -141,7 +142,7 @@ The reference tools answer from the same GObject-Introspection data your binding
 
 Element pages match the ones `gtkx docs` generates: hierarchy, children, props, `on<Signal>` handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest.
 
-The server resolves which project to document from the connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries and `elementProps`. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call takes a moment and later ones are instant.
+The server resolves which project to document from the first connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries and `elementProps`. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call takes a moment and later ones are instant.
 
 The same pages are also published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page, with completion wired up for both namespace and symbol names.
 

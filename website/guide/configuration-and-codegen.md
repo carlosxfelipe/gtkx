@@ -1,4 +1,5 @@
 ---
+title: "Configuration and Codegen"
 description: "Configuring GTKX with gtkx.config.ts, what codegen generates into node_modules/.gtkx, how staleness is detected, and how GIR becomes the typed JSX prop model."
 ---
 
@@ -19,11 +20,11 @@ export default defineConfig({
 });
 ```
 
-For sharing a base config across packages, `mergeConfig(base, override)` deep-merges configs with the override winning on conflict.
+For sharing a base config across packages, `mergeConfig(base, override)` deep-merges configs with the override winning on conflict. The config is loaded per mode, so a `$development` or `$production` block layers over the top-level values when `gtkx dev` or `gtkx build` reads the file.
 
 ## Option reference
 
-Every option, its type, and default is in the [@gtkx/config reference](/reference/@gtkx/config/). The basic ones are:
+`defineConfig` accepts:
 
 **`applicationId`** is the only required option. It must be a valid `g_application_id_is_valid` ID, reverse-DNS form such as `org.example.MyApp`. It identifies your app to D-Bus and GNOME, and it flows into your component tree automatically (see [How applicationId flows](#how-applicationid-flows) below).
 
@@ -33,14 +34,20 @@ Every option, its type, and default is in the [@gtkx/config reference](/referenc
 
 **`reactCompiler`** controls the React Compiler, which is enabled by default. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
 
+**`elementProps`** layers your own element prop rules on top of the built-in set, covered in [Customizing elements with elementProps](#advanced-customizing-elements-with-elementprops) below. The rule shapes are typed in the [@gtkx/config reference](/reference/@gtkx/config/).
+
+**`codegen`** controls binding generation, which is on by default. Set it to `false` for a project that already has a binding store installed, such as an example inside a workspace that shares the store built at the root: the CLI then resolves that installed store instead of generating its own. A project with generation turned off has no GIR data of its own, so `gtkx docs` has nothing to document there.
+
 ## What codegen emits
 
 Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx` so imports resolve without either package appearing in your `package.json`:
 
-- **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. Reach for them for what only the GNOME platform provides; for everything else, prefer the Node standard library, as [Why GTKX](/guide/why-gtkx) explains. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, which codegen builds in a temporary directory and then renames into place, so a crash never leaves half a package.
+- **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. Reach for them for what only the GNOME platform provides, and use the Node standard library for everything else. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, which codegen builds in a temporary directory and then renames into place, so a crash never leaves half a package.
 - **`@gtkx/jsx`** (in `node_modules/.gtkx/jsx`) holds the React layer: per-namespace modules exporting one PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a global `React.JSX.IntrinsicElements` augmentation so the elements type-check. It also emits a `metadata` module recording, per element, the signal-handler-to-signal-name map, the construct-only and constructable prop sets, the GIR default values, and the merged element prop rules. The reconciler reads that metadata at runtime through the `virtual:gtkx-config` module the CLI's Vite plugin serves. The same pass that generates your types generates that metadata, so your types and runtime prop application cannot drift.
 
-Alongside the stores, the CLI writes `node_modules/.gtkx/env.d.ts` with a typed module declaration for every `.gschema.xml` file under your data directory, keyed by its `#data/...` import specifier. Each key's GVariant type maps to a natural TypeScript type:
+Both stores are generated code standing on a hand-written floor: `@gtkx/runtime`, the dependency the scaffolder installs for you. It owns the type descriptors behind every FFI call, GValue marshalling, signal connection, and the registry that maps a native handle back to its JavaScript object. It is also where you reach when generated bindings are not enough, chiefly `registerClass` for defining a GObject subclass of your own. Its surface is in the [@gtkx/runtime reference](/reference/@gtkx/runtime/).
+
+Alongside the stores, the CLI writes `node_modules/.gtkx/env.d.ts` with a typed module declaration for every `.gschema.xml` file under your data directory (the folder your `package.json` `imports` field maps `#data/*` to, `data/` in a scaffolded project), keyed by its `#data/...` import specifier. Each key's GVariant type maps to a natural TypeScript type:
 
 | GVariant type | TypeScript type |
 | --- | --- |
@@ -98,7 +105,7 @@ gtkx docs
 
 By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
 
-Run `gtkx docs --help` for the output-directory, base-path, and force flags. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop above appear in the generated pages too.
+Run `gtkx docs --help` if you need the pages somewhere else or their links rooted elsewhere. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop in [Customizing elements with elementProps](#advanced-customizing-elements-with-elementprops) appear in the generated pages too.
 
 ## Advanced: Customizing elements with elementProps
 
@@ -110,7 +117,7 @@ Property setting alone cannot express everything GTK4 does. Adding a child is `a
 - **`lazy`**: a property applied after construction rather than during it, optionally deferred until a `lookup` method succeeds; `GtkStack`'s `visibleChildName` waits for `getChildByName` to find the named child.
 - **`list`**: an array prop mapped to per-item calls: `add` per item, plus optional `remove` and `clear`. `GtkScale`'s `marks` uses `addMark` and `clearMarks`.
 
-User rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, while the `cursor` property only accepts an already constructed `Gdk.Cursor`. One config entry turns the method into a prop:
+User rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. One config entry turns the method into a prop:
 
 ```ts
 import { defineConfig } from "@gtkx/config";

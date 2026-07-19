@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/mcp",
     "version": "1.0.0-rc.1",
-    "description": "MCP server for AI-powered interaction with GTKX applications",
+    "description": "Model Context Protocol server that lets an agent inspect and drive a running GTKX application",
     "keywords": [
         "gtkx",
         "gtk",

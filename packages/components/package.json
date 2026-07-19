@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/components",
     "version": "1.0.0-rc.1",
-    "description": "Hand-written high-level GTKX components: list, grid, column, drop-down, menu, constraint-layout, fixed, overlay, and size-group abstractions over the generated bindings",
+    "description": "High-level GTKX components for declarative collection views, menus, and containers with attach-time placement",
     "keywords": [
         "gtkx",
         "gtk",

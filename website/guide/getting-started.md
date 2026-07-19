@@ -1,23 +1,24 @@
 ---
-description: "Scaffold a GTKX app with npm create gtkx@rc, meet the CLI and the dev loop, and watch a GTK4 window hot-reload as you edit TypeScript."
+title: "Getting Started"
+description: "Scaffold a GTKX app with npm create gtkx@rc: what you need installed, what the scaffolder writes, the dev loop, and where the entry point mounts your tree."
 ---
 
 # Getting Started
 
-This guide will walk you through the creation of a new GTKX app using the CLI
+The GTKX CLI scaffolds a new app, installs its dependencies, and gives you a dev command that patches a running GTK4 window through Fast Refresh as you edit TypeScript.
 
 ## What you need
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4 (4.20 or later) development libraries installed
+- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
 - Node.js 24 or later
 
-The native package (`@gtkx/native`) ships prebuilt binaries for x64 and arm64 glibc Linux.
+The native package (`@gtkx/native`) ships prebuilt binaries for x64 and arm64 glibc Linux. On other targets, build it from the GTKX repository with a Rust toolchain.
 
 ## Scaffolding a new app
 
-Start any new project with the official initializer:
+Start any new project with the scaffolder:
 
 ::: code-group
 
@@ -35,7 +36,7 @@ yarn create gtkx@rc
 
 :::
 
-It prompts for the project directory, an application ID in reverse-domain form, your package manager, and whether to include TypeScript and a Vitest testing setup.
+It prompts for the project directory, an application ID in reverse-DNS form, your package manager, and whether to include TypeScript and a Vitest testing setup.
 
 ```bash
 npm create gtkx@rc -- my-app --yes --application-id com.example.myapp
@@ -43,15 +44,21 @@ cd my-app
 npm run dev
 ```
 
-This launches the app in dev mode. The generated starter is a tiny counter app showcasing the foundational capabilities of GTKX.
+This launches the app in dev mode. The generated starter is a counter: a window with a label and a button wired to React state.
+
+## The dev loop
+
+`npm run dev` runs `gtkx dev`. It brings your generated bindings up to date (see [Configuration and Codegen](/guide/configuration-and-codegen#staleness-and-regeneration)), then loads your entry module through a Vite dev server and watches your files. Saving a component patches it into the window that is already open through Fast Refresh; a change Fast Refresh cannot patch restarts the app for you. Leave the command running while you work.
+
+When you are ready to ship, `npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 and Adwaita runtime libraries. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Making It a Real Application](/tutorial/packaging).
 
 ## Project structure
 
 Here is what the scaffolder writes for the counter starter:
 
-```
+```text
 my-app/
-├─ .gitignore            # node_modules/, dist/, *.log
+├─ .gitignore
 ├─ gtkx.config.ts        # application ID + which native libraries to bind
 ├─ package.json          # scripts, deps, the #data/* import
 ├─ tsconfig.json
@@ -63,10 +70,6 @@ my-app/
 └─ tests/
    └─ app.test.tsx
 ```
-
-## Configuration
-
-`gtkx.config.ts` lets you configure your application and codegen. See [Configuration and Codegen](/guide/configuration-and-codegen) for every option and how the CLI turns them into typed bindings.
 
 ## The entry point: `src/index.tsx`
 
@@ -81,6 +84,8 @@ createRoot().render(<App />);
 
 The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [Your First Window](/tutorial/your-first-window)). Either way, the application element picks up the `applicationId` from your config automatically.
 
+Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root, and unmounting the application element quits the application it started. It returns `true`, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}` and lets React tear the tree down.
+
 ## Next
 
-With the project scaffolded and the dev server running, continue to [Configuration and Codegen](/guide/configuration-and-codegen) for the full option and codegen reference. To tour the Tasks app end to end, start the [Tutorial](/tutorial/).
+With the project scaffolded and `gtkx dev` running, continue to [Configuration and Codegen](/guide/configuration-and-codegen) for the full option and codegen reference. To tour the Tasks app end to end, start the [Tutorial](/tutorial/).

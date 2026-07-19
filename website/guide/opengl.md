@@ -1,4 +1,5 @@
 ---
+title: "OpenGL"
 description: "Draw with OpenGL in a GTKX app using @gtkx/gl: generated OpenGL 4.6 core bindings, override helpers, and the GtkGLArea realize, resize, render, and unrealize flow."
 ---
 
@@ -9,14 +10,14 @@ description: "Draw with OpenGL in a GTKX app using @gtkx/gl: generated OpenGL 4.
 It is a separate install:
 
 ```bash
-npm install @gtkx/gl
+npm install @gtkx/gl@rc
 ```
 
 ## What the package contains
 
-Most of `@gtkx/gl` is generated. Codegen reads Khronos's `gl.xml` registry, the same specification the C headers come from, and emits the whole OpenGL 4.6 core profile. Every command is a plain function bound to `libGL.so.1` through the FFI in `@gtkx/runtime`, and every enum is an exported constant.
+Most of `@gtkx/gl` is generated. Codegen reads Khronos's `gl.xml` registry, the same specification the C headers come from, and emits the OpenGL 4.6 core profile. Commands whose C shape the registry does not pin down are left out, which is why the generic state queries (`getIntegerv` and its siblings, whose output length depends on the token you pass) are not there: reach for the typed getters instead, such as `getShaderiv`, `getProgramiv`, and `getBufferParameteriv`. Every command is a plain function bound to `libGL.so.1` through the FFI in `@gtkx/runtime`, and every enum is an exported constant.
 
-Names follow one rule: drop the `gl` prefix and lowercase the first letter. `glCompileShader` is `compileShader`, `glDrawArrays` is `drawArrays`, and `GL_TRIANGLES` is `TRIANGLES`. Enum groups become TypeScript types, so `createShader` takes a `ShaderType` rather than a bare number, and passing `ARRAY_BUFFER` where a shader type belongs is a type error.
+Commands drop the `gl` prefix and lowercase the first letter, so `glCompileShader` is `compileShader` and `glDrawArrays` is `drawArrays`. Enums drop `GL_` and keep their case, so `GL_TRIANGLES` is `TRIANGLES`. Enum groups become named TypeScript aliases, so `createShader` is declared as taking a `ShaderType` rather than a bare number. The aliases are documentation: they resolve to `GLenum`, so they name the expected family without constraining the value.
 
 Codegen also derives singular helpers for the object creation and deletion pairs, because asking for exactly one object is the common case. `genBuffer()` returns a single name where `genBuffers(n)` returns an array, and `deleteBuffer(name)` deletes one. Vertex arrays, queries, and the other object families work the same way.
 
@@ -32,14 +33,18 @@ Both halves come out of one entry point, and namespacing the import keeps the ca
 import * as gl from "@gtkx/gl";
 ```
 
+Every command, enum, and type is listed in the [@gtkx/gl reference](/reference/@gtkx/gl/).
+
 ## The GtkGLArea signal flow
 
 `GtkGLArea` is the intrinsic element you draw into. GTK4 creates a `Gdk.GLContext` for it, gives it a framebuffer, and emits the signals that sequence everything you do:
 
-- `onRealize` fires when the widget receives its context. Compile shaders and upload geometry here, after calling `area.makeCurrent()`: GTK4 does not make the context current for you in this signal.
+- `onRealize` hands you the area when the widget receives its context. Compile shaders and upload geometry here, after calling `area.makeCurrent()`: GTK4 does not make the context current for you in this signal.
 - `onResize` fires with the framebuffer width and height before rendering, which is where `viewport` belongs.
 - `onRender` receives the `Gdk.GLContext`, runs with that context current and the framebuffer bound, and returns `true` to stop the signal.
-- `onUnrealize` fires when the widget loses its context. Delete every GL object you created, again after `area.makeCurrent()`.
+- `onUnrealize` hands you the area when it loses its context. Delete every GL object you created, again after `area.makeCurrent()`.
+
+Like every JSX `on*` prop, these handlers receive the area that emitted the signal as their final argument, so a handler that only needs the widget it fired on can take it from the parameter list instead of a ref.
 
 Realize and unrealize come from `Gtk.Widget`, so they track the widget's lifetime rather than the component's. React mounts your component first, and realization follows when the widget's window is shown.
 
@@ -49,7 +54,7 @@ Several props shape the context before it exists. `useEs` asks for an OpenGL ES 
 
 This is the gtk-demo OpenGL Area demo, which draws one shaded triangle. Compiling a shader shows the generated commands and the info log override together:
 
-```tsx
+```ts
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
@@ -69,7 +74,27 @@ const compileShader = (type: number, source: string, name: string): number => {
 };
 ```
 
-`initGL` links the compiled shaders into a program, then creates the vertex array and buffer the draw call needs. Buffer uploads take the byte length next to the view, since the binding passes both to the driver:
+Linking is the same shape, with `getProgramInfoLog` reporting what went wrong:
+
+```ts
+const linkProgram = (vertexShader: number, fragmentShader: number): number => {
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.bindAttribLocation(program, 0, "in_position");
+    gl.bindAttribLocation(program, 1, "in_color");
+    gl.linkProgram(program);
+    if (!gl.getProgramiv(program, gl.LINK_STATUS)) {
+        const log = gl.getProgramInfoLog(program);
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+        throw new Error(`Shader program linking failed: ${log}`);
+    }
+    return program;
+};
+```
+
+`initGL` calls both, then creates the vertex array and buffer the draw call needs. The GLSL sources, the interleaved `VERTEX_DATA`, and `createRotationMatrix` live in `examples/gtk-demo/src/demos/opengl/glarea.tsx`. Buffer uploads take the byte length next to the view, since the binding passes both to the driver:
 
 ```ts
 interface GLState {
@@ -101,6 +126,8 @@ const initGL = (api: Gdk.GLAPI): GLState => {
 
     gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 8 * 4, 0);
     gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 8 * 4, 4 * 4);
+    gl.enableVertexAttribArray(1);
 
     const mvpLocation = gl.getUniformLocation(program, "mvp");
     gl.bindVertexArray(0);
@@ -117,9 +144,7 @@ const GLAreaDemo = () => {
     const glStateRef = useRef<GLState | null>(null);
     const [rotationX, setRotationX] = useState(0);
 
-    const handleRealize = () => {
-        const area = glAreaRef.current;
-        if (!area) return;
+    const handleRealize = (area: Gtk.GLArea) => {
         area.makeCurrent();
         if (area.getError()) return;
         try {
@@ -130,9 +155,8 @@ const GLAreaDemo = () => {
         }
     };
 
-    const handleUnrealize = () => {
-        const area = glAreaRef.current;
-        if (area) area.makeCurrent();
+    const handleUnrealize = (area: Gtk.GLArea) => {
+        area.makeCurrent();
         const state = glStateRef.current;
         if (!state) return;
         gl.deleteBuffer(state.vbo);
@@ -181,7 +205,7 @@ Every `gl` call is a direct FFI call into `libGL.so.1` on the one thread your co
 
 GL object names are not rendering data, so keep them in refs and out of state. A re-render does not repaint the area: nothing about a React update reaches the framebuffer. What repaints is `area.queueRender()`, so a control that changes the scene sets its state and queues a render:
 
-```tsx
+```ts
 const handleAxisChanged = (value: number) => {
     setRotationX((value * Math.PI) / 180);
     glAreaRef.current?.queueRender();
@@ -190,7 +214,7 @@ const handleAxisChanged = (value: number) => {
 
 With `autoRender` (the default), the render signal is emitted every time the widget draws. Setting `autoRender={false}` keeps the previous frame's contents until you call `queueRender()`, which suits a scene that changes seldom and costs a lot to draw.
 
-For continuous animation, drive frames from the frame clock rather than from React. The Gears demo registers a tick callback on the area with `Gtk.Widget.addTickCallback`, advances its rotation in a ref on each tick, and calls `queueRender()`. State changes rarely there, only to publish the measured frame rate to a label.
+For continuous animation, drive frames from the frame clock rather than from React. The Gears demo registers a tick callback on the area with `Gtk.Widget.addTickCallback`, advances its rotation in a ref on each tick, and calls `queueRender()`. The frame loop stays entirely in refs: it samples the measured frame rate into one, and a separate interval publishes that value to a label.
 
 ## Reporting failures to the widget
 
