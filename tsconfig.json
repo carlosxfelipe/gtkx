@@ -3,6 +3,7 @@
     "include": [
         "**/scripts",
         "**/vitest.config.ts",
+        "packages/vitest/src/dbus-native.d.ts",
         "vitest.config.base.ts",
         "gtkx.config.base.ts",
         ".dependency-cruiser.js"
