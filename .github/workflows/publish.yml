@@ -79,19 +79,24 @@ jobs:
             echo "::error::OIDC token request variables are unavailable; the publish job needs id-token: write"
             exit 1
           fi
+          echo "::add-mask::${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
           {
-            echo "ACTIONS_ID_TOKEN_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL}"
-            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+            echo "NPM_OIDC_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL}"
+            echo "NPM_OIDC_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
           } >> "$GITHUB_ENV"
 
       - name: Release
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm release
+          command: >-
+            echo "oidc-in-container=${NPM_OIDC_REQUEST_URL:+yes}" &&
+            export ACTIONS_ID_TOKEN_REQUEST_URL="$NPM_OIDC_REQUEST_URL"
+            ACTIONS_ID_TOKEN_REQUEST_TOKEN="$NPM_OIDC_REQUEST_TOKEN" &&
+            pnpm release
           extra-env: >-
             NPM_CONFIG_PROVENANCE
-            ACTIONS_ID_TOKEN_REQUEST_URL
-            ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            NPM_OIDC_REQUEST_URL
+            NPM_OIDC_REQUEST_TOKEN
             GITHUB_ACTIONS
             GITHUB_SERVER_URL
             GITHUB_REPOSITORY
