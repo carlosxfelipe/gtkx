@@ -70,7 +70,7 @@ The portaled window has no widget parent (`getParent()` returns `null`), but `tr
 
 ## Declarative dialogs
 
-Adwaita dialogs have an imperative API: you call `dialog.present(parent)` to show one and `dialog.forceClose()` to dismiss it. GTKX wraps `AdwDialog` and every element derived from it, so that protocol becomes a declarative React contract: **mounting the element presents the dialog, unmounting it closes the dialog.**
+Adwaita dialogs have an imperative API: you call `dialog.present(parent)` to show one and `dialog.forceClose()` to dismiss it. GTKX wraps `AdwDialog` and every element derived from it, so that protocol becomes a declarative React contract: **mounting the element presents the dialog, unmounting it closes the dialog.** These elements live in `@gtkx/jsx/adw`, which exists once `Adw-1` is in your `libraries`.
 
 ```tsx
 import { AdwDialog } from "@gtkx/jsx/adw";

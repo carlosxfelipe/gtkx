@@ -126,7 +126,7 @@ describe("scaffold (top-level generated files)", () => {
 
         const content = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(content).toContain('import { defineConfig } from "@gtkx/config"');
-        expect(content).toContain('libraries: ["Gtk-4.0", "Adw-1"]');
+        expect(content).toContain('libraries: ["Gtk-4.0"]');
     });
 
     it("writes .gitignore with node_modules and dist", async () => {

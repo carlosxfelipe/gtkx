@@ -1,8 +1,6 @@
 import type { Call, ContainerProp, ElementProp } from "@gtkx/config";
 
-export type ElementComponentName = "createWindowComponent" | "createApplicationComponent" | "createDialogComponent";
-
-type ElementComponent = { types: string[]; componentName: ElementComponentName };
+export type ElementComponent = { types: string[]; module: string; export: string };
 type ManyMethods = Pick<ContainerProp, "append" | "remove">;
 
 const container = (
@@ -64,9 +62,9 @@ const forEach = (types: string[], build: () => ElementProp[]): Record<string, El
     Object.fromEntries(types.map((type) => [type, build()]));
 
 export const BUILT_IN_ELEMENT_COMPONENTS: ElementComponent[] = [
-    { types: ["GtkApplication"], componentName: "createApplicationComponent" },
-    { types: ["GtkWindow"], componentName: "createWindowComponent" },
-    { types: ["AdwDialog"], componentName: "createDialogComponent" },
+    { types: ["GtkApplication"], module: "@gtkx/react/internal", export: "createApplicationComponent" },
+    { types: ["GtkWindow"], module: "@gtkx/react/internal", export: "createWindowComponent" },
+    { types: ["AdwDialog"], module: "@gtkx/react/adw", export: "createDialogComponent" },
 ];
 
 const CONTROLLER_METHODS = { append: "addController", remove: "removeController" } satisfies ManyMethods;

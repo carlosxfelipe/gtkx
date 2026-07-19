@@ -17,5 +17,5 @@ export {
     writeDocs,
 } from "./docs/pipeline.js";
 export { resolveGirPath } from "./gir/gir-path.js";
-export { resolveLibraries } from "./gir/libraries.js";
+export { discoverGirNamespaces, resolveLibraries } from "./gir/libraries.js";
 export { runCodegen } from "./runner.js";

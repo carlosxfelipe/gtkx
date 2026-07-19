@@ -27,7 +27,7 @@ export const resolveLibraries = (libraries: Config["libraries"], girPath: string
     return [...new Set([...(hasGtk ? [] : DEFAULT_LIBRARIES), ...libraries])];
 };
 
-const discoverGirNamespaces = (girPath: string[]): string[] => {
+export const discoverGirNamespaces = (girPath: string[]): string[] => {
     const highestByName = new Map<string, { version: string; identifier: string }>();
 
     for (const dir of girPath) {

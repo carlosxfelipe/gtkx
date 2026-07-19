@@ -11,8 +11,9 @@ The GTKX CLI scaffolds a new app, installs its dependencies, and gives you a dev
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
 - Node.js 24 or later
+- The GTK4 and GLib (2.68 or later) development packages, whose GObject-Introspection data codegen reads to generate your bindings
+- The Adwaita development package, once you add `Adw-1` to your `libraries`
 
 The native package (`@gtkx/native`) ships prebuilt binaries for x64 and arm64 glibc Linux. On other targets, build it from the GTKX repository with a Rust toolchain.
 
@@ -50,7 +51,7 @@ This launches the app in dev mode. The generated starter is a counter: a window 
 
 `npm run dev` runs `gtkx dev`. It brings your generated bindings up to date (see [Configuration and Codegen](/guide/configuration-and-codegen#staleness-and-regeneration)), then loads your entry module through a Vite dev server and watches your files. Saving a component patches it into the window that is already open through Fast Refresh; a change Fast Refresh cannot patch restarts the app for you. Leave the command running while you work.
 
-When you are ready to ship, `npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 and Adwaita runtime libraries. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Making It a Real Application](/tutorial/packaging).
+When you are ready to ship, `npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Making It a Real Application](/tutorial/packaging).
 
 ## Project structure
 
@@ -82,7 +83,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [Your First Window](/tutorial/your-first-window)). Either way, the application element picks up the `applicationId` from your config automatically.
+The counter starter wraps its window in `<GtkApplication>`; the Tasks app adds `Adw-1` to its `libraries` and swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [Your First Window](/tutorial/your-first-window)). Either way, the application element picks up the `applicationId` from your config automatically.
 
 Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root, and unmounting the application element quits the application it started. It returns `true`, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}` and lets React tear the tree down.
 

@@ -85,6 +85,7 @@ describe("build (plugin order)", () => {
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames).toEqual([
             "gtkx:config",
+            "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
             "gtkx:resources",
@@ -103,6 +104,7 @@ describe("build (plugin order)", () => {
         expect(pluginNames[0]).toBe("user-plugin");
         expect(pluginNames.slice(1)).toEqual([
             "gtkx:config",
+            "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
             "gtkx:resources",

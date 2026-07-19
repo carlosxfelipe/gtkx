@@ -36,6 +36,11 @@
             "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
             "default": "./dist/internal.js"
+        },
+        "./adw": {
+            "source": "./src/libraries/adw/index.ts",
+            "types": "./dist/libraries/adw/index.d.ts",
+            "default": "./dist/libraries/adw/index.js"
         }
     },
     "sideEffects": false,

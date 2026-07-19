@@ -104,6 +104,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
         const names = deps.plugins().map((p) => p.name);
         expect(names).toEqual([
             "gtkx:config",
+            "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
             "gtkx:resources",

@@ -127,6 +127,24 @@
             }
         },
         {
+            "includes": ["packages/*/src/**", "!packages/react/src/libraries/adw/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "paths": {
+                                    "@gtkx/gi/adw": "Adwaita must stay out of the core graph. Put Adwaita-dependent code under packages/react/src/libraries/adw and reach it from the generated adw module.",
+                                    "@gtkx/jsx/adw": "Adwaita must stay out of the core graph. Put Adwaita-dependent code under packages/react/src/libraries/adw and reach it from the generated adw module."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
             "includes": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx"],
             "linter": {
                 "rules": {

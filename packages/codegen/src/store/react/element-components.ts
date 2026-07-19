@@ -3,7 +3,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import { BUILT_IN_ELEMENT_COMPONENTS, type ElementComponentName } from "./built-ins.js";
+import { BUILT_IN_ELEMENT_COMPONENTS, type ElementComponent } from "./built-ins.js";
 import type { ElementPropTypegen, LazyElementSpec } from "./element-prop-types.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
@@ -117,22 +117,22 @@ const renderCandidateExport = (candidate: GlibNamedClass, library: Library, impo
     const wrapper = resolveElementComponent(ancestry);
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
-    if (wrapper !== undefined) imports.addNamed("@gtkx/react/internal", wrapper, false);
+    if (wrapper !== undefined) imports.addNamed(wrapper.module, wrapper.export, false);
     return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, wrapper)}`;
 };
 
-const resolveElementComponent = (types: Set<string>): ElementComponentName | undefined => {
+const resolveElementComponent = (types: Set<string>): ElementComponent | undefined => {
     for (const entry of BUILT_IN_ELEMENT_COMPONENTS) {
-        if (entry.types.some((type) => types.has(type))) return entry.componentName;
+        if (entry.types.some((type) => types.has(type))) return entry;
     }
     return undefined;
 };
 
-const renderElementComponentExport = (glibName: string, wrapper: ElementComponentName | undefined): string => {
+const renderElementComponentExport = (glibName: string, wrapper: ElementComponent | undefined): string => {
     const propsType = `${glibName}Props`;
     if (wrapper === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent(${sourceStringLiteral(glibName)});`;
     }
     const annotation = `(props: ${propsType}) => ReactNode`;
-    return `export const ${glibName}: ${annotation} = ${wrapper}(createElementComponent(${sourceStringLiteral(glibName)}));`;
+    return `export const ${glibName}: ${annotation} = ${wrapper.export}(createElementComponent(${sourceStringLiteral(glibName)}));`;
 };

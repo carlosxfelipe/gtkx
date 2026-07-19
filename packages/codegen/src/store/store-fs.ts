@@ -50,21 +50,25 @@ export const buildManifest = (input: ManifestInput): Manifest => {
 
 export const writeStore = (params: WriteStoreParams): void => {
     const tmp = tempStoreFor(params.storeDir);
-    for (const file of params.files) {
-        writeSourceFile(tmp, file.fileName, file.source);
+    try {
+        for (const file of params.files) {
+            writeSourceFile(tmp, file.fileName, file.source);
+        }
+        compileStore({
+            storeDir: tmp,
+            files: params.files,
+            packageName: params.manifest.name,
+            exports: params.manifest.exports,
+        });
+        writePackageJson(tmp, params.manifest);
+        for (const raw of params.rawFiles ?? []) {
+            writeFileSync(join(tmp, raw.relativePath), raw.content);
+        }
+        symlinkRelative(join(tmp, "node_modules", ...params.manifest.name.split("/")), tmp);
+        swapStore(tmp, params.storeDir, params.linkDir);
+    } finally {
+        rmSync(tmp, { recursive: true, force: true });
     }
-    compileStore({
-        storeDir: tmp,
-        files: params.files,
-        packageName: params.manifest.name,
-        exports: params.manifest.exports,
-    });
-    writePackageJson(tmp, params.manifest);
-    for (const raw of params.rawFiles ?? []) {
-        writeFileSync(join(tmp, raw.relativePath), raw.content);
-    }
-    symlinkRelative(join(tmp, "node_modules", ...params.manifest.name.split("/")), tmp);
-    swapStore(tmp, params.storeDir, params.linkDir);
 };
 
 type WriteStoreParams = {
