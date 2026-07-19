@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 const ALREADY_PUBLISHED = /cannot publish over|EPUBLISHCONFLICT|previously published version/i;
 
 export const publishPackage = (packageDir: string, tag: string): void => {
+    console.error(`[oidc-probe] ${packageDir}: idTokenLen=${(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN ?? "").length}`);
     const result = spawnSync(
         "pnpm",
         ["publish", "--access", "public", "--no-git-checks", "--provenance", "--tag", tag],
