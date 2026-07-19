@@ -7,7 +7,7 @@ import { distTagForVersion, type PackageManifest } from "./publish-manifest.js";
 const manifest = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as PackageManifest;
 process.env.npm_config_tag = distTagForVersion(manifest.version ?? "");
 
-execSync("napi prepublish -t npm", {
+execSync("napi prepublish -t npm --no-gh-release", {
     cwd: process.cwd(),
     stdio: "inherit",
 });

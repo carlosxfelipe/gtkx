@@ -83,7 +83,31 @@
         },
         "release": {
             "dependsOn": ["build"],
-            "cache": false
+            "cache": false,
+            "passThroughEnv": [
+                "ACTIONS_ID_TOKEN_REQUEST_URL",
+                "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+                "NPM_CONFIG_PROVENANCE",
+                "NPM_ID_TOKEN",
+                "GITHUB_ACTIONS",
+                "GITHUB_SERVER_URL",
+                "GITHUB_REPOSITORY",
+                "GITHUB_REPOSITORY_ID",
+                "GITHUB_REPOSITORY_OWNER",
+                "GITHUB_REPOSITORY_OWNER_ID",
+                "GITHUB_REF",
+                "GITHUB_SHA",
+                "GITHUB_RUN_ID",
+                "GITHUB_RUN_NUMBER",
+                "GITHUB_RUN_ATTEMPT",
+                "GITHUB_WORKFLOW",
+                "GITHUB_WORKFLOW_REF",
+                "GITHUB_EVENT_NAME",
+                "GITHUB_ACTOR",
+                "GITHUB_ACTOR_ID",
+                "GITHUB_JOB",
+                "RUNNER_ENVIRONMENT"
+            ]
         },
         "typecheck": {
             "dependsOn": ["production", "^build"],
