@@ -206,22 +206,22 @@ describe("codegen notify detail signals", () => {
     it("keys each introduced property's notify detail off GObject.Object's notify member", () => {
         const gobject = giModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
-        expect(source).toContain('"notify::source-property": ObjectSignalHandlers["notify"];');
+        expect(source).toContain('"notify::source-property": ObjectSignals["notify"];');
         expect(source).toContain('"notify::source-property": ObjectSignalEmit["notify"];');
     });
 
     it("qualifies the notify member reference across namespaces", () => {
         const gtk = giModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
-        expect(source).toContain('"notify::visible": GObject.ObjectSignalHandlers["notify"];');
+        expect(source).toContain('"notify::visible": GObject.ObjectSignals["notify"];');
         expect(source).toContain('"notify::visible": GObject.ObjectSignalEmit["notify"];');
     });
 
     it("inherits a property's notify detail through the parent map rather than re-listing it", () => {
         const gtk = giModules.find(({ directory }) => directory === "gtk");
         const source = gtk?.source ?? "";
-        const buttonHandlers = source.slice(source.indexOf("export interface ButtonSignalHandlers"));
-        const buttonBody = buttonHandlers.slice(0, buttonHandlers.indexOf("}"));
+        const buttonSignals = source.slice(source.indexOf("export interface ButtonSignals"));
+        const buttonBody = buttonSignals.slice(0, buttonSignals.indexOf("}"));
         expect(buttonBody).not.toContain('"notify::visible"');
     });
 
@@ -229,8 +229,41 @@ describe("codegen notify detail signals", () => {
         const gobject = giModules.find(({ directory }) => directory === "gobject");
         const source = gobject?.source ?? "";
         expect(source).toContain("export interface Binding {");
-        expect(source).toContain("connect<K extends keyof BindingSignalHandlers>");
+        expect(source).toContain("connect<K extends keyof BindingSignals>");
         expect(source).toContain("emit<K extends keyof BindingSignalEmit>");
+    });
+});
+
+describe("codegen property maps", () => {
+    const moduleSource = (directory: string): string =>
+        giModules.find((module) => module.directory === directory)?.source ?? "";
+
+    it("maps each introduced property to its accessor type and chains the parent map", () => {
+        const source = moduleSource("gtk");
+        expect(source).toContain("export interface ButtonProperties extends WidgetProperties {");
+        expect(source).toContain("label: string;");
+        expect(source).toContain("__properties__?: ButtonProperties;");
+    });
+
+    it("qualifies the parent map across namespaces", () => {
+        const source = moduleSource("gtk");
+        expect(source).toContain("export interface WidgetProperties extends GObject.InitiallyUnownedProperties {");
+    });
+
+    it("carries interface properties typed against the interface that declares them", () => {
+        const source = moduleSource("gtk");
+        const properties = source.slice(source.indexOf("export interface ButtonProperties"));
+        const body = properties.slice(0, properties.indexOf("}"));
+        expect(body).toContain("actionTarget: GLib.Variant | null;");
+        expect(body).not.toContain("visible: boolean;");
+    });
+
+    it("omits write-only properties", () => {
+        const source = moduleSource("gtk");
+        const properties = source.slice(source.indexOf("export interface CheckButtonProperties"));
+        const body = properties.slice(0, properties.indexOf("}"));
+        expect(body).toContain("active: boolean;");
+        expect(body).not.toContain("group:");
     });
 });
 

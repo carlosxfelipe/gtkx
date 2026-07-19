@@ -1,4 +1,4 @@
-import { sourceStringLiteral, toCamelCase, toPascalCase } from "@gtkx/utils";
+import { sourceStringLiteral, toCamelCase } from "@gtkx/utils";
 import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     isCellInout,
@@ -18,10 +18,10 @@ import type { GirClass } from "../../gir/class.js";
 import type { GirParameter, GirSignal } from "../../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
-import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
+import { parentCompanionRef } from "./companion.js";
 import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -54,7 +54,7 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): st
     ];
 };
 
-const SIGNAL_HANDLERS_SUFFIX = "SignalHandlers";
+const SIGNALS_SUFFIX = "Signals";
 const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
 export const renderSignalDeclarations = (
@@ -65,7 +65,7 @@ export const renderSignalDeclarations = (
 ): string[] => {
     const base = { context, klass, className, parentlessExtendsObject };
     const declarations = [
-        renderSignalMap({ ...base, suffix: SIGNAL_HANDLERS_SUFFIX, renderEntry: renderSignalHandlerType }),
+        renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
         renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
     ];
     if (
@@ -95,7 +95,7 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
     const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
     const signalEntries = collectClassSignals(context, klass).map((signal) => {
         const entry = `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`;
-        return suffix === SIGNAL_HANDLERS_SUFFIX ? `${renderJsDoc(signal.doc)}${entry}` : entry;
+        return suffix === SIGNALS_SUFFIX ? `${renderJsDoc(signal.doc)}${entry}` : entry;
     });
     const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
@@ -114,13 +114,8 @@ const signalMapParentRefs = (
     parentlessExtendsObject: boolean,
     suffix: string,
 ): string[] => {
-    if (klass.parent !== undefined) {
-        const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
-        const namespaceName = parentNamespace ?? context.namespace.name;
-        const name = `${toPascalCase(typeName)}${suffix}`;
-        if (namespaceName === context.namespace.name) return [name];
-        return [`${context.addCrossNamespaceImport(namespaceName)}.${name}`];
-    }
+    const parentRef = parentCompanionRef(context, klass, suffix);
+    if (parentRef !== undefined) return [parentRef];
     if (!parentlessExtendsObject) return [];
     const prerequisiteRefs = klass.prerequisites
         .map((name) => resolvePrerequisiteReference(context, name))
@@ -136,7 +131,7 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
 };
 
 const renderSignalConnectInterface = (className: string, isRootObject: boolean): string => {
-    const map = `${className}${SIGNAL_HANDLERS_SUFFIX}`;
+    const map = `${className}${SIGNALS_SUFFIX}`;
     const emitMap = `${className}${SIGNAL_EMIT_SUFFIX}`;
     const lines = [
         `__signals__?: ${map};`,
@@ -310,6 +305,6 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[]
         result.push(property.name);
     };
     for (const property of klass.properties) consider(property);
-    for (const property of collectInterfaceProperties(context, klass)) consider(property);
+    for (const { property } of collectInterfaceProperties(context, klass)) consider(property);
     return result;
 };

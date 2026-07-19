@@ -8,7 +8,8 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
-import { renderMethodReturnType } from "./method.js";
+import { isEmittableCallable } from "./callables.js";
+import { methodExportName, renderMethodReturnType } from "./method.js";
 
 const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) return false;
@@ -87,19 +88,26 @@ export const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | 
     return { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember };
 };
 
+export const resolveOwnerAccessor = (
+    context: ModuleContext,
+    property: GirProperty,
+    methods: GirFunction[],
+): ResolvedAccessor | undefined => {
+    const methodByName = new Map<string, GirFunction>();
+    const claimedNames = new Set<string>();
+    for (const method of methods) {
+        if (!isEmittableCallable(context, method)) continue;
+        methodByName.set(method.name, method);
+        claimedNames.add(methodExportName(method));
+    }
+    return resolveAccessor({ context, property, claimedNames, methodByName });
+};
+
 export const resolveAccessorType = (
     context: ModuleContext,
     property: GirProperty,
     methods: GirFunction[],
-): string | undefined => {
-    const methodByName = new Map<string, GirFunction>();
-    const claimedNames = new Set<string>();
-    for (const method of methods) {
-        methodByName.set(method.name, method);
-        claimedNames.add(toCamelCase(method.name));
-    }
-    return resolveAccessor({ context, property, claimedNames, methodByName })?.tsType;
-};
+): string | undefined => resolveOwnerAccessor(context, property, methods)?.tsType;
 
 const withAccessor = (
     args: PropertyAccessorArgs,
@@ -110,24 +118,29 @@ const withAccessor = (
     return render(accessor);
 };
 
+export const renderResolvedPropertyAccessor = (
+    context: ModuleContext,
+    property: GirProperty,
+    accessor: ResolvedAccessor,
+): string => {
+    const { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember } = accessor;
+
+    const blocks: string[] = [];
+    if (hasGetter) {
+        const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
+        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
+    }
+
+    if (writable) {
+        const setBody =
+            setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
+        blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
+    }
+    return `${renderJsDoc(property.doc)}${blocks.join("\n\n")}`;
+};
+
 export const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
-    withAccessor(args, (accessor) => {
-        const { context, property } = args;
-        const { jsName, tsType, hasGetter, writable, getterMember, getMethod, setterMember } = accessor;
-
-        const blocks: string[] = [];
-        if (hasGetter) {
-            const getBody = renderGetterBody({ context, property, getterMember, getMethod, tsType });
-            blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getBody));
-        }
-
-        if (writable) {
-            const setBody =
-                setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
-            blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
-        }
-        return `${renderJsDoc(property.doc)}${blocks.join("\n\n")}`;
-    });
+    withAccessor(args, (accessor) => renderResolvedPropertyAccessor(args.context, args.property, accessor));
 
 export const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, ({ jsName, tsType, hasGetter, writable }) => {

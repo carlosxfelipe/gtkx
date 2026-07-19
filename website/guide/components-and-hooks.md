@@ -224,7 +224,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 **`useParentWindow(): Gtk.Window | null`** returns the nearest ancestor window, or `null` when there is none. It is how components like `Dialog` find their default anchor without threading a window prop through the tree.
 
-**`useProperty(object, propertyName)`** subscribes to `notify::<property>` on a GObject and returns the property's current value, re-rendering on change and returning `undefined` while the object is unresolved. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
+**`useProperty(object, propertyName)`** subscribes to a GObject property and returns its current value, re-rendering on change and returning `undefined` while the object is unresolved. The name is the camelCase property name, completed and typed from the bindings, and the notify detail it listens on is derived from it. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
 
 **`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SchemaRef` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
 

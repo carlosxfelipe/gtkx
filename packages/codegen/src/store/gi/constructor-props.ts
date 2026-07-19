@@ -1,13 +1,13 @@
-import { sourceStringLiteral, toCamelIdentifier, toPascalCase, uniqBy } from "@gtkx/utils";
+import { sourceStringLiteral, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
+import { parentCompanionRef } from "./companion.js";
 
 const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const names = new Set<string>();
@@ -23,7 +23,7 @@ const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass)
 const collectConstructableProps = (context: ModuleContext, klass: GirClass): GirProperty[] => {
     const inherited = ancestorConstructablePropNames(context, klass);
     return uniqBy(
-        [...klass.properties, ...collectInterfaceProperties(context, klass)]
+        [...klass.properties, ...collectInterfaceProperties(context, klass).map((entry) => entry.property)]
             .filter(isConstructableProperty)
             .filter((property) => !inherited.has(toCamelIdentifier(property.name))),
         (property) => toCamelIdentifier(property.name),
@@ -31,7 +31,7 @@ const collectConstructableProps = (context: ModuleContext, klass: GirClass): Gir
 };
 
 export const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass, className: string): string => {
-    const parentRef = resolveParentPropsReference(context, klass);
+    const parentRef = parentCompanionRef(context, klass, "ConstructorProps");
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
     const lines = collectConstructableProps(context, klass).map(
         (property) =>
@@ -79,14 +79,4 @@ const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
     const body = lines.join("\n");
     return renderBlock(`constructor(${pattern}: ${className}ConstructorProps = {})`, body);
-};
-
-const resolveParentPropsReference = (context: ModuleContext, klass: GirClass): string | undefined => {
-    if (klass.parent === undefined) return undefined;
-    const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
-    const namespaceName = parentNamespace ?? context.namespace.name;
-    const propsName = `${toPascalCase(typeName)}ConstructorProps`;
-    if (namespaceName === context.namespace.name) return propsName;
-    const alias = context.addCrossNamespaceImport(namespaceName);
-    return `${alias}.${propsName}`;
 };

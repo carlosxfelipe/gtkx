@@ -3,24 +3,18 @@ import { propToNotifySignal } from "../utils/notify-name.js";
 import type { ObjectProp } from "../utils/object-prop.js";
 import { useObjectValue } from "./use-object-value.js";
 
-type ReadableKey<T> = {
-    [K in keyof T]: K extends `__${string}__`
-        ? never
-        : K extends string
-          ? T[K] extends (...args: unknown[]) => unknown
-              ? never
-              : K
-          : never;
-}[keyof T];
+type PropertiesOf<T extends GObject.Object> = NonNullable<T["__properties__"]>;
+
+export type PropertyNameOf<T extends GObject.Object> = keyof PropertiesOf<T> & keyof T & string;
 
 /**
  * Subscribes to a GObject property and returns its current value, re-rendering when the property changes.
  *
  * @param object The GObject (or ref to one) whose property to observe.
- * @param propertyName The name of a readable property on the object.
+ * @param propertyName The camelCase name of a readable property on the object.
  * @returns The current property value, or `undefined` when the object is not resolved.
  */
-export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
+export function useProperty<T extends GObject.Object, K extends PropertyNameOf<T>>(
     object: ObjectProp<T>,
     propertyName: K,
 ): T[K] | undefined {

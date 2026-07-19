@@ -1,3 +1,4 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type ObjectProp, useSignal } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
@@ -34,17 +35,18 @@ describe("useSignal (emission)", () => {
 
     it("passes the emission arguments to the handler", async () => {
         const label = new Gtk.Label();
-        const handler = vi.fn();
+        const names: string[] = [];
+        const handler = (pspec: GObject.ParamSpec): void => {
+            names.push(pspec.getName());
+        };
 
         await renderHook(() => useSignal(label, "notify", handler));
 
         await act(() => label.setLabel("changed"));
 
         await waitFor(() => {
-            expect(handler).toHaveBeenCalled();
+            expect(names).toContain("label");
         });
-        const [pspec] = handler.mock.calls[0] ?? [];
-        expect(pspec).toBeDefined();
     });
 });
 

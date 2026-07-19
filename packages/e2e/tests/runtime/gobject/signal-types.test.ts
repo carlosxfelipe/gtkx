@@ -7,7 +7,7 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ?
 
 type Expect<T extends true> = T;
 
-describe("generated signal handler types", () => {
+describe("generated signal types", () => {
     it("types each signal name with its own handler signature", () => {
         const button = new Gtk.Button();
         let calls = 0;
@@ -17,14 +17,11 @@ describe("generated signal handler types", () => {
         button.emit("clicked");
 
         const signatures: [
-            Expect<Equal<Gtk.ButtonSignalHandlers["clicked"], () => void>>,
+            Expect<Equal<Gtk.ButtonSignals["clicked"], () => void>>,
             Expect<
-                Equal<
-                    Gtk.RangeSignalHandlers["change-value"],
-                    (scroll: Gtk.ScrollType, value: number) => boolean | undefined
-                >
+                Equal<Gtk.RangeSignals["change-value"], (scroll: Gtk.ScrollType, value: number) => boolean | undefined>
             >,
-            Expect<Equal<Gtk.WidgetSignalHandlers["notify"], (pspec: GObject.ParamSpec) => void>>,
+            Expect<Equal<Gtk.WidgetSignals["notify"], (pspec: GObject.ParamSpec) => void>>,
         ] = [true, true, true];
 
         expect(signatures).toEqual([true, true, true]);

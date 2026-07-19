@@ -25,7 +25,8 @@ import {
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { gtypeExprFor, gtypeMemberDeclaration } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
-import { renderPropertyAccessor } from "./property-accessor.js";
+import { renderPropertyDeclarations } from "./properties.js";
+import { type ResolvedAccessor, renderResolvedPropertyAccessor, resolveAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderVfuncMetadata } from "./vtable.js";
@@ -53,12 +54,15 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
     const implemented = resolveImplementedRefs(context, klass);
     const typeRefs = implemented.map((ref) => ref.typeRef);
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
-    const members = renderClassMembers(context, klass, callables, parentExpression !== undefined);
+    const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
     context.module.appendDeclaration(
         `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
     );
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
+    for (const declaration of renderPropertyDeclarations(context, klass, className, accessors)) {
+        context.module.appendDeclaration(declaration);
+    }
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);
     }
@@ -71,12 +75,14 @@ export const generateClass = (context: ModuleContext, klass: GirClass): void => 
     appendClassRegistrations(context, klass, className);
 };
 
+type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
+
 const renderClassMembers = (
     context: ModuleContext,
     klass: GirClass,
     callables: Callables,
     hasParent: boolean,
-): string[] => {
+): ClassMembers => {
     const className = toPascalCase(klass.name);
     const members: string[] = [gtypeMemberDeclaration(context)];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
@@ -95,13 +101,16 @@ const renderClassMembers = (
         className,
     });
     const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
+    const accessors: ResolvedAccessor[] = [];
     for (const property of klass.properties) {
         const inheritedType = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
-        const block = renderPropertyAccessor({ context, property, claimedNames, methodByName, inheritedType });
-        if (block !== undefined) members.push(block);
+        const accessor = resolveAccessor({ context, property, claimedNames, methodByName, inheritedType });
+        if (accessor === undefined) continue;
+        accessors.push(accessor);
+        members.push(renderResolvedPropertyAccessor(context, property, accessor));
     }
     members.push(...renderSignalMembers(context, klass));
-    return members;
+    return { members, accessors };
 };
 
 type AppendInstanceMethodsOptions = {

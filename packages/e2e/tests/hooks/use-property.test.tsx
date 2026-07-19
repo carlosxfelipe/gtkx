@@ -52,6 +52,22 @@ describe("useProperty", () => {
         expect(result.current).toBe(true);
     });
 
+    it("derives the notify detail from a multi-word property name", async () => {
+        const ref = createRef<Gtk.Label>();
+        await render(<GtkLabel ref={ref} label="Test" />);
+        const label = deref(ref);
+
+        const { result } = await renderHook(() => useProperty(label, "maxWidthChars"));
+
+        expect(result.current).toBe(-1);
+
+        await act(() => label.setMaxWidthChars(12));
+
+        await waitFor(() => {
+            expect(result.current).toBe(12);
+        });
+    });
+
     it("cleans up signal on unmount", async () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} label="Test" />);

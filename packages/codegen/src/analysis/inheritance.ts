@@ -72,17 +72,19 @@ const forEachInheritedProperty = (
     });
 };
 
-export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): GirProperty[] => {
+export type OwnedProperty = { owner: GirClass; property: GirProperty };
+
+export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): OwnedProperty[] => {
     const seen = new Set<string>();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
     forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
-    const result: GirProperty[] = [];
+    const result: OwnedProperty[] = [];
     for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
         for (const property of iface.klass.properties) {
             const name = toCamelIdentifier(property.name);
             if (seen.has(name)) continue;
             seen.add(name);
-            result.push(property);
+            result.push({ owner: iface.klass, property });
         }
     }
     return result;

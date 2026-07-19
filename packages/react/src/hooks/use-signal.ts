@@ -4,25 +4,19 @@ import { useRef } from "react";
 import type { ObjectProp } from "../utils/object-prop.js";
 import { useObjectAttachment } from "./use-object-attachment.js";
 
-type AnySignalHandler = { handler(...args: unknown[]): unknown }["handler"];
+type AnySignalHandler = (...args: unknown[]) => unknown;
 
-type AnySignalHandlers = Record<string, AnySignalHandler>;
-
-type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infer H }
-    ? unknown extends H
-        ? AnySignalHandlers
-        : NonNullable<H>
-    : AnySignalHandlers;
+type SignalsOf<T extends GObject.Object> = NonNullable<T["__signals__"]>;
 
 export type SignalNameOf<T extends GObject.Object> =
-    | (keyof SignalHandlersOf<T> & string)
-    | `${keyof SignalHandlersOf<T> & string}::${string}`;
+    | (keyof SignalsOf<T> & string)
+    | `${keyof SignalsOf<T> & string}::${string}`;
 
-export type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalHandlersOf<T>
-    ? SignalHandlersOf<T>[S]
+export type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalsOf<T>
+    ? SignalsOf<T>[S]
     : S extends `${infer TBase}::${string}`
-      ? TBase extends keyof SignalHandlersOf<T>
-          ? SignalHandlersOf<T>[TBase]
+      ? TBase extends keyof SignalsOf<T>
+          ? SignalsOf<T>[TBase]
           : AnySignalHandler
       : AnySignalHandler;
 
