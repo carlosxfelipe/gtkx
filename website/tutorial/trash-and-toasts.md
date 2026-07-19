@@ -20,44 +20,73 @@ Soft-deleting is a toast. Permanent deletion is a dialog.
 
 Adwaita shows toasts through an `AdwToastOverlay`, which wraps the widgets they appear over: in your window, the whole split view.
 
-The code that deletes a task lives far from the overlay. Threading a callback down through the sidebar, the content pane, and every row is the prop-drilling the store exists to avoid. Keep a module-level reference to the overlay instead, and export a function anyone can call.
+A task is deleted from a row, from the open task's header, and from the Delete key, all far from the overlay. Threading a callback down through the sidebar, the content pane, and every row is the prop-drilling the store exists to avoid. Reach the overlay through React context instead: a `useToast` hook returns a function that shows one.
+
+The overlay is a widget, so it can only wrap what is on screen, the split view. But the Delete shortcut lives on the window itself, outside that content, and it deletes tasks too. So the context that carries the overlay has to sit higher than the overlay widget does. Split the two apart: a `ToastProvider` holds a ref and provides it over the whole window, and the `ToastOverlay` fills that ref with the widget it mounts.
 
 Create `src/components/toast-overlay.tsx`:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, type RefObject, useContext, useRef } from "react";
 
-let mounted: Adw.ToastOverlay | null = null;
+const ToastContext = createContext<RefObject<Adw.ToastOverlay | null> | null>(null);
 
-export const showToast = (title: string, onUndo: () => void): void => {
-    if (mounted === null) return;
-    const toast = Adw.Toast.new(title);
-    toast.buttonLabel = "Undo";
-    toast.once("button-clicked", onUndo);
-    mounted.addToast(toast);
+export const useToast = (): ((title: string, onUndo: () => void) => void) => {
+    const overlay = useContext(ToastContext);
+    if (overlay === null) throw new Error("useToast must be used inside a ToastProvider");
+
+    return (title, onUndo) => {
+        if (overlay.current === null) return;
+        const toast = Adw.Toast.new(title);
+        toast.buttonLabel = "Undo";
+        toast.once("button-clicked", onUndo);
+        overlay.current.addToast(toast);
+    };
 };
 
-export const ToastOverlay = ({ children }: { children: ReactNode }) => (
-    <AdwToastOverlay
-        ref={(overlay) => {
-            mounted = overlay;
-            return () => {
-                mounted = null;
-            };
-        }}
-    >
-        {children}
-    </AdwToastOverlay>
-);
+export const ToastProvider = ({ children }: { children: ReactNode }) => {
+    const overlay = useRef<Adw.ToastOverlay | null>(null);
+    return <ToastContext.Provider value={overlay}>{children}</ToastContext.Provider>;
+};
+
+export const ToastOverlay = ({ children }: { children: ReactNode }) => {
+    const overlay = useContext(ToastContext);
+    if (overlay === null) throw new Error("ToastOverlay must be used inside a ToastProvider");
+
+    return (
+        <AdwToastOverlay
+            ref={(instance) => {
+                overlay.current = instance;
+                return () => {
+                    overlay.current = null;
+                };
+            }}
+        >
+            {children}
+        </AdwToastOverlay>
+    );
+};
 ```
 
-Every GTKX element accepts a `ref`, and the value you get is the widget itself: an `Adw.ToastOverlay`, with every method the Adwaita documentation lists. A ref callback that returns a function has that function run on unmount, so `mounted` holds the overlay while it is on screen and is cleared when it leaves. That is why the type is nullable and `showToast` checks it.
+`ToastProvider` creates the ref and shares it through context. `ToastOverlay` reads that same ref and fills it: every GTKX element accepts a `ref`, and the value you get is the widget itself, an `Adw.ToastOverlay` with every method the Adwaita documentation lists. A ref callback that returns a function runs it on unmount, so the ref points at the overlay while it is on screen and is cleared when it leaves. That is why the type is nullable and `useToast` checks it before showing a toast.
 
-`Adw.Toast.new` builds the toast, `buttonLabel` gives it an action button, and `addToast` hands it to the overlay to queue and display. The handler uses `once` rather than `on`: the button can be clicked only once before the toast goes away, and `once` disconnects itself after the first emission.
+`useToast` reads the ref from context and throws when a caller sits outside the provider, so a missing provider is a loud error rather than a silent no-op. `Adw.Toast.new` builds the toast, `buttonLabel` gives it an action button, and `addToast` hands it to the overlay to queue and display. The handler uses `once` rather than `on`: the button can be clicked only once before the toast goes away, and `once` disconnects itself after the first emission.
 
-Wrap the split view with it. In `src/components/window.tsx`:
+Provide the context over the whole window. In `src/app.tsx`, wrap `Window`:
+
+```tsx
+import { ToastProvider } from "./components/toast-overlay.js";
+
+// ...
+
+<ToastProvider>
+    <Window />
+</ToastProvider>
+```
+
+Then mount the overlay widget around the content it covers. In `src/components/window.tsx`:
 
 ```tsx
 import { ToastOverlay } from "./toast-overlay.js";
@@ -76,6 +105,8 @@ import { ToastOverlay } from "./toast-overlay.js";
     <Dialogs />
 </AdwApplicationWindow>
 ```
+
+The provider sits above the window, so the Delete shortcut and the dialogs are inside it even though the overlay widget wraps only the split view.
 
 ## Restoring
 
@@ -186,45 +217,67 @@ Mount it from `src/components/dialogs.tsx`:
 
 The trash button on a row, the trash button in the open task's header, and the Delete key all need the same branch, and none of them should carry it. `dialogs.tsx` already owns which dialog is showing, so give it this decision too.
 
-Add to `src/components/dialogs.tsx`:
+Because that branch raises a toast, it reads the overlay from context, which makes it a hook. Add to `src/components/dialogs.tsx`:
 
 ```tsx
 import type { Task } from "../types.js";
-import { showToast } from "./toast-overlay.js";
+import { useToast } from "./toast-overlay.js";
 
 // ...
 
-export const requestDeleteTask = (task: Task): void => {
-    const { moveToTrash, restore, askDeleteTask, selectedTaskId, closeTask } = useStore.getState();
-    if (task.deleted) {
-        askDeleteTask(task.id);
-        return;
-    }
-    moveToTrash(task.id);
-    if (selectedTaskId === task.id) closeTask();
-    showToast(`“${task.title}” moved to Trash`, () => restore(task.id));
+export const useRequestDeleteTask = (): ((task: Task) => void) => {
+    const showToast = useToast();
+
+    return (task) => {
+        const { moveToTrash, restore, askDeleteTask, selectedTaskId, closeTask } = useStore.getState();
+        if (task.deleted) {
+            askDeleteTask(task.id);
+            return;
+        }
+        moveToTrash(task.id);
+        if (selectedTaskId === task.id) closeTask();
+        showToast(`“${task.title}” moved to Trash`, () => restore(task.id));
+    };
 };
 ```
 
-`requestDeleteTask` is neither a component nor a hook. It calls `useStore.getState()` and reads what it needs at the moment it runs, so the values are always current.
+`useRequestDeleteTask` runs `useToast` once and returns the handler the buttons call. The handler reads the store with `useStore.getState()` at the moment it runs, so its values are always current, while the toast overlay comes from the context above it.
 
 A task already in Trash raises the dialog. Anything else moves to Trash, closes the editor if that task was open, and shows a toast whose Undo calls `restore`.
 
-Point the call sites at it. In `src/components/task-row.tsx`:
+Point the call sites at it. Each calls `useRequestDeleteTask` at the top of the component and hands the result to its button. In `src/components/task-row.tsx`:
+
+```diff
+ export const TaskRow = ({ task }: { task: Task }) => {
++    const requestDeleteTask = useRequestDeleteTask();
+     const setDone = useStore((state) => state.setDone);
+```
 
 ```diff
 -                        onClicked={() => moveToTrash(task.id)}
 +                        onClicked={() => requestDeleteTask(task)}
 ```
 
-In `src/components/content-pane.tsx`, on the trash button in the open task's header:
+The open task's header does the same in `src/components/content-pane.tsx`:
+
+```diff
+ export const ContentPane = () => {
++    const requestDeleteTask = useRequestDeleteTask();
+     const tasks = useStore((state) => state.tasks);
+```
 
 ```diff
 -                                    onClicked={() => moveToTrash(task.id)}
 +                                    onClicked={() => requestDeleteTask(task)}
 ```
 
-And in `src/components/app-shortcuts.tsx`, where the Delete key lands:
+And in `src/components/app-shortcuts.tsx`, where the Delete key lands, take the handler from the hook:
+
+```diff
+ export const AppShortcuts = () => {
++    const requestDeleteTask = useRequestDeleteTask();
+     const selectedTaskId = useStore((state) => state.selectedTaskId);
+```
 
 ```tsx
 const deleteSelected = (): void => {
@@ -234,7 +287,7 @@ const deleteSelected = (): void => {
 };
 ```
 
-Each site imports `requestDeleteTask` from `./dialogs.js` and drops its own `moveToTrash` selection, so each button just reports what the user asked for and leaves the decision to `requestDeleteTask`.
+Each site calls `useRequestDeleteTask` and drops its own `moveToTrash` selection, so each button just reports what the user asked for and leaves the decision to the hook.
 
 ## A dialog that is a form
 

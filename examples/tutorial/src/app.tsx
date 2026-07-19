@@ -1,6 +1,7 @@
 import * as GLib from "@gtkx/gi/glib";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
+import { ToastProvider } from "./components/toast-overlay.js";
 import { Window } from "./components/window.js";
 import { useStore } from "./store/index.js";
 
@@ -34,7 +35,9 @@ export function App() {
                 </>
             }
         >
-            <Window />
+            <ToastProvider>
+                <Window />
+            </ToastProvider>
         </AdwApplication>
     );
 }

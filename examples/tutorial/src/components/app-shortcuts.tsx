@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
-import { requestDeleteTask } from "./dialogs.js";
+import { useRequestDeleteTask } from "./dialogs.js";
 
 const shortcut = (accelerator: string, run: () => void, enabled: boolean) => (
     <GtkShortcut
@@ -14,6 +14,7 @@ const shortcut = (accelerator: string, run: () => void, enabled: boolean) => (
 );
 
 export const AppShortcuts = () => {
+    const requestDeleteTask = useRequestDeleteTask();
     const selectedTaskId = useStore((state) => state.selectedTaskId);
     const closeTask = useStore((state) => state.closeTask);
 

@@ -9,9 +9,10 @@ import { escapeMarkup, formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
 import { isReorderable } from "../store/selectors.js";
 import type { Task } from "../types.js";
-import { requestDeleteTask } from "./dialogs.js";
+import { useRequestDeleteTask } from "./dialogs.js";
 
 export const TaskRow = ({ task }: { task: Task }) => {
+    const requestDeleteTask = useRequestDeleteTask();
     const setDone = useStore((state) => state.setDone);
     const setImportant = useStore((state) => state.setImportant);
     const openTask = useStore((state) => state.openTask);

@@ -2,12 +2,13 @@ import { AdwHeaderBar, AdwToggle, AdwToggleGroup, AdwToolbarView, AdwWindowTitle
 import { GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
 import { selectionKey } from "../store/selectors.js";
-import { requestDeleteTask } from "./dialogs.js";
+import { useRequestDeleteTask } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
 import { TaskDetail } from "./task-detail.js";
 import { TaskList } from "./task-list.js";
 
 export const ContentPane = () => {
+    const requestDeleteTask = useRequestDeleteTask();
     const tasks = useStore((state) => state.tasks);
     const selection = useStore((state) => state.selection);
     const selectedTaskId = useStore((state) => state.selectedTaskId);
