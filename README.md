@@ -99,7 +99,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, spring and tween animations, React Navigation-style navigators, and high-level list, grid, and dialog components,
+- CSS-in-JS styling and high-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
@@ -157,7 +157,6 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
 - [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world): the counter above.
 - [`gtk-demo`](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo): a React port of the official GTK4 widget showcase, covering lists, dialogs, gestures, CSS, and OpenGL.
-- [`animated-gallery`](https://github.com/gtkx-org/gtkx/tree/main/examples/animated-gallery): a gallery of `@gtkx/animated`, from a single fade to springs, gestures, presence, layout projection, and drag.
 - [`browser`](https://github.com/gtkx-org/gtkx/tree/main/examples/browser): a WebKitWebView-based web browser.
 - [`tutorial`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial): the Tasks app the documentation builds.
 

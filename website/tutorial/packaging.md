@@ -116,26 +116,25 @@ The icons live at `data/icons/hicolor/`, a scalable SVG named after the applicat
 
 ### The desktop entry and AppStream metadata
 
-The `.desktop` entry lists the app in the launcher, opts into notifications, and claims the URI scheme that [deep links](/guide/navigation) arrive on. `Exec` ends in `%u` so the launcher passes the URI through, and `MimeType` is what makes the desktop environment route `com.gtkx.tutorial://` to this app at all:
+The `.desktop` entry lists the app in the launcher and tells the desktop environment how to start it:
 
 ```ini
 [Desktop Entry]
 Name=Tasks
 GenericName=Task Manager
 Comment=Manage your tasks and to-dos
-Exec=gtkx-tutorial %u
+Exec=gtkx-tutorial
 Icon=com.gtkx.tutorial
 Terminal=false
 Type=Application
 Categories=Office;ProjectManagement;
 Keywords=Task;Tasks;Todo;To-do;Checklist;
-MimeType=x-scheme-handler/com.gtkx.tutorial;
 StartupNotify=true
 X-GNOME-UsesNotifications=true
 DBusActivatable=true
 ```
 
-Drop the `MimeType` line and the `%u` if the app does not use deep linking.
+`Icon` matches the application ID, so it resolves against the icons installed into the system icon theme. `Categories` and `Keywords` decide where the app lands in the launcher and what search terms find it. `X-GNOME-UsesNotifications=true` gives the app an entry in the system notification settings, and `DBusActivatable=true` lets the desktop activate it over D-Bus, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action even when the app is not already running.
 
 The AppStream `metainfo.xml` provides the store listing. Its `id` must match the application ID, and its `launchable` must point at the `.desktop` file.
 

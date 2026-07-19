@@ -14,10 +14,6 @@ import {
 } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
-/**
- * Options for {@link registerClass}. `typeName` overrides the GType name, which
- * otherwise defaults to the class name.
- */
 type RegisterClassOptions = { typeName?: string };
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };

@@ -2,9 +2,6 @@ import type { ExternalObject, Handle, Ref } from "@gtkx/native";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 import { getErrorType, isTypedClass } from "./type.js";
 
-/**
- * Shape of a wrapped GLib error: its numeric domain quark, error code, and message.
- */
 type ErrorLike = {
     domain: number;
     code: number;

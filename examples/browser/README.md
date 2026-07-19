@@ -27,4 +27,4 @@ pnpm --filter browser dev
 
 - [Configuration and Codegen](https://gtkx.dev/guide/configuration-and-codegen)
 - [Components and Hooks](https://gtkx.dev/guide/components-and-hooks)
-- [CSS and Animations](https://gtkx.dev/guide/css-and-animations)
+- [CSS](https://gtkx.dev/guide/css)

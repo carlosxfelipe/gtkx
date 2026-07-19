@@ -1,5 +1,4 @@
 import { Grid } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import {
@@ -269,7 +268,7 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
     const handlers = useErrorStatesHandlers(state);
 
     return (
-        <Dialog component={AdwDialog} onClose={() => onClose?.()} title="Error States" canClose followsContentSize>
+        <AdwDialog onClosed={() => onClose?.()} title="Error States" canClose followsContentSize>
             <AdwToolbarView topBar={<AdwHeaderBar />}>
                 <Grid
                     rowSpacing={10}
@@ -298,7 +297,7 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
                     <ModeSwitchRow state={state} onStateSet={handlers.handleModeStateSet} />
                 </Grid>
             </AdwToolbarView>
-        </Dialog>
+        </AdwDialog>
     );
 };
 

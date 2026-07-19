@@ -15,19 +15,11 @@ export const exitCodeForSignal = (signal: NodeJS.Signals | null): number => {
     return signal === "SIGINT" ? 130 : 143;
 };
 
-/**
- * Configuration for {@link installGracefulShutdown}.
- */
 export type GracefulShutdownOptions = {
-    /** Invoked with the first termination signal to perform cleanup before the process exits. */
     onSignal: (signal: NodeJS.Signals) => void | Promise<void>;
-    /** Invoked when shutdown is forced, either by a repeated signal or the force-kill timeout. */
     onForce?: () => void;
-    /** Milliseconds to wait for `onSignal` before forcing exit; a non-positive value disables the timeout. */
     forceKillAfterMs?: number;
-    /** Milliseconds after the first signal during which repeated signals are ignored rather than forcing exit. */
     coalesceWindowMs?: number;
-    /** Overrides the exit code chosen for a given signal and whether shutdown completed gracefully. */
     exitCode?: (signal: NodeJS.Signals, graceful: boolean) => number;
 };
 

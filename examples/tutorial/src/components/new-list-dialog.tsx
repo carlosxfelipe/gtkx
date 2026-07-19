@@ -1,4 +1,3 @@
-import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
@@ -19,8 +18,7 @@ export const NewListDialog = ({
     const [color, setColor] = useState(PALETTE[0]);
 
     return (
-        <Dialog
-            component={AdwAlertDialog}
+        <AdwAlertDialog
             heading="New List"
             defaultResponse="add"
             closeResponse="cancel"
@@ -54,6 +52,6 @@ export const NewListDialog = ({
                     ))}
                 </GtkBox>
             </GtkBox>
-        </Dialog>
+        </AdwAlertDialog>
     );
 };

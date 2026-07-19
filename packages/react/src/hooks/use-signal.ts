@@ -14,16 +14,10 @@ type SignalHandlersOf<T extends GObject.Object> = T extends { __signals__?: infe
         : NonNullable<H>
     : AnySignalHandlers;
 
-/**
- * The set of signal names valid for `T`, including detailed forms such as `"notify::label"`.
- */
 export type SignalNameOf<T extends GObject.Object> =
     | (keyof SignalHandlersOf<T> & string)
     | `${keyof SignalHandlersOf<T> & string}::${string}`;
 
-/**
- * The handler function type for signal `S` on `T`, resolving the base name of a detailed signal.
- */
 export type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalHandlersOf<T>
     ? SignalHandlersOf<T>[S]
     : S extends `${infer TBase}::${string}`
@@ -32,13 +26,8 @@ export type SignalHandlerFor<T extends GObject.Object, S extends string> = S ext
           : AnySignalHandler
       : AnySignalHandler;
 
-/**
- * Options controlling how `useSignal` connects its handler.
- */
 type UseSignalOptions = {
-    /** Connect the handler to run after the object's default signal handler. */
     after?: boolean;
-    /** Invoke the handler once immediately after connecting. */
     immediate?: boolean;
 };
 

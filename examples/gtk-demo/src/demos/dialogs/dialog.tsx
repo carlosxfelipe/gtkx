@@ -1,5 +1,4 @@
 import { Grid } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
@@ -66,8 +65,7 @@ const DialogEntryRow = ({
 );
 
 const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: () => void }) => (
-    <Dialog
-        component={AdwAlertDialog}
+    <AdwAlertDialog
         name="message-dialog"
         heading="Test message"
         body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
@@ -138,8 +136,7 @@ const InteractiveDialog = ({
     setEntry2Text,
     onResponse,
 }: InteractiveDialogProps) => (
-    <Dialog
-        component={AdwAlertDialog}
+    <AdwAlertDialog
         name="interactive-dialog"
         heading="Interactive Dialog"
         defaultResponse="ok"

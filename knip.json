@@ -21,13 +21,7 @@
         "website": {
             "entry": [".vitepress/theme/**/*.{ts,vue}"]
         },
-        "packages/animated": {
-            "entry": ["gtkx.config.ts!"]
-        },
         "packages/e2e": {
-            "entry": ["gtkx.config.ts!"]
-        },
-        "packages/navigation": {
             "entry": ["gtkx.config.ts!"]
         },
         "packages/testing": {

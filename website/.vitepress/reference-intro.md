@@ -2,7 +2,7 @@
 
 This reference documents the public API of every published GTKX package. It is generated from the TypeScript sources, so each signature here is the one your editor resolves.
 
-Navigate by package from the list below. `@gtkx/react` holds the reconciler and the hooks for working with live GObjects, and `@gtkx/components` holds the high-level components. The remaining packages cover styling, animation, navigation, testing, configuration, and a native Rust core. Each package page lists its exports grouped by kind.
+Navigate by package from the list below. `@gtkx/react` holds the reconciler and the hooks for working with live GObjects, and `@gtkx/components` holds the high-level components. The remaining packages cover styling, testing, configuration, and a native Rust core. Each package page lists its exports grouped by kind.
 
 Intrinsic elements such as `GtkButton` and `AdwApplicationWindow` are generated inside your project by codegen, from the libraries you declare in `gtkx.config.ts`, so the exact set depends on your configuration.
 

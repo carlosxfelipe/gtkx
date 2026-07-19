@@ -1,4 +1,3 @@
-import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -99,8 +98,7 @@ const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => 
 );
 
 const ThemesWarningDialog = ({ onResponse }: { onResponse: (response: string) => void }) => (
-    <Dialog
-        component={AdwAlertDialog}
+    <AdwAlertDialog
         name="warning-dialog"
         heading="Warning"
         body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."

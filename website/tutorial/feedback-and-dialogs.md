@@ -1,5 +1,5 @@
 ---
-description: "Undo toasts pushed through an AdwToastOverlay ref, plus the confirmation, New List, and About dialogs mounted through the Dialog wrapper."
+description: "Undo toasts pushed through an AdwToastOverlay ref, plus the confirmation, New List, and About dialogs mounted as components."
 ---
 
 # Feedback and Dialogs
@@ -8,7 +8,7 @@ This chapter covers the undo toast shown after a delete, the confirmation dialog
 
 ## Undo toasts
 
-Toasts are pushed imperatively through a ref, while dialogs are mounted declaratively as components. The `AdwToastOverlay` that receives them wraps the whole navigation tree in `app.tsx`:
+Toasts are pushed imperatively through a ref, while dialogs are mounted declaratively as components. The `AdwToastOverlay` that receives them wraps the split view in `app.tsx`, so a toast can appear over any pane:
 
 ```tsx
 const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
@@ -16,9 +16,13 @@ const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 // ...
 
 <AdwToastOverlay ref={toastOverlayRef}>
-    <NavigationContainer ref={navigationRef}>
-        <Split.Navigator>{/* ... */}</Split.Navigator>
-    </NavigationContainer>
+    <AdwNavigationSplitView
+        collapsed={collapsed}
+        showContent={showContent}
+        onNotifyShowContent={(value) => setShowContent(value ?? false)}
+        sidebar={/* ... */}
+        content={/* ... */}
+    />
 </AdwToastOverlay>
 ```
 
@@ -31,7 +35,7 @@ const handleDelete = (task: Task): void => {
         return;
     }
     api.moveToTrash(task.id);
-    closeTaskIfOpen(task.id);
+    if (selectedTaskId === task.id) setSelectedTaskId(null);
     const toast = Adw.Toast.new(`“${task.title}” moved to Trash`);
     toast.buttonLabel = "Undo";
     toast.once("button-clicked", () => api.restore(task.id));
@@ -39,7 +43,7 @@ const handleDelete = (task: Task): void => {
 };
 ```
 
-`once` fires the restore callback a single time, matching the toast's single Undo click.
+`once` fires the restore callback a single time, matching the toast's single Undo click. Clearing `selectedTaskId` when the trashed task is the open one sends the content pane back to the task list.
 
 ## Dialogs
 
@@ -48,7 +52,6 @@ const handleDelete = (task: Task): void => {
 A task already in Trash has nothing left to soft-delete, so `handleDelete` sets `taskToDelete` instead of showing a toast, and that state mounts `delete-confirmation.tsx`:
 
 ```tsx
-import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
@@ -62,8 +65,7 @@ export const DeleteConfirmation = ({
     onCancel: () => void;
 }) => {
     return (
-        <Dialog
-            component={AdwAlertDialog}
+        <AdwAlertDialog
             heading="Delete Task?"
             body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
             defaultResponse="cancel"
@@ -101,8 +103,7 @@ export const NewListDialog = ({
     const [color, setColor] = useState(PALETTE[0]);
 
     return (
-        <Dialog
-            component={AdwAlertDialog}
+        <AdwAlertDialog
             heading="New List"
             defaultResponse="add"
             closeResponse="cancel"
@@ -121,7 +122,7 @@ export const NewListDialog = ({
                     {/* ... one GtkToggleButton per PALETTE swatch, active={color === swatch} ... */}
                 </GtkBox>
             </GtkBox>
-        </Dialog>
+        </AdwAlertDialog>
     );
 };
 ```
@@ -131,15 +132,13 @@ The form is ordinary controlled React, and `activatesDefault` on the entry makes
 ### The About dialog
 
 ```tsx
-import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
     return (
-        <Dialog
-            component={AdwAboutDialog}
-            onClose={onClose}
+        <AdwAboutDialog
+            onClosed={onClose}
             applicationName="Tasks"
             applicationIcon="com.gtkx.tutorial"
             version="1.0.0"
@@ -183,9 +182,9 @@ The dialogs are mounted conditionally at the bottom of the window:
 ) : null}
 ```
 
-Mounting the component presents the dialog and unmounting it closes the dialog, which is the contract `<Dialog>` from `@gtkx/components/adw` implements.
+Mounting the component presents the dialog and unmounting it closes the dialog, which is the contract every Adwaita dialog component in `@gtkx/jsx/adw` implements.
 
-`component` names the dialog widget to present, defaulting to `AdwDialog`, and `<Dialog>` attaches the ref to it itself. The widget is rendered through a portal to the root element rather than into the surrounding widget tree, so it stays top-level until `present(parent)` puts it on screen; `parent` overrides the anchor, and omitting it uses the enclosing `AdwApplicationWindow`. `onClose` reports user-initiated closes (Escape, the close button, a swipe) so you can clear the state that mounted the dialog, and it stays quiet when React itself unmounts the dialog.
+The widget is rendered through a portal to the root element rather than into the surrounding widget tree, so it stays top-level until it is presented on the enclosing `AdwApplicationWindow`. `onClosed` runs when the dialog closes (Escape, the close button, a swipe), which is where you clear the state that mounted it.
 
 ## Next
 

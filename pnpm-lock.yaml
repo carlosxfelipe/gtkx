@@ -42,8 +42,6 @@ overrides:
   js-yaml: ^4.3.0
 
 patchedDependencies:
-  '@react-navigation/core@7.21.5': 2bb51ba208007b8927006369a1b80d744711c5e784ab42929cd660d0da97bdfd
-  '@react-navigation/routers@7.6.0': 3536b8ea252b90d3387b8c9325a57af564648988e93acb928f756af2b03ea82f
   dependency-cruiser: 361fad6837a54856ac1010c7253e122bb9f98b948d4a1acc9701e63ea777a983
 
 importers:
@@ -98,46 +96,6 @@ importers:
       verdaccio:
         specifier: ^6.7.4
         version: 6.7.4(typanion@3.14.0)
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
-
-  examples/animated-gallery:
-    dependencies:
-      '@gtkx/animated':
-        specifier: workspace:*
-        version: link:../../packages/animated
-      '@gtkx/components':
-        specifier: workspace:*
-        version: link:../../packages/components
-      '@gtkx/css':
-        specifier: workspace:*
-        version: link:../../packages/css
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      react:
-        specifier: 'catalog:'
-        version: 19.2.7
-    devDependencies:
-      '@gtkx/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@gtkx/native':
-        specifier: workspace:*
-        version: link:../../packages/native
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 4.1.10(vitest@4.1.10)
-      vite:
-        specifier: ^8.1.4
-        version: 8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
@@ -219,37 +177,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-
-  packages/animated:
-    dependencies:
-      '@gtkx/css':
-        specifier: workspace:*
-        version: link:../css
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../react
-      '@gtkx/utils':
-        specifier: workspace:*
-        version: link:../utils
-      motion:
-        specifier: ^12.42.2
-        version: 12.42.2(react@19.2.7)
-      motion-dom:
-        specifier: ^12.42.2
-        version: 12.42.2
-    devDependencies:
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../testing
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
-      react:
-        specifier: 'catalog:'
-        version: 19.2.7
 
   packages/cli:
     dependencies:
@@ -427,9 +354,6 @@ importers:
       '@codspeed/vitest-plugin':
         specifier: ^5.7.1
         version: 5.7.1(tinybench@2.9.0)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(vitest@4.1.10)
-      '@gtkx/animated':
-        specifier: workspace:*
-        version: link:../animated
       '@gtkx/components':
         specifier: workspace:*
         version: link:../components
@@ -503,37 +427,6 @@ importers:
       '@napi-rs/cli':
         specifier: ^3.7.3
         version: 3.7.3(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
-
-  packages/navigation:
-    dependencies:
-      '@gtkx/components':
-        specifier: workspace:*
-        version: link:../components
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../config
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../react
-      '@gtkx/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@react-navigation/core':
-        specifier: ^7.9.2
-        version: 7.21.5(patch_hash=2bb51ba208007b8927006369a1b80d744711c5e784ab42929cd660d0da97bdfd)(react@19.2.7)
-      '@react-navigation/routers':
-        specifier: ^7.6.0
-        version: 7.6.0(patch_hash=3536b8ea252b90d3387b8c9325a57af564648988e93acb928f756af2b03ea82f)
-    devDependencies:
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../testing
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
-      react:
-        specifier: 'catalog:'
-        version: 19.2.7
 
   packages/react:
     dependencies:
@@ -2017,14 +1910,6 @@ packages:
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
-  '@react-navigation/core@7.21.5':
-    resolution: {integrity: sha512-3hpV7uR41LBW+GHDoLhztZCb/i5ySRJISZ/rez4d7DCHSZo6ej4gNxYclaS6LRguoLiKG7SOCNa6O390AQklZQ==}
-    peerDependencies:
-      react: '>= 18.2.0'
-
-  '@react-navigation/routers@7.6.0':
-    resolution: {integrity: sha512-lblhDXfS75jLc7G2K7BZGM+7cjqQXk13X/MA4fq/12r62zM+fBhhreLzYflSitrDDXFRJpSvJXy0ziiGU04Xow==}
-
   '@rolldown/binding-android-arm64@1.1.5':
     resolution: {integrity: sha512-lZg8fqIv2v7FF237bwMgzGZEJvGL79/s5knJ/i6FmsGF4XXlzccZ4jb+TrFIxtSSxFtIpdsgrPZeMk1I9AFcyQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -3081,10 +2966,6 @@ packages:
       supports-color:
         optional: true
 
-  decode-uri-component@0.2.2:
-    resolution: {integrity: sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ==}
-    engines: {node: '>=0.10'}
-
   decompress-response@6.0.0:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
@@ -3229,10 +3110,6 @@ packages:
   escape-html@1.0.3:
     resolution: {integrity: sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==}
 
-  escape-string-regexp@4.0.0:
-    resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
-    engines: {node: '>=10'}
-
   estree-walker@2.0.2:
     resolution: {integrity: sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==}
 
@@ -3345,10 +3222,6 @@ packages:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
 
-  filter-obj@1.1.0:
-    resolution: {integrity: sha512-8rXg1ZnX7xzy2NGDVkBVaAy+lSlPNwad13BtgSlLuxfIslyt5Vg64U7tFcCt4WS1R0hvtnQybT/IyCkGZ3DpXQ==}
-    engines: {node: '>=0.10.0'}
-
   finalhandler@1.3.2:
     resolution: {integrity: sha512-aA4RyPcd3badbdABGDuTXCMTtOneUCAYH/gxoYRTZlIJdF0YPWuGqiAsIrhNnnqdXGswYk6dGujem4w80UJFhg==}
     engines: {node: '>= 0.8'}
@@ -3391,20 +3264,6 @@ packages:
   forwarded@0.2.0:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
-
-  framer-motion@12.42.2:
-    resolution: {integrity: sha512-5XY9luDiu0oHfHBjpDthFMh0ES+122w6p/papSJBweMkO8Sn+PW2QaEgRblQBpWFnuvZS5qvarpt/hO2pjGmnw==}
-    peerDependencies:
-      '@emotion/is-prop-valid': '*'
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
 
   fresh@0.5.2:
     resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
@@ -3989,26 +3848,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  motion-dom@12.42.2:
-    resolution: {integrity: sha512-5gIMWLp/PycBtJRJWRgjxke5n8dlvkSn2DrYW+tr3XcqAZY1xZh6BJyooJXCM8wdfM7wfMjkBJNLge1CKPUIRA==}
-
-  motion-utils@12.39.0:
-    resolution: {integrity: sha512-8nadJAJjTtqRkmRF36FoJTrywK9nnFmnPwnSMyxaOCU7GDjN9RTMJIxx9De8ErM+vpPhMccr/6fo5WciyQLnMQ==}
-
-  motion@12.42.2:
-    resolution: {integrity: sha512-Atvv11yUKIid41cVrRBDVX5m8tF8kNpExRSlbpt6APClhDjtwQssgFHhQzejxw7/7YYbjHSPKBVbHo05BuJT5Q==}
-    peerDependencies:
-      '@emotion/is-prop-valid': '*'
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
 
@@ -4248,10 +4087,6 @@ packages:
     resolution: {integrity: sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==}
     engines: {node: '>=0.6'}
 
-  query-string@7.1.3:
-    resolution: {integrity: sha512-hh2WYhq4fi8+b+/2Kg9CEge4fDPvHS534aOOvOZeQ3+Vf2mCFsaFBYj0i+iXcAq6I9Vzp5fjMFBlONvayDC1qg==}
-    engines: {node: '>=6'}
-
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
@@ -4280,9 +4115,6 @@ packages:
 
   rc9@3.0.1:
     resolution: {integrity: sha512-gMDyleLWVE+i6Sgtc0QbbY6pEKqYs97NGi6isHQPqYlLemPoO8dxQ3uGi0f4NiP98c+jMW6cG1Kx9dDwfvqARQ==}
-
-  react-is@19.2.7:
-    resolution: {integrity: sha512-kZFnouyVv7eP/Phmrlo9FK+zcAdriZJvzxXHF1Sl1P377WSGe2G/JxVolhTrB/jeV47lKImhNUsijjHAAbcl/A==}
 
   react-reconciler@0.33.0:
     resolution: {integrity: sha512-KetWRytFv1epdpJc3J4G75I4WrplZE5jOL7Yq0p34+OVOKF4Se7WrdIdVC45XsSSmUTlht2FM/fM1FZb1mfQeA==}
@@ -4486,10 +4318,6 @@ packages:
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
 
-  split-on-first@1.1.0:
-    resolution: {integrity: sha512-43ZssAJaMusuKWL8sKUBQXHWOpq8d6CfN/u1p4gUzfJkM05C8rxTmYrkIPTXapZpORA6LkkzcUulJ8FqA7Uudw==}
-    engines: {node: '>=6'}
-
   split2@4.2.0:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
@@ -4521,10 +4349,6 @@ packages:
 
   streamx@2.28.0:
     resolution: {integrity: sha512-1Yowhzjf0ivGMrTIkY9hav5TxobO9qIVqUE41fiCGMGgc3CLlf4MY+9AHmZqBWgDTue0fY9zWjYFVyf6Diuobw==}
-
-  strict-uri-encode@2.0.0:
-    resolution: {integrity: sha512-QwiXZgpRcKkhTj2Scnn++4PKtWsH0kpzZ62L2R6c/LUVYv7hVnZqcg2+sMuT6R7Jusu1vviK/MFsu6kNJfWlEQ==}
-    engines: {node: '>=4'}
 
   string_decoder@1.1.1:
     resolution: {integrity: sha512-n/ShnvDi6FHbbVfviro+WojiFzv+s8MPMHBczVePfUpDJLwoLT0ht1l4YwBCbi8pJAveEEdnkHyPyTP/mzRfwg==}
@@ -4744,16 +4568,6 @@ packages:
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
-
-  use-latest-callback@0.2.6:
-    resolution: {integrity: sha512-FvRG9i1HSo0wagmX63Vrm8SnlUU3LMM3WyZkQ76RnslpBrX694AdG4A0zQBx2B3ZifFA0yv/BaEHGBnEax5rZg==}
-    peerDependencies:
-      react: '>=16.8'
-
-  use-sync-external-store@1.6.0:
-    resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   utf8-byte-length@1.0.5:
     resolution: {integrity: sha512-Xn0w3MtiQ6zoz2vFyUVruaCL53O/DwUvkEeOvj+uulMm0BkUGYWmBYVyElqZaSLhY6ZD0ulfU3aBra2aVT4xfA==}
@@ -6153,22 +5967,6 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@react-navigation/core@7.21.5(patch_hash=2bb51ba208007b8927006369a1b80d744711c5e784ab42929cd660d0da97bdfd)(react@19.2.7)':
-    dependencies:
-      '@react-navigation/routers': 7.6.0(patch_hash=3536b8ea252b90d3387b8c9325a57af564648988e93acb928f756af2b03ea82f)
-      escape-string-regexp: 4.0.0
-      fast-deep-equal: 3.1.3
-      nanoid: 3.3.16
-      query-string: 7.1.3
-      react: 19.2.7
-      react-is: 19.2.7
-      use-latest-callback: 0.2.6(react@19.2.7)
-      use-sync-external-store: 1.6.0(react@19.2.7)
-
-  '@react-navigation/routers@7.6.0(patch_hash=3536b8ea252b90d3387b8c9325a57af564648988e93acb928f756af2b03ea82f)':
-    dependencies:
-      nanoid: 3.3.16
-
   '@rolldown/binding-android-arm64@1.1.5':
     optional: true
 
@@ -7185,8 +6983,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  decode-uri-component@0.2.2: {}
-
   decompress-response@6.0.0:
     dependencies:
       mimic-response: 3.1.0
@@ -7338,8 +7134,6 @@ snapshots:
   escalade@3.2.0: {}
 
   escape-html@1.0.3: {}
-
-  escape-string-regexp@4.0.0: {}
 
   estree-walker@2.0.2: {}
 
@@ -7539,8 +7333,6 @@ snapshots:
     dependencies:
       to-regex-range: 5.0.1
 
-  filter-obj@1.1.0: {}
-
   finalhandler@1.3.2:
     dependencies:
       debug: 2.6.9
@@ -7592,14 +7384,6 @@ snapshots:
       fd-package-json: 2.0.0
 
   forwarded@0.2.0: {}
-
-  framer-motion@12.42.2(react@19.2.7):
-    dependencies:
-      motion-dom: 12.42.2
-      motion-utils: 12.39.0
-      tslib: 2.8.1
-    optionalDependencies:
-      react: 19.2.7
 
   fresh@0.5.2: {}
 
@@ -8154,19 +7938,6 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
-  motion-dom@12.42.2:
-    dependencies:
-      motion-utils: 12.39.0
-
-  motion-utils@12.39.0: {}
-
-  motion@12.42.2(react@19.2.7):
-    dependencies:
-      framer-motion: 12.42.2(react@19.2.7)
-      tslib: 2.8.1
-    optionalDependencies:
-      react: 19.2.7
-
   ms@2.0.0: {}
 
   ms@2.1.3: {}
@@ -8406,13 +8177,6 @@ snapshots:
       es-define-property: 1.0.1
       side-channel: 1.1.1
 
-  query-string@7.1.3:
-    dependencies:
-      decode-uri-component: 0.2.2
-      filter-obj: 1.1.0
-      split-on-first: 1.1.0
-      strict-uri-encode: 2.0.0
-
   queue-microtask@1.2.3: {}
 
   quick-format-unescaped@4.0.4: {}
@@ -8441,8 +8205,6 @@ snapshots:
     dependencies:
       defu: 6.1.7
       destr: 2.0.5
-
-  react-is@19.2.7: {}
 
   react-reconciler@0.33.0(react@19.2.7):
     dependencies:
@@ -8694,8 +8456,6 @@ snapshots:
 
   space-separated-tokens@2.0.2: {}
 
-  split-on-first@1.1.0: {}
-
   split2@4.2.0: {}
 
   sshpk@1.18.0:
@@ -8732,8 +8492,6 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
-
-  strict-uri-encode@2.0.0: {}
 
   string_decoder@1.1.1:
     dependencies:
@@ -8971,14 +8729,6 @@ snapshots:
       browserslist: 4.28.6
       escalade: 3.2.0
       picocolors: 1.1.1
-
-  use-latest-callback@0.2.6(react@19.2.7):
-    dependencies:
-      react: 19.2.7
-
-  use-sync-external-store@1.6.0(react@19.2.7):
-    dependencies:
-      react: 19.2.7
 
   utf8-byte-length@1.0.5: {}
 

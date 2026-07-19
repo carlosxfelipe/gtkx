@@ -9,8 +9,6 @@
         "../packages/testing",
         "../packages/vitest",
         "../packages/css",
-        "../packages/animated",
-        "../packages/navigation",
         "../packages/config",
         "../packages/runtime",
         "../packages/native",

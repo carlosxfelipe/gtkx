@@ -1,67 +1,90 @@
 ---
-description: "The task detail form: a routed screen whose task id travels as a route param."
+description: "The task detail form: the editor the content pane shows for the open task, with its own header bar."
 ---
 
 # The Task Editor
 
-Clicking a task opens the editor, a routed screen holding the title field, the Important switch, the due-date calendar, the notes area, and read-only metadata.
+Clicking a task opens the editor, holding the title field, the Important switch, the due-date calendar, the notes area, and read-only metadata.
 
 ## The task screen
 
-The editor is the `Task` route of the content stack, set up in [The Application Shell](/tutorial/app-shell#the-content-stack). `openTask(id)` navigates to it, and the task id travels in `route.params`, so both the screen body and its `options` callback look up the same task. Here is the body from `app.tsx`:
+The open task lives in `selectedTaskId` state, and `selectedTask` resolves it against the current tasks. When it is set, the content pane of the split view from [The Application Shell](/tutorial/app-shell) shows the editor in place of the list, each inside its own `<AdwToolbarView>`:
 
 ```tsx
-<GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand controllers={<>{/* the Delete shortcut, below */}</>}>
-    <TaskDetail
-        key={task.id}
-        task={task}
-        onUpdate={(fields) => api.updateTask(task.id, fields)}
-        onSetImportant={(important) => api.setImportant(task.id, important)}
-    />
-</GtkBox>
+<AdwNavigationPage title={titleFor(selection, lists)}>
+    {selectedTask ? (
+        <AdwToolbarView topBar={detailHeader}>
+            <TaskDetail
+                key={selectedTask.id}
+                task={selectedTask}
+                onUpdate={(fields) => api.updateTask(selectedTask.id, fields)}
+                onSetImportant={(important) => api.setImportant(selectedTask.id, important)}
+            />
+        </AdwToolbarView>
+    ) : (
+        <AdwToolbarView topBar={selecting ? selectionHeader : listHeader} /* ... */>
+            {listBody}
+        </AdwToolbarView>
+    )}
+</AdwNavigationPage>
 ```
 
-Switching tasks changes the `key`, so React remounts `TaskDetail` and no GTK4 editing state (cursor position, undo history, the visible calendar month) carries over from the previous task.
+`openTask(id)` sets `selectedTaskId`, and brings the content pane forward with `setShowContent(true)` while the layout is collapsed. Switching tasks changes the `key`, so React remounts `TaskDetail` and no GTK4 editing state (cursor position, undo history, the visible calendar month) carries over from the previous task.
 
 ## The detail header
 
-The stack navigator supplies the header, and `taskOptions` describes it. The same lookup that names the page also builds the star toggle and the delete button as [`headerRight`](/guide/navigation#headers):
+`detailHeader` is a plain `<AdwHeaderBar>` built from the open task. It titles itself with the task title, puts a back button at the start that clears the selection, and carries the star toggle and the delete button at the end:
 
 ```tsx
-const taskOptions = ({ route }: { route: RouteProp<TasksStackParams, "Task"> }): StackScreenOptions => {
-    const task = findTask(route.params.id);
-    if (!task) return { title: "Task" };
-    return {
-        title: task.title,
-        headerRight: (
+const detailHeader = selectedTask ? (
+    <AdwHeaderBar
+        titleWidget={<AdwWindowTitle title={selectedTask.title} />}
+        start={
+            <GtkButton
+                iconName="go-previous-symbolic"
+                tooltipText="Back (Escape)"
+                onClicked={() => setSelectedTaskId(null)}
+            />
+        }
+        end={
             <>
                 <GtkToggleButton
-                    iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
-                    active={task.important}
+                    iconName={selectedTask.important ? "starred-symbolic" : "non-starred-symbolic"}
+                    active={selectedTask.important}
                     tooltipText="Important"
-                    onToggled={(self) => api.setImportant(task.id, self.active)}
+                    onToggled={(self) => api.setImportant(selectedTask.id, self.active)}
                 />
                 <GtkButton
                     iconName="user-trash-symbolic"
                     tooltipText="Delete (Delete)"
-                    onClicked={() => handleDelete(task)}
+                    onClicked={() => handleDelete(selectedTask)}
                 />
             </>
-        ),
-    };
-};
+        }
+    />
+) : null;
 ```
 
-The screen also mounts its own [shortcut controller](/tutorial/actions-menus-shortcuts#view-shortcuts-gtkshortcutcontroller-for-ephemeral-keys) through the body's `controllers` slot, binding the Delete key to `handleDelete(task)`:
+Clearing `selectedTaskId` is all the back button has to do: the pane falls back to the list header and the list body on the next render.
+
+The keys that match those buttons come from the window's [shortcut controller](/tutorial/actions-menus-shortcuts#view-shortcuts-gtkshortcutcontroller-for-ephemeral-keys), the `<AppShortcuts>` element in the window's `controllers` slot. Escape leaves selection mode when it is active and otherwise closes the open task, and Delete runs `handleDelete` on it:
 
 ```tsx
-controllers={
-    <GtkShortcutController
-        scope={Gtk.ShortcutScope.GLOBAL}
-        shortcuts={makeShortcut("Delete", () => handleDelete(task), true)}
-    />
-}
+<AppShortcuts
+    onSearch={() => setSearchMode((mode) => !mode)}
+    onEscape={() => {
+        if (selecting) cancelSelection();
+        else setSelectedTaskId(null);
+    }}
+    escapeEnabled={selecting || selectedTask !== null}
+    onDelete={() => {
+        if (selectedTask) handleDelete(selectedTask);
+    }}
+    deleteEnabled={selectedTask !== null}
+/>
 ```
+
+Each shortcut takes an enabled flag, so Delete only binds while a task is open and Escape only while there is something to dismiss.
 
 `handleDelete(task)` moves a live task to Trash with an undo toast, and asks for confirmation when the task is already in Trash, both covered in [Feedback and Dialogs](/tutorial/feedback-and-dialogs).
 

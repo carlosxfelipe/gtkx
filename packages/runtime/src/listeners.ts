@@ -1,8 +1,5 @@
 import type { SignalHandler } from "./signal.js";
 
-/**
- * An object whose signals can be connected and disconnected by handler id.
- */
 type SignalConnectable = {
     connect(signal: string, handler: SignalHandler, after?: boolean): number;
     disconnect(handlerId: number): void;

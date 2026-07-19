@@ -156,4 +156,4 @@ It gates the `controllers` slot, so rows under a sort order, a search filter, or
 
 ## Next
 
-Continue to [Animations](/tutorial/animations).
+Continue to [The Task Editor](/tutorial/the-task-editor).

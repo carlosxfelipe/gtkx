@@ -1,9 +1,5 @@
 import type { AnyClass } from "@gtkx/utils";
 
-/**
- * The signal-connecting capabilities a mixin can rely on being present on the
- * classes it is applied to.
- */
 export type MixinReceiver = {
     connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;
     emit(signal: string, ...args: unknown[]): unknown;

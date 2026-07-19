@@ -80,7 +80,6 @@ export type WrapperComponent = ComponentType<{
 
 type Query = (container: Container, ...args: never[]) => unknown;
 
-/** A map of custom query names to query functions, each taking the container as its first argument. */
 export type QueryMap = Record<string, Query>;
 
 type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: infer A) => infer R

@@ -11,11 +11,6 @@ export type TabOptions = {
     shift?: boolean;
 };
 
-/**
- * Moves keyboard focus to the next focusable widget in the window, or the previous one when `options.shift` is set.
- * @param widget Widget whose window focus is moved.
- * @param options Direction options for the focus move.
- */
 export const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
     wrapEvent(widget, () => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
@@ -200,12 +195,6 @@ const applyKeyAction = async (
     }
 };
 
-/**
- * Simulates keyboard input on the widget: bare characters are typed and `{...}` tokens press named keys (such as `{Enter}` or `{Control}`), activating any matching shortcuts and tracking modifier state.
- * @param state Accumulated modifier-key state shared across calls.
- * @param widget Widget receiving the key events.
- * @param input Keyboard input string to replay.
- */
 export const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
     wrapEvent(widget, async () => {
         const controllers = getOrCreateControllers(widget, Gtk.EventControllerKey);

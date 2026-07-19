@@ -14,11 +14,7 @@ export type LoadedConfig = {
     root: string;
 };
 
-/**
- * Options controlling how a configuration file is loaded.
- */
 export type LoadConfigOptions = {
-    /** Environment mode used to select mode-specific configuration overrides. */
     mode?: string | undefined;
 };
 
@@ -51,10 +47,6 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
     };
 };
 
-/**
- * Function that loads and resolves the configuration for a project directory,
- * returning a {@link ResolvedConfig}.
- */
 export type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
 
 export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {

@@ -2,7 +2,6 @@ import { bind } from "./bind.js";
 import * as helpers from "./descriptors.js";
 import { fn } from "./fn.js";
 
-/** Shape of the type descriptor builder {@link t}. */
 type T = {
     bind: typeof bind;
     int8: typeof helpers.int8T;

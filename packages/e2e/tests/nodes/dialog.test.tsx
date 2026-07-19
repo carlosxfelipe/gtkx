@@ -1,4 +1,3 @@
-import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -34,8 +33,7 @@ describe("Dialog - render prop and lifecycle", () => {
 
         await render(
             <InApp>
-                <Dialog
-                    component={AdwAlertDialog}
+                <AdwAlertDialog
                     ref={(widget) => {
                         dialogRef.current = widget;
                     }}
@@ -55,9 +53,8 @@ describe("Dialog - render prop and lifecycle", () => {
 
         await render(
             <InApp>
-                <Dialog
-                    component={AdwAlertDialog}
-                    onClose={onClose}
+                <AdwAlertDialog
+                    onClosed={onClose}
                     ref={(widget) => {
                         dialogRef.current = widget;
                     }}
@@ -77,7 +74,7 @@ describe("Dialog - render prop and lifecycle", () => {
         const onClose = vi.fn();
 
         const App = ({ open }: { open: boolean }) => (
-            <InApp>{open ? <Dialog component={AdwAlertDialog} onClose={onClose} heading="Unmounted" /> : null}</InApp>
+            <InApp>{open ? <AdwAlertDialog onClosed={onClose} heading="Unmounted" /> : null}</InApp>
         );
 
         const { rerender } = await render(<App open={true} />);

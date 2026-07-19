@@ -16,9 +16,9 @@ export default defineConfig({
   applicationId: "com.example.myapp",
 });`;
 
-const ecosystemCode = `import { animated } from "@gtkx/animated";
-import { css } from "@gtkx/css";
-import { readFile } from "node:fs/promises";`;
+const ecosystemCode = `import { css } from "@gtkx/css";
+import { readFile } from "node:fs/promises";
+import { useState } from "react";`;
 </script>
 
 <template>
@@ -58,8 +58,6 @@ import { readFile } from "node:fs/promises";`;
         <h3 class="how__name">Harness the full power of the Node ecosystem</h3>
         <p class="how__body">
           GTKX runs on vanilla Node. So all npm packages work, and so does React.
-          Navigation is React Navigation driving Adwaita pages.
-          Animation is Framer Motion.
           Styling is Emotion.
         </p>
       </div>

@@ -111,7 +111,7 @@ return (
 
 ### Colored list dots
 
-User-list entries carry a `color` and smart views carry an `icon`, so the `prefix` ternary picks between a dot and a themed glyph. The dot is a `GtkBox` wearing `listDot(color)` from `styles.ts`, a generated class covered in [CSS and Animations](/guide/css-and-animations). It is decorative, so it takes `accessibleRole={Gtk.AccessibleRole.PRESENTATION}` and stays out of the accessibility tree.
+User-list entries carry a `color` and smart views carry an `icon`, so the `prefix` ternary picks between a dot and a themed glyph. The dot is a `GtkBox` wearing `listDot(color)` from `styles.ts`, a generated class covered in [CSS](/guide/css). It is decorative, so it takes `accessibleRole={Gtk.AccessibleRole.PRESENTATION}` and stays out of the accessibility tree.
 
 ### Count badges
 

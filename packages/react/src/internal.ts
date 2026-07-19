@@ -1,4 +1,5 @@
 export { createApplicationComponent } from "./components/application.js";
+export { createDialogComponent } from "./components/dialog.js";
 export { createWindowComponent } from "./components/window.js";
 export { ApplicationContext } from "./hooks/use-application.js";
 export { useMergeRefs } from "./hooks/use-merge-refs.js";

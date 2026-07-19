@@ -38,6 +38,4 @@ overrides:
   js-yaml: ^4.3.0
 
 patchedDependencies:
-  '@react-navigation/core@7.21.5': patches/@react-navigation__core@7.21.5.patch
-  '@react-navigation/routers@7.6.0': patches/@react-navigation__routers@7.6.0.patch
   dependency-cruiser: patches/dependency-cruiser.patch

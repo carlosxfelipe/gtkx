@@ -13,10 +13,6 @@ const UNBLOCKED_SIGNALS = new Set([
     "render",
     "input",
     "output",
-    "showing",
-    "shown",
-    "hiding",
-    "hidden",
 ]);
 
 type SignalBinding = {

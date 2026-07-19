@@ -30,11 +30,5 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
     }
 };
 
-/**
- * Applies a low-level pointer action (click, press, or release) to the widget, tracking left-button state across calls.
- * @param state Accumulated pointer button state shared across calls.
- * @param widget Widget receiving the pointer action.
- * @param input Pointer action token to apply.
- */
 export const pointer = (state: UserEventState, widget: Gtk.Widget, input: PointerInput): Promise<void> =>
     wrapEvent(widget, () => applyPointerInput(widget, state, input));

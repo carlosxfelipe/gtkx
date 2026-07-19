@@ -1,16 +1,16 @@
 # tutorial
 
-**Tasks**, the complete GNOME task manager built in the [GTKX tutorial](https://gtkx.dev/tutorial/). An adaptive split view puts smart views (All Tasks, Today, Important, Trash) and user-created lists in a sidebar, next to a task list that pushes an editor when you open a task.
+**Tasks**, the complete GNOME task manager built in the [GTKX tutorial](https://gtkx.dev/tutorial/). An adaptive split view puts smart views (All Tasks, Today, Important, Trash) and user-created lists in a sidebar, next to a content pane that shows the task list, or the editor for the task you open.
 
 ![The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right.](assets/screenshot.png)
 
 ## What it demonstrates
 
-- Adaptive navigation with `@gtkx/navigation`: a split-view navigator and a stack navigator inside a `NavigationContainer`, with an `AdwBreakpoint` collapsing the panes into one column on a narrow window.
+- Adaptive layout with `AdwNavigationSplitView`: the sidebar picks a view, and the content pane renders the task list or the editor for the open task. An `AdwBreakpoint` collapses the panes into one column on a narrow window.
 - Settings backed by a GSettings schema (`data/com.gtkx.tutorial.gschema.xml`), read and written with `useSetting` and `useBindSetting`, driving the Adwaita color scheme through `Adw.StyleManager`.
 - Actions, menus, and shortcuts: `GSimpleAction` elements wired to a menu button, `actionAccels`, and a `GtkShortcutController`.
 - Dialogs and feedback: preferences, an about dialog, a shortcuts window, delete confirmation, and toasts via `AdwToastOverlay`.
-- List animations with `@gtkx/animated` (`animated`, `AnimatePresence`) and styling with `@gtkx/css`.
+- Styling with `@gtkx/css`, on top of the Adwaita style classes the widgets already carry.
 - Desktop notifications built with `Gio.Notification`, including action buttons that route back into the app.
 - Persistence to `$XDG_DATA_HOME` with the Node.js standard library: `node:fs` writes a temp file, then `renameSync` swaps it into place.
 - Packaging: a Node.js Single Executable Application under `scripts/`, and a Flatpak under [`flatpak/`](flatpak/README.md).

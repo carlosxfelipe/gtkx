@@ -54,14 +54,12 @@
             "dependsOn": [
                 "production",
                 "^build",
-                "@gtkx/animated#build",
                 "@gtkx/components#build",
                 "@gtkx/config#build",
                 "@gtkx/css#build",
                 "@gtkx/runtime#build",
                 "@gtkx/gl#build",
                 "@gtkx/native#build",
-                "@gtkx/navigation#build",
                 "@gtkx/react#build",
                 "@gtkx/testing#build",
                 "@gtkx/vitest#build"

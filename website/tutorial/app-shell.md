@@ -1,10 +1,10 @@
 ---
-description: "How the Tasks app builds its adaptive frame with AdwApplicationWindow and @gtkx/navigation: a split-view navigator for the panes and a stack navigator for the content."
+description: "How the Tasks app builds its adaptive frame: an AdwApplicationWindow, an AdwNavigationSplitView for the sidebar and content panes, and a breakpoint that collapses them."
 ---
 
 # The Application Shell
 
-`app.tsx` builds the window, a split-view navigator for the sidebar and content panes, and a stack navigator inside the content pane.
+`app.tsx` builds the window and the split view that holds the sidebar and the content pane.
 
 ## The application root
 
@@ -44,7 +44,7 @@ return (
         onCloseRequest={handleClose}
         breakpoints={<>{/* an <AdwBreakpoint> that collapses the layout, shown below */}</>}
         actions={<WindowActions /* new, select, preferences, shortcuts, about */ />}
-        controllers={<AppShortcuts /* Ctrl+F, Escape */ />}
+        controllers={<AppShortcuts /* Ctrl+F, Escape, Delete */ />}
     >
         {/* ...toast overlay + split view... */}
     </AdwApplicationWindow>
@@ -77,42 +77,32 @@ const handleClose = (): boolean => {
 
 ```tsx
 <AdwToastOverlay ref={toastOverlayRef}>
-    <NavigationContainer ref={navigationRef}>
-        <Split.Navigator
-            collapsed={collapsed}
-            sidebarWidthFraction={0.25}
-            minSidebarWidth={220}
-            maxSidebarWidth={300}
-        >
-            <Split.Screen
-                name="Sidebar"
-                options={{ title: "Tasks", headerLeft: <>{/* New List button */}</> }}
-            >
-                {() => <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />}
-            </Split.Screen>
-            <Split.Screen name="Tasks" options={{ title: titleFor(selection, lists), headerShown: false }}>
-                {() => <>{/* the tasks stack, covered below */}</>}
-            </Split.Screen>
-        </Split.Navigator>
-    </NavigationContainer>
+    <AdwNavigationSplitView
+        collapsed={collapsed}
+        showContent={showContent}
+        onNotifyShowContent={(value) => setShowContent(value ?? false)}
+        sidebarWidthFraction={0.25}
+        minSidebarWidth={220}
+        maxSidebarWidth={300}
+        sidebar={
+            <AdwNavigationPage title="Tasks">
+                <AdwToolbarView topBar={<AdwHeaderBar start={<GtkButton /* New List */ />} />}>
+                    <Sidebar lists={lists} counts={counts} selection={selection} onSelect={selectSidebar} />
+                </AdwToolbarView>
+            </AdwNavigationPage>
+        }
+        content={
+            <AdwNavigationPage title={titleFor(selection, lists)}>
+                {/* ...the content pane, shown below... */}
+            </AdwNavigationPage>
+        }
+    />
 </AdwToastOverlay>
 ```
 
-The `<AdwToastOverlay>` wrapping the tree is where the undo toasts in [Feedback and Dialogs](/tutorial/feedback-and-dialogs) land. `titleFor(selection, lists)` names the content pane "Today", "Important", or a user list's name, while the list header shows the filter toggles as its title widget.
+The `<AdwToastOverlay>` wrapping the tree is where the undo toasts in [Feedback and Dialogs](/tutorial/feedback-and-dialogs) land. `sidebar` and `content` each take an `<AdwNavigationPage>`, the unit Adwaita treats as one pane: a title plus the widget that fills it. `titleFor(selection, lists)` names the content page after whatever the sidebar has selected, a smart view or a user list.
 
-Each navigator screen gets its [header](/guide/navigation#headers) from the navigator, so the sidebar declares its New List button as `headerLeft` and renders only the sidebar itself. The content pane sets `headerShown: false` because it hosts the tasks stack, whose own screens bring the headers.
-
-```tsx
-const openTask = (id: string): void => {
-    navigationRef.navigate("Tasks", { screen: "Task", params: { id } });
-};
-
-const showList = (): void => {
-    navigationRef.navigate("Tasks", { screen: "List" });
-};
-```
-
-`selectSidebar` ends with `showList()`, so selecting a sidebar row focuses the content pane and pops any open editor back to the list.
+An `<AdwNavigationPage>` carries no header bar of its own, so each pane wraps its body in an `<AdwToolbarView>` and supplies its own `<AdwHeaderBar>` as `topBar`. The sidebar's holds the New List button. The width props keep the sidebar at a quarter of the window, clamped between 220 and 300 pixels.
 
 ### The breakpoint
 
@@ -130,40 +120,44 @@ const showList = (): void => {
 >
 ```
 
-The condition uses `sp` (scale independent pixels), which tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text.
+The condition uses `sp` (scale independent pixels), which tracks the text scale factor, so the collapse point widens automatically when the user turns on Large Text. `collapsed` flows straight into the split view: wide windows show both panes side by side, and narrow ones show one at a time.
 
-### The content stack
+### Showing the content pane
+
+When the split view is collapsed, `showContent` decides which pane is on screen, and the split view reports its own changes back through `onNotifyShowContent`, so the header bar's back button and a system back gesture both land in React state.
 
 ```tsx
-<Stack.Navigator>
-    <Stack.Screen
-        name="List"
-        options={{
-            title: titleFor(selection, lists),
-            header: selecting ? selectionHeader : listHeader,
-        }}
-    >
-        {() => (
-            <AdwToolbarView bottomBar={selectionActionBar} revealBottomBars={selecting}>
-                {listBody}
-            </AdwToolbarView>
-        )}
-    </Stack.Screen>
-    <Stack.Screen name="Task" options={taskOptions}>
-        {({ route }) => {
-            const task = findTask(route.params.id);
-            if (!task) return null;
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand controllers={<>{/* the Delete shortcut */}</>}>
-                    <TaskDetail key={task.id} task={task} /* ... */ />
-                </GtkBox>
-            );
-        }}
-    </Stack.Screen>
-</Stack.Navigator>
+const openTask = (id: string): void => {
+    setSelectedTaskId(id);
+    if (collapsed) setShowContent(true);
+};
 ```
 
-Opening a task is a drill-down onto the `Task` route, while list versus selection is a mode toggle: the batch-select mode stays on the `List` screen, whose body swaps between `<TaskList>` and `<SelectionView>`. The list screen has a title widget of its own, so it hands the navigator a whole header bar through the `header` option and picks between `listHeader` and `selectionHeader` from the `selecting` flag. Its `AdwToolbarView` is left holding the selection action bar, which reveals under the body. The task screen builds its header from options instead, covered in [The Task Editor](/tutorial/the-task-editor).
+`selectSidebar` ends the same way, so picking a list on a narrow window slides over to the tasks. On a wide window `collapsed` is `false` and both panes stay visible, so neither call has to touch `showContent`.
+
+### The content pane
+
+```tsx
+<AdwNavigationPage title={titleFor(selection, lists)}>
+    {selectedTask ? (
+        <AdwToolbarView topBar={detailHeader}>
+            <TaskDetail key={selectedTask.id} task={selectedTask} /* ... */ />
+        </AdwToolbarView>
+    ) : (
+        <AdwToolbarView
+            topBar={selecting ? selectionHeader : listHeader}
+            bottomBar={selectionActionBar}
+            revealBottomBars={selecting}
+        >
+            {listBody}
+        </AdwToolbarView>
+    )}
+</AdwNavigationPage>
+```
+
+`selectedTask`, looked up from `selectedTaskId`, is what the pane branches on. With a task open it renders the editor under `detailHeader`, whose `go-previous-symbolic` button clears `selectedTaskId` and returns to the list, alongside the star toggle and the delete button. Otherwise it renders the list, and list versus selection is a mode toggle: `listBody` swaps between `<TaskList>` and `<SelectionView>` while the header swaps between `listHeader`, which carries the filter toggles as its title widget, and `selectionHeader`. That `AdwToolbarView` also holds the selection action bar, which reveals under the body. The editor itself is covered in [The Task Editor](/tutorial/the-task-editor).
+
+Escape and Delete come from `<AppShortcuts>` on the window: Escape leaves selection mode or closes the open task, and Delete deletes it.
 
 ## Next
 

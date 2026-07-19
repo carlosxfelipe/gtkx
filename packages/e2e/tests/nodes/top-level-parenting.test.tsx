@@ -1,4 +1,3 @@
-import { Dialog } from "@gtkx/components/adw";
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -83,16 +82,14 @@ describe("explicit top-level parenting", () => {
         expect(childRef.current?.getTransientFor()).toBeNull();
     });
 
-    it("presents an Adw.Dialog against the window passed as parent", async () => {
+    it("presents an Adw.Dialog against its enclosing window", async () => {
         const parentRef = createRef<Gtk.Window>();
         const dialogRef = createRef<Adw.AlertDialog>();
 
         await render(
             <ParentedTree parentRef={parentRef}>
-                {(parent) => (
-                    <Dialog
-                        component={AdwAlertDialog}
-                        parent={parent}
+                {() => (
+                    <AdwAlertDialog
                         ref={(widget) => {
                             dialogRef.current = widget;
                         }}

@@ -119,4 +119,4 @@ Every dialog and window element, along with its full prop surface, is covered by
 
 ## Next
 
-[Navigation](/guide/navigation) covers the other way a surface takes over the screen: pushing a page onto a stack instead of presenting over it.
+Continue with [CSS](/guide/css) to style these surfaces with the `css` tagged template and GTK4's own CSS engine.

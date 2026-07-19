@@ -1,4 +1,3 @@
-import { Dialog } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 
@@ -12,8 +11,7 @@ export const DeleteConfirmation = ({
     onCancel: () => void;
 }) => {
     return (
-        <Dialog
-            component={AdwAlertDialog}
+        <AdwAlertDialog
             heading="Delete Task?"
             body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
             defaultResponse="cancel"

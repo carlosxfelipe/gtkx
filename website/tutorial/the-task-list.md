@@ -99,24 +99,17 @@ The text is not bound to a prop, so the handler clears the field by assigning `s
 ### Empty states
 
 ```tsx
-<AnimatePresence initial={false}>
-    {tasks.length === 0 ? (
-        <animated.AdwStatusPage
-            key="empty"
-            cssClasses={["compact"]}
-            iconName={empty.icon}
-            title={empty.title}
-            description={empty.description}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0 } }}
-            transition={{ duration: 0.2 }}
-        />
-    ) : null}
-</AnimatePresence>
+{tasks.length === 0 ? (
+    <AdwStatusPage
+        cssClasses={["compact"]}
+        iconName={empty.icon}
+        title={empty.title}
+        description={empty.description}
+    />
+) : null}
 ```
 
-`AdwStatusPage` is Adwaita's centered placeholder, and the `.compact` style class shrinks it to fit inside the list pane; the [Animations](./animations) chapter covers the fade.
+`AdwStatusPage` is Adwaita's centered placeholder, and the `.compact` style class shrinks it to fit inside the list pane. The conditional sits below the list box, so the placeholder appears and disappears as the visible tasks change.
 
 Its content comes from the `empty` prop, which `app.tsx` computes from why the list is empty:
 

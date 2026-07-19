@@ -1,12 +1,10 @@
-import { Dialog } from "@gtkx/components/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
     return (
-        <Dialog
-            component={AdwAboutDialog}
-            onClose={onClose}
+        <AdwAboutDialog
+            onClosed={onClose}
             applicationName="Tasks"
             applicationIcon="com.gtkx.tutorial"
             version="1.0.0"

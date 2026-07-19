@@ -1,6 +1,5 @@
 import * as path from "node:path/posix";
 import { Menu } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -135,7 +134,7 @@ interface ShortcutsDialogProps {
 }
 
 const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
-    <Dialog component={AdwShortcutsDialog} onClose={onClose}>
+    <AdwShortcutsDialog onClosed={onClose}>
         <AdwShortcutsSection title="General">
             <AdwShortcutsItem title="Search demos" accelerator="<Control>f" />
             <AdwShortcutsItem title="Open Inspector" accelerator="<Control><Shift>i" />
@@ -145,7 +144,7 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
             <AdwShortcutsItem title="Next tab" accelerator="<Control>Page_Down" />
             <AdwShortcutsItem title="Previous tab" accelerator="<Control>Page_Up" />
         </AdwShortcutsSection>
-    </Dialog>
+    </AdwShortcutsDialog>
 );
 
 interface AppHeaderBarProps {
@@ -265,9 +264,8 @@ interface AboutDialogProps {
 }
 
 const AboutDialog = ({ onClose }: AboutDialogProps) => (
-    <Dialog
-        component={AdwAboutDialog}
-        onClose={onClose}
+    <AdwAboutDialog
+        onClosed={onClose}
         applicationName="GTK Demo"
         applicationIcon={applicationIconName}
         version="0.14.0"

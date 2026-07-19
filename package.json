@@ -17,11 +17,11 @@
         "lint:all": "biome check .",
         "lint:deps": "depcruise packages",
         "lint:knip": "knip",
-        "release-e2e": "tsx ./scripts/release-e2e.ts",
-        "tutorial": "tsx ./scripts/tutorial.ts",
         "release": "turbo run build --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e && turbo run release --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e",
+        "release-e2e": "tsx ./scripts/release-e2e.ts",
         "test": "turbo run test:all && turbo run test --filter=!gtkx",
         "test:all": "vitest run",
+        "tutorial": "tsx ./scripts/tutorial.ts",
         "typecheck": "turbo run typecheck:all && turbo run typecheck --filter=!gtkx",
         "typecheck:all": "tsc --noEmit"
     },

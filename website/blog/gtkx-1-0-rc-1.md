@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.0 RC1: a flexible React platform for the GNOME stack"
-description: "GTKX 1.0.0-rc.1 reworks the framework from the ground up: bindings generated on your machine from GObject-Introspection, a DOM-like React lifecycle, a single-threaded native Rust core, and new component, animation, and OpenGL packages."
+description: "GTKX 1.0.0-rc.1 reworks the framework from the ground up: bindings generated on your machine from GObject-Introspection, a DOM-like React lifecycle, a single-threaded native Rust core, and new component and OpenGL packages."
 head:
   - - meta
     - property: og:type
@@ -65,8 +65,6 @@ Signals are typed end to end, including `notify::<property>` details. A new `use
 Hand-written high-level components moved out of the reconciler into focused packages:
 
 - **`@gtkx/components`** ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, plus section headers on `ListView`, `ColumnView`, and `DropDown`, and tree expansion on `ListView` and `ColumnView`. It also ships a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and `Dialog` under `@gtkx/components/adw`.
-- **`@gtkx/navigation`** brings the React Navigation API to Adwaita: stack and split-view navigators over `Adw.NavigationView` and `Adw.NavigationSplitView` widgets.
-- **`@gtkx/animated`** replaces the old animation elements with framer-motion running against GTK4 widgets: an `animated` factory, `AnimatePresence` for exit animations, springs and easings, hover, tap, focus, and in-view variants, drag, and layout animations, all rendered as per-widget GTK4 CSS.
 - **`@gtkx/css`** was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
@@ -88,7 +86,7 @@ The CLI is driven by `gtkx.config.ts`, and 1.0 fills out the toolchain around it
 
 ## Breaking changes
 
-Almost every import path changed. Widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, and typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/ffi/<namespace>`. Apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components` and `@gtkx/animated`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
+Almost every import path changed. Widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, and typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/ffi/<namespace>`. Apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
 
 ## Try the release candidate
 

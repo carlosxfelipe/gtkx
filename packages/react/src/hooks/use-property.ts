@@ -3,9 +3,6 @@ import { propToNotifySignal } from "../utils/notify-name.js";
 import type { ObjectProp } from "../utils/object-prop.js";
 import { useObjectValue } from "./use-object-value.js";
 
-/**
- * The readable property keys of `T`: string keys that are neither methods nor dunder-wrapped internals.
- */
 type ReadableKey<T> = {
     [K in keyof T]: K extends `__${string}__`
         ? never

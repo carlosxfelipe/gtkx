@@ -31,6 +31,6 @@ Its tests are part of the workspace suite and run from the repository root with 
 ## Learn more
 
 - [Components and Hooks](https://gtkx.dev/guide/components-and-hooks)
-- [CSS and Animations](https://gtkx.dev/guide/css-and-animations)
+- [CSS](https://gtkx.dev/guide/css)
 - [Modals and Portals](https://gtkx.dev/guide/modals-and-portals)
 - [Testing](https://gtkx.dev/guide/testing)

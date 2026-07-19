@@ -15,7 +15,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
 ```tsx
 const enterSelection = (): void => {
-    showList();
+    setSelectedTaskId(null);
     setSelectedIds([]);
     setSelecting(true);
 };
@@ -25,14 +25,18 @@ const cancelSelection = (): void => {
 };
 ```
 
+Clearing `selectedTaskId` on the way in sends the content pane back to the list, so selection mode always starts on the tasks it applies to.
+
 The main menu's "Select Tasks" item and the [Escape shortcut](/tutorial/actions-menus-shortcuts#view-shortcuts-gtkshortcutcontroller-for-ephemeral-keys) reach these through the window's [`select` action](/tutorial/actions-menus-shortcuts) and `onEscape`.
 
 ## The header bar and action bar
 
-Selection mode swaps the whole header bar, so the `List` screen passes one to the navigator through the [`header` option](/guide/navigation#headers):
+Selection mode swaps the whole header bar. The content pane wraps the list in an `AdwToolbarView`, and `selecting` picks which header bar goes in its `topBar`:
 
 ```tsx
-header: selecting ? selectionHeader : listHeader,
+<AdwToolbarView topBar={selecting ? selectionHeader : listHeader} bottomBar={selectionActionBar} revealBottomBars={selecting}>
+    {listBody}
+</AdwToolbarView>
 ```
 
 ```tsx

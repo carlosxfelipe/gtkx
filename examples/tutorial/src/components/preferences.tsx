@@ -1,5 +1,4 @@
 import { DropDown } from "@gtkx/components";
-import { Dialog } from "@gtkx/components/adw";
 import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
@@ -18,7 +17,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
 
     return (
-        <Dialog component={AdwPreferencesDialog} onClose={onClose} title="Preferences">
+        <AdwPreferencesDialog onClosed={onClose} title="Preferences">
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
                     <DropDown
@@ -58,6 +57,6 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
-        </Dialog>
+        </AdwPreferencesDialog>
     );
 };

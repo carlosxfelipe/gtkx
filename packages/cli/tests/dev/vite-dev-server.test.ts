@@ -24,7 +24,6 @@ describe("createDevServerConfig", () => {
             "@gtkx/react",
             "@gtkx/jsx",
             "@gtkx/jsx/gtk",
-            "@gtkx/animated",
             "@gtkx/components",
             "@gtkx/testing",
         ]) {

@@ -1,8 +1,7 @@
-import { Dialog } from "@gtkx/components/adw";
 import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
 
 export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
-    <Dialog component={AdwShortcutsDialog} onClose={onClose}>
+    <AdwShortcutsDialog onClosed={onClose}>
         <AdwShortcutsSection title="General">
             <AdwShortcutsItem title="New task" accelerator="<Control>n" />
             <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
@@ -13,5 +12,5 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
             <AdwShortcutsItem title="Delete task" accelerator="Delete" />
             <AdwShortcutsItem title="Close task" accelerator="Escape" />
         </AdwShortcutsSection>
-    </Dialog>
+    </AdwShortcutsDialog>
 );
