@@ -64,7 +64,7 @@ Signals are typed end to end, including `notify::<property>` details. A new `use
 
 Hand-written high-level components moved out of the reconciler into focused packages:
 
-- **`@gtkx/components`** ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, plus section headers on `ListView`, `ColumnView`, and `DropDown`, and tree expansion on `ListView` and `ColumnView`. It also ships a `Menu` builder over `Gio.Menu`, layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`), and `Dialog` under `@gtkx/components/adw`.
+- **`@gtkx/components`** ships declarative collection views (`ListView`, `GridView`, `ColumnView`, `DropDown`) with controlled selection, plus section headers on `ListView`, `ColumnView`, and `DropDown`, and tree expansion on `ListView` and `ColumnView`. It also ships a `Menu` builder over `Gio.Menu` and layout helpers (`Grid`, `Fixed`, `Overlay`, `SizeGroup`, `ConstraintLayout`).
 - **`@gtkx/css`** was rebuilt on the stylis compiler for correct nested selectors and at-rule handling.
 
 ## A native core rebuilt for one thread
@@ -86,7 +86,7 @@ The CLI is driven by `gtkx.config.ts`, and 1.0 fills out the toolchain around it
 
 ## Breaking changes
 
-Almost every import path changed. Widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, and typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/ffi/<namespace>`. Apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components`, and the minimum supported Node.js is now 24. The [GitHub release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0-rc.1) carry the complete migration reference, item by item, with before-and-after code for each change.
+Almost every import path changed. Widgets now come from `@gtkx/jsx/<namespace>` instead of `@gtkx/react`, and typed classes and enums from `@gtkx/gi/<namespace>` instead of `@gtkx/ffi/<namespace>`. Apps boot with `createRoot()` and an explicit `<GtkApplication>` instead of `render(element, appId)`. Project configuration moved from a `package.json` field to `gtkx.config.ts`, high-level components moved to `@gtkx/components`, and the minimum supported Node.js is now 24. The [guide](/guide/why-gtkx) documents the current API in full, and the [tutorial](/tutorial/) builds a complete app from scratch.
 
 ## Try the release candidate
 
@@ -94,7 +94,7 @@ Almost every import path changed. Widgets now come from `@gtkx/jsx/<namespace>` 
 npm create gtkx@rc
 ```
 
-The RC is published under the `rc` dist-tag, so ask for it by name: `@latest` still resolves to the current stable release. The initializer scaffolds a project pinned to the RC. You will need Linux with the GTK4, Adwaita, and GLib development libraries, and Node.js 24 or later. Existing projects should follow the migration reference in the release notes; the import-path and lifecycle changes are mechanical, and the CLI reports actionable errors when a system introspection package is missing.
+The RC is published under the `rc` dist-tag, so ask for it by name: `@latest` still resolves to the current stable release. The initializer scaffolds a project pinned to the RC. You will need Linux with the GTK4 and GLib development libraries, Adwaita once you add `Adw-1`, and Node.js 24 or later. Existing projects should follow the [guide](/guide/getting-started); the import-path and lifecycle changes are mechanical, and the CLI reports actionable errors when a system introspection package is missing.
 
 ## The road to 1.0
 
