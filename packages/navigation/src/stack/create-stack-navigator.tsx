@@ -10,10 +10,17 @@ import {
     StackRouter,
     type StackRouterOptions,
 } from "@react-navigation/routers";
-import { type ReactNode, useLayoutEffect, useReducer, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { definedNavigatorOptions } from "../navigator-options.js";
 import type { StackStaticConfig } from "../static/navigator-configs.js";
 import type { StaticNavigator } from "../static/types.js";
+import {
+    installBackGesture,
+    installBackShortcuts,
+    runHeaderBackAction,
+    type StackBackOutcome,
+    type StackBackPort,
+} from "./stack-back.js";
 import { applyStackDiff, readLiveTags } from "./stack-diff.js";
 import { StackModal } from "./stack-modal.js";
 import { StackPage, type StackPageIdentity } from "./stack-page.js";
@@ -33,9 +40,12 @@ type StackSyncHandlers = {
     onWidgetReplace?: () => void;
 };
 
-const useWidgetStackSync = (view: Adw.NavigationView | null, desired: string[], handlers: StackSyncHandlers): void => {
-    const applyingRef = useRef(false);
-
+const useWidgetStackSync = (
+    view: Adw.NavigationView | null,
+    desired: string[],
+    handlers: StackSyncHandlers,
+    applyingRef: RefObject<boolean>,
+): void => {
     useLayoutEffect(() => {
         if (!view) return;
         applyingRef.current = true;
@@ -62,6 +72,26 @@ const useWidgetStackSync = (view: Adw.NavigationView | null, desired: string[], 
     });
 };
 
+const useStackBackPaths = (view: Adw.NavigationView | null, port: StackBackPort): (() => void) => {
+    const portRef = useRef(port);
+    portRef.current = port;
+    const read = useRef(() => portRef.current).current;
+
+    useLayoutEffect(() => {
+        if (!view) return;
+        const releaseShortcuts = installBackShortcuts(view, read);
+        const releaseGesture = installBackGesture(view, read);
+        return () => {
+            releaseShortcuts();
+            releaseGesture();
+        };
+    }, [view, read]);
+
+    return () => {
+        if (view) runHeaderBackAction(view, read);
+    };
+};
+
 type PageDescriptor = { options: StackScreenOptions; render(): ReactNode };
 
 const isModalDescriptor = (descriptor: PageDescriptor | undefined): boolean =>
@@ -85,7 +115,6 @@ const renderStackPage = (
     descriptor ? (
         <StackPage
             key={route.key}
-            routeKey={route.key}
             routeName={route.name}
             identity={identity}
             options={descriptor.options}
@@ -121,6 +150,7 @@ const renderPreloadedPage = (route: { key: string; name: string }, descriptor: P
               tag: descriptor.options.tag ?? route.key,
               focused: false,
               onTransition: () => undefined,
+              onBack: () => undefined,
           });
 
 const useStackBuilder = (props: StackNavigatorProps) =>
@@ -159,11 +189,26 @@ const navigationViewProps = (props: StackNavigatorProps) => {
     return viewProps;
 };
 
+const backOutcome = (
+    view: Adw.NavigationView | null,
+    pageKeys: string[],
+    pop: (routeKey: string) => void,
+): StackBackOutcome => {
+    const visible = view?.getVisiblePage();
+    if (!visible) return "empty";
+    if (!visible.getCanPop()) return "blocked";
+    const topKey = pageKeys[pageKeys.length - 1];
+    if (topKey === undefined || pageKeys.length < 2) return "none";
+    pop(topKey);
+    return "popped";
+};
+
 const StackNavigator = (props: StackNavigatorProps): ReactNode => {
     const { state, descriptors, describe, navigation, NavigationContent } = useStackBuilder(props);
     const [view, setView] = useState<Adw.NavigationView | null>(null);
     const setRef = useMergeRefs<Adw.NavigationView>(setView, props.ref);
     const [, forceSync] = useReducer((generation: number) => generation + 1, 0);
+    const applyingRef = useRef(false);
 
     const pageKeys = pageRouteKeys(state.routes, descriptors);
     const routesByKey = new Map(state.routes.map((route) => [route.key, route]));
@@ -174,9 +219,14 @@ const StackNavigator = (props: StackNavigatorProps): ReactNode => {
         navigation.emit({ type: ending ? "transitionEnd" : "transitionStart", target: routeKey, data: { closing } });
     };
 
-    const dismissModal = (routeKey: string): void => {
+    const popRoute = (routeKey: string): void => {
         navigation.dispatch({ ...StackActions.pop(), source: routeKey, target: state.key });
     };
+
+    const dispatchBack = (): StackBackOutcome =>
+        applyingRef.current ? "empty" : backOutcome(view, pageKeys, popRoute);
+
+    const headerBack = useStackBackPaths(view, { dispatch: dispatchBack, popOnEscape: props.popOnEscape ?? true });
 
     const renderPage = (key: string, handlers: PageTransitionHandlers): ReactNode => {
         const route = routesByKey.get(key);
@@ -185,6 +235,7 @@ const StackNavigator = (props: StackNavigatorProps): ReactNode => {
             tag: tags.tagOf(key),
             focused: key === focusedKey,
             onTransition: (ending: boolean, closing: boolean) => emitTransition(key, ending, closing),
+            onBack: headerBack,
         };
         return renderStackPage(route, descriptors[key], handlers, identity);
     };
@@ -192,22 +243,27 @@ const StackNavigator = (props: StackNavigatorProps): ReactNode => {
     const { nodes, rendered, releaseIdle } = useRenderedPages(pageKeys, renderPage);
     tags.retain(rendered);
 
-    useWidgetStackSync(view, pageKeys.map(tags.tagOf), {
-        releaseIdle: (liveTags) => releaseIdle(liveTags.map(tags.routeKeyOf)),
-        onWidgetPop: (tag) => {
-            navigation.dispatch({ ...StackActions.pop(), source: tags.routeKeyOf(tag), target: state.key });
-            forceSync();
+    useWidgetStackSync(
+        view,
+        pageKeys.map(tags.tagOf),
+        {
+            releaseIdle: (liveTags) => releaseIdle(liveTags.map(tags.routeKeyOf)),
+            onWidgetPop: (tag) => {
+                popRoute(tags.routeKeyOf(tag));
+                forceSync();
+            },
+            ...(props.onPushed !== undefined && { onWidgetPush: props.onPushed }),
+            ...(props.onReplaced !== undefined && { onWidgetReplace: props.onReplaced }),
         },
-        ...(props.onPushed !== undefined && { onWidgetPush: props.onPushed }),
-        ...(props.onReplaced !== undefined && { onWidgetReplace: props.onReplaced }),
-    });
+        applyingRef,
+    );
 
     return (
         <NavigationContent>
             <AdwNavigationView ref={setRef} {...navigationViewProps(props)}>
                 {[...nodes, ...state.preloadedRoutes.map((route) => renderPreloadedPage(route, describe(route, true)))]}
             </AdwNavigationView>
-            {state.routes.map((route) => renderStackModal(route, descriptors[route.key], dismissModal))}
+            {state.routes.map((route) => renderStackModal(route, descriptors[route.key], popRoute))}
         </NavigationContent>
     );
 };

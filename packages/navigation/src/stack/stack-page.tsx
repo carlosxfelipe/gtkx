@@ -1,16 +1,20 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwNavigationPage } from "@gtkx/jsx/adw";
 import { Activity, type ReactNode, useCallback, useRef } from "react";
+import { installPageBackAction } from "./stack-back.js";
 import type { PageTransitionHandlers } from "./stack-pages.js";
 import type { StackScreenOptions } from "./types.js";
-import { useRoutePrevented } from "./use-prevent-remove.js";
 
 export type StackTransitionEmitter = (ending: boolean, closing: boolean) => void;
 
-export type StackPageIdentity = { tag: string; focused: boolean; onTransition: StackTransitionEmitter };
+export type StackPageIdentity = {
+    tag: string;
+    focused: boolean;
+    onTransition: StackTransitionEmitter;
+    onBack: () => void;
+};
 
 type StackPageProps = {
-    routeKey: string;
     routeName: string;
     identity: StackPageIdentity;
     options: StackScreenOptions;
@@ -37,36 +41,50 @@ const connectTransitions = (page: Adw.NavigationPage, emit: () => StackTransitio
     };
 };
 
-const useTransitionRef = (
+const attachPage = (
+    page: Adw.NavigationPage,
+    emit: () => StackTransitionEmitter,
+    back: () => () => void,
+): (() => void) => {
+    const releaseTransitions = connectTransitions(page, emit);
+    const releaseAction = installPageBackAction(page, () => back()());
+    return () => {
+        releaseTransitions();
+        releaseAction();
+    };
+};
+
+const usePageRef = (
     emit: StackTransitionEmitter,
+    onBack: () => void,
 ): ((page: Adw.NavigationPage | null) => (() => void) | undefined) => {
     const emitRef = useRef(emit);
+    const backRef = useRef(onBack);
     emitRef.current = emit;
+    backRef.current = onBack;
 
     return useCallback(
         (page: Adw.NavigationPage | null) =>
-            page === null ? undefined : connectTransitions(page, () => emitRef.current),
+            page === null
+                ? undefined
+                : attachPage(
+                      page,
+                      () => emitRef.current,
+                      () => backRef.current,
+                  ),
         [],
     );
 };
 
-export const StackPage = ({
-    routeKey,
-    routeName,
-    identity,
-    options,
-    handlers,
-    children,
-}: StackPageProps): ReactNode => {
-    const canPop = useRoutePrevented(routeKey) ? false : options.canPop;
-    const transitionRef = useTransitionRef(identity.onTransition);
+export const StackPage = ({ routeName, identity, options, handlers, children }: StackPageProps): ReactNode => {
+    const pageRef = usePageRef(identity.onTransition, identity.onBack);
 
     return (
         <AdwNavigationPage
-            ref={transitionRef}
+            ref={pageRef}
             tag={identity.tag}
             title={options.title ?? routeName}
-            canPop={canPop}
+            canPop={options.canPop}
             onHiding={handlers.onHiding}
             onHidden={handlers.onHidden}
         >

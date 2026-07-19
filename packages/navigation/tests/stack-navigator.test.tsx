@@ -176,7 +176,7 @@ describe("stack navigator - widget-initiated pops", () => {
         const harness = await renderStack({ taskComponent: GuardedTask });
 
         await openTask(harness, "42", "Guarded Content");
-        expect(harness.view().getVisiblePage()?.getCanPop()).toBe(false);
+        expect(harness.view().getVisiblePage()?.getCanPop()).toBe(true);
 
         await act(() => {
             harness.view().pop();
