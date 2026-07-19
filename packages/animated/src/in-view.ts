@@ -53,7 +53,7 @@ const meetsAmount = (ratio: number, amount: ViewportOptions["amount"]): boolean 
 
 export class InViewFeature extends Feature<Gtk.Widget> {
     private isInView = false;
-    private cleanups: VoidFunction[] = [];
+    private cleanups: (() => void)[] = [];
     private observing = false;
     private checkScheduled = false;
 
@@ -73,11 +73,11 @@ export class InViewFeature extends Feature<Gtk.Widget> {
         this.node.animationState?.setActive("whileInView", isInView);
         const props = this.node.getProps();
         const handler = isInView ? props.onViewportEnter : props.onViewportLeave;
-        const entry = {
+        const entry: IntersectionObserverEntry = {
             isIntersecting: isInView,
             intersectionRatio: ratio,
             target: widget,
-        } as unknown as IntersectionObserverEntry;
+        };
         handler?.(entry);
         if (isInView && options.once) this.stopObserving();
     };

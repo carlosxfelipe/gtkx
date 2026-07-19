@@ -46,9 +46,18 @@ describe("buildDeclarations", () => {
         );
     });
 
-    it("maps hidden visibility to zero opacity", () => {
+    it("maps concealed visibility to zero opacity", () => {
         expect(buildDeclarations({ visibility: "hidden" })).toBe("opacity: 0;");
+        expect(buildDeclarations({ visibility: "collapse" })).toBe("opacity: 0;");
         expect(buildDeclarations({ visibility: "visible" })).toBe("");
+    });
+
+    it("emits border-spacing with a pixel unit for numeric values", () => {
+        expect(buildDeclarations({ borderSpacing: 4 })).toBe("border-spacing: 4px;");
+    });
+
+    it("drops transform shorthands GTK4 CSS has no property for", () => {
+        expect(buildDeclarations({ translate: "10px", perspective: 800, cursor: "pointer" })).toBe("");
     });
 
     it("passes CSS variables through untouched", () => {

@@ -1,10 +1,5 @@
 import { css } from "@gtkx/css";
 
-export const swatchStyle = css`
-    min-width: 96px;
-    min-height: 96px;
-`;
-
 export const arenaStyle = css`
     background-color: alpha(currentColor, 0.06);
     border-radius: 16px;

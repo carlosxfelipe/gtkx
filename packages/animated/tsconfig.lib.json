@@ -1,8 +1,7 @@
 {
     "extends": "../../tsconfig.lib.json",
     "compilerOptions": {
-        "exactOptionalPropertyTypes": false,
-        "lib": ["esnext", "dom"]
+        "exactOptionalPropertyTypes": false
     },
     "references": [
         {

@@ -51,6 +51,11 @@ describe("renderFile", () => {
         expect(renderFile("vitest.config.ts", context({ typescript: false }))).toContain("{js,jsx}");
     });
 
+    it("declares node and react types without the dom lib", () => {
+        const { compilerOptions } = JSON.parse(renderFile("tsconfig.json", baseContext));
+        expect(compilerOptions).toMatchObject({ lib: ["esnext"], types: ["node", "react"] });
+    });
+
     it("uses the import extension for the entry and test imports", () => {
         expect(renderFile("src/index.tsx", context({ importExtension: ".js" }))).toContain('from "./app.js"');
         expect(renderFile("src/index.tsx", context({ importExtension: ".jsx" }))).toContain('from "./app.jsx"');

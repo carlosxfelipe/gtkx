@@ -40,7 +40,7 @@ type MeasureContextProps = {
     layoutGroup: ContextType<typeof LayoutGroupContext>;
     switchLayoutGroup: ContextType<typeof SwitchLayoutGroupContext>;
     isPresent: boolean;
-    safeToRemove: VoidFunction | null | undefined;
+    safeToRemove: (() => void) | null | undefined;
 };
 
 type MeasureProps = MotionProps & { visualElement: VisualElement<Gtk.Widget> } & MeasureContextProps;
@@ -50,7 +50,7 @@ let hasTakenAnySnapshot = false;
 const didUpdateAfterAllocation = (
     visualElement: VisualElement<Gtk.Widget>,
     projection: IProjectionNode,
-    onMeasured?: VoidFunction,
+    onMeasured?: () => void,
 ): void => {
     scheduleAfterLayout(visualElement.current, () => {
         projection.root?.didUpdate();

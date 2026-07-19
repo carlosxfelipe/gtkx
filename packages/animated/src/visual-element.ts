@@ -3,7 +3,6 @@ import type {
     AnyResolvedKeyframe,
     Box,
     CreateVisualElement,
-    IProjectionNode,
     MotionProps,
     MotionValue,
     ResolvedValues,
@@ -21,6 +20,10 @@ import {
 } from "motion/react";
 import type { MotionStyle } from "motion-dom";
 import { buildDeclarations, styleRegistry } from "./style-registry.js";
+
+type ProjectionStyler = {
+    applyProjectionStyles(targetStyle: Record<string, string | number>, styleProp?: MotionStyle): void;
+};
 
 export type GtkRenderState = {
     style: ResolvedValues;
@@ -85,7 +88,7 @@ const applyCanTarget = (instance: Gtk.Widget, output: Record<string, string | nu
 export class GtkVisualElement extends VisualElement<Gtk.Widget, GtkRenderState, Record<string, never>> {
     type = "gtk";
     styleClass: string | null = null;
-    private childSubscription: VoidFunction | undefined;
+    private childSubscription: (() => void) | undefined;
 
     readValueFromInstance(instance: Gtk.Widget, key: string): AnyResolvedKeyframe | null | undefined {
         if (transformProps.has(key)) return defaultTransformValue(key);
@@ -129,18 +132,19 @@ export class GtkVisualElement extends VisualElement<Gtk.Widget, GtkRenderState, 
         instance: Gtk.Widget,
         renderState: GtkRenderState,
         styleProp?: MotionStyle,
-        projection?: IProjectionNode,
+        projection?: ProjectionStyler,
     ): void {
         const output: Record<string, string | number> = {};
         if (styleProp) {
             for (const key in styleProp) {
+                if (transformProps.has(key)) continue;
                 const value = (styleProp as Record<string, unknown>)[key];
                 if (value === undefined || value === null || isMotionValue(value)) continue;
                 output[key] = value as string | number;
             }
         }
         Object.assign(output, renderState.vars, renderState.style);
-        projection?.applyProjectionStyles(output as unknown as CSSStyleDeclaration, styleProp);
+        projection?.applyProjectionStyles(output, styleProp);
         applyCanTarget(instance, output);
         let className = this.styleClass;
         if (className === null) {

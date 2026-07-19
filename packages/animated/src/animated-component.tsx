@@ -161,7 +161,7 @@ const useAnimatedRef = (
     useInsertionEffect(() => {
         externalRefContainer.current = externalRef;
     });
-    const refCleanup = useRef<VoidFunction | null>(null);
+    const refCleanup = useRef<(() => void) | null>(null);
     const applyExternalRef = (instance: Gtk.Widget | null): void => {
         const ref = externalRefContainer.current;
         if (typeof ref !== "function") {

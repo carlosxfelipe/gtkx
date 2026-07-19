@@ -13,6 +13,18 @@ import type { SyntheticPointerEvent } from "./gestures.js";
 import { ControllerFeature, pointerEventAtPoint, pointerEventFor } from "./gestures.js";
 import { measureWidgetBounds } from "./visual-element.js";
 
+type DragControlsSubscriber = {
+    start: (event: PointerEvent) => void;
+    cancel: () => void;
+    stop: () => void;
+};
+
+declare module "motion/react" {
+    interface DragControls {
+        subscribe(controls: DragControlsSubscriber): () => void;
+    }
+}
+
 type DragAxis = "x" | "y";
 type AxisConstraints = { min?: number | undefined; max?: number | undefined };
 type AxisElastic = { min: number; max: number };
@@ -78,7 +90,7 @@ export class GtkDragSession {
     private lastOffset: Point = { x: 0, y: 0 };
     private currentDirection: DragAxis | null = null;
     private constraints: { x: AxisConstraints; y: AxisConstraints } = { x: {}, y: {} };
-    private releaseDragLock: VoidFunction | null = null;
+    private releaseDragLock: (() => void) | null = null;
     private claim: (() => void) | null = null;
 
     constructor(node: GtkVisualElement) {
@@ -245,7 +257,7 @@ const sessionPoint = (widget: Gtk.Widget, gesture: Gtk.GestureDrag): Point => {
 
 export class DragFeature extends ControllerFeature<Gtk.GestureDrag> {
     private session: GtkDragSession | null = null;
-    private unsubscribeControls: VoidFunction | null = null;
+    private unsubscribeControls: (() => void) | null = null;
     private subscribedControls: DragControls | null = null;
 
     private ensureSession(): GtkDragSession {
@@ -290,7 +302,7 @@ export class DragFeature extends ControllerFeature<Gtk.GestureDrag> {
         this.subscribeDragControls();
     }
 
-    private manualCleanup: VoidFunction | null = null;
+    private manualCleanup: (() => void) | null = null;
 
     private endManualTracking(): void {
         this.manualCleanup?.();
@@ -343,9 +355,9 @@ export class DragFeature extends ControllerFeature<Gtk.GestureDrag> {
         this.subscribedControls = dragControls ?? null;
         if (!dragControls) return;
         const session = this.ensureSession();
-        const controls = {
+        const controls: DragControlsSubscriber = {
             start: (event: PointerEvent): void => {
-                this.beginManualTracking({ x: event.pageX ?? 0, y: event.pageY ?? 0 });
+                this.beginManualTracking({ x: event.pageX, y: event.pageY });
             },
             cancel: (): void => {
                 this.endManualTracking();
@@ -356,8 +368,7 @@ export class DragFeature extends ControllerFeature<Gtk.GestureDrag> {
                 session.cancel();
             },
         };
-        const subscribable = dragControls as unknown as { subscribe: (controls: unknown) => VoidFunction };
-        this.unsubscribeControls = subscribable.subscribe(controls);
+        this.unsubscribeControls = dragControls.subscribe(controls);
     }
 
     override update(): void {

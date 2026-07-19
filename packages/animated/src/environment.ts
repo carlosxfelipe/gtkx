@@ -1,6 +1,7 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { Window as GtkWindow } from "@gtkx/gi/gtk";
+import "./dom.js";
 
 const FALLBACK_INTERVAL_MS = 1000 / 60;
 const CLOCK_STALL_FALLBACK_MS = 250;
@@ -107,10 +108,10 @@ const installFrameDriver = (): void => {
 };
 
 const installDomStubs = (): void => {
-    globalThis.Element ??= class {} as unknown as typeof Element;
-    globalThis.HTMLElement ??= class {} as unknown as typeof HTMLElement;
-    globalThis.SVGElement ??= class {} as unknown as typeof SVGElement;
-    globalThis.window ??= globalThis as unknown as typeof globalThis.window;
+    globalThis.Element ??= class {};
+    globalThis.HTMLElement ??= class {};
+    globalThis.SVGElement ??= class {};
+    globalThis.window ??= globalThis;
 };
 
 installFrameDriver();
