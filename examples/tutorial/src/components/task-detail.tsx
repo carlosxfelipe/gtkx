@@ -13,16 +13,13 @@ import {
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { formatDateTime, formatDue } from "../format.js";
+import { useStore } from "../store/index.js";
 import { detailNotes } from "../styles.js";
 import type { Task } from "../types.js";
 
-type TaskDetailProps = {
-    task: Task;
-    onUpdate: (fields: Partial<Pick<Task, "title" | "notes" | "due">>) => void;
-    onSetImportant: (important: boolean) => void;
-};
-
-export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) => {
+export const TaskDetail = ({ task }: { task: Task }) => {
+    const updateTask = useStore((state) => state.updateTask);
+    const setImportant = useStore((state) => state.setImportant);
     const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null) : undefined;
 
     return (
@@ -34,13 +31,13 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                             title="Title"
                             text={task.title}
                             showApplyButton
-                            onApply={(self) => onUpdate({ title: self.text })}
-                            onEntryActivated={(self) => onUpdate({ title: self.text })}
+                            onApply={(self) => updateTask(task.id, { title: self.text })}
+                            onEntryActivated={(self) => updateTask(task.id, { title: self.text })}
                         />
                         <AdwSwitchRow
                             title="Important"
                             active={task.important}
-                            onNotifyActive={(active) => onSetImportant(active ?? false)}
+                            onNotifyActive={(active) => setImportant(task.id, active ?? false)}
                         />
                         <AdwActionRow
                             title="Due"
@@ -51,7 +48,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                                             iconName="edit-clear-symbolic"
                                             cssClasses={["flat", "circular"]}
                                             accessibleLabel="Clear due date"
-                                            onClicked={() => onUpdate({ due: null })}
+                                            onClicked={() => updateTask(task.id, { due: null })}
                                         />
                                     ) : null}
                                     <GtkMenuButton
@@ -70,7 +67,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                                                             0,
                                                             0,
                                                         );
-                                                        onUpdate({ due: picked.toISOString() });
+                                                        updateTask(task.id, { due: picked.toISOString() });
                                                     }}
                                                 />
                                             </GtkPopover>
@@ -93,7 +90,7 @@ export const TaskDetail = ({ task, onUpdate, onSetImportant }: TaskDetailProps) 
                                     <GtkTextBuffer
                                         enableUndo
                                         onChanged={(buffer) =>
-                                            onUpdate({
+                                            updateTask(task.id, {
                                                 notes: buffer.getText(
                                                     buffer.getStartIter(),
                                                     buffer.getEndIter(),

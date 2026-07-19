@@ -1,19 +1,18 @@
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
+import { useStore } from "../store/index.js";
 
-export const DeleteConfirmation = ({
-    taskTitle,
-    onConfirm,
-    onCancel,
-}: {
-    taskTitle: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) => {
+export const DeleteConfirmation = () => {
+    const taskToDelete = useStore((state) => state.taskToDelete);
+    const tasks = useStore((state) => state.tasks);
+    const deleteForever = useStore((state) => state.deleteForever);
+    const askDeleteTask = useStore((state) => state.askDeleteTask);
+    const title = tasks.find((task) => task.id === taskToDelete)?.title ?? "";
+
     return (
         <AdwAlertDialog
             heading="Delete Task?"
-            body={`“${taskTitle}” will be permanently deleted. This cannot be undone.`}
+            body={`“${title}” will be permanently deleted. This cannot be undone.`}
             defaultResponse="cancel"
             closeResponse="cancel"
             responses={[
@@ -21,8 +20,8 @@ export const DeleteConfirmation = ({
                 { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
             ]}
             onResponse={(id) => {
-                if (id === "delete") onConfirm();
-                else onCancel();
+                if (id === "delete" && taskToDelete !== null) deleteForever(taskToDelete);
+                askDeleteTask(null);
             }}
         />
     );

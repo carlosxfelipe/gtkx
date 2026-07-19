@@ -8,11 +8,6 @@ export const isToday = (iso: string | null): boolean => {
     return startOfDay(new Date(iso)) === startOfDay(new Date());
 };
 
-export const isOverdue = (iso: string | null): boolean => {
-    if (!iso) return false;
-    return new Date(iso).getTime() < Date.now();
-};
-
 export const formatDue = (iso: string | null): string | null => {
     if (!iso) return null;
     const due = new Date(iso);

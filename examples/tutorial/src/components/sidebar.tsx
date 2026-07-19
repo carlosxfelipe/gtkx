@@ -2,7 +2,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useEffect, useRef } from "react";
-import type { SidebarCounts } from "../select.js";
+import { useStore } from "../store/index.js";
+import { type SidebarCounts, selectionKey, sidebarCounts } from "../store/selectors.js";
 import { listDot } from "../styles.js";
 import type { Selection, TaskList } from "../types.js";
 
@@ -13,9 +14,6 @@ type Entry = {
     color?: string;
     count: number;
 };
-
-const keyOf = (selection: Selection): string =>
-    selection.kind === "smart" ? `smart:${selection.view}` : `list:${selection.listId}`;
 
 const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
     { selection: { kind: "smart", view: "all" }, title: "All Tasks", icon: "view-list-symbolic", count: counts.all },
@@ -42,19 +40,14 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
     { selection: { kind: "smart", view: "trash" }, title: "Trash", icon: "user-trash-symbolic", count: counts.trash },
 ];
 
-export const Sidebar = ({
-    lists,
-    counts,
-    selection,
-    onSelect,
-}: {
-    lists: TaskList[];
-    counts: SidebarCounts;
-    selection: Selection;
-    onSelect: (selection: Selection) => void;
-}) => {
-    const entries = buildEntries(lists, counts);
-    const activeIndex = entries.findIndex((entry) => keyOf(entry.selection) === keyOf(selection));
+export const Sidebar = () => {
+    const tasks = useStore((state) => state.tasks);
+    const lists = useStore((state) => state.lists);
+    const selection = useStore((state) => state.selection);
+    const select = useStore((state) => state.select);
+
+    const entries = buildEntries(lists, sidebarCounts(tasks, lists));
+    const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === selectionKey(selection));
     const listRef = useRef<Gtk.ListBox | null>(null);
 
     useEffect(() => {
@@ -72,12 +65,12 @@ export const Sidebar = ({
                 onRowSelected={(row) => {
                     if (!row) return;
                     const entry = entries[row.getIndex()];
-                    if (entry && keyOf(entry.selection) !== keyOf(selection)) onSelect(entry.selection);
+                    if (entry && selectionKey(entry.selection) !== selectionKey(selection)) select(entry.selection);
                 }}
             >
                 {entries.map((entry) => (
                     <AdwActionRow
-                        key={keyOf(entry.selection)}
+                        key={selectionKey(entry.selection)}
                         title={entry.title}
                         prefix={
                             entry.color ? (

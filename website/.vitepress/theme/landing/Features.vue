@@ -6,7 +6,7 @@ const features = [
         icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
         title: "Native widgets",
         body: "Every element is a GObject: a GtkButton, an AdwHeaderBar. Your app is built from the same widgets GNOME ships.",
-        href: "/tutorial/app-shell",
+        href: "/tutorial/your-first-window",
     },
     {
         icon: "M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3",

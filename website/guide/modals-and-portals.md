@@ -86,13 +86,13 @@ const Notice = ({ onClose }: { onClose: () => void }) => (
 
 Showing it is a conditional render, the same as any other component. `Dialog` takes a `component` prop naming the dialog widget to present, defaulting to `AdwDialog`, and accepts that widget's own props and children directly.
 
-The `component` prop, the `parent` anchor, the portal to the root, the present/forceClose effect, and the guard that keeps a React-driven close from re-firing `onClose` are all worked through in [Feedback and Dialogs](/tutorial/feedback-and-dialogs#how-a-dialog-gets-on-screen).
+The tutorial works the same contract through a store field that names the dialog on screen, and routes `onClosed` back to that field so Escape and the close button leave the store honest: see [Mounting dialogs](/tutorial/actions-menus-shortcuts#mounting-dialogs).
 
 ## Alert dialogs
 
 `Adw.AlertDialog` is the message-and-buttons modal. Passing `AdwAlertDialog` as `Dialog`'s `component` turns its imperative `addResponse`/`setResponseAppearance` calls into a declarative `responses` array, and the chosen button's `id` arrives on `onResponse`.
 
-The `responses` entry shape (`id`, `label`, `appearance`) and the `defaultResponse`/`closeResponse` safety pair are covered in [Confirming the irreversible](/tutorial/feedback-and-dialogs#confirming-the-irreversible). The same chapter builds a form inside an alert dialog in [the New List dialog](/tutorial/feedback-and-dialogs#the-new-list-dialog-a-form-in-an-alert-dialog).
+The `responses` entry shape (`id`, `label`, `appearance`) and the `defaultResponse`/`closeResponse` safety pair are covered in [Confirming a permanent delete](/tutorial/trash-and-toasts#confirming-a-permanent-delete). The same chapter builds a form inside an alert dialog in [A dialog that is a form](/tutorial/trash-and-toasts#a-dialog-that-is-a-form).
 
 ## Finding the parent window
 

@@ -3,31 +3,23 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { useSetting } from "@gtkx/react";
+import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { escapeMarkup, formatDue } from "../format.js";
+import { useStore } from "../store/index.js";
+import { isReorderable } from "../store/selectors.js";
 import type { Task } from "../types.js";
+import { requestDeleteTask } from "./dialogs.js";
 
-export type TaskRowHandlers = {
-    onToggleDone: (id: string, done: boolean) => void;
-    onToggleImportant: (id: string, important: boolean) => void;
-    onDelete: (task: Task) => void;
-    onOpen: (id: string) => void;
-    onReorder: (draggedId: string, targetId: string) => void;
-};
-
-type TaskRowProps = TaskRowHandlers & {
-    task: Task;
-    reorderable: boolean;
-};
-
-export const TaskRow = ({
-    task,
-    reorderable,
-    onToggleDone,
-    onToggleImportant,
-    onDelete,
-    onOpen,
-    onReorder,
-}: TaskRowProps) => {
+export const TaskRow = ({ task }: { task: Task }) => {
+    const setDone = useStore((state) => state.setDone);
+    const setImportant = useStore((state) => state.setImportant);
+    const openTask = useStore((state) => state.openTask);
+    const reorder = useStore((state) => state.reorder);
+    const selection = useStore((state) => state.selection);
+    const searchQuery = useStore((state) => state.searchQuery);
+    const [sortOrder] = useSetting(schema, "sort-order");
+    const reorderable = isReorderable(selection, searchQuery, sortOrder);
     const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
 
     return (
@@ -36,13 +28,13 @@ export const TaskRow = ({
             useMarkup
             subtitle={formatDue(task.due) ?? undefined}
             activatable
-            onActivated={() => onOpen(task.id)}
+            onActivated={() => openTask(task.id)}
             prefix={
                 <GtkCheckButton
                     valign={Gtk.Align.CENTER}
                     active={task.done}
                     accessibleLabel="Mark complete"
-                    onToggled={(self) => onToggleDone(task.id, self.active)}
+                    onToggled={(self) => setDone(task.id, self.active)}
                 />
             }
             suffix={
@@ -53,14 +45,14 @@ export const TaskRow = ({
                         active={task.important}
                         accessibleLabel="Toggle important"
                         cssClasses={["flat"]}
-                        onToggled={(self) => onToggleImportant(task.id, self.active)}
+                        onToggled={(self) => setImportant(task.id, self.active)}
                     />
                     <GtkButton
                         valign={Gtk.Align.CENTER}
                         iconName="user-trash-symbolic"
                         accessibleLabel="Delete task"
                         cssClasses={["flat"]}
-                        onClicked={() => onDelete(task)}
+                        onClicked={() => requestDeleteTask(task)}
                     />
                 </>
             }
@@ -82,7 +74,7 @@ export const TaskRow = ({
                             types={[GObject.TYPE_STRING]}
                             onDrop={(value) => {
                                 const draggedId = value.getString();
-                                if (draggedId) onReorder(draggedId, task.id);
+                                if (draggedId) reorder(draggedId, task.id);
                                 return true;
                             }}
                         />

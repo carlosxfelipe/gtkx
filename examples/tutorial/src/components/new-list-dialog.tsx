@@ -3,19 +3,16 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkEntry, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
+import { useStore } from "../store/index.js";
 import { listDot } from "../styles.js";
 
 const PALETTE = ["#3584e4", "#2ec27e", "#e66100", "#9141ac", "#e01b24", "#f5c211"];
 
-export const NewListDialog = ({
-    onAdd,
-    onCancel,
-}: {
-    onAdd: (name: string, color: string) => void;
-    onCancel: () => void;
-}) => {
+export const NewListDialog = () => {
+    const addList = useStore((state) => state.addList);
+    const showDialog = useStore((state) => state.showDialog);
     const [name, setName] = useState("");
-    const [color, setColor] = useState(PALETTE[0]);
+    const [color, setColor] = useState("#3584e4");
 
     return (
         <AdwAlertDialog
@@ -27,8 +24,8 @@ export const NewListDialog = ({
                 { id: "add", label: "Add", appearance: Adw.ResponseAppearance.SUGGESTED },
             ]}
             onResponse={(id) => {
-                if (id === "add") onAdd(name, color);
-                else onCancel();
+                if (id === "add") addList(name, color);
+                showDialog("none");
             }}
         >
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>

@@ -216,7 +216,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 ## The Adwaita entry point: @gtkx/components/adw
 
-**`Dialog`** presents an Adwaita dialog (its `component`, defaulting to `AdwDialog`) while it is mounted and closes it on unmount, so dialog visibility becomes ordinary conditional rendering. See [Modals and Portals](/guide/modals-and-portals) for the present-on-mount, close-on-unmount contract, and [How a dialog gets on screen](/tutorial/feedback-and-dialogs#how-a-dialog-gets-on-screen) for the `onClose` wiring.
+**`Dialog`** presents an Adwaita dialog (its `component`, defaulting to `AdwDialog`) while it is mounted and closes it on unmount, so dialog visibility becomes ordinary conditional rendering. See [Modals and Portals](/guide/modals-and-portals) for the present-on-mount, close-on-unmount contract, and [Mounting dialogs](/tutorial/actions-menus-shortcuts#mounting-dialogs) for the `onClose` wiring.
 
 ## Hooks
 
@@ -232,7 +232,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 
-const [filter, setFilter] = useSetting(schema, "filter");
+const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
 ```
 
 **`useBindSetting(schema, key, object, property, flags?)`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
@@ -252,4 +252,4 @@ useSignal(window, "notify::fullscreened", () => setFullscreened(window.current?.
 
 ## Next
 
-Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The worked `Dialog` walkthrough lives in the tutorial's [Feedback and Dialogs](/tutorial/feedback-and-dialogs#how-a-dialog-gets-on-screen) chapter.
+Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The worked dialog walkthrough lives in the tutorial's [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.

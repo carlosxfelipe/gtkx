@@ -79,7 +79,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [The Application Shell](/tutorial/app-shell)). Either way, the application element picks up the `applicationId` from your config automatically.
+The counter starter wraps its window in `<GtkApplication>`; the Tasks app swaps that for `<AdwApplication>` (imported from `@gtkx/jsx/adw`) to pull in Adwaita, which initializes when its bindings load (see [Your First Window](/tutorial/your-first-window)). Either way, the application element picks up the `applicationId` from your config automatically.
 
 ## Next
 

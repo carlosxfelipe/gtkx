@@ -11,7 +11,7 @@ export const useReminders = (tasks: Task[], reminderMinutes: number, sendReminde
             for (const task of tasks) {
                 if (task.done || task.deleted || !task.due || notified.current.has(task.id)) continue;
                 const remaining = new Date(task.due).getTime() - nowMs;
-                if (remaining <= leadMs && remaining > -86_400_000) {
+                if (remaining > 0 && remaining <= leadMs) {
                     sendReminder(task);
                     notified.current.add(task.id);
                 }

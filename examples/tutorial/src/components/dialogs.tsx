@@ -1,0 +1,40 @@
+import { useStore } from "../store/index.js";
+import type { Task } from "../types.js";
+import { About } from "./about.js";
+import { DeleteConfirmation } from "./delete-confirmation.js";
+import { NewListDialog } from "./new-list-dialog.js";
+import { Preferences } from "./preferences.js";
+import { Shortcuts } from "./shortcuts.js";
+import { showToast } from "./toast-overlay.js";
+
+export const requestDeleteTask = (task: Task): void => {
+    const { moveToTrash, restore, askDeleteTask, selectedTaskId, closeTask } = useStore.getState();
+    if (task.deleted) {
+        askDeleteTask(task.id);
+        return;
+    }
+    moveToTrash(task.id);
+    if (selectedTaskId === task.id) closeTask();
+    showToast(`“${task.title}” moved to Trash`, () => restore(task.id));
+};
+
+export const Dialogs = () => {
+    const dialog = useStore((state) => state.dialog);
+    const showDialog = useStore((state) => state.showDialog);
+    const close = () => showDialog("none");
+
+    switch (dialog) {
+        case "about":
+            return <About onClose={close} />;
+        case "shortcuts":
+            return <Shortcuts onClose={close} />;
+        case "preferences":
+            return <Preferences onClose={close} />;
+        case "new-list":
+            return <NewListDialog />;
+        case "delete-task":
+            return <DeleteConfirmation />;
+        case "none":
+            return null;
+    }
+};

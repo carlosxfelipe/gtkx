@@ -7,16 +7,6 @@
     <value nick="created" value="3"/>
   </enum>
   <schema id="com.gtkx.tutorial" path="/com/gtkx/tutorial/">
-    <key name="filter" type="s">
-      <choices>
-        <choice value="all"/>
-        <choice value="open"/>
-        <choice value="done"/>
-      </choices>
-      <default>'all'</default>
-      <summary>Task filter</summary>
-      <description>Which tasks are shown in the list</description>
-    </key>
     <key name="sort-order" enum="com.gtkx.tutorial.SortOrder">
       <default>'manual'</default>
       <summary>Sort order</summary>

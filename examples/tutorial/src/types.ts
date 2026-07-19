@@ -21,3 +21,9 @@ export type Task = {
 export type SmartView = "all" | "today" | "important" | "trash";
 
 export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
+
+export type Filter = "all" | "open" | "done";
+
+export type SortOrder = "manual" | "due-date" | "title" | "created";
+
+export type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list" | "delete-task";
