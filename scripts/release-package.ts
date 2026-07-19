@@ -31,12 +31,21 @@ const releasePackage = (): void => {
             ["publish", "--access", "public", "--no-git-checks", "--provenance", "--tag", tag],
             {
                 cwd: packageDir,
-                stdio: "inherit",
+                stdio: ["inherit", "pipe", "pipe"],
+                encoding: "utf8",
             },
         );
+        process.stdout.write(result.stdout ?? "");
+        process.stderr.write(result.stderr ?? "");
         if (result.error) throw result.error;
         if (result.status !== 0) {
-            throw new Error(`pnpm publish failed with exit code ${result.status ?? "unknown"}`);
+            const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+            const alreadyPublished = /cannot publish over|EPUBLISHCONFLICT|previously published version/i.test(output);
+            if (alreadyPublished) {
+                console.log(`${manifest.name ?? "package"}@${manifest.version ?? ""} is already published, skipping`);
+            } else {
+                throw new Error(`pnpm publish failed with exit code ${result.status ?? "unknown"}`);
+            }
         }
     } finally {
         writeFileSync(manifestPath, original);
