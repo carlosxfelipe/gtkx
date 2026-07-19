@@ -72,6 +72,18 @@ jobs:
           name: native-linux-arm64-gnu
           path: packages/native/artifacts
 
+      - name: Expose OIDC token request to the release container
+        shell: bash
+        run: |
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            echo "::error::OIDC token request variables are unavailable; the publish job needs id-token: write"
+            exit 1
+          fi
+          {
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL}"
+            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+          } >> "$GITHUB_ENV"
+
       - name: Release
         uses: ./.github/actions/run-ci-command
         with:
