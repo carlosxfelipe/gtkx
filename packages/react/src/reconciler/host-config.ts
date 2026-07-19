@@ -18,6 +18,7 @@ import { ensureState, type Node, stateOf } from "./state.js";
 import { scheduleBufferRebuild } from "./text-buffer-rebuild.js";
 import { isBufferContentNode, isLabelTextNode } from "./text-node.js";
 import type { Container, Props } from "./types.js";
+import { hideNode, reassertHidden, setTextNodeHidden, unhideNode } from "./visibility.js";
 import { isWrapperNode } from "./wrapper-node.js";
 import { BUFFER_TEXT_KIND, isWrapperKind, LABEL_TEXT_KIND, WRAPPER_NODE_ELEMENT } from "./wrapper-protocol.js";
 
@@ -112,6 +113,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
     if (isWrapperNode(instance)) {
         if (isBufferContentNode(instance)) scheduleBufferRebuild(instance);
         else resyncWrapperNode(instance);
+        reassertHidden(instance);
         return;
     }
     if (!(instance instanceof GObject.Object)) return;
@@ -134,6 +136,7 @@ const commitInstanceProps = (instance: Node, oldProps: Props | null, newProps: P
         applyElementProps(instance, oldProps, newProps);
     }
     if (instance instanceof Gtk.TextTag) scheduleBufferRebuild(instance);
+    reassertHidden(instance);
 };
 
 const needsDetachOnDelete = (wrapper: GObject.Object): boolean =>
@@ -275,6 +278,10 @@ type MutationConfig = Pick<
     | "removeChildFromContainer"
     | "insertInContainerBefore"
     | "clearContainer"
+    | "hideInstance"
+    | "unhideInstance"
+    | "hideTextInstance"
+    | "unhideTextInstance"
 >;
 
 const createMutationConfig = (): MutationConfig => ({
@@ -300,6 +307,18 @@ const createMutationConfig = (): MutationConfig => ({
         insertBefore(container, child, beforeChild);
     },
     clearContainer: () => {},
+    hideInstance: (instance) => {
+        hideNode(instance);
+    },
+    unhideInstance: (instance) => {
+        unhideNode(instance);
+    },
+    hideTextInstance: (textInstance) => {
+        setTextNodeHidden(textInstance, true);
+    },
+    unhideTextInstance: (textInstance) => {
+        setTextNodeHidden(textInstance, false);
+    },
 });
 
 type CommitConfig = Pick<HostConfig, "commitUpdate" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit">;

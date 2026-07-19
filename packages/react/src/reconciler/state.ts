@@ -22,6 +22,8 @@ export type State = {
     rootContainer: Container;
     signalStore: SignalStore;
     adoptedInstance?: GObject.Object | undefined;
+    hidden?: boolean | undefined;
+    visibleWhenShown?: boolean | undefined;
 };
 
 const stateMap = new WeakMap<Node, State>();

@@ -10,7 +10,10 @@ const rebuildLabelText = (owner: Gtk.Label): void => {
         if (runs.length === 0) return;
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
     }
-    const text = runs.map((run) => String(stateOf(run).props.text)).join("");
+    const text = runs
+        .filter((run) => !stateOf(run).hidden)
+        .map((run) => String(stateOf(run).props.text))
+        .join("");
     owner.setLabel(text);
 };
 

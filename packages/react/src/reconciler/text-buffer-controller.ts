@@ -57,6 +57,7 @@ export class TextBufferController {
     }
 
     private insertChild(buffer: Gtk.TextBuffer, child: Node): void {
+        if (stateOf(child).hidden) return;
         if (isBufferTextNode(child)) {
             this.insertText(buffer, stateOf(child).props.text as string);
         } else if (isPaintableNode(child)) {
