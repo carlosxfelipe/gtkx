@@ -4,13 +4,13 @@ import {
     createReconcilerRoot,
     isRootElement,
     type ReconcilerRoot,
-    scheduleAfterLayout,
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import { runInAct } from "./act.js";
 import type { RenderResult } from "./bound-queries.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
+import { scheduleAfterLayout } from "./frame-sync.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -35,7 +35,7 @@ const HARNESS_WINDOW_HEIGHT = 600;
 
 const flushLayout = (window: Gtk.Window | null): Promise<void> =>
     new Promise((resolve) => {
-        scheduleAfterLayout(window, resolve, { settled: (widget) => widget.getWidth() > 0 });
+        scheduleAfterLayout(window, resolve);
     });
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {

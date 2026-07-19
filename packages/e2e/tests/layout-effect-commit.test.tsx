@@ -1,11 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, type RootElement, rootElement } from "@gtkx/react";
-import { render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-
-const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("layout effects during commit", () => {
     it("reads and writes a widget imperatively from a layout effect", async () => {
@@ -54,8 +52,9 @@ describe("layout effects during commit", () => {
         const buttonB = createRef<Gtk.Button>();
         const onClickedB = vi.fn();
 
-        rootB.render(<GtkButton ref={buttonB} label="b" onClicked={onClickedB} />);
-        await settle();
+        await act(() => {
+            rootB.render(<GtkButton ref={buttonB} label="b" onClicked={onClickedB} />);
+        });
 
         const CrossRootEmitter = () => {
             useLayoutEffect(() => {
@@ -64,13 +63,15 @@ describe("layout effects during commit", () => {
             return <GtkLabel>a</GtkLabel>;
         };
 
-        rootA.render(<CrossRootEmitter />);
-        await settle();
+        await act(() => {
+            rootA.render(<CrossRootEmitter />);
+        });
 
         expect(onClickedB).toHaveBeenCalledTimes(1);
 
-        rootA.unmount();
-        rootB.unmount();
-        await settle();
+        await act(() => {
+            rootA.unmount();
+            rootB.unmount();
+        });
     });
 });

@@ -22,5 +22,4 @@ export {
 } from "./reconciler/wrapper-protocol.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
 export { createElementComponent, createLazyElementComponent } from "./utils/create-element-component.js";
-export { type FrameSyncOptions, type LayoutSettled, scheduleAfterLayout } from "./utils/frame-sync.js";
 export { type ObjectProp, resolveObjectProp } from "./utils/object-prop.js";
