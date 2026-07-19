@@ -117,6 +117,16 @@
             }
         },
         {
+            "includes": ["packages/vitest/src/notification-service.ts"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "useNamingConvention": "off"
+                    }
+                }
+            }
+        },
+        {
             "includes": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx"],
             "linter": {
                 "rules": {

@@ -3,6 +3,7 @@ import { chmodSync, createWriteStream, existsSync, mkdtempSync, rmSync, writeFil
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { startNotificationService } from "./notification-service.js";
 
 /**
  * Wayland compositors that can back a headless display.
@@ -256,12 +257,18 @@ const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: str
     );
 };
 
-const makeTeardown = (compositor: ChildProcess, capturedStderr: string[], removeRuntime: () => void): (() => void) => {
+const makeTeardown = (
+    compositor: ChildProcess,
+    capturedStderr: string[],
+    stopNotifications: () => void,
+    removeRuntime: () => void,
+): (() => void) => {
     let torndown = false;
     return (): void => {
         if (torndown) return;
         torndown = true;
         reportUnexpectedCompositorExit(compositor, capturedStderr);
+        stopNotifications();
         removeRuntime();
     };
 };
@@ -311,8 +318,10 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
             abort.abort();
         }
 
+        const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
+
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
-        return makeTeardown(compositor.child, capturedStderr, removeRuntime);
+        return makeTeardown(compositor.child, capturedStderr, stopNotifications, removeRuntime);
     } catch (cause) {
         for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();

@@ -1,3 +1,5 @@
+import "@homebridge/dbus-native";
+
 declare module "@homebridge/dbus-native" {
     export type InterfaceDescriptor = {
         name: string;
@@ -7,7 +9,6 @@ declare module "@homebridge/dbus-native" {
     };
 
     export interface MessageBus {
-        connection: { stream: { destroy(): void } };
         exportInterface(implementation: object, path: string, descriptor: InterfaceDescriptor): void;
         requestName(name: string, flags: number, callback: (error: Error | null, result?: number) => void): void;
     }

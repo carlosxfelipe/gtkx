@@ -48,7 +48,8 @@
     },
     "dependencies": {
         "@gtkx/config": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/utils": "workspace:*",
+        "@homebridge/dbus-native": "^0.7.7"
     },
     "devDependencies": {
         "vitest": "catalog:"

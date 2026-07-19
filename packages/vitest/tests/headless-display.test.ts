@@ -8,6 +8,12 @@ vi.mock("node:child_process", async (importOriginal) => {
     return { ...actual, spawn: vi.fn(), spawnSync: vi.fn() };
 });
 
+const stopNotificationsMock = vi.fn();
+
+vi.mock("../src/notification-service.js", () => ({
+    startNotificationService: vi.fn(async () => stopNotificationsMock),
+}));
+
 const { spawn: realSpawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process");
 const { DEFAULT_HEADLESS_SIZE, readHeadlessOptions, resolveHeadlessOptions, startHeadlessDisplay } = await import(
     "../src/headless-display.js"
@@ -92,6 +98,7 @@ describe("startHeadlessDisplay", () => {
             savedEnv[key] = process.env[key];
             delete process.env[key];
         }
+        stopNotificationsMock.mockReset();
         spawnSyncMock.mockReset();
         spawnSyncMock.mockReturnValue(westonHelp("--fake-seat"));
         spawnMock.mockReset();
@@ -207,6 +214,7 @@ describe("startHeadlessDisplay", () => {
         teardown();
 
         expect(process.env.WAYLAND_DISPLAY).toBe("set-after-teardown");
+        expect(stopNotificationsMock).toHaveBeenCalledTimes(1);
     });
 
     it("rejects and cleans up when a spawned child exits before its socket appears", async () => {
