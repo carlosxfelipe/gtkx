@@ -72,7 +72,7 @@ jobs:
           name: native-linux-arm64-gnu
           path: packages/native/artifacts
 
-      - name: Expose OIDC token request to the release container
+      - name: Stage OIDC token request for the release container
         shell: bash
         run: |
           if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
@@ -80,23 +80,22 @@ jobs:
             exit 1
           fi
           echo "::add-mask::${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+          umask 077
           {
-            echo "NPM_OIDC_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL}"
-            echo "NPM_OIDC_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
-          } >> "$GITHUB_ENV"
+            printf 'export ACTIONS_ID_TOKEN_REQUEST_URL=%q\n' "${ACTIONS_ID_TOKEN_REQUEST_URL}"
+            printf 'export ACTIONS_ID_TOKEN_REQUEST_TOKEN=%q\n' "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+          } > "${GITHUB_WORKSPACE}/.oidc.env"
 
       - name: Release
         uses: ./.github/actions/run-ci-command
         with:
           command: >-
-            echo "oidc-in-container=${NPM_OIDC_REQUEST_URL:+yes}" &&
-            export ACTIONS_ID_TOKEN_REQUEST_URL="$NPM_OIDC_REQUEST_URL"
-            ACTIONS_ID_TOKEN_REQUEST_TOKEN="$NPM_OIDC_REQUEST_TOKEN" &&
+            . /workspace/.oidc.env;
+            rm -f /workspace/.oidc.env;
+            echo "oidc-token-len=${#ACTIONS_ID_TOKEN_REQUEST_TOKEN}";
             pnpm release
           extra-env: >-
             NPM_CONFIG_PROVENANCE
-            NPM_OIDC_REQUEST_URL
-            NPM_OIDC_REQUEST_TOKEN
             GITHUB_ACTIONS
             GITHUB_SERVER_URL
             GITHUB_REPOSITORY
