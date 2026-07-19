@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/mcp",
     "version": "1.0.0-rc.1",
-    "description": "Model Context Protocol server that lets an agent inspect and drive a running GTKX application",
+    "description": "Model Context Protocol server that gives an agent the GTKX API reference and control of a running application",
     "keywords": [
         "gtkx",
         "gtk",
