@@ -68,4 +68,16 @@ describe("Tasks", () => {
         expect(first).toHaveAccessibleName("Review pull requests");
         expect(second).toHaveAccessibleName("Water the plants");
     });
+
+    it("keeps one color selected when the same swatch is clicked repeatedly", async () => {
+        await render(<App />, { container: rootElement });
+        useStore.getState().showDialog("new-list");
+
+        const orange = await screen.findByLabelText("Color #e66100");
+        await userEvent.click(orange);
+        await userEvent.click(orange);
+
+        expect(orange).toHaveProperty("active", true);
+        expect(await screen.findByLabelText("Color #3584e4")).toHaveProperty("active", false);
+    });
 });

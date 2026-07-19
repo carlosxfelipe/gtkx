@@ -4,13 +4,13 @@ description: "Build a Flatpak anyone can install, and see which sandbox permissi
 
 # Appendix C: Shipping It on Flathub
 
-[Appendix B](/tutorial/packaging) produced a single executable that runs on your machine. This appendix produces one artifact that runs on anyone's.
+[Appendix B](/tutorial/packaging) built a single executable that runs on your machine. This page builds one that runs on anyone's.
 
-A Flatpak bundles the app together with a pinned platform, so it sees the same Adwaita it was built against even on a distribution that shipped a different one three releases ago. The build happens inside a sandbox with no network, which is the part worth planning for, and the finished app runs inside a sandbox too, which costs you almost nothing here.
+A Flatpak bundles the app with a pinned platform, so it sees the same Adwaita it was built against on any distribution. The build runs inside a sandbox with no network, which is the part worth planning for. The finished app runs in a sandbox too.
 
 ## The manifest
 
-Everything Flatpak needs is one YAML file. Create `flatpak/com.gtkx.tutorial.yaml`:
+Flatpak needs one YAML file. Create `flatpak/com.gtkx.tutorial.yaml`:
 
 ```yaml
 id: com.gtkx.tutorial
@@ -70,31 +70,23 @@ modules:
       - generated-sources.json
 ```
 
-`id` is the application ID you have been carrying since [Your First Window](/tutorial/your-first-window), and it is also the directory name the sandbox gives you on disk. Keeping it in agreement with the desktop entry and the schema path is what makes the rest of the file a straight copy.
+`id` is the application ID from [Your First Window](/tutorial/your-first-window), and it is also the directory name the sandbox gives you on disk. Keep it in agreement with the desktop entry and the schema path.
 
-`runtime: org.gnome.Platform` with `runtime-version: "50"` is the pin: GTK4, Adwaita, GLib, and the icon theme come from that runtime, at that version, on every machine. `sdk: org.gnome.Sdk` is the same platform plus compilers and headers, present at build time only.
+`runtime: org.gnome.Platform` with `runtime-version: "50"` is the pin: GTK4, Adwaita, GLib, and the icon theme all come from that runtime version, on every machine. `sdk: org.gnome.Sdk` is the same platform plus compilers and headers, used only at build time.
 
-`sdk-extensions` adds `org.freedesktop.Sdk.Extension.node24`, because the GNOME SDK carries no Node.js. The extension installs under `/usr/lib/sdk/node24`, which is why `append-path: /usr/lib/sdk/node24/bin` follows: without it, `npm` is not on `PATH` and the first build command fails with `npm: command not found`. `npm_config_nodedir` points native module builds at that same Node.js rather than at a copy npm would download.
+`sdk-extensions` adds `org.freedesktop.Sdk.Extension.node24`, because the GNOME SDK carries no Node.js. It installs under `/usr/lib/sdk/node24`, so `append-path: /usr/lib/sdk/node24/bin` puts `npm` on `PATH`; without it the first build command fails with `npm: command not found`. `npm_config_nodedir` points native module builds at that same Node.js instead of a copy npm would download.
 
-`strip: false` matters for the reason [Appendix B](/tutorial/packaging) explains, and flatpak-builder is the one pipeline that strips your binary without being asked.
+`strip: false` matters for the reason [Appendix B](/tutorial/packaging) explains, and flatpak-builder strips your binary by default.
 
-::: warning `Cannot find module` or an immediate exit from a Flatpak build that worked locally
-Check `strip: false` and `no-debuginfo: true` are both still in `build-options`. Stripping is flatpak-builder's default, and it is what takes the embedded application with it.
-:::
+The build commands do what Appendix B did by hand, now inside the sandbox, then install the schema, the desktop entry, the metainfo, and the icons where the system expects them. `glib-compile-schemas` runs against `/app/share/glib-2.0/schemas` after the schema lands there, so the preferences from [Preferences and the System Theme](/tutorial/preferences-and-theming) resolve inside the sandbox.
 
-The build commands do what Appendix B did by hand, in the sandbox, then install the schema, the desktop entry, the metainfo, and both icons where the system expects them. `glib-compile-schemas` runs against `/app/share/glib-2.0/schemas` after the schema lands there, so the preferences you wrote in [Preferences and the System Theme](/tutorial/preferences-and-theming) resolve inside the sandbox.
-
-::: warning `flatpak run` exits immediately with `Settings schema 'com.gtkx.tutorial' is not installed`
-The schema XML reached `/app/share/glib-2.0/schemas` but `glib-compile-schemas` did not run against that directory afterwards, or the `id` attribute in `data/com.gtkx.tutorial.gschema.xml` drifted from the one `useSetting` asks for. `Gio.Settings` aborts the process instead of falling back to defaults, so no window ever appears. Keep the `install -Dm644` of the schema and the `glib-compile-schemas` line in `build-commands` in that order, and keep the schema `id` equal to the application ID.
-:::
-
-The `dir` source builds your working tree, skipping everything derived. The second source, `generated-sources.json`, does not exist yet.
+The `dir` source builds your working tree, skipping everything derived. The other source, `generated-sources.json`, does not exist yet.
 
 ## Building offline
 
-The build sandbox has no network: `npm ci` cannot reach the registry and esbuild cannot download its platform binary. Reproducibility is the point, and Flathub enforces it.
+The build sandbox has no network: `npm ci` cannot reach the registry and esbuild cannot download its platform binary. This keeps builds reproducible, and Flathub enforces it.
 
-So resolve every dependency ahead of time, on your machine, into a manifest of URLs and checksums that `flatpak-builder` fetches before it seals the sandbox. [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) reads a lockfile and writes exactly that. Install it with `pipx install flatpak-node-generator`.
+So resolve every dependency ahead of time into a manifest of URLs and checksums that `flatpak-builder` fetches before it seals the sandbox. [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) reads a lockfile and writes that manifest. Install it with `pipx install flatpak-node-generator`.
 
 Create `flatpak/generate-sources.sh`:
 
@@ -139,13 +131,9 @@ Run it whenever a dependency changes:
 npm run flatpak:sources
 ```
 
-`flatpak-builder` unpacks those sources into `flatpak-node/` inside the build directory, and the module's environment variables point every cache at that tree. `npm_config_offline` makes npm fail loudly instead of reaching out, `npm_config_cache` is the offline package store it installs from, `XDG_CACHE_HOME` catches the caches other tools would put in `~/.cache`, and `ESBUILD_BINARY_PATH` hands esbuild the binary it would otherwise fetch on install.
+`flatpak-builder` unpacks those sources into `flatpak-node/` inside the build directory, and the module's environment variables point every cache at that tree. `npm_config_offline` makes npm fail instead of reaching out, `npm_config_cache` is the offline package store it installs from, `XDG_CACHE_HOME` catches the caches other tools would write to `~/.cache`, and `ESBUILD_BINARY_PATH` hands esbuild the binary it would otherwise fetch.
 
-::: warning `npm ci` fails inside the build with `ENOTCACHED` or a lockfile that is out of sync
-`flatpak/generated-sources.json` was generated from an older `package-lock.json`, so a dependency you added since then has no vendored tarball. `npm_config_offline` stops npm from quietly filling the gap from the registry, which is why the failure lands at build time rather than becoming an unpinned download. Run `npm run flatpak:sources` again, and rerun it every time `package.json` changes.
-:::
-
-`postject`, which injects the application blob into the `node` binary, does not come through npm at build time. The manifest calls it as `node vendor/postject.cjs`, the self-contained CommonJS file produced by the `bundle:postject` script from Appendix B, so the build step needs no package resolution when it runs.
+`postject`, which injects the application blob into the `node` binary, does not come through npm at build time. The manifest calls it as `node vendor/postject.cjs`, the self-contained CommonJS file the `bundle:postject` script from Appendix B produces, so the build step needs no package resolution.
 
 Now build it:
 
@@ -159,7 +147,7 @@ flatpak-builder \
     flatpak/com.gtkx.tutorial.yaml
 ```
 
-`--install-deps-from=flathub` pulls the GNOME runtime and the Node.js SDK extension, which takes a while the first time and happens once. `--repo=flatpak-repo` writes the result as a local repository you can install from.
+`--install-deps-from=flathub` pulls the GNOME runtime and the Node.js SDK extension, which is slow the first time and then cached. `--repo=flatpak-repo` writes the result as a local repository you can install from.
 
 ## What the sandbox does not grant
 
@@ -173,17 +161,13 @@ finish-args:
   - --device=dri
 ```
 
-That is a window on screen and hardware rendering. There is no `--filesystem`, no `--share=network`, and no `--talk-name` for the notification service. Tasks reads and writes your data, sends desktop notifications, and stores preferences with none of those.
+Those grant a window on screen and hardware rendering. There is no `--filesystem`, no `--share=network`, and no `--talk-name` for the notification service. Tasks reads and writes your data, sends desktop notifications, and stores preferences with none of those.
 
-**No filesystem permission**, because of a decision made in [Saving Tasks Between Runs](/tutorial/saving-to-disk). The storage backend resolves its directory from `XDG_DATA_HOME`, which Flatpak sets to the app's own private directory before the process starts. The code that found `~/.local/share/com.gtkx.tutorial` on your machine finds `~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial` inside the sandbox, unchanged. Had the path been hardcoded, or built from `homedir()` alone, the manifest would need `--filesystem=home` and Flathub reviewers would ask why.
+**No filesystem permission**, thanks to a decision from [Saving Tasks Between Runs](/tutorial/saving-to-disk). The storage backend resolves its directory from `XDG_DATA_HOME`, which Flatpak sets to the app's private directory before the process starts. The code that found `~/.local/share/com.gtkx.tutorial` on your machine finds `~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial` inside the sandbox, unchanged. A hardcoded path, or one built from `homedir()` alone, would need `--filesystem=home`, and Flathub reviewers would ask why.
 
-**No notification permission**, because `Gio.Notification` goes through a portal. The reminder built in [Reminders That Reach the Desktop](/tutorial/reminders) is handed to the application, and inside a sandbox that call is routed to the notification portal rather than to a raw D-Bus name. The portal asks the user, keeps the permission revocable in system settings, and delivers **Mark Complete** back to your `app.complete-task` action.
+**No notification permission**, because `Gio.Notification` goes through a portal. The reminder from [Reminders That Reach the Desktop](/tutorial/reminders) is handed to the application, and inside a sandbox that call routes to the notification portal instead of a raw D-Bus name. The portal asks the user, keeps the permission revocable in system settings, and delivers **Mark Complete** back to your `app.complete-task` action.
 
 **No network permission**, because the app never opens a socket. Everything it knows lives in one JSON file and one GSettings schema.
-
-::: details Why is a short finish-args worth caring about?
-Every entry in `finish-args` is a permanent hole in the sandbox: users see it in the software center, reviewers question it, and once shipped it is awkward to take back. Portals invert the model. Instead of the app holding a standing permission, the user grants access at the moment it is used, to the one file or capability in question, and can withdraw it later. Writing to `XDG_DATA_HOME` and sending notifications through `Gio` need no hole at all, which is why the tutorial reached for them from the start.
-:::
 
 ## Run it
 
@@ -194,27 +178,27 @@ flatpak install --user flatpak-repo com.gtkx.tutorial
 flatpak run com.gtkx.tutorial
 ```
 
-Tasks opens with an empty store: this is a fresh install with its own data directory, so the seeded lists and tasks appear as they did on your first run. Add a task called `Ship it`, then quit and look at where it landed:
+Tasks opens as a fresh install with its own data directory, so the seeded lists and tasks appear as they did on your first run. Add a task called `Ship it`, then quit and check where it landed:
 
 ```bash
 cat ~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial/tasks.json
 ```
 
-The task is there. Now the negative check: your everyday copy of the app is untouched.
+The task is there. Check that your everyday copy of the app is untouched:
 
 ```bash
 ls ~/.local/share/com.gtkx.tutorial/
 ```
 
-That directory still holds the tasks you have been adding all tutorial, with no `Ship it` among them. Two independent stores, one storage backend, no branch anywhere in your code.
+That directory still holds the tasks you added throughout this tutorial, with no `Ship it` among them. The two stores are independent, share one storage backend, and need no branch anywhere in your code.
 
-Search the overview for Tasks and both entries appear, each with the icon from Appendix B. Remove the sandboxed one with `flatpak uninstall --user com.gtkx.tutorial` and its data directory stays behind, which is the same promise Flatpak makes to every application it hosts.
+Search the overview for Tasks and both entries appear, each with the icon from Appendix B. Remove the sandboxed one with `flatpak uninstall --user com.gtkx.tutorial` and its data directory stays behind, as it does for every application Flatpak hosts.
 
 ## Submitting to Flathub
 
 Flathub builds your manifest on its own infrastructure and publishes the result.
 
-**The manifest must build from a pinned source.** Swap the `dir` source for the release you tagged, so the build is reproducible from a URL rather than from your working tree:
+**The manifest must build from a pinned source.** Swap the `dir` source for the release you tagged, so the build is reproducible from a URL instead of your working tree:
 
 ```yaml
     sources:
@@ -226,15 +210,15 @@ Flathub builds your manifest on its own infrastructure and publishes the result.
 
 Commit `package.json`, `package-lock.json`, and `flatpak/generated-sources.json` to that repository first, since the offline build reads all three.
 
-**The metadata must validate.** The AppStream metainfo from Appendix B is the store listing: its `id` must match the application ID, its `launchable` must point at the desktop entry, and its screenshots are the only picture a stranger sees before installing. Check both before you open anything:
+**The metadata must validate.** The AppStream metainfo from Appendix B is the store listing: its `id` must match the application ID, its `launchable` must point at the desktop entry, and its screenshots are what people see before installing. Check both before you open a pull request:
 
 ```bash
 npm run flatpak:lint
 ```
 
-**The pull request goes to [flathub/flathub](https://github.com/flathub/flathub)**, against the `new-pr` branch, carrying the manifest and `generated-sources.json`. A reviewer reads your `finish-args` first. A short one, backed by portals, is the fastest review you can hand them.
+**The pull request goes to [flathub/flathub](https://github.com/flathub/flathub)**, against the `new-pr` branch, carrying the manifest and `generated-sources.json`. A reviewer reads your `finish-args` first, and a short one backed by portals is the quickest to approve.
 
-Rerun `npm run flatpak:sources` on every dependency change: a stale `generated-sources.json` is the one failure that only shows up inside the sandbox.
+Rerun `npm run flatpak:sources` on every dependency change: a stale `generated-sources.json` only fails inside the sandbox.
 
 ## Next
 

@@ -4,11 +4,11 @@ description: "Drive the finished app in headless tests that query the accessibil
 
 # Appendix A: Testing the App
 
-The app is finished: [Reminders That Reach the Desktop](/tutorial/reminders) delivered the last capability. This appendix keeps it working, driving the real widgets with no display attached through the same accessibility tree a screen reader walks. GTKX queries widgets by their GTK4 accessible role and name, so a widget your test cannot reach is usually a widget an assistive technology cannot reach either. A failing query is a finding about the interface, not a testing inconvenience.
+The app is finished: [Reminders That Reach the Desktop](/tutorial/reminders) added the last feature. This appendix keeps it working by driving the real widgets with no display attached, through the same accessibility tree a screen reader walks. GTKX queries widgets by their GTK4 accessible role and name, so a widget your test cannot reach is usually one an assistive technology cannot reach either. When a query fails, it points to a problem in the interface.
 
 ## Wiring the runner
 
-Tests run under Vitest with the GTKX plugin, which boots a private runtime directory, session bus, and headless compositor for each worker process before any test code loads. Your widgets are real GTK4 widgets, laid out and rendered off-screen.
+Tests run under Vitest with the GTKX plugin. For each worker process, it boots a private runtime directory, session bus, and headless compositor before any test code loads. Your widgets are real GTK4 widgets, laid out and rendered off-screen.
 
 The scaffold already put the plugin in place. Add a setup file.
 
@@ -22,7 +22,7 @@ In `vitest.config.ts`:
      },
 ```
 
-The app writes to disk. [Saving Tasks Between Runs](/tutorial/saving-to-disk) pointed `storage.ts` at `XDG_DATA_HOME`, so the tests redirect one environment variable and the whole persistence layer follows them into a temporary directory.
+The app writes to disk. [Saving Tasks Between Runs](/tutorial/saving-to-disk) pointed `storage.ts` at `XDG_DATA_HOME`, so the tests redirect that one environment variable and the whole persistence layer follows into a temporary directory.
 
 Create `tests/setup.ts`:
 
@@ -61,19 +61,11 @@ afterAll(() => {
 });
 ```
 
-The dynamic `await import` is deliberate. ESM hoists static imports above every statement in the module, so a plain `import { useStore } from "../src/store/index.js"` would evaluate `storage.ts` (and read `process.env.XDG_DATA_HOME`) before the assignment above it ever ran. Importing after the assignment is what makes the redirect take effect.
-
-::: warning The suite goes green and your own task list changes
-The redirect missed. `storage.ts` computes its directory once at module evaluation, from `process.env.XDG_DATA_HOME` with `~/.local/share` as the fallback, so whichever value is set when that module first loads is the one the whole run uses. Static imports hoist above the assignment: the tests write `Book flights` into your real `~/.local/share/com.gtkx.tutorial/tasks.json` while `beforeEach` dutifully cleans a temporary directory nothing ever touched. Nothing fails, which is what makes it worth catching. Keep the imports below the assignment.
-:::
-
-::: warning Tests that pass one at a time and fail as a suite
-State leaked between them. `beforeEach` deletes the persisted file and puts the store back to the seed, so every test starts from the same tasks in the same order. Without it, the second test inherits whatever the first one typed and the third inherits both.
-:::
+The dynamic `await import` is deliberate. ESM hoists static imports above every statement in a module, so a plain `import { useStore } from "../src/store/index.js"` would evaluate `storage.ts` (and read `process.env.XDG_DATA_HOME`) before the assignment above it ran. Importing after the assignment is what makes the redirect take effect.
 
 ## Testing the store on its own
 
-Start with the tests that need no widgets. The store is a plain module: call an action, read `getState()`, assert. These run in milliseconds and cover the logic most likely to be wrong.
+Start with the tests that need no widgets. The store is a plain module: call an action, read `getState()`, and assert. They run fast and cover the logic most likely to be wrong.
 
 Create `tests/tasks.test.tsx`:
 
@@ -106,7 +98,7 @@ describe("the store", () => {
 });
 ```
 
-This is the dividend from putting state outside the component tree in [Adding Tasks with a Store](/tutorial/the-task-store): proving that `addTask` trims its input and hands back an identifier, and that `setDone` stamps `completedAt`, takes no window, no render, and no query. Reach for a rendered test when the subject is the interface, and for this when the subject is a rule.
+Putting state outside the component tree in [Adding Tasks with a Store](/tutorial/the-task-store) pays off here: proving that `addTask` trims its input and returns an identifier, and that `setDone` stamps `completedAt`, needs no window, no render, and no query. Use a rendered test when the subject is the interface, and this kind when the subject is a rule.
 
 ## Rendering the app
 
@@ -130,9 +122,9 @@ describe("Tasks", () => {
 });
 ```
 
-`render` is awaited because mounting widgets flushes React's work through a live GTK4 loop. The `container: rootElement` option is what makes an application testable: `App` returns an `AdwApplication`, which is not a widget and cannot be parented inside a harness window, so it mounts into the top-level root the same way `createRoot()` mounts it in `index.tsx`.
+`render` is awaited because mounting widgets flushes React's work through a live GTK4 loop. The `container: rootElement` option makes the application testable: `App` returns an `AdwApplication`, which is not a widget and cannot be parented inside a harness window, so it mounts into the top-level root the same way `createRoot()` mounts it in `index.tsx`.
 
-`TEXT_BOX` reaches the add row, `LIST_ITEM` an `AdwActionRow`, `CHECKBOX` a `GtkCheckButton`. These are GTK4's own roles, read live off each widget, which is why the vocabulary is an enum and never a string.
+`TEXT_BOX` reaches the add row, `LIST_ITEM` an `AdwActionRow`, `CHECKBOX` a `GtkCheckButton`. These are GTK4's own roles, read live off each widget, so the vocabulary is an enum rather than a string.
 
 The keyboard helper takes its target widget first, unlike its browser counterpart, because there is no document-wide focus to fall back on.
 
@@ -155,7 +147,7 @@ In `tests/tasks.test.tsx`:
     });
 ```
 
-`toBeChecked` is one of the widget matchers `@gtkx/testing` adds to `expect`. It reads the accessible checked state off the `GtkCheckButton` and throws when the widget does not expose that state, so aiming it at the wrong widget fails loudly instead of passing quietly.
+`toBeChecked` is one of the widget matchers `@gtkx/testing` adds to `expect`. It reads the accessible checked state off the `GtkCheckButton` and throws when the widget does not expose that state, so aiming it at the wrong widget fails instead of passing silently.
 
 In `tests/tasks.test.tsx`:
 
@@ -172,7 +164,7 @@ In `tests/tasks.test.tsx`:
     });
 ```
 
-This test emits a signal instead of synthesizing input. `userEvent` stays the better default because it drives the same event plumbing as production, but `activated` on a row has no single gesture behind it, and `fireEvent(object, signalName)` emits any GObject signal without actionability checks. The name matcher is a regular expression because that row's accessible name carries its due-date subtitle along with the title.
+This test emits a signal instead of synthesizing input. `userEvent` is still the better default because it drives the same event plumbing as production, but `activated` on a row has no single gesture behind it, and `fireEvent(object, signalName)` emits any GObject signal without actionability checks. The name matcher is a regular expression because that row's accessible name includes its due-date subtitle along with the title.
 
 In `tests/tasks.test.tsx`:
 
@@ -195,7 +187,7 @@ In `tests/tasks.test.tsx`:
     });
 ```
 
-The third argument to `dragAndDrop` is the payload, and it has to match the string your `GtkDragSource` puts in its content provider: the task identifier from [Dragging Tasks Into Order](/tutorial/drag-to-reorder). The assertion reads the rows back in tree order to check they swapped, and the seed gives every task a distinct position across the whole set, so that order is the same on every run.
+The third argument to `dragAndDrop` is the payload. It has to match the string your `GtkDragSource` puts in its content provider: the task identifier from [Dragging Tasks Into Order](/tutorial/drag-to-reorder). The assertion reads the rows back in tree order to check they swapped. The seed gives every task a distinct position, so that order is the same on every run.
 
 ## Reading a failure
 
@@ -225,20 +217,9 @@ button:
   Name "Main Menu": <MenuButton role="button">Main Menu</MenuButton>
 ```
 
-The dump carries on through every other role in the window. Read it as an accessibility report, not a stack trace: `Name "Delete task"` appears once per visible row because [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) gave that icon-only button an `accessibleLabel`, and every entry reading `Name ""` is a widget that neither a query nor a screen reader can name.
+The dump continues through every other role in the window. Read it as an accessibility report, not a stack trace: `Name "Delete task"` appears once per visible row because [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) gave that icon-only button an `accessibleLabel`, and every entry reading `Name ""` is a widget that neither a query nor a screen reader can name.
 
-You do not have to fail a query to see this. `screen.debug()` prints the annotated tree at any point in a test, and `screen.logRoles()` prints the same grouping on demand, the fastest way to answer "what role does this widget report?" before you write the query.
-
-::: details What if my query works but a better one exists?
-Queries can fail on purpose when you reach for a widget the weak way. Turn on `configure({ throwSuggestions: true })`, or pass `suggest: true` to a single query, and any query that could have gone through a stronger kind throws instead:
-
-```
-A better query is available, try this:
-getByRole(Gtk.AccessibleRole.BUTTON, { name: 'Main Menu' })
-```
-
-It is off by default. Switch it on to push the suite toward role-and-name queries everywhere, which is the same push toward labeling every widget.
-:::
+You do not have to fail a query to see this. `screen.debug()` prints the annotated tree at any point in a test, and `screen.logRoles()` prints the same grouping on demand. That is the quickest way to check what role a widget reports before you write the query.
 
 The rest of the harness, including `within`, `renderHook`, `waitFor`, screenshots, and the full matcher set, is in the [testing guide](/guide/testing).
 
@@ -263,7 +244,7 @@ Every test passes against real GTK4 widgets with no display attached:
    Duration  8.71s (transform 6.38s, setup 358ms, import 7.60s, tests 518ms, environment 0ms)
 ```
 
-Now break something on purpose. Change the drag payload in the reorder test from `"t2"` to `"t9"` and run again: the test fails, because the drop target looks that identifier up in the store and finds no task, which is exactly what a mismatched content provider would do in the running app. Put it back and the suite goes green again.
+Now break something on purpose. Change the drag payload in the reorder test from `"t2"` to `"t9"` and run again. The test fails, because the drop target looks that identifier up in the store and finds no task, exactly what a mismatched content provider would do in the running app. Put it back and the suite passes again.
 
 ## Next
 

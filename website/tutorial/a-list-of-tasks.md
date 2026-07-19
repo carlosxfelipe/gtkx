@@ -4,11 +4,11 @@ description: "Model a task and render a hardcoded array as an Adwaita boxed list
 
 # Showing a List of Tasks
 
-In [Your First Window](/tutorial/your-first-window) you put an Adwaita window with a header bar on screen, and its body is still a status page saying there are no tasks yet. Now you make that a lie: real rows, from real data, before any state management exists.
+In [Your First Window](/tutorial/your-first-window) you put an Adwaita window with a header bar on screen. Its body is still a status page saying there are no tasks yet. This page replaces that with real rows from real data, before adding any state management.
 
 ## The data model, first
 
-Every component you add from here reads this shape, so write it down before you draw anything.
+Every component you add from here reads this shape, so define it first.
 
 Create `src/types.ts`:
 
@@ -28,13 +28,13 @@ export type Task = {
 };
 ```
 
-`title` is the one line you see in the list, `notes` the longer body you see when you open it, and `position` is where the task sits in manual order.
+`title` is the line you see in the list, `notes` the longer body you see when you open a task, and `position` is where the task sits in manual order.
 
-The dates are ISO strings, not `Date` objects. In [Saving Tasks Between Runs](/tutorial/saving-to-disk) this object goes straight through `JSON.stringify` into a file on disk, and a `Date` would come back out as a string anyway. Build a `Date` from one at the point where you compare or format it.
+The dates are ISO strings, not `Date` objects. In [Saving Tasks Between Runs](/tutorial/saving-to-disk) this object passes through `JSON.stringify` into a file on disk, where a `Date` would serialize to a string anyway. Build a `Date` from the string when you compare or format it.
 
 ## A hardcoded array
 
-Skip the store for one chapter. An array is enough to prove the widgets work.
+Skip the store for now. A hardcoded array is enough to get the widgets working.
 
 Create `src/components/task-list.tsx`:
 
@@ -86,15 +86,15 @@ const TASKS: Task[] = [
 ];
 ```
 
-The component stops reading this array in [Adding Tasks with a Store](/tutorial/the-task-store), but the data survives: it moves into a seed module and becomes what a fresh install starts with.
+The component stops reading this array in [Adding Tasks with a Store](/tutorial/the-task-store). The data moves into a seed module and becomes what a fresh install starts with.
 
 ## The list frame
 
-A list of tasks grows past the height of a window, so the outermost widget is `GtkScrolledWindow`. `vexpand` makes it claim all the vertical space the toolbar view will give it, which is what makes it the thing that scrolls rather than the thing that gets squashed.
+A task list can grow past the height of the window, so the outermost widget is `GtkScrolledWindow`. `vexpand` makes it claim all the vertical space the toolbar view gives it, so it scrolls instead of being squashed.
 
-One-line rows stretched across a wide monitor are unreadable, so `AdwClamp` caps the content width at `maximumSize` pixels and centers anything narrower than the window. The margins keep the card off the window edges.
+Rows stretched across a wide monitor are hard to read, so `AdwClamp` caps the content width at `maximumSize` pixels and centers it. The margins keep the card off the window edges.
 
-Rows go in a `GtkListBox`. Add the `boxed-list` style class and Adwaita draws it as a rounded card with separators between rows, the standard GNOME look for a settings-style list.
+Rows go in a `GtkListBox`. Add the `boxed-list` style class and Adwaita draws it as a rounded card with separators between rows, the standard look for a settings-style list.
 
 Add the frame to `src/components/task-list.tsx`:
 
@@ -117,13 +117,9 @@ export const TaskList = () => (
 );
 ```
 
-Style classes are plain strings, the same names in the Adwaita style class documentation, and `cssClasses` takes an array because a widget can carry several at once. Nothing about them is GTKX-specific, so anything Adwaita ships (`flat`, `pill`, `destructive-action`, `dim-label`) is available by typing its name. Your own stylesheets work the same way, covered in [CSS](/guide/css).
+Style classes are plain strings, the same names in the Adwaita style class documentation, and `cssClasses` takes an array because a widget can carry several at once. They are not GTKX-specific, so anything Adwaita ships (`flat`, `pill`, `destructive-action`, `dim-label`) works by name. Your own stylesheets work the same way, covered in [CSS](/guide/css).
 
-`selectionMode={Gtk.SelectionMode.NONE}` turns off the list box's own selection highlight. A task row carries its own controls, so clicking a row means "open this task" rather than "select this row". Enumerations like `Gtk.SelectionMode` come from `@gtkx/gi/gtk`, the generated binding for the GTK4 namespace, while the components come from `@gtkx/jsx/gtk`.
-
-::: warning The card lost its rounded frame?
-`cssClasses` replaces the widget's whole class list on every render, it does not append. Passing `cssClasses={["my-class"]}` to this `GtkListBox` drops `boxed-list` along with it, and the card flattens into plain stacked rows with no border. List every class the widget should carry in the one array: `cssClasses={["boxed-list", "my-class"]}`.
-:::
+`selectionMode={Gtk.SelectionMode.NONE}` turns off the list box's own selection highlight. A task row carries its own controls, so clicking a row should open the task rather than select the row. Enumerations like `Gtk.SelectionMode` come from `@gtkx/gi/gtk`, the generated binding for the GTK4 namespace, while the components come from `@gtkx/jsx/gtk`.
 
 ## One row per task
 
@@ -145,13 +141,9 @@ Update the import to bring in the row alongside the clamp:
 import { AdwActionRow, AdwClamp } from "@gtkx/jsx/adw";
 ```
 
-Every list in this app relies on `key`. The reconciler compares the elements you returned this render against the ones you returned last render, and without a key it matches them by position: inserting a task at the top makes every row below it look changed, and each one gets its properties rewritten. With a stable key, the reconciler recognizes the same task in a new place and moves the existing `AdwActionRow` instead of rebuilding it. That is what makes dragging a row in [Dragging Tasks Into Order](/tutorial/drag-to-reorder) cost a reparent rather than a rebuild of the whole card.
+Every list in this app relies on `key`. The reconciler compares the elements you return this render against the ones from last render. Without a key it matches them by position, so inserting a task at the top makes every row below look changed and rewrites its properties. With a stable key, the reconciler recognizes the same task in a new place and moves the existing `AdwActionRow` instead of rebuilding it. That is why dragging a row in [Dragging Tasks Into Order](/tutorial/drag-to-reorder) costs a reparent rather than a rebuild of the whole card.
 
-Use the task's `id`, never the array index. An index key claims that the row in slot zero is still the row in slot zero, which is exactly what is false when the order changes.
-
-::: tip Terminal says `Each child in a list should have a unique "key" prop`
-The key belongs on the outermost element the callback returns, which here is `AdwActionRow`. If you later wrap the row in anything, move `key` out to the wrapper, because that is the element the reconciler matches against last render.
-:::
+Use the task's `id`, never the array index. An index key says the row in slot zero is still the row in slot zero, which stops being true when the order changes.
 
 ## Run it
 
@@ -170,12 +162,12 @@ and import it:
 
 `AdwStatusPage` is no longer used in this file, so drop it from the `@gtkx/jsx/adw` import.
 
-Save, and watch the window you already have open. The status page is gone: the body is a rounded card holding the task titles, centered under the header bar with a margin. "Welcome to Tasks" has its notes text as a second line under the title; the others show a title alone, because their notes are empty.
+Save and watch the window you already have open. The status page is gone, replaced by a rounded card holding the task titles, centered under the header bar with a margin. "Welcome to Tasks" shows its notes as a second line under the title; the others show a title alone, because their notes are empty.
 
-Drag the window wider: past a certain width the card stops growing and stays centered, which is the clamp. Drag it short until the rows do not fit, and the list scrolls instead of clipping.
+Drag the window wider and past a certain width the card stops growing and stays centered: that is the clamp. Drag it short until the rows do not fit and the list scrolls instead of clipping.
 
-Then add another entry to `TASKS`, copying an existing one and changing its `id` and `title`. Saving is the whole step: the new row appears in the card between one keystroke and the next.
+Then add another entry to `TASKS`, copying an existing one and changing its `id` and `title`. Save, and the new row appears in the card.
 
 ## Next
 
-A list you cannot add to is a demo. [Adding Tasks with a Store](/tutorial/the-task-store) moves the tasks into a store and lets you type a new one.
+This list is read-only. [Adding Tasks with a Store](/tutorial/the-task-store) moves the tasks into a store and lets you type a new one.

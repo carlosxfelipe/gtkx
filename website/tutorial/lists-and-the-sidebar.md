@@ -4,9 +4,9 @@ description: "Add task lists, split the store into slices, and navigate between 
 
 # Lists and a Sidebar
 
-Your tasks now survive a restart, saved as JSON under the XDG data directory by the [`persist` middleware](/tutorial/saving-to-disk). Everything is still one flat list, which stops working somewhere past a few dozen tasks.
+Your tasks now survive a restart, saved as JSON under the XDG data directory by the [`persist` middleware](/tutorial/saving-to-disk). Everything is still one flat list, which stops working past a few dozen tasks.
 
-That is enough new state that the store gets reorganized first.
+Adding lists and a selection is enough new state to reorganize the store first.
 
 ## A second type
 
@@ -31,7 +31,7 @@ export type Task = {
 export type Selection = { kind: "list"; listId: string }; // [!code ++]
 ```
 
-A single-member union looks like a wrapper around a string. It is written this way because the sidebar will also hold entries that are not lists, arriving in [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) as a second variant that the `kind` tag tells apart.
+A single-member union looks like a wrapper around a string. It is written this way because the sidebar will also hold entries that are not lists. [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) adds a second variant, and the `kind` tag tells them apart.
 
 Your seed tasks already carry a `listId`, so they land in the right place as soon as the lists exist. In `src/store/seed.ts`:
 
@@ -66,7 +66,7 @@ The colors are the Adwaita palette's blue 3, green 4, and orange 3. Any hex stri
 
 ## Splitting the store
 
-`src/store/index.ts` holds the state, every action, and the `persist` configuration in one file, and lists and a selection are about to join them. Split it while it is still small.
+`src/store/index.ts` holds the state, every action, and the `persist` configuration in one file. Lists and a selection are about to join them, so split it while it is still small.
 
 Zustand calls the pieces **slices**. A slice is a function that returns part of the state, and the store is the slices spread into one object. Start with the tasks.
 
@@ -134,11 +134,7 @@ StateCreator<Store, Mutators, [], TasksSlice>
 - The empty tuple is the middleware this slice applies on its own, which is none.
 - `TasksSlice` is what this slice contributes to the store.
 
-::: warning Type errors like `Argument of type '(set) => {...}' is not assignable`?
-The mutator tuple has to match the middleware actually wrapping the composed store. If you write `StateCreator<Store, [], [], TasksSlice>` while `index.ts` wraps everything in `persist`, the `set` types disagree and every slice fails to compose. Keep `Mutators` in one place and import it.
-:::
-
-Hence the rule: **middleware is applied once, to the combined store, and never inside a slice.** A slice describes state and behavior. Persistence is a property of the store as a whole.
+So the rule: **middleware is applied once, to the combined store, and never inside a slice.** A slice describes state and behavior. Persistence is a property of the store as a whole.
 
 Lists are much smaller. `src/store/lists.ts`:
 
@@ -163,11 +159,11 @@ export const createListsSlice: StateCreator<Store, Mutators, [], ListsSlice> = (
 });
 ```
 
-Nothing calls `addList` yet. The dialog that does arrives in [Deleting Without Fear](/tutorial/trash-and-toasts); the action lives here because it belongs with the state it changes.
+Nothing calls `addList` yet. The dialog that does arrives in [Deleting Without Fear](/tutorial/trash-and-toasts). The action lives here because it belongs with the state it changes.
 
 ## Where new state goes
 
-The selection is not something you typed, it is what the interface is currently doing. Reopen the app tomorrow and it should not matter which list happened to be highlighted when you quit. So it goes in a slice that `partialize` never writes to disk.
+The selection is not data you typed, it is what the interface is currently doing. When you reopen the app, it should not matter which list was highlighted when you quit. So it goes in a slice that `partialize` never writes to disk.
 
 `src/store/ui.ts`:
 
@@ -241,15 +237,9 @@ export const useStore = create<Store>()(
 
 `Store` is the intersection of the slice types, so `useStore((state) => state.tasks)` and `useStore((state) => state.select)` both typecheck against the same object. Call sites are unchanged: components read one bound store and never know a slice exists.
 
-The `(...a)` spread is the syntax worth naming. Zustand hands a state creator `set`, `get`, and the store api. Forwarding the collected arguments to each slice gives every slice the same `set`, `get`, and store api, so they all write into one shared state object rather than separate ones.
+The `(...a)` spread matters here. Zustand hands a state creator `set`, `get`, and the store api. Forwarding those collected arguments to each slice gives every slice the same `set`, `get`, and store api, so they all write into one shared state object rather than separate ones.
 
 `PersistedState` and `partialize` both gain `lists`, which puts your lists in the JSON file alongside your tasks. `selection` is absent from both, so it starts at Personal on every launch.
-
-::: details Why does `Mutators` say `unknown` rather than `PersistedState`?
-The second slot of the tuple means different things on the two sides of the middleware. Zustand types `persist` so that the mutator entry on the *initializer* it receives is literally `unknown`; the partialized type appears on the mutator `persist` writes, not on the one your slices declare. Substituting `PersistedState` there produces `TS2345` on every slice.
-
-`PersistedState` is still doing real work: it annotates the return of `partialize` and it is what `isPersistedState` narrows to, which is how `migrate` returns a well-typed value without a cast.
-:::
 
 ## The two panes
 
@@ -257,7 +247,7 @@ The second slot of the tuple means different things on the two sides of the midd
 
 Its `sidebar` and `content` are container slots, the same idea as `topBar` on `AdwToolbarView`. Each takes an `AdwNavigationPage`, the unit Adwaita treats as one pane: a page has a title, and it is what the navigation moves between.
 
-A page carries no header bar of its own, so each supplies its own `AdwToolbarView` with its own `AdwHeaderBar`. That is deliberate rather than redundant: the two headers hold different controls and, once collapsed, only one is on screen at a time.
+A page carries no header bar of its own, so each supplies its own `AdwToolbarView` with its own `AdwHeaderBar`. The two headers hold different controls, and once collapsed only one is on screen at a time.
 
 This has outgrown `app.tsx`, so the window moves into `src/components/window.tsx`:
 
@@ -304,7 +294,7 @@ export const Window = () => {
 
 The width props keep the sidebar at a quarter of the window, bounded at 220 and 300 points, so it stays legible without eating the task list on a wide monitor.
 
-The content pane pairs a header bar with what goes under it. It stays thin only for now: [Opening a Task](/tutorial/the-task-editor) makes it choose between the list and an editor, and this is the seam that choice happens on.
+The content pane pairs a header bar with what goes under it. It stays thin for now. [Opening a Task](/tutorial/the-task-editor) makes it choose between the list and an editor, and that choice happens here.
 
 `src/components/content-pane.tsx`:
 
@@ -353,11 +343,7 @@ export const listDot = (color: string): string => css`
 `;
 ```
 
-::: warning Row titles appear but the dots do not?
-GTK4 CSS has no `width` or `height` property, and an empty `GtkBox` asks for nothing, so a dot sized with those two rules is zero by zero and never draws. Size it with `min-width` and `min-height`, as above.
-:::
-
-Reach for this sparingly. Adwaita's own style classes, `boxed-list` and `flat` among them, cover almost everything and follow the user's theme for free. Write CSS for what the platform has no class for, like a colored dot. For more, see [Styling with CSS](/guide/css).
+Reach for this sparingly. Adwaita's own style classes, like `boxed-list` and `flat`, cover almost everything and follow the user's theme. Write CSS only for what the platform has no class for, like a colored dot. For more, see [Styling with CSS](/guide/css).
 
 ## The sidebar
 
@@ -426,12 +412,12 @@ The dot gets `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. The row's title
 
 This pattern recurs with every widget that owns state you also keep.
 
-A `GtkListBox` holds its own selection. React does not tell it which row is selected; it decides, and it reports. So there are two copies of the same fact, the widget's and the store's, kept level from both directions:
+A `GtkListBox` holds its own selection. React does not tell it which row is selected; the box decides and reports. So there are two copies of the same fact, the widget's and the store's, kept in sync from both directions:
 
 - **Widget to store.** The user clicks a row, the box emits `row-selected`, and `onRowSelected` writes the new selection into the store.
 - **Store to widget.** Something other than a click changes the selection, so the effect calls `selectRow` to move the widget's highlight to match.
 
-Run those naively and they feed each other. The effect calls `selectRow`, the box emits `row-selected` because its selection genuinely did change, and the handler writes the value back into the store. The value is identical, so nothing visibly breaks, but every programmatic selection costs a redundant store write, and once `select` does more than set one field (it starts doing that in the [next chapter](/tutorial/an-adaptive-layout)) the echo becomes a real bug.
+Run those naively and they feed each other. The effect calls `selectRow`, the box emits `row-selected` because its selection did change, and the handler writes the value back into the store. The value is identical, so nothing visibly breaks, but every programmatic selection costs a redundant store write. Once `select` does more than set one field (it starts doing that in the [next chapter](/tutorial/an-adaptive-layout)) the echo becomes a real bug.
 
 The fix is the comparison already in the handler:
 
@@ -439,11 +425,7 @@ The fix is the comparison already in the handler:
 if (list && list.id !== selection.listId) select({ kind: "list", listId: list.id });
 ```
 
-The handler returns early when nothing differs, so the echo stops at the first bounce. The general rule, which applies to every widget that holds state React also holds: **when you push state into a widget that reports its own changes, the report handler compares before it writes.**
-
-::: warning Window freezes and a CPU core pegs the moment you click a sidebar row?
-The two directions are chasing each other. `select` stores a fresh `Selection` object every call, so an effect keyed on `selection` re-runs, calls `selectRow`, and the box emits `row-selected` again. Keep the id comparison in `onRowSelected` so the identical value is never written back, and key the effect on `activeIndex`, a number that stops changing once widget and store agree.
-:::
+The handler returns early when nothing differs, so the echo stops at the first bounce. The rule applies to every widget that holds state React also holds: **when you push state into a widget that reports its own changes, the report handler compares before it writes.**
 
 ## Filtering by list
 

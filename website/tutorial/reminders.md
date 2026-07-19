@@ -4,15 +4,15 @@ description: "Send a desktop notification before a task is due, with buttons tha
 
 # Reminders That Reach the Desktop
 
-You gave tasks an order you set by dragging in [Dragging Tasks Into Order](/tutorial/drag-to-reorder). A due date still cannot reach you when you are not looking at the app, so this chapter takes Tasks outside its own window.
+In [Dragging Tasks Into Order](/tutorial/drag-to-reorder) you set the order of tasks by dragging. A due date still cannot reach you when you are not looking at the app, so this page takes Tasks outside its own window.
 
-Nothing in the platform watches your tasks for you. There is no timer service you hand a due time to, so the app checks for itself: once at startup, and once a minute after that.
+There is no platform service you can hand a due time to, so the app checks for itself: once at startup, then once a minute after that.
 
 ## Building the notification
 
 A desktop notification on GNOME is a `Gio.Notification`: a title, a body, a priority, and buttons. Each button names an action, and the shell can activate that action whether or not your app is running.
 
-An action carries at most one parameter, so the task the notification is about travels inside it. Box the task id into a string variant and use it as the target of both the button and the notification's default action, which fires when you click the notification body.
+An action carries at most one parameter, so the task travels inside it. Box the task id into a string variant and use it as the target of both the button and the notification's default action, which fires when you click the notification body.
 
 Create `src/notifications.ts`:
 
@@ -32,15 +32,15 @@ export const buildReminder = (task: Task): Gio.Notification => {
 };
 ```
 
-The action names carry the `app.` prefix rather than the `win.` prefix you used in [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts). That is why the buttons keep working after you quit: a window-scoped action needs a window to exist, an application-scoped one does not.
+The action names carry the `app.` prefix, not the `win.` prefix you used in [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts). That is why the buttons keep working after you quit: a window-scoped action needs a window, an application-scoped one does not.
 
-`HIGH` priority asks the shell to show the notification as a banner rather than only adding it to the message tray, which is the difference between a reminder and a note you find later.
+`HIGH` priority asks the shell to show the notification as a banner rather than only adding it to the message tray.
 
 ## Sweeping for due tasks
 
 A task qualifies for a notification when it is open (not done, not in Trash), it has a due time, it has not already been notified in this session, and its due time is ahead of now by no more than the lead you configured.
 
-Both halves of that last condition matter. `remaining <= leadMs` gives the lead time its meaning: at the default of thirty minutes, a task due at six warns you at half past five. `remaining > 0` keeps the sweep from shouting about the past, so once a task is overdue it is left alone and opening the app after a week away does not dump a stack of stale banners.
+Both parts of that last condition matter. `remaining <= leadMs` gives the lead time its meaning: at the default of thirty minutes, a task due at six warns you at half past five. `remaining > 0` skips tasks that are already overdue, so opening the app after a week away does not fire off old banners.
 
 Create `src/hooks/use-reminders.ts`:
 
@@ -71,21 +71,15 @@ export const useReminders = (tasks: Task[], reminderMinutes: number, sendReminde
 };
 ```
 
-The effect sweeps immediately and then every minute, and clears its interval on cleanup. Because `tasks` and `reminderMinutes` are dependencies, editing a due date or changing the lead time in Preferences tears the interval down and starts a fresh one against the new values, so a task you just scheduled is considered on the next tick rather than after a restart.
+The effect sweeps immediately, then every minute, and clears its interval on cleanup. Because `tasks` and `reminderMinutes` are dependencies, editing a due date or changing the lead time in Preferences restarts the interval against the new values, so a task you just scheduled is considered on the next tick rather than after a restart.
 
-The already-notified ids live in a ref rather than in state or in the store. A ref survives re-renders without causing one, and the set is deliberately not persisted: it records what this process has already said, and a new process starting is exactly when you want the app to look at everything again.
-
-::: details Why is one minute enough resolution?
-
-The sweep compares against a lead measured in minutes, so checking more often cannot change which tasks qualify, only how soon within that minute they are noticed. A reminder arriving sixty seconds into a thirty-minute lead is still a thirty-minute lead. Going the other way, a longer interval would let a task slip from "not due yet" to "already overdue" between two ticks and never be announced.
-
-:::
+The already-notified ids live in a ref, not in state or the store. A ref survives re-renders without causing one. The set is not persisted on purpose: it tracks what this process has already sent, and a new process should look at every task again.
 
 ## Sending it
 
-The hook is handed a `sendReminder` function rather than reaching for the application itself, which keeps it a plain function over data you can call from anywhere. The window supplies the real one.
+The hook takes a `sendReminder` function instead of reaching for the application itself, which keeps it a plain function over data you can call from anywhere. The window supplies the real one.
 
-`useApplication()` returns the running `Gtk.Application`, and `sendNotification(id, notification)` is the method on it. That id is the notification's identity to the shell: send one with an id already on screen and it replaces that notification instead of stacking a second copy. Using the task id gives you that for free.
+`useApplication()` returns the running `Gtk.Application`, and `sendNotification(id, notification)` is the method on it. That id is the notification's identity to the shell: send one with an id already on screen and it replaces that notification instead of adding a second copy. Using the task id gives you that behavior.
 
 Wire it up in `src/components/window.tsx`:
 
@@ -116,13 +110,13 @@ export const Window = () => {
 };
 ```
 
-`sendReminder` is wrapped in `useCallback` because the hook lists it as a dependency. Without that, every render would hand the effect a new function, tear down the interval, and sweep again. The spin row you built in [Preferences and the System Theme](/tutorial/preferences-and-theming) now has its effect: `reminder-minutes` flows straight from GSettings into the comparison the sweep makes.
+`sendReminder` is wrapped in `useCallback` because the hook lists it as a dependency. Without that, every render would hand the effect a new function, tear down the interval, and sweep again. The spin row you built in [Preferences and the System Theme](/tutorial/preferences-and-theming) now takes effect: `reminder-minutes` flows from GSettings straight into the sweep's comparison.
 
 ## Actions the shell can reach
 
-An action's scope prefix comes from where the element is mounted rather than from its name. Mount a `GSimpleAction` in the application's `actions` slot and you get `app.` instead of the `win.` of [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts).
+An action's scope prefix comes from where the element is mounted, not from its name. Mount a `GSimpleAction` in the application's `actions` slot and you get `app.` instead of the `win.` from [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts).
 
-A GAction declares its argument as a type rather than inferring one. `GLib.VariantType.new("s")` declares a string parameter, matching the string variant `notifications.ts` builds. In the handler the parameter is nullable, so guard it, and `getString()` hands back a value and length pair, so take the first element.
+A GAction declares its argument type instead of inferring one. `GLib.VariantType.new("s")` declares a string parameter, matching the string variant `notifications.ts` builds. In the handler the parameter is nullable, so guard it, and `getString()` returns a value and length pair, so take the first element.
 
 Add the slot in `src/app.tsx`:
 
@@ -166,30 +160,30 @@ export function App() {
 }
 ```
 
-`open-task` selects All Tasks first, because the task the shell names may not be in whichever view was showing when you quit, and a detail pane you cannot navigate back out of is worse than no navigation at all.
+`open-task` selects All Tasks first, because the task the shell names may not be in whichever view was showing when you quit. Without that, the detail pane could open on a task you cannot navigate back out of.
 
 ## Reaching the store from outside React
 
-Those handlers take no props, sit in no component, and run with no window guaranteed to exist. `useStore.getState()` reads and writes the same store the interface renders from, and every component watching the fields they touch re-renders the moment they do.
+Those handlers take no props, sit in no component, and can run with no window present. `useStore.getState()` reads and writes the same store the interface renders from, and every component watching the fields they touch re-renders when they change.
 
-Cold start is where that difference stops being theoretical. Click Mark Complete with the app closed, and the desktop starts your app over D-Bus purely to deliver the action. The store module loads, the `persist` middleware you added in [Saving Tasks Between Runs](/tutorial/saving-to-disk) reads `tasks.json`, the handler flips one task to done, and the middleware writes the file back, all before any window is drawn.
+Cold start shows why that matters. Click Mark Complete with the app closed, and the desktop starts your app over D-Bus just to deliver the action. The store module loads, the `persist` middleware you added in [Saving Tasks Between Runs](/tutorial/saving-to-disk) reads `tasks.json`, the handler flips one task to done, and the middleware writes the file back, all before any window is drawn.
 
 ## What delivery depends on
 
-The desktop grants a notification based on the application's installed identity rather than on anything in the running process. Two keys in the desktop entry decide it, and you write that file in [Appendix B](/tutorial/packaging):
+The desktop grants a notification based on the application's installed identity, not on anything in the running process. Two keys in the desktop entry decide it, and you write that file in [Appendix B](/tutorial/packaging):
 
-- `DBusActivatable=true` lets the desktop start the application over D-Bus to deliver an action, which is what makes Mark Complete work when nothing is running.
-- `X-GNOME-UsesNotifications=true` is what lists Tasks in the desktop's notification settings, where you can silence it.
+- `DBusActivatable=true` lets the desktop start the application over D-Bus to deliver an action, which makes Mark Complete work when nothing is running.
+- `X-GNOME-UsesNotifications=true` lists Tasks in the desktop's notification settings, where you can silence it.
 
-Both depend on the application ID matching in the entry, in `gtkx.config.ts`, and in the GSettings schema. That is the identity a notification travels under.
+Both depend on the application ID matching across the entry, `gtkx.config.ts`, and the GSettings schema. That is the identity a notification travels under.
 
 ## Run it
 
 Save the new files. Both application actions are now mounted on the running app.
 
-Open a task, set its due date to today, and pick a time a few minutes ahead of now while leaving the reminder lead at its default of thirty minutes. Within a minute a banner appears carrying the task title, a body reading `Due` followed by the formatted date and time, and a Mark Complete button. Click the banner body instead and the window comes forward with that task open in the editor.
+Open a task, set its due date to today, and pick a time a few minutes ahead of now, leaving the reminder lead at its default of thirty minutes. Within a minute a banner appears with the task title, a body reading `Due` followed by the formatted date and time, and a Mark Complete button. Click the banner body and the window comes forward with that task open in the editor.
 
-You can drive Mark Complete directly. With the app running, activate the action the button targets:
+You can also trigger Mark Complete directly. With the app running, activate the action the button targets:
 
 ```bash
 gapplication action com.gtkx.tutorial complete-task "'<task-id>'"
@@ -197,37 +191,11 @@ gapplication action com.gtkx.tutorial complete-task "'<task-id>'"
 
 The id is quoted twice because `gapplication` parses the parameter as GVariant text, where a bare UUID is not a valid literal. The task flips to done, and `cat ~/.local/share/com.gtkx.tutorial/tasks.json` shows `"done": true` on it.
 
-Clicking the button while the app is closed is a different path. The desktop starts a closed app over D-Bus only when it finds an installed desktop entry carrying `DBusActivatable=true` under the application ID the notification traveled with, and a dev session installs nothing. That check becomes available once you install `com.gtkx.tutorial.desktop` in [Appendix B](/tutorial/packaging).
-
-::: warning No notification appears?
-
-Check the due time first: the sweep fires ahead of it, so a task already past due never triggers one. Add a `console.log` in `sendReminder` to see whether the sweep is reaching it, and use the `gapplication` command above to confirm the actions themselves work.
-
-If the terminal prints `GLib-GIO-WARNING: unable to send notifications through org.freedesktop.Notifications`, no notification service answered and the message was dropped. The app is behaving correctly.
-
-:::
-
-::: warning The notification arrives but nothing responds to it
-
-The application ID is the identity a notification travels under, and it has to be the same string in `gtkx.config.ts`, in the GSettings schema, and in the desktop entry. Let one drift and the notification still arrives, because sending only needs the running process, while anything routed back by ID has nowhere to land.
-
-:::
-
-::: tip The same task never notifies twice
-
-`notified` is a ref, and it lives for the life of the component instance. Once a task has fired, editing its due time in the running window gets you nothing: the sweep sees the id in the set and skips it. Test with a fresh task, or quit and relaunch to get a new process with an empty set.
-
-:::
-
-::: warning Mark Complete does nothing and the terminal logs a parameter-type assertion
-
-`parameterType` is set when the `GSimpleAction` is constructed. Drop it from either action and the action exists with no parameter type, so an activation carrying a string variant is refused before your handler runs and a `GLib-GIO` critical lands on standard error. The declared type has to be the `"s"` that `GLib.Variant.newString` produces in `buildReminder`, on both the button target and the default action target.
-
-:::
+Clicking the button while the app is closed takes a different path. The desktop starts a closed app over D-Bus only when it finds an installed desktop entry with `DBusActivatable=true` under the application ID the notification traveled with, and a dev session installs nothing. That path becomes available once you install `com.gtkx.tutorial.desktop` in [Appendix B](/tutorial/packaging).
 
 ## You built an app
 
-Tasks is finished. The GTK4 and Adwaita documentation is your component reference, because a component is the widget: same type name, same properties in camelCase. Everything else you leaned on, container slots as JSX props, controlled value plus change signal, a store outside the tree, persistence as configuration, and named actions, is the vocabulary you now use to write your own app.
+Tasks is finished. The GTK4 and Adwaita documentation is your component reference, because a component is the widget: same type name, same properties in camelCase. Everything else you used, container slots as JSX props, controlled value plus change signal, a store outside the tree, persistence as configuration, and named actions, is the vocabulary you now use to write your own app.
 
 ### Challenges
 

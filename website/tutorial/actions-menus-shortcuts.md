@@ -6,11 +6,11 @@ description: "Name the app's commands as GActions and reach them from a menu and
 
 In [Opening a Task](/tutorial/the-task-editor) the content pane became an editor, so a task can be opened, edited, and closed with the pointer. Every command still needs the pointer, and the header bar is running out of room for buttons.
 
-Take the new-task button: one command, one handler, one place to reach it. A GNOME app exposes that same command from the button, the primary menu, and a key, and you do not want a copy of the handler for each. Name the command once and let all of them refer to it by name. That name is a GAction.
+Take the new-task button. A GNOME app exposes that same command from the button, the primary menu, and a key, and you do not want a copy of the handler for each. Name the command once and let all of them refer to it by name. That name is a GAction.
 
 ## Commands as actions
 
-An action is a named, activatable thing belonging to either the window or the application. GTKX exposes actions as elements, so a group of them is an ordinary component.
+An action is a named, activatable command that belongs to either the window or the application. GTKX exposes actions as elements, so a group of them is an ordinary component.
 
 Create `src/components/window-actions.tsx`:
 
@@ -36,13 +36,9 @@ export const WindowActions = () => {
 };
 ```
 
-`showDialog` does not exist yet, so this file does not compile on its own. You add it to the store below, and the finished file appears there.
+`showDialog` does not exist yet, so this file does not compile on its own. You add it to the store below, where the finished file appears.
 
-`newTask` reaches the store through `useStore.getState()` rather than a hook. The handler reads the state at the moment it runs, so the component does not need to re-render when `selection` changes. That escape hatch has been there since [Adding Tasks with a Store](/tutorial/the-task-store): the store is not React state, so any function can read it.
-
-::: tip The action object you expect inside the handler is `null`
-`onActivate` receives the activation parameter first and the action that emitted the signal last, so `onActivate={(action) => action.getName()}` reads the parameter and throws on a plain activation. The signature is `(parameter, action)`. Every `on*` prop in GTKX follows that shape: signal arguments in order, emitter appended at the end.
-:::
+`newTask` reaches the store through `useStore.getState()` rather than a hook. The handler reads the state at the moment it runs, so the component does not re-render when `selection` changes. The store is not React state, as [Adding Tasks with a Store](/tutorial/the-task-store) covered, so any function can read it directly.
 
 Mount the group in the window's `actions` slot. In `src/components/window.tsx`:
 
@@ -61,7 +57,7 @@ import { WindowActions } from "./window-actions.js";
 </AdwApplicationWindow>
 ```
 
-**The scope prefix comes from the mount point, not from the name.** The element says `name="new"`, and mounting it in the window's `actions` slot makes the full name `win.new`. The identical element in the application's `actions` slot becomes `app.new`. A command that needs a window to act on belongs on the window; a command that makes sense with no window open belongs on the application.
+**The scope prefix comes from the mount point, not from the name.** The element says `name="new"`, and mounting it in the window's `actions` slot makes the full name `win.new`. The same element in the application's `actions` slot becomes `app.new`. A command that needs a window to act on belongs on the window; a command that makes sense with no window open belongs on the application.
 
 Once a command has a name, a widget can point at it instead of carrying a handler. In `src/components/content-pane.tsx`:
 
@@ -72,10 +68,6 @@ Once a command has a name, a widget can point at it instead of carrying a handle
     actionName="win.new"
 />
 ```
-
-::: warning The button is greyed out and clicking it does nothing
-A widget whose `actionName` resolves to no action renders insensitive. Check the prefix first: `actionName="app.new"` against an action mounted in the window's slot finds nothing, and neither does a bare `actionName="new"`.
-:::
 
 ## Accelerators
 
@@ -94,7 +86,7 @@ In `src/app.tsx`:
 </AdwApplication>
 ```
 
-`accels` is an array because one action can answer to several combinations. The string form (`<Control>n`, `<Shift><Control>Delete`, `F10`) is what GTK4 parses everywhere, and a menu item reads it to draw `Ctrl+N` along its right-hand edge. You write the accelerator once and the menu label follows.
+`accels` is an array because one action can answer to several combinations. The string form (`<Control>n`, `<Shift><Control>Delete`, `F10`) is what GTK4 parses everywhere, and a menu item reads it to draw `Ctrl+N` along its right-hand edge. Write the accelerator once and the menu label follows.
 
 ## The primary menu
 
@@ -143,7 +135,7 @@ import { MainMenu } from "./main-menu.js";
 
 ## Mounting dialogs
 
-Menu items open dialogs, so the store has to say which dialog is showing. A dialog is a state rather than an event: it is either up or it is not, so one field describes it.
+Menu items open dialogs, so the store has to track which dialog is showing. A dialog is a state, not an event: it is either open or closed, so one field describes it.
 
 In `src/types.ts`:
 
@@ -220,17 +212,13 @@ export const Dialogs = () => {
 };
 ```
 
-**This is the dialog contract, and every dialog in the rest of the tutorial follows it.** Mounting the component presents the dialog, unmounting it dismisses the dialog. You never call `present` or `close`: you change `dialog` in the store and the reconciler does the rest.
+**This is the dialog contract, and every dialog in the rest of the tutorial follows it.** Mounting the component presents the dialog, unmounting it dismisses the dialog. You never call `present` or `close`. You change `dialog` in the store and the reconciler does the rest.
 
-The widget an Adwaita dialog element creates is not laid out inside the surrounding widget tree, so it does not matter that `Dialogs` sits at the bottom of the window's children: it renders through a portal, presented against the window that contains it. The general mechanism, including `createPortal` for the cases you drive by hand, is in [Modals and Portals](/guide/modals-and-portals).
+The widget an Adwaita dialog element creates is not laid out inside the surrounding widget tree, so it does not matter that `Dialogs` sits at the bottom of the window's children. It renders through a portal, presented against the window that contains it. [Modals and Portals](/guide/modals-and-portals) covers the general mechanism, including `createPortal` for the cases you drive by hand.
 
-`onClosed` clears the state that mounted the dialog. That signal fires whichever way the dialog goes away, including Escape and the close button, so routing it back to `showDialog("none")` keeps the store honest about what is on screen.
+`onClosed` clears the state that mounted the dialog. That signal fires whichever way the dialog goes away, including Escape and the close button, so routing it back to `showDialog("none")` keeps the store's `dialog` field in sync with what is on screen.
 
-::: warning The dialog closes once and then will not open again
-`onClosed` is not wired. Escape dismissed the widget, but the store still says `dialog: "about"`, so the component stayed mounted and the menu item sets the field to the value it already holds. Nothing remounts, and the dialog is presented only when it is first mounted. That is why the dialogs here take an `onClose` prop and hand it to `onClosed`. `AdwAlertDialog` reports the same thing through `onResponse`, which later chapters use instead.
-:::
-
-Both dialogs are pure Adwaita, and both take the callback and do nothing else.
+Both dialogs are plain Adwaita: each takes the callback and does nothing else.
 
 Create `src/components/about.tsx`:
 
@@ -299,7 +287,7 @@ import { Dialogs } from "./dialogs.js";
 
 ## Keys that are not commands
 
-Search, close, and delete want keys too, and none of them belongs in a menu: "Close task" is meaningless with no task open, and search is a view state rather than a thing you do.
+Search, close, and delete need keys too, and none of them belongs in a menu. "Close task" means nothing with no task open, and search is a view state rather than a command.
 
 **A command you would put in a menu is an action. A key that only makes sense in a particular view state is a shortcut.** Actions are global, named, and discoverable. Shortcuts are local, anonymous, and conditional.
 
@@ -375,13 +363,13 @@ import { AppShortcuts } from "./app-shortcuts.js";
 
 ## Run it
 
-Save the files and put your hands on the keyboard.
+Save the files and try the keyboard.
 
 - Press `Ctrl+N`. A task called "New Task" appears and the content pane opens it for editing, with the title field ready.
-- Press `F10`, or click the menu button at the end of the content header. The primary menu opens, and the New Task item shows `Ctrl+N` along its right-hand edge, a label you never wrote.
-- Press `Ctrl+question` (`Ctrl+Shift+/` on a US layout). The keyboard shortcuts dialog appears. Press `Escape` and it goes away, and pressing `Ctrl+question` again brings it back rather than doing nothing.
-- With a task open, press `Escape` and the pane returns to the list. Press `Escape` again with no task open and nothing happens: no flicker, no navigation.
+- Press `F10`, or click the menu button at the end of the content header. The primary menu opens, and the New Task item shows `Ctrl+N` along its right-hand edge.
+- Press `Ctrl+question` (`Ctrl+Shift+/` on a US layout). The keyboard shortcuts dialog appears. Press `Escape` to dismiss it, then press `Ctrl+question` again to bring it back.
+- With a task open, press `Escape` and the pane returns to the list. Press `Escape` again with no task open and nothing happens.
 
 ## Next
 
-[Deleting Without Fear](/tutorial/trash-and-toasts) gives the app an undo toast and a confirmation dialog, so the Delete key stops being a one-way door.
+[Deleting Without Fear](/tutorial/trash-and-toasts) gives the app an undo toast and a confirmation dialog, so a deleted task can be brought back.

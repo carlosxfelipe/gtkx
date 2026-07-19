@@ -13,6 +13,7 @@ export const NewListDialog = () => {
     const showDialog = useStore((state) => state.showDialog);
     const [name, setName] = useState("");
     const [color, setColor] = useState("#3584e4");
+    const [firstSwatch, setFirstSwatch] = useState<Gtk.ToggleButton | null>(null);
 
     return (
         <AdwAlertDialog
@@ -31,16 +32,15 @@ export const NewListDialog = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
                 <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
                 <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                    {PALETTE.map((swatch) => (
+                    {PALETTE.map((swatch, index) => (
                         <GtkToggleButton
                             key={swatch}
+                            ref={index === 0 ? setFirstSwatch : undefined}
+                            group={index === 0 ? undefined : firstSwatch}
                             active={color === swatch}
                             cssClasses={["flat"]}
                             accessibleLabel={`Color ${swatch}`}
-                            onClicked={(self) => {
-                                self.active = true;
-                                setColor(swatch);
-                            }}
+                            onClicked={() => setColor(swatch)}
                         >
                             <GtkBox
                                 widthRequest={22}
