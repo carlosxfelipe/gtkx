@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Closing from "./Closing.vue";
-import { REPO_URL } from "./content";
 import Ecosystem from "./Ecosystem.vue";
 import Features from "./Features.vue";
 import Footer from "./Footer.vue";
@@ -14,7 +13,7 @@ import Showcase from "./Showcase.vue";
 <template>
   <div class="landing">
     <a class="skip-link" href="#main">Skip to content</a>
-    <a class="ann" :href="`${REPO_URL}#status`">
+    <a class="ann" href="/blog/gtkx-1-0-rc-1">
       <span class="ann__tag">NEW</span>
       <span class="ann__txt">GTKX 1.0 release candidate: The React framework for Linux</span>
       <span class="ann__arrow" aria-hidden="true">→</span>
