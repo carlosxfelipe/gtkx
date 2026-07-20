@@ -1,4 +1,4 @@
-import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { publishPackage } from "./pnpm-publish.js";
@@ -16,7 +16,9 @@ const optionalDependencies: { [name: string]: string } = {};
 for (const platform of readdirSync(npmDir)) {
     const platformDir = join(npmDir, platform);
     const binary = `native.${platform}.node`;
-    copyFileSync(join(artifactsDir, binary), join(platformDir, binary));
+    const source = join(artifactsDir, binary);
+    if (!existsSync(source)) continue;
+    copyFileSync(source, join(platformDir, binary));
 
     const platformManifest = JSON.parse(readFileSync(join(platformDir, "package.json"), "utf8")) as PackageManifest;
     if (platformManifest.name !== undefined && platformManifest.version !== undefined) {
