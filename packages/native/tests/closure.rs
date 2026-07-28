@@ -16,13 +16,15 @@ use native::ffi::codec::{
     BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, Ownership, RefCodec,
     StringCodec, StructCodec, VoidCodec,
 };
-use native::ffi::value::JsHandle;
-use native::ffi::{ListData, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage};
+use native::ffi::{
+    ListData, ListNode, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage,
+};
 use native::handle::Handle;
+use native::value::ClosureHandle;
 
-fn js_fn_handle(env: &Env, value: sys::napi_value) -> JsHandle {
-    JsHandle::from_js_value(env, &napi_mock::to_unknown(env, value))
-        .expect("creating a JsHandle for the callback should succeed")
+fn js_fn_handle(env: &Env, value: sys::napi_value) -> ClosureHandle {
+    ClosureHandle::from_js_value(env, &napi_mock::to_unknown(env, value))
+        .expect("creating a ClosureHandle for the callback should succeed")
 }
 
 fn borrowed_string_codec() -> Codec {
@@ -88,6 +90,7 @@ fn drain_default_context() {
     while context.iteration(false) {}
 }
 
+#[allow(clippy::unnecessary_box_returns)]
 fn void_closure(env: &Env, js_fn: sys::napi_value, oneshot: bool) -> Box<ClosureState> {
     ClosureState::boxed(
         js_fn_handle(env, js_fn),
@@ -106,11 +109,18 @@ fn single_fatal_message() -> String {
         .expect("the fatal exception should carry a message")
 }
 
-unsafe fn passthrough_prepend(list: *mut c_void, _data: *mut c_void) -> *mut c_void {
+fn passthrough_prepend(list: *mut c_void, _data: *mut c_void) -> *mut c_void {
     list
 }
 
-unsafe fn panicking_free(_list: *mut c_void) {
+fn end_node(_node: *mut c_void) -> ListNode {
+    ListNode {
+        data: std::ptr::null_mut(),
+        next: std::ptr::null_mut(),
+    }
+}
+
+fn panicking_free(_list: *mut c_void) {
     panic!("closure drop exploded");
 }
 
@@ -118,6 +128,7 @@ static PANICKING_LIST_OPS: ListOps = ListOps {
     label: "panicking list",
     pending: ReleaseKind::GFree,
     prepend: passthrough_prepend,
+    node: end_node,
     free: panicking_free,
     free_full: panicking_free,
 };
@@ -207,36 +218,65 @@ fn the_user_data_argument_is_not_passed_to_js() {
     });
 }
 
+#[allow(clippy::unnecessary_box_returns)]
+fn ref_i32_closure(env: &Env, js_fn: sys::napi_value, inout: bool) -> Box<ClosureState> {
+    let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32), inout)
+        .expect("Integer is a valid Ref inner");
+    ClosureState::boxed(
+        js_fn_handle(env, js_fn),
+        vec![Codec::Ref(ref_codec)],
+        Codec::Void(VoidCodec),
+        None,
+        false,
+    )
+}
+
+fn seed_recording_function(seeded: &Rc<RefCell<Vec<sys::napi_value>>>) -> sys::napi_value {
+    let seeded_in_fn = Rc::clone(seeded);
+    napi_mock::fake_function(move |args| {
+        let seed = napi_mock::read_object_property(args[0], "value")
+            .expect("the ref object should carry a seeded value");
+        seeded_in_fn.borrow_mut().push(seed);
+        napi_mock::set_object_property(args[0], "value", napi_mock::fake_double(52.0));
+        napi_mock::fake_undefined()
+    })
+}
+
 #[test]
-fn ref_out_parameters_are_seeded_and_flushed() {
+fn ref_inout_parameters_are_seeded_and_flushed() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let seeded = Rc::new(RefCell::new(Vec::new()));
-        let seeded_in_fn = Rc::clone(&seeded);
-        let js_fn = napi_mock::fake_function(move |args| {
-            let seed = napi_mock::read_object_property(args[0], "value")
-                .expect("the ref object should carry a seeded value");
-            seeded_in_fn.borrow_mut().push(seed);
-            napi_mock::set_object_property(args[0], "value", napi_mock::fake_double(52.0));
-            napi_mock::fake_undefined()
-        });
-        let ref_codec =
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("Integer is a valid Ref inner");
-        let state = ClosureState::boxed(
-            js_fn_handle(&env, js_fn),
-            vec![Codec::Ref(ref_codec)],
-            Codec::Void(VoidCodec),
-            None,
-            false,
-        );
+        let js_fn = seed_recording_function(&seeded);
+        let state = ref_i32_closure(&env, js_fn, true);
         let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
 
         let mut backing: i32 = 41;
-        unsafe { call(&mut backing) };
+        unsafe { call(&raw mut backing) };
 
         let seeds = seeded.borrow();
         assert_eq!(seeds.len(), 1);
         assert_eq!(napi_mock::read_double(seeds[0]), Some(41.0));
+        assert_eq!(backing, 52);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn ref_pure_out_parameters_are_seeded_null_and_flushed_without_reading_the_slot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seeded = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = seed_recording_function(&seeded);
+        let state = ref_i32_closure(&env, js_fn, false);
+        let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
+
+        let mut backing: i32 = 41;
+        unsafe { call(&raw mut backing) };
+
+        let seeds = seeded.borrow();
+        assert_eq!(seeds.len(), 1);
+        assert!(napi_mock::is_null(seeds[0]));
         assert_eq!(backing, 52);
         assert!(napi_mock::fatal_exceptions().is_empty());
     });
@@ -259,7 +299,7 @@ fn a_borrowed_string_return_stays_valid_after_the_call() {
         assert!(!first.is_null());
         assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("hello"));
         assert_eq!(
-            state.data_ref().retained_string_return.get().cast_const(),
+            state.data_ref().retained_string("hello").cast_const(),
             first
         );
 
@@ -267,9 +307,28 @@ fn a_borrowed_string_return_stays_valid_after_the_call() {
         assert!(!second.is_null());
         assert_eq!(unsafe { CStr::from_ptr(second) }.to_str(), Ok("world"));
         assert_eq!(
-            state.data_ref().retained_string_return.get().cast_const(),
+            state.data_ref().retained_string("world").cast_const(),
             second
         );
+        assert_ne!(first, second);
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("hello"));
+        assert!(napi_mock::fatal_exceptions().is_empty());
+
+        drop(state);
+    });
+}
+
+#[test]
+fn a_repeated_borrowed_string_return_reuses_one_allocation() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, _) = counting_function(|_, _| napi_mock::fake_string("stable"));
+        let (state, call) = string_return_closure(&env, js_fn);
+
+        let first = unsafe { call() };
+        let second = unsafe { call() };
+        assert_eq!(first, second);
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("stable"));
         assert!(napi_mock::fatal_exceptions().is_empty());
 
         drop(state);
@@ -301,12 +360,12 @@ fn a_borrowed_container_return_stays_valid_after_the_call() {
         let first = unsafe { call() };
         assert!(!first.is_null());
         assert_eq!(unsafe { std::slice::from_raw_parts(first, 3) }, [1, 2, 3]);
-        assert!(!state.data_ref().retained_container_return.get().is_null());
 
         let second = unsafe { call() };
         assert!(!second.is_null());
         assert_eq!(unsafe { std::slice::from_raw_parts(second, 3) }, [4, 5, 6]);
-        assert!(!state.data_ref().retained_container_return.get().is_null());
+        assert_ne!(first, second);
+        assert_eq!(unsafe { std::slice::from_raw_parts(first, 3) }, [1, 2, 3]);
         assert!(napi_mock::fatal_exceptions().is_empty());
 
         drop(state);
@@ -320,7 +379,10 @@ fn a_oneshot_closure_releases_its_resources_once_via_the_idle() {
         let (js_fn, calls) = counting_function(|_, _| napi_mock::fake_undefined());
         let state = void_closure(&env, js_fn, true);
         let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
-        let _ = Box::into_raw(state);
+        let callback_value =
+            native::ffi::CallbackValue::new_pending_transfer(state.code_ptr, true, None, state);
+        callback_value.disarm_pending_transfer();
+        drop(callback_value);
 
         let deletions_before = napi_mock::count("napi_delete_reference");
         unsafe { call() };
@@ -353,8 +415,7 @@ fn a_panicking_drop_in_the_destroy_notify_is_reported_and_contained() {
         let state = void_closure(&env, js_fn, false);
         state
             .data_ref()
-            .retained_container_return
-            .set(Box::into_raw(Box::new(stash_that_panics_on_drop())));
+            .retain_container(stash_that_panics_on_drop());
         let deletions_before = napi_mock::count("napi_delete_reference");
 
         unsafe { ClosureState::destroy(Box::into_raw(state).cast()) };
@@ -417,6 +478,8 @@ fn a_transfer_full_boxed_return_with_an_unresolvable_type_yields_null_and_report
                 get_type_fn_name: None,
                 free_fn_name: None,
                 caller_allocated: false,
+                size: None,
+                inline: false,
             }),
             "GtkxUnknownBoxedType",
         );
@@ -432,6 +495,7 @@ fn a_transfer_full_fundamental_return_with_unresolvable_fns_yields_null_and_repo
                 shared_library: "libgobject-2.0.so.0".to_owned(),
                 ref_fn_name: "gtkx_missing_fundamental_ref".to_owned(),
                 unref_fn_name: "gtkx_missing_fundamental_unref".to_owned(),
+                inline: false,
             }),
             "gtkx_missing_fundamental_ref",
         );
@@ -446,6 +510,7 @@ fn a_transfer_full_struct_return_with_an_unknown_size_yields_null_and_reports() 
                 ownership: Ownership::Full,
                 size: None,
                 caller_allocated: false,
+                inline: false,
             }),
             "its size is unknown",
         );
@@ -498,7 +563,7 @@ fn the_closure_stays_usable_after_a_throw() {
 }
 
 #[test]
-fn a_throw_clears_the_retained_borrowed_string_return() {
+fn a_throw_returns_null_without_disturbing_earlier_borrowed_string_returns() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let exception = napi_mock::fake_error("second call exploded");
@@ -514,11 +579,11 @@ fn a_throw_clears_the_retained_borrowed_string_return() {
 
         let first = unsafe { call() };
         assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("alpha"));
-        assert!(!state.data_ref().retained_string_return.get().is_null());
+        assert!(!state.data_ref().retained_string("alpha").is_null());
 
         let second = unsafe { call() };
         assert!(second.is_null());
-        assert!(state.data_ref().retained_string_return.get().is_null());
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("alpha"));
         assert_eq!(napi_mock::take_pending_exception(), Some(exception));
         assert_eq!(napi_mock::thrown_exceptions(), vec![exception]);
         assert!(napi_mock::fatal_exceptions().is_empty());

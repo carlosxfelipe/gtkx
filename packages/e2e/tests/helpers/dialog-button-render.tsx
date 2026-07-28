@@ -2,21 +2,21 @@ import { render } from "@gtkx/testing";
 import { createRef, type ReactElement, type RefObject } from "react";
 import { expect } from "vitest";
 
-interface DialogButtonDialog {
+type DialogButtonDialog = {
     getTitle(): string | null;
     getModal(): boolean;
-}
+};
 
-export interface DialogButtonWidget {
+type DialogButtonWidget = {
     getDialog(): DialogButtonDialog | null;
-}
+};
 
-export type DialogButtonFactory<Widget extends DialogButtonWidget> = (
+type DialogButtonFactory<Widget extends DialogButtonWidget> = (
     ref: RefObject<Widget | null>,
     dialogProps: { title?: string; modal?: boolean },
 ) => ReactElement;
 
-export const expectDialogTitleTracksProp = async <Widget extends DialogButtonWidget>(
+const expectDialogTitleTracksProp = async <Widget extends DialogButtonWidget>(
     renderButton: DialogButtonFactory<Widget>,
 ): Promise<void> => {
     const ref = createRef<Widget>();
@@ -27,19 +27,18 @@ export const expectDialogTitleTracksProp = async <Widget extends DialogButtonWid
 
     await render(<App title="First Title" />);
     expect(ref.current?.getDialog()?.getTitle()).toBe("First Title");
-
     await render(<App title="Second Title" />);
     expect(ref.current?.getDialog()?.getTitle()).toBe("Second Title");
 };
 
-export const expectDialogModalProp = async <Widget extends DialogButtonWidget>(
+const expectDialogModalProp = async <Widget extends DialogButtonWidget>(
     renderButton: DialogButtonFactory<Widget>,
 ): Promise<void> => {
     const ref = createRef<Widget>();
-
     await render(renderButton(ref, { modal: false }));
-
     expect(ref.current).not.toBeNull();
     const dialog = ref.current?.getDialog();
     expect(dialog?.getModal()).toBe(false);
 };
+
+export { expectDialogTitleTracksProp, expectDialogModalProp, type DialogButtonWidget, type DialogButtonFactory };

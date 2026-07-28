@@ -1,9 +1,9 @@
-import { fieldFromNode, type GirField } from "./field.js";
-import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
+import { collectFields, type GirField } from "./field.js";
+import { functionFromNode, type GirFunction } from "./function.js";
+import { attr, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 
-export type GirRecord = {
+type GirRecord = {
     isVtable: boolean;
     name: string;
     doc: string | undefined;
@@ -24,7 +24,7 @@ export type GirRecord = {
     isUnion: boolean;
 };
 
-export const recordFromNode = (
+const recordFromNode = (
     node: RawNode,
     isVtable: boolean,
     isUnion: boolean,
@@ -32,7 +32,7 @@ export const recordFromNode = (
 ): GirRecord => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
-    doc: docOf(node),
+    doc: getDoc(node),
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
@@ -40,14 +40,16 @@ export const recordFromNode = (
     glibUnrefFunc: attr(node, "glib:unref-func"),
     copyFunc: attr(node, "copy-function"),
     freeFunc: attr(node, "free-function"),
-    disguised: attrBool(node, "disguised"),
-    opaque: attrBool(node, "opaque"),
-    introspectable: attrBool(node, "introspectable", true),
-    fields: childrenOf(node, "field").map((field) => fieldFromNode(field, context)),
-    methods: childrenOf(node, "method").map((method) => functionFromNode(method, context)),
-    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
-    functions: childrenOf(node, "function").map((function_) => functionFromNode(function_, context)),
+    disguised: isAttrTrue(node, "disguised"),
+    opaque: isAttrTrue(node, "opaque"),
+    introspectable: isAttrTrue(node, "introspectable", true),
+    fields: collectFields(node, context),
+    methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
+    constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
+    functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
     isUnion,
 });
 
-export const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
+const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
+
+export { recordFromNode, isVtableRecord, type GirRecord };

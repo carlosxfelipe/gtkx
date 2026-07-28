@@ -7,26 +7,32 @@ pub type RefFn = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
 pub struct Fundamental {
     ptr: *mut c_void,
     owned: bool,
-    ref_fn: Option<RefFn>,
     unref_fn: Option<UnrefFn>,
 }
 
 impl Fundamental {
     pub(crate) const SIZE_HINT: usize = 128;
 
-    pub fn from_glib_full(
-        ptr: *mut c_void,
-        ref_fn: Option<RefFn>,
-        unref_fn: Option<UnrefFn>,
-    ) -> Self {
+    /// # Safety
+    ///
+    /// This takes ownership of one reference to `ptr`, so `ptr` must either be null or a valid
+    /// pointer to a live fundamental instance whose reference the caller is transferring. If
+    /// `unref_fn` is `Some`, it must be the release function for that exact instance type; it is
+    /// called once on drop, and the caller must not release the transferred reference itself.
+    pub unsafe fn from_glib_full(ptr: *mut c_void, unref_fn: Option<UnrefFn>) -> Self {
         Self {
             ptr,
             owned: true,
-            ref_fn,
             unref_fn,
         }
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must either be null or a valid pointer to a live fundamental instance that the caller
+    /// keeps owning. `ref_fn` and `unref_fn`, when `Some`, must be the acquire and release
+    /// functions for that exact instance type. With a `ref_fn` the wrapper takes its own reference
+    /// and drops it later; without one it only borrows `ptr`, which must then outlive the wrapper.
     pub unsafe fn from_glib_none(
         ptr: *mut c_void,
         ref_fn: Option<RefFn>,
@@ -36,7 +42,6 @@ impl Fundamental {
             return Self {
                 ptr: std::ptr::null_mut(),
                 owned: false,
-                ref_fn,
                 unref_fn,
             };
         }
@@ -46,20 +51,14 @@ impl Fundamental {
         Self {
             ptr: owned_ptr,
             owned: ref_fn.is_some(),
-            ref_fn,
             unref_fn,
         }
     }
 
     #[inline]
+    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
-    }
-}
-
-impl Clone for Fundamental {
-    fn clone(&self) -> Self {
-        unsafe { Self::from_glib_none(self.ptr, self.ref_fn, self.unref_fn) }
     }
 }
 

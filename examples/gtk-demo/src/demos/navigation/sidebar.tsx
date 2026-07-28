@@ -18,8 +18,21 @@ const pages = [
     "Page 9",
 ];
 
-const SidebarDemo = () => {
-    const demoIcon = Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri));
+const sidebarDemo: Demo = {
+    id: "sidebar",
+    title: "Stack Sidebar",
+    description:
+        "GtkStackSidebar provides an automatic sidebar widget to control navigation of a GtkStack object. This " +
+        "widget automatically updates its content based on what is presently available in the GtkStack object, and " +
+        'using the "title" child property to set the display labels.',
+    keywords: [],
+    component: SidebarDemo,
+    titlebar: SidebarTitlebar,
+    sourceCode,
+};
+
+function SidebarDemo() {
+    const demoIcon = Gio.FileIcon.new(Gio.File.newForUri(demoIconUri));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (
@@ -28,33 +41,28 @@ const SidebarDemo = () => {
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN} hexpand>
                 {pages.map((title, index) => (
                     <GtkStackPage key={title} name={title} title={title}>
-                        {index === 0 ? (
-                            <GtkImage
-                                gicon={demoIcon}
-                                pixelSize={256}
-                                cssClasses={["icon-dropshadow"]}
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                            />
-                        ) : (
-                            <GtkLabel>{title}</GtkLabel>
-                        )}
+                        {index === 0
+                            ? (
+                                    <GtkImage
+                                        gicon={demoIcon}
+                                        pixelSize={256}
+                                        cssClasses={["icon-dropshadow"]}
+                                        halign={Gtk.Align.CENTER}
+                                        valign={Gtk.Align.CENTER}
+                                    />
+                                )
+                            : (
+                                    <GtkLabel>{title}</GtkLabel>
+                                )}
                     </GtkStackPage>
                 ))}
             </GtkStack>
         </GtkBox>
     );
-};
+}
 
-const SidebarTitlebar = () => <GtkHeaderBar />;
+function SidebarTitlebar() {
+    return <GtkHeaderBar />;
+}
 
-export const sidebarDemo: Demo = {
-    id: "sidebar",
-    title: "Stack Sidebar",
-    description:
-        'GtkStackSidebar provides an automatic sidebar widget to control navigation of a GtkStack object. This widget automatically updates its content based on what is presently available in the GtkStack object, and using the "title" child property to set the display labels.',
-    keywords: [],
-    component: SidebarDemo,
-    titlebar: SidebarTitlebar,
-    sourceCode,
-};
+export { sidebarDemo };

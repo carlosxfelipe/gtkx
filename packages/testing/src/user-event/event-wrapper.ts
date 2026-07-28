@@ -10,22 +10,44 @@ const WINDOW_NOT_ACTIVE = "its window never became active";
 
 const actionableHop = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 1));
 
-const displayDeliversActivation = (window: Gtk.Window): boolean => window.getDisplay().getDefaultSeat() !== null;
+const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
+    window.getDisplay().getDefaultSeat() !== null;
+
+const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
+    if (root.getAllocatedWidth() === 0) {
+        return WINDOW_NOT_ALLOCATED;
+    }
+
+    if (!widget.getMapped()) {
+        return NOT_MAPPED;
+    }
+
+    if (canDisplayDeliverActivation(root) && !root.isActive()) {
+        return WINDOW_NOT_ACTIVE;
+    }
+
+    return null;
+};
 
 const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
-    if (!widget.isSensitive()) return NOT_SENSITIVE;
+    if (!widget.isSensitive()) {
+        return NOT_SENSITIVE;
+    }
+
     const root = widget.getRoot();
-    if (!(root instanceof Gtk.Window) || !root.getVisible()) return null;
-    if (root.getAllocatedWidth() === 0) return WINDOW_NOT_ALLOCATED;
-    if (!widget.getMapped()) return NOT_MAPPED;
-    if (displayDeliversActivation(root) && !root.isActive()) return WINDOW_NOT_ACTIVE;
-    return null;
+
+    if (!(root instanceof Gtk.Window) || !root.getVisible()) {
+        return null;
+    }
+
+    return findWindowActionabilityFailure(widget, root);
 };
 
 const describeWidget = (widget: Gtk.Widget): string => {
     const tag = widget.constructor.name;
     const name = widget.getName();
     const nameAttribute = name && !name.endsWith(tag) ? ` name="${name}"` : "";
+
     return `<${tag}${nameAttribute} role="${formatRole(widget.getAccessibleRole())}">`;
 };
 
@@ -33,22 +55,26 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     const timeout = getConfig().actionabilityTimeout;
     const deadline = Date.now() + timeout;
     let failure = findActionabilityFailure(widget);
+
     while (failure !== null && Date.now() < deadline) {
         await actionableHop();
         failure = findActionabilityFailure(widget);
     }
+
     if (failure !== null) {
         throw new Error(
-            `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable within ${timeout}ms because ${failure}`,
+            `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
+            `within ${String(timeout)}ms because ${failure}`,
         );
     }
 };
 
-export const wrapEvent = (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> =>
-    Promise.resolve()
-        .then(() => waitForActionable(widget))
-        .then(() =>
-            runInAct(async () => {
-                await body();
-            }),
-        );
+const wrapEvent = async (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> => {
+    await waitForActionable(widget);
+
+    await runInAct(async () => {
+        await body();
+    });
+};
+
+export { wrapEvent };

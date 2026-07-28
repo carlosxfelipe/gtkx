@@ -11,14 +11,16 @@ pub enum BigIntCodec {
     U64,
 }
 
-impl BigIntCodec {
-    fn ffi_codec(self) -> IntegerCodec {
+impl IntegerBacked for BigIntCodec {
+    fn ffi_codec(&self) -> IntegerCodec {
         match self {
             Self::I64 => IntegerCodec::I64,
             Self::U64 => IntegerCodec::U64,
         }
     }
+}
 
+impl BigIntCodec {
     fn name(self) -> &'static str {
         match self {
             Self::I64 => "bigint64",
@@ -33,18 +35,22 @@ impl BigIntCodec {
         }
     }
 
-    fn integer_from_value(self, env: &Env, value: Unknown<'_>) -> anyhow::Result<i128> {
+    fn integer_from_value(self, value: Unknown<'_>) -> anyhow::Result<i128> {
         match value.get_type()? {
             ValueType::BigInt => {
-                let big = value::read_napi::<BigInt>(env, value)?;
+                let big = value::read_napi::<BigInt>(value)?;
                 let (int, lossless) = big.get_i128();
                 if !lossless {
                     bail!("BigInt value exceeds the supported 128-bit range");
                 }
                 Ok(int)
             }
+            // The guard rejects every non-integral, non-finite or beyond-2^53 value first, so
+            // what reaches the conversion is a whole number f64 holds exactly and i128 covers
+            // with room to spare.
+            #[allow(clippy::cast_possible_truncation)]
             ValueType::Number => {
-                let n = value::read_napi::<f64>(env, value)?;
+                let n = value::read_napi::<f64>(value)?;
                 if !n.is_finite()
                     || n.fract() != 0.0
                     || !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n)
@@ -88,23 +94,26 @@ impl BigIntCodec {
         }
     }
 
+    #[must_use]
     pub fn byte_size(self) -> usize {
         self.ffi_codec().byte_size()
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must point at `len * self.byte_size()` initialized, readable bytes that stay valid
+    /// for the whole call. Alignment is not required: every element is read with
+    /// `read_unaligned`.
+    #[must_use]
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<i128> {
         (0..len)
             .map(|i| unsafe { self.read_i128(ptr.add(i * self.byte_size())) })
             .collect()
     }
 
-    pub fn to_stash_storage(
-        self,
-        env: &Env,
-        array: &[Unknown<'_>],
-    ) -> anyhow::Result<ffi::StashStorage> {
+    pub fn to_stash_storage(self, array: &[Unknown<'_>]) -> anyhow::Result<ffi::StashStorage> {
         let integer_at = |i: usize, v: Unknown<'_>| {
-            self.integer_from_value(env, v)
+            self.integer_from_value(v)
                 .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
         };
         match self {
@@ -132,13 +141,13 @@ impl BigIntCodec {
     }
 }
 
-pub fn bigint_to_unknown<'e>(env: &'e Env, value: i128) -> anyhow::Result<Unknown<'e>> {
+pub(super) fn bigint_to_unknown(env: &Env, value: i128) -> anyhow::Result<Unknown<'_>> {
     Ok(BigInt::from(value).into_unknown(env)?)
 }
 
 impl Encoder for BigIntCodec {
-    fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let int = self.integer_from_value(env, value)?;
+    fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let int = self.integer_from_value(value)?;
         self.checked_to_stash(int)
     }
 
@@ -166,12 +175,12 @@ impl Decoder for BigIntCodec {
 impl PtrWriter for BigIntCodec {
     fn write_return_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         let int = match value {
-            Ok(unknown) => self.integer_from_value(env, *unknown).unwrap_or(0),
+            Ok(unknown) => self.integer_from_value(*unknown).unwrap_or(0),
             Err(()) => 0,
         };
         let stash = self
@@ -182,11 +191,12 @@ impl PtrWriter for BigIntCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        _init: SlotInit,
     ) -> anyhow::Result<()> {
-        let int = self.integer_from_value(env, value)?;
+        let int = self.integer_from_value(value)?;
         let stash = self.checked_to_stash(int)?;
         unsafe { stash.write_scalar_to_ptr(slot.as_ptr()) }
     }

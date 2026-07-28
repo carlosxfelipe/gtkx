@@ -1,5 +1,17 @@
 import { ErrorCode, ProtocolError } from "@gtkx/mcp/internal";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { dispatch } from "../../src/mcp/handlers.js";
+import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
+import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
+
+type PrettyWidgetOptions = { getId?: (widget: unknown) => string; highlight?: boolean; maxDepth?: number };
+
+type FakeApp = {
+    getWindows: () => { getTitle?: () => string | null }[];
+};
+
+type TextMatches = { widgets: { text: string | null }[] };
+type ChildMatches = { widgets: { children: unknown[] }[] };
 
 const hoisted = vi.hoisted(() => ({
     findAllByRole: vi.fn(),
@@ -7,18 +19,19 @@ const hoisted = vi.hoisted(() => ({
     findAllByName: vi.fn(),
     findAllByLabelText: vi.fn(),
     screenshot: vi.fn(),
-    click: vi.fn(async () => undefined),
-    typeText: vi.fn(async () => undefined),
-    clear: vi.fn(async () => undefined),
-    fireEvent: vi.fn(async () => undefined),
-    prettyWidget: vi.fn((_container: unknown, _options?: { getId?: (w: unknown) => string }) => "tree"),
+    click: vi.fn(() => Promise.resolve()),
+    typeText: vi.fn(() => Promise.resolve()),
+    clear: vi.fn(() => Promise.resolve()),
+    fireEvent: vi.fn(() => Promise.resolve()),
+    prettyWidget: vi.fn<(container: unknown, options?: PrettyWidgetOptions) => string>(() => "tree"),
     formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
     getWidgetNodeText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
     listToplevels: vi.fn(() => [] as unknown[]),
-    AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
+    AccessibleRole: { BUTTON: 1, LABEL: 2 },
 }));
+
 const {
     findAllByRole,
     findAllByText,
@@ -32,6 +45,21 @@ const {
     prettyWidget,
     listToplevels,
 } = hoisted;
+
+const makeApp = (windows: { getTitle?: () => string | null }[] = []): FakeApp => ({
+    getWindows: () => windows,
+});
+
+const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget(overrides);
+
+const registerWidget = (registry: WidgetRegistry, widget: never): string => {
+    registry.register(widget);
+
+    return registry.getOrCreateId(widget);
+};
+
+const dispatchQuery = (params: Record<string, unknown>, registry = new WidgetRegistry()): Promise<unknown> =>
+    dispatch("widget.query", params, { app: makeApp() as never, registry });
 
 vi.mock("@gtkx/testing", () => ({
     findAllByRole: hoisted.findAllByRole,
@@ -50,25 +78,6 @@ vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: hoisted.AccessibleRole,
     Window: { listToplevels: hoisted.listToplevels },
 }));
-
-import { dispatch } from "../../src/mcp/handlers.js";
-import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
-import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
-
-type FakeApp = {
-    getWindows: () => Array<{ getTitle?: () => string | null }>;
-};
-
-const makeApp = (windows: Array<{ getTitle?: () => string | null }> = []): FakeApp => ({
-    getWindows: () => windows,
-});
-
-const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget(overrides);
-
-const registerWidget = (registry: WidgetRegistry, widget: never): string => {
-    registry.register(widget);
-    return registry.idFor(widget);
-};
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -94,7 +103,7 @@ describe("app.getWindows", () => {
         registry.refresh();
 
         const result = (await dispatch("app.getWindows", {}, { app: makeApp() as never, registry })) as {
-            windows: Array<{ id: string; title: string | null }>;
+            windows: { id: string; title: string | null }[];
         };
 
         expect(result.windows).toHaveLength(2);
@@ -113,21 +122,35 @@ describe("widget.getTree", () => {
         };
 
         expect(result.tree).toBe("rendered");
-        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), {
-            getId: expect.any(Function),
-            highlight: false,
-        });
+        const [container, options] = prettyWidget.mock.calls[0] ?? [];
+        expect(container).toBeDefined();
+        expect(options?.getId).toBeTypeOf("function");
+        expect(options?.highlight).toBe(false);
     });
 
     it("resolves tree ids through the registry", async () => {
         prettyWidget.mockReturnValueOnce("rendered");
         const registry = new WidgetRegistry();
         const widget = makeWidget({});
-
         await dispatch("widget.getTree", {}, { app: makeApp() as never, registry });
-
         const getId = prettyWidget.mock.calls[0]?.[1]?.getId;
-        expect(getId?.(widget)).toBe(registry.idFor(widget));
+        expect(getId?.(widget)).toBe(registry.getOrCreateId(widget));
+    });
+
+    it("renders only the subtree for a rootId", async () => {
+        prettyWidget.mockReturnValueOnce("subtree");
+        const registry = new WidgetRegistry();
+        const widget = makeWidget({});
+        const rootId = registerWidget(registry, widget);
+        await dispatch("widget.getTree", { rootId }, { app: makeApp() as never, registry });
+        expect(prettyWidget).toHaveBeenCalledWith(widget, expect.objectContaining({ highlight: false }));
+    });
+
+    it("passes maxDepth through to the renderer", async () => {
+        prettyWidget.mockReturnValueOnce("shallow");
+        const registry = new WidgetRegistry();
+        await dispatch("widget.getTree", { maxDepth: 2 }, { app: makeApp() as never, registry });
+        expect(prettyWidget).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ maxDepth: 2 }));
     });
 });
 
@@ -135,16 +158,23 @@ describe("widget.query", () => {
     it("converts a string role into the enum value before delegating to findAllByRole", async () => {
         const widget = makeWidget({ getLabel: () => "OK" });
         findAllByRole.mockResolvedValueOnce([widget]);
-        const registry = new WidgetRegistry();
-
-        const result = (await dispatch(
-            "widget.query",
-            { by: "role", value: "BUTTON", options: { exact: true } },
-            { app: makeApp() as never, registry },
-        )) as { widgets: Array<{ text: string | null }> };
-
+        const result = (await dispatchQuery({ by: "role", value: "BUTTON", options: { exact: true } })) as TextMatches;
         expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, { exact: true });
         expect(result.widgets[0]?.text).toBe("OK");
+    });
+
+    it("accepts the lowercase role shown in the widget tree", async () => {
+        findAllByRole.mockResolvedValueOnce([makeWidget()]);
+        await dispatchQuery({ by: "role", value: "button" });
+        expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, undefined);
+    });
+
+    it("rejects an unknown role with a clear error instead of delegating", async () => {
+        await expect(dispatchQuery({ by: "role", value: "nonsense" })).rejects.toMatchObject({
+            code: ErrorCode.INVALID_REQUEST,
+        });
+
+        expect(findAllByRole).not.toHaveBeenCalled();
     });
 
     it("routes text/name/labelText through the matching testing helper", async () => {
@@ -153,22 +183,30 @@ describe("widget.query", () => {
         findAllByName.mockResolvedValueOnce([widget]);
         findAllByLabelText.mockResolvedValueOnce([widget]);
         const registry = new WidgetRegistry();
-        const ctx = { app: makeApp() as never, registry };
-
-        await dispatch("widget.query", { by: "text", value: "Hi" }, ctx);
-        await dispatch("widget.query", { by: "name", value: "btn" }, ctx);
-        await dispatch("widget.query", { by: "labelText", value: "Submit" }, ctx);
-
+        await dispatchQuery({ by: "text", value: "Hi" }, registry);
+        await dispatchQuery({ by: "name", value: "btn" }, registry);
+        await dispatchQuery({ by: "labelText", value: "Submit" }, registry);
         expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Hi", undefined);
         expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "btn", undefined);
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
     });
 
+    it("returns shallow match summaries without descendants", async () => {
+        findAllByRole.mockResolvedValueOnce([makeWidget({ getFirstChild: () => makeWidget({}) })]);
+        const result = (await dispatchQuery({ by: "role", value: "button" })) as ChildMatches;
+        expect(result.widgets[0]?.children).toEqual([]);
+    });
+
+    it("returns an empty match list instead of throwing when nothing is found", async () => {
+        findAllByRole.mockRejectedValueOnce(new Error("Unable to find an element with the role"));
+        const result = (await dispatchQuery({ by: "role", value: "button" })) as { widgets: unknown[] };
+        expect(result.widgets).toEqual([]);
+    });
+
     it("rejects an unknown query type at the wire-schema boundary", async () => {
-        const registry = new WidgetRegistry();
-        await expect(
-            dispatch("widget.query", { by: "id", value: "x" }, { app: makeApp() as never, registry }),
-        ).rejects.toMatchObject({ code: ErrorCode.INVALID_REQUEST });
+        await expect(dispatchQuery({ by: "id", value: "x" })).rejects.toMatchObject({
+            code: ErrorCode.INVALID_REQUEST,
+        });
     });
 });
 
@@ -207,9 +245,7 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
         const widget = makeWidget();
         const registry = new WidgetRegistry();
         const id = registerWidget(registry, widget);
-
         const result = await dispatch("widget.click", { widgetId: id }, { app: makeApp() as never, registry });
-
         expect(click).toHaveBeenCalledWith(widget);
         expect(result).toEqual({ success: true });
     });
@@ -218,9 +254,7 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
         const widget = makeWidget();
         const registry = new WidgetRegistry();
         const id = registerWidget(registry, widget);
-
         await dispatch("widget.type", { widgetId: id, text: "hi", clear: true }, { app: makeApp() as never, registry });
-
         expect(clear).toHaveBeenCalledWith(widget);
         expect(typeText).toHaveBeenCalledWith(widget, "hi");
     });
@@ -262,9 +296,7 @@ describe("widget.screenshot", () => {
         const registry = new WidgetRegistry();
         const id = registerWidget(registry, window);
         screenshot.mockResolvedValueOnce({ data: "x", mimeType: "image/png" });
-
         await dispatch("widget.screenshot", { windowId: id }, { app: makeApp() as never, registry });
-
         expect(screenshot).toHaveBeenCalledWith(window);
     });
 

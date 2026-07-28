@@ -1,6 +1,5 @@
+use std::cell::RefCell;
 use std::ffi::c_void;
-use std::sync::{Mutex, MutexGuard, PoisonError};
-use std::thread;
 
 use gtk4::gdk;
 use gtk4::glib::{self, translate::IntoGlib as _};
@@ -12,11 +11,11 @@ use native::Handle;
 use native::ffi::Slot;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    IntegerCodec, Ownership, PtrWriter, ReadSource,
+    IntegerCodec, Ownership, PtrWriter, ReadSource, SlotInit,
 };
 use native::ffi::library_cache::FfiCache;
 use native::handle::Boxed;
-use native::messaging::node_env;
+use native::host::node_env;
 
 use napi::Env;
 use napi::JsValue as _;
@@ -57,10 +56,8 @@ pub mod uv_mock;
 
 pub use napi_mock::fake_env;
 
-static SERIAL: Mutex<()> = Mutex::new(());
-
-pub fn serial_guard() -> MutexGuard<'static, ()> {
-    SERIAL.lock().unwrap_or_else(PoisonError::into_inner)
+thread_local! {
+    static FIXTURE_BOXED: RefCell<Vec<(glib::Type, *mut c_void)>> = const { RefCell::new(Vec::new()) };
 }
 
 pub fn register_common_boxed_types() {
@@ -72,7 +69,6 @@ pub fn run<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let _guard = serial_guard();
     register_common_boxed_types();
     FfiCache::with(|state| *state = FfiCache::default());
     napi_mock::install_napi_mock();
@@ -80,7 +76,10 @@ where
     uv_mock::install_uv_mock();
     uv_mock::reset();
     node_env::install(fake_env()).expect("installing the fake node env should succeed");
-    f()
+    let result = f();
+    napi_mock::reset();
+    free_fixture_boxed();
+    result
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
@@ -115,7 +114,7 @@ pub unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
     }
 }
 
-pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
+pub unsafe fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     if ptr.is_null() {
         return 0;
     }
@@ -125,14 +124,14 @@ pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
     }
 }
 
-pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
+pub unsafe fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;
     }
     unsafe { (*obj_ptr).ref_count }
 }
 
-pub fn assert_unresolvable_symbol_failure_keeps_param_spec(
+pub unsafe fn assert_unresolvable_symbol_failure_keeps_param_spec(
     pspec: *mut c_void,
     before: u32,
     result: anyhow::Result<()>,
@@ -143,7 +142,7 @@ pub fn assert_unresolvable_symbol_failure_keeps_param_spec(
         err.to_string().contains("Failed to find symbol"),
         "unexpected error: {err}"
     );
-    assert_eq!(param_spec_refcount(pspec), before);
+    assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
     unsafe {
         glib::gobject_ffi::g_param_spec_unref(pspec as *mut glib::gobject_ffi::GParamSpec);
     }
@@ -164,13 +163,21 @@ pub fn make_bool_param_spec() -> *mut c_void {
 pub fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
     let obj = glib::Object::new::<glib::Object>();
     let obj_ptr = obj.as_ptr();
-    let before = get_gobject_refcount(obj_ptr);
+    let before = unsafe { get_gobject_refcount(obj_ptr) };
     (obj, obj_ptr, before)
 }
 
 pub fn boxed_handle() -> Handle {
-    let ptr = allocate_test_boxed(gdk::RGBA::static_type());
+    let type_ = gdk::RGBA::static_type();
+    let ptr = allocate_test_boxed(type_);
+    FIXTURE_BOXED.with_borrow_mut(|owned| owned.push((type_, ptr)));
     Handle::from_glib_borrow(ptr)
+}
+
+fn free_fixture_boxed() {
+    for (type_, ptr) in FIXTURE_BOXED.with_borrow_mut(std::mem::take) {
+        unsafe { glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr) };
+    }
 }
 
 pub fn pump_default_context_until(done: impl Fn() -> bool) {
@@ -179,9 +186,7 @@ pub fn pump_default_context_until(done: impl Fn() -> bool) {
         if done() {
             return;
         }
-        if !context.iteration(false) {
-            thread::yield_now();
-        }
+        context.iteration(false);
     }
 }
 
@@ -195,10 +200,10 @@ pub fn allocate_test_boxed(type_: glib::Type) -> *mut std::ffi::c_void {
 pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
     let type_ = gdk::RGBA::static_type();
     let ptr = allocate_test_boxed(type_);
-    (Boxed::from_glib_full(Some(type_), ptr), ptr)
+    (Boxed::from_glib_full(type_, ptr), ptr)
 }
 
-pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {
+pub unsafe fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {
     if ptr.is_null() {
         return false;
     }
@@ -214,9 +219,19 @@ pub fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool
 }
 
 pub struct TestBoxed {
-    pub ptr: *mut c_void,
-    pub type_: Option<glib::Type>,
-    pub is_owned: bool,
+    ptr: *mut c_void,
+    type_: Option<glib::Type>,
+    is_owned: bool,
+}
+
+impl TestBoxed {
+    pub unsafe fn new(ptr: *mut c_void, type_: Option<glib::Type>, is_owned: bool) -> Self {
+        Self {
+            ptr,
+            type_,
+            is_owned,
+        }
+    }
 }
 
 impl Drop for TestBoxed {
@@ -299,6 +314,7 @@ pub fn write_value_into_slot<C: PtrWriter>(
             env,
             unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
             value,
+            SlotInit::Initialized,
         )
         .expect("write_value_to_ptr should succeed");
     slot

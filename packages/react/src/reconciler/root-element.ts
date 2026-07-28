@@ -1,14 +1,12 @@
-const ROOT_ELEMENT: unique symbol = Symbol.for("gtkx.rootElement");
+/** The type of the shared {@link rootElement} marker used as a default top-level container. */
+type RootElement = { [ROOT_ELEMENT_BRAND]: true };
 
-/**
- * The type of the singleton marker used as the top-level render container.
- */
-export type RootElement = { [ROOT_ELEMENT]: true };
+const ROOT_ELEMENT_BRAND: unique symbol = Symbol.for("gtkx:root-element");
+/** A shared marker value used as the default top-level container for rendering and portals. */
+const rootElement: RootElement = { [ROOT_ELEMENT_BRAND]: true };
 
-/**
- * The shared root element used as the default container for `createRoot`.
- */
-export const rootElement: RootElement = { [ROOT_ELEMENT]: true };
+/** Reports whether an arbitrary value is a {@link rootElement} marker. */
+const isRootElement = (value: unknown): value is RootElement =>
+    typeof value === "object" && value !== null && Object.hasOwn(value, ROOT_ELEMENT_BRAND);
 
-export const isRootElement = (value: unknown): value is RootElement =>
-    typeof value === "object" && value !== null && ROOT_ELEMENT in value;
+export { rootElement, isRootElement, type RootElement };

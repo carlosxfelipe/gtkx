@@ -4,6 +4,14 @@ type LoaderModule = typeof import("../../src/mcp/testing-loader.js");
 
 const importLoader = async (): Promise<LoaderModule> => import("../../src/mcp/testing-loader.js");
 
+const settled = async (run: () => Promise<unknown>): Promise<unknown> => {
+    try {
+        return await run();
+    } catch (error) {
+        return error;
+    }
+};
+
 beforeEach(() => {
     vi.resetModules();
 });
@@ -17,10 +25,8 @@ describe("loadTestingModule", () => {
     it("caches successful imports across calls", async () => {
         vi.doMock("@gtkx/testing", () => ({ marker: "ok" }));
         const { loadTestingModule } = await importLoader();
-
         const first = await loadTestingModule();
         const second = await loadTestingModule();
-
         expect(first).toBe(second);
     });
 
@@ -28,11 +34,10 @@ describe("loadTestingModule", () => {
         vi.doMock("@gtkx/testing", () => {
             throw new Error("not installed");
         });
+
         const { loadTestingModule } = await importLoader();
-
-        const first = await loadTestingModule().catch((e: Error) => e);
-        const second = await loadTestingModule().catch((e: Error) => e);
-
+        const first = await settled(loadTestingModule);
+        const second = await settled(loadTestingModule);
         expect(first).toBeInstanceOf(Error);
         expect((first as Error).message).toContain("@gtkx/testing is not installed");
         expect(second).toBe(first);

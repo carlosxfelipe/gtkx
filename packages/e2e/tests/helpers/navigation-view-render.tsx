@@ -1,8 +1,8 @@
+import type { ReactNode } from "react";
 import { AdwNavigationPage } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 
-export const TwoNavigationPages = ({ contentPrefix }: { contentPrefix: string }): ReactNode => (
+const TwoNavigationPages = ({ contentPrefix }: { contentPrefix: string }): ReactNode => (
     <>
         <AdwNavigationPage tag="page1" title="Page 1">
             <GtkLabel>{`${contentPrefix} 1`}</GtkLabel>
@@ -12,3 +12,5 @@ export const TwoNavigationPages = ({ contentPrefix }: { contentPrefix: string })
         </AdwNavigationPage>
     </>
 );
+
+export { TwoNavigationPages };

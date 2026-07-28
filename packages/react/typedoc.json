@@ -1,3 +1,9 @@
 {
-    "intentionallyNotExported": ["Container", "SignalHandlerFor", "UseSignalOptions"]
+    "intentionallyNotExported": [
+        "Container",
+        "SettingKindValue",
+        "TypedSignalHandler",
+        "UseBindSettingOptions",
+        "UseSignalOptions"
+    ]
 }

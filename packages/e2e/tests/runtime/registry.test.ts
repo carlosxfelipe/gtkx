@@ -1,20 +1,23 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import type { Type } from "@gtkx/gi/gobject";
+import * as Gdk from "@gtkx/gi/gdk";
 import { typeFromName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle } from "@gtkx/runtime";
 import { registerClassType, resolveWrapperClass, wrapHandle } from "@gtkx/runtime/internal";
-import type { AnyClass } from "@gtkx/utils";
 import { describe, expect, it } from "vitest";
 
 const INVALID_GTYPE: Type = 0n;
 
 describe("registerClassType", () => {
     it("registers a class by GType", () => {
-        class TestClass {}
-        const fakeGtype: Type = 123456789n;
-        registerClassType(TestClass as AnyClass, fakeGtype);
-        expect(resolveWrapperClass(fakeGtype)).toBe(TestClass);
+        const fakeGtype: Type = 123_456_789n;
+
+        class TestWrapper {
+            gtype: Type = fakeGtype;
+        }
+
+        registerClassType(TestWrapper, fakeGtype);
+        expect(resolveWrapperClass(fakeGtype)).toBe(TestWrapper);
     });
 
     it("allows wrapHandle to find registered types", () => {
@@ -76,16 +79,16 @@ describe("wrapHandle — null handling", () => {
 describe("wrapHandle — boxed types", () => {
     it("wraps a native boxed type pointer in a class instance", () => {
         const rgba = new Gdk.RGBA();
-        rgba.red = 1.0;
+        rgba.red = 1;
         rgba.green = 0.5;
-        rgba.blue = 0.0;
-        rgba.alpha = 1.0;
+        rgba.blue = 0;
+        rgba.alpha = 1;
         const wrapped = wrapHandle(getHandle(rgba), Gdk.RGBA);
         expect(wrapped).not.toBeNull();
-        expect(wrapped.red).toBeCloseTo(1.0);
+        expect(wrapped.red).toBeCloseTo(1);
         expect(wrapped.green).toBeCloseTo(0.5);
-        expect(wrapped.blue).toBeCloseTo(0.0);
-        expect(wrapped.alpha).toBeCloseTo(1.0);
+        expect(wrapped.blue).toBeCloseTo(0);
+        expect(wrapped.alpha).toBeCloseTo(1);
     });
 
     it("sets the correct prototype chain", () => {
@@ -111,7 +114,7 @@ describe("wrapHandle — boxed types", () => {
 describe("interface wrapping via composed classes", () => {
     it("exposes implemented-interface methods on the wrapped instance", () => {
         const box = new Gtk.Box();
-        const wrapped = wrapHandle<Gtk.Box>(getHandle(box));
+        const wrapped = wrapHandle(getHandle(box)) as Gtk.Box;
         expect(wrapped).not.toBeNull();
         expect(typeof wrapped.setOrientation).toBe("function");
     });

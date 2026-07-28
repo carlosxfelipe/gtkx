@@ -1,55 +1,44 @@
-import type { ElementProp } from "@gtkx/config";
-import { sortStrings, sortStringsBy, toPascalCase } from "@gtkx/utils";
+import { pascalCase, sortStrings, sortStringsBy } from "@gtkx/utils";
+import type { GirClass } from "../gir/class.js";
+import type { GirFunction } from "../gir/function.js";
+import type { GirRecord } from "../gir/record.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
-import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/react/intrinsic-elements.js";
+import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
 
-export type ApiReferenceOptions = {
+type ApiReferenceOptions = {
     libraries: string[];
     girPath: string[];
-    elementProps?: Record<string, ElementProp[]>;
 };
 
-export type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
+type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
 
-export const API_SYMBOL_KINDS: ApiSymbolKind[] = [
-    "element",
-    "class",
-    "interface",
-    "record",
-    "enum",
-    "callback",
-    "alias",
-    "function",
-    "constant",
-];
-
-export type ApiSymbol = {
+type ApiSymbol = {
     namespace: string;
     name: string;
     kind: ApiSymbolKind;
     summary: string;
 };
 
-export type ApiNamespaceSummary = {
+type ApiNamespaceSummary = {
     name: string;
     importPath: string;
     symbols: number;
     elements: number;
 };
 
-export type ApiLookupResult =
-    | { outcome: "page"; symbol: ApiSymbol; markdown: string }
-    | { outcome: "ambiguous"; candidates: ApiSymbol[] }
-    | { outcome: "notFound" };
+type ApiLookupResult =
+    | { outcome: "page"; symbol: ApiSymbol; markdown: string } |
+    { outcome: "ambiguous"; candidates: ApiSymbol[] } |
+    { outcome: "notFound" };
 
-export type ApiSearchOptions = {
+type ApiSearchOptions = {
     query: string;
     namespace?: string;
     kinds?: ApiSymbolKind[];
@@ -65,6 +54,19 @@ type ElementEntry = {
 };
 
 type SymbolEntry = GiSymbolEntry | ElementEntry;
+type ScoredEntry = { score: number; entry: SymbolEntry };
+
+const API_SYMBOL_KINDS: ApiSymbolKind[] = [
+    "element",
+    "class",
+    "interface",
+    "record",
+    "enum",
+    "callback",
+    "alias",
+    "function",
+    "constant",
+];
 
 const KIND_SECTION_TITLES: Record<ApiSymbolKind, string> = {
     element: "JSX elements",
@@ -80,239 +82,83 @@ const KIND_SECTION_TITLES: Record<ApiSymbolKind, string> = {
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
-const compareNames = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-
-class ApiReference {
-    private library: Library;
-    private libraries: string[];
-    private elementContext: ElementPageContext;
-    private entries: SymbolEntry[] = [];
-    private byQualified = new Map<string, SymbolEntry[]>();
-    private byName = new Map<string, SymbolEntry[]>();
-    private byNamespace = new Map<string, SymbolEntry[]>();
-    private elementsByClass = new Map<string, string>();
-
-    constructor(options: ApiReferenceOptions) {
-        this.libraries = options.libraries;
-        this.library = Library.load(options.libraries, options.girPath);
-        this.elementContext = createElementPageContext(this.library, options.elementProps ?? {}, () => undefined);
-        this.buildIndex();
+const compareNames = (a: string, b: string): number => {
+    if (a < b) {
+        return -1;
     }
 
-    get girFiles(): string[] {
-        return this.library.girFiles;
-    }
+    return a > b ? 1 : 0;
+};
 
-    private add(entry: SymbolEntry): void {
-        this.entries.push(entry);
-        const push = (map: Map<string, SymbolEntry[]>, key: string): void => {
-            const list = map.get(key) ?? [];
-            list.push(entry);
-            map.set(key, list);
-        };
-        push(this.byQualified, `${entry.namespace.name}.${entry.name}`.toLowerCase());
-        push(this.byName, entry.name.toLowerCase());
-        push(this.byNamespace, entry.namespace.name);
-    }
+const loadApiReference = (options: ApiReferenceOptions): ApiReference => new ApiReference(options);
 
-    private buildIndex(): void {
-        for (const namespace of this.library.namespaces.values()) {
-            this.indexNamespace(namespace);
-        }
-        for (const element of collectIntrinsicElementClasses(this.library)) {
-            this.add({
-                kind: "element",
-                namespace: element.namespace,
-                name: element.glibName,
-                doc: element.klass.doc,
-                element,
-            });
-            this.elementsByClass.set(`${element.namespace.name}.${element.klass.name}`, element.glibName);
-        }
-    }
-
-    private indexNamespace(namespace: GirNamespace): void {
-        const entries = [
-            ...classEntries(namespace),
-            ...recordEntries(this.library, namespace),
-            ...valueEntries(namespace),
-        ];
-        for (const entry of entries) {
-            this.add(entry);
-        }
-        this.indexFunctions(namespace);
-    }
-
-    private indexFunctions(namespace: GirNamespace): void {
-        if (namespace.sharedLibrary === undefined) return;
-        const docsContext = docsSignatureContext(namespace, this.library);
-        for (const fn of dedupeCallables(namespace.functions)) {
-            if (!isEmittableCallable(docsContext, fn)) continue;
-            const cIdentifier = fn.cIdentifier;
-            if (cIdentifier === undefined) continue;
-            const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
-            this.add({ kind: "function", namespace, name, doc: fn.doc, fn });
-        }
-    }
-
-    private toApiSymbol(entry: SymbolEntry): ApiSymbol {
-        return {
-            namespace: entry.namespace.name,
-            name: entry.name,
-            kind: entry.kind,
-            summary: firstSentence(entry.doc),
-        };
-    }
-
-    private symbolPageOptions(): SymbolPageOptions {
-        return {
-            library: this.library,
-            elementNameFor: (namespaceName, className) => this.elementsByClass.get(`${namespaceName}.${className}`),
-        };
-    }
-
-    private renderPage(entry: SymbolEntry): string {
-        if (entry.kind === "element") return renderElementPage(entry.element, this.elementContext);
-        return renderSymbolPage(entry, this.symbolPageOptions());
-    }
-
-    private findNamespace(name: string): GirNamespace | undefined {
-        const lower = name.toLowerCase();
-        for (const namespace of this.library.namespaces.values()) {
-            if (namespace.name.toLowerCase() === lower) return namespace;
-        }
+const functionEntry = (
+    namespace: GirNamespace,
+    docsContext: ReturnType<typeof docsSignatureContext>,
+    fn: GirFunction,
+): GiSymbolEntry | undefined => {
+    if (!isEmittableCallable(docsContext, fn)) {
         return undefined;
     }
 
-    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
-        const trimmed = query.trim();
-        if (trimmed.length === 0) return { outcome: "notFound" };
-        const qualified = trimmed.includes(".");
-        const map = qualified ? this.byQualified : this.byName;
-        let candidates = map.get(trimmed.toLowerCase()) ?? [];
-        if (kind !== undefined) candidates = candidates.filter((entry) => entry.kind === kind);
-        if (candidates.length > 1) {
-            const exact = candidates.filter((entry) =>
-                qualified ? `${entry.namespace.name}.${entry.name}` === trimmed : entry.name === trimmed,
-            );
-            if (exact.length > 0) candidates = exact;
-        }
-        const entry = candidates[0];
-        if (entry === undefined) return { outcome: "notFound" };
-        if (candidates.length > 1) {
-            return { outcome: "ambiguous", candidates: candidates.map((candidate) => this.toApiSymbol(candidate)) };
-        }
-        return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
+    const cIdentifier = fn.cIdentifier;
+
+    if (cIdentifier === undefined) {
+        return undefined;
     }
 
-    search(options: ApiSearchOptions): ApiSymbol[] {
-        const query = options.query.trim().toLowerCase();
-        if (query.length === 0) return [];
-        const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
-        const namespaceFilter = options.namespace?.toLowerCase();
-        const scored: { score: number; entry: SymbolEntry }[] = [];
-        for (const entry of this.entries) {
-            if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) continue;
-            if (options.kinds !== undefined && !options.kinds.includes(entry.kind)) continue;
-            const score = searchScore(entry, query);
-            if (score === 0) continue;
-            scored.push({ score, entry });
-        }
-        scored.sort(
-            (a, b) =>
-                b.score - a.score ||
-                a.entry.name.length - b.entry.name.length ||
-                compareNames(a.entry.name, b.entry.name) ||
-                compareNames(namespaceOrder(a.entry.namespace.name), namespaceOrder(b.entry.namespace.name)) ||
-                compareNames(a.entry.kind, b.entry.kind),
-        );
-        return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
+    const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
+
+    return { kind: "function", namespace, name, doc: fn.doc, fn };
+};
+
+const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | undefined => {
+    if (!klass.introspectable || klass.name.length === 0) {
+        return undefined;
     }
 
-    namespaces(): ApiNamespaceSummary[] {
-        const summaries = [...this.byNamespace.entries()].map(([name, entries]) => ({
-            name,
-            importPath: `@gtkx/gi/${namespaceDirectory({ name })}`,
-            symbols: entries.filter((entry) => entry.kind !== "element").length,
-            elements: entries.filter((entry) => entry.kind === "element").length,
-        }));
-        return sortStringsBy(summaries, (summary) => namespaceOrder(summary.name));
-    }
+    const kind = klass.isInterface ? "interface" : "class";
 
-    symbolNames(namespaceName: string): string[] {
-        const namespace = this.findNamespace(namespaceName);
-        if (namespace === undefined) return [];
-        const entries = this.byNamespace.get(namespace.name) ?? [];
-        return sortStrings(entries.map((entry) => entry.name));
-    }
-
-    overview(): string {
-        const rows = this.namespaces().map(
-            (summary) => `| ${summary.name} | \`${summary.importPath}\` | ${summary.symbols} | ${summary.elements} |`,
-        );
-        const librariesList = this.libraries.map((library) => `\`${library}\``).join(", ");
-        return [
-            "# API Reference",
-            "",
-            `Generated bindings for ${librariesList} and the namespaces they pull in. Classes, interfaces, records, enums, callbacks, aliases, functions, and constants are imported from \`@gtkx/gi/<namespace>\`; JSX elements are imported from \`@gtkx/jsx/<namespace>\`.`,
-            "",
-            "Every symbol has a reference page addressed by its qualified name (for example `Gtk.Button`, `Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name (for example `GtkButton`).",
-            "",
-            "| Namespace | Import | Symbols | JSX elements |",
-            "| --- | --- | --- | --- |",
-            ...rows,
-            "",
-        ].join("\n");
-    }
-
-    namespaceOverview(name: string): string | undefined {
-        const namespace = this.findNamespace(name);
-        if (namespace === undefined) return undefined;
-        const entries = this.byNamespace.get(namespace.name) ?? [];
-        const directory = namespaceDirectory(namespace);
-        const lines = [
-            `# ${namespace.name}`,
-            "",
-            `\`\`\`ts\nimport * as ${namespace.name} from "@gtkx/gi/${directory}";\n\`\`\``,
-        ];
-        for (const kind of API_SYMBOL_KINDS) {
-            const names = entries.filter((entry) => entry.kind === kind).map((entry) => entry.name);
-            if (names.length === 0) continue;
-            lines.push(
-                "",
-                `## ${KIND_SECTION_TITLES[kind]} (${names.length})`,
-                "",
-                sortStrings(names)
-                    .map((symbolName) => `\`${symbolName}\``)
-                    .join(", "),
-            );
-        }
-        lines.push("");
-        return lines.join("\n");
-    }
-}
-
-export type { ApiReference };
-
-export const loadApiReference = (options: ApiReferenceOptions): ApiReference => new ApiReference(options);
+    return { kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass };
+};
 
 const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     const entries: GiSymbolEntry[] = [];
+
     for (const klass of [...namespace.classes, ...namespace.interfaces]) {
-        if (!klass.introspectable || klass.name.length === 0) continue;
-        const kind = klass.isInterface ? "interface" : "class";
-        entries.push({ kind, namespace, name: toPascalCase(klass.name), doc: klass.doc, klass });
+        const entry = classEntry(namespace, klass);
+
+        if (entry !== undefined) {
+            entries.push(entry);
+        }
     }
+
     return entries;
+};
+
+const recordEntry = (library: Library, namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
+    if (!record.introspectable || record.isVtable || record.name.length === 0) {
+        return undefined;
+    }
+
+    if (isClassStructRecord(library, namespace.name, record)) {
+        return undefined;
+    }
+
+    return { kind: "record", namespace, name: record.name, doc: record.doc, record };
 };
 
 const recordEntries = (library: Library, namespace: GirNamespace): GiSymbolEntry[] => {
     const entries: GiSymbolEntry[] = [];
+
     for (const record of namespace.records) {
-        if (!record.introspectable || record.isVtable || record.name.length === 0) continue;
-        if (isClassStructRecord(library, namespace.name, record)) continue;
-        entries.push({ kind: "record", namespace, name: record.name, doc: record.doc, record });
+        const entry = recordEntry(library, namespace, record);
+
+        if (entry !== undefined) {
+            entries.push(entry);
+        }
     }
+
     return entries;
 };
 
@@ -351,11 +197,361 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
     })),
 ];
 
+const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, isQualified: boolean): SymbolEntry[] => {
+    if (candidates.length <= 1) {
+        return candidates;
+    }
+
+    const exact = candidates.filter(
+        (entry) => (isQualified ? `${entry.namespace.name}.${entry.name}` : entry.name) === trimmed,
+    );
+
+    return exact.length > 0 ? exact : candidates;
+};
+
+const isSearchFilterMatch = (
+    entry: SymbolEntry,
+    namespaceFilter: string | undefined,
+    kinds: ApiSymbolKind[] | undefined,
+): boolean => {
+    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) {
+        return false;
+    }
+
+    if (kinds !== undefined && !kinds.includes(entry.kind)) {
+        return false;
+    }
+
+    return true;
+};
+
+const getScoredEntry = (
+    entry: SymbolEntry,
+    query: string,
+    namespaceFilter: string | undefined,
+    kinds: ApiSymbolKind[] | undefined,
+): ScoredEntry | undefined => {
+    if (!isSearchFilterMatch(entry, namespaceFilter, kinds)) {
+        return undefined;
+    }
+
+    const score = searchScore(entry, query);
+
+    if (score === 0) {
+        return undefined;
+    }
+
+    return { score, entry };
+};
+
+const compareScoredEntries = (a: ScoredEntry, b: ScoredEntry): number =>
+    b.score - a.score ||
+    a.entry.name.length - b.entry.name.length ||
+    compareNames(a.entry.name, b.entry.name) ||
+    compareNames(namespaceOrder(a.entry.namespace.name), namespaceOrder(b.entry.namespace.name)) ||
+    compareNames(a.entry.kind, b.entry.kind);
+
 const searchScore = (entry: SymbolEntry, query: string): number => {
     const name = entry.name.toLowerCase();
     const qualified = `${entry.namespace.name.toLowerCase()}.${name}`;
-    if (name === query || qualified === query) return 3;
-    if (name.startsWith(query)) return 2;
-    if (name.includes(query) || qualified.includes(query)) return 1;
+
+    if (name === query || qualified === query) {
+        return 3;
+    }
+
+    if (name.startsWith(query)) {
+        return 2;
+    }
+
+    if (name.includes(query) || qualified.includes(query)) {
+        return 1;
+    }
+
     return 0;
+};
+
+class ApiReference {
+    private library: Library;
+    private libraries: string[];
+    private elementContext: ElementPageContext;
+    private entries: SymbolEntry[] = [];
+    private byQualified: Map<string, SymbolEntry[]> = new Map();
+    private byName: Map<string, SymbolEntry[]> = new Map();
+    private byNamespace: Map<string, SymbolEntry[]> = new Map();
+    private elementsByClass: Map<string, string> = new Map();
+
+    constructor(options: ApiReferenceOptions) {
+        this.libraries = options.libraries;
+        this.library = Library.load(options.libraries, options.girPath);
+        this.elementContext = createElementPageContext(this.library, (): string | undefined => undefined);
+        this.buildIndex();
+    }
+
+    private add(entry: SymbolEntry): void {
+        this.entries.push(entry);
+
+        const push = (map: Map<string, SymbolEntry[]>, key: string): void => {
+            const list = map.get(key) ?? [];
+            list.push(entry);
+            map.set(key, list);
+        };
+
+        push(this.byQualified, `${entry.namespace.name}.${entry.name}`.toLowerCase());
+        push(this.byName, entry.name.toLowerCase());
+        push(this.byNamespace, entry.namespace.name);
+    }
+
+    private buildIndex(): void {
+        for (const namespace of this.library.namespaces.values()) {
+            this.indexNamespace(namespace);
+        }
+
+        for (const element of collectIntrinsicElementClasses(this.library)) {
+            this.add({
+                kind: "element",
+                namespace: element.namespace,
+                name: element.glibName,
+                doc: element.klass.doc,
+                element,
+            });
+
+            this.elementsByClass.set(`${element.namespace.name}.${element.klass.name}`, element.glibName);
+        }
+    }
+
+    private indexNamespace(namespace: GirNamespace): void {
+        const entries = [
+            ...classEntries(namespace),
+            ...recordEntries(this.library, namespace),
+            ...valueEntries(namespace),
+        ];
+
+        for (const entry of entries) {
+            this.add(entry);
+        }
+
+        this.indexFunctions(namespace);
+    }
+
+    private indexFunctions(namespace: GirNamespace): void {
+        if (namespace.sharedLibrary === undefined) {
+            return;
+        }
+
+        const docsContext = docsSignatureContext(namespace, this.library);
+
+        for (const fn of dedupeCallables(namespace.functions)) {
+            const entry = functionEntry(namespace, docsContext, fn);
+
+            if (entry !== undefined) {
+                this.add(entry);
+            }
+        }
+    }
+
+    private toApiSymbol(entry: SymbolEntry): ApiSymbol {
+        return {
+            namespace: entry.namespace.name,
+            name: entry.name,
+            kind: entry.kind,
+            summary: firstSentence(entry.doc),
+        };
+    }
+
+    private symbolPageOptions(): SymbolPageOptions {
+        return {
+            library: this.library,
+            elementNameFor: (namespaceName, className) => this.elementsByClass.get(`${namespaceName}.${className}`),
+        };
+    }
+
+    private renderPage(entry: SymbolEntry): string {
+        if (entry.kind === "element") {
+            return renderElementPage(entry.element, this.elementContext);
+        }
+
+        return renderSymbolPage(entry, this.symbolPageOptions());
+    }
+
+    private findNamespace(name: string): GirNamespace | undefined {
+        const lower = name.toLowerCase();
+
+        for (const namespace of this.library.namespaces.values()) {
+            if (namespace.name.toLowerCase() === lower) {
+                return namespace;
+            }
+        }
+
+        return undefined;
+    }
+
+    private lookupCandidates(trimmed: string, kind: ApiSymbolKind | undefined): SymbolEntry[] {
+        const isQualified = trimmed.includes(".");
+        const map = isQualified ? this.byQualified : this.byName;
+        let candidates = map.get(trimmed.toLowerCase()) ?? [];
+
+        if (kind !== undefined) {
+            candidates = candidates.filter((entry) => entry.kind === kind);
+        }
+
+        return narrowToExactMatches(candidates, trimmed, isQualified);
+    }
+
+    private scoreEntries(
+        query: string,
+        namespaceFilter: string | undefined,
+        kinds: ApiSymbolKind[] | undefined,
+    ): ScoredEntry[] {
+        const scored: ScoredEntry[] = [];
+
+        for (const entry of this.entries) {
+            const item = getScoredEntry(entry, query, namespaceFilter, kinds);
+
+            if (item !== undefined) {
+                scored.push(item);
+            }
+        }
+
+        return scored;
+    }
+
+    get girFiles(): string[] {
+        return this.library.girFiles;
+    }
+
+    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
+        const trimmed = query.trim();
+
+        if (trimmed.length === 0) {
+            return { outcome: "notFound" };
+        }
+
+        const candidates = this.lookupCandidates(trimmed, kind);
+        const entry = candidates[0];
+
+        if (entry === undefined) {
+            return { outcome: "notFound" };
+        }
+
+        if (candidates.length > 1) {
+            return { outcome: "ambiguous", candidates: candidates.map((candidate) => this.toApiSymbol(candidate)) };
+        }
+
+        return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
+    }
+
+    search(options: ApiSearchOptions): ApiSymbol[] {
+        const query = options.query.trim().toLowerCase();
+
+        if (query.length === 0) {
+            return [];
+        }
+
+        const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
+        const namespaceFilter = options.namespace?.toLowerCase();
+        const scored = this.scoreEntries(query, namespaceFilter, options.kinds);
+        scored.sort(compareScoredEntries);
+
+        return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
+    }
+
+    namespaces(): ApiNamespaceSummary[] {
+        const summaries = [...this.byNamespace].map(([name, entries]) => ({
+            name,
+            importPath: `@gtkx/gi/${namespaceDirectory({ name })}`,
+            symbols: entries.filter((entry) => entry.kind !== "element").length,
+            elements: entries.filter((entry) => entry.kind === "element").length,
+        }));
+
+        return sortStringsBy(summaries, (summary) => namespaceOrder(summary.name));
+    }
+
+    symbolNames(namespaceName: string): string[] {
+        const namespace = this.findNamespace(namespaceName);
+
+        if (namespace === undefined) {
+            return [];
+        }
+
+        const entries = this.byNamespace.get(namespace.name) ?? [];
+
+        return sortStrings(entries.map((entry) => entry.name));
+    }
+
+    overview(): string {
+        const rows = this.namespaces().map(
+            (summary) =>
+                `| ${summary.name} | \`${summary.importPath}\` | ${String(summary.symbols)} | ` +
+                `${String(summary.elements)} |`,
+        );
+
+        const librariesList = this.libraries.map((library) => `\`${library}\``).join(", ");
+
+        return [
+            "# API Reference",
+            "",
+            `Generated bindings for ${librariesList} and the namespaces they pull in. Classes, interfaces, ` +
+            "records, enums, callbacks, aliases, functions, and constants are imported from " +
+            "`@gtkx/gi/<namespace>`; JSX elements are imported from `@gtkx/jsx/<namespace>`.",
+            "",
+            "Every symbol has a reference page addressed by its qualified name (for example `Gtk.Button`, " +
+            "`Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name " +
+            "(for example `GtkButton`).",
+            "",
+            "| Namespace | Import | Symbols | JSX elements |",
+            "| --- | --- | --- | --- |",
+            ...rows,
+            "",
+        ].join("\n");
+    }
+
+    namespaceOverview(name: string): string | undefined {
+        const namespace = this.findNamespace(name);
+
+        if (namespace === undefined) {
+            return undefined;
+        }
+
+        const entries = this.byNamespace.get(namespace.name) ?? [];
+        const directory = namespaceDirectory(namespace);
+
+        const lines = [
+            `# ${namespace.name}`,
+            "",
+            `\`\`\`ts\nimport * as ${namespace.name} from "@gtkx/gi/${directory}";\n\`\`\``,
+        ];
+
+        for (const kind of API_SYMBOL_KINDS) {
+            const names = entries.filter((entry) => entry.kind === kind).map((entry) => entry.name);
+
+            if (names.length === 0) {
+                continue;
+            }
+
+            lines.push(
+                "",
+                `## ${KIND_SECTION_TITLES[kind]} (${String(names.length)})`,
+                "",
+                sortStrings(names)
+                    .map((symbolName) => `\`${symbolName}\``)
+                    .join(", "),
+            );
+        }
+
+        lines.push("");
+
+        return lines.join("\n");
+    }
+}
+
+export type { ApiReference };
+export {
+    API_SYMBOL_KINDS,
+    loadApiReference,
+    type ApiReferenceOptions,
+    type ApiSymbolKind,
+    type ApiSymbol,
+    type ApiNamespaceSummary,
+    type ApiLookupResult,
+    type ApiSearchOptions,
 };

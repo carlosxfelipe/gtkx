@@ -8,6 +8,7 @@ use napi::Env;
 use napi::JsValue as _;
 use napi::bindgen_prelude::Unknown;
 
+use native::Handle;
 use native::ffi;
 use native::ffi::codec::{Decoder, Encoder, Ownership, ReadSource, StringCodec};
 
@@ -130,7 +131,7 @@ fn decode_full_reads_and_frees() {
         let env = helpers::fake_env();
         let owned = unsafe { glib::ffi::g_strdup(c"owned-decode".as_ptr()) };
         let decoded = full()
-            .decode(&env, &ffi::Stash::Ptr(owned as *mut c_void))
+            .decode(&env, &ffi::Stash::Ptr(owned.cast::<c_void>()))
             .expect("full decode should succeed");
         assert_eq!(
             napi_mock::read_string(decoded.raw()).as_deref(),
@@ -255,7 +256,7 @@ fn write_over_previous_string(
     codec: &StringCodec,
     value: napi::sys::napi_value,
 ) -> (*mut c_void, *mut c_void, bool) {
-    let previous = unsafe { glib::ffi::g_strdup(c"stale".as_ptr()) } as *mut c_void;
+    let previous = unsafe { glib::ffi::g_strdup(c"stale".as_ptr()) }.cast::<c_void>();
     drain_g_freed();
     let slot = write_value_into_slot(env, codec, previous, napi_mock::to_unknown(env, value));
     let previous_freed = drain_g_freed().contains(&(previous as usize));
@@ -312,4 +313,37 @@ fn write_value_to_pointer_borrowed_keeps_previous_string() {
         unsafe { glib::ffi::g_free(slot) };
         unsafe { glib::ffi::g_free(previous) };
     });
+}
+
+#[test]
+fn a_struct_handle_owns_the_strings_written_into_its_fields() {
+    helpers::run(|| {
+        let block = unsafe { glib::ffi::g_malloc0(16) };
+        let handle = Handle::owned_struct(block);
+        let fields = handle
+            .field_store()
+            .expect("a struct handle owns its fields");
+        let first = unsafe { glib::ffi::g_strdup(c"first".as_ptr()) }.cast::<c_void>();
+        let second = unsafe { glib::ffi::g_strdup(c"second".as_ptr()) }.cast::<c_void>();
+
+        unsafe { fields.adopt(0, first) };
+        drain_g_freed();
+
+        unsafe { fields.adopt(0, second) };
+        assert_eq!(drain_g_freed(), vec![first as usize]);
+
+        drop(handle);
+        let freed = drain_g_freed();
+        assert!(freed.contains(&(second as usize)));
+        assert!(freed.contains(&(block as usize)));
+    });
+}
+
+#[test]
+fn a_borrowed_handle_has_no_field_store() {
+    assert!(
+        Handle::from_glib_borrow(std::ptr::dangling_mut())
+            .field_store()
+            .is_none()
+    );
 }

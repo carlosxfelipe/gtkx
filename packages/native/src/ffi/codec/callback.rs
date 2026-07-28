@@ -4,7 +4,7 @@ use napi_derive::napi;
 use super::prelude::*;
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
-use crate::ffi::value::JsHandle;
+use crate::value::ClosureHandle;
 
 /// Lifetime of a marshalled callback closure: `call` lasts only for the duration of the call,
 /// `notified` is freed by a destroy notify, `async` spans a single async use, `forever` is never freed.
@@ -32,7 +32,9 @@ impl Encoder for CallbackCodec {
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());
-        types.push(libffi::Type::pointer());
+        if self.has_user_data() {
+            types.push(libffi::Type::pointer());
+        }
         if self.has_destroy {
             types.push(libffi::Type::pointer());
         }
@@ -40,7 +42,7 @@ impl Encoder for CallbackCodec {
 
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         let js_fn = match value.get_type()? {
-            ValueType::Function => JsHandle::from_js_value(env, &value)?,
+            ValueType::Function => ClosureHandle::from_js_value(env, &value)?,
             ValueType::Null | ValueType::Undefined => {
                 return Ok(self.null_callback_value());
             }
@@ -66,18 +68,21 @@ impl Encoder for CallbackCodec {
             }
         });
 
+        let has_user_data = self.has_user_data();
+
         match self.scope {
             CallbackScope::Call => {
-                let state_ptr = &*state as *const ClosureState as *mut c_void;
+                let state_ptr = (&raw const *state).cast::<c_void>().cast_mut();
                 Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,
+                    has_user_data,
                     destroy,
                     Some(state),
                 )))
             }
             _ => Ok(ffi::Stash::Callback(
-                ffi::CallbackValue::new_pending_transfer(fn_ptr, destroy, state),
+                ffi::CallbackValue::new_pending_transfer(fn_ptr, has_user_data, destroy, state),
             )),
         }
     }
@@ -88,10 +93,18 @@ impl Decoder for CallbackCodec {}
 impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
+    // A `user_data` slot in the callback's own signature is what tells us the C function that
+    // receives it takes a closure argument, so it is also what decides how many words the call
+    // pushes: the trampoline alone, or the trampoline plus the state pointer.
+    fn has_user_data(&self) -> bool {
+        self.user_data_index.is_some()
+    }
+
     fn null_callback_value(&self) -> ffi::Stash {
         ffi::Stash::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
+            self.has_user_data(),
             if self.has_destroy {
                 Some(std::ptr::null_mut())
             } else {

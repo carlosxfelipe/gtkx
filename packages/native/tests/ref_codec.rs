@@ -9,14 +9,14 @@ use napi::Env;
 use napi::JsValue as _;
 use napi::bindgen_prelude::{Array, FromNapiValue as _};
 
+use native::api::{bind::bind, call::call};
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec,
-    UnicharCodec,
+    ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind,
+    FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec,
+    StringCodec, UnicharCodec,
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
-use native::request::{bind::bind, call::call};
 
 use helpers::napi_mock;
 
@@ -29,27 +29,31 @@ fn string_codec() -> StringCodec {
 
 fn ptr_slot_stash(inner: *mut c_void) -> ffi::Stash {
     let mut slot: Vec<*mut c_void> = vec![inner];
-    let raw = slot.as_mut_ptr() as *mut c_void;
+    let raw = slot.as_mut_ptr().cast::<c_void>();
     ffi::Stash::Storage(StashStorage::new(raw, StashData::PtrSlot(slot)))
 }
 
 fn u8_array_ref_codec() -> RefCodec {
-    RefCodec::new(Codec::Array(
-        ArrayCodec::new(
-            Box::new(Codec::Integer(IntegerCodec::U8)),
-            ArrayKind::Array,
-            Ownership::Borrowed,
-            None,
-            None,
-            None,
-        )
-        .expect("valid array codec"),
-    ))
+    RefCodec::new(
+        Codec::Array(
+            ArrayCodec::new(
+                Box::new(Codec::Integer(IntegerCodec::U8)),
+                ArrayKind::Array,
+                Ownership::Borrowed,
+                None,
+                None,
+                None,
+            )
+            .expect("valid array codec"),
+        ),
+        false,
+    )
     .expect("Array is a valid Ref inner")
 }
 
 fn assert_array_decodes_empty(env: &Env, array_codec: ArrayCodec, stash: &ffi::Stash) {
-    let ref_codec = RefCodec::new(Codec::Array(array_codec)).expect("Array is a valid Ref inner");
+    let ref_codec =
+        RefCodec::new(Codec::Array(array_codec), false).expect("Array is a valid Ref inner");
     let decoded = ref_codec
         .decode_with_context(env, stash, &[], &[])
         .expect("array decode should succeed");
@@ -59,14 +63,15 @@ fn assert_array_decodes_empty(env: &Env, array_codec: ArrayCodec, stash: &ffi::S
 
 fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::Stash, &RefCodec)) {
     let mut value = value;
-    let slot = &mut value as *mut i32 as *mut c_void;
+    let slot = (&raw mut value).cast::<c_void>();
     let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
-    let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
+    let ref_codec =
+        RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner");
     f(&stash, &ref_codec);
 }
 
 fn ptr_sized_malloc_stash() -> ffi::Stash {
-    let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_void>()) };
+    let inner = unsafe { glib::ffi::g_malloc0(size_of::<*mut c_void>()) };
     ptr_slot_stash(inner)
 }
 
@@ -74,7 +79,8 @@ fn ptr_sized_malloc_stash() -> ffi::Stash {
 fn decode_rejects_non_storage_non_null_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner");
         let result = ref_codec.decode(&env, &ffi::Stash::I32(7));
         assert!(result.is_err());
     });
@@ -84,7 +90,8 @@ fn decode_rejects_non_storage_non_null_ptr() {
 fn decode_null_ptr_yields_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &ffi::Stash::Ptr(std::ptr::null_mut()))
             .expect("null ptr decode should succeed");
@@ -110,7 +117,7 @@ fn decode_enum_flags_reads_number() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut value: i32 = 9;
-        let slot = &mut value as *mut i32 as *mut c_void;
+        let slot = (&raw mut value).cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
 
         let enum_flags = EnumFlagsCodec {
@@ -119,7 +126,8 @@ fn decode_enum_flags_reads_number() {
             get_type_fn_name: "g_unused_get_type".to_owned(),
             storage: IntegerCodec::I32,
         };
-        let ref_codec = RefCodec::new(Codec::EnumFlags(enum_flags)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::EnumFlags(enum_flags), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("enum/flags ref decode should succeed");
@@ -132,10 +140,11 @@ fn decode_float_reads_number() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut value: f64 = 2.5;
-        let slot = &mut value as *mut f64 as *mut c_void;
+        let slot = (&raw mut value).cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
 
-        let ref_codec = RefCodec::new(Codec::Float(FloatCodec::F64)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::Float(FloatCodec::F64), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("float ref decode should succeed");
@@ -148,17 +157,20 @@ fn decode_gobject_delegates_to_inner_decoder() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let obj = glib::Object::new::<glib::Object>();
-        let obj_ptr = obj.as_ptr() as *mut c_void;
+        let obj_ptr = obj.as_ptr().cast::<c_void>();
         let stash = ptr_slot_stash(obj_ptr);
 
-        let ref_codec = RefCodec::new(Codec::Object(ObjectCodec {
-            ownership: Ownership::Borrowed,
-        }))
+        let ref_codec = RefCodec::new(
+            Codec::Object(ObjectCodec {
+                ownership: Ownership::Borrowed,
+            }),
+            false,
+        )
         .expect("GObject is a valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("gobject ref decode should succeed");
-        let ptr = native::ffi::value::handle_ptr(&env, decoded, "ctx")
+        let ptr = native::value::handle_ptr(decoded, "ctx")
             .expect("decoded value should carry a native handle");
         assert_eq!(ptr, obj_ptr);
         drop(obj);
@@ -172,7 +184,8 @@ fn decode_string_reads_via_decode_ref_string() {
         let cstring = CString::new("ref-string").unwrap();
         let stash = ptr_slot_stash(cstring.as_ptr() as *mut c_void);
 
-        let ref_codec = RefCodec::new(Codec::String(string_codec())).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::String(string_codec()), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("string ref decode should succeed");
@@ -195,11 +208,14 @@ fn decode_array_inner_bails_without_context() {
 }
 
 fn string_string_hashtable_ref_codec(ownership: Ownership) -> RefCodec {
-    RefCodec::new(Codec::HashTable(HashTableCodec {
-        key_codec: Box::new(Codec::String(string_codec())),
-        value_codec: Box::new(Codec::String(string_codec())),
-        ownership,
-    }))
+    RefCodec::new(
+        Codec::HashTable(HashTableCodec {
+            key_codec: Box::new(Codec::String(string_codec())),
+            value_codec: Box::new(Codec::String(string_codec())),
+            ownership,
+        }),
+        false,
+    )
     .expect("HashTable is a valid Ref inner")
 }
 
@@ -218,11 +234,11 @@ fn decode_hashtable_reads_pairs() {
         unsafe {
             glib::ffi::g_hash_table_insert(
                 table,
-                glib::ffi::g_strdup(c"filename".as_ptr()) as *mut c_void,
-                glib::ffi::g_strdup(c"index.html".as_ptr()) as *mut c_void,
+                glib::ffi::g_strdup(c"filename".as_ptr()).cast::<c_void>(),
+                glib::ffi::g_strdup(c"index.html".as_ptr()).cast::<c_void>(),
             );
         }
-        let stash = ptr_slot_stash(table as *mut c_void);
+        let stash = ptr_slot_stash(table.cast::<c_void>());
 
         let ref_codec = string_string_hashtable_ref_codec(Ownership::Full);
         let decoded = ref_codec
@@ -259,10 +275,11 @@ fn decode_boolean_reads_bool() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut value: i32 = 1;
-        let slot = &mut value as *mut i32 as *mut c_void;
+        let slot = (&raw mut value).cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
 
-        let ref_codec = RefCodec::new(Codec::Boolean(BooleanCodec)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::Boolean(BooleanCodec), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("boolean ref decode should succeed");
@@ -275,10 +292,11 @@ fn decode_unichar_reads_string() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut value: u32 = 'é' as u32;
-        let slot = &mut value as *mut u32 as *mut c_void;
+        let slot = (&raw mut value).cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
 
-        let ref_codec = RefCodec::new(Codec::Unichar(UnicharCodec)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::Unichar(UnicharCodec), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("unichar ref decode should succeed");
@@ -291,10 +309,11 @@ fn decode_ref_string_buffer_kind_reads_directly() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut buffer = b"buffered\0".to_vec();
-        let ptr = buffer.as_mut_ptr() as *mut c_void;
+        let ptr = buffer.as_mut_ptr().cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Buffer(buffer)));
 
-        let ref_codec = RefCodec::new(Codec::String(string_codec())).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::String(string_codec()), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("buffer string ref decode should succeed");
@@ -310,7 +329,8 @@ fn decode_ref_string_null_storage_pointer_yields_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let stash = ffi::Stash::Storage(StashStorage::new(std::ptr::null_mut(), StashData::Unit));
-        let ref_codec = RefCodec::new(Codec::String(string_codec())).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::String(string_codec()), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("null stash string ref decode should succeed");
@@ -324,7 +344,8 @@ fn decode_ref_string_null_inner_pointer_yields_null() {
         let env = helpers::fake_env();
         let stash = ptr_slot_stash(std::ptr::null_mut());
 
-        let ref_codec = RefCodec::new(Codec::String(string_codec())).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::String(string_codec()), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("null inner string ref decode should succeed");
@@ -337,13 +358,13 @@ fn decode_ref_string_full_ownership_frees_pointer() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let owned = unsafe { glib::ffi::g_strdup(c"owned-ref".as_ptr()) };
-        let stash = ptr_slot_stash(owned as *mut c_void);
+        let stash = ptr_slot_stash(owned.cast::<c_void>());
 
         let full_string = StringCodec {
             ownership: Ownership::Full,
             length: None,
         };
-        let ref_codec = RefCodec::new(Codec::String(full_string)).expect("valid Ref inner");
+        let ref_codec = RefCodec::new(Codec::String(full_string), false).expect("valid Ref inner");
         let decoded = ref_codec
             .decode(&env, &stash)
             .expect("full string ref decode should succeed");
@@ -397,7 +418,7 @@ fn decode_with_context_array_ptr_slot_stash_null_inner_yields_empty_array() {
 fn decode_with_context_array_string_items_not_freed_by_ref() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let inner = unsafe { glib::ffi::g_malloc0(std::mem::size_of::<*mut c_char>()) };
+        let inner = unsafe { glib::ffi::g_malloc0(size_of::<*mut c_char>()) };
         let stash = ptr_slot_stash(inner);
 
         let array_codec = ArrayCodec::new(
@@ -438,9 +459,9 @@ fn decode_with_context_array_container_released_by_array_decoder() {
 fn decode_with_context_garray_container_released_by_array_decoder() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let g_array =
-            unsafe { glib::ffi::g_array_sized_new(0, 0, std::mem::size_of::<u8>() as u32, 0) };
-        let stash = ptr_slot_stash(g_array as *mut c_void);
+        let element_size = u32::try_from(size_of::<u8>()).expect("u8 size fits in guint");
+        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, element_size, 0) };
+        let stash = ptr_slot_stash(g_array.cast::<c_void>());
 
         let array_codec = ArrayCodec::new(
             Box::new(Codec::Integer(IntegerCodec::U8)),
@@ -478,9 +499,9 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
 fn decode_with_context_array_non_ptr_slot_stash_uses_storage_pointer() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let mut buffer: Vec<u8> = vec![0u8; std::mem::size_of::<*mut c_void>()];
+        let mut buffer: Vec<u8> = vec![0u8; size_of::<*mut c_void>()];
         let stash = ffi::Stash::Storage(StashStorage::new(
-            buffer.as_mut_ptr() as *mut c_void,
+            buffer.as_mut_ptr().cast::<c_void>(),
             StashData::Buffer(buffer),
         ));
 
@@ -534,11 +555,12 @@ fn read_from_pointer_null_inner_yields_null() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let inner: *mut c_void = std::ptr::null_mut();
-        let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner");
         let value = unsafe {
             ref_codec.read(
                 &env,
-                ReadSource::Slot(&inner as *const *mut c_void as *const c_void, "ctx"),
+                ReadSource::Slot((&raw const inner).cast::<c_void>(), "ctx"),
             )
         }
         .expect("read_from_pointer should succeed");
@@ -552,13 +574,14 @@ fn read_from_pointer_string_inner_reads_value() {
         let env = helpers::fake_env();
         let cstring = CString::new("raw-ref").unwrap();
         let char_ptr = cstring.as_ptr() as *mut c_void;
-        let inner_slot: *mut c_void = &char_ptr as *const *mut c_void as *mut c_void;
+        let inner_slot: *mut c_void = (&raw const char_ptr).cast_mut().cast();
 
-        let ref_codec = RefCodec::new(Codec::String(string_codec())).expect("valid Ref inner");
+        let ref_codec =
+            RefCodec::new(Codec::String(string_codec()), false).expect("valid Ref inner");
         let value = unsafe {
             ref_codec.read(
                 &env,
-                ReadSource::Slot(&inner_slot as *const *mut c_void as *const c_void, "ctx"),
+                ReadSource::Slot((&raw const inner_slot).cast::<c_void>(), "ctx"),
             )
         }
         .expect("read_from_pointer should succeed");
@@ -566,5 +589,25 @@ fn read_from_pointer_string_inner_reads_value() {
             napi_mock::read_string(value.raw()),
             Some("raw-ref".to_owned())
         );
+    });
+}
+
+#[test]
+fn a_ref_string_buffer_length_beyond_addressable_memory_is_an_error() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = RefCodec::new(
+            Codec::String(StringCodec {
+                ownership: Ownership::Borrowed,
+                length: Some(usize::MAX),
+            }),
+            false,
+        )
+        .expect("String is a valid Ref inner");
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[("value", napi_mock::fake_null())]),
+        );
+        assert!(codec.encode(&env, value).is_err());
     });
 }

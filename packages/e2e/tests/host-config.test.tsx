@@ -2,14 +2,14 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, screen, within } from "@gtkx/testing";
+import { render, screen, waitFor, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-
-let nextAppId = 0;
-const uniqueAppId = (): string => `org.gtkx.hostconfigtest${nextAppId++}`;
-
 import { renderChildren } from "./helpers/render-children.js";
+import { createAppIdFactory } from "./helpers/unique-name.js";
+
+const uniqueAppId = createAppIdFactory("org.gtkx.hostconfigtest");
+const TEXT_SEGMENTS = ["First", "Second", "Third"];
 
 const labelTexts = (box: Gtk.Box): string[] =>
     within(box)
@@ -26,12 +26,37 @@ const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) =
 
 const renderOrderedLabelBox = async () => {
     const boxRef = createRef<Gtk.Box>();
-
     const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
     expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
     return { boxRef, rerender };
 };
+
+function RemovableChildBox({ showChild }: { showChild: boolean }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showChild && <GtkLabel>Removable</GtkLabel>}</GtkBox>
+    );
+}
+
+function RemovableChildFrame({ showChild }: { showChild: boolean }) {
+    return <GtkFrame>{showChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
+}
+
+function TextBox({ text }: { text: string }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{text}</GtkLabel>
+        </GtkBox>
+    );
+}
+
+function OptionalTextBox({ showText }: { showText: boolean }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{showText && "Removable Text"}</GtkLabel>
+        </GtkBox>
+    );
+}
 
 describe("host-config - children (1)", () => {
     describe("adding children", () => {
@@ -62,34 +87,16 @@ describe("host-config - children (1)", () => {
 describe("host-config - children (2)", () => {
     describe("removing children", () => {
         it("removes child from parent", async () => {
-            function App({ showChild }: { showChild: boolean }) {
-                return (
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                        {showChild && <GtkLabel>Removable</GtkLabel>}
-                    </GtkBox>
-                );
-            }
-
-            const { rerender } = await render(<App showChild={true} />);
-
+            const { rerender } = await render(<RemovableChildBox showChild={true} />);
             await screen.findByText("Removable");
-
-            await rerender(<App showChild={false} />);
-
+            await rerender(<RemovableChildBox showChild={false} />);
             expect(screen.queryByText("Removable")).toBeNull();
         });
 
         it("clears child on single-child widget", async () => {
-            function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame>{showChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
-            }
-
-            const { rerender } = await render(<App showChild={true} />);
-
+            const { rerender } = await render(<RemovableChildFrame showChild={true} />);
             await screen.findByText("Child");
-
-            await rerender(<App showChild={false} />);
-
+            await rerender(<RemovableChildFrame showChild={false} />);
             expect(screen.queryByText("Child")).toBeNull();
         });
     });
@@ -99,23 +106,16 @@ describe("host-config - children (3)", () => {
     describe("inserting children", () => {
         it("inserts child before sibling", async () => {
             const boxRef = createRef<Gtk.Box>();
-
             const { rerender } = await renderChildren(["A", "C"], buildLabelBox(boxRef));
-
             expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
-
             await rerender(["A", "B", "C"]);
-
             expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
 
         it("falls back to append when before not found", async () => {
             const boxRef = createRef<Gtk.Box>();
-
             const { rerender } = await renderChildren(["A", "B"], buildLabelBox(boxRef));
-
             await rerender(["A", "B", "C"]);
-
             expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
     });
@@ -131,7 +131,7 @@ describe("host-config - children (4)", () => {
                 { container: rootElement },
             );
 
-            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Root Container" });
+            expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Root Container" })).toBeDefined();
         });
 
         it("removes root level window", async () => {
@@ -146,10 +146,12 @@ describe("host-config - children (4)", () => {
             }
 
             const { rerender } = await render(<App showWindow={true} />, { container: rootElement });
-
-            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" });
-
+            expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" })).toBeDefined();
             await rerender(<App showWindow={false} />);
+
+            await waitFor(() => {
+                expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" })).toBeNull();
+            });
         });
 
         it("inserts root level window before sibling", async () => {
@@ -166,9 +168,7 @@ describe("host-config - children (4)", () => {
             }
 
             const { rerender } = await render(<App windows={["First"]} />, { container: rootElement });
-
             await rerender(<App windows={["Second", "First"]} />);
-
             expect(await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).toHaveLength(2);
         });
     });
@@ -178,17 +178,14 @@ describe("host-config - children (5)", () => {
     describe("child ordering", () => {
         it("maintains correct order after multiple operations", async () => {
             const { boxRef, rerender } = await renderOrderedLabelBox();
-
             await rerender(["A", "D", "B", "C"]);
             expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
-
             await rerender(["D", "C"]);
             expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
         it("handles reordering via key changes", async () => {
             const { boxRef, rerender } = await renderOrderedLabelBox();
-
             await rerender(["C", "B", "A"]);
             expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
@@ -212,13 +209,10 @@ describe("host-config - children (6)", () => {
 
             const container = containerRef.current as Gtk.Box;
             const withinContainer = within(container);
-
             const innerButton = await withinContainer.findByRole(Gtk.AccessibleRole.BUTTON);
             expect(innerButton).toBeDefined();
-
             const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
             expect(buttons).toHaveLength(2);
-
             const innerButtons = await withinContainer.findAllByRole(Gtk.AccessibleRole.BUTTON);
             expect(innerButtons).toHaveLength(1);
         });
@@ -246,13 +240,10 @@ describe("host-config - children (7)", () => {
 
             const section1 = within(section1Ref.current as Gtk.Box);
             const section2 = within(section2Ref.current as Gtk.Box);
-
             const s1Content = await section1.findByText("Section 1 Content");
             expect(s1Content).toBeDefined();
-
             const s2Content = await section2.findByText("Section 2 Content");
             expect(s2Content).toBeDefined();
-
             const allTitles = await screen.findAllByText("Title");
             expect(allTitles).toHaveLength(2);
         });
@@ -272,20 +263,9 @@ describe("host-config - text instances (1)", () => {
     });
 
     it("updates label text when string changes", async () => {
-        function App({ text }: { text: string }) {
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel>{text}</GtkLabel>
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App text="Initial" />);
-
+        const { rerender } = await render(<TextBox text="Initial" />);
         expect(await screen.findByText("Initial")).toBeDefined();
-
-        await rerender(<App text="Updated" />);
-
+        await rerender(<TextBox text="Updated" />);
         expect(await screen.findByText("Updated")).toBeDefined();
     });
 
@@ -294,7 +274,7 @@ describe("host-config - text instances (1)", () => {
 
         await render(
             <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
-                {""}
+
             </GtkBox>,
         );
 
@@ -315,29 +295,18 @@ describe("host-config - text instances (1)", () => {
 
 describe("host-config - text instances (2)", () => {
     it("clears label text when text child removed", async () => {
-        function App({ showText }: { showText: boolean }) {
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel>{showText && "Removable Text"}</GtkLabel>
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App showText={true} />);
-
+        const { rerender } = await render(<OptionalTextBox showText={true} />);
         await screen.findByText("Removable Text");
-
-        await rerender(<App showText={false} />);
-
+        await rerender(<OptionalTextBox showText={false} />);
         expect(screen.queryByText("Removable Text")).toBeNull();
     });
 
     it("concatenates multiple text children in order", async () => {
         await render(
             <GtkLabel>
-                {"First"}
-                {"Second"}
-                {"Third"}
+                {TEXT_SEGMENTS[0]}
+                {TEXT_SEGMENTS[1]}
+                {TEXT_SEGMENTS[2]}
             </GtkLabel>,
         );
 
@@ -348,23 +317,21 @@ describe("host-config - text instances (2)", () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkBox>
-                    <GtkLabel>{"Error: File not found"}</GtkLabel>
+                    <GtkLabel>Error: File not found</GtkLabel>
                 </GtkBox>
                 <GtkBox>
-                    <GtkLabel>{"Warning: Low memory"}</GtkLabel>
+                    <GtkLabel>Warning: Low memory</GtkLabel>
                 </GtkBox>
                 <GtkBox>
-                    <GtkLabel>{"Info: Process complete"}</GtkLabel>
+                    <GtkLabel>Info: Process complete</GtkLabel>
                 </GtkBox>
             </GtkBox>,
         );
 
         const errorMessage = await screen.findByText(/^Error:/);
         expect(errorMessage).toBeDefined();
-
         const warningMessage = await screen.findByText(/^Warning:/);
         expect(warningMessage).toBeDefined();
-
         const allMessages = await screen.findAllByText(/Error:|Warning:|Info:/);
         expect(allMessages).toHaveLength(3);
     });

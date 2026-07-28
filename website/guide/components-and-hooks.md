@@ -36,9 +36,9 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Give your `ItemNode`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
+Give your `Item`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
 
-To group rows under headers, pass `sections` in place of `items`. Each `SectionNode` holds its own `data` array of `ItemNode`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
+To group rows under headers, pass `sections` in place of `items`. Each `Section` holds its own `data` array of `Item`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
 
 ### GridView
 
@@ -61,13 +61,13 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 ### ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnDef` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `Column` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
 
 ```tsx
-import { ColumnView, type ColumnDef } from "@gtkx/components";
+import { ColumnView, type Column } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-const columns: ColumnDef<Employee>[] = [
+const columns: Column<Employee>[] = [
     {
         id: "name",
         title: "Name",
@@ -86,7 +86,7 @@ const columns: ColumnDef<Employee>[] = [
 />
 ```
 
-Typing the array as `ColumnDef<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
+Typing the array as `Column<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
 
 ### DropDown
 
@@ -104,77 +104,60 @@ import { DropDown } from "@gtkx/components";
 
 The backing widget comes from the `component` prop. Leave it out for a plain `Gtk.DropDown`, or pass `AdwComboRow` to present the same choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
 
-## Menu
-
-`Menu` builds a `Gio.Menu` model from a plain `items: MenuEntry[]` array instead of imperative `append`/`appendSection`/`appendSubmenu` calls.
-
-```tsx
-import { Menu } from "@gtkx/components";
-import { GtkMenuButton } from "@gtkx/jsx/gtk";
-
-<GtkMenuButton
-    primary
-    iconName="open-menu-symbolic"
-    menuModel={<Menu items={[
-        { section: [{ label: "New Task", action: "win.new" }] },
-        { section: [{ label: "About Tasks", action: "win.about" }] },
-    ]} />}
-/>
-```
-
-Actions and the `"app."`/`"win."` prefixes are covered in the tutorial's [actions chapter](/tutorial/actions-menus-shortcuts).
-
 ## Layout components
 
-### Grid and Grid.Child
+### Grid and GtkGridLayoutChild
 
-`Grid` wraps `Gtk.Grid`, whose placement API is `attach(child, column, row, width, height)`. `Grid.Child` expresses one placement declaratively: `column`, `row`, `columnSpan`, and `rowSpan`. Name the placed widget with the `component` prop and pass its props inline:
+`Gtk.Grid` positions each child through the `Gtk.GridLayoutChild` its layout manager creates. `GtkGridLayoutChild` wraps one child and carries that placement: `column`, `row`, `columnSpan`, and `rowSpan`. Changing a cell moves the widget in place, without reparenting it:
 
 ```tsx
-import { Grid } from "@gtkx/components";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 
-<Grid columnSpacing={10} rowSpacing={10}>
-    <Grid.Child component={GtkLabel} column={0} row={3} xalign={0}>
-        Foreground
-    </Grid.Child>
-</Grid>
+<GtkGrid columnSpacing={10} rowSpacing={10}>
+    <GtkGridLayoutChild column={0} row={3}>
+        <GtkLabel xalign={0}>Foreground</GtkLabel>
+    </GtkGridLayoutChild>
+</GtkGrid>
 ```
 
-The `component` prop recurs in `Overlay.Child`, `Fixed.Child`, and `SizeGroup.Child` below: you name the widget to place and the wrapper attaches the ref for its imperative GTK4 call internally.
+A child placed without a wrapper lands at column 0, row 0. The same shape recurs for `GtkOverlay` and `GtkFixed` below: the wrapper carries the placement, its single child is the widget.
 
-### Overlay and Overlay.Child
+### Overlay and GtkOverlayLayoutChild
 
-`Overlay` wraps `Gtk.Overlay`: regular children form the main content, and each `Overlay.Child` is stacked on top of it. `measure` opts the overlay into the size negotiation and `clipOverlay` clips it to the main child's allocation:
+`Gtk.Overlay` has two child slots. Regular children form the main content, and the `overlays` prop stacks widgets on top of it. `measure` opts an overlay into the size negotiation and `clipOverlay` clips it to the main child's allocation:
 
 ```tsx
-import { Grid, Overlay } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkEntry } from "@gtkx/jsx/gtk";
+import { GtkEntry, GtkGrid, GtkOverlay, GtkOverlayLayoutChild } from "@gtkx/jsx/gtk";
 
-<Overlay>
-    <Grid>{buttons}</Grid>
-    <Overlay.Child component={GtkEntry} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-</Overlay>
+<GtkOverlay
+    overlays={
+        <GtkOverlayLayoutChild measure>
+            <GtkEntry halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+        </GtkOverlayLayoutChild>
+    }
+>
+    <GtkGrid>{buttons}</GtkGrid>
+</GtkOverlay>
 ```
 
-### Fixed and Fixed.Child
+### Fixed and GtkFixedLayoutChild
 
-`Fixed` wraps `Gtk.Fixed`, the manual-positioning container. `Fixed.Child` places a widget at `x`/`y`, or accepts a full `transform: Gsk.Transform` (which overrides `x`/`y`) for rotation, scaling, and 3D placement:
+`Gtk.Fixed` is the manual-positioning container: every child's position is a `Gsk.Transform` on its `Gtk.FixedLayoutChild`, so a plain translation places a widget at a point and a richer transform rotates, scales, or projects it:
 
 ```tsx
-import { Fixed } from "@gtkx/components";
+import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkFixed, GtkFixedLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 
-<Fixed>
-    <Fixed.Child component={GtkLabel} x={20} y={40}>
-        Placed at x/y
-    </Fixed.Child>
-    <Fixed.Child component={GtkLabel} transform={Gsk.Transform.new().rotate(45)}>
-        Rotated
-    </Fixed.Child>
-</Fixed>
+<GtkFixed>
+    <GtkFixedLayoutChild transform={Gsk.Transform.new().translate(Graphene.Point.create(20, 40))}>
+        <GtkLabel>Placed at a point</GtkLabel>
+    </GtkFixedLayoutChild>
+    <GtkFixedLayoutChild transform={Gsk.Transform.new().rotate(45)}>
+        <GtkLabel>Rotated</GtkLabel>
+    </GtkFixedLayoutChild>
+</GtkFixed>
 ```
 
 In `examples/gtk-demo`, `fixed.tsx` assembles a 3D cube from six perspective-transformed faces, and `fixed2.tsx` animates a rotating label per frame from the widget's frame clock.
@@ -235,7 +218,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 **`useProperty(object, propertyName)`** subscribes to a GObject property and returns its current value, re-rendering on change and returning `undefined` while the object is unresolved. The name is the camelCase property name, completed and typed from the bindings, and the notify detail it listens on is derived from it. It bridges GObject property state into React state: `const formats = useProperty(clipboard, "formats")` re-renders whenever the clipboard's available formats change.
 
-**`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SchemaRef` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
+**`useSetting(schema, key): [value, setValue]`** reads and writes one key of a GSettings schema, re-rendering when the stored value changes from anywhere (including another window or `dconf`). The `schema` is the typed `SettingsSchema` you get by importing a `.gschema.xml` file, so the value type and the setter are inferred per key:
 
 ```ts
 import { useSetting } from "@gtkx/react";
@@ -244,11 +227,11 @@ import schema from "#data/com.gtkx.tutorial.gschema.xml";
 const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
 ```
 
-**`useBindSetting(schema, key, object, property, flags?)`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
+**`useBindSetting({ schema, key, object, property, flags? })`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
 
 ```ts
-useBindSetting(schema, "window-width", windowRef, "defaultWidth");
-useBindSetting(schema, "window-height", windowRef, "defaultHeight");
+useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
+useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
 ```
 
 **`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. The handler receives the signal's own arguments and nothing else: unlike a JSX `on*` prop, it is not passed the emitting object, which you already hold. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):

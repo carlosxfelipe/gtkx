@@ -1,7 +1,8 @@
-import { Grid } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkGrid,
+    GtkGridLayoutChild,
     GtkImage,
     GtkLabel,
     GtkListBox,
@@ -17,6 +18,17 @@ import cmyPath from "#data/demos/css/cmy.jpg";
 import duckyPath from "#data/demos/css/ducky.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-blendmodes.tsx?raw";
+
+type BlendPageProps = {
+    labels: [string, string];
+    leftClass: string;
+    rightClass: string;
+    blendClass: string;
+};
+
+type BlendModeListProps = {
+    onRowActivated: (row: Gtk.ListBoxRow) => void;
+};
 
 const BLEND_MODES = [
     { name: "Color", id: "color" },
@@ -37,8 +49,7 @@ const BLEND_MODES = [
     { name: "Soft Light", id: "soft-light" },
 ];
 
-function createBlendCss(blendMode: string) {
-    return css`
+const SOURCE_IMAGES_CSS = `
         & image.duck {
             background-image: url("${duckyPath}");
             background-size: cover;
@@ -81,6 +92,23 @@ function createBlendCss(blendMode: string) {
             min-width: 200px;
             min-height: 200px;
         }
+`;
+
+const cssBlendmodesDemo: Demo = {
+    id: "css-blendmodes",
+    title: "Theming/CSS Blend Modes",
+    description: "You can blend multiple backgrounds using the CSS blend modes available.",
+    keywords: [],
+    component: CssBlendmodesDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
+    resizable: false,
+};
+
+function createBlendCss(blendMode: string) {
+    return css`
+        ${SOURCE_IMAGES_CSS}
 
         & image.blend0 {
             background-image: url("${duckyPath}"),
@@ -133,35 +161,27 @@ const BlendStack = ({ ref, visible }: { ref?: Ref<Gtk.Stack | null>; visible: bo
     </GtkStack>
 );
 
-interface BlendPageProps {
-    labels: [string, string];
-    leftClass: string;
-    rightClass: string;
-    blendClass: string;
-}
-
 const BlendPage = ({ labels, leftClass, rightClass, blendClass }: BlendPageProps) => (
-    <Grid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
-        <Grid.Child component={GtkLabel} column={0} row={0}>
-            {labels[0]}
-        </Grid.Child>
-        <Grid.Child component={GtkLabel} column={1} row={0}>
-            {labels[1]}
-        </Grid.Child>
-        <Grid.Child component={GtkImage} column={0} row={1} cssClasses={[leftClass]} />
-        <Grid.Child component={GtkImage} column={1} row={1} cssClasses={[rightClass]} />
-        <Grid.Child component={GtkLabel} column={0} row={2} columnSpan={2}>
-            Blended picture
-        </Grid.Child>
-        <Grid.Child
-            component={GtkImage}
-            column={0}
-            row={3}
-            columnSpan={2}
-            halign={Gtk.Align.CENTER}
-            cssClasses={[blendClass]}
-        />
-    </Grid>
+    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
+        <GtkGridLayoutChild column={0} row={0}>
+            <GtkLabel>{labels[0]}</GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={0}>
+            <GtkLabel>{labels[1]}</GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={0} row={1}>
+            <GtkImage cssClasses={[leftClass]} />
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={1}>
+            <GtkImage cssClasses={[rightClass]} />
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={0} row={2} columnSpan={2}>
+            <GtkLabel>Blended picture</GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={0} row={3} columnSpan={2}>
+            <GtkImage halign={Gtk.Align.CENTER} cssClasses={[blendClass]} />
+        </GtkGridLayoutChild>
+    </GtkGrid>
 );
 
 const DuckyPage = () => (
@@ -171,50 +191,81 @@ const DuckyPage = () => (
 const BlendsPage = () => <BlendPage labels={["Red", "Blue"]} leftClass="red" rightClass="blue" blendClass="blend1" />;
 
 const CmykPage = () => (
-    <Grid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand rowSpacing={6} columnSpacing={12}>
-        <Grid.Child component={GtkLabel} column={0} row={0} xalign={0} cssClasses={["dim-label"]}>
-            Cyan
-        </Grid.Child>
-        <Grid.Child component={GtkLabel} column={1} row={0} xalign={0} cssClasses={["dim-label"]}>
-            Magenta
-        </Grid.Child>
-        <Grid.Child component={GtkImage} column={0} row={1} cssClasses={["cyan"]} />
-        <Grid.Child component={GtkImage} column={1} row={1} cssClasses={["magenta"]} />
-        <Grid.Child component={GtkLabel} column={0} row={2} xalign={0} cssClasses={["dim-label"]}>
-            Yellow
-        </Grid.Child>
-        <Grid.Child component={GtkLabel} column={1} row={2} useMarkup xalign={0}>
-            {"<b>Blended picture</b>"}
-        </Grid.Child>
-        <Grid.Child component={GtkImage} column={0} row={3} cssClasses={["yellow"]} />
-        <Grid.Child component={GtkImage} column={1} row={3} halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
-    </Grid>
+    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand rowSpacing={6} columnSpacing={12}>
+        <GtkGridLayoutChild column={0} row={0}>
+            <GtkLabel xalign={0} cssClasses={["dim-label"]}>
+                Cyan
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={0}>
+            <GtkLabel xalign={0} cssClasses={["dim-label"]}>
+                Magenta
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={0} row={1}>
+            <GtkImage cssClasses={["cyan"]} />
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={1}>
+            <GtkImage cssClasses={["magenta"]} />
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={0} row={2}>
+            <GtkLabel xalign={0} cssClasses={["dim-label"]}>
+                Yellow
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={2}>
+            <GtkLabel useMarkup xalign={0}>
+                {"<b>Blended picture</b>"}
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={0} row={3}>
+            <GtkImage cssClasses={["yellow"]} />
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={3}>
+            <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
+        </GtkGridLayoutChild>
+    </GtkGrid>
 );
 
 const selectAndFocusNormalRow = (widget: Gtk.Widget) => {
     const listbox = widget as Gtk.ListBox;
     const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
     const row = listbox.getRowAtIndex(normalIndex);
+
     if (row) {
         listbox.selectRow(row);
         row.grabFocus();
     }
 };
 
-const CssBlendmodesDemo = () => {
+const BlendModeList = ({ onRowActivated }: BlendModeListProps) => (
+    <GtkScrolledWindow vexpand hasFrame minContentWidth={150}>
+        <GtkListBox name="blend-list" onRowActivated={onRowActivated} onRealize={selectAndFocusNormalRow}>
+            {BLEND_MODES.map((mode) => (
+                <GtkListBoxRow key={mode.id}>
+                    <GtkLabel xalign={0}>{mode.name}</GtkLabel>
+                </GtkListBoxRow>
+            ))}
+        </GtkListBox>
+    </GtkScrolledWindow>
+);
+
+function CssBlendmodesDemo() {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [blendMode, setBlendMode] = useState("normal");
-
     const blendCss = createBlendCss(blendMode);
 
     const handleRowActivated = (row: Gtk.ListBoxRow) => {
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
-        if (mode) setBlendMode(mode.id);
+
+        if (mode) {
+            setBlendMode(mode.id);
+        }
     };
 
     return (
-        <Grid
+        <GtkGrid
             name="blend-root"
             cssClasses={[blendCss]}
             marginStart={12}
@@ -224,51 +275,30 @@ const CssBlendmodesDemo = () => {
             rowSpacing={12}
             columnSpacing={12}
         >
-            <Grid.Child component={GtkLabel} column={0} row={0} xalign={0} cssClasses={["dim-label"]}>
-                Blend mode:
-            </Grid.Child>
+            <GtkGridLayoutChild column={0} row={0}>
+                <GtkLabel xalign={0} cssClasses={["dim-label"]}>
+                    Blend mode:
+                </GtkLabel>
+            </GtkGridLayoutChild>
 
-            <Grid.Child component={GtkScrolledWindow} column={0} row={1} vexpand hasFrame minContentWidth={150}>
-                <GtkListBox name="blend-list" onRowActivated={handleRowActivated} onRealize={selectAndFocusNormalRow}>
-                    {BLEND_MODES.map((mode) => (
-                        <GtkListBoxRow key={mode.id}>
-                            <GtkLabel xalign={0}>{mode.name}</GtkLabel>
-                        </GtkListBoxRow>
-                    ))}
-                </GtkListBox>
-            </Grid.Child>
+            <GtkGridLayoutChild column={0} row={1}>
+                <BlendModeList onRowActivated={handleRowActivated} />
+            </GtkGridLayoutChild>
 
-            <Grid.Child
-                component={GtkStackSwitcher}
-                column={1}
-                row={0}
-                stack={stack}
-                halign={Gtk.Align.CENTER}
-                hexpand
-                visible={stack !== null}
-            />
+            <GtkGridLayoutChild column={1} row={0}>
+                <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} hexpand visible={stack !== null} />
+            </GtkGridLayoutChild>
 
-            <Grid.Child
-                component={BlendStack}
-                column={1}
-                row={1}
-                ref={(node) => {
-                    setStack(node);
-                }}
-                visible={stack !== null}
-            />
-        </Grid>
+            <GtkGridLayoutChild column={1} row={1}>
+                <BlendStack
+                    ref={(node) => {
+                        setStack(node);
+                    }}
+                    visible={stack !== null}
+                />
+            </GtkGridLayoutChild>
+        </GtkGrid>
     );
-};
+}
 
-export const cssBlendmodesDemo: Demo = {
-    id: "css-blendmodes",
-    title: "Theming/CSS Blend Modes",
-    description: "You can blend multiple backgrounds using the CSS blend modes available.",
-    keywords: [],
-    component: CssBlendmodesDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 300,
-    resizable: false,
-};
+export { cssBlendmodesDemo };

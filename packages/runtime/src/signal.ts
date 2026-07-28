@@ -1,10 +1,12 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
+import type { TypedClass } from "./type.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
 import {
     arrayT,
     biguint64T,
+    booleanT,
     type CallbackDescriptor,
     objectT,
     stringT,
@@ -15,7 +17,6 @@ import {
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
-import type { TypedClass } from "./type.js";
 import {
     fromValue,
     getBoxedValue,
@@ -27,7 +28,7 @@ import {
 } from "./value.js";
 
 /** Function invoked when a connected GObject signal is emitted. */
-export type SignalHandler = (...args: unknown[]) => unknown;
+type SignalHandler = (...args: unknown[]) => unknown;
 
 type SignalConnectSpec = {
     callback: CallbackDescriptor;
@@ -55,25 +56,42 @@ const gSignalHandlersBlockMatched = bind(
     uint32T,
 );
 
+const gSignalHandlerIsConnected = bind(
+    LIB,
+    "g_signal_handler_is_connected",
+    [objectT("borrowed"), uint64T],
+    booleanT,
+);
+
 /** Returns the signal name without its detail suffix (the part after `::`). */
-export const getSignalBaseName = (signal: string): string => {
+const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
+
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
-function getQuarkForSignalDetail(signal: string): number {
+function getSignalDetailQuark(signal: string): number {
     const detailIndex = signal.indexOf("::");
-    if (detailIndex === -1) return 0;
+
+    if (detailIndex === -1) {
+        return 0;
+    }
+
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
+const isSignalHandlerConnected = (instance: object, handlerId: number): boolean =>
+    gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
+
 const getSignalId = (instance: object, signal: string): number => {
     const type: bigint = (instance as TypedClass).__type__;
+
     return gSignalLookup(getSignalBaseName(signal), type) as number;
 };
 
 function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
-    const key = `${type}\0${getSignalBaseName(signal)}`;
+    const key = `${String(type)}\0${getSignalBaseName(signal)}`;
+
     return connectCache(
         key,
         LIB,
@@ -89,26 +107,35 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
  * @param signal Signal name, optionally including a `::detail` suffix.
  * @param spec Callback descriptor, handler function, and whether to run after the default handler.
  */
-export function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
+function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
     const wrapped = wrapCallback(handler, callback, "emitter");
     const type: bigint = (instance as TypedClass).__type__;
     const connect = connectBind(type, signal, callback);
+
     return connect(getHandle(instance), signal, wrapped, after ? 1 : 0) as number;
 }
 
-export function blockMatchedSignalHandlers(instance: object, signal: string): void {
+function blockMatchedSignalHandlers(instance: object, signal: string): void {
     const signalId = getSignalId(instance, signal);
     gSignalHandlersBlockMatched(getHandle(instance), 1, signalId, 0, undefined, undefined, undefined);
 }
 
 const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
-    if (!isOutputArg(arg)) return { value: toValue(arg.type, arg.value) };
+    if (!isOutputArg(arg)) {
+        return { value: toValue(arg.type, arg.value) };
+    }
+
     if (isCallerAllocatedArg(arg)) {
-        if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
+        if (isInoutArg(arg)) {
+            return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
+        }
+
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
+
         return { value, read: () => getBoxedValue(value) };
     }
+
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };
 
@@ -120,21 +147,25 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
  * @param args Arguments to pass, including output and inout arguments.
  * @param returnDescriptor Descriptor for the signal's return value, omitted when it returns void.
  */
-export function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
+function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
-    const detail = getQuarkForSignalDetail(signal);
+    const detail = getSignalDetailQuark(signal);
     const values: ExternalObject<Handle>[] = [toValue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];
 
     for (const arg of args) {
         const { value, read } = createEmitValue(arg);
         values.push(value);
-        if (read) reads.push(read);
+
+        if (read) {
+            reads.push(read);
+        }
     }
 
     if (returnDescriptor !== undefined) {
         const returnValue = newValueForDescriptor(returnDescriptor);
         gSignalEmitv(values, signalId, detail, returnValue);
+
         return packTupleResult(
             reads.map((read) => read()),
             fromValue(returnValue),
@@ -150,3 +181,12 @@ export function emitSignal(instance: object, signal: string, args: EmitArg[], re
         false,
     );
 }
+
+export {
+    getSignalBaseName,
+    connectSignal,
+    blockMatchedSignalHandlers,
+    emitSignal,
+    isSignalHandlerConnected,
+    type SignalHandler,
+};

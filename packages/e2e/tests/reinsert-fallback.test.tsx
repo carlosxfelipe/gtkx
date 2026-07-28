@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Adw from "@gtkx/gi/adw";
 import { AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { renderChildren } from "./helpers/render-children.js";
 
 function* walk(widget: Gtk.Widget): IterableIterator<Gtk.Widget> {
     let child = widget.getFirstChild();
+
     while (child) {
         yield child;
         yield* walk(child);
@@ -16,9 +17,13 @@ function* walk(widget: Gtk.Widget): IterableIterator<Gtk.Widget> {
 
 const rowTitles = (group: Adw.PreferencesGroup): string[] => {
     const titles: string[] = [];
+
     for (const widget of walk(group)) {
-        if (widget instanceof Adw.PreferencesRow) titles.push(widget.getTitle());
+        if (widget instanceof Adw.PreferencesRow) {
+            titles.push(widget.getTitle());
+        }
     }
+
     return titles;
 };
 

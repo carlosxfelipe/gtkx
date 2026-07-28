@@ -3,25 +3,30 @@ import type { SerializedWidget } from "@gtkx/mcp/internal";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
-export type WidgetFormatting = {
+type WidgetFormatting = {
     formatRole(role: Gtk.AccessibleRole): string;
     getWidgetNodeText(widget: Gtk.Widget): string | null;
 };
 
-export const serializeWidget = (
+const serializeWidget = (
     widget: Gtk.Widget,
-    idFor: WidgetIdResolver,
+    resolveId: WidgetIdResolver,
     testing: WidgetFormatting,
+    maxDepth = Infinity,
 ): SerializedWidget => {
     const children: SerializedWidget[] = [];
-    let child = widget.getFirstChild();
-    while (child) {
-        children.push(serializeWidget(child, idFor, testing));
-        child = child.getNextSibling();
+
+    if (maxDepth > 0) {
+        let child = widget.getFirstChild();
+
+        while (child) {
+            children.push(serializeWidget(child, resolveId, testing, maxDepth - 1));
+            child = child.getNextSibling();
+        }
     }
 
     return {
-        id: idFor(widget),
+        id: resolveId(widget),
         type: widget.constructor.name,
         role: testing.formatRole(widget.getAccessibleRole()),
         name: widget.getName() || null,
@@ -32,3 +37,5 @@ export const serializeWidget = (
         children,
     };
 };
+
+export { serializeWidget, type WidgetFormatting };

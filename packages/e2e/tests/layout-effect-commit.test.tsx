@@ -5,16 +5,23 @@ import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-describe("layout effects during commit", () => {
+const adjustCommittedLabel = (label: Gtk.Label | null): void => {
+    if (!label) {
+        throw new Error("expected the committed label ref");
+    }
+
+    label.setLabel(`${label.getLabel()}-adjusted`);
+};
+
+describe("layout effects during commit (1)", () => {
     it("reads and writes a widget imperatively from a layout effect", async () => {
         const labelRef = createRef<Gtk.Label>();
 
         const Probe = () => {
             useLayoutEffect(() => {
-                const label = labelRef.current;
-                if (!label) throw new Error("expected the committed label ref");
-                label.setLabel(`${label.getLabel()}-adjusted`);
+                adjustCommittedLabel(labelRef.current);
             }, []);
+
             return <GtkLabel ref={labelRef}>committed</GtkLabel>;
         };
 
@@ -32,18 +39,21 @@ describe("layout effects during commit", () => {
 
         const Trigger = () => {
             const [armed, setArmed] = useState(false);
+
             useLayoutEffect(() => {
                 setArmed(true);
             }, []);
+
             return <GtkButton label={armed ? "armed" : "idle"} onClicked={onClicked} />;
         };
 
         await render(<Trigger />);
         await userEvent.click(await screen.findByText("armed"));
-
         expect(onClicked).toHaveBeenCalledTimes(1);
     });
+});
 
+describe("layout effects during commit (2)", () => {
     it("keeps one root's signals flowing while another root is inside its commit window", async () => {
         const containerA: RootElement = { ...rootElement };
         const containerB: RootElement = { ...rootElement };
@@ -60,6 +70,7 @@ describe("layout effects during commit", () => {
             useLayoutEffect(() => {
                 buttonB.current?.emit("clicked");
             }, []);
+
             return <GtkLabel>a</GtkLabel>;
         };
 

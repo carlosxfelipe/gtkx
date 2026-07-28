@@ -1,4 +1,3 @@
-import EventEmitter from "node:events";
 import {
     appNotFoundError,
     connectionWriteFailedError,
@@ -8,26 +7,41 @@ import {
     type ProtocolError,
 } from "./protocol/errors.js";
 import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/schemas.js";
-import { type AppConnections, ConnectionClosedError, type ProtocolConnection } from "./transport.js";
+import {
+    type AppConnections,
+    ConnectionClosedError,
+    type ConnectionEvent,
+    type ConnectionRequestEvent,
+    type ProtocolConnection,
+} from "./transport.js";
 
-type AppRouterEventMap = {
-    appRegistered: [AppInfo];
-    appUnregistered: [string];
-};
+type AppRegisteredEvent = CustomEvent<AppInfo>;
+type AppUnregisteredEvent = CustomEvent<string>;
 
 type RegisteredApp = {
     info: AppInfo;
     connection: ProtocolConnection;
 };
 
-const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
-export class AppRouter extends EventEmitter<AppRouterEventMap> {
-    private static DEFAULT_WAIT_TIMEOUT = 10000;
+function appRegisteredEvent(info: AppInfo): AppRegisteredEvent {
+    return new CustomEvent("appRegistered", { detail: info });
+}
+
+function appUnregisteredEvent(applicationId: string): AppUnregisteredEvent {
+    return new CustomEvent("appUnregistered", { detail: applicationId });
+}
+
+class AppRouter extends EventTarget {
+    private static defaultWaitTimeout = 10_000;
 
     private apps: Map<string, RegisteredApp> = new Map();
+
     private connectionToApp: Map<string, string> = new Map();
+
     private requestTimeout: number;
+
     private connections: AppConnections;
 
     constructor(connections: AppConnections, options: { requestTimeout?: number } = {}) {
@@ -35,78 +49,28 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         this.connections = connections;
         this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
 
-        this.connections.on("request", (connection, request) => {
+        this.connections.addEventListener("request", (event) => {
+            const { connection, request } = (event as ConnectionRequestEvent).detail;
             this.handleRequest(connection, request);
         });
 
-        this.connections.on("disconnection", (connection) => {
-            this.removeApp(connection);
+        this.connections.addEventListener("disconnection", (event) => {
+            this.removeApp((event as ConnectionEvent).detail);
         });
     }
 
-    getApps(): AppInfo[] {
-        return Array.from(this.apps.values()).map((app) => app.info);
-    }
-
-    hasConnectedApps(): boolean {
-        return this.apps.size > 0;
-    }
-
-    getDefaultApp(): RegisteredApp | undefined {
-        const first = this.apps.values().next();
-        return first.done ? undefined : first.value;
-    }
-
-    getProjectRoot(): string | undefined {
-        return this.getDefaultApp()?.info.projectRoot;
-    }
-
-    waitForApp(timeout: number = AppRouter.DEFAULT_WAIT_TIMEOUT): Promise<AppInfo> {
-        const defaultApp = this.getDefaultApp();
-        if (defaultApp) {
-            return Promise.resolve(defaultApp.info);
-        }
-
-        return new Promise((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-                this.off("appRegistered", onRegister);
-                reject(
-                    new Error(
-                        `Timeout waiting for app registration after ${timeout}ms. ` +
-                            "Make sure your GTKX app is running with 'gtkx dev'.",
-                    ),
-                );
-            }, timeout);
-
-            const onRegister = (appInfo: AppInfo) => {
-                clearTimeout(timeoutId);
-                this.off("appRegistered", onRegister);
-                resolve(appInfo);
-            };
-
-            this.on("appRegistered", onRegister);
-        });
-    }
-
-    async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
+    private resolveTargetApp(applicationId: string | undefined): RegisteredApp {
         const app = applicationId ? this.apps.get(applicationId) : this.getDefaultApp();
 
-        if (!app) {
-            if (applicationId) {
-                throw appNotFoundError(applicationId);
-            }
-            throw noAppConnectedError();
+        if (app) {
+            return app;
         }
 
-        try {
-            return await app.connection.send<T>(method, params, this.requestTimeout);
-        } catch (error) {
-            if (error instanceof ConnectionClosedError) {
-                this.removeApp(app.connection);
-                throw connectionWriteFailedError(app.info.applicationId);
-            }
-            throw error;
+        if (applicationId) {
+            throw appNotFoundError(applicationId);
         }
+
+        throw noAppConnectedError();
     }
 
     private handleRequest(connection: ProtocolConnection, request: Request): void {
@@ -121,24 +85,25 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     private handleRegister(connection: ProtocolConnection, request: Request): void {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
+
         if (!parseResult.success) {
             this.sendError(connection, request, invalidRequestError(parseResult.error.message));
+
             return;
         }
 
         const params = parseResult.data;
+
         const appInfo: AppInfo = {
             applicationId: params.applicationId,
             pid: params.pid,
-            ...(params.projectRoot === undefined ? {} : { projectRoot: params.projectRoot }),
+            ...(params.projectRoot !== undefined && { projectRoot: params.projectRoot }),
         };
 
         this.apps.set(params.applicationId, { info: appInfo, connection });
         this.connectionToApp.set(connection.id, params.applicationId);
-
         this.acknowledge(connection, request);
-
-        this.emit("appRegistered", appInfo);
+        this.dispatchEvent(appRegisteredEvent(appInfo));
     }
 
     private handleUnregister(connection: ProtocolConnection, request: Request): void {
@@ -151,6 +116,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
             id: request.id,
             result: { success: true },
         };
+
         this.connections.send(connection.id, response);
     }
 
@@ -164,9 +130,80 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
     private removeApp(connection: ProtocolConnection): void {
         const applicationId = this.connectionToApp.get(connection.id);
         this.connectionToApp.delete(connection.id);
-        if (applicationId === undefined) return;
-        if (this.apps.get(applicationId)?.connection !== connection) return;
+
+        if (applicationId === undefined) {
+            return;
+        }
+
+        if (this.apps.get(applicationId)?.connection !== connection) {
+            return;
+        }
+
         this.apps.delete(applicationId);
-        this.emit("appUnregistered", applicationId);
+        this.dispatchEvent(appUnregisteredEvent(applicationId));
+    }
+
+    getApps(): AppInfo[] {
+        return this.apps.values().map((app) => app.info).toArray();
+    }
+
+    hasConnectedApps(): boolean {
+        return this.apps.size > 0;
+    }
+
+    getDefaultApp(): RegisteredApp | undefined {
+        const first = this.apps.values().next();
+
+        return first.done ? undefined : first.value;
+    }
+
+    getProjectRoot(): string | undefined {
+        return this.getDefaultApp()?.info.projectRoot;
+    }
+
+    waitForApp(timeout: number = AppRouter.defaultWaitTimeout): Promise<AppInfo> {
+        const defaultApp = this.getDefaultApp();
+
+        if (defaultApp) {
+            return Promise.resolve(defaultApp.info);
+        }
+
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                this.removeEventListener("appRegistered", onRegister);
+
+                reject(
+                    new Error(
+                        `Timeout waiting for app registration after ${String(timeout)}ms. ` +
+                        "Make sure your GTKX app is running with 'gtkx dev'.",
+                    ),
+                );
+            }, timeout);
+
+            const onRegister = (event: Event): void => {
+                clearTimeout(timeoutId);
+                this.removeEventListener("appRegistered", onRegister);
+                resolve((event as AppRegisteredEvent).detail);
+            };
+
+            this.addEventListener("appRegistered", onRegister);
+        });
+    }
+
+    async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
+        const app = this.resolveTargetApp(applicationId);
+
+        try {
+            return await app.connection.send<T>(method, params, this.requestTimeout);
+        } catch (error) {
+            if (error instanceof ConnectionClosedError) {
+                this.removeApp(app.connection);
+                throw connectionWriteFailedError(app.info.applicationId);
+            }
+
+            throw error;
+        }
     }
 }
+
+export { AppRouter, appRegisteredEvent, appUnregisteredEvent, type AppRegisteredEvent, type AppUnregisteredEvent };

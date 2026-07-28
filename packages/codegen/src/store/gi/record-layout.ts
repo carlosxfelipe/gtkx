@@ -1,4 +1,7 @@
 import type { GirField } from "../../gir/field.js";
+import type { TypeId } from "../../gir/type-id.js";
+import type { EntityType, GirType } from "../../gir/type.js";
+import type { ModuleContext } from "../../writer/context.js";
 import {
     computeFieldSlots,
     type FieldLayout,
@@ -6,51 +9,98 @@ import {
     type FieldSlot,
     layoutOfPrimitive,
 } from "../../gir/size.js";
-import type { EntityType, GirType } from "../../gir/type.js";
-import type { TypeId } from "../../gir/type-id.js";
-import type { ModuleContext } from "../../writer/context.js";
 
-const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
+type ResolvedRecordValue = Extract<EntityType, { kind: "record" }>["value"];
 
-export type RecordFieldSlot = {
+type RecordFieldSlot = {
     field: GirField;
     slot: FieldSlot;
 };
 
-export const computeRecordFieldSlots = (
+const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
+const recordLayoutCache: Map<string, FieldLayout> = new Map();
+
+// GIR carries no alignment attribute, and a type whose alignment exceeds its widest member cannot be
+// derived from the field list: Graphene models `graphene_simd4f_t` as four `gfloat`, which computes
+// to align 4 while the real type is a 16-byte SIMD vector. Keying the override on `c:type` keeps it
+// to the handful of types where the XML genuinely cannot express the ABI.
+const ALIGNMENT_OVERRIDES: Map<string, FieldLayout> = new Map([
+    ["graphene_simd4f_t", { size: 16, align: 16 }],
+    ["graphene_simd4x4f_t", { size: 64, align: 16 }],
+]);
+
+const computeRecordFieldSlots = (
     context: ModuleContext,
     fields: GirField[],
     isUnion = false,
 ): { slots: RecordFieldSlot[]; size: number } => {
-    const inputs: FieldLayoutInput[] = [];
-    for (const field of fields) {
-        inputs.push(fieldLayoutInput(context, field, new Set()));
-    }
+    const inputs: FieldLayoutInput[] = Array.from(fields, (field) => fieldLayoutInput(context, field, new Set()));
     const result = computeFieldSlots(inputs, isUnion);
+
     const slots = result.slots.map((slot, index) => {
         const field = fields[index];
+
         if (field === undefined) {
             throw new Error("computeRecordFieldSlots: parallel arrays diverged");
         }
+
         return { field, slot };
     });
+
     return { slots, size: result.size };
 };
 
-export const bitMask = (width: number): number => {
-    if (width >= 32) return 0xffffffff;
+const bitMask = (width: number): number => {
+    if (width >= 32) {
+        return 0xFF_FF_FF_FF;
+    }
+
     return (1 << width) - 1;
 };
 
-export const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift: number): string =>
-    `((${readExpr} & ~(${mask} << ${shift})) | ((Number(${valueExpr}) & ${mask}) << ${shift})) >>> 0`;
+const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift: number): string => {
+    const maskExpr = String(mask);
+    const shiftExpr = String(shift);
+
+    return (
+        `((${readExpr} & ~(${maskExpr} << ${shiftExpr})) | ` +
+        `((Number(${valueExpr}) & ${maskExpr}) << ${shiftExpr})) >>> 0`
+    );
+};
 
 const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<string>): FieldLayoutInput => {
+    if (field.inlineMembers !== undefined) {
+        const layout = inlineMemberLayout(context, field.inlineMembers, field.inlineIsUnion, visited);
+
+        return { layout, bits: undefined };
+    }
+
     if (field.type === undefined) {
         return { layout: POINTER_LAYOUT, bits: undefined };
     }
+
     return { layout: layoutOfType(context, field.type, field.cType, visited), bits: field.bits };
 };
+
+const inlineMemberLayout = (
+    context: ModuleContext,
+    members: GirField[],
+    isUnion: boolean,
+    visited: Set<string>,
+): FieldLayout => {
+    const inputs = Array.from(members, (member) => fieldLayoutInput(context, member, visited));
+
+    if (inputs.length === 0) {
+        return { size: 0, align: 1 };
+    }
+
+    const { size } = computeFieldSlots(inputs, isUnion);
+
+    return { size, align: Math.max(1, ...inputs.map((input) => input.layout.align)) };
+};
+
+const pointerOr = (occurrenceCType: string | undefined, otherwise: () => FieldLayout): FieldLayout =>
+    occurrenceCType?.endsWith("*") === true ? POINTER_LAYOUT : otherwise();
 
 const layoutOfType = (
     context: ModuleContext,
@@ -58,28 +108,36 @@ const layoutOfType = (
     occurrenceCType: string | undefined,
     visited: Set<string>,
 ): FieldLayout => {
-    const type = context.library.typeOf(ref);
-    if (type === undefined) return POINTER_LAYOUT;
+    const type = context.library.typeFor(ref);
+
+    if (type === undefined) {
+        return POINTER_LAYOUT;
+    }
+
     switch (type.kind) {
-        case "primitive":
-            return layoutOfPrimitive(type.category);
-        case "carray":
+        case "primitive": {
+            return pointerOr(occurrenceCType, () => layoutOfPrimitive(type.category));
+        }
+        case "carray": {
             return arrayLayout(context, type, visited);
+        }
         case "list":
         case "hashtable":
         case "callback":
         case "varargs":
         case "class":
-        case "interface":
+        case "interface": {
             return POINTER_LAYOUT;
-        case "enum":
-            return occurrenceCType?.endsWith("*") === true ? POINTER_LAYOUT : layoutOfPrimitive("int32");
-        case "record":
-            return occurrenceCType?.endsWith("*") === true ? POINTER_LAYOUT : layoutOfRecord(context, type, visited);
-        case "alias":
-            return occurrenceCType?.endsWith("*") === true
-                ? POINTER_LAYOUT
-                : resolveAliasLayout(context, type, visited);
+        }
+        case "enum": {
+            return pointerOr(occurrenceCType, () => layoutOfPrimitive("int32"));
+        }
+        case "record": {
+            return pointerOr(occurrenceCType, () => layoutOfRecord(context, type, visited));
+        }
+        case "alias": {
+            return pointerOr(occurrenceCType, () => resolveAliasLayout(context, type, visited));
+        }
     }
 };
 
@@ -88,9 +146,21 @@ const arrayLayout = (
     ref: Extract<GirType, { kind: "carray" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    if (ref.fixedSize === undefined) return POINTER_LAYOUT;
+    if (ref.fixedSize === undefined) {
+        return POINTER_LAYOUT;
+    }
+
     const elementLayout = layoutOfType(context, ref.element, ref.elementCType, visited);
+
     return { size: elementLayout.size * ref.fixedSize, align: elementLayout.align };
+};
+
+const declaredLayout = (record: ResolvedRecordValue): FieldLayout | undefined => {
+    if (record.cType?.endsWith("*") === true) {
+        return POINTER_LAYOUT;
+    }
+
+    return record.cType === undefined ? undefined : ALIGNMENT_OVERRIDES.get(record.cType);
 };
 
 const layoutOfRecord = (
@@ -98,30 +168,41 @@ const layoutOfRecord = (
     resolved: Extract<EntityType, { kind: "record" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    if (resolved.value.cType?.endsWith("*") === true) return POINTER_LAYOUT;
+    const declared = declaredLayout(resolved.value);
+
+    if (declared !== undefined) {
+        return declared;
+    }
+
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
-    if (visited.has(key)) return POINTER_LAYOUT;
+
+    if (visited.has(key)) {
+        return POINTER_LAYOUT;
+    }
+
     const cached = recordLayoutCache.get(key);
-    if (cached !== undefined) return cached;
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
     const nextVisited = new Set(visited);
     nextVisited.add(key);
-    const inputs: FieldLayoutInput[] = [];
-    for (const field of resolved.value.fields) {
-        if (field.type === undefined) {
-            inputs.push({ layout: POINTER_LAYOUT, bits: undefined });
-            continue;
-        }
-        inputs.push({ layout: layoutOfType(context, field.type, field.cType, nextVisited), bits: field.bits });
+
+    const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) =>
+        fieldLayoutInput(context, field, nextVisited));
+
+    if (inputs.length === 0) {
+        return POINTER_LAYOUT;
     }
-    if (inputs.length === 0) return POINTER_LAYOUT;
+
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
     const layout: FieldLayout = { size, align };
     recordLayoutCache.set(key, layout);
+
     return layout;
 };
-
-const recordLayoutCache = new Map<string, FieldLayout>();
 
 const resolveAliasLayout = (
     context: ModuleContext,
@@ -129,6 +210,12 @@ const resolveAliasLayout = (
     visited: Set<string>,
 ): FieldLayout => {
     const ref = resolved.value.target;
-    if (ref === undefined) return POINTER_LAYOUT;
+
+    if (ref === undefined) {
+        return POINTER_LAYOUT;
+    }
+
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };
+
+export { computeRecordFieldSlots, bitMask, mergeBitfield, type RecordFieldSlot };

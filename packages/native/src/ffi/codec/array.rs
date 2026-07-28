@@ -5,7 +5,7 @@ use anyhow::bail;
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::{Codec, FloatCodec};
-use crate::ffi::value::TypedView;
+use crate::value::TypedView;
 
 pub use container::ArrayKind;
 
@@ -63,9 +63,9 @@ pub(super) fn build_js_array<'e>(
     Ok(value::js_array(env, items)?)
 }
 
-pub(super) fn read_string_item(env: &Env, value: Unknown<'_>) -> anyhow::Result<String> {
+pub(super) fn read_string_item(value: Unknown<'_>) -> anyhow::Result<String> {
     match value.get_type()? {
-        ValueType::String => Ok(value::read_napi::<String>(env, value)?),
+        ValueType::String => Ok(value::read_napi::<String>(value)?),
         other => bail!("Expected a String, got {other:?}"),
     }
 }
@@ -73,16 +73,16 @@ pub(super) fn read_string_item(env: &Env, value: Unknown<'_>) -> anyhow::Result<
 impl Encoder for ArrayCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         if value.is_array()? {
-            let array: Array = value::read_napi(env, value)?;
+            let array: Array<'_> = value::read_napi(value)?;
             let len = array.len();
             let mut items = Vec::with_capacity(len as usize);
             for i in 0..len {
-                let item: Unknown = array
+                let item: Unknown<'_> = array
                     .get(i)?
                     .ok_or_else(|| anyhow::anyhow!("array element {i} is missing"))?;
                 items.push(item);
             }
-            return self.container.encode(self, env, &items);
+            return self.container.encode(self, *env, &items);
         }
         if let Some(view) = TypedView::from_unknown(env, value)? {
             return self.container.encode_buffer_view(self, &view);
@@ -136,15 +136,12 @@ impl PtrWriter for ArrayCodec {
     }
 }
 
-pub(super) fn dup_strings_to_glib(
-    env: &Env,
-    array: &[Unknown<'_>],
-) -> anyhow::Result<Vec<*mut c_void>> {
+pub(super) fn dup_strings_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
     let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(array.len());
     for &v in array {
-        let duplicated = read_string_item(env, v).and_then(|s| str_to_glib_full(&s));
+        let duplicated = read_string_item(v).and_then(|s| str_to_glib_full(&s));
         match duplicated {
-            Ok(ptr) => ptrs.push(ptr as *mut c_void),
+            Ok(ptr) => ptrs.push(ptr.cast::<c_void>()),
             Err(err) => {
                 for ptr in ptrs {
                     unsafe { glib::ffi::g_free(ptr) };
@@ -159,7 +156,6 @@ pub(super) fn dup_strings_to_glib(
 trait ArrayKindEncoder {
     fn encode_strings(
         &self,
-        env: &Env,
         array: &[Unknown<'_>],
         dup_items: bool,
         ownership: Ownership,
@@ -167,7 +163,7 @@ trait ArrayKindEncoder {
 
     fn encode_handles(
         &self,
-        handles: &[crate::handle::Handle],
+        handles: Vec<crate::handle::Handle>,
         item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash>;
@@ -208,41 +204,38 @@ fn transfer_items(
 }
 
 impl ArrayCodec {
-    fn extract_numbers(env: &Env, array: &[Unknown<'_>]) -> anyhow::Result<Vec<f64>> {
+    fn extract_numbers(array: &[Unknown<'_>]) -> anyhow::Result<Vec<f64>> {
         array
             .iter()
             .map(|&v| match v.get_type()? {
-                ValueType::Number => Ok(value::read_napi::<f64>(env, v)?),
+                ValueType::Number => Ok(value::read_napi::<f64>(v)?),
                 other => bail!("Expected a Number, got {other:?}"),
             })
             .collect()
     }
 
-    fn extract_booleans(env: &Env, array: &[Unknown<'_>]) -> anyhow::Result<Vec<i32>> {
+    fn extract_booleans(array: &[Unknown<'_>]) -> anyhow::Result<Vec<i32>> {
         array
             .iter()
             .map(|&v| match v.get_type()? {
-                ValueType::Boolean => Ok(i32::from(value::read_napi::<bool>(env, v)?)),
+                ValueType::Boolean => Ok(i32::from(value::read_napi::<bool>(v)?)),
                 other => bail!("Expected a Boolean, got {other:?}"),
             })
             .collect()
     }
 
-    fn extract_strings(env: &Env, array: &[Unknown<'_>]) -> anyhow::Result<Vec<CString>> {
+    fn extract_strings(array: &[Unknown<'_>]) -> anyhow::Result<Vec<CString>> {
         array
             .iter()
-            .map(|&v| Ok(CString::new(read_string_item(env, v)?.as_bytes())?))
+            .map(|&v| Ok(CString::new(read_string_item(v)?.as_bytes())?))
             .collect()
     }
 
-    fn extract_handles(
-        env: &Env,
-        array: &[Unknown<'_>],
-    ) -> anyhow::Result<Vec<crate::handle::Handle>> {
+    fn extract_handles(array: &[Unknown<'_>]) -> anyhow::Result<Vec<crate::handle::Handle>> {
         array
             .iter()
             .map(|&v| {
-                let ptr = value::handle_ptr(env, v, "array element")?;
+                let ptr = value::handle_ptr(v, "array element")?;
                 Ok(crate::handle::Handle::from_glib_borrow(ptr))
             })
             .collect()
@@ -250,6 +243,58 @@ impl ArrayCodec {
 
     fn item_element_size(&self) -> Option<usize> {
         ItemCodec::from_codec(&self.item_codec).map(ItemCodec::element_size)
+    }
+
+    // A handle-backed item paired with an explicit `element_size` is codegen's encoding of an array
+    // whose elements are stored by value: the C element type is the record itself, not a pointer to
+    // it. Every element therefore lives at `base + index * element_size` and its own address is the
+    // value, so no word may be loaded out of it.
+    pub(super) fn inline_element_size(&self) -> Option<usize> {
+        if !self.item_codec.is_handle_backed() {
+            return None;
+        }
+
+        self.element_size
+    }
+
+    pub(super) fn inline_element_buffer(
+        stride: usize,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<Vec<u8>> {
+        let handles = Self::extract_handles(array)?;
+        let mut buffer = vec![0u8; handles.len() * stride];
+        for (index, handle) in handles.iter().enumerate() {
+            let ptr = handle.as_ptr();
+            if ptr.is_null() {
+                bail!("An inline array element has a null pointer");
+            }
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    ptr.cast::<u8>().cast_const(),
+                    buffer.as_mut_ptr().add(index * stride),
+                    stride,
+                );
+            }
+        }
+
+        Ok(buffer)
+    }
+
+    pub(super) fn decode_inline<'e>(
+        &self,
+        env: &'e Env,
+        stride: usize,
+        data: *const u8,
+        len: usize,
+    ) -> anyhow::Result<Vec<Unknown<'e>>> {
+        (0..len)
+            .map(|index| unsafe {
+                self.item_codec.read(
+                    env,
+                    ReadSource::Value(data.add(index * stride).cast_mut().cast(), "array element"),
+                )
+            })
+            .collect()
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
@@ -260,7 +305,7 @@ impl ArrayCodec {
 
     fn encode_items(
         &self,
-        env: &Env,
+        env: Env,
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
@@ -269,7 +314,7 @@ impl ArrayCodec {
 
     fn encode_zero_terminated_items(
         &self,
-        env: &Env,
+        env: Env,
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
@@ -277,83 +322,85 @@ impl ArrayCodec {
     }
 
     fn extract_terminated_numbers(
-        env: &Env,
         array: &[Unknown<'_>],
         zero_terminated: bool,
     ) -> anyhow::Result<Vec<f64>> {
-        let mut numbers = Self::extract_numbers(env, array)?;
+        let mut numbers = Self::extract_numbers(array)?;
         if zero_terminated {
             numbers.push(0.0);
         }
         Ok(numbers)
     }
 
+    fn finish_scalar_storage(&self, storage: ffi::StashStorage) -> anyhow::Result<ffi::Stash> {
+        if self.ownership.is_borrowed() {
+            return Ok(ffi::Stash::Storage(storage));
+        }
+        let byte_len = storage
+            .byte_len()
+            .ok_or_else(|| anyhow::anyhow!("Scalar array storage has no measurable byte length"))?;
+        let container = unsafe { glib::ffi::g_memdup2(storage.ptr().cast_const(), byte_len) };
+        Ok(full_transfer_stash(container, ffi::ReleaseKind::GFree))
+    }
+
     fn encode_items_with_terminator(
         &self,
-        env: &Env,
+        env: Env,
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
         zero_terminated: bool,
     ) -> anyhow::Result<ffi::Stash> {
         match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => Ok(ffi::Stash::Storage(kind.checked_to_stash_storage(
-                &Self::extract_terminated_numbers(env, array, zero_terminated)?,
-            )?)),
-            ItemCodec::EnumFlags(kind) => Ok(ffi::Stash::Storage(kind.to_stash_storage(
-                &Self::extract_terminated_numbers(env, array, zero_terminated)?,
-            ))),
+            ItemCodec::Integer(kind) => self.finish_scalar_storage(kind.checked_to_stash_storage(
+                &Self::extract_terminated_numbers(array, zero_terminated)?,
+            )?),
+            ItemCodec::EnumFlags(kind) => self.finish_scalar_storage(
+                kind.to_stash_storage(&Self::extract_terminated_numbers(array, zero_terminated)?),
+            ),
             ItemCodec::BigInt(kind) => {
                 let storage = if zero_terminated {
                     let mut items = array.to_vec();
-                    items.push(0f64.into_unknown(env)?);
-                    kind.to_stash_storage(env, &items)?
+                    items.push(0f64.into_unknown(&env)?);
+                    kind.to_stash_storage(&items)?
                 } else {
-                    kind.to_stash_storage(env, array)?
+                    kind.to_stash_storage(array)?
                 };
-                Ok(ffi::Stash::Storage(storage))
+                self.finish_scalar_storage(storage)
             }
-            ItemCodec::Float(kind) => Ok(ffi::Stash::Storage(kind.checked_to_stash_storage(
-                &Self::extract_terminated_numbers(env, array, zero_terminated)?,
-            )?)),
+            ItemCodec::Float(kind) => self.finish_scalar_storage(kind.checked_to_stash_storage(
+                &Self::extract_terminated_numbers(array, zero_terminated)?,
+            )?),
             ItemCodec::Boolean => {
-                let mut booleans = Self::extract_booleans(env, array)?;
+                let mut booleans = Self::extract_booleans(array)?;
                 if zero_terminated {
                     booleans.push(0);
                 }
-                Ok(ffi::Stash::Storage(booleans.into()))
+                self.finish_scalar_storage(booleans.into())
             }
             ItemCodec::String => {
                 let dup_items =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
-                encoder.encode_strings(env, array, dup_items, self.ownership)
+                encoder.encode_strings(array, dup_items, self.ownership)
             }
             ItemCodec::Pointer => {
-                let handles = Self::extract_handles(env, array)?;
-
-                if let Some(element_size) = self.element_size {
-                    let mut buffer = vec![0u8; handles.len() * element_size];
-                    for (i, handle) in handles.iter().enumerate() {
-                        let ptr = handle.as_ptr();
-                        if ptr.is_null() {
-                            bail!("GObject in array has a null pointer");
-                        }
-                        let offset = i * element_size;
-                        unsafe {
-                            std::ptr::copy_nonoverlapping(
-                                ptr as *const u8,
-                                buffer.as_mut_ptr().add(offset),
-                                element_size,
-                            );
-                        }
-                    }
-                    return Ok(ffi::Stash::Storage(buffer.into()));
+                if let Some(element_size) = self.inline_element_size() {
+                    let buffer = Self::inline_element_buffer(element_size, array)?;
+                    return self.finish_scalar_storage(buffer.into());
                 }
 
-                encoder.encode_handles(&handles, &self.item_codec, self.ownership)
+                encoder.encode_handles(
+                    Self::extract_handles(array)?,
+                    &self.item_codec,
+                    self.ownership,
+                )
             }
         }
     }
 
+    // `data` is the first byte of a C array whose element type is `codec`, produced either by the
+    // GLib allocators (aligned for any fundamental type) or by a JavaScript ArrayBufferView (8-byte
+    // aligned), so every element pointer below is already correctly aligned for its element type.
+    #[allow(clippy::cast_ptr_alignment)]
     fn decode_contiguous<'e>(
         &self,
         env: &'e Env,
@@ -363,6 +410,9 @@ impl ArrayCodec {
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
         if len == 0 || data.is_null() {
             return Ok(Vec::new());
+        }
+        if let Some(stride) = self.inline_element_size() {
+            return self.decode_inline(env, stride, data, len);
         }
         let numbers_to_unknowns = |numbers: Vec<f64>| -> anyhow::Result<Vec<Unknown<'e>>> {
             numbers

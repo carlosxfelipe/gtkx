@@ -14,18 +14,32 @@ import sourceCode from "./constraints-interactive.tsx?raw";
 
 const A = Gtk.ConstraintAttribute;
 
+const constraintsInteractiveDemo: Demo = {
+    id: "constraints-interactive",
+    title: "Constraints/Interactive Constraints",
+    description:
+        "This example shows how constraints can be updated during user interaction. The vertical edge between the " +
+        "buttons can be dragged with the mouse.",
+    keywords: ["GtkConstraintLayout"],
+    component: ConstraintsInteractive,
+    sourceCode,
+    defaultWidth: 260,
+};
+
 const renderDividerConstraints = (dividerOffset: number | null) => (
     <>
         <ConstraintLayout.Guide id="divider" />
         <ConstraintLayout.Constraint target="divider" targetAttribute={A.WIDTH} sourceAttribute={A.NONE} constant={0} />
-        {dividerOffset === null ? null : (
-            <ConstraintLayout.Constraint
-                target="divider"
-                targetAttribute={A.LEFT}
-                sourceAttribute={A.LEFT}
-                constant={dividerOffset}
-            />
-        )}
+        {dividerOffset === null
+            ? null
+            : (
+                    <ConstraintLayout.Constraint
+                        target="divider"
+                        targetAttribute={A.LEFT}
+                        sourceAttribute={A.LEFT}
+                        constant={dividerOffset}
+                    />
+                )}
     </>
 );
 
@@ -82,31 +96,25 @@ const renderLayout = (dividerOffset: number | null) => (
     </ConstraintLayout>
 );
 
-const ConstraintsInteractive = () => {
+function ConstraintsInteractive() {
     const [dividerOffset, setDividerOffset] = useState<number | null>(null);
 
     return (
         <ConstraintContainer
             layoutManager={renderLayout(dividerOffset)}
-            controllers={
+            controllers={(
                 <GtkGestureDrag
                     onDragUpdate={(offsetX, _offsetY, self) => {
                         const [success, startX] = self.getStartPoint();
-                        if (success) setDividerOffset(startX + offsetX);
+
+                        if (success) {
+                            setDividerOffset(startX + offsetX);
+                        }
                     }}
                 />
-            }
+            )}
         />
     );
-};
+}
 
-export const constraintsInteractiveDemo: Demo = {
-    id: "constraints-interactive",
-    title: "Constraints/Interactive Constraints",
-    description:
-        "This example shows how constraints can be updated during user interaction. The vertical edge between the buttons can be dragged with the mouse.",
-    keywords: ["GtkConstraintLayout"],
-    component: ConstraintsInteractive,
-    sourceCode,
-    defaultWidth: 260,
-};
+export { constraintsInteractiveDemo };

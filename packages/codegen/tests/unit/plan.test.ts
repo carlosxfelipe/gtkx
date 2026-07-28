@@ -14,7 +14,11 @@ const param = (name: string, cType: string, extra?: Partial<GlParam>): GlParam =
 
 const okPlan = (input: GlCommand, policy: GlPlanPolicy = NO_POLICY): CommandPlan & { ok: true } => {
     const plan = planCommand(input, policy);
-    if (!plan.ok) throw new Error(`Expected ${input.name} to plan, got exclusion: ${plan.reason}`);
+
+    if (!plan.ok) {
+        throw new Error(`Expected ${input.name} to plan, got exclusion: ${plan.reason}`);
+    }
+
     return plan;
 };
 
@@ -55,6 +59,7 @@ describe("planCommand", () => {
                 param("usage", "GLenum", { group: "BufferUsageARB" }),
             ]),
         );
+
         expect(plan.params.map((p) => p.kind)).toEqual(["scalar", "scalar", "buffer", "scalar"]);
         expect(plan.returnPlan).toEqual({ kind: "void" });
     });
@@ -68,6 +73,7 @@ describe("planCommand", () => {
                 param("length", "const GLint *", { len: "count" }),
             ]),
         );
+
         expect(plan.params.map((p) => p.kind)).toEqual(["scalar", "scalar", "string-array-in", "array-in"]);
     });
 
@@ -76,6 +82,7 @@ describe("planCommand", () => {
             byteOffsetParams: new Set(["glDrawElements:indices"]),
             singleValuedQueries: new Set(),
         };
+
         const plan = okPlan(
             command("glDrawElements", "void", [
                 param("mode", "GLenum", { group: "PrimitiveType" }),
@@ -85,6 +92,7 @@ describe("planCommand", () => {
             ]),
             policy,
         );
+
         expect(plan.params[3]).toEqual({ kind: "byte-offset" });
     });
 });
@@ -96,15 +104,21 @@ describe("planCommand outputs", () => {
             param("pname", "GLenum", { group: "ShaderParameterName" }),
             param("params", "GLint *", { len: "COMPSIZE(pname)" }),
         ]);
+
         const excluded = planCommand(query, NO_POLICY);
         expect(excluded.ok).toBe(false);
-        if (excluded.ok) return;
+
+        if (excluded.ok) {
+            return;
+        }
+
         expect(excluded.reason).toBe("compsize-output");
 
         const carvedOut = okPlan(query, {
             byteOffsetParams: new Set(),
             singleValuedQueries: new Set(["glGetShaderiv"]),
         });
+
         expect(carvedOut.params[2]?.kind).toBe("ref-out");
     });
 
@@ -115,6 +129,7 @@ describe("planCommand outputs", () => {
                 param("buffers", "GLuint *", { len: "n", objectClass: "buffer" }),
             ]),
         );
+
         expect(plan.params[1]).toMatchObject({ kind: "ref-array-out", lenParamName: "n" });
 
         const fixed = okPlan(
@@ -124,6 +139,7 @@ describe("planCommand outputs", () => {
                 param("params", "GLfloat *", { len: "4" }),
             ]),
         );
+
         expect(fixed.params[2]).toMatchObject({ kind: "ref-fixed-out", length: 4 });
     });
 });
@@ -139,8 +155,13 @@ describe("planCommand exclusions", () => {
             ]),
             NO_POLICY,
         );
+
         expect(computed.ok).toBe(false);
-        if (computed.ok) return;
+
+        if (computed.ok) {
+            return;
+        }
+
         expect(computed.reason).toBe("computed-output-length");
 
         const callback = planCommand(
@@ -150,8 +171,13 @@ describe("planCommand exclusions", () => {
             ]),
             NO_POLICY,
         );
+
         expect(callback.ok).toBe(false);
-        if (callback.ok) return;
+
+        if (callback.ok) {
+            return;
+        }
+
         expect(callback.reason).toBe("callback-parameter");
     });
 
@@ -164,6 +190,7 @@ describe("planCommand exclusions", () => {
                 param("source", "GLchar *", { len: "bufSize" }),
             ]),
         );
+
         expect(plan.params.map((p) => p.kind)).toEqual(["scalar", "scalar", "ref-out", "string-out"]);
     });
 });
@@ -173,13 +200,12 @@ describe("planCommand returns", () => {
         const sync = okPlan(
             command("glFenceSync", "GLsync", [param("condition", "GLenum"), param("flags", "GLbitfield")]),
         );
-        expect(sync.returnPlan).toEqual({ kind: "sync" });
 
+        expect(sync.returnPlan).toEqual({ kind: "sync" });
         const isBuffer = okPlan(command("glIsBuffer", "GLboolean", [param("buffer", "GLuint")]));
         expect(isBuffer.returnPlan).toEqual({ kind: "boolean" });
-
-        const getString = okPlan(command("glGetString", "const GLubyte *", [param("name", "GLenum")]));
-        expect(getString.returnPlan).toEqual({ kind: "string" });
+        const stringPlan = okPlan(command("glGetString", "const GLubyte *", [param("name", "GLenum")]));
+        expect(stringPlan.returnPlan).toEqual({ kind: "string" });
     });
 
     it("throws on a base type outside the closed table", () => {

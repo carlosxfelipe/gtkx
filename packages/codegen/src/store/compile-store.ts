@@ -1,12 +1,13 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { compileProject, type SourceModule } from "../compile.js";
 
-export type CompileStoreParams = {
+type CompileStoreParams = {
     storeDir: string;
     files: SourceModule[];
     packageName: string;
-    exports: Record<string, unknown>;
+    /** Declare `virtual:gtkx-config` for the typecheck, needed when it follows imports into `@gtkx/react` source. */
+    configEnv?: boolean;
 };
 
 const EMIT_OPTIONS = {
@@ -14,36 +15,41 @@ const EMIT_OPTIONS = {
     removeComments: false,
     sourceMap: false,
     declarationMap: false,
-    noEmitOnError: true,
     rootDir: ".",
     outDir: ".",
 };
 
-const selfPaths = (
-    packageName: string,
-    exportsMap: Record<string, unknown>,
-    storeDir: string,
-): Record<string, string[]> => {
-    const paths: Record<string, string[]> = {};
-    for (const [key, value] of Object.entries(exportsMap)) {
-        if (key === "./package.json" || typeof value !== "object" || value === null) continue;
-        const target = (value as { default?: unknown }).default;
-        if (typeof target !== "string") continue;
-        const stem = target.replace(/^\.\//, "").replace(/\.js$/, "");
-        paths[`${packageName}${key.slice(1)}`] = [join(storeDir, stem)];
-    }
-    return paths;
+const ENV_REFERENCE_FILE = "__gtkx-env__.d.ts";
+
+const writeEnvReference = (storeDir: string): (() => void) => {
+    writeFileSync(join(storeDir, ENV_REFERENCE_FILE), "/// <reference types=\"@gtkx/react/env\" />\n");
+
+    return () => {
+        rmSync(join(storeDir, ENV_REFERENCE_FILE), { force: true });
+    };
 };
 
-export const compileStore = (params: CompileStoreParams): void => {
-    compileProject({
-        projectDir: params.storeDir,
-        fileNames: params.files.map((file) => file.fileName),
-        compilerOptions: EMIT_OPTIONS,
-        paths: selfPaths(params.packageName, params.exports, params.storeDir),
-        label: `the generated ${params.packageName} store`,
-    });
+const compileStore = (params: CompileStoreParams): void => {
+    const fileNames = params.files.map((file) => file.fileName);
+
+    const removeEnvReference = params.configEnv === true
+        ? writeEnvReference(params.storeDir)
+        : (): void => undefined;
+
+    try {
+        compileProject({
+            projectDir: params.storeDir,
+            fileNames: params.configEnv === true ? [ENV_REFERENCE_FILE, ...fileNames] : fileNames,
+            compilerOptions: EMIT_OPTIONS,
+            label: `the generated ${params.packageName} store`,
+        });
+    } finally {
+        removeEnvReference();
+    }
+
     for (const file of params.files) {
         rmSync(join(params.storeDir, file.fileName), { force: true });
     }
 };
+
+export { compileStore, type CompileStoreParams };

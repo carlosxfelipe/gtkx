@@ -34,7 +34,9 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`reactCompiler`** controls the React Compiler, which is enabled by default. Set it to `false` to disable it, or pass `{ compilationMode, panicThreshold }` to tune it.
 
-**`elementProps`** layers your own element prop rules on top of the built-in set, covered in [Customizing elements with elementProps](#advanced-customizing-elements-with-elementprops) below. The rule shapes are typed in the [@gtkx/config reference](/reference/@gtkx/config/).
+**`userEventSignals`** maps GLib type names to signal names that represent user interaction, such as `{ GtkEditable: ["changed"] }`. While a React commit is applying your props, these signals are suppressed on the committing tree, so a handler like `onChanged` only ever reports the user editing the widget and never echoes a programmatic write React itself performed. A built-in table covers GTK4 and Adwaita; entries you add here are unioned with it, and the type name may be a class or an interface, applying to every type that inherits or implements it.
+
+**`elements`** points at a module of per-element configuration, keyed by GLib type name, where each entry sets a `lazy` flag and custom `behaviors`, covered in [Customizing elements](#advanced-customizing-elements) below. The module is imported by your app at runtime; codegen never reads it.
 
 **`codegen`** controls binding generation, which is on by default. Set it to `false` for a project that already has a binding store installed, such as an example inside a workspace that shares the store built at the root: the CLI then resolves that installed store instead of generating its own. A project with generation turned off has no GIR data of its own, so `gtkx docs` has nothing to document there.
 
@@ -52,13 +54,16 @@ Alongside the stores, the CLI writes `node_modules/.gtkx/env.d.ts` with a typed 
 | GVariant type | TypeScript type |
 | --- | --- |
 | `b` | `boolean` |
-| `i`, `u`, `x`, `t`, `d` | `number` |
-| `s` | `string` |
-| `as` | `string[]` |
-| enum key | string-literal union of its nicks |
-| flags key | array of that union |
-| string key with `<choices>` | union of those choices |
-| anything else | `GLib.Variant` |
+| `y`, `n`, `q`, `i`, `u`, `h`, `d` | `number` |
+| `x`, `t` | `bigint` |
+| `s`, `o`, `g` | `string` |
+| `v` | `GLib.Variant` |
+| enum or flags key | `number` |
+| array `a<T>` | `T[]` (`as` is `string[]`) |
+| dictionary `a{k v}` | `Record<string, V>` for string keys, `Map<K, V>` otherwise |
+| tuple `(...)` | a tuple of the element types, e.g. `(ii)` is `[number, number]` |
+| maybe `m<T>` | `T \| null` |
+| dict entry `{k v}` | `[K, V]` |
 
 Each schema exports a typed const carrying its `id` and a `keys` map; a schema declared without a path (a relocatable schema) additionally gets an `at(path)` method that returns the same typed reference bound to a concrete path. `gtkx codegen`, `gtkx dev`, and `gtkx build` all keep this file in sync.
 
@@ -73,7 +78,7 @@ The ID also anchors the rest of your app's platform identity. GSettings schemas 
 You rarely run `gtkx codegen` by hand, because `gtkx dev` and `gtkx build` check freshness first and regenerate only when something changed. The check has these layers:
 
 1. **Structural**: if a store directory or its link is missing, a namespace barrel for one of your libraries is absent, or the jsx store lacks its generated modules, the bindings are stale regardless of content.
-2. **Fingerprint**: the gi store carries a `.codegen-fingerprint.json` sentinel holding a SHA-256 hash over the codegen package version, your `elementProps` (serialized), the sorted library list, and the path and full contents of every `.gir` file that fed the last run. On each check the hash is recomputed against the recorded GIR files; any mismatch, including a system GTK4 upgrade that rewrote a `.gir`, triggers regeneration. A changed library list is stale by definition.
+2. **Fingerprint**: the gi store carries a `.codegen-fingerprint.json` sentinel holding a SHA-256 hash over the codegen package version, the element prop types the generated elements extend, the sorted library list, and the path and full contents of every `.gir` file that fed the last run. On each check the hash is recomputed against the recorded GIR files; any mismatch, including a system GTK4 upgrade that rewrote a `.gir`, triggers regeneration. A changed library list is stale by definition.
 
 While `gtkx dev` runs, it also watches `gtkx.config.ts`. Saving a change regenerates the bindings and restarts the dev runner for you, so adding a library or an element prop rule takes effect without stopping `gtkx dev` yourself. If codegen fails, the current runner keeps going and the error is printed; fix it and save again.
 
@@ -97,7 +102,7 @@ Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, a
 
 ## Generating element reference docs
 
-The same pipeline that generates the bindings can document them. `gtkx docs` loads the GIR data for your configured libraries, applies your `elementProps` rules, and writes one markdown page per JSX element:
+The same pipeline that generates the bindings can document them. `gtkx docs` loads the GIR data for your configured libraries and writes one markdown page per JSX element:
 
 ```bash
 gtkx docs
@@ -105,33 +110,66 @@ gtkx docs
 
 By default the pages land in `docs/reference`, one directory per namespace plus index pages, with cross-page links rooted at `/reference` so the output drops straight into a static site generator or anything else that renders markdown. Each element page carries the widget's upstream documentation, its hierarchy, and its children and slot rules. It then documents the element's own props with their types and defaults, its own signal handlers with their exact signatures, and its own methods reachable through `ref`. Members inherited from an ancestor are documented on that ancestor's page, which the hierarchy links to. A `manifest.json` alongside the pages records the namespace and element lists, which is what you want for generating a sidebar.
 
-Run `gtkx docs --help` if you need the pages somewhere else or their links rooted elsewhere. Because your `elementProps` feed the generator, custom rules like the `cursorName` value prop in [Customizing elements with elementProps](#advanced-customizing-elements-with-elementprops) appear in the generated pages too.
+Run `gtkx docs --help` if you need the pages somewhere else or their links rooted elsewhere.
 
-## Advanced: Customizing elements with elementProps
+## Advanced: Customizing elements
 
-Property setting alone cannot express everything GTK4 does. Adding a child is `append` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with element prop rules: small declarative records that tell the reconciler which method calls realize a given JSX prop. A large built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more), and `elementProps` in your config layers your own rules on top. The kinds are:
+Property setting alone cannot express everything GTK4 does. Adding a child is `insertChildAfter` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with **element behaviors**: a behavior is a small object of React-node lifecycle hooks bound to a GLib type, and the reconciler calls its hooks as elements of that type are created, populated, updated, and removed. A built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more); you register your own through the `elements` module, keyed by GLib type name with `defineElements`.
 
-- **`container`**: children held under `prop` (usually `children`) of GObject type `child`, attached with `append`, detached with `remove`, optionally supporting `insert` and `reorder`, wrapping each child in an `autowrap` widget type, or adopting children the widget creates itself via `adopt`. At least one of `append` or `remove` is required.
-- **`value`**: a scalar prop applied by invoking `call` whenever it changes, optionally followed by `after`. The built-in `GtkDrawingArea` rule is `{ kind: "value", prop: "drawFunc", call: "setDrawFunc", after: "queueDraw" }`.
-- **`controlled-text`**: a text property kept in controlled-input sync with the user's edits, as the built-in `GtkEditable` rule does for `text`.
-- **`lazy`**: a property applied after construction rather than during it, optionally deferred until a `lookup` method succeeds; `GtkStack`'s `visibleChildName` waits for `getChildByName` to find the named child.
-- **`list`**: an array prop mapped to per-item calls: `add` per item, plus optional `remove` and `clear`. `GtkScale`'s `marks` uses `addMark` and `clearMarks`.
+Every hook receives the GObject instance and a private per-element `context` built once by the behavior's `createContext(node)`. The hooks are:
 
-User rules go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. One config entry turns the method into a prop:
+- **`attach` / `detach`** place and remove a child in a slot. `attach` receives the child plus placement info (`slot`, `index`, `sibling`); returning a non-`undefined` value claims the child, and a returned GObject becomes the object the container adopts (otherwise `resolve` supplies it). A child no behavior claims is set on its named property directly.
+- **`reorder`** moves an already-placed child; without it, a reordered slot is rebuilt.
+- **`resolve`** returns the object the container created for a placed child (a page, a layout child), used by later `reorder` and `detach`.
+- **`update`** runs on every commit with the previous and next props; apply scalar or array props here, and return the prop names you handled so GTKX does not also set them as plain properties.
+- **`flush`** runs just after the surrounding commit settles, for props that must wait until children exist, as `GtkStack`'s `visibleChildName` does.
+- **`mount` / `unmount`** run once the element is created and when it leaves the tree.
+
+Your own behaviors go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Write a module that default-exports a map keyed by GLib type name, giving each type its `behaviors` and annotating each hook's node parameter with the concrete class:
 
 ```ts
+// src/elements.ts
+import type * as Gtk from "@gtkx/gi/gtk";
+import { defineElements } from "@gtkx/react/config";
+
+export default defineElements({
+    GtkWidget: {
+        behaviors: [
+            {
+                update: (widget: Gtk.Widget, prev, next) => {
+                    if (!Object.is(prev.cursorName, next.cursorName) && typeof next.cursorName === "string") {
+                        widget.setCursorFromName(next.cursorName);
+                    }
+                    return ["cursorName"];
+                },
+            },
+        ],
+    },
+});
+```
+
+Point `elements` at it and declare the prop on the generated interface:
+
+```ts
+// gtkx.config.ts
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
     libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
-    elementProps: {
-        GtkWidget: [{ kind: "value", prop: "cursorName", call: "setCursorFromName" }],
-    },
+    elements: "./src/elements.ts",
 });
 ```
 
-After the next codegen, every widget element accepts a `cursorName` prop, typed `string | null` straight from the method's parameter, and the reconciler calls `setCursorFromName` whenever the value changes. A rule declared on a type covers every element descending from it, which is how the built-in `controllers` rule on `GtkWidget` reaches all widgets.
+```ts
+declare module "@gtkx/jsx/gtk" {
+    interface GtkWidgetProps {
+        cursorName?: string | null | undefined;
+    }
+}
+```
+
+Every widget element then accepts a `cursorName` prop and the reconciler calls `setCursorFromName` whenever the value changes. A behavior declared on a type covers every element descending from it, which is how the built-in `controllers` behavior on `GtkWidget` reaches all widgets. Your behaviors are consulted before the built-in ones, so you can also override how an existing slot or prop behaves. The same map's `lazy: true` marks a type whose GObject its parent container creates (a page or layout child), so its element defers construction until the parent adopts it.
 
 ## Next
 

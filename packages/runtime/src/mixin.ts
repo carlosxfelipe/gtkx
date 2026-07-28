@@ -1,7 +1,7 @@
 import type { AnyClass } from "@gtkx/utils";
 
-export type MixinReceiver = {
-    connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;
+type MixinReceiver = {
+    connect(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): number;
     emit(signal: string, ...args: unknown[]): unknown;
 };
 
@@ -9,15 +9,36 @@ export type MixinReceiver = {
  * A factory that, given a base class, returns a subclass adding extra members to
  * be merged onto a target prototype.
  */
-export type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
+type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
 
-function definedInClassChain(prototype: object, key: string): boolean {
+function isDefinedInClassChain(prototype: object, key: string): boolean {
     let current: object | null = prototype;
+
     while (current !== null && current !== Object.prototype) {
-        if (Object.hasOwn(current, key)) return true;
-        current = Object.getPrototypeOf(current);
+        if (Object.hasOwn(current, key)) {
+            return true;
+        }
+
+        current = Reflect.getPrototypeOf(current);
     }
+
     return false;
+}
+
+function copyLayerMember(target: AnyClass, layer: object, key: string): void {
+    if (key === "constructor") {
+        return;
+    }
+
+    if (isDefinedInClassChain(target.prototype, key)) {
+        return;
+    }
+
+    const descriptor = Object.getOwnPropertyDescriptor(layer, key);
+
+    if (descriptor !== undefined) {
+        Object.defineProperty(target.prototype, key, descriptor);
+    }
 }
 
 /**
@@ -27,22 +48,26 @@ function definedInClassChain(prototype: object, key: string): boolean {
  * @param target The class whose prototype receives the mixin members.
  * @param mixins The mixins to apply, in order.
  */
-export function installMixins(target: AnyClass, mixins: Mixin[]): void {
+function copyLayerMembers(target: AnyClass, layer: object): void {
+    for (const key of Object.getOwnPropertyNames(layer)) {
+        copyLayerMember(target, layer, key);
+    }
+}
+
+function installMixins(target: AnyClass, mixins: Mixin[]): void {
     const empty: AnyClass<MixinReceiver> = class {
         connect(): number {
             return 0;
         }
+
         emit(): unknown {
             return undefined;
         }
     };
+
     for (const mixin of mixins) {
-        const layer: object = mixin(empty).prototype;
-        for (const key of Object.getOwnPropertyNames(layer)) {
-            if (key === "constructor") continue;
-            if (definedInClassChain(target.prototype, key)) continue;
-            const descriptor = Object.getOwnPropertyDescriptor(layer, key);
-            if (descriptor !== undefined) Object.defineProperty(target.prototype, key, descriptor);
-        }
+        copyLayerMembers(target, mixin(empty).prototype);
     }
 }
+
+export { installMixins, type MixinReceiver, type Mixin };

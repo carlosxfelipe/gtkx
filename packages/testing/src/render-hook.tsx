@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { render } from "./render.js";
 import type { RenderHookOptions, RenderHookResult } from "./types.js";
+import { render } from "./render.js";
 
 /**
  * Renders a test component that calls the given hook, exposing its latest
@@ -10,10 +10,11 @@ import type { RenderHookOptions, RenderHookResult } from "./types.js";
  * @param options Optional initial props and wrapper component.
  * @returns A result whose `result.current` holds the hook's latest value.
  */
-export function renderHook<Result>(
+function renderHook<Result>(
     callback: () => Result,
     options?: RenderHookOptions<undefined>,
 ): Promise<RenderHookResult<Result, undefined>>;
+
 /**
  * Renders a test component that calls the given hook with props, exposing its
  * latest return value along with rerender and unmount controls.
@@ -22,11 +23,12 @@ export function renderHook<Result>(
  * @param options Initial props and optional wrapper component.
  * @returns A result whose `result.current` holds the hook's latest value.
  */
-export function renderHook<Result, Props>(
+function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>>;
-export async function renderHook<Result, Props>(
+
+async function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options?: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>> {
@@ -37,6 +39,7 @@ export async function renderHook<Result, Props>(
     const TestComponent = ({ props }: { props: Props }): null => {
         const result = callback(props);
         resultRef.current = result;
+
         return null;
     };
 
@@ -51,8 +54,11 @@ export async function renderHook<Result, Props>(
             if (newProps !== undefined) {
                 currentProps = newProps;
             }
+
             await renderResult.rerender(<TestComponent props={currentProps} />);
         },
         unmount: renderResult.unmount,
     };
 }
+
+export { renderHook };

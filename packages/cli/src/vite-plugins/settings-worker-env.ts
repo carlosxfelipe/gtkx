@@ -3,7 +3,7 @@ import type { Plugin } from "vitest/config";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
-export function gtkxSettingsWorkerEnv(): Plugin {
+function gtkxSettingsWorkerEnv(): Plugin {
     return {
         name: "gtkx:settings-worker-env",
         enforce: "pre",
@@ -11,7 +11,10 @@ export function gtkxSettingsWorkerEnv(): Plugin {
         config(config: UserConfig) {
             const root = config.root ?? process.cwd();
             const dir = stageAndCompileProjectSchemas(root, resolveDataDir(root));
-            if (dir === null) return;
+
+            if (dir === null) {
+                return;
+            }
 
             process.env.GTKX_DEV_SCHEMA_DIR = dir;
 
@@ -23,3 +26,5 @@ export function gtkxSettingsWorkerEnv(): Plugin {
         },
     };
 }
+
+export { gtkxSettingsWorkerEnv };

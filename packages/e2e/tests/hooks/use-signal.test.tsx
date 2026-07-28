@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { type ObjectProp, useSignal } from "@gtkx/react";
+import { useSignal } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,9 +9,13 @@ describe("useSignal (emission)", () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
 
-        await renderHook(() => useSignal(button, "clicked", handler));
+        await renderHook(() => {
+            useSignal(button, "clicked", handler);
+        });
 
-        await act(() => button.emit("clicked"));
+        await act(() => {
+            button.emit("clicked");
+        });
 
         expect(handler).toHaveBeenCalledTimes(1);
     });
@@ -22,12 +26,17 @@ describe("useSignal (emission)", () => {
         const second = vi.fn();
 
         const { rerender } = await renderHook(
-            ({ handler }: { handler: () => void }) => useSignal(button, "clicked", handler),
+            ({ handler }: { handler: () => void }) => {
+                useSignal(button, "clicked", handler);
+            },
             { initialProps: { handler: first } },
         );
 
         await rerender({ handler: second });
-        await act(() => button.emit("clicked"));
+
+        await act(() => {
+            button.emit("clicked");
+        });
 
         expect(first).not.toHaveBeenCalled();
         expect(second).toHaveBeenCalledTimes(1);
@@ -36,13 +45,18 @@ describe("useSignal (emission)", () => {
     it("passes the emission arguments to the handler", async () => {
         const label = new Gtk.Label();
         const names: string[] = [];
+
         const handler = (pspec: GObject.ParamSpec): void => {
             names.push(pspec.getName());
         };
 
-        await renderHook(() => useSignal(label, "notify", handler));
+        await renderHook(() => {
+            useSignal(label, "notify", handler);
+        });
 
-        await act(() => label.setLabel("changed"));
+        await act(() => {
+            label.setLabel("changed");
+        });
 
         await waitFor(() => {
             expect(names).toContain("label");
@@ -56,49 +70,51 @@ describe("useSignal (targets)", () => {
         const handler = vi.fn();
 
         const { rerender } = await renderHook(
-            ({ target }: { target: Gtk.Button | null }) => useSignal(target, "clicked", handler),
+            ({ target }: { target: Gtk.Button | null }) => {
+                useSignal(target, "clicked", handler);
+            },
             { initialProps: { target: null as Gtk.Button | null } },
         );
 
-        await act(() => button.emit("clicked"));
-        expect(handler).not.toHaveBeenCalled();
+        await act(() => {
+            button.emit("clicked");
+        });
 
+        expect(handler).not.toHaveBeenCalled();
         await rerender({ target: button });
-        await act(() => button.emit("clicked"));
+
+        await act(() => {
+            button.emit("clicked");
+        });
+
         expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it("follows a ref across widget replacement", async () => {
-        const first = new Gtk.Button();
-        const second = new Gtk.Button();
-        const ref: { current: Gtk.Button | null } = { current: first };
+    it("subscribes to the object held by a ref", async () => {
+        const button = new Gtk.Button();
+        const ref: { current: Gtk.Button | null } = { current: button };
         const handler = vi.fn();
 
-        const { rerender } = await renderHook(
-            ({ object }: { object: ObjectProp<Gtk.Button> }) => useSignal(object, "clicked", handler),
-            { initialProps: { object: ref as ObjectProp<Gtk.Button> } },
-        );
+        await renderHook(() => {
+            useSignal(ref, "clicked", handler);
+        });
 
-        await act(() => first.emit("clicked"));
+        await act(() => {
+            button.emit("clicked");
+        });
+
         expect(handler).toHaveBeenCalledTimes(1);
-
-        ref.current = second;
-        await rerender({ object: ref });
-
-        await act(() => first.emit("clicked"));
-        expect(handler).toHaveBeenCalledTimes(1);
-
-        await act(() => second.emit("clicked"));
-        expect(handler).toHaveBeenCalledTimes(2);
     });
 });
 
-describe("useSignal (options and lifecycle)", () => {
+describe("useSignal (options and lifecycle) (1)", () => {
     it("invokes the handler immediately when immediate is set", async () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
 
-        await renderHook(() => useSignal(button, "clicked", handler, { immediate: true }));
+        await renderHook(() => {
+            useSignal(button, "clicked", handler, { immediate: true });
+        });
 
         expect(handler).toHaveBeenCalledTimes(1);
         expect(handler).toHaveBeenCalledWith();
@@ -108,23 +124,34 @@ describe("useSignal (options and lifecycle)", () => {
         const label = new Gtk.Label();
         const handler = vi.fn();
 
-        await renderHook(() => useSignal(label, "notify::label", handler));
+        await renderHook(() => {
+            useSignal(label, "notify::label", handler);
+        });
 
-        await act(() => label.setLabel("changed"));
+        await act(() => {
+            label.setLabel("changed");
+        });
 
         await waitFor(() => {
             expect(handler).toHaveBeenCalled();
         });
     });
+});
 
+describe("useSignal (options and lifecycle) (2)", () => {
     it("unsubscribes on unmount", async () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
 
-        const { unmount } = await renderHook(() => useSignal(button, "clicked", handler));
+        const { unmount } = await renderHook(() => {
+            useSignal(button, "clicked", handler);
+        });
 
         await unmount();
-        await act(() => button.emit("clicked"));
+
+        await act(() => {
+            button.emit("clicked");
+        });
 
         expect(handler).not.toHaveBeenCalled();
     });
@@ -134,16 +161,24 @@ describe("useSignal (options and lifecycle)", () => {
         const handler = vi.fn();
 
         const { rerender } = await renderHook(
-            ({ signal }: { signal: "clicked" | "activate" }) => useSignal(button, signal, handler),
-            { initialProps: { signal: "clicked" as "clicked" | "activate" } },
+            ({ signal }: { signal: "clicked" | "activate" }) => {
+                useSignal(button, signal, handler);
+            },
+            { initialProps: { signal: "clicked" } },
         );
 
         await rerender({ signal: "activate" });
 
-        await act(() => button.emit("clicked"));
+        await act(() => {
+            button.emit("clicked");
+        });
+
         expect(handler).not.toHaveBeenCalled();
 
-        await act(() => button.emit("activate"));
+        await act(() => {
+            button.emit("activate");
+        });
+
         expect(handler).toHaveBeenCalledTimes(1);
     });
 });

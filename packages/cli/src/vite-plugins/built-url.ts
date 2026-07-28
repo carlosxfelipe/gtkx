@@ -1,6 +1,32 @@
 import type { Plugin } from "vite";
 
-export function gtkxBuiltUrl(assetBase?: string): Plugin {
+const renderAssetUrl = (
+    filename: string,
+    type: string,
+    assetBase: string | undefined,
+): { runtime: string } | undefined => {
+    if (type !== "asset") {
+        return undefined;
+    }
+
+    if (assetBase) {
+        const executableDir = "require(\"path\").dirname(process.execPath)";
+
+        return {
+            runtime:
+                `require("path").join(${executableDir},` +
+                `${JSON.stringify(assetBase)},${JSON.stringify(filename)})`,
+        };
+    }
+
+    const filenameLiteral = JSON.stringify(`./${filename}`);
+
+    return {
+        runtime: `new URL(${filenameLiteral}, import.meta.url).pathname`,
+    };
+};
+
+function gtkxBuiltUrl(assetBase?: string): Plugin {
     return {
         name: "gtkx:built-url",
         apply: "build",
@@ -13,23 +39,12 @@ export function gtkxBuiltUrl(assetBase?: string): Plugin {
             return {
                 experimental: {
                     renderBuiltUrl(filename, { type }) {
-                        if (type !== "asset") {
-                            return;
-                        }
-
-                        if (assetBase) {
-                            return {
-                                runtime: `require("path").join(require("path").dirname(process.execPath),${JSON.stringify(assetBase)},${JSON.stringify(filename)})`,
-                            };
-                        }
-
-                        const filenameLiteral = JSON.stringify(`./${filename}`);
-                        return {
-                            runtime: `new URL(${filenameLiteral}, import.meta.url).pathname`,
-                        };
+                        return renderAssetUrl(filename, type, assetBase);
                     },
                 },
             };
         },
     };
 }
+
+export { gtkxBuiltUrl };

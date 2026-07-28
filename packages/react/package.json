@@ -32,26 +32,51 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
+        "./env": {
+            "types": "./env.d.ts"
+        },
         "./internal": {
             "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
             "default": "./dist/internal.js"
         },
         "./adw": {
-            "source": "./src/libraries/adw/index.ts",
-            "types": "./dist/libraries/adw/index.d.ts",
-            "default": "./dist/libraries/adw/index.js"
+            "source": "./src/adw/index.ts",
+            "types": "./dist/adw/index.d.ts",
+            "default": "./dist/adw/index.js"
+        },
+        "./adw/config": {
+            "source": "./src/adw/config.ts",
+            "types": "./dist/adw/config.d.ts",
+            "default": "./dist/adw/config.js"
+        },
+        "./config": {
+            "source": "./src/config.ts",
+            "types": "./dist/config.d.ts",
+            "default": "./dist/config.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "./src/index.ts",
+        "./dist/index.js",
+        "./src/internal.ts",
+        "./dist/internal.js",
+        "./src/bootstrap.ts",
+        "./dist/bootstrap.js",
+        "./src/element-behaviors.ts",
+        "./dist/element-behaviors.js",
+        "./src/adw/index.ts",
+        "./dist/adw/index.js",
+        "./src/adw/element-behaviors.ts",
+        "./dist/adw/element-behaviors.js"
+    ],
     "files": [
         "dist",
         "src",
-        "!**/*.tsbuildinfo"
+        "!**/*.tsbuildinfo",
+        "env.d.ts"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
@@ -64,9 +89,11 @@
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
+        "@types/react": "catalog:",
         "@types/react-reconciler": "^0.33.0"
     },
     "peerDependencies": {
-        "react": "^19"
+        "@types/react": "^19.2",
+        "react": "^19.2"
     }
 }

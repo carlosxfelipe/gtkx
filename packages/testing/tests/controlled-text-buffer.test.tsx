@@ -7,25 +7,30 @@ import { render, screen, userEvent } from "../src/index.js";
 const bufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
     const [start, end] = buffer.getBounds();
+
     return buffer.getText(start, end, true);
 };
 
 const caretOffset = (view: Gtk.TextView): number => {
     const buffer = view.getBuffer();
+
     return buffer.getIterAtMark(buffer.getInsert()).getOffset();
 };
 
 const ControlledNotes = ({ initial }: { initial: string }): ReactNode => {
     const [notes, setNotes] = useState(initial);
+
     return (
         <GtkTextView
-            buffer={
+            buffer={(
                 <GtkTextBuffer
                     enableUndo
                     text={notes}
-                    onChanged={(buffer) => setNotes(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false))}
+                    onChanged={(buffer) => {
+                        setNotes(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false));
+                    }}
                 />
-            }
+            )}
         />
     );
 };
@@ -36,7 +41,6 @@ describe("controlled GtkTextBuffer through the text prop", () => {
         const view = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         expect(bufferText(view)).toBe("seed");
         expect(view.getBuffer().getCanUndo()).toBe(false);
-
         view.grabFocus();
         await userEvent.keyboard(view, "{Control>}z{/Control}");
         expect(bufferText(view)).toBe("seed");
@@ -46,10 +50,8 @@ describe("controlled GtkTextBuffer through the text prop", () => {
         await render(<ControlledNotes initial="hello" />);
         const view = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         view.grabFocus();
-
         await userEvent.keyboard(view, "{Home}{ArrowRight}{ArrowRight}");
         expect(caretOffset(view)).toBe(2);
-
         await userEvent.type(view, "X");
         expect(bufferText(view)).toBe("heXllo");
         expect(caretOffset(view)).toBe(3);
@@ -59,13 +61,10 @@ describe("controlled GtkTextBuffer through the text prop", () => {
         await render(<ControlledNotes initial="hello" />);
         const view = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         view.grabFocus();
-
         await userEvent.type(view, "!");
         expect(bufferText(view)).toBe("hello!");
-
         await userEvent.keyboard(view, "{Control>}z{/Control}");
         expect(bufferText(view)).toBe("hello");
-
         await userEvent.keyboard(view, "{Control>}z{/Control}");
         expect(bufferText(view)).toBe("hello");
     });

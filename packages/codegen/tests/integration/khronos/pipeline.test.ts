@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { loadGlRegistry } from "../../../src/khronos/model.js";
-import { type GlGenerationResult, generateGlModules } from "../../../src/khronos/pipeline.js";
+import { generateGlModules, type GlGenerationResult } from "../../../src/khronos/pipeline.js";
 import { selectSubset } from "../../../src/khronos/select.js";
 
 const REGISTRY_PATH = fileURLToPath(new URL("../../../src/khronos/registry/gl.xml", import.meta.url));
@@ -15,6 +15,14 @@ const OVERRIDE_EXPORTS: Set<string> = new Set([
     "clientWaitSyncLoop",
 ]);
 
+const result: GlGenerationResult = generateGlModules({
+    registryPath: REGISTRY_PATH,
+    overrideExports: OVERRIDE_EXPORTS,
+});
+
+const DRAW_ELEMENTS_SIGNATURE =
+    /drawElements\(\s*mode: PrimitiveType,\s*count: GLsizei,\s*type: DrawElementsType,\s*indices: GLintptr,?\s*\)/;
+
 describe("khronos selection over the vendored registry", () => {
     it("resolves the gl 4.6 core subset to the pinned counts", () => {
         const registry = loadGlRegistry(REGISTRY_PATH);
@@ -26,15 +34,9 @@ describe("khronos selection over the vendored registry", () => {
     it("declares the gl feature range from 1.0 to 4.6", () => {
         const registry = loadGlRegistry(REGISTRY_PATH);
         const numbers = registry.features.filter((feature) => feature.api === "gl").map((feature) => feature.number);
-        expect(Math.min(...numbers)).toBe(1.0);
-        expect(Math.max(...numbers)).toBe(4.6);
+        expect(Math.min(...numbers)).toBe(1);
+        expect(Math.max(...numbers)).toBeCloseTo(4.6, 10);
     });
-});
-
-let result: GlGenerationResult;
-
-beforeAll(() => {
-    result = generateGlModules({ registryPath: REGISTRY_PATH, overrideExports: OVERRIDE_EXPORTS });
 });
 
 describe("khronos generation counts", () => {
@@ -60,9 +62,11 @@ describe("khronos generation counts", () => {
 describe("khronos generation surface", () => {
     it("emits prefix-stripped typed wrappers", () => {
         const commands = result.files.get("commands.ts") ?? "";
+
         expect(commands).toContain(
             "export function clearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat): void",
         );
+
         expect(commands).toContain("export function createShader(type: ShaderType): GLuint");
         expect(commands).toContain("return glCreateShader(type) as GLuint;");
     });
@@ -70,9 +74,7 @@ describe("khronos generation surface", () => {
     it("types curated byte-offset parameters as numbers, never views", () => {
         const commands = result.files.get("commands.ts") ?? "";
         expect(commands).toContain("pointer: GLintptr");
-        expect(commands).toMatch(
-            /drawElements\(\s*mode: PrimitiveType,\s*count: GLsizei,\s*type: DrawElementsType,\s*indices: GLintptr,?\s*\)/,
-        );
+        expect(commands).toMatch(DRAW_ELEMENTS_SIGNATURE);
     });
 
     it("passes data parameters as buffers accepting views, offsets, and null", () => {
@@ -85,6 +87,7 @@ describe("khronos generation surface", () => {
         expect(commands).toContain("export function genBuffers(n: GLsizei): GLuint[]");
         expect(commands).toContain("const out0 = { value: new Array<number>(n).fill(0) };");
         expect(commands).toContain("export function getShaderiv(shader: GLuint, pname: ShaderParameterName): GLint");
+
         expect(commands).toContain(
             "export function getShaderSource(shader: GLuint, bufSize: GLsizei): [GLsizei, string]",
         );

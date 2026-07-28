@@ -1,9 +1,10 @@
+use anyhow::bail;
 use glib::{self, translate::IntoGlib as _};
 
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
-use crate::handle::{Boxed, BoxedFreeFn};
-use crate::messaging::error_reporter::ReportErr as _;
+use crate::handle::{Boxed, BoxedFreeFn, Handle};
+use crate::host::error_reporter::ReportErr as _;
 
 #[derive(Debug, Clone)]
 pub struct BoxedCodec {
@@ -13,6 +14,8 @@ pub struct BoxedCodec {
     pub get_type_fn_name: Option<String>,
     pub free_fn_name: Option<String>,
     pub caller_allocated: bool,
+    pub size: Option<usize>,
+    pub inline: bool,
 }
 
 impl BoxedCodec {
@@ -24,20 +27,53 @@ impl BoxedCodec {
     }
 
     fn lookup_free_fn(library_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
-        FfiCache::with(|state| state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name))
+        FfiCache::with(|state| unsafe {
+            state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name)
+        })
     }
 
-    fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Boxed> {
+    fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Handle> {
         let library_name = self.shared_library.as_deref().unwrap_or("(no library)");
 
         let free_fn = Self::lookup_free_fn(library_name, free_fn_name)
             .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))?;
 
         if self.ownership.is_full() {
-            Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn))
+            Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn).into())
         } else {
-            Ok(Boxed::from_glib_borrow(ptr))
+            Ok(Handle::from_glib_borrow(ptr))
         }
+    }
+
+    fn copied(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+        let Some(type_) = self.type_()? else {
+            bail!(
+                "Cannot copy boxed type '{}': no type available. \
+                 Pointer {ptr:p} may become dangling if the source is freed",
+                self.type_name
+            );
+        };
+        Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into())
+    }
+
+    fn write_inline(&self, slot: ffi::Slot, value: Unknown<'_>) -> anyhow::Result<()> {
+        let Some(size) = self.size else {
+            bail!(
+                "Cannot write the inline boxed field '{}': its size is unknown",
+                self.type_name
+            )
+        };
+        let src_ptr = value::handle_ptr(value, "Boxed field write")?;
+        if src_ptr.is_null() {
+            bail!(
+                "Cannot write null into the inline boxed field '{}'",
+                self.type_name
+            )
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
+        }
+        Ok(())
     }
 
     fn try_resolve_type_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
@@ -86,33 +122,43 @@ impl Decoder for BoxedCodec {
             if let Some(free_fn_name) = self.free_fn_name.as_deref() {
                 return Ok(value::handle_to_unknown(
                     env,
-                    self.boxed_with_free_fn(ptr, free_fn_name)?.into(),
+                    self.boxed_with_free_fn(ptr, free_fn_name)?,
                 )?);
             }
 
-            let type_ = self.type_()?;
-            let boxed = match self.ownership {
-                Ownership::Full => Boxed::from_glib_full(type_, ptr),
-                Ownership::Borrowed => unsafe {
-                    Boxed::from_glib_none(type_, ptr, Some(&self.type_name))?
+            let handle = match self.ownership {
+                Ownership::Full => match self.type_()? {
+                    Some(type_) => Boxed::from_glib_full(type_, ptr).into(),
+                    None => Handle::owned_struct(ptr),
                 },
+                Ownership::Borrowed => self.copied(ptr)?,
             };
 
-            Ok(value::handle_to_unknown(env, boxed.into())?)
+            Ok(value::handle_to_unknown(env, handle)?)
         })
+    }
+
+    unsafe fn read_pointer_slot<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *const c_void,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.inline {
+            return unsafe { self.read_value(env, ptr.cast_mut(), context) };
+        }
+        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
+        unsafe { self.read_value(env, inner_ptr, context) }
     }
 
     read_value_non_null!(|self, env, ptr| {
         if self.free_fn_name.is_some() || self.caller_allocated {
             return Ok(value::handle_to_unknown(
                 env,
-                Boxed::from_glib_borrow(ptr).into(),
+                Handle::from_glib_borrow(ptr),
             )?);
         }
-        Ok(value::handle_to_unknown(
-            env,
-            unsafe { Boxed::from_glib_none(self.type_()?, ptr, None) }?.into(),
-        )?)
+        Ok(value::handle_to_unknown(env, self.copied(ptr)?)?)
     });
 }
 
@@ -121,17 +167,21 @@ impl PtrWriter for BoxedCodec {
 
     fn write_value_to_ptr(
         &self,
-        env: &Env,
+        _env: &Env,
         slot: ffi::Slot,
         value: Unknown<'_>,
+        init: SlotInit,
     ) -> anyhow::Result<()> {
+        if self.inline {
+            return self.write_inline(slot, value);
+        }
         let Some(type_) = self.type_()? else {
-            return write_object_ptr(env, slot, value, "Boxed field write");
+            return write_object_ptr(slot, value, "Boxed field write");
         };
         swap_owned_slot(
-            env,
             slot,
             value,
+            init,
             "Boxed field write",
             |new_ptr| unsafe { Boxed::boxed_copy(type_, new_ptr) },
             |old_ptr| unsafe {

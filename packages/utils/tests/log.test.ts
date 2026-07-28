@@ -1,15 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createLogger, Logger, type OutputStream } from "../src/log.js";
+import { createLogger, Logger, type OutputStream } from "../src/log/index.js";
 
 type Capture = OutputStream & { written: string[] };
 
 const captureStream = (isTTY?: boolean): Capture => {
     const written: string[] = [];
+
     return {
         isTTY,
         written,
         write(chunk: string) {
             written.push(chunk);
+
             return true;
         },
     };
@@ -79,8 +81,11 @@ describe("Logger debug resolution from the environment", () => {
     const original = process.env.GTKX_DEBUG;
 
     afterEach(() => {
-        if (original === undefined) delete process.env.GTKX_DEBUG;
-        else process.env.GTKX_DEBUG = original;
+        if (original === undefined) {
+            delete process.env.GTKX_DEBUG;
+        } else {
+            process.env.GTKX_DEBUG = original;
+        }
     });
 
     it("enables debug for every namespace when GTKX_DEBUG=1", () => {

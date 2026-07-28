@@ -1,81 +1,40 @@
-import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkGridView, type GtkGridViewProps } from "@gtkx/jsx/gtk";
-import { useMergeRefs } from "@gtkx/react/internal";
-import { type ReactNode, type Ref, useRef } from "react";
-import { type CellRenderer, CellRenderHost, itemRenderer } from "./cell.js";
-import { makeFactoryInstaller, useCellContainers } from "./hooks/use-cell-containers.js";
-import { useCollectionModel } from "./hooks/use-collection-model.js";
-import { useInstalledModel } from "./hooks/use-installed-model.js";
-import type { CollectionItemSizeProps, ControlledSelectionProps, ItemNode, RenderItemProps } from "./types.js";
-
-const factoryInstaller = makeFactoryInstaller<Gtk.GridView>((widget, factory) => widget.setFactory(factory));
-
-export type GridViewDeclarativeProps<T = unknown> = CollectionItemSizeProps &
-    ControlledSelectionProps & {
-        items?: ItemNode<T>[] | undefined;
-        renderItem: (props: RenderItemProps<T>) => ReactNode;
-    };
+import type { ReactNode } from "react";
+import { GtkGridView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import type { GridViewProps } from "./types.js";
+import { collectionRenderers } from "./internal/use-cells.js";
+import { useCollection } from "./internal/use-collection.js";
 
 /**
- * Props for {@link GridView}. Combines the underlying Gtk.GridView props with
- * declarative collection props: items, a per-cell renderItem, controlled selection,
- * and estimated item sizing.
+ * Renders a Gtk.GridView of uniform cells from declarative items, with per-cell
+ * rendering, controlled selection, and estimated item sizing.
  */
-export type GridViewProps<T = unknown> = Omit<
-    GtkGridViewProps,
-    "model" | "factory" | keyof GridViewDeclarativeProps<T>
-> &
-    GridViewDeclarativeProps<T>;
-
-/**
- * Renders a Gtk.GridView: a scrollable grid of uniformly sized cells backed by a
- * collection model, with each cell drawn by renderItem.
- */
-export const GridView = <T = unknown>(props: GridViewProps<T>): ReactNode => {
+function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
     const {
-        ref,
         items,
         renderItem,
         selectedIds,
-        selectionMode,
         onSelectionChanged,
+        selectionMode,
         estimatedItemHeight,
         estimatedItemWidth,
-        ...intrinsicProps
-    } = props as GridViewDeclarativeProps<T> & {
-        ref?: Ref<Gtk.GridView | null>;
-        estimatedItemHeight?: number;
-        estimatedItemWidth?: number;
-        [key: string]: unknown;
-    };
+        ...rest
+    } = props;
 
-    const cellRenderer: CellRenderer<T, unknown> = itemRenderer<T, unknown>(renderItem);
-
-    const widgetRef = useRef<Gtk.GridView | null>(null);
-    const setRef = useMergeRefs<Gtk.GridView>(ref, widgetRef);
-
-    const collection = useCollectionModel<T, unknown>({
+    const { model, cells, selection } = useCollection({
         items,
-        sections: undefined,
-        selectionMode,
+        mode: "flat",
+        size: { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 },
         selectedIds,
         onSelectionChanged,
-        renderHeader: undefined,
+        selectionMode,
     });
-
-    const itemStore = useCellContainers<Gtk.GridView>({
-        object: widgetRef,
-        installer: factoryInstaller,
-        estimatedHeight: estimatedItemHeight,
-        estimatedWidth: estimatedItemWidth,
-    });
-
-    useInstalledModel(widgetRef, collection.installedModel, (widget, value) => widget.setModel(value));
 
     return (
         <>
-            <GtkGridView {...intrinsicProps} ref={setRef} />
-            <CellRenderHost store={itemStore} resolver={collection.resolver} render={cellRenderer} />
+            <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...cells.item} />} {...rest} />
+            {cells.portals(collectionRenderers({ collection: model, renderItem }), model)}
         </>
     );
-};
+}
+
+export { GridView };

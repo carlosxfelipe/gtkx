@@ -1,42 +1,40 @@
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { bench, describe } from "vitest";
 import { cleanup, render } from "../tests/helpers/production-render.js";
-import { ScrollWrapper } from "../tests/helpers/scroll-wrapper.js";
+import { BENCH_SIZES } from "../tests/helpers/sized-bench.js";
 
-const SIZES = [100, 400];
+const TOGGLED_SUFFIXES = ["b", "a", "b", "a", "b", "a"];
+const UNCHANGED_SUFFIXES = Array.from({ length: 10 }, () => "a");
 
 const drawLabels = (n: number, suffix: string): ReactNode => (
-    <ScrollWrapper>
+    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
         <GtkBox>
-            {Array.from({ length: n }, (_, i) => `label-${i}`).map((name) => (
+            {Array.from({ length: n }, (_, i) => `label-${String(i)}`).map((name) => (
                 <GtkLabel key={name} label={`${name}-${suffix}`} />
             ))}
         </GtkBox>
-    </ScrollWrapper>
+    </GtkScrolledWindow>
 );
 
+const rerenderLabels = async (n: number, suffixes: string[]): Promise<void> => {
+    const { rerender } = await render(drawLabels(n, "a"));
+
+    for (const suffix of suffixes) {
+        await rerender(drawLabels(n, suffix));
+    }
+
+    await cleanup();
+};
+
 describe("prop update", () => {
-    for (const n of SIZES) {
-        bench(`update one prop across ${n} labels`, async () => {
-            const { rerender } = await render(drawLabels(n, "a"));
-            for (let k = 0; k < 3; k++) {
-                await rerender(drawLabels(n, "b"));
-                await rerender(drawLabels(n, "a"));
-            }
-            await cleanup();
-        });
+    for (const n of BENCH_SIZES) {
+        bench(`update one prop across ${String(n)} labels`, () => rerenderLabels(n, TOGGLED_SUFFIXES));
     }
 });
 
 describe("no-op rerender", () => {
-    for (const n of SIZES) {
-        bench(`rerender ${n} labels with unchanged props`, async () => {
-            const { rerender } = await render(drawLabels(n, "a"));
-            for (let k = 0; k < 10; k++) {
-                await rerender(drawLabels(n, "a"));
-            }
-            await cleanup();
-        });
+    for (const n of BENCH_SIZES) {
+        bench(`rerender ${String(n)} labels with unchanged props`, () => rerenderLabels(n, UNCHANGED_SUFFIXES));
     }
 });

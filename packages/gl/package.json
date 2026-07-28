@@ -38,8 +38,6 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
         "codegen": "NODE_OPTIONS=--conditions=source tsx ./scripts/codegen.ts",
         "release": "tsx ../../scripts/release-package.ts"
     },
@@ -53,6 +51,40 @@
     "devDependencies": {
         "@gtkx/codegen": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@types/node": "catalog:"
+        "@gtkx/vitest": "workspace:*",
+        "@types/node": "catalog:",
+        "vitest": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "codegen": {
+                "cache": true,
+                "dependsOn": [
+                    "gtkx:codegen"
+                ],
+                "inputs": [
+                    "{projectRoot}/scripts/**/*",
+                    "{projectRoot}/src/overrides.ts",
+                    "^production",
+                    "{workspaceRoot}/packages/codegen/src/khronos/**/*"
+                ],
+                "outputs": [
+                    "{projectRoot}/src/generated/**"
+                ]
+            },
+            "build": {
+                "dependsOn": [
+                    "^build",
+                    "gtkx:codegen",
+                    "codegen"
+                ],
+                "inputs": [
+                    "...",
+                    {
+                        "dependentTasksOutputFiles": "**/*.ts"
+                    }
+                ]
+            }
+        }
     }
 }

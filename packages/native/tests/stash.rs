@@ -3,8 +3,8 @@ use std::ffi::c_void;
 use napi::Env;
 use native::ffi::closure::{ClosureData, ClosureState};
 use native::ffi::codec::{Codec, VoidCodec};
-use native::ffi::value::JsHandle;
 use native::ffi::{CallbackValue, Stash, StashStorage};
+use native::value::ClosureHandle;
 use test_support::napi_mock;
 
 fn callback_value(destroy: bool) -> CallbackValue {
@@ -16,38 +16,29 @@ fn callback_value(destroy: bool) -> CallbackValue {
     CallbackValue::new(
         std::ptr::without_provenance_mut::<c_void>(0xCAFE),
         std::ptr::without_provenance_mut::<c_void>(0xBEEF),
+        true,
         destroy_ptr,
         None,
     )
 }
 
-fn js_func_ref(env: &Env) -> JsHandle {
+fn js_func_ref(env: &Env) -> ClosureHandle {
     let func = napi_mock::to_unknown(
         env,
         napi_mock::fake_function(|_| napi_mock::fake_undefined()),
     );
-    JsHandle::from_js_value(env, &func).expect("reference creation should succeed")
+    ClosureHandle::from_js_value(env, &func).expect("reference creation should succeed")
 }
 
-fn armed_callback_value(env: &Env, destroy_ptr: Option<*mut c_void>) -> (CallbackValue, JsHandle) {
+fn armed_callback_value(env: &Env, destroy_ptr: Option<*mut c_void>) -> CallbackValue {
     let js_fn = js_func_ref(env);
-    let data = ClosureData::new(
-        js_fn.clone(),
-        Vec::new(),
-        Codec::Void(VoidCodec),
-        None,
-        false,
-    );
+    let data = ClosureData::new(js_fn, Vec::new(), Codec::Void(VoidCodec), None, false);
     let state = Box::new(ClosureState::new(data));
     let fn_ptr = state.code_ptr;
-    (
-        CallbackValue::new_pending_transfer(fn_ptr, destroy_ptr, state),
-        js_fn,
-    )
+    CallbackValue::new_pending_transfer(fn_ptr, true, destroy_ptr, state)
 }
 
-fn release_handed_over_state(state_ptr: *mut c_void, js_fn: JsHandle) {
-    drop(js_fn);
+fn release_handed_over_state(state_ptr: *mut c_void) {
     assert_eq!(napi_mock::count("napi_delete_reference"), 0);
     unsafe { ClosureState::destroy(state_ptr) };
     assert_eq!(napi_mock::count("napi_delete_reference"), 1);
@@ -58,7 +49,7 @@ fn new_armed_exposes_state_and_closure_pointers() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let destroy_ptr = ClosureState::destroy as *mut c_void;
-        let (callback, _js_func) = armed_callback_value(&env, Some(destroy_ptr));
+        let callback = armed_callback_value(&env, Some(destroy_ptr));
         assert!(!callback.fn_ptr().is_null());
         assert!(!callback.state_ptr().is_null());
         assert_eq!(callback.destroy_ptr(), Some(destroy_ptr));
@@ -71,8 +62,7 @@ fn new_armed_exposes_state_and_closure_pointers() {
 fn armed_state_drops_with_value_when_call_never_happens() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let (callback, js_fn) = armed_callback_value(&env, None);
-        drop(js_fn);
+        let callback = armed_callback_value(&env, None);
         assert_eq!(napi_mock::count("napi_delete_reference"), 0);
         drop(callback);
         assert_eq!(napi_mock::count("napi_delete_reference"), 1);
@@ -83,13 +73,12 @@ fn armed_state_drops_with_value_when_call_never_happens() {
 fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let (callback, js_fn) =
-            armed_callback_value(&env, Some(ClosureState::destroy as *mut c_void));
+        let callback = armed_callback_value(&env, Some(ClosureState::destroy as *mut c_void));
         let state_ptr = callback.state_ptr();
         callback.disarm_pending_transfer();
         callback.disarm_pending_transfer();
         drop(callback);
-        release_handed_over_state(state_ptr, js_fn);
+        release_handed_over_state(state_ptr);
     });
 }
 
@@ -97,12 +86,12 @@ fn disarm_pending_transfer_hands_state_over_and_is_idempotent() {
 fn stash_disarm_pending_transfer_routes_to_callback() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let (callback, js_fn) = armed_callback_value(&env, None);
+        let callback = armed_callback_value(&env, None);
         let state_ptr = callback.state_ptr();
         let value = Stash::Callback(callback);
         value.disarm_pending_transfer();
         drop(value);
-        release_handed_over_state(state_ptr, js_fn);
+        release_handed_over_state(state_ptr);
     });
 }
 
@@ -137,15 +126,24 @@ fn callback_value_without_destroy_has_none() {
 
 #[test]
 fn write_scalar_to_ptr_writes_every_numeric_variant() {
-    macro_rules! check {
+    macro_rules! write_scalar {
         ($variant:ident, $value:expr, $codec:ty) => {{
             let mut slot: u64 = 0;
-            let slot_ptr = &mut slot as *mut u64 as *mut c_void;
+            let slot_ptr = (&raw mut slot).cast::<c_void>();
             let v = Stash::$variant($value);
             unsafe { v.write_scalar_to_ptr(slot_ptr) }.expect("scalar write should succeed");
-            let read = unsafe { *(slot_ptr as *const $codec) };
-            assert_eq!(read, $value);
+            unsafe { *slot_ptr.cast_const().cast::<$codec>() }
         }};
+    }
+    macro_rules! check {
+        ($variant:ident, $value:expr, $codec:ty) => {
+            assert_eq!(write_scalar!($variant, $value, $codec), $value)
+        };
+    }
+    macro_rules! check_float {
+        ($variant:ident, $value:expr, $codec:ty) => {
+            assert!((write_scalar!($variant, $value, $codec) - $value).abs() < <$codec>::EPSILON)
+        };
     }
     check!(U8, 12u8, u8);
     check!(I8, -5i8, i8);
@@ -155,8 +153,8 @@ fn write_scalar_to_ptr_writes_every_numeric_variant() {
     check!(I32, -42i32, i32);
     check!(U64, 7u64, u64);
     check!(I64, -7i64, i64);
-    check!(F32, 1.5f32, f32);
-    check!(F64, 2.5f64, f64);
+    check_float!(F32, 1.5f32, f32);
+    check_float!(F64, 2.5f64, f64);
 }
 
 #[test]
@@ -215,18 +213,26 @@ fn as_non_null_ptr_propagates_error() {
     assert!(Stash::Void.as_non_null_ptr("test").is_err());
 }
 
+fn assert_number(value: &Stash, expected: f64) {
+    let actual = value.to_number().expect("numeric variant should convert");
+    assert!(
+        (actual - expected).abs() < f64::EPSILON,
+        "{actual} should equal {expected}"
+    );
+}
+
 #[test]
 fn to_number_handles_every_numeric_variant() {
-    assert_eq!(Stash::I8(-3).to_number().unwrap(), -3.0);
-    assert_eq!(Stash::U8(3).to_number().unwrap(), 3.0);
-    assert_eq!(Stash::I16(-300).to_number().unwrap(), -300.0);
-    assert_eq!(Stash::U16(300).to_number().unwrap(), 300.0);
-    assert_eq!(Stash::I32(-30000).to_number().unwrap(), -30000.0);
-    assert_eq!(Stash::U32(30000).to_number().unwrap(), 30000.0);
-    assert_eq!(Stash::I64(-7).to_number().unwrap(), -7.0);
-    assert_eq!(Stash::U64(7).to_number().unwrap(), 7.0);
-    assert!((Stash::F32(1.25).to_number().unwrap() - 1.25).abs() < 1e-6);
-    assert_eq!(Stash::F64(2.5).to_number().unwrap(), 2.5);
+    assert_number(&Stash::I8(-3), -3.0);
+    assert_number(&Stash::U8(3), 3.0);
+    assert_number(&Stash::I16(-300), -300.0);
+    assert_number(&Stash::U16(300), 300.0);
+    assert_number(&Stash::I32(-30000), -30000.0);
+    assert_number(&Stash::U32(30000), 30000.0);
+    assert_number(&Stash::I64(-7), -7.0);
+    assert_number(&Stash::U64(7), 7.0);
+    assert_number(&Stash::F32(1.25), 1.25);
+    assert_number(&Stash::F64(2.5), 2.5);
 }
 
 #[test]
@@ -275,6 +281,6 @@ fn append_libffi_args_handles_every_scalar_variant() {
 #[test]
 fn libffi_arg_conversion_covers_every_scalar_variant() {
     for v in &scalar_value_samples() {
-        let _arg: libffi::middle::Arg = v.into();
+        let _arg: libffi::middle::Arg<'_> = v.into();
     }
 }

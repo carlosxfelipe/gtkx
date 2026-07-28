@@ -1,6 +1,9 @@
 use test_support as helpers;
 use test_support::napi_mock;
 
+use napi::bindgen_prelude::FromNapiValue as _;
+use native::ffi::descriptor::Descriptor;
+
 use std::ffi::c_void;
 
 use libffi::middle;
@@ -8,8 +11,8 @@ use napi::JsValue as _;
 use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
-    BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PtrWriter,
-    ReadSource, StructCodec, VoidCodec,
+    BooleanCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder, IntegerCodec, Ownership,
+    PtrWriter, ReadSource, SlotInit, StructCodec, VoidCodec,
 };
 
 fn assert_ownership_predicates_mutually_exclusive() {
@@ -54,6 +57,8 @@ fn transfer_release_matches_codec_ownership() {
             get_type_fn_name: None,
             free_fn_name: None,
             caller_allocated: false,
+            size: None,
+            inline: false,
         };
         assert!(matches!(
             full_boxed.transfer_release(),
@@ -69,6 +74,7 @@ fn transfer_release_matches_codec_ownership() {
             ownership: Ownership::Full,
             size: None,
             caller_allocated: false,
+            inline: false,
         };
         assert!(plain_struct.transfer_release().is_none());
     });
@@ -79,6 +85,7 @@ fn struct_codec() -> StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(8),
         caller_allocated: false,
+        inline: false,
     }
 }
 
@@ -88,7 +95,7 @@ fn callback_codec() -> CallbackCodec {
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy: false,
         user_data_index: None,
-        scope: Default::default(),
+        scope: CallbackScope::default(),
     }
 }
 
@@ -124,7 +131,7 @@ fn pointer_codec_ptr_to_value_default_bails() {
 fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
     let env = helpers::fake_env();
     let mut inner: *mut c_void = 8 as *mut c_void;
-    let ptr = &mut inner as *mut *mut c_void as *const c_void;
+    let ptr = (&raw mut inner).cast_const().cast::<c_void>();
     let result = unsafe { Decoder::read(&callback_codec(), &env, ReadSource::Slot(ptr, "ctx")) };
     assert!(result.is_err());
 }
@@ -133,7 +140,7 @@ fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
 fn pointer_codec_write_return_to_pointer_default_writes_null() {
     let env = helpers::fake_env();
     let mut slot: *mut c_void = 9 as *mut c_void;
-    let ret = &mut slot as *mut *mut c_void as *mut c_void;
+    let ret = (&raw mut slot).cast::<c_void>();
     PtrWriter::write_return_to_ptr(
         &callback_codec(),
         &env,
@@ -151,13 +158,14 @@ fn pointer_codec_write_return_to_pointer_default_writes_null() {
 fn pointer_codec_write_value_to_pointer_default_bails() {
     let env = helpers::fake_env();
     let mut slot: *mut c_void = std::ptr::null_mut();
-    let ptr = &mut slot as *mut *mut c_void as *mut c_void;
+    let ptr = (&raw mut slot).cast::<c_void>();
     assert!(
         PtrWriter::write_value_to_ptr(
             &callback_codec(),
             &env,
             unsafe { Slot::new(ptr) },
             napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)),
+            SlotInit::Initialized,
         )
         .is_err()
     );
@@ -203,5 +211,25 @@ fn descriptor_enum_dispatch_routes_codec_traits() {
         assert!(matches!(encoded, ffi::Stash::I32(1)));
         let decoded = Decoder::decode(&descriptor, &env, &ffi::Stash::I32(0)).unwrap();
         assert_eq!(napi_mock::read_bool(decoded.raw()), Some(false));
+    });
+}
+
+#[test]
+fn descriptor_nesting_is_bounded() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut value = napi_mock::fake_object(&[("kind", napi_mock::fake_string("int32"))]);
+
+        for _ in 0..64 {
+            value = napi_mock::fake_object(&[
+                ("kind", napi_mock::fake_string("ref")),
+                ("innerDescriptor", value),
+            ]);
+        }
+
+        let Err(error) = (unsafe { Descriptor::from_napi_value(env.raw(), value) }) else {
+            panic!("a descriptor this deep must be refused");
+        };
+        assert!(error.reason.contains("maximum depth"));
     });
 }

@@ -1,6 +1,25 @@
 import type { Plugin, UserConfig } from "vite";
 import { type ConfigLoader, createConfigLoader } from "./loader.js";
-import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderConfigModule } from "./virtual.js";
+import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.js";
+
+type PluginState = {
+    root: string | undefined;
+};
+
+const resolveVirtualId = (id: string): string | null =>
+    id === GTKX_CONFIG_VIRTUAL_ID ? RESOLVED_GTKX_CONFIG_VIRTUAL_ID : null;
+
+const loadVirtualModule = async (
+    id: string,
+    loadConfig: ConfigLoader,
+    state: PluginState,
+): Promise<string | undefined> => {
+    if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) {
+        return undefined;
+    }
+
+    return renderConfigModule(await loadConfig(state.root ?? process.cwd()));
+};
 
 /**
  * Creates the Vite plugin that resolves and serves the `virtual:gtkx-config`
@@ -15,22 +34,17 @@ const createConfigPlugin = (options: {
     config?: () => Omit<UserConfig, "plugins">;
 }): Plugin => {
     const loadConfig = options.loadConfig ?? createConfigLoader();
-    let root: string | undefined;
+    const state: PluginState = { root: undefined };
 
     return {
         name: options.name,
         config(config: UserConfig) {
-            root = config.root ?? root;
+            state.root = config.root ?? state.root;
+
             return options.config?.();
         },
-        resolveId(id: string) {
-            if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;
-            return undefined;
-        },
-        async load(id: string) {
-            if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
-            return renderConfigModule(await loadConfig(root ?? process.cwd()));
-        },
+        resolveId: (id: string) => resolveVirtualId(id),
+        load: (id: string) => loadVirtualModule(id, loadConfig, state),
     };
 };
 

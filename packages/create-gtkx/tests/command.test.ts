@@ -1,20 +1,19 @@
 import { runCommand } from "citty";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("../src/scaffolder.js", () => ({
-    scaffold: vi.fn(async () => undefined),
-}));
-
-import { type CreateCommandArgs, createCommand, runCreate } from "../src/command.js";
+import { runCreate, scaffoldCommand } from "../src/command.js";
 import { scaffold } from "../src/scaffolder.js";
 
 const scaffoldMock = vi.mocked(scaffold);
 
-describe("runCreate", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+vi.mock("../src/scaffolder.js", () => ({
+    scaffold: vi.fn(),
+}));
 
+beforeEach(() => {
+    vi.clearAllMocks();
+});
+
+describe("runCreate — delegation", () => {
     it("normalizes the raw arguments and delegates to scaffold", async () => {
         await runCreate({
             name: "my-app",
@@ -47,7 +46,9 @@ describe("runCreate", () => {
             }),
         );
     });
+});
 
+describe("runCreate — flag mapping", () => {
     it("maps --no-typescript to typescript: false", async () => {
         await runCreate({ name: "my-app", typescript: false });
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
@@ -73,26 +74,22 @@ describe("runCreate", () => {
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ overwrite: true }));
     });
 
-    const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {
-        await expect(runCreate(overrides)).rejects.toThrow(message);
-        expect(scaffoldMock).not.toHaveBeenCalled();
-    };
-
     it("rejects an unknown package manager before scaffolding", async () => {
-        await expectRejection({ "package-manager": "bun" }, /Unknown package manager "bun"/);
+        await expect(runCreate({ "package-manager": "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
+        expect(scaffoldMock).not.toHaveBeenCalled();
     });
 });
 
-describe("createCommand", () => {
+describe("scaffoldCommand", () => {
     it("exposes the create metadata and the shared scaffold arguments", () => {
-        expect(createCommand.meta).toMatchObject({ name: "create" });
-        expect(createCommand.args).toHaveProperty("application-id");
-        expect(createCommand.args).toHaveProperty("typescript");
+        expect(scaffoldCommand.meta).toMatchObject({ name: "create" });
+        expect(scaffoldCommand.args).toHaveProperty("application-id");
+        expect(scaffoldCommand.args).toHaveProperty("typescript");
     });
 
     it("parses --no-typescript into typescript: false through citty", async () => {
         scaffoldMock.mockClear();
-        await runCommand(createCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
+        await runCommand(scaffoldCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
         expect(scaffoldMock).toHaveBeenCalledTimes(1);
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
     });

@@ -1,5 +1,5 @@
-import * as Gtk from "@gtkx/gi/gtk";
 import type { RootElement } from "@gtkx/react";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     createReconcilerRoot,
     isRootElement,
@@ -7,8 +7,9 @@ import {
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
-import { runInAct } from "./act.js";
 import type { RenderResult } from "./bound-queries.js";
+import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
+import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { scheduleAfterLayout } from "./frame-sync.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
@@ -16,20 +17,26 @@ import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureAndSaveScreenshot } from "./screenshot.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
-
-let lastRenderError: Error | null = null;
-let errorHandlerInstalled = false;
 
 type ActiveRender = {
     root: ReconcilerRoot;
     window: Gtk.Window | null;
 };
 
-const activeRenders = new Set<ActiveRender>();
+type ResolvedContainer = {
+    containerInfo: Gtk.Widget | RootElement;
+    window: Gtk.Window | null;
+};
 
+type ReconcilerErrorState = {
+    lastError: Error | null;
+    isHandlerInstalled: boolean;
+};
+
+const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
+const activeRenders: Set<ActiveRender> = new Set();
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
 
@@ -43,15 +50,18 @@ const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> =
         root.update(element);
     });
 
-    if (lastRenderError) {
-        const captured = lastRenderError;
-        lastRenderError = null;
+    if (reconcilerErrors.lastError) {
+        const captured = reconcilerErrors.lastError;
+        reconcilerErrors.lastError = null;
         throw captured;
     }
 };
 
 const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
-    if (!activeRenders.delete(active)) return;
+    if (!activeRenders.delete(active)) {
+        return;
+    }
+
     await active.root.unmount(async (root) => {
         await update(null, root);
         active.window?.destroy();
@@ -59,42 +69,50 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
 };
 
 const disposeAllActiveRenders = async (): Promise<void> => {
-    for (const active of [...activeRenders]) {
+    for (const active of activeRenders) {
         await disposeActiveRender(active);
     }
 };
 
 const handleError = (error: unknown): void => {
-    lastRenderError = error instanceof Error ? error : new Error(String(error));
+    reconcilerErrors.lastError = error instanceof Error ? error : new Error(String(error));
 };
 
 const installErrorHandler = (): void => {
-    if (errorHandlerInstalled) return;
-    setReconcilerErrorHandler(handleError);
-    errorHandlerInstalled = true;
-};
+    if (reconcilerErrors.isHandlerInstalled) {
+        return;
+    }
 
-type ResolvedContainer = {
-    containerInfo: Gtk.Widget | RootElement;
-    window: Gtk.Window | null;
+    setReconcilerErrorHandler(handleError);
+    reconcilerErrors.isHandlerInstalled = true;
 };
 
 const resolveContainer = (container: RenderOptions["container"]): ResolvedContainer => {
     if (isRootElement(container)) {
         return { containerInfo: container, window: null };
     }
+
     if (container instanceof Gtk.Widget) {
         return { containerInfo: container, window: null };
     }
+
     const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
     window.setTitlebar(new Gtk.HeaderBar({ showTitleButtons: false }));
+
     return { containerInfo: window, window };
 };
 
 const firstToplevelWidget = (baseElement: Container): Gtk.Widget => {
-    if (baseElement instanceof Gtk.Widget) return baseElement;
+    if (baseElement instanceof Gtk.Widget) {
+        return baseElement;
+    }
+
     const [first] = traverse(baseElement);
-    if (first) return first;
+
+    if (first) {
+        return first;
+    }
+
     throw new Error("render() produced no widgets: ensure the element renders visible content");
 };
 
@@ -103,8 +121,14 @@ const resolveResultContainer = (
     container: RenderOptions["container"],
     baseElement: Container,
 ): Gtk.Widget => {
-    if (resolved.window) return resolved.window;
-    if (container instanceof Gtk.Widget) return container;
+    if (resolved.window) {
+        return resolved.window;
+    }
+
+    if (container instanceof Gtk.Widget) {
+        return container;
+    }
+
     return firstToplevelWidget(baseElement);
 };
 
@@ -119,10 +143,11 @@ const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | und
     },
 });
 
-const applyEnableAnimations = (enabled: boolean): void => {
+const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
+
     if (settings) {
-        settings.gtkEnableAnimations = enabled;
+        settings.gtkEnableAnimations = areAnimationsEnabled;
     }
 };
 
@@ -135,38 +160,36 @@ const applyEnableAnimations = (enabled: boolean): void => {
  * @param options Optional container, wrapper, custom queries, and other render settings.
  * @returns A render result with bound queries, debug helpers, and lifecycle controls.
  */
-export const render = async <Q extends QueryMap = Record<never, never>>(
+const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
-
     applyEnableAnimations(options?.animations === true);
-
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
-
     const resolved = resolveContainer(options?.container);
+
     const root = createReconcilerRoot({
         containerInfo: resolved.containerInfo,
         ...renderErrorHandlers(options),
     });
+
     const active: ActiveRender = { root, window: resolved.window };
     activeRenders.add(active);
-
     addToCleanupQueue(disposeAllActiveRenders);
     addToCleanupQueue(clearScreen);
     addToCleanupQueue(resetClipboard);
 
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
+
         return options?.reactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
     };
 
     await update(wrap(element), root);
     resolved.window?.present();
     await flushLayout(resolved.window);
-
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
     const result: RenderResult<Q> = {
@@ -199,6 +222,8 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
  * Unmounts every active render and runs all registered cleanup callbacks,
  * resetting the screen and clipboard. Called automatically after each test.
  */
-export const cleanup = async (): Promise<void> => {
+const cleanup = async (): Promise<void> => {
     await runCleanup();
 };
+
+export { render, cleanup };

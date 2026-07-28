@@ -3,13 +3,20 @@ import { describe, expect, it, vi } from "vitest";
 type BuildStartHook = (this: {
     emitFile: (asset: { type: string; fileName: string; source: Buffer }) => void;
 }) => void;
+
 type TransformHook = (code: string, id: string) => string | null | undefined;
 type ResolveIdHook = (id: string) => { id: string; external: boolean } | null;
 
 const LOADER_PATH = "/fake/path/@gtkx/native/index.js";
 
+const fakeRequire = Object.assign((id: string) => id, {
+    resolve: (id: string) =>
+        id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`,
+});
+
 const mockOs = (platform: string, arch: string): void => {
     vi.resetModules();
+
     vi.doMock("node:os", () => ({
         platform: () => platform,
         arch: () => arch,
@@ -18,18 +25,28 @@ const mockOs = (platform: string, arch: string): void => {
 
 const mockModuleResolution = (): void => {
     vi.doMock("node:module", () => ({
-        createRequire: () => {
-            const fn = (id: string) => id;
-            fn.resolve = (id: string) =>
-                id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`;
-            return fn;
-        },
+        createRequire: () => fakeRequire,
     }));
 };
 
 const unmockOs = (): void => {
     vi.doUnmock("node:os");
     vi.resetModules();
+};
+
+const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
+    mockOs(platform, arch);
+    const { gtkxNative } = await import("../../src/vite-plugins/native.js");
+    const plugin = gtkxNative("/tmp");
+
+    expect(() => {
+        (plugin.buildStart as BuildStartHook).call({
+            emitFile: vi.fn(),
+        });
+    },
+    ).toThrow(message);
+
+    unmockOs();
 };
 
 describe("gtkxNative (plugin shape)", () => {
@@ -43,10 +60,12 @@ describe("gtkxNative (plugin shape)", () => {
     it("resolveId marks the emitted binary as external", async () => {
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
+
         expect((plugin.resolveId as ResolveIdHook)("./gtkx.node")).toEqual({
             id: "./gtkx.node",
             external: true,
         });
+
         expect((plugin.resolveId as ResolveIdHook)("./other.js")).toBeNull();
     });
 });
@@ -70,6 +89,7 @@ describe("gtkxNative (transform)", () => {
         const plugin = gtkxNative("/tmp");
         const loaderSource = ["export { init }", "export { bind }", "export { call }"].join("\n");
         const result = (plugin.transform as TransformHook)(loaderSource, LOADER_PATH);
+
         expect(result).toBe(
             [
                 'import { createRequire as __gtkxCreateRequire } from "node:module";',
@@ -78,26 +98,13 @@ describe("gtkxNative (transform)", () => {
                 "export { init, bind, call };",
             ].join("\n"),
         );
+
         vi.doUnmock("node:module");
         vi.resetModules();
     });
 });
 
 describe("gtkxNative (buildStart platform guards)", () => {
-    const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
-        mockOs(platform, arch);
-        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
-        const plugin = gtkxNative("/tmp");
-
-        expect(() =>
-            (plugin.buildStart as BuildStartHook).call({
-                emitFile: () => undefined,
-            }),
-        ).toThrow(message);
-
-        unmockOs();
-    };
-
     it("buildStart throws on unsupported platform", async () => {
         await expectBuildStartThrows("darwin", "x64", /Unsupported build platform/);
     });
@@ -111,16 +118,18 @@ describe("gtkxNative (buildStart success)", () => {
     it("buildStart emits the platform binary", async () => {
         mockOs("linux", "x64");
         mockModuleResolution();
+
         vi.doMock("node:fs", async () => {
             const real = await vi.importActual<typeof import("node:fs")>("node:fs");
+
             return { ...real, readFileSync: () => Buffer.from("native-bytes") };
         });
 
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
-
         const emitFile = vi.fn();
         (plugin.buildStart as BuildStartHook).call({ emitFile });
+
         expect(emitFile).toHaveBeenCalledWith({
             type: "asset",
             fileName: "gtkx.node",

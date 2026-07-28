@@ -1,11 +1,14 @@
-pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource};
-pub(super) use crate::ffi::{self, value};
+pub(super) use super::{
+    Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadSource, SlotInit,
+};
+pub(super) use crate::ffi;
+pub(super) use crate::value;
 pub(super) use napi::Env;
 pub(super) use napi::ValueType;
 pub(super) use napi::bindgen_prelude::*;
 pub(super) use std::ffi::c_void;
 
-use crate::messaging::error_reporter::ReportErr as _;
+use crate::host::error_reporter::ReportErr as _;
 use std::ffi::c_char;
 
 macro_rules! bail_expected {
@@ -21,7 +24,7 @@ macro_rules! reject_return_codec {
             &self,
             _cif: &::libffi::middle::Cif,
             _ptr: ::libffi::middle::CodePtr,
-            _args: &[::libffi::middle::Arg],
+            _args: &[::libffi::middle::Arg<'_>],
         ) -> ::anyhow::Result<$crate::ffi::Stash> {
             ::anyhow::bail!("{} codecs cannot be return codecs", $kind)
         }
@@ -52,7 +55,7 @@ macro_rules! write_return_transferred {
             value: &::std::result::Result<::napi::bindgen_prelude::Unknown<'_>, ()>,
         ) {
             self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-                $crate::messaging::error_reporter::ReportErr::report_err(
+                $crate::host::error_reporter::ReportErr::report_err(
                     unsafe { self.ref_for_transfer(ptr) },
                     $label,
                 )
@@ -82,18 +85,16 @@ where
 }
 
 pub(super) fn write_object_ptr(
-    env: &Env,
     slot: ffi::Slot,
     value: Unknown<'_>,
     label: &str,
 ) -> anyhow::Result<()> {
-    let object_ptr = value::handle_ptr(env, value, label)?;
+    let object_ptr = value::handle_ptr(value, label)?;
     unsafe { slot.store(object_ptr) };
     Ok(())
 }
 
 pub(super) fn write_return_object_ptr<F>(
-    env: &Env,
     ret: ffi::Slot,
     value: &std::result::Result<Unknown<'_>, ()>,
     transfer: F,
@@ -101,9 +102,7 @@ pub(super) fn write_return_object_ptr<F>(
     F: FnOnce(*mut c_void) -> *mut c_void,
 {
     let ptr = match value {
-        Ok(unknown) => {
-            value::handle_ptr(env, *unknown, "object return").unwrap_or(std::ptr::null_mut())
-        }
+        Ok(unknown) => value::handle_ptr(*unknown, "object return").unwrap_or(std::ptr::null_mut()),
         Err(()) => std::ptr::null_mut(),
     };
     let owned = if ptr.is_null() { ptr } else { transfer(ptr) };
@@ -111,9 +110,9 @@ pub(super) fn write_return_object_ptr<F>(
 }
 
 pub(super) fn swap_owned_slot<A, R>(
-    env: &Env,
     slot: ffi::Slot,
     value: Unknown<'_>,
+    init: SlotInit,
     label: &str,
     acquire: A,
     release: R,
@@ -122,17 +121,41 @@ where
     A: FnOnce(*mut c_void) -> *mut c_void,
     R: FnOnce(*mut c_void),
 {
-    let new_ptr = value::handle_ptr(env, value, label)?;
+    let new_ptr = value::handle_ptr(value, label)?;
     let owned = if new_ptr.is_null() {
         new_ptr
     } else {
         acquire(new_ptr)
     };
+    if !init.is_initialized() {
+        unsafe { slot.store(owned) };
+        return Ok(());
+    }
     let old_ptr = unsafe { slot.swap(owned) };
     if !old_ptr.is_null() {
         release(old_ptr);
     }
     Ok(())
+}
+
+// The callee owns the container from here on, so the pending transfers are disarmed. Only the
+// backing store the C container actually points into has to outlive this call; everything else the
+// stash owns is Rust-side bookkeeping that would otherwise leak on every invocation.
+fn aliases_stash_backing(stash: &ffi::Stash) -> bool {
+    let ffi::Stash::Storage(storage) = stash else {
+        return true;
+    };
+    match storage.data() {
+        ffi::StashData::Unit | ffi::StashData::ObjectArray(_, _) => false,
+        ffi::StashData::List(list) => matches!(
+            &list.payload,
+            ffi::ListPayload::Strings {
+                items_duped: false,
+                ..
+            }
+        ),
+        _ => true,
+    }
 }
 
 pub(super) fn encode_and_leak_container<F>(
@@ -141,7 +164,7 @@ pub(super) fn encode_and_leak_container<F>(
     encode: F,
 ) -> *mut c_void
 where
-    F: FnOnce(Unknown<'_>) -> anyhow::Result<crate::ffi::Stash>,
+    F: FnOnce(Unknown<'_>) -> anyhow::Result<ffi::Stash>,
 {
     let Ok(unknown) = value else {
         return std::ptr::null_mut();
@@ -152,18 +175,18 @@ where
     let Some(stash) = encode(*unknown).report_err(context) else {
         return std::ptr::null_mut();
     };
-    let container = stash.as_ptr(context).expect(context);
-    std::mem::forget(stash);
+    let Some(container) = stash.as_ptr(context).report_err(context) else {
+        return std::ptr::null_mut();
+    };
+    stash.disarm_pending_transfer();
+    if aliases_stash_backing(&stash) {
+        std::mem::forget(stash);
+    }
     container
 }
 
-pub(super) fn full_transfer_stash(
-    ptr: *mut c_void,
-    release: crate::ffi::ReleaseKind,
-) -> crate::ffi::Stash {
-    crate::ffi::Stash::Storage(
-        crate::ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release),
-    )
+pub(super) fn full_transfer_stash(ptr: *mut c_void, release: ffi::ReleaseKind) -> ffi::Stash {
+    ffi::Stash::Storage(ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release))
 }
 
 pub(super) fn finalize_container_stash(

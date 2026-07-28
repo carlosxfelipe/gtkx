@@ -1,40 +1,87 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type RefObject, useLayoutEffect, useRef } from "react";
-import { useLatest } from "./use-latest.js";
+import { type RefObject, useEffectEvent, useLayoutEffect, useRef } from "react";
 
 type TickRegistration = {
     widget: Gtk.Widget;
     id: number | null;
 };
 
-export function useTickCallback(target: RefObject<Gtk.Widget | null> | null, callback: Gtk.TickCallback): void {
-    const callbackRef = useLatest(callback);
-    const registrationRef = useRef<TickRegistration | null>(null);
+type TickRegistrationRef = RefObject<TickRegistration | null>;
 
-    const drop = (): void => {
-        const registration = registrationRef.current;
-        if (registration === null) return;
-        if (registration.id !== null) registration.widget.removeTickCallback(registration.id);
+function dropRegistration(registrationRef: TickRegistrationRef): void {
+    const registration = registrationRef.current;
+
+    if (registration === null) {
+        return;
+    }
+
+    if (registration.id !== null) {
+        registration.widget.removeTickCallback(registration.id);
+    }
+
+    registrationRef.current = null;
+}
+
+function forgetRegistration(registrationRef: TickRegistrationRef, entry: TickRegistration): void {
+    entry.id = null;
+
+    if (registrationRef.current === entry) {
         registrationRef.current = null;
-    };
+    }
+}
 
-    useLayoutEffect(() => {
-        const widget = target?.current ?? null;
-        const registration = registrationRef.current;
-        if (registration !== null && widget !== null && registration.widget === widget) return;
-        drop();
-        if (widget === null) return;
-        const entry: TickRegistration = { widget, id: null };
-        entry.id = widget.addTickCallback((tickWidget, frameClock) => {
-            const keep = callbackRef.current(tickWidget, frameClock);
-            if (!keep) {
-                entry.id = null;
-                if (registrationRef.current === entry) registrationRef.current = null;
-            }
-            return keep;
-        });
-        registrationRef.current = entry;
+function addRegistration(
+    registrationRef: TickRegistrationRef,
+    widget: Gtk.Widget,
+    tick: Gtk.TickCallback,
+): void {
+    const entry: TickRegistration = { widget, id: null };
+
+    entry.id = widget.addTickCallback((tickWidget, frameClock) => {
+        const isKeep = tick(tickWidget, frameClock);
+
+        if (!isKeep) {
+            forgetRegistration(registrationRef, entry);
+        }
+
+        return isKeep;
     });
 
-    useLayoutEffect(() => () => drop(), []);
+    registrationRef.current = entry;
 }
+
+function syncRegistration(
+    registrationRef: TickRegistrationRef,
+    target: RefObject<Gtk.Widget | null> | null,
+    tick: Gtk.TickCallback,
+): void {
+    const widget = target?.current ?? null;
+    const registration = registrationRef.current;
+
+    if (registration !== null && widget !== null && registration.widget === widget) {
+        return;
+    }
+
+    dropRegistration(registrationRef);
+
+    if (widget === null) {
+        return;
+    }
+
+    addRegistration(registrationRef, widget, tick);
+}
+
+function useTickCallback(target: RefObject<Gtk.Widget | null> | null, callback: Gtk.TickCallback): void {
+    const tick = useEffectEvent(callback);
+    const registrationRef = useRef<TickRegistration | null>(null);
+
+    useLayoutEffect(() => {
+        syncRegistration(registrationRef, target, (tickWidget, frameClock) => tick(tickWidget, frameClock));
+    });
+
+    useLayoutEffect(() => () => {
+        dropRegistration(registrationRef);
+    }, []);
+}
+
+export { useTickCallback };

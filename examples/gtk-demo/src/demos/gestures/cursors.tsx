@@ -39,17 +39,17 @@ import { path as wResizePath } from "#data/demos/gestures/cursors/w_resize_curso
 import { path as waitPath } from "#data/demos/gestures/cursors/wait_cursor.png";
 import { path as zoomInPath } from "#data/demos/gestures/cursors/zoom_in_cursor.png";
 import { path as zoomOutPath } from "#data/demos/gestures/cursors/zoom_out_cursor.png";
-import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
+import { useCssResource } from "../../use-css-resource.js";
 import cursorsCss from "./cursors.css?raw";
 import sourceCode from "./cursors.tsx?raw";
 
-interface CursorInfo {
+type CursorInfo = {
     name: string;
     image: string;
     hotX: number;
     hotY: number;
-}
+};
 
 const GROUPS: CursorInfo[][] = [
     [
@@ -104,14 +104,32 @@ const GROUPS: CursorInfo[][] = [
     ],
 ];
 
-const textureCache = new Map<string, Gdk.Texture>();
+const textureCache: Map<string, Gdk.Texture> = new Map();
+
+const cursorsDemo: Demo = {
+    id: "cursors",
+    title: "Cursors",
+    description:
+        "Demonstrates a useful set of available cursors. The cursors shown here are the ones defined by CSS, " +
+        "which we assume to be available. The example shows creating cursors by name or from an image, with " +
+        "or without a fallback.",
+    keywords: [],
+    component: CursorsDemo,
+    sourceCode,
+    defaultWidth: 300,
+    defaultHeight: 300,
+};
 
 function getCursorTexture(info: CursorInfo): Gdk.Texture {
     const cached = textureCache.get(info.image);
-    if (cached) return cached;
+
+    if (cached) {
+        return cached;
+    }
 
     const texture = Gdk.Texture.newFromResource(info.image);
     textureCache.set(info.image, texture);
+
     return texture;
 }
 
@@ -124,6 +142,7 @@ const buildCursorVariants = (info: CursorInfo) => {
         const defaultFallback = Gdk.Cursor.newFromName("default", null);
         const imageWithDefaultFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, defaultFallback);
         const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, defaultFallback);
+
         return [named, image, imageWithDefaultFallback, imageWithFallback] as const;
     }
 
@@ -131,32 +150,35 @@ const buildCursorVariants = (info: CursorInfo) => {
         info.name,
         Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null),
     );
+
     const imageWithFallback = Gdk.Cursor.newFromTexture(
         texture,
         info.hotX,
         info.hotY,
         Gdk.Cursor.newFromName(info.name, null),
     );
+
     return [named, image, namedWithFallback, imageWithFallback] as const;
 };
 
 const buildCursorTooltips = (info: CursorInfo): [string, string, string, string] =>
     info.name === "gtk-logo"
         ? [
-              `The "gtk-logo" named cursor`,
-              "An image cursor for the GTK logo",
-              `An image cursor falling back to the "default" cursor`,
-              `An image cursor falling back to the "default" cursor`,
-          ]
+                "The \"gtk-logo\" named cursor",
+                "An image cursor for the GTK logo",
+                "An image cursor falling back to the \"default\" cursor",
+                "An image cursor falling back to the \"default\" cursor",
+            ]
         : [
-              `The "${info.name}" named cursor`,
-              "An image cursor",
-              `The "${info.name}" named cursor falling back to an image cursor`,
-              `An image cursor falling back to the "${info.name}" cursor`,
-          ];
+                `The "${info.name}" named cursor`,
+                "An image cursor",
+                `The "${info.name}" named cursor falling back to an image cursor`,
+                `An image cursor falling back to the "${info.name}" cursor`,
+            ];
 
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
     const texture = getCursorTexture(info);
+
     return <GtkImage paintable={texture} />;
 };
 
@@ -167,6 +189,7 @@ const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor; tooltip: string 
 const CursorRow = ({ info }: { info: CursorInfo }) => {
     const cursors = buildCursorVariants(info);
     const tooltips = buildCursorTooltips(info);
+
     return (
         <GtkListBoxRow activatable={false}>
             <GtkBox spacing={10} marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}>
@@ -193,8 +216,9 @@ const CursorGroup = ({ rows }: { rows: CursorInfo[] }) => (
     </GtkFrame>
 );
 
-const CursorsDemo = () => {
+function CursorsDemo() {
     useCssResource(cursorsCss);
+
     return (
         <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
             <GtkBox
@@ -212,16 +236,6 @@ const CursorsDemo = () => {
             </GtkBox>
         </GtkScrolledWindow>
     );
-};
+}
 
-export const cursorsDemo: Demo = {
-    id: "cursors",
-    title: "Cursors",
-    description:
-        "Demonstrates a useful set of available cursors. The cursors shown here are the ones defined by CSS, which we assume to be available. The example shows creating cursors by name or from an image, with or without a fallback.",
-    keywords: [],
-    component: CursorsDemo,
-    sourceCode,
-    defaultWidth: 300,
-    defaultHeight: 300,
-};
+export { cursorsDemo };

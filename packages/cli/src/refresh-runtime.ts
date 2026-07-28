@@ -1,10 +1,7 @@
 import RefreshRuntime from "react-refresh/runtime";
+import "./refresh-globals.js";
 
 type ComponentType = (...args: unknown[]) => unknown;
-
-RefreshRuntime.injectIntoGlobalHook(globalThis);
-globalThis.$RefreshReg$ = () => {};
-globalThis.$RefreshSig$ = () => (type: unknown) => type;
 
 /**
  * Builds the per-module `$RefreshReg$` and `$RefreshSig$` hooks that React Refresh
@@ -13,7 +10,7 @@ globalThis.$RefreshSig$ = () => (type: unknown) => type;
  * @param moduleId Identifier used to namespace registered component types so they are unique across modules.
  * @returns An object with `$RefreshReg$` and `$RefreshSig$` to install as module-local globals.
  */
-export function createModuleRegistration(moduleId: string): {
+function createModuleRegistration(moduleId: string): {
     $RefreshReg$: (type: ComponentType, id: string) => void;
     $RefreshSig$: typeof RefreshRuntime.createSignatureFunctionForTransform;
 } {
@@ -32,21 +29,26 @@ export function createModuleRegistration(moduleId: string): {
  * @param moduleExports The module's export object to inspect.
  * @returns `true` when the module qualifies as a refresh boundary, `false` otherwise.
  */
-export function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
+const isComponentExport = (key: string, value: unknown): boolean =>
+    key === "__esModule" || RefreshRuntime.isLikelyComponentType(value);
+
+const areAllExportsComponents = (moduleExports: Record<string, unknown>): boolean => {
+    for (const key in moduleExports) {
+        if (!isComponentExport(key, moduleExports[key])) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
+function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
     if (RefreshRuntime.isLikelyComponentType(moduleExports)) {
         return true;
     }
 
-    for (const key in moduleExports) {
-        if (key === "__esModule") {
-            continue;
-        }
-
-        const value = moduleExports[key];
-
-        if (!RefreshRuntime.isLikelyComponentType(value)) {
-            return false;
-        }
+    if (!areAllExportsComponents(moduleExports)) {
+        return false;
     }
 
     return Object.keys(moduleExports).some((k) => k !== "__esModule");
@@ -55,6 +57,8 @@ export function isRefreshBoundary(moduleExports: Record<string, unknown>): boole
 /**
  * Applies all pending React Refresh updates, re-rendering components whose modules have changed.
  */
-export function performRefresh(): void {
+function performRefresh(): void {
     RefreshRuntime.performReactRefresh();
 }
+
+export { createModuleRegistration, isRefreshBoundary, performRefresh };

@@ -1,0 +1,153 @@
+{
+    "$schema": "./node_modules/nx/schemas/nx-schema.json",
+    "defaultBase": "main",
+    "analytics": false,
+    "namedInputs": {
+        "default": [
+            "{projectRoot}/**/*",
+            "sharedGlobals"
+        ],
+        "production": [
+            "default",
+            "!{projectRoot}/tests/**/*",
+            "!{projectRoot}/bench/**/*",
+            "!{projectRoot}/tsconfig.test.json",
+            "!{projectRoot}/vitest.config.ts",
+            "!{projectRoot}/vitest.bench.config.ts"
+        ],
+        "sharedGlobals": [
+            "{workspaceRoot}/tsconfig.base.json",
+            "{workspaceRoot}/tsconfig.lib.json",
+            "{workspaceRoot}/tsconfig.app.json",
+            "{workspaceRoot}/tsconfig.test.json",
+            "{workspaceRoot}/gtkx.config.base.ts",
+            "{workspaceRoot}/vitest.config.base.ts",
+            {
+                "env": "GTK4_VERSION"
+            },
+            {
+                "env": "GTKX_GIR_PATH"
+            },
+            {
+                "env": "NODE_VERSION"
+            }
+        ]
+    },
+    "plugins": [
+        {
+            "plugin": "@nx/js/typescript",
+            "options": {
+                "typecheck": {
+                    "targetName": "typecheck"
+                },
+                "build": {
+                    "targetName": "build",
+                    "configName": "tsconfig.lib.json"
+                }
+            }
+        },
+        {
+            "plugin": "@nx/eslint/plugin",
+            "options": {
+                "targetName": "lint"
+            }
+        },
+        {
+            "plugin": "@nx/vitest",
+            "options": {
+                "testTargetName": "test",
+                "testMode": "run"
+            },
+            "exclude": [
+                "examples/gtk-demo/*"
+            ]
+        }
+    ],
+    "targetDefaults": {
+        "build": {
+            "dependsOn": [
+                "^build",
+                "gtkx:codegen"
+            ],
+            "inputs": [
+                "...",
+                "sharedGlobals"
+            ]
+        },
+        "typecheck": {
+            "dependsOn": [
+                "build",
+                "^typecheck",
+                "gtkx:codegen"
+            ],
+            "inputs": [
+                "...",
+                "sharedGlobals"
+            ]
+        },
+        "lint": {
+            "dependsOn": [
+                "gtkx:codegen",
+                "@gtkx/gl:codegen"
+            ],
+            "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.ts",
+                "{workspaceRoot}/packages/eslint/src/**/*",
+                "{workspaceRoot}/packages/eslint/package.json",
+                {
+                    "externalDependencies": [
+                        "eslint",
+                        "typescript",
+                        "typescript-eslint",
+                        "@eslint/js",
+                        "@nx/eslint-plugin",
+                        "@stylistic/eslint-plugin",
+                        "@vitest/eslint-plugin",
+                        "eslint-plugin-perfectionist",
+                        "eslint-plugin-promise",
+                        "eslint-plugin-react-hooks",
+                        "eslint-plugin-sonarjs",
+                        "eslint-plugin-unicorn",
+                        "jiti"
+                    ]
+                }
+            ]
+        },
+        "test": {
+            "dependsOn": [
+                "gtkx:codegen",
+                "@gtkx/vitest:build",
+                "@gtkx/cli:build",
+                "@gtkx/components:build",
+                "@gtkx/css:build",
+                "@gtkx/gl:build"
+            ]
+        },
+        "bench": {
+            "cache": false,
+            "parallelism": false,
+            "dependsOn": [
+                "gtkx:codegen",
+                "^build"
+            ]
+        },
+        "release": {
+            "cache": false,
+            "dependsOn": [
+                "build"
+            ]
+        },
+        "coverage": {
+            "dependsOn": [
+                "gtkx:codegen",
+                "@gtkx/vitest:build",
+                "@gtkx/cli:build",
+                "@gtkx/components:build",
+                "@gtkx/css:build",
+                "@gtkx/gl:build"
+            ]
+        }
+    }
+}

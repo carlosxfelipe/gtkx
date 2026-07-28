@@ -1,36 +1,36 @@
+import type { ComponentProps } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkDragSource, GtkDropTarget, GtkLabel } from "@gtkx/jsx/gtk";
-import type { ComponentProps } from "react";
 import { type Mock, vi } from "vitest";
 import { render, screen } from "../src/index.js";
 
-export interface RenderedClickButton {
+type RenderedClickButton = {
     handleClick: Mock;
     button: Gtk.Widget;
-}
+};
 
-export async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
-    const handleClick = vi.fn();
-    await render(<GtkButton label={label} onClicked={handleClick} />);
-
-    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
-    return { handleClick, button };
-}
-
-export interface DragAndDropPairOptions {
+type DragAndDropPairOptions = {
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"];
     sourceSensitive?: boolean;
     withDragSource?: boolean;
-}
+};
 
-export interface RenderedDragAndDropPair {
+type RenderedDragAndDropPair = {
     source: Gtk.Widget;
     target: Gtk.Widget;
+};
+
+async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
+    const handleClick = vi.fn();
+    await render(<GtkButton label={label} onClicked={handleClick} />);
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
+
+    return { handleClick, button };
 }
 
-export async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
+async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
     await render(
         <GtkBox>
             <GtkLabel
@@ -44,13 +44,13 @@ export async function renderDragAndDropPair(options: DragAndDropPairOptions): Pr
             </GtkLabel>
             <GtkLabel
                 name="drop-target"
-                controllers={
+                controllers={(
                     <GtkDropTarget
                         types={[GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.COPY}
                         onDrop={options.onDrop}
                     />
-                }
+                )}
             >
                 Drop here
             </GtkLabel>
@@ -59,5 +59,14 @@ export async function renderDragAndDropPair(options: DragAndDropPairOptions): Pr
 
     const source = await screen.findByName("drag-source");
     const target = await screen.findByName("drop-target");
+
     return { source, target };
 }
+
+export {
+    renderClickButton,
+    renderDragAndDropPair,
+    type RenderedClickButton,
+    type DragAndDropPairOptions,
+    type RenderedDragAndDropPair,
+};

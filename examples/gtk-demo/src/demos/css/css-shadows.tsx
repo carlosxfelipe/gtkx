@@ -51,35 +51,7 @@ window.demo button:active {
 
 const WINDOW_CLASSES = ["demo", "background"];
 
-const CssShadowsDemo = () => {
-    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
-
-    return (
-        <GtkPaned
-            name="paned"
-            orientation={Gtk.Orientation.VERTICAL}
-            resizeStartChild={false}
-            startChild={
-                <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                    <GtkButton iconName="go-next" accessibleLabel="Go Next" />
-                    <GtkButton iconName="go-previous" accessibleLabel="Go Previous" />
-                    <GtkButton label="Hello World" />
-                </GtkBox>
-            }
-            endChild={
-                <GtkScrolledWindow>
-                    <GtkTextView
-                        name="text-view"
-                        ref={textViewRef}
-                        buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
-                    />
-                </GtkScrolledWindow>
-            }
-        />
-    );
-};
-
-export const cssShadowsDemo: Demo = {
+const cssShadowsDemo: Demo = {
     id: "css-shadows",
     title: "Theming/Shadows",
     description: "This demo shows how to use CSS shadows.",
@@ -90,3 +62,33 @@ export const cssShadowsDemo: Demo = {
     defaultHeight: 300,
     windowCssClasses: WINDOW_CLASSES,
 };
+
+function CssShadowsDemo() {
+    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
+
+    return (
+        <GtkPaned
+            name="paned"
+            orientation={Gtk.Orientation.VERTICAL}
+            resizeStartChild={false}
+            startChild={(
+                <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                    <GtkButton iconName="go-next" accessibleLabel="Go Next" />
+                    <GtkButton iconName="go-previous" accessibleLabel="Go Previous" />
+                    <GtkButton label="Hello World" />
+                </GtkBox>
+            )}
+            endChild={(
+                <GtkScrolledWindow>
+                    <GtkTextView
+                        name="text-view"
+                        ref={textViewRef}
+                        buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
+                    />
+                </GtkScrolledWindow>
+            )}
+        />
+    );
+}
+
+export { cssShadowsDemo };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatCodegenResult } from "../../src/codegen/report.js";
 import type { RunCodegenResult } from "../../src/codegen/run-codegen.js";
+import { formatCodegenResult } from "../../src/codegen/report.js";
 
 const result = (overrides: Partial<RunCodegenResult> = {}): RunCodegenResult => ({
     regenerated: true,
@@ -28,6 +28,7 @@ describe("formatCodegenResult", () => {
             result({ configFile: undefined, libraries: undefined, girPath: undefined }),
             5,
         );
+
         expect(lines).toEqual(["codegen: 2 namespaces, 142 intrinsic elements in 250ms (total 5ms)"]);
     });
 });

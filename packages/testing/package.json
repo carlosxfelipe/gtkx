@@ -42,8 +42,6 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
@@ -54,10 +52,14 @@
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },
+    "peerDependencies": {
+        "@types/react": "^19.2",
+        "react": "^19.2"
+    },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
-        "@gtkx/components": "workspace:*",
         "@gtkx/vitest": "workspace:*",
+        "@types/react": "catalog:",
         "@vitest/expect": "^4.1.10",
         "vitest": "catalog:"
     }

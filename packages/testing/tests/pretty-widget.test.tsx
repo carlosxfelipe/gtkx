@@ -1,24 +1,26 @@
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { logWidget, render, screen } from "../src/index.js";
-
-afterEach(() => {
-    vi.restoreAllMocks();
-});
+import { logWidget, prettyWidget, render, screen } from "../src/index.js";
 
 const VBox = ({ children }: { children: ReactNode }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
 );
 
+function spyOnConsoleLog() {
+    return vi.spyOn(console, "log").mockImplementation(vi.fn());
+}
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 describe("logWidget", () => {
     it("logs the formatted widget tree", async () => {
         const { container } = await render(<GtkButton label="Logged" />);
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
+        const log = spyOnConsoleLog();
         logWidget(container);
-
         expect(log).toHaveBeenCalledTimes(1);
         expect(log.mock.calls[0]?.[0]).toContain("button");
     });
@@ -30,19 +32,16 @@ describe("logWidget", () => {
                 <GtkButton label="Two" />
             </VBox>,
         );
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
 
+        const log = spyOnConsoleLog();
         logWidget([container, container]);
-
         expect(log).toHaveBeenCalledTimes(2);
     });
 
     it("honors formatting options", async () => {
         const { container } = await render(<GtkButton label="Truncated" />);
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
+        const log = spyOnConsoleLog();
         logWidget(container, { maxLength: 0 });
-
         expect(log).toHaveBeenCalledWith("");
     });
 });
@@ -50,20 +49,16 @@ describe("logWidget", () => {
 describe("RenderResult.debug", () => {
     it("defaults to the base element", async () => {
         const { debug } = await render(<GtkButton label="Default" />);
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
+        const log = spyOnConsoleLog();
         debug();
-
         expect(log).toHaveBeenCalledTimes(1);
         expect(log.mock.calls[0]?.[0]).toContain("button");
     });
 
     it("accepts an explicit widget and options", async () => {
         const { container, debug } = await render(<GtkButton label="Explicit" />);
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
+        const log = spyOnConsoleLog();
         debug(container, { maxLength: 0 });
-
         expect(log).toHaveBeenCalledWith("");
     });
 });
@@ -71,10 +66,26 @@ describe("RenderResult.debug", () => {
 describe("screen.debug", () => {
     it("logs the current screen root", async () => {
         await render(<GtkButton label="Screen" />);
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
+        const log = spyOnConsoleLog();
         screen.debug();
-
         expect(log).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("prettyWidget maxDepth", () => {
+    it("summarizes descendants past maxDepth and renders them in full otherwise", async () => {
+        const { container } = await render(
+            <VBox>
+                <VBox>
+                    <GtkButton label="Deep" />
+                </VBox>
+            </VBox>,
+        );
+
+        const shallow = prettyWidget(container, { maxDepth: 1 });
+        expect(shallow).toContain("child widget");
+        expect(shallow).toContain("hidden");
+        expect(shallow).not.toContain("Deep");
+        expect(prettyWidget(container)).toContain("Deep");
     });
 });

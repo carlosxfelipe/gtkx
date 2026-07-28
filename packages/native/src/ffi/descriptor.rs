@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
@@ -8,17 +10,71 @@ use crate::ffi::codec::{
     UnicharCodec, VoidCodec,
 };
 
+const MAX_DESCRIPTOR_DEPTH: u32 = 32;
+
 #[derive(Debug)]
 pub struct NestedDescriptor(pub Box<Descriptor>);
 
-type Descriptors = Vec<Descriptor>;
+#[derive(Debug)]
+pub struct Descriptors(pub Vec<Descriptor>);
+
+struct DepthGuard;
+
+thread_local! {
+    static DESCRIPTOR_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+impl DepthGuard {
+    fn enter() -> Result<Self> {
+        let depth = DESCRIPTOR_DEPTH.get();
+        if depth >= MAX_DESCRIPTOR_DEPTH {
+            return Err(Error::new(
+                Status::InvalidArg,
+                format!("Descriptor nesting exceeds the maximum depth of {MAX_DESCRIPTOR_DEPTH}"),
+            ));
+        }
+        DESCRIPTOR_DEPTH.set(depth + 1);
+        Ok(Self)
+    }
+}
+
+impl Drop for DepthGuard {
+    fn drop(&mut self) {
+        DESCRIPTOR_DEPTH.set(DESCRIPTOR_DEPTH.get().saturating_sub(1));
+    }
+}
 
 impl FromNapiValue for NestedDescriptor {
-    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
+        let _guard = DepthGuard::enter()?;
+
         Ok(Self(Box::new(unsafe {
             Descriptor::from_napi_value(env, napi_val)?
         })))
     }
+}
+
+impl FromNapiValue for Descriptors {
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
+        let _guard = DepthGuard::enter()?;
+
+        Ok(Self(unsafe {
+            Vec::<Descriptor>::from_napi_value(env, napi_val)?
+        }))
+    }
+}
+
+fn string_length(length: Option<i64>) -> Result<Option<usize>> {
+    let Some(length) = length else {
+        return Ok(None);
+    };
+
+    usize::try_from(length).map(Some).map_err(|_| {
+        Error::new(
+            Status::InvalidArg,
+            format!("A string length must not be negative, got {length}"),
+        )
+    })
 }
 
 /// Describes how a single native value (a function argument, a return value, or a struct field)
@@ -55,7 +111,7 @@ pub enum Descriptor {
     Boolean,
     String {
         ownership: Ownership,
-        length: Option<u32>,
+        length: Option<i64>,
     },
     Object {
         ownership: Ownership,
@@ -71,11 +127,13 @@ pub enum Descriptor {
         free_fn_name: Option<String>,
         caller_allocated: Option<bool>,
         size: Option<u32>,
+        inline: Option<bool>,
     },
     Struct {
         ownership: Ownership,
         size: Option<u32>,
         caller_allocated: Option<bool>,
+        inline: Option<bool>,
     },
     Fundamental {
         ownership: Ownership,
@@ -83,6 +141,7 @@ pub enum Descriptor {
         ref_fn_name: String,
         unref_fn_name: String,
         type_name: Option<String>,
+        inline: Option<bool>,
     },
     Array {
         #[napi(ts_type = "Descriptor")]
@@ -117,13 +176,13 @@ pub enum Descriptor {
 }
 
 impl NestedDescriptor {
-    fn into_codec(self) -> napi::Result<Box<Codec>> {
+    fn into_codec(self) -> Result<Box<Codec>> {
         Ok(Box::new((*self.0).into_codec()?))
     }
 }
 
 impl Descriptor {
-    pub fn into_codec(self) -> napi::Result<Codec> {
+    pub fn into_codec(self) -> Result<Codec> {
         Ok(match self {
             Self::Int8 => Codec::Integer(IntegerCodec::I8),
             Self::Uint8 => Codec::Integer(IntegerCodec::U8),
@@ -163,7 +222,7 @@ impl Descriptor {
             ),
             Self::String { ownership, length } => Codec::String(StringCodec {
                 ownership,
-                length: length.map(|n| n as usize),
+                length: string_length(length)?,
             }),
             Self::Object { ownership } => Codec::Object(ObjectCodec { ownership }),
             Self::Boxed {
@@ -173,7 +232,8 @@ impl Descriptor {
                 get_type_fn_name,
                 free_fn_name,
                 caller_allocated,
-                size: _,
+                size,
+                inline,
             } => Codec::Boxed(BoxedCodec {
                 ownership,
                 type_name,
@@ -181,15 +241,19 @@ impl Descriptor {
                 get_type_fn_name,
                 free_fn_name,
                 caller_allocated: caller_allocated.unwrap_or(false),
+                size: size.map(|n| n as usize),
+                inline: inline.unwrap_or(false),
             }),
             Self::Struct {
                 ownership,
                 size,
                 caller_allocated,
+                inline,
             } => Codec::Struct(StructCodec {
                 ownership,
                 size: size.map(|n| n as usize),
                 caller_allocated: caller_allocated.unwrap_or(false),
+                inline: inline.unwrap_or(false),
             }),
             Self::Fundamental {
                 ownership,
@@ -197,12 +261,20 @@ impl Descriptor {
                 ref_fn_name,
                 unref_fn_name,
                 type_name: _,
+                inline,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
                 ref_fn_name,
                 unref_fn_name,
+                inline: inline.unwrap_or(false),
             }),
+            nested => nested.into_nested_codec()?,
+        })
+    }
+
+    fn into_nested_codec(self) -> Result<Codec> {
+        Ok(match self {
             Self::Array {
                 item_descriptor,
                 array_kind,
@@ -238,21 +310,27 @@ impl Descriptor {
                 scope,
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
+                let user_data_index = user_data_index.map(|n| n as usize);
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
+                        .0
                         .into_iter()
                         .map(Self::into_codec)
-                        .collect::<napi::Result<Vec<_>>>()?,
+                        .collect::<Result<Vec<_>>>()?,
                     return_codec: return_descriptor.into_codec()?,
                     has_destroy,
-                    user_data_index: user_data_index.map(|n| n as usize),
-                    scope: Self::callback_scope(scope, has_destroy),
+                    user_data_index,
+                    scope: Self::callback_scope(scope, has_destroy, user_data_index),
                 })
             }
             Self::Ref {
                 inner_descriptor,
-                inout: _,
-            } => Codec::Ref(RefCodec::new(*inner_descriptor.into_codec()?)?),
+                inout,
+            } => Codec::Ref(RefCodec::new(
+                *inner_descriptor.into_codec()?,
+                inout.unwrap_or(false),
+            )?),
+            _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
     }
 
@@ -274,7 +352,18 @@ impl Descriptor {
         })
     }
 
-    fn callback_scope(scope: Option<CallbackScope>, has_destroy: bool) -> CallbackScope {
+    // Without a user-data slot the callee is handed nothing but the trampoline address, so no
+    // destroy notify can be attached and there is no signal that it has stopped using it. Keeping
+    // the closure alive for the rest of the process is then the only choice that cannot dangle,
+    // whatever lifetime the descriptor claims.
+    fn callback_scope(
+        scope: Option<CallbackScope>,
+        has_destroy: bool,
+        user_data_index: Option<usize>,
+    ) -> CallbackScope {
+        if user_data_index.is_none() && !has_destroy {
+            return CallbackScope::Forever;
+        }
         match scope {
             Some(scope) => scope,
             None if has_destroy => CallbackScope::Notified,

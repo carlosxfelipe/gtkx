@@ -23,6 +23,7 @@ const gObjectGetProperty = bind(
     [objectT("borrowed"), stringT("borrowed"), VALUE_T],
     voidT,
 );
+
 const gObjectSetProperty = bind(
     LIB,
     "g_object_set_property",
@@ -39,15 +40,23 @@ const gObjectSetProperty = bind(
  * @param props Property names mapped to `[descriptor, value]` pairs.
  * @returns The handle of the newly created object.
  */
-export function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>): ExternalObject<Handle> {
+function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>): ExternalObject<Handle> {
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
 
     for (const name in props) {
-        const entry = props[name];
-        if (!Array.isArray(entry)) continue;
-        const [descriptor, value] = entry;
-        if (value === undefined) continue;
+        const entry: unknown = props[name];
+
+        if (!Array.isArray(entry)) {
+            continue;
+        }
+
+        const [descriptor, value] = entry as [Descriptor, unknown];
+
+        if (value === undefined) {
+            continue;
+        }
+
         names.push(name);
         values.push(toValue(descriptor, value));
     }
@@ -63,9 +72,10 @@ export function newObjectWithProperties(gtype: bigint, props: Record<string, unk
  * @param propertyName The property name.
  * @param descriptor Describes the property's type.
  */
-export function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown {
+function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown {
     const value = newValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
+
     return fromValue(value);
 }
 
@@ -78,6 +88,8 @@ export function getObjectProperty(obj: object, propertyName: string, descriptor:
  * @param descriptor Describes the property's type.
  * @param jsValue The value to set.
  */
-export function setObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void {
+function setObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void {
     gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptor, jsValue));
 }
+
+export { newObjectWithProperties, getObjectProperty, setObjectProperty };

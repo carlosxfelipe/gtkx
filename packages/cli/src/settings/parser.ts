@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 
-export type ParsedKey = {
+type ParsedKey = {
     name: string;
     variantType: string | null;
     enumId: string | null;
@@ -9,22 +9,33 @@ export type ParsedKey = {
     summary: string | null;
 };
 
-export type ParsedSchema = {
+type ParsedSchema = {
     id: string;
     path: string | null;
     keys: ParsedKey[];
 };
 
-export type ParsedSchemaFile = {
+type ParsedSchemaFile = {
     fileName: string;
     schemas: ParsedSchema[];
     enums: Map<string, string[]>;
     flags: Map<string, string[]>;
 };
 
-export class SchemaParseError extends Error {}
-
 type RawNode = Record<string, unknown>;
+
+type RawSchema = {
+    id: string;
+    path: string | null;
+    extendsId: string | null;
+    keys: ParsedKey[];
+};
+
+type MergeContext = {
+    byId: Map<string, RawSchema>;
+    merged: Map<string, ParsedKey>;
+    visited: Set<string>;
+};
 
 const MULTI_TAGS: Set<string> = new Set(["schema", "key", "enum", "flags", "value", "choice"]);
 
@@ -41,17 +52,23 @@ const isRawNode = (value: unknown): value is RawNode => typeof value === "object
 
 const attr = (node: RawNode, name: string): string | null => {
     const value = node[`@_${name}`];
+
     return typeof value === "string" ? value : null;
 };
 
 const text = (node: RawNode, name: string): string | null => {
     const value = node[name];
+
     return typeof value === "string" && value.length > 0 ? value : null;
 };
 
 const children = (node: RawNode, name: string): RawNode[] => {
     const value = node[name];
-    if (!Array.isArray(value)) return [];
+
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
     return value.filter(isRawNode);
 };
 
@@ -61,17 +78,26 @@ const parseNicks = (definition: RawNode): string[] =>
         .filter((nick): nick is string => nick !== null);
 
 const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[]> => {
-    const definitions = new Map<string, string[]>();
+    const definitions: Map<string, string[]> = new Map();
+
     for (const definition of children(schemalist, tag)) {
         const id = attr(definition, "id");
-        if (id !== null) definitions.set(id, parseNicks(definition));
+
+        if (id !== null) {
+            definitions.set(id, parseNicks(definition));
+        }
     }
+
     return definitions;
 };
 
 const parseChoices = (key: RawNode): string[] => {
     const choices = key.choices;
-    if (!isRawNode(choices)) return [];
+
+    if (!isRawNode(choices)) {
+        return [];
+    }
+
     return children(choices, "choice")
         .map((choice) => attr(choice, "value"))
         .filter((value): value is string => value !== null);
@@ -79,9 +105,11 @@ const parseChoices = (key: RawNode): string[] => {
 
 const parseKey = (key: RawNode, fileName: string): ParsedKey => {
     const name = attr(key, "name");
+
     if (name === null) {
         throw new SchemaParseError(`A <key> in ${fileName} has no name attribute`);
     }
+
     return {
         name,
         variantType: attr(key, "type"),
@@ -92,18 +120,13 @@ const parseKey = (key: RawNode, fileName: string): ParsedKey => {
     };
 };
 
-type RawSchema = {
-    id: string;
-    path: string | null;
-    extendsId: string | null;
-    keys: ParsedKey[];
-};
-
 const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
     const id = attr(schema, "id");
+
     if (id === null) {
         throw new SchemaParseError(`A <schema> in ${fileName} has no id attribute`);
     }
+
     return {
         id,
         path: attr(schema, "path"),
@@ -112,35 +135,47 @@ const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
     };
 };
 
-const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): ParsedKey[] => {
-    const merged = new Map<string, ParsedKey>();
-    const visited = new Set<string>();
-    const collect = (current: RawSchema): void => {
-        if (visited.has(current.id)) return;
-        visited.add(current.id);
-        if (current.extendsId !== null) {
-            const parent = byId.get(current.extendsId);
-            if (parent !== undefined) collect(parent);
-        }
-        for (const key of current.keys) merged.set(key.name, key);
-    };
-    collect(schema);
-    return [...merged.values()];
+const collectInheritedKeys = (context: MergeContext, current: RawSchema): void => {
+    if (context.visited.has(current.id)) {
+        return;
+    }
+
+    context.visited.add(current.id);
+    const parent = current.extendsId === null ? undefined : context.byId.get(current.extendsId);
+
+    if (parent !== undefined) {
+        collectInheritedKeys(context, parent);
+    }
+
+    for (const key of current.keys) {
+        context.merged.set(key.name, key);
+    }
 };
 
-export const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile => {
+const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): ParsedKey[] => {
+    const context: MergeContext = { byId, merged: new Map(), visited: new Set() };
+    collectInheritedKeys(context, schema);
+
+    return context.merged.values().toArray();
+};
+
+const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile => {
     let document: unknown;
+
     try {
         document = PARSER.parse(xml);
     } catch (error) {
         throw new SchemaParseError(`Failed to parse ${fileName} as XML: ${String(error)}`, { cause: error });
     }
+
     if (!isRawNode(document) || !("schemalist" in document)) {
         throw new SchemaParseError(`${fileName} has no <schemalist> root element`);
     }
+
     const schemalist = isRawNode(document.schemalist) ? document.schemalist : {};
     const rawSchemas = children(schemalist, "schema").map((schema) => parseRawSchema(schema, fileName));
     const byId = new Map(rawSchemas.map((schema) => [schema.id, schema]));
+
     return {
         fileName,
         schemas: rawSchemas.map((schema) => ({
@@ -152,3 +187,7 @@ export const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile 
         flags: parseDefinitions(schemalist, "flags"),
     };
 };
+
+class SchemaParseError extends Error {}
+
+export { parseSchemaXml, SchemaParseError, type ParsedKey, type ParsedSchema, type ParsedSchemaFile };

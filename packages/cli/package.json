@@ -53,8 +53,6 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {

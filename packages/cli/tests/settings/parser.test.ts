@@ -3,10 +3,7 @@ import { parseSchemaXml, SchemaParseError } from "../../src/settings/parser.js";
 
 const FILE = "test.gschema.xml";
 
-describe("parseSchemaXml (schemas and keys)", () => {
-    it("parses schema ids, paths, and typed keys with summaries", () => {
-        const parsed = parseSchemaXml(
-            `<?xml version="1.0"?>
+const TYPED_KEYS_XML = `<?xml version="1.0"?>
 <schemalist>
     <schema id="com.example.app" path="/com/example/app/">
         <key name="enabled" type="b">
@@ -17,15 +14,22 @@ describe("parseSchemaXml (schemas and keys)", () => {
             <default>"hi"</default>
         </key>
     </schema>
-</schemalist>`,
-            FILE,
-        );
+</schemalist>`;
 
+const MULTI_SCHEMA_XML = `<schemalist>
+                <schema id="com.example.a" path="/a/"/>
+                <schema id="com.example.b" path="/b/"/>
+            </schemalist>`;
+
+describe("parseSchemaXml (schemas and keys)", () => {
+    it("parses schema ids, paths, and typed keys with summaries", () => {
+        const parsed = parseSchemaXml(TYPED_KEYS_XML, FILE);
         expect(parsed.fileName).toBe(FILE);
         expect(parsed.schemas).toHaveLength(1);
         const schema = parsed.schemas[0];
         expect(schema?.id).toBe("com.example.app");
         expect(schema?.path).toBe("/com/example/app/");
+
         expect(schema?.keys).toEqual([
             {
                 name: "enabled",
@@ -41,7 +45,8 @@ describe("parseSchemaXml (schemas and keys)", () => {
 
     it("marks schemas without a path attribute as relocatable", () => {
         const parsed = parseSchemaXml(
-            `<schemalist><schema id="com.example.profile"><key name="x" type="i"><default>0</default></key></schema></schemalist>`,
+            "<schemalist><schema id=\"com.example.profile\">" +
+            "<key name=\"x\" type=\"i\"><default>0</default></key></schema></schemalist>",
             FILE,
         );
 
@@ -49,14 +54,7 @@ describe("parseSchemaXml (schemas and keys)", () => {
     });
 
     it("parses multiple schemas in document order", () => {
-        const parsed = parseSchemaXml(
-            `<schemalist>
-                <schema id="com.example.a" path="/a/"/>
-                <schema id="com.example.b" path="/b/"/>
-            </schemalist>`,
-            FILE,
-        );
-
+        const parsed = parseSchemaXml(MULTI_SCHEMA_XML, FILE);
         expect(parsed.schemas.map((schema) => schema.id)).toEqual(["com.example.a", "com.example.b"]);
     });
 });
@@ -124,6 +122,7 @@ describe("parseSchemaXml (extends)", () => {
         );
 
         const child = parsed.schemas[1];
+
         expect(child?.keys.map((key) => [key.name, key.variantType])).toEqual([
             ["shared", "s"],
             ["overridden", "d"],
@@ -152,7 +151,7 @@ describe("parseSchemaXml (errors)", () => {
     });
 
     it("throws when a schema has no id", () => {
-        expect(() => parseSchemaXml(`<schemalist><schema path="/x/"/></schemalist>`, FILE)).toThrow(
+        expect(() => parseSchemaXml("<schemalist><schema path=\"/x/\"/></schemalist>", FILE)).toThrow(
             "A <schema> in test.gschema.xml has no id attribute",
         );
     });
@@ -160,7 +159,8 @@ describe("parseSchemaXml (errors)", () => {
     it("throws when a key has no name", () => {
         expect(() =>
             parseSchemaXml(
-                `<schemalist><schema id="com.example.app"><key type="b"><default>false</default></key></schema></schemalist>`,
+                "<schemalist><schema id=\"com.example.app\">" +
+                "<key type=\"b\"><default>false</default></key></schema></schemalist>",
                 FILE,
             ),
         ).toThrow("A <key> in test.gschema.xml has no name attribute");

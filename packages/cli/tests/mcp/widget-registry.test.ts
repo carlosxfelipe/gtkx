@@ -1,30 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
+import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
+import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 const { listToplevels } = vi.hoisted(() => ({
     listToplevels: vi.fn(() => [] as unknown[]),
 }));
+
+const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
 
 vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
     Window: { listToplevels },
 }));
 
-import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
-import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
-
-const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
-
-describe("WidgetRegistry.idFor", () => {
+describe("WidgetRegistry.getOrCreateId", () => {
     it("assigns stable, distinct ids to distinct widgets", () => {
         const registry = new WidgetRegistry();
         const a = makeWidget();
         const b = makeWidget();
-
-        const idA = registry.idFor(a as never);
-        const idB = registry.idFor(b as never);
-
+        const idA = registry.getOrCreateId(a);
+        const idB = registry.getOrCreateId(b);
         expect(idA).not.toBe(idB);
-        expect(registry.idFor(a as never)).toBe(idA);
+        expect(registry.getOrCreateId(a)).toBe(idA);
     });
 });
 
@@ -34,13 +31,10 @@ describe("WidgetRegistry.register / get", () => {
         const grandchild = makeWidget();
         const child = makeWidget({ getFirstChild: () => grandchild });
         const root = makeWidget({ getFirstChild: () => child });
-
-        registry.register(root as never);
-
-        const rootId = registry.idFor(root as never);
-        const childId = registry.idFor(child as never);
-        const grandId = registry.idFor(grandchild as never);
-
+        registry.register(root);
+        const rootId = registry.getOrCreateId(root);
+        const childId = registry.getOrCreateId(child);
+        const grandId = registry.getOrCreateId(grandchild);
         expect(registry.get(rootId)).toBe(root);
         expect(registry.get(childId)).toBe(child);
         expect(registry.get(grandId)).toBe(grandchild);
@@ -51,10 +45,8 @@ describe("WidgetRegistry.register / get", () => {
         const sibling = makeWidget();
         const firstChild = makeWidget({ getNextSibling: () => sibling });
         const root = makeWidget({ getFirstChild: () => firstChild });
-
-        registry.register(root as never);
-
-        expect(registry.get(registry.idFor(sibling as never))).toBe(sibling);
+        registry.register(root);
+        expect(registry.get(registry.getOrCreateId(sibling))).toBe(sibling);
     });
 });
 
@@ -63,26 +55,21 @@ describe("WidgetRegistry.refresh / windows", () => {
         const stale = makeWidget();
         const fresh = makeWidget();
         const registry = new WidgetRegistry();
-        registry.register(stale as never);
-        const staleId = registry.idFor(stale as never);
-
-        listToplevels.mockReturnValueOnce([fresh as unknown]);
+        registry.register(stale);
+        const staleId = registry.getOrCreateId(stale);
+        listToplevels.mockReturnValueOnce([fresh]);
         registry.refresh();
-
         expect(registry.get(staleId)).toBeUndefined();
-        expect(registry.get(registry.idFor(fresh as never))).toBe(fresh);
+        expect(registry.get(registry.getOrCreateId(fresh))).toBe(fresh);
     });
 
     it("retains the toplevel set captured by the most recent refresh", () => {
         const first = makeWidget();
         const second = makeWidget();
         const registry = new WidgetRegistry();
-
         expect(registry.toplevels()).toEqual([]);
-
-        listToplevels.mockReturnValueOnce([first as unknown, second as unknown]);
+        listToplevels.mockReturnValueOnce([first, second]);
         registry.refresh();
-
         expect(registry.toplevels()).toEqual([first, second]);
     });
 });

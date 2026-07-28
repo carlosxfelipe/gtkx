@@ -5,7 +5,7 @@ import { blockMatchedSignalHandlers } from "./signal.js";
  * Minimal structural interface of a GTK4/GIO application needed to register, run,
  * and shut it down, plus the signals its lifecycle helpers connect to.
  */
-export type ApplicationLike = {
+type ApplicationLike = {
     getIsRegistered(): boolean;
     register(cancellable: null): boolean;
     activate(): void;
@@ -17,7 +17,29 @@ export type ApplicationLike = {
 };
 
 const shutdownCallbacks: (() => void)[] = [];
-let hasQuit = false;
+/**
+ * Runs every registered exit callback and shuts down the native runtime. Safe to
+ * call more than once; only the first call takes effect.
+ */
+const quit: () => void = createQuit();
+
+function createQuit(): () => void {
+    let hasQuit = false;
+
+    return () => {
+        if (hasQuit) {
+            return;
+        }
+
+        hasQuit = true;
+
+        for (const callback of shutdownCallbacks) {
+            callback();
+        }
+
+        nativeQuit();
+    };
+}
 
 /**
  * Registers a callback to run once when the process quits, before the native
@@ -25,24 +47,9 @@ let hasQuit = false;
  *
  * @param callback Invoked during shutdown.
  */
-export const onExit = (callback: () => void): void => {
+const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
-
-/**
- * Runs every registered exit callback and shuts down the native runtime. Safe to
- * call more than once; only the first call takes effect.
- */
-export const quit = (): void => {
-    if (hasQuit) return;
-    hasQuit = true;
-
-    for (const callback of shutdownCallbacks) callback();
-
-    nativeQuit();
-};
-
-process.on("exit", quit);
 
 /**
  * Registers the application if needed and activates it, keeping the runtime alive
@@ -50,11 +57,19 @@ process.on("exit", quit);
  *
  * @param application The application to register and activate.
  */
-export const runApplication = (application: ApplicationLike): void => {
-    application.on("activate", () => keepAlive(true));
-    application.on("shutdown", () => keepAlive(false));
+const runApplication = (application: ApplicationLike): void => {
+    application.on("activate", () => {
+        keepAlive(true);
+    });
 
-    if (!application.getIsRegistered()) application.register(null);
+    application.on("shutdown", () => {
+        keepAlive(false);
+    });
+
+    if (!application.getIsRegistered()) {
+        application.register(null);
+    }
+
     application.activate();
 };
 
@@ -64,10 +79,23 @@ export const runApplication = (application: ApplicationLike): void => {
  *
  * @param application The application to shut down.
  */
-export const quitApplication = (application: ApplicationLike): void => {
-    if (!application.getIsRegistered()) return;
-    for (const window of application.getWindows?.() ?? []) application.removeWindow?.(window);
-    application.on("shutdown", () => application.quit());
+const quitApplication = (application: ApplicationLike): void => {
+    if (!application.getIsRegistered()) {
+        return;
+    }
+
+    const windows = application.getWindows?.() ?? [];
+
+    for (const window of windows) {
+        application.removeWindow?.(window);
+    }
+
+    application.on("shutdown", () => {
+        application.quit();
+    });
+
     blockMatchedSignalHandlers(application, "activate");
     application.run([]);
 };
+
+export { onExit, quit, runApplication, quitApplication, type ApplicationLike };

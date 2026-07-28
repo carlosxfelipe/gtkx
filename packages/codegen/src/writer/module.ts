@@ -1,27 +1,36 @@
 import { ImportsBuilder } from "./imports.js";
 
-export class ModuleBuilder {
-    public imports: ImportsBuilder = new ImportsBuilder();
+class ModuleBuilder {
     private bindings: string[] = [];
-    private bindingNames = new Set<string>();
-    private hoistedDescriptors = new Map<string, string>();
+    private bindingNames: Set<string> = new Set();
+    private hoistedDescriptors: Map<string, string> = new Map();
     private declarations: string[] = [];
     private registrations: string[] = [];
+    public imports: ImportsBuilder = new ImportsBuilder();
 
     appendBinding(code: string, name?: string): void {
         if (name !== undefined) {
-            if (this.bindingNames.has(name)) return;
+            if (this.bindingNames.has(name)) {
+                return;
+            }
+
             this.bindingNames.add(name);
         }
+
         this.bindings.push(code);
     }
 
     hoistDescriptor(expression: string): string {
         const existing = this.hoistedDescriptors.get(expression);
-        if (existing !== undefined) return existing;
-        const name = `_desc${this.hoistedDescriptors.size}`;
+
+        if (existing !== undefined) {
+            return existing;
+        }
+
+        const name = `_desc${String(this.hoistedDescriptors.size)}`;
         this.hoistedDescriptors.set(expression, name);
         this.appendBinding(`const ${name} = ${expression};`, name);
+
         return name;
     }
 
@@ -36,10 +45,25 @@ export class ModuleBuilder {
     toSource(): string {
         const sections: string[] = [];
         const importsBlock = this.imports.toSource();
-        if (importsBlock.length > 0) sections.push(importsBlock.trimEnd());
-        if (this.declarations.length > 0) sections.push(this.declarations.join("\n\n"));
-        if (this.bindings.length > 0) sections.push(this.bindings.join("\n\n"));
-        if (this.registrations.length > 0) sections.push(this.registrations.join("\n\n"));
+
+        if (importsBlock.length > 0) {
+            sections.push(importsBlock.trimEnd());
+        }
+
+        if (this.declarations.length > 0) {
+            sections.push(this.declarations.join("\n\n"));
+        }
+
+        if (this.bindings.length > 0) {
+            sections.push(this.bindings.join("\n\n"));
+        }
+
+        if (this.registrations.length > 0) {
+            sections.push(this.registrations.join("\n\n"));
+        }
+
         return `${sections.join("\n\n")}\n`;
     }
 }
+
+export { ModuleBuilder };

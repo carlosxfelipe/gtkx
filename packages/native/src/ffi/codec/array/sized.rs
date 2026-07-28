@@ -7,7 +7,7 @@ use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SizedArrayCodec {
-    size_param_index: u32,
+    pub(super) size_param_index: u32,
 }
 
 impl SizedArrayCodec {
@@ -17,6 +17,21 @@ impl SizedArrayCodec {
 }
 
 impl ArrayContainer for SizedArrayCodec {
+    // The length lives in a sibling parameter, so decoding without the surrounding argument list is
+    // not possible. Falling back to the container default would scan for a terminator this array
+    // does not have, so it fails loudly instead.
+    fn decode<'e>(
+        &self,
+        _codec: &ArrayCodec,
+        _env: &'e Env,
+        _stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
+        bail!(
+            "A sized array cannot be decoded without its length parameter (index {})",
+            self.size_param_index
+        )
+    }
+
     fn decode_with_context<'e>(
         &self,
         codec: &ArrayCodec,
@@ -40,10 +55,17 @@ impl ArrayContainer for SizedArrayCodec {
 }
 
 impl ArrayCodec {
+    // 2^53 is the largest integer an f64 holds exactly and is far below `usize::MAX` on the 64-bit
+    // Linux targets this crate builds for, so a size that passes the guard converts without
+    // saturating; a fractional size keeps truncating toward zero, as a C length would.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn validated_size(size: f64, param_index: usize) -> anyhow::Result<usize> {
-        if size < 0.0 || !size.is_finite() {
+        const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;
+
+        if !(0.0..=MAX_EXACT_INTEGER).contains(&size) {
             bail!("Array size parameter at index {param_index} has invalid value: {size}");
         }
+
         Ok(size as usize)
     }
 
@@ -86,10 +108,7 @@ impl ArrayCodec {
         }
 
         bail!(
-            "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
-            size_param_index,
-            arg_codec,
-            ffi_arg
+            "Could not extract size from parameter at index {size_param_index}: expected Ref<Integer> or Integer, got type {arg_codec:?} with ffi value {ffi_arg:?}"
         );
     }
 

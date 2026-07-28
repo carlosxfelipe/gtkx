@@ -8,11 +8,11 @@ import { renderDemo } from "../../test-utils.js";
 const openDialog = async (buttonName: string, dialogName: string): Promise<Adw.AlertDialog> => {
     const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: buttonName })) as Gtk.Button;
     await userEvent.click(button);
+
     return (await screen.findByName(dialogName)) as Adw.AlertDialog;
 };
 
 const openMessageDialog = (): Promise<Adw.AlertDialog> => openDialog("_Message Dialog", "message-dialog");
-
 const openInteractiveDialog = (): Promise<Adw.AlertDialog> => openDialog("_Interactive Dialog", "interactive-dialog");
 
 describe("dialogDemo metadata", () => {
@@ -36,23 +36,32 @@ describe("dialogDemo metadata", () => {
 });
 
 describe("dialogDemo message dialog", () => {
-    it("presents an AdwAlertDialog with heading 'Test message' and body 'Has been shown once' after the first click", async () => {
-        await renderDemo(dialogDemo);
-        const dialog = await openMessageDialog();
-        expect(dialog).toHaveAccessibleName("Test message");
-        await within(dialog).findByText("Has been shown once");
-    });
+    it(
+        "presents an AdwAlertDialog with heading 'Test message' and body 'Has been shown once' after the first click",
+        async () => {
+            await renderDemo(dialogDemo);
+            const dialog = await openMessageDialog();
+            expect(dialog).toHaveAccessibleName("Test message");
+            await within(dialog).findByText("Has been shown once");
+        },
+    );
 
     it("increments the body text to 'Has been shown 2 times' after a second clicked signal", async () => {
         await renderDemo(dialogDemo);
+
         const messageButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "_Message Dialog",
         })) as Gtk.Button;
+
         await userEvent.click(messageButton);
         const firstDialog = (await screen.findByName("message-dialog")) as Adw.AlertDialog;
         await within(firstDialog).findByText("Has been shown once");
         await userEvent.click(within(firstDialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: /OK/ }));
-        await waitFor(() => expect(screen.queryByName("message-dialog")).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByName("message-dialog")).toBeNull();
+        });
+
         await userEvent.click(messageButton);
         const secondDialog = (await screen.findByName("message-dialog")) as Adw.AlertDialog;
         await within(secondDialog).findByText("Has been shown 2 times");
@@ -62,14 +71,20 @@ describe("dialogDemo message dialog", () => {
         await renderDemo(dialogDemo);
         const dialog = await openMessageDialog();
         await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: /OK/ }));
-        await waitFor(() => expect(screen.queryByName("message-dialog")).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByName("message-dialog")).toBeNull();
+        });
     });
 
     it("dismisses the message dialog via the Cancel/closeResponse button", async () => {
         await renderDemo(dialogDemo);
         const dialog = await openMessageDialog();
         await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: /Cancel/ }));
-        await waitFor(() => expect(screen.queryByName("message-dialog")).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByName("message-dialog")).toBeNull();
+        });
     });
 });
 
@@ -87,7 +102,9 @@ describe("dialogDemo interactive dialog", () => {
         await userEvent.type(secondEntry, "world");
         expect(secondEntry).toHaveDisplayValue("world");
     });
+});
 
+describe("dialogDemo interactive dialog entries", () => {
     it("renders the interactive dialog with two empty entry fields when opened unseeded", async () => {
         await renderDemo(dialogDemo);
         const interactive = await openInteractiveDialog();
@@ -98,8 +115,8 @@ describe("dialogDemo interactive dialog", () => {
 
     it("seeds the interactive dialog entries from the current demo entry values", async () => {
         await renderDemo(dialogDemo);
-        await userEvent.type((await screen.findByName("demo-entry-1")) as Gtk.Entry, "seed1");
-        await userEvent.type((await screen.findByName("demo-entry-2")) as Gtk.Entry, "seed2");
+        await userEvent.type((await screen.findByName("demo-entry-1")), "seed1");
+        await userEvent.type((await screen.findByName("demo-entry-2")), "seed2");
         await openInteractiveDialog();
         expect(await screen.findByName("dialog-entry-1")).toHaveDisplayValue("seed1");
         expect(await screen.findByName("dialog-entry-2")).toHaveDisplayValue("seed2");
@@ -107,14 +124,18 @@ describe("dialogDemo interactive dialog", () => {
 
     it("discards dialog edits and keeps the prior demo values when responding with 'cancel'", async () => {
         await renderDemo(dialogDemo);
-        await userEvent.type((await screen.findByName("demo-entry-1")) as Gtk.Entry, "orig");
+        await userEvent.type((await screen.findByName("demo-entry-1")), "orig");
         const interactive = await openInteractiveDialog();
         const dialogEntry1 = (await screen.findByName("dialog-entry-1")) as Gtk.Entry;
         expect(dialogEntry1).toHaveDisplayValue("orig");
         await userEvent.type(dialogEntry1, "-edited");
         expect(dialogEntry1).toHaveDisplayValue("orig-edited");
         await userEvent.click(within(interactive).getByRole(Gtk.AccessibleRole.BUTTON, { name: /Cancel/ }));
-        await waitFor(() => expect(screen.queryByName("interactive-dialog")).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByName("interactive-dialog")).toBeNull();
+        });
+
         expect((await screen.findByName("demo-entry-1")) as Gtk.Entry).toHaveDisplayValue("orig");
     });
 
@@ -126,7 +147,11 @@ describe("dialogDemo interactive dialog", () => {
         await userEvent.type(dialogEntry1, "alpha");
         await userEvent.type(dialogEntry2, "beta");
         await userEvent.click(within(interactive).getByRole(Gtk.AccessibleRole.BUTTON, { name: /OK/ }));
-        await waitFor(() => expect(screen.queryByName("interactive-dialog")).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByName("interactive-dialog")).toBeNull();
+        });
+
         const demoEntry1 = (await screen.findByName("demo-entry-1")) as Gtk.Entry;
         const demoEntry2 = (await screen.findByName("demo-entry-2")) as Gtk.Entry;
         expect(screen.getByDisplayValue("alpha")).toBe(demoEntry1);

@@ -1,9 +1,41 @@
 import { tryGetHandle } from "./registry.js";
 
+/**
+ * Extracts the finished value from the async result a GIO-style operation completes with.
+ *
+ * @template R - The async result type passed to the completion callback.
+ * @template T - The finished value type.
+ */
+type FinishResult<R extends object, T> = (result: R) => T;
+
+type Settlement<R extends object, T> = {
+    finish: FinishResult<R, T>;
+    creationStack: Error | undefined;
+    resolve: (value: T) => void;
+    reject: (reason: Error) => void;
+};
+
 const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
-    if (creationStack === undefined || !(error instanceof Error)) return;
-    if (error.cause !== undefined || !Object.isExtensible(error)) return;
+    if (creationStack === undefined || !(error instanceof Error)) {
+        return;
+    }
+
+    if (error.cause !== undefined || !Object.isExtensible(error)) {
+        return;
+    }
+
     error.cause = creationStack;
+};
+
+const settle = <R extends object, T>(settlement: Settlement<R, T>, asyncResult: object): void => {
+    const { finish, creationStack, resolve, reject } = settlement;
+
+    try {
+        resolve(finish(asyncResult as R));
+    } catch (error) {
+        attachCreationStack(error, creationStack);
+        reject(error instanceof Error ? error : new Error(String(error)));
+    }
 };
 
 /**
@@ -17,24 +49,19 @@ const attachCreationStack = (error: unknown, creationStack: Error | undefined): 
  * @param leading Arguments passed to `asyncFn` before the cancellable and callback.
  * @returns A promise resolving to the finished result, or rejecting if `finish` throws.
  */
-export const promisify = <R extends object, T>(
+const promisify = <R extends object, T>(
     asyncFn: (...args: unknown[]) => void,
-    finish: (result: R) => T,
+    finish: FinishResult<R, T>,
     cancellable: object | null | undefined,
     ...leading: unknown[]
 ): Promise<T> =>
     new Promise<T>((resolve, reject) => {
-        let creationStack: Error | undefined;
-        if (process.env.NODE_ENV !== "production") {
-            creationStack = new Error("gtkx async operation started here");
-            Error.captureStackTrace(creationStack, promisify);
-        }
+        const creationStack =
+            process.env.NODE_ENV === "production" ? undefined : new Error("gtkx async operation started here");
+
         asyncFn(...leading, tryGetHandle(cancellable), (_source: object | null, asyncResult: object) => {
-            try {
-                resolve(finish(asyncResult as R));
-            } catch (error) {
-                attachCreationStack(error, creationStack);
-                reject(error);
-            }
+            settle({ finish, creationStack, resolve, reject }, asyncResult);
         });
     });
+
+export { promisify, type FinishResult };

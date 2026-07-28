@@ -9,21 +9,24 @@ use crate::ffi::{StashData, StashStorage};
 #[derive(Debug, Clone)]
 pub struct RefCodec {
     pub inner_codec: Box<Codec>,
+    pub inout: bool,
 }
 
 impl RefCodec {
-    pub fn new(inner_codec: Codec) -> napi::Result<Self> {
+    pub fn new(inner_codec: Codec, inout: bool) -> Result<Self> {
         if !Self::supports_inner(&inner_codec) {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
+            return Err(Error::new(
+                Status::InvalidArg,
                 format!("'{inner_codec}' cannot be used as a Ref inner codec"),
             ));
         }
         Ok(Self {
             inner_codec: Box::new(inner_codec),
+            inout,
         })
     }
 
+    #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
         match inner {
             Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_) => false,
@@ -48,7 +51,7 @@ impl RefCodec {
             ValueType::Null | ValueType::Undefined => Ok(None),
             ValueType::Object => {
                 let obj = Object::from_raw(env.raw(), value.raw());
-                Ok(Some(obj.get_named_property::<Unknown>("value")?))
+                Ok(Some(obj.get_named_property::<Unknown<'_>>("value")?))
             }
             _ => bail_expected!("a Ref", "ref"),
         }
@@ -93,25 +96,31 @@ impl Encoder for RefCodec {
                 let inner_string = if is_nullish {
                     None
                 } else if inner_type == ValueType::String {
-                    Some(value::read_napi::<String>(env, inner)?)
+                    Some(value::read_napi::<String>(inner)?)
                 } else {
                     bail!("Expected a String, Null, or length for Ref<String>")
                 };
 
                 let buffer_size = match (&string_codec.length, &inner_string) {
-                    (Some(len), _) => *len,
+                    (Some(len), _) => {
+                        anyhow::ensure!(
+                            *len > 0,
+                            "A Ref<String> buffer length must be at least 1 to hold the trailing NUL byte"
+                        );
+                        *len
+                    }
                     (None, Some(s)) => s.len() + 1,
                     (None, None) => return Ok(Self::null_ptr_stash()),
                 };
 
-                let mut buffer: Vec<u8> = vec![0u8; buffer_size];
+                let mut buffer: Vec<u8> = Self::zeroed_buffer(buffer_size)?;
                 if let Some(content) = inner_string.as_deref() {
                     let bytes = content.as_bytes();
                     let copy_len = bytes.len().min(buffer_size.saturating_sub(1));
                     buffer[..copy_len].copy_from_slice(&bytes[..copy_len]);
                 }
 
-                let ptr = buffer.as_mut_ptr() as *mut c_void;
+                let ptr = buffer.as_mut_ptr().cast::<c_void>();
                 Ok(ffi::Stash::Storage(StashStorage::new(
                     ptr,
                     StashData::Buffer(buffer),
@@ -141,7 +150,7 @@ impl Decoder for RefCodec {
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
-                let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+                let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
                 if inner_ptr.is_null() {
                     return Ok(value::js_null(env)?);
                 }
@@ -223,9 +232,22 @@ impl Decoder for RefCodec {
 impl PtrWriter for RefCodec {}
 
 impl RefCodec {
+    // `vec![0u8; n]` aborts the process through `handle_alloc_error` when the request cannot be
+    // served, which no `catch_unwind` can intercept, so an out-of-range buffer length has to fail
+    // as an ordinary error before the allocator sees it.
+    fn zeroed_buffer(size: usize) -> anyhow::Result<Vec<u8>> {
+        let mut buffer: Vec<u8> = Vec::new();
+        buffer
+            .try_reserve_exact(size)
+            .map_err(|_| anyhow::anyhow!("Cannot allocate a {size}-byte Ref<String> buffer"))?;
+        buffer.resize(size, 0);
+
+        Ok(buffer)
+    }
+
     fn null_ptr_stash() -> ffi::Stash {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
-        let ptr = slot.as_mut_ptr() as *mut c_void;
+        let ptr = slot.as_mut_ptr().cast::<c_void>();
         ffi::Stash::Storage(StashStorage::new(ptr, StashData::PtrSlot(slot)))
     }
 

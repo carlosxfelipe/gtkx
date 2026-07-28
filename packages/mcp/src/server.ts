@@ -1,35 +1,64 @@
-import { createRequire } from "node:module";
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createRequire } from "node:module";
 import { z } from "zod";
-import { AppRouter } from "./app-router.js";
+import type { ConnectionErrorEvent } from "./transport.js";
+import { type AppRegisteredEvent, AppRouter, type AppUnregisteredEvent } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
 import {
+    type AppInfo,
     DEFAULT_SOCKET_PATH,
     fireEventParams,
     queryParams,
     screenshotParams,
+    treeParams,
     typeParams,
     widgetIdParams,
 } from "./protocol/schemas.js";
 import { buildReferenceTools, createReferenceProvider, registerReferenceResources } from "./reference.js";
 import { SocketServer } from "./socket-server.js";
-import { defineTool, imageContent, registerTool, type Tool, textContent } from "./tool.js";
+import { defineTool, imageContent, registerTool, textContent, type Tool } from "./tool.js";
+
+type CreateMcpServerOptions = {
+    socketPath?: string;
+    version: string;
+};
+
+type McpServerHandle = {
+    start(): Promise<void>;
+    stop(): Promise<void>;
+};
+
+type AppWindow = { id: string; title: string | null };
+type AppWithWindows = AppInfo & { windows?: AppWindow[] };
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
-
-export const log: Logger = createLogger("mcp");
-
+const log: Logger = createLogger("mcp");
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
+
 const WIDGET_ID_DESCRIPTION =
-    "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops resolving once the widget is unmounted.";
+    "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. " +
+    "IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops " +
+    "resolving once the widget is unmounted.";
 
 const applicationIdShape = { applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION) };
+
 const widgetIdShape = {
     ...applicationIdShape,
     widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
+};
+
+const treeShape = {
+    ...applicationIdShape,
+    rootId: treeParams.shape.rootId.describe(
+        "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the whole app.",
+    ),
+    maxDepth: treeParams.shape.maxDepth.describe(
+        "Limit how many levels deep to render; deeper descendants are summarized with a count. " +
+        "Combine with rootId to drill in without dumping the whole tree.",
+    ),
 };
 
 const listAppsShape = {
@@ -67,8 +96,34 @@ const screenshotShape = {
         "Window ID to capture. If not specified, captures the first window.",
     ),
     path: screenshotParams.shape.path.describe(
-        "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there in addition to being returned.",
+        "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there " +
+        "in addition to being returned.",
     ),
+};
+
+const logSocketError = (event: Event): void => {
+    const error = (event as ConnectionErrorEvent).detail;
+    const code = (error as NodeJS.ErrnoException).code;
+
+    if (code === "EPIPE" || code === "ECONNRESET") {
+        return;
+    }
+
+    log.error(`socket error: ${error.message}`);
+};
+
+const appWithWindows = async (appRouter: AppRouter, app: AppInfo): Promise<AppWithWindows> => {
+    try {
+        const result = await appRouter.sendToApp<{ windows: AppWindow[] }>(
+            app.applicationId,
+            "app.getWindows",
+            {},
+        );
+
+        return { ...app, windows: result.windows };
+    } catch {
+        return app;
+    }
 };
 
 const listAppsTool = (appRouter: AppRouter): Tool =>
@@ -84,18 +139,8 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
             }
 
             const apps = appRouter.getApps();
-            const appsWithWindows = await Promise.all(
-                apps.map(async (app) => {
-                    try {
-                        const result = await appRouter.sendToApp<{
-                            windows: Array<{ id: string; title: string | null }>;
-                        }>(app.applicationId, "app.getWindows", {});
-                        return { ...app, windows: result.windows };
-                    } catch {
-                        return app;
-                    }
-                }),
-            );
+            const appsWithWindows = await Promise.all(apps.map((app) => appWithWindows(appRouter, app)));
+
             return textContent(JSON.stringify(appsWithWindows, null, 2));
         },
     });
@@ -106,7 +151,9 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
         title: "Take screenshot",
         kind: "readOnly",
         description:
-            "Capture a screenshot of a window. Returns base64-encoded PNG image data, and optionally writes the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use `gtkx_get_widget_tree` to find widget IDs for interaction.",
+            "Capture a screenshot of a window. Returns base64-encoded PNG image data, and optionally writes " +
+            "the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use " +
+            "`gtkx_get_widget_tree` to find widget IDs for interaction.",
         inputSchema: screenshotShape,
         handler: async ({ applicationId, ...params }) => {
             const result = await appRouter.sendToApp<{ data: string; mimeType: string; savedPath?: string }>(
@@ -114,6 +161,7 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
                 "widget.screenshot",
                 params,
             );
+
             if (result.savedPath) {
                 return {
                     content: [
@@ -122,6 +170,7 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
                     ],
                 };
             }
+
             return imageContent(result.data, result.mimeType);
         },
     });
@@ -134,10 +183,16 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             title: "Widget tree",
             kind: "readOnly",
             description:
-                "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
-            inputSchema: applicationIdShape,
-            handler: async ({ applicationId }) => {
-                const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {});
+                "Get the widget hierarchy for a connected GTKX app. Returns a tree of widgets with their IDs, " +
+                "types, roles, and properties. For large apps, pass `maxDepth` for a shallow overview and/or " +
+                "`rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
+            inputSchema: treeShape,
+            handler: async ({ applicationId, rootId, maxDepth }) => {
+                const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {
+                    rootId,
+                    maxDepth,
+                });
+
                 return textContent(result.tree);
             },
         }),
@@ -150,6 +205,7 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             inputSchema: queryWidgetsShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.query", params);
+
                 return textContent(JSON.stringify(result, null, 2));
             },
         }),
@@ -158,10 +214,13 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             title: "Get widget properties",
             kind: "readOnly",
             description:
-                "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, visibility, CSS classes, and the full subtree of descendant widgets. It does not return arbitrary GObject properties.",
+                "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, " +
+                "visibility, CSS classes, and the full subtree of descendant widgets. It does not return " +
+                "arbitrary GObject properties.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
+
                 return textContent(JSON.stringify(result, null, 2));
             },
         }),
@@ -179,6 +238,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.click", params);
+
                 return textContent("Clicked");
             },
         }),
@@ -190,6 +250,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             inputSchema: typeShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.type", params);
+
                 return textContent("Typed text");
             },
         }),
@@ -201,6 +262,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             inputSchema: fireEventShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.fireEvent", params);
+
                 return textContent("Fired event");
             },
         }),
@@ -211,71 +273,62 @@ function buildTools(appRouter: AppRouter): Tool[] {
     return [...buildInspectionTools(appRouter), ...buildInteractionTools(appRouter)];
 }
 
-type CreateMcpServerOptions = {
-    socketPath?: string;
-    version: string;
-};
-
-type McpServerHandle = {
-    start(): Promise<void>;
-    stop(): Promise<void>;
-};
-
-export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
+const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
-
     const registry = new ConnectionRegistry();
     const socketServer = new SocketServer(registry, socketPath);
     const appRouter = new AppRouter(registry);
+    registry.addEventListener("error", logSocketError);
 
-    registry.on("error", (error) => {
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code !== "EPIPE" && code !== "ECONNRESET") {
-            log.error(`socket error: ${error.message}`);
-        }
+    appRouter.addEventListener("appRegistered", (event) => {
+        const appInfo = (event as AppRegisteredEvent).detail;
+        log.info(`app registered: ${appInfo.applicationId} (PID: ${String(appInfo.pid)})`);
     });
 
-    appRouter.on("appRegistered", (appInfo) => {
-        log.info(`app registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
-    });
-
-    appRouter.on("appUnregistered", (applicationId) => {
-        log.info(`app unregistered: ${applicationId}`);
+    appRouter.addEventListener("appUnregistered", (event) => {
+        log.info(`app unregistered: ${(event as AppUnregisteredEvent).detail}`);
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
-
     const referenceProvider = createReferenceProvider(() => appRouter.getProjectRoot() ?? process.cwd());
 
     for (const tool of [...buildTools(appRouter), ...buildReferenceTools(referenceProvider)]) {
         registerTool(mcpServer, tool);
     }
+
     registerReferenceResources(mcpServer, referenceProvider);
+    let isStopped = false;
 
-    let stopped = false;
+    const stop = async (): Promise<void> => {
+        if (isStopped) {
+            return;
+        }
 
-    return {
-        async start() {
-            await socketServer.start();
-            log.info(`socket server listening on ${socketPath}`);
-            const transport = new StdioServerTransport();
-            process.stdin.on("end", () => void this.stop());
-            process.stdin.on("close", () => void this.stop());
-            await mcpServer.connect(transport);
-        },
-        async stop() {
-            if (stopped) return;
-            stopped = true;
-            await socketServer.stop();
-            await mcpServer.close();
-        },
+        isStopped = true;
+        await socketServer.stop();
+        await mcpServer.close();
     };
+
+    const start = async (): Promise<void> => {
+        await socketServer.start();
+        log.info(`socket server listening on ${socketPath}`);
+        const transport = new StdioServerTransport();
+        process.stdin.on("end", () => void stop());
+        process.stdin.on("close", () => void stop());
+        await mcpServer.connect(transport);
+    };
+
+    return { start, stop };
 };
 
-export async function main(): Promise<void> {
+async function main(): Promise<void> {
     const server = createMcpServer({ version });
+
     installGracefulShutdown({
         onSignal: () => server.stop(),
     });
+
     await server.start();
 }
+
+export { log, createMcpServer, main };

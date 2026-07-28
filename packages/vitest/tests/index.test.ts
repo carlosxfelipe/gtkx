@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { Plugin } from "vitest/config";
+import { describe, expect, it } from "vitest";
 import gtkx from "../src/index.js";
 
 type InputConfig = { root?: string; test?: { setupFiles?: string | string[] } };
@@ -20,7 +20,10 @@ type WorkerConfig = {
 type ConfigHook = (config: InputConfig) => WorkerConfig;
 
 const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: Fn } | undefined): Fn => {
-    if (hook === undefined) throw new Error("plugin hook is missing");
+    if (hook === undefined) {
+        throw new Error("plugin hook is missing");
+    }
+
     return typeof hook === "function" ? hook : hook.handler;
 };
 
@@ -32,6 +35,7 @@ const preloadSpecifier = (config: WorkerConfig): URL => {
     expect(execArgv[0]).toBe("--import");
     const specifier = execArgv[1] ?? "";
     expect(specifier.startsWith("file://")).toBe(true);
+
     return new URL(specifier);
 };
 
@@ -48,14 +52,19 @@ describe("gtkx vitest plugin", () => {
         const result = callConfig(gtkx(), {});
         expect(result.test?.pool).toBe("forks");
         expect(result.test?.globals).toBe(true);
-        expect(result.test?.testTimeout).toBe(30000);
-        expect(result.test?.hookTimeout).toBe(30000);
+        expect(result.test?.testTimeout).toBe(30_000);
+        expect(result.test?.hookTimeout).toBe(30_000);
     });
 
     it("inlines the gtkx source packages except the native addon", () => {
         const result = callConfig(gtkx(), {});
         const inline = result.test?.server?.deps?.inline ?? [];
-        expect(inline.map((pattern) => pattern.source)).toEqual(["@gtkx\\/(?!native)", "[/\\\\]\\.gtkx[/\\\\]"]);
+
+        expect(inline.map((pattern) => pattern.source)).toEqual([
+            String.raw`@gtkx\/(?!native)`,
+            String.raw`[/\\]\.gtkx[/\\]`,
+        ]);
+
         expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
     });
 

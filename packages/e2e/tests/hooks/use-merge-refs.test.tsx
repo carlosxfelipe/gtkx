@@ -1,27 +1,34 @@
-import { useMergeRefs } from "@gtkx/react/internal";
-import { renderHook } from "@gtkx/testing";
-import type { Ref } from "react";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type { Ref, RefCallback } from "react";
+import { GtkButton } from "@gtkx/jsx/gtk";
+import { useMergedRef } from "@gtkx/react/internal";
+import { render, renderHook } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 
-interface Target {
+type Target = {
     id: number;
-}
+};
 
-const detachOf = (result: ReturnType<ReturnType<typeof useMergeRefs<Target>>>): (() => void) => {
-    if (typeof result !== "function") throw new Error("expected the merged ref to return a cleanup");
+const getDetach = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
+    if (typeof result !== "function") {
+        throw new TypeError("expected the merged ref to return a cleanup");
+    }
+
     return result;
 };
 
-describe("useMergeRefs", () => {
+const renderSwappableRef = (initialRef: Ref<Target | null>) =>
+    renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergedRef<Target>(ref, undefined), {
+        initialProps: { ref: initialRef },
+    });
+
+describe("useMergedRef", () => {
     it("passes the attached value to callback refs and ref objects", async () => {
         const callback = vi.fn();
         const objectRef: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
-
-        const { result } = await renderHook(() => useMergeRefs<Target>(callback, objectRef));
-
+        const { result } = await renderHook(() => useMergedRef<Target>(callback, objectRef));
         result.current(value);
-
         expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenCalledWith(value);
         expect(objectRef.current).toBe(value);
@@ -30,110 +37,89 @@ describe("useMergeRefs", () => {
     it("runs a callback ref's returned cleanup on detach", async () => {
         const cleanup = vi.fn();
         const callback = vi.fn(() => cleanup);
-
-        const { result } = await renderHook(() => useMergeRefs<Target>(callback));
-
-        const detach = detachOf(result.current({ id: 1 }));
+        const { result } = await renderHook(() => useMergedRef<Target>(callback, undefined));
+        const detach = getDetach(result.current({ id: 1 }));
         expect(cleanup).not.toHaveBeenCalled();
-
         detach();
-
         expect(cleanup).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    it("nulls ref objects on detach", async () => {
+    it("nulls ref objects through the returned cleanup", async () => {
         const objectRef: { current: Target | null } = { current: null };
+        const callbackCleanup = vi.fn();
+        const callback = vi.fn(() => callbackCleanup);
         const value: Target = { id: 1 };
-
-        const { result } = await renderHook(() => useMergeRefs<Target>(objectRef));
-
-        const detach = detachOf(result.current(value));
+        const { result } = await renderHook(() => useMergedRef<Target>(objectRef, callback));
+        const detach = getDetach(result.current(value));
         expect(objectRef.current).toBe(value);
-
         detach();
-
         expect(objectRef.current).toBeNull();
+        expect(callbackCleanup).toHaveBeenCalledTimes(1);
     });
+});
 
-    const renderSwappableRef = (initialRef: Ref<Target | null>) =>
-        renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergeRefs<Target>(ref), {
-            initialProps: { ref: initialRef },
-        });
-
-    it("moves the attached value when a ref object argument is swapped", async () => {
+describe("useMergedRef (swapped refs)", () => {
+    it("forwards to the swapped ref object", async () => {
         const first: { current: Target | null } = { current: null };
         const second: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
-
         const { result, rerender } = await renderSwappableRef(first);
-
-        result.current(value);
-        expect(first.current).toBe(value);
-
         await rerender({ ref: second });
-
-        expect(first.current).toBeNull();
+        result.current(value);
         expect(second.current).toBe(value);
+        expect(first.current).toBeNull();
     });
 
-    it("detaches a swapped callback ref through its cleanup", async () => {
-        const cleanup = vi.fn();
-        const firstCallback = vi.fn(() => cleanup);
+    it("forwards to the swapped callback ref", async () => {
+        const firstCallback = vi.fn();
         const secondCallback = vi.fn();
         const value: Target = { id: 1 };
-
         const { result, rerender } = await renderSwappableRef(firstCallback);
-
-        result.current(value);
-        expect(firstCallback).toHaveBeenCalledWith(value);
-
         await rerender({ ref: secondCallback });
-
-        expect(cleanup).toHaveBeenCalledTimes(1);
-        expect(secondCallback).toHaveBeenCalledTimes(1);
-        expect(secondCallback).toHaveBeenCalledWith(value);
-    });
-
-    it("leaves stable refs attached while an inline ref changes identity", async () => {
-        const stableCleanup = vi.fn();
-        const stable = vi.fn(() => stableCleanup);
-        const inlineValues: Array<Target | null> = [];
-        const value: Target = { id: 1 };
-
-        const { result, rerender } = await renderHook(
-            ({ tick }: { tick: number }) =>
-                useMergeRefs<Target>(stable, (instance) => {
-                    inlineValues.push(instance);
-                    void tick;
-                }),
-            { initialProps: { tick: 0 } },
-        );
-
         result.current(value);
-        expect(stable).toHaveBeenCalledTimes(1);
-        expect(inlineValues).toEqual([value]);
+        expect(secondCallback).toHaveBeenCalledWith(value);
+        expect(firstCallback).not.toHaveBeenCalled();
+    });
+});
 
-        await rerender({ tick: 1 });
-        await rerender({ tick: 2 });
+describe("useMergedRef (widget reattachment)", () => {
+    it("reattaches a widget ref when one of its ref arguments changes identity", async () => {
+        const attach = vi.fn<RefCallback<Gtk.Button>>();
 
-        expect(stable).toHaveBeenCalledTimes(1);
-        expect(stableCleanup).not.toHaveBeenCalled();
-        expect(inlineValues).toEqual([value, null, value, null, value]);
+        function App({ tick }: { tick: number }) {
+            const merged = useMergedRef<Gtk.Button>(attach, vi.fn<RefCallback<Gtk.Button>>());
+
+            return <GtkButton label={`tick ${String(tick)}`} ref={merged} />;
+        }
+
+        const { rerender } = await render(<App tick={0} />);
+        expect(attach).toHaveBeenCalledTimes(1);
+        const button = attach.mock.calls[0]?.[0];
+        expect(button).not.toBeNull();
+        await rerender(<App tick={1} />);
+        expect(attach).toHaveBeenCalledWith(null);
+        expect(attach.mock.calls.at(-1)?.[0]).toBe(button);
+        expect(attach.mock.calls.length).toBeGreaterThan(1);
     });
 
-    it("keeps the merged callback identity stable across renders", async () => {
-        const stable = vi.fn();
+    it("does not reattach a widget ref across a re-render while its ref arguments are stable", async () => {
+        const attach = vi.fn<RefCallback<Gtk.Button>>();
+        const objectRef: { current: Gtk.Button | null } = { current: null };
 
-        const { result, rerender } = await renderHook(
-            ({ tick }: { tick: number }) => useMergeRefs<Target>(stable, () => void tick),
-            { initialProps: { tick: 0 } },
-        );
+        function App({ tick }: { tick: number }) {
+            const merged = useMergedRef<Gtk.Button>(attach, objectRef);
 
-        const initial = result.current;
+            return <GtkButton label={`tick ${String(tick)}`} ref={merged} />;
+        }
 
-        await rerender({ tick: 1 });
-
-        expect(result.current).toBe(initial);
+        const { rerender } = await render(<App tick={0} />);
+        expect(attach).toHaveBeenCalledTimes(1);
+        const button = objectRef.current;
+        expect(button).not.toBeNull();
+        await rerender(<App tick={1} />);
+        expect(attach).toHaveBeenCalledTimes(1);
+        expect(attach).not.toHaveBeenCalledWith(null);
+        expect(objectRef.current).toBe(button);
     });
 });

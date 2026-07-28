@@ -24,61 +24,87 @@ type ArgSpec = {
     isOutParam: boolean;
 };
 
-const buildNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
+const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
-    if (throws)
+
+    if (canThrow) {
         nativeArgTypes.push(
             refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" })),
         );
+    }
+
     return nativeArgTypes;
 };
 
 const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
     let inputCursor = 0;
+
     return args.map((arg) => {
         const isRef = isRefArg(arg);
-        const consumesInput = !isRef || isInoutArg(arg);
+        const isConsumesInput = !isRef || isInoutArg(arg);
         const isOutParam = isOutputArg(arg) && arg.consumed !== true;
+
         return {
             arg,
             isRef,
             isCallerAllocated: isCallerAllocatedArg(arg),
-            consumesInput,
-            inputIndex: consumesInput ? inputCursor++ : -1,
+            consumesInput: isConsumesInput,
+            inputIndex: isConsumesInput ? inputCursor++ : -1,
             isOutParam,
         };
     });
 };
 
+const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown => {
+    const wrapper = inputs[inputIndex];
+
+    return wrapper == null ? wrapper : getHandle(wrapper);
+};
+
+const buildRefValue = (isInputConsumed: boolean, inputs: unknown[], inputIndex: number): Ref => ({
+    value: isInputConsumed ? inputs[inputIndex] : null,
+});
+
+const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
+    const { arg, isRef, isCallerAllocated, consumesInput, inputIndex } = spec;
+
+    if (isCallerAllocated) {
+        return resolveCallerAllocated(inputs, inputIndex);
+    }
+
+    if (isRef) {
+        return buildRefValue(consumesInput, inputs, inputIndex);
+    }
+
+    if (arg.type.kind === "callback") {
+        return wrapCallbackValue(arg.type, inputs[inputIndex]);
+    }
+
+    return inputs[inputIndex];
+};
+
 const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
-    plans.map(({ arg, isRef, isCallerAllocated, consumesInput, inputIndex }) => {
-        if (isCallerAllocated) {
-            const wrapper = inputs[inputIndex];
-            return wrapper == null ? wrapper : getHandle(wrapper as object);
-        }
-        if (isRef) {
-            return { value: consumesInput ? inputs[inputIndex] : null };
-        }
-        if (arg.type.kind === "callback") {
-            return wrapCallbackValue(arg.type, inputs[inputIndex]);
-        }
-        return inputs[inputIndex];
-    });
+    plans.map((plan) => buildNativeValue(plan, inputs));
 
 const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     const outParams: unknown[] = [];
-    plans.forEach(({ arg, isCallerAllocated, inputIndex, isOutParam }, index) => {
-        if (!isOutParam) return;
+
+    for (const [index, { arg, isCallerAllocated, inputIndex, isOutParam }] of plans.entries()) {
+        if (!isOutParam) {
+            continue;
+        }
+
         outParams.push(
             isCallerAllocated ? inputs[inputIndex] : fromNative(arg.type, (nativeValues[index] as Ref).value),
         );
-    });
+    }
+
     return outParams;
 };
 
-export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, throws = false } = spec;
     const nativeArgTypes = buildNativeArgTypes(args, throws);
     const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
@@ -87,6 +113,7 @@ export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inp
 
     const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
         const primary = hasPrimary ? fromNative(returnDescriptor, nativeResult) : undefined;
+
         return packTupleResult(readOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
@@ -97,12 +124,16 @@ export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inp
             nativeValues.push(errorRef);
             const nativeResult = nativeFn(...nativeValues);
             checkError(errorRef);
+
             return shape(inputs, nativeValues, nativeResult);
         };
     }
 
     return (...inputs) => {
         const nativeValues = buildNativeValues(plans, inputs);
+
         return shape(inputs, nativeValues, nativeFn(...nativeValues));
     };
 }
+
+export { fn };

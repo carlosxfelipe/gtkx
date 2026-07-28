@@ -5,7 +5,7 @@ import type { Container } from "./traversal.js";
  * error formatting, and the timeouts used by async utilities and actionability
  * checks.
  */
-export type Config = {
+type Config = {
     throwSuggestions: boolean;
 
     /** Builds the error thrown when a query fails, given a message and optional container. */
@@ -22,13 +22,7 @@ export type Config = {
  * Function form of a configuration update: receives the current config and
  * returns the fields to override.
  */
-export type ConfigFn = (existingConfig: Config) => Partial<Config>;
-
-const defaultGetElementError = (message: string, _container?: Container): Error => {
-    const error = new Error(message);
-    error.name = "GtkxElementError";
-    return error;
-};
+type ConfigFn = (existingConfig: Config) => Partial<Config>;
 
 const defaultConfig: Config = {
     throwSuggestions: false,
@@ -37,12 +31,16 @@ const defaultConfig: Config = {
     actionabilityTimeout: 500,
 };
 
-let currentConfig: Config = { ...defaultConfig };
+const currentConfig: Config = { ...defaultConfig };
+
+function defaultGetElementError(message: string): Error {
+    return new GtkxElementError(message);
+}
 
 /**
  * Returns the current global testing configuration.
  */
-export const getConfig = (): Config => {
+const getConfig = (): Config => {
     return currentConfig;
 };
 
@@ -52,7 +50,13 @@ export const getConfig = (): Config => {
  * @param newConfig Either a partial config object or a function that receives
  * the current config and returns the fields to override.
  */
-export const configure = (newConfig: Partial<Config> | ConfigFn): void => {
+const configure = (newConfig: Partial<Config> | ConfigFn): void => {
     const updates = typeof newConfig === "function" ? newConfig(currentConfig) : newConfig;
-    currentConfig = { ...currentConfig, ...updates };
+    Object.assign(currentConfig, updates);
 };
+
+class GtkxElementError extends Error {
+    override name = "GtkxElementError";
+}
+
+export { getConfig, configure, type Config, type ConfigFn };

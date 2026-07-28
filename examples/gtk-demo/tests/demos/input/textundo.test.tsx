@@ -4,18 +4,17 @@ import { describe, expect, it } from "vitest";
 import { textundoDemo } from "../../../src/demos/input/textundo.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
 
-interface EditedTextView {
+type EditedTextView = {
     textView: Gtk.TextView;
     buffer: Gtk.TextBuffer;
     before: string;
-}
+};
 
 const renderAndInsert = async (insertedText: string): Promise<EditedTextView> => {
     await renderDemo(textundoDemo);
     const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
     const buffer = textView.getBuffer();
     const before = readBufferText(textView);
-
     await userEvent.type(textView, insertedText);
 
     return { textView, buffer, before };
@@ -52,14 +51,14 @@ describe("textundoDemo", () => {
         expect(hpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
     });
+});
 
+describe("textundoDemo undo and redo", () => {
     it("undoes a buffer edit when Control+z is dispatched to the text view", async () => {
         const { textView, buffer, before } = await renderAndInsert(" — appended");
         expect(screen.getByDisplayValue(`${before} — appended`)).toBe(textView);
         expect(buffer.getCanUndo()).toBe(true);
-
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
-
         expect(screen.getByDisplayValue(before)).toBe(textView);
         expect(buffer.getCanRedo()).toBe(true);
     });
@@ -69,9 +68,7 @@ describe("textundoDemo", () => {
         const afterInsert = readBufferText(textView);
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
         expect(screen.getByDisplayValue(before)).toBe(textView);
-
         await userEvent.keyboard(textView, "{Control>}{Shift>}z{/Shift}{/Control}");
-
         expect(screen.getByDisplayValue(afterInsert)).toBe(textView);
     });
 
@@ -80,9 +77,7 @@ describe("textundoDemo", () => {
         const afterInsert = readBufferText(textView);
         await userEvent.keyboard(textView, "{Control>}z{/Control}");
         expect(screen.getByDisplayValue(before)).toBe(textView);
-
         await userEvent.keyboard(textView, "{Control>}y{/Control}");
-
         expect(screen.getByDisplayValue(afterInsert)).toBe(textView);
     });
 });

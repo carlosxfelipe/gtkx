@@ -1,4 +1,7 @@
 {
+    "nx": {
+        "addTypecheckTarget": false
+    },
     "compilerOptions": {
         "target": "ESNext",
         "module": "ESNext",
@@ -11,6 +14,6 @@
         "resolveJsonModule": true,
         "skipLibCheck": true
     },
-    "include": ["env.d.ts", "**/*.ts", "**/*.vue"],
+    "include": ["env.d.ts", "**/*.ts", "**/*.vue", ".vitepress/**/*.ts", ".vitepress/**/*.vue"],
     "exclude": ["node_modules", ".vitepress/cache", ".vitepress/dist"]
 }

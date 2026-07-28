@@ -43,8 +43,6 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
@@ -54,7 +52,7 @@
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@modelcontextprotocol/sdk": "^1.29.0",
+        "@modelcontextprotocol/sdk": "^1.30.0",
         "zod": "catalog:"
     }
 }

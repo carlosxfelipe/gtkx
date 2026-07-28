@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 describe("Root.unmount", () => {
     it("shuts the application down when the unmounted tree contains the application component", async () => {
         const appRef = createRef<Gtk.Application>();
+
         const { unmount } = await render(
             <GtkApplication
                 ref={appRef}
@@ -21,12 +22,14 @@ describe("Root.unmount", () => {
         );
 
         const app = appRef.current;
-        if (!app) throw new Error("application was not captured");
+
+        if (!app) {
+            throw new Error("application was not captured");
+        }
+
         const shutdownHandler = vi.fn();
         app.on("shutdown", shutdownHandler);
-
         await unmount();
-
         expect(shutdownHandler).toHaveBeenCalledTimes(1);
     });
 });

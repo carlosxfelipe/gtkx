@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
-import { XMLParser } from "fast-xml-parser";
+import { createXmlParser } from "../xml.js";
 
-export type RawNode = {
-    [attributeOrChild: string]: unknown;
-};
+type RawNode = Record<string, unknown>;
 
 const MULTI_TAGS: Set<string> = new Set([
     "include",
@@ -28,92 +26,149 @@ const MULTI_TAGS: Set<string> = new Set([
     "parameter",
 ]);
 
-export const GIR_CONSTRUCTOR_TAG = "gir-constructor";
-
+const GIR_CONSTRUCTOR_TAG = "gir-constructor";
 const RESERVED_TAG_RENAMES: Map<string, string> = new Map([["constructor", GIR_CONSTRUCTOR_TAG]]);
+const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map((tag) => renameReservedTag(tag)));
 
-const renameReservedTag = (tag: string): string => RESERVED_TAG_RENAMES.get(tag) ?? tag;
-
-const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map(renameReservedTag));
-
-const PARSER = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: "@_",
-    parseAttributeValue: false,
-    parseTagValue: false,
+const PARSER = createXmlParser({
     trimValues: true,
     transformTagName: renameReservedTag,
     isArray: (name) => RENAMED_MULTI_TAGS.has(name),
 });
 
-export const parseGirFile = (path: string): RawNode => {
-    const xml = readFileSync(path, "utf-8");
+function renameReservedTag(tag: string): string {
+    return RESERVED_TAG_RENAMES.get(tag) ?? tag;
+}
+
+const parseGirFile = (path: string): RawNode => {
+    const xml = readFileSync(path, "utf8");
+
     return PARSER.parse(xml) as RawNode;
 };
 
-export const attr = (node: RawNode | undefined, name: string): string | undefined => {
-    if (node === undefined) return undefined;
+const attr = (node: RawNode | undefined, name: string): string | undefined => {
+    if (node === undefined) {
+        return undefined;
+    }
+
     const value = node[`@_${name}`];
+
     return typeof value === "string" ? value : undefined;
 };
 
-export const attrBool = (node: RawNode | undefined, name: string, fallback = false): boolean => {
+const isAttrTrue = (node: RawNode | undefined, name: string, isTrueByDefault = false): boolean => {
     const value = attr(node, name);
-    if (value === undefined) return fallback;
+
+    if (value === undefined) {
+        return isTrueByDefault;
+    }
+
     return value === "1";
 };
 
-export const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
+const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
 
-export const intAttr = (node: RawNode, name: string): number | undefined => {
+const intAttr = (node: RawNode, name: string): number | undefined => {
     const raw = attr(node, name);
-    return raw === undefined ? undefined : Number.parseInt(raw, 10);
+
+    return raw === undefined ? undefined : Number(raw);
 };
 
-export const parseEnumAttr = <T extends string, F extends T | undefined>(
+const enumMember = <T extends string>(raw: string, members: Set<T>, label: string): T => {
+    for (const member of members) {
+        if (member === raw) {
+            return member;
+        }
+    }
+
+    throw new Error(`Unknown ${label} value "${raw}"`);
+};
+
+const parseEnumAttr = <T extends string, F extends T | undefined>(
     raw: string | undefined,
     members: Set<T>,
     fallback: F,
     label: string,
-): T | F => {
-    if (raw === undefined) return fallback;
-    for (const member of members) {
-        if (member === raw) return member;
-    }
-    throw new Error(`Unknown ${label} value "${raw}"`);
-};
+): T | F => (raw === undefined ? fallback : enumMember(raw, members, label));
 
-export const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
-    if (node === undefined) return [];
+const getChildren = (node: RawNode | undefined, tag: string): RawNode[] => {
+    if (node === undefined) {
+        return [];
+    }
+
     const value = node[tag];
-    if (value === undefined) return [];
-    if (Array.isArray(value)) return value as RawNode[];
+
+    if (value === undefined) {
+        return [];
+    }
+
+    if (Array.isArray(value)) {
+        return value as RawNode[];
+    }
+
     return [value as RawNode];
 };
 
-export const childOf = (node: RawNode | undefined, tag: string): RawNode | undefined => {
-    if (node === undefined) return undefined;
+const getChild = (node: RawNode | undefined, tag: string): RawNode | undefined => {
+    if (node === undefined) {
+        return undefined;
+    }
+
     const value = node[tag];
-    if (value === undefined) return undefined;
+
+    if (value === undefined) {
+        return undefined;
+    }
+
     if (Array.isArray(value)) {
         return value.length === 0 ? undefined : (value[0] as RawNode);
     }
+
     return value as RawNode;
 };
 
 const normalizeDoc = (text: string): string | undefined => {
     const trimmed = text.trim();
+
     return trimmed.length === 0 ? undefined : trimmed;
 };
 
-export const docOf = (node: RawNode | undefined): string | undefined => {
-    if (node === undefined) return undefined;
-    const raw = node.doc;
-    const value = Array.isArray(raw) ? raw[0] : raw;
-    if (typeof value === "string") return normalizeDoc(value);
-    if (value !== null && typeof value === "object") {
-        const text = (value as RawNode)["#text"];
-        if (typeof text === "string") return normalizeDoc(text);
+const firstDocValue = (raw: unknown): unknown => (Array.isArray(raw) ? raw[0] : raw);
+
+const docTextFromObject = (value: object): string | undefined => {
+    const text = (value as RawNode)["#text"];
+
+    return typeof text === "string" ? normalizeDoc(text) : undefined;
+};
+
+const getDoc = (node: RawNode | undefined): string | undefined => {
+    if (node === undefined) {
+        return undefined;
     }
-    return undefined;
+
+    const value = firstDocValue(node.doc);
+
+    if (typeof value === "string") {
+        return normalizeDoc(value);
+    }
+
+    if (value === null || typeof value !== "object") {
+        return undefined;
+    }
+
+    return docTextFromObject(value);
+};
+
+export {
+    GIR_CONSTRUCTOR_TAG,
+    parseGirFile,
+    attr,
+    isAttrTrue,
+    nameAttr,
+    intAttr,
+    parseEnumAttr,
+    getChildren,
+    getChild,
+    getDoc,
+    type RawNode,
 };

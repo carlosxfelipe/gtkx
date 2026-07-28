@@ -1,9 +1,9 @@
-import { type ParameterTransfer, transferOwnership } from "./parameter.js";
-import { attr, attrBool, docOf, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
+import { type ParameterTransfer, transferOwnership } from "./parameter.js";
+import { attr, getDoc, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
-export type GirProperty = {
+type GirProperty = {
     name: string;
     doc: string | undefined;
     type: TypeId | undefined;
@@ -18,20 +18,22 @@ export type GirProperty = {
     defaultValue: string | undefined;
 };
 
-export const isConstructableProperty = (property: GirProperty): boolean =>
+const isConstructableProperty = (property: GirProperty): boolean =>
     property.writable || property.construct || property.constructOnly;
 
-export const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
+const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
     name: nameAttr(node),
-    doc: docOf(node),
+    doc: getDoc(node),
     type: typeRefFromNode(node, context),
-    readable: attrBool(node, "readable", true),
-    writable: attrBool(node, "writable"),
-    construct: attrBool(node, "construct"),
-    constructOnly: attrBool(node, "construct-only"),
-    introspectable: attrBool(node, "introspectable", true),
+    readable: isAttrTrue(node, "readable", true),
+    writable: isAttrTrue(node, "writable"),
+    construct: isAttrTrue(node, "construct"),
+    constructOnly: isAttrTrue(node, "construct-only"),
+    introspectable: isAttrTrue(node, "introspectable", true),
     transferOwnership: transferOwnership(node),
     getter: attr(node, "getter"),
     setter: attr(node, "setter"),
     defaultValue: attr(node, "default-value"),
 });
+
+export { isConstructableProperty, propertyFromNode, type GirProperty };

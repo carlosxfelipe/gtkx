@@ -1,4 +1,4 @@
-use std::alloc::{Layout, alloc_zeroed, dealloc};
+use std::alloc::{Layout, alloc_zeroed, dealloc, handle_alloc_error};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -14,8 +14,8 @@ use glib::ffi::{
 use libloading::os::unix::Library;
 use napi::Env;
 
-use crate::messaging::error_reporter::ErrorReporter;
-use crate::messaging::log_writer;
+use crate::host::error_reporter;
+use crate::host::log_writer;
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
@@ -77,7 +77,7 @@ impl UvApi {
 
 thread_local! {
     static UV_API: Cell<Option<UvApi>> = const { Cell::new(None) };
-    static MAIN_LOOP: RefCell<Option<MainLoop>> = const { RefCell::new(None) };
+    static RUNLOOP: RefCell<Option<RunloopState>> = const { RefCell::new(None) };
 }
 
 fn uv() -> UvApi {
@@ -90,25 +90,30 @@ struct HandleData {
     size: usize,
 }
 
-unsafe fn handle_layout(size: usize) -> Layout {
+fn handle_layout(size: usize) -> Layout {
     Layout::from_size_align(size, HANDLE_ALIGN).expect("uv handle layout")
 }
 
 fn alloc_uv_handle(htype: c_int) -> *mut c_void {
     let size = unsafe { (uv().handle_size)(htype) };
-    let ptr = unsafe { alloc_zeroed(handle_layout(size)) } as *mut c_void;
+    let layout = handle_layout(size);
+    let ptr = unsafe { alloc_zeroed(layout) };
+    if ptr.is_null() {
+        handle_alloc_error(layout);
+    }
+    let ptr = ptr.cast::<c_void>();
     let data = Box::into_raw(Box::new(HandleData { size }));
     unsafe { (uv().handle_set_data)(ptr, data.cast()) };
     ptr
 }
 
 unsafe fn free_uv_handle(handle: *mut c_void) {
-    let data_ptr = unsafe { (uv().handle_get_data)(handle) } as *mut HandleData;
+    let data_ptr = unsafe { (uv().handle_get_data)(handle) }.cast::<HandleData>();
     if data_ptr.is_null() {
         return;
     }
     let data = unsafe { Box::from_raw(data_ptr) };
-    unsafe { dealloc(handle as *mut u8, handle_layout(data.size)) };
+    unsafe { dealloc(handle.cast::<u8>(), handle_layout(data.size)) };
 }
 
 unsafe extern "C" fn on_close(handle: *mut c_void) {
@@ -150,7 +155,7 @@ fn desired_uv_events(fds: &[GPollFD]) -> HashMap<c_int, c_int> {
     desired
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Wakeup {
     Now,
     In(u64),
@@ -163,11 +168,11 @@ fn wakeup_for(timeout: c_int, sources_ready: bool, has_unwatchable_fds: bool) ->
     } else if timeout < 0 {
         Wakeup::Idle
     } else {
-        Wakeup::In(timeout as u64)
+        Wakeup::In(u64::from(timeout.unsigned_abs()))
     }
 }
 
-struct MainLoop {
+struct RunloopState {
     uv_loop: *mut c_void,
     ctx: *mut GMainContext,
     prepare: *mut c_void,
@@ -177,29 +182,31 @@ struct MainLoop {
     n_fds: usize,
 }
 
-impl MainLoop {
+impl RunloopState {
     fn arm_wakeups(&mut self) {
         let mut max_priority: c_int = 0;
-        let prepared_ready = unsafe { g_main_context_prepare(self.ctx, &mut max_priority) } != 0;
+        let prepared_ready =
+            unsafe { g_main_context_prepare(self.ctx, &raw mut max_priority) } != 0;
 
         let mut timeout: c_int = -1;
         loop {
-            let capacity = self.fds.len() as c_int;
+            let capacity = c_int::try_from(self.fds.len()).unwrap_or(c_int::MAX);
             let needed = unsafe {
                 g_main_context_query(
                     self.ctx,
                     max_priority,
-                    &mut timeout,
+                    &raw mut timeout,
                     self.fds.as_mut_ptr(),
                     capacity,
                 )
             };
+            let needed_len = usize::try_from(needed).unwrap_or(0);
             if needed <= capacity {
-                self.n_fds = needed.max(0) as usize;
+                self.n_fds = needed_len;
                 break;
             }
             self.fds.resize(
-                needed as usize,
+                needed_len,
                 GPollFD {
                     fd: 0,
                     events: 0,
@@ -217,7 +224,7 @@ impl MainLoop {
                 self.ctx,
                 max_priority,
                 self.fds.as_mut_ptr(),
-                self.n_fds as c_int,
+                c_int::try_from(self.n_fds).unwrap_or(c_int::MAX),
             )
         } != 0;
 
@@ -277,7 +284,7 @@ impl MainLoop {
             Wakeup::Idle => unsafe { (uv.timer_stop)(self.timer) },
         };
         if rc != 0 {
-            ErrorReporter::global().report_str(&format!(
+            error_reporter::report_str(&format!(
                 "libuv failed to arm the GLib wakeup timer (uv error {rc})"
             ));
         }
@@ -285,22 +292,22 @@ impl MainLoop {
 }
 
 unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
-    let Some(ctx) = MAIN_LOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
+    let Some(ctx) = RUNLOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
         return;
     };
 
     let deadline = Instant::now() + DISPATCH_BUDGET;
     loop {
         let mut dispatched = false;
-        crate::messaging::node_env::run_dispatch_scope(|| {
+        crate::host::node_env::run_dispatch_scope(|| {
             dispatched = unsafe { g_main_context_iteration(ctx, GFALSE) } != 0;
         });
-        if !dispatched || Instant::now() >= deadline || MAIN_LOOP.with_borrow(Option::is_none) {
+        if !dispatched || Instant::now() >= deadline || RUNLOOP.with_borrow(Option::is_none) {
             break;
         }
     }
 
-    MAIN_LOOP.with_borrow_mut(|slot| {
+    RUNLOOP.with_borrow_mut(|slot| {
         if let Some(state) = slot.as_mut() {
             state.arm_wakeups();
         }
@@ -312,7 +319,7 @@ unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
 
 pub fn install(env: &Env) -> napi::Result<()> {
-    if MAIN_LOOP.with_borrow(Option::is_some) {
+    if RUNLOOP.with_borrow(Option::is_some) {
         return Ok(());
     }
 
@@ -360,8 +367,8 @@ pub fn install(env: &Env) -> napi::Result<()> {
         (uv.unreference)(timer);
     }
 
-    MAIN_LOOP.with(|slot| {
-        *slot.borrow_mut() = Some(MainLoop {
+    RUNLOOP.with(|slot| {
+        *slot.borrow_mut() = Some(RunloopState {
             uv_loop,
             ctx,
             prepare,
@@ -399,7 +406,7 @@ fn fail_install(
 }
 
 pub fn set_keep_alive(enable: bool) {
-    MAIN_LOOP.with_borrow(|slot| {
+    RUNLOOP.with_borrow(|slot| {
         if let Some(state) = slot.as_ref() {
             let uv = uv();
             unsafe {
@@ -414,7 +421,7 @@ pub fn set_keep_alive(enable: bool) {
 }
 
 pub fn teardown() {
-    let ctx = MAIN_LOOP.with_borrow_mut(|slot| {
+    let ctx = RUNLOOP.with_borrow_mut(|slot| {
         let state = slot.take()?;
         for handle in state.pollers.into_values() {
             close_uv_handle(handle);
@@ -435,31 +442,35 @@ pub fn teardown() {
 mod tests {
     use super::*;
 
+    fn condition(mask: u32) -> u16 {
+        u16::try_from(mask).expect("a GLib GIOCondition mask fits in a gushort")
+    }
+
     fn pfd(fd: c_int, events: u32) -> GPollFD {
         GPollFD {
             fd,
-            events: events as u16,
+            events: condition(events),
             revents: 0,
         }
     }
 
     #[test]
     fn glib_events_map_to_uv_readiness() {
-        assert_eq!(glib_events_to_uv(G_IO_IN as u16), UV_READABLE);
-        assert_eq!(glib_events_to_uv(G_IO_OUT as u16), UV_WRITABLE);
-        assert_eq!(glib_events_to_uv(G_IO_HUP as u16), UV_DISCONNECT);
-        assert_eq!(glib_events_to_uv(G_IO_ERR as u16), UV_DISCONNECT);
-        assert_eq!(glib_events_to_uv(G_IO_PRI as u16), UV_PRIORITIZED);
+        assert_eq!(glib_events_to_uv(condition(G_IO_IN)), UV_READABLE);
+        assert_eq!(glib_events_to_uv(condition(G_IO_OUT)), UV_WRITABLE);
+        assert_eq!(glib_events_to_uv(condition(G_IO_HUP)), UV_DISCONNECT);
+        assert_eq!(glib_events_to_uv(condition(G_IO_ERR)), UV_DISCONNECT);
+        assert_eq!(glib_events_to_uv(condition(G_IO_PRI)), UV_PRIORITIZED);
         assert_eq!(
-            glib_events_to_uv((G_IO_IN | G_IO_OUT) as u16),
+            glib_events_to_uv(condition(G_IO_IN | G_IO_OUT)),
             UV_READABLE | UV_WRITABLE
         );
         assert_eq!(
-            glib_events_to_uv((G_IO_HUP | G_IO_ERR) as u16),
+            glib_events_to_uv(condition(G_IO_HUP | G_IO_ERR)),
             UV_DISCONNECT
         );
         assert_eq!(
-            glib_events_to_uv((G_IO_IN | G_IO_HUP | G_IO_PRI) as u16),
+            glib_events_to_uv(condition(G_IO_IN | G_IO_HUP | G_IO_PRI)),
             UV_READABLE | UV_DISCONNECT | UV_PRIORITIZED
         );
         assert_eq!(glib_events_to_uv(0), 0);

@@ -10,23 +10,37 @@ type TransformHook = Extract<Plugin["transform"], (...args: never[]) => unknown>
 type TransformContext = ThisParameterType<TransformHook>;
 type TransformOptions = Parameters<TransformHook>[2];
 type TransformResult = { code: string; map?: unknown } | null | undefined;
-
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Promise<TransformResult>;
 
+type RuntimeTransformFn = (
+    code: string,
+    id: string,
+    options?: { ssr?: boolean },
+) => { code: string; map: null } | undefined;
+
+const runtimeTransform = gtkxRefreshRuntime().transform as RuntimeTransformFn;
+
 const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformResult => {
-    if (!result || typeof result === "string" || typeof result.code !== "string") return undefined;
+    if (!result || typeof result === "string" || typeof result.code !== "string") {
+        return undefined;
+    }
+
     return { code: result.code, map: result.map };
 };
 
 const getTransform = (plugin: Plugin): TransformFn => {
     const hook = plugin.transform;
     const handler = typeof hook === "function" ? hook : hook?.handler;
+
     if (typeof handler !== "function") {
-        throw new Error("plugin.transform must provide a handler function");
+        throw new TypeError("plugin.transform must provide a handler function");
     }
+
     const context = {} as TransformContext;
+
     return async (code, id, options) => {
         const hookOptions = options as TransformOptions;
+
         return normalizeResult(await handler.call(context, code, id, hookOptions));
     };
 };
@@ -43,21 +57,22 @@ describe("gtkxSwcRefresh", () => {
         await expect(transform("const a = 1", "x.tsx", { ssr: false })).resolves.toBeUndefined();
     });
 
-    it("skips files that do not match the include pattern", async () => {
+    it.each([
+        { id: "x.css", reason: "does not match the include pattern" },
+        { id: "/proj/node_modules/lib/x.tsx", reason: "matches the default exclude (node_modules)" },
+        { id: "/proj/src/x.special", reason: "is outside the default include pattern" },
+    ])("skips a file whose id $reason", async ({ id }) => {
         const transform = getTransform(gtkxSwcRefresh());
-        await expect(transform("const a = 1", "x.css", { ssr: true })).resolves.toBeUndefined();
-    });
-
-    it("skips files that match the default exclude (node_modules)", async () => {
-        const transform = getTransform(gtkxSwcRefresh());
-        await expect(transform("const a = 1", "/proj/node_modules/lib/x.tsx", { ssr: true })).resolves.toBeUndefined();
+        await expect(transform("const a = 1", id, { ssr: true })).resolves.toBeUndefined();
     });
 
     it("transforms TSX files in SSR mode and emits a sourcemap", async () => {
         const transform = getTransform(gtkxSwcRefresh());
+
         const result = await transform("export const Component = () => <div />;\n", "/proj/src/component.tsx", {
             ssr: true,
         });
+
         expect(result).toBeDefined();
         expect(typeof result?.code).toBe("string");
         expect(result?.code.length).toBeGreaterThan(0);
@@ -69,20 +84,7 @@ describe("gtkxSwcRefresh", () => {
         expect(result).toBeDefined();
         expect(typeof result?.code).toBe("string");
     });
-
-    it("skips files outside the default include pattern", async () => {
-        const transform = getTransform(gtkxSwcRefresh());
-        await expect(transform("const a = 1", "/proj/src/x.special", { ssr: true })).resolves.toBeUndefined();
-    });
 });
-
-type RuntimeTransformFn = (
-    code: string,
-    id: string,
-    options?: { ssr?: boolean },
-) => { code: string; map: null } | undefined;
-
-const runtimeTransform = gtkxRefreshRuntime().transform as RuntimeTransformFn;
 
 describe("gtkxRefreshRuntime (plugin shape)", () => {
     it("returns plugin with correct name", () => {
@@ -127,7 +129,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("transforms code with $RefreshReg$", () => {
         const code = "const $RefreshReg$ = something;";
         const result = runtimeTransform(code, "/src/app.tsx", { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain("import { createModuleRegistration");
         expect(result?.code).toContain('__createModuleRegistration__("/src/app.tsx")');
@@ -137,7 +138,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("transforms code with $RefreshSig$", () => {
         const code = "const $RefreshSig$ = something;";
         const result = runtimeTransform(code, "/src/component.tsx", { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain("import { createModuleRegistration");
     });
@@ -145,7 +145,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("transforms code with both refresh markers", () => {
         const code = "$RefreshReg$(); $RefreshSig$();";
         const result = runtimeTransform(code, "/src/both.tsx", { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain("import { createModuleRegistration");
     });
@@ -153,32 +152,20 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("escapes module id in JSON", () => {
         const code = "const $RefreshReg$ = 1;";
         const result = runtimeTransform(code, '/src/path with "quotes".tsx', { ssr: true });
-
         expect(result).toBeDefined();
-        expect(result?.code).toContain('"/src/path with \\"quotes\\".tsx"');
+        expect(result?.code).toContain(String.raw`"/src/path with \"quotes\".tsx"`);
     });
 
     it("returns null map", () => {
         const code = "const $RefreshReg$ = 1;";
         const result = runtimeTransform(code, "/src/app.tsx", { ssr: true });
-
         expect(result?.map).toBeNull();
     });
 });
 
 describe("gtkxRefreshRuntime transform (file extensions)", () => {
-    it("handles .ts files", () => {
-        const result = runtimeTransform("$RefreshReg$();", "/src/util.ts", { ssr: true });
-        expect(result).toBeDefined();
-    });
-
-    it("handles .jsx files", () => {
-        const result = runtimeTransform("$RefreshReg$();", "/src/App.jsx", { ssr: true });
-        expect(result).toBeDefined();
-    });
-
-    it("handles .js files", () => {
-        const result = runtimeTransform("$RefreshReg$();", "/src/index.js", { ssr: true });
+    it.each(["/src/util.ts", "/src/App.jsx", "/src/index.js"])("handles %s", (id) => {
+        const result = runtimeTransform("$RefreshReg$();", id, { ssr: true });
         expect(result).toBeDefined();
     });
 
@@ -191,7 +178,6 @@ describe("gtkxRefreshRuntime transform (file extensions)", () => {
 describe("gtkxFastRefresh", () => {
     it("returns the swc transform and refresh-runtime plugins in enforce order", () => {
         const plugins = gtkxFastRefresh();
-
         expect(plugins).toHaveLength(2);
         expect(plugins.map((plugin) => plugin.name)).toEqual(["gtkx:swc-refresh", "gtkx:refresh-runtime"]);
         expect(plugins.map((plugin) => plugin.enforce)).toEqual(["pre", "post"]);

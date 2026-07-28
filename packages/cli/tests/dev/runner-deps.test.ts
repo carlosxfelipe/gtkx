@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(
@@ -9,12 +10,12 @@ const hoisted = vi.hoisted(() => ({
     ),
     quitApplication: vi.fn(),
     installGracefulShutdown: vi.fn(),
-    startMcpClient: vi.fn(async () => undefined),
+    startMcpClient: vi.fn(() => Promise.resolve()),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
     performRefresh: vi.fn(),
     isRefreshBoundary: vi.fn(() => false),
-    createServer: vi.fn(async () => ({}) as unknown),
+    createServer: vi.fn(() => Promise.resolve({})),
 }));
 
 vi.mock("@gtkx/gi/gio", () => ({
@@ -48,8 +49,6 @@ vi.mock("../../src/refresh-runtime.js", () => ({
     performRefresh: hoisted.performRefresh,
 }));
 
-import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
-
 beforeEach(() => {
     hoisted.getDefault.mockReset();
 });
@@ -57,7 +56,6 @@ beforeEach(() => {
 describe("defaultDevRunnerDeps (wiring)", () => {
     it("wires the production collaborators", () => {
         const deps = defaultDevRunnerDeps();
-
         expect(deps.createServer).toBe(hoisted.createServer);
         expect(deps.stopMcpClient).toBe(hoisted.stopMcpClient);
         expect(deps.performRefresh).toBe(hoisted.performRefresh);
@@ -66,13 +64,10 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 
     it("installs an app-graph testing-module loader before starting the MCP client", async () => {
         const deps = defaultDevRunnerDeps();
-        const loadAppModule = vi.fn(async () => ({}));
-
+        const loadAppModule = vi.fn(() => Promise.resolve({}));
         await deps.startMcpClient("com.example.app", loadAppModule);
-
         expect(hoisted.setTestingModuleLoader).toHaveBeenCalledTimes(1);
         expect(hoisted.startMcpClient).toHaveBeenCalledWith("com.example.app");
-
         const installedLoader = hoisted.setTestingModuleLoader.mock.calls[0]?.[0] as () => Promise<unknown>;
         await installedLoader();
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
@@ -83,9 +78,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         const on = vi.fn();
         hoisted.getDefault.mockReturnValueOnce({ applicationId: null, on });
         const onShutdown = vi.fn();
-
         deps.watchApplicationShutdown(onShutdown);
-
         expect(on).toHaveBeenCalledWith("shutdown", onShutdown);
     });
 
@@ -93,15 +86,17 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValueOnce(null);
 
-        expect(() => deps.watchApplicationShutdown(vi.fn())).not.toThrow();
+        expect(() => {
+            deps.watchApplicationShutdown(vi.fn());
+        }).not.toThrow();
     });
 });
 
 describe("defaultDevRunnerDeps (plugins)", () => {
     it("assembles the plugin list in the documented order", () => {
         const deps = defaultDevRunnerDeps();
-
         const names = deps.plugins().map((p) => p.name);
+
         expect(names).toEqual([
             "gtkx:config",
             "gtkx:undeclared-library",
@@ -117,26 +112,23 @@ describe("defaultDevRunnerDeps (plugins)", () => {
     });
 });
 
-describe("defaultDevRunnerDeps (getApplicationId)", () => {
-    it("returns the registered GLib applicationId", () => {
+describe("defaultDevRunnerDeps (waitForApplicationId)", () => {
+    it("resolves the registered GLib applicationId", async () => {
         const deps = defaultDevRunnerDeps();
-        hoisted.getDefault.mockReturnValueOnce({ applicationId: "com.example.app" });
-
-        expect(deps.getApplicationId()).toBe("com.example.app");
+        hoisted.getDefault.mockReturnValue({ applicationId: "com.example.app" });
+        await expect(deps.waitForApplicationId(1000)).resolves.toBe("com.example.app");
     });
 
-    it("returns null when no Gio.Application is registered", () => {
+    it("keeps polling and resolves once the application mounts after a delay", async () => {
         const deps = defaultDevRunnerDeps();
-        hoisted.getDefault.mockReturnValueOnce(null);
-
-        expect(deps.getApplicationId()).toBeNull();
+        hoisted.getDefault.mockReturnValueOnce(null).mockReturnValue({ applicationId: "com.example.late" });
+        await expect(deps.waitForApplicationId(1000)).resolves.toBe("com.example.late");
     });
 
-    it("returns null when the default Application has no id", () => {
+    it("resolves null when no application mounts before the timeout", async () => {
         const deps = defaultDevRunnerDeps();
-        hoisted.getDefault.mockReturnValueOnce({ applicationId: null });
-
-        expect(deps.getApplicationId()).toBeNull();
+        hoisted.getDefault.mockReturnValue(null);
+        await expect(deps.waitForApplicationId(60)).resolves.toBeNull();
     });
 });
 
@@ -149,9 +141,7 @@ describe("defaultDevRunnerDeps (shutdown wiring)", () => {
     it("routes shutdown handlers through installGracefulShutdown", () => {
         const deps = defaultDevRunnerDeps();
         const onSignal = vi.fn();
-
         deps.installShutdownHandlers(onSignal);
-
         expect(hoisted.installGracefulShutdown).toHaveBeenCalledWith({ onSignal });
     });
 
@@ -159,18 +149,14 @@ describe("defaultDevRunnerDeps (shutdown wiring)", () => {
         const deps = defaultDevRunnerDeps();
         const application = { applicationId: "com.example.app" };
         hoisted.getDefault.mockReturnValueOnce(application);
-
         deps.quitDefaultApplication();
-
         expect(hoisted.quitApplication).toHaveBeenCalledWith(application);
     });
 
     it("does nothing when no default application is registered", () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValueOnce(null);
-
         deps.quitDefaultApplication();
-
         expect(hoisted.quitApplication).not.toHaveBeenCalled();
     });
 });
@@ -189,13 +175,11 @@ describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
     it("resolves the applicationId declared in gtkx.config.ts", async () => {
         writeFileSync(join(root, "gtkx.config.ts"), 'export default { applicationId: "com.example.app" };\n');
         const deps = defaultDevRunnerDeps();
-
         await expect(deps.getConfiguredApplicationId(root)).resolves.toBe("com.example.app");
     });
 
     it("resolves undefined when no config file exists", async () => {
         const deps = defaultDevRunnerDeps();
-
         await expect(deps.getConfiguredApplicationId(root)).resolves.toBeUndefined();
     });
 });
@@ -204,6 +188,7 @@ describe("defaultDevRunnerDeps (log and exit)", () => {
     it("forwards log messages through the output sink with the [gtkx] prefix", () => {
         const deps = defaultDevRunnerDeps();
         const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
         try {
             deps.log("hello");
             expect(spy).toHaveBeenCalledWith("[gtkx] hello\n");
@@ -214,7 +199,8 @@ describe("defaultDevRunnerDeps (log and exit)", () => {
 
     it("delegates exit to process.exit with the given code", () => {
         const deps = defaultDevRunnerDeps();
-        const spy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        const spy = vi.spyOn(process, "exit").mockImplementation(((): void => undefined) as never);
+
         try {
             deps.exit(7);
             expect(spy).toHaveBeenCalledWith(7);

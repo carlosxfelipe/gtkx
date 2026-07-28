@@ -1,41 +1,53 @@
 import type { GirClass } from "./class.js";
 import type { Library } from "./library.js";
+import type { GirType } from "./type.js";
 
-export type ResolvedAncestor = {
+type ResolvedAncestor = {
     klass: GirClass;
     namespaceName: string;
 };
+
+const getAncestor = (resolved: GirType | undefined): ResolvedAncestor | undefined =>
+    resolved !== undefined && (resolved.kind === "class" || resolved.kind === "interface")
+        ? { klass: resolved.value, namespaceName: resolved.namespace.name }
+        : undefined;
 
 const resolveClassOrInterface = (
     library: Library,
     defaultNamespace: string,
     name: string,
-): ResolvedAncestor | undefined => {
-    const resolved = library.resolveType(defaultNamespace, name);
-    if (resolved === undefined) return undefined;
-    if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
-    return { klass: resolved.value, namespaceName: resolved.namespace.name };
-};
+): ResolvedAncestor | undefined => getAncestor(library.resolveType(defaultNamespace, name));
 
-export const resolveInterface = (
+const resolveInterface = (
     library: Library,
     defaultNamespace: string,
     name: string,
 ): ResolvedAncestor | undefined => {
     const resolved = library.resolveType(defaultNamespace, name);
-    if (resolved?.kind !== "interface") return undefined;
-    return { klass: resolved.value, namespaceName: resolved.namespace.name };
+
+    return resolved?.kind === "interface" ? getAncestor(resolved) : undefined;
 };
 
-export function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
-    const visited = new Set<string>();
+function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
+    const visited: Set<string> = new Set();
     let current: ResolvedAncestor | undefined = { klass, namespaceName };
+
     while (current !== undefined) {
         const key = `${current.namespaceName}.${current.klass.name}`;
-        if (visited.has(key)) return;
+
+        if (visited.has(key)) {
+            return;
+        }
+
         visited.add(key);
         yield current;
-        if (current.klass.parent === undefined) return;
+
+        if (current.klass.parent === undefined) {
+            return;
+        }
+
         current = resolveClassOrInterface(library, current.namespaceName, current.klass.parent);
     }
 }
+
+export { resolveInterface, ancestorChain, type ResolvedAncestor };

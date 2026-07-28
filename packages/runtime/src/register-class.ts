@@ -1,7 +1,7 @@
 import {
+    registerClass as nativeRegisterClass,
     type RegisterClassOptions as NativeRegisterClassOptions,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
-    registerClass as nativeRegisterClass,
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
@@ -19,7 +19,9 @@ type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
 type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
-type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[] };
+type InterfaceVfuncBinding = { gtype: bigint; vtableSize: number; vfuncs: DiscoveredInterfaceVfunc[] };
+
+const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set(["constructed", "setProperty", "getProperty"]);
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and
@@ -31,8 +33,9 @@ type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[]
  * @param options Registration options, such as an explicit type name.
  * @returns The same class, now registered.
  */
-export function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
+function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
     const parentType = resolveParentType(klass);
+
     if (parentType === TYPE_INVALID) {
         throw new TypeError(`registerClass: ${klass.name} must extend a registered wrapper class`);
     }
@@ -46,7 +49,6 @@ export function registerClass<T extends AnyClass>(klass: T, options: RegisterCla
     const classVfuncs = discoverClassVfuncs(klass);
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentType, claimedMethodNames);
-
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
@@ -58,18 +60,55 @@ function resolveParentType(klass: AnyClass): bigint {
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const gtype = getClassType(cls);
-            return gtype !== TYPE_INVALID ? gtype : undefined;
+
+            return gtype === TYPE_INVALID ? undefined : gtype;
         }) ?? TYPE_INVALID
     );
 }
 
 function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
-    if (!proto) return [];
+
+    if (!proto) {
+        return [];
+    }
+
     return Object.getOwnPropertyNames(proto).filter((name) => {
-        if (name === "constructor") return false;
+        if (name === "constructor") {
+            return false;
+        }
+
         return typeof (proto as Record<string, unknown>)[name] === "function";
     });
+}
+
+function buildDiscoveredVfunc<K extends "class" | "interface">(
+    proto: Record<string, VfuncFn>,
+    methodName: string,
+    resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
+    skip: Set<string> | undefined,
+): DiscoveredVfunc<K> | undefined {
+    if (skip?.has(methodName)) {
+        return undefined;
+    }
+
+    const descriptor = resolveDescriptor(methodName);
+
+    if (!descriptor) {
+        return undefined;
+    }
+
+    const fn = proto[methodName];
+
+    if (!fn) {
+        return undefined;
+    }
+
+    return {
+        ...descriptor,
+        methodName,
+        fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
+    };
 }
 
 function collectDiscoveredVfuncs<K extends "class" | "interface">(
@@ -79,31 +118,30 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
 ): DiscoveredVfunc<K>[] {
     const proto = (klass as { prototype: Record<string, VfuncFn> }).prototype;
     const result: DiscoveredVfunc<K>[] = [];
+
     for (const methodName of ownInstanceMethodNames(klass)) {
-        if (skip?.has(methodName)) continue;
-        const descriptor = resolveDescriptor(methodName);
-        if (!descriptor) continue;
-        const fn = proto[methodName];
-        if (!fn) continue;
-        result.push({
-            ...descriptor,
-            methodName,
-            fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
-        });
+        const discovered = buildDiscoveredVfunc(proto, methodName, resolveDescriptor, skip);
+
+        if (discovered) {
+            result.push(discovered);
+        }
     }
+
     return result;
 }
-
-const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set(["constructed", "setProperty", "getProperty"]);
 
 function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
     return collectDiscoveredVfuncs(klass, (methodName) => {
         const descriptor = findClassVfuncDescriptor(klass, methodName);
+
         if (descriptor && UNSUPPORTED_CONSTRUCT_VFUNCS.has(methodName)) {
             throw new Error(
-                `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not supported; run construct-time initialization in the subclass constructor, after super(...), instead`,
+                `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not ` +
+                "supported; run construct-time initialization in the subclass constructor, after " +
+                "super(...), instead",
             );
         }
+
         return descriptor ?? undefined;
     });
 }
@@ -122,12 +160,15 @@ function discoverInheritedInterfaceVfuncs(
     claimedMethodNames: Set<string>,
 ): InterfaceVfuncBinding[] {
     const bindings: InterfaceVfuncBinding[] = [];
+
     for (const interfaceGtype of typeInterfaces(parentGtype)) {
-        const vfuncs = discoverInterfaceVfuncs(klass, interfaceGtype, claimedMethodNames);
-        if (vfuncs.length > 0) {
-            bindings.push({ gtype: interfaceGtype, vfuncs });
+        const [first, ...rest] = discoverInterfaceVfuncs(klass, interfaceGtype, claimedMethodNames);
+
+        if (first !== undefined) {
+            bindings.push({ gtype: interfaceGtype, vtableSize: first.vtableSize, vfuncs: [first, ...rest] });
         }
     }
+
     return bindings;
 }
 
@@ -137,11 +178,16 @@ function discoverInterfaceVfuncs(
     claimedMethodNames: Set<string>,
 ): DiscoveredInterfaceVfunc[] {
     const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
-    if (!vfuncRegistry) return [];
+
+    if (!vfuncRegistry) {
+        return [];
+    }
+
     return collectDiscoveredVfuncs(
         klass,
         (methodName) => {
             const entry = vfuncRegistry[methodName];
+
             return entry?.kind === "interface" ? entry : undefined;
         },
         claimedMethodNames,
@@ -152,6 +198,7 @@ function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDes
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const entry = getVfuncRegistry(cls)?.[methodName];
+
             return entry?.kind === "class" ? entry : undefined;
         }) ?? null
     );
@@ -163,16 +210,26 @@ function toNativeOptions(
 ): NativeRegisterClassOptions | undefined {
     const hasInterfaces = interfaceBindings.length > 0;
     const hasClassVfuncs = classVfuncs.length > 0;
+
     if (!hasClassVfuncs && !hasInterfaces) {
         return undefined;
     }
+
     const options: NativeRegisterClassOptions = {};
-    if (hasClassVfuncs) options.vfuncs = [...classVfuncs];
+
+    if (hasClassVfuncs) {
+        options.vfuncs = [...classVfuncs];
+    }
+
     if (hasInterfaces) {
         options.interfaces = interfaceBindings.map((binding) => ({
             type: binding.gtype,
+            vtableSize: binding.vtableSize,
             vfuncs: [...binding.vfuncs],
         }));
     }
+
     return options;
 }
+
+export { registerClass };

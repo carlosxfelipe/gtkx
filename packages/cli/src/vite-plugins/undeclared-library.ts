@@ -1,8 +1,6 @@
+import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
-import type { Plugin, UserConfig } from "vite";
-
-const GENERATED_MODULE_PATTERN = /^@gtkx\/(?:gi|jsx)\/([a-z0-9]+)$/;
 
 type PluginState = {
     root: string;
@@ -10,18 +8,21 @@ type PluginState = {
     girPath: string[] | null;
 };
 
+const GENERATED_MODULE_PATTERN = /^@gtkx\/(?:gi|jsx)\/([a-z0-9]+)$/;
+
 const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     if (state.girPath === null) {
         const { config } = await loadConfig(state.root, { mode: state.mode });
         state.girPath = resolveGirPath(config.girPath);
     }
+
     return state.girPath;
 };
 
-const namespaceOf = (identifier: string): string => identifier.slice(0, identifier.indexOf("-")).toLowerCase();
+const getNamespace = (identifier: string): string => identifier.slice(0, identifier.indexOf("-")).toLowerCase();
 
 const findGirIdentifier = (girPath: string[], namespace: string): string | undefined =>
-    discoverGirNamespaces(girPath).find((identifier) => namespaceOf(identifier) === namespace);
+    discoverGirNamespaces(girPath).find((identifier) => getNamespace(identifier) === namespace);
 
 const undeclaredLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
     const identifier = findGirIdentifier(girPath, namespace);
@@ -29,19 +30,19 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     if (identifier === undefined) {
         return new Error(
             `Cannot resolve "${source}": the binding store has no "${namespace}" module, and no GIR data for it ` +
-                `was found in [${girPath.join(", ")}]. If "${namespace}" is a library, install its ` +
-                "gobject-introspection data package and add its GIR identifier to `libraries` in gtkx.config.ts. " +
-                "Otherwise run gtkx codegen to regenerate the store.",
+            `was found in [${girPath.join(", ")}]. If "${namespace}" is a library, install its ` +
+            "gobject-introspection data package and add its GIR identifier to `libraries` in gtkx.config.ts. " +
+            "Otherwise run gtkx codegen to regenerate the store.",
         );
     }
 
     return new Error(
         `Cannot resolve "${source}": the "${identifier}" bindings have not been generated. ` +
-            `Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run gtkx dev or gtkx build again.`,
+        `Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run gtkx dev or gtkx build again.`,
     );
 };
 
-export function gtkxUndeclaredLibrary(mode?: string): Plugin {
+function gtkxUndeclaredLibrary(mode?: string): Plugin {
     const state: PluginState = {
         root: "",
         mode,
@@ -58,12 +59,20 @@ export function gtkxUndeclaredLibrary(mode?: string): Plugin {
 
         async resolveId(source, importer, options) {
             const namespace = GENERATED_MODULE_PATTERN.exec(source)?.[1];
-            if (namespace === undefined) return;
+
+            if (namespace === undefined) {
+                return;
+            }
 
             const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
-            if (resolved !== null) return;
+
+            if (resolved !== null) {
+                return;
+            }
 
             throw undeclaredLibraryError(source, namespace, await girSearchPaths(state));
         },
     };
 }
+
+export { gtkxUndeclaredLibrary };

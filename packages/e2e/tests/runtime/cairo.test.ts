@@ -1,4 +1,3 @@
-import { existsSync, unlinkSync } from "node:fs";
 import {
     Content,
     Context,
@@ -24,6 +23,9 @@ import {
     Surface,
     SurfaceType,
 } from "@gtkx/gi/cairo";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const createTestSurface = (): Surface => {
@@ -34,7 +36,16 @@ const createTestContext = (): Context => {
     return Context.create(createTestSurface());
 };
 
-describe("Matrix", () => {
+const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
+    const ctx = createTestContext();
+    ctx.moveTo(0, 0);
+    curve(ctx);
+    const point = ctx.getCurrentPoint();
+    expect(point?.x).toBeCloseTo(30);
+    expect(point?.y).toBeCloseTo(30);
+};
+
+describe("Matrix (1)", () => {
     it("constructs from explicit components", () => {
         const m = new Matrix(1, 0, 0, 1, 5, 7);
         const p = m.transformPoint(0, 0);
@@ -64,7 +75,9 @@ describe("Matrix", () => {
         expect(d.dx).toBeCloseTo(2);
         expect(d.dy).toBeCloseTo(3);
     });
+});
 
+describe("Matrix (2)", () => {
     it("creates a rotation matrix", () => {
         const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
         m.rotate(Math.PI / 2);
@@ -137,22 +150,17 @@ describe("Context — path operations: basic moves and lines", () => {
     });
 });
 
-const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
-    const ctx = createTestContext();
-    ctx.moveTo(0, 0);
-    curve(ctx);
-    const point = ctx.getCurrentPoint();
-    expect(point?.x).toBeCloseTo(30);
-    expect(point?.y).toBeCloseTo(30);
-};
-
 describe("Context — path operations: curves and arcs", () => {
     it("draws a curve", () => {
-        expectCurveEndsAt30((ctx) => ctx.curveTo(10, 10, 20, 20, 30, 30));
+        expectCurveEndsAt30((ctx) => {
+            ctx.curveTo(10, 10, 20, 20, 30, 30);
+        });
     });
 
     it("draws a relative curve", () => {
-        expectCurveEndsAt30((ctx) => ctx.relCurveTo(10, 10, 20, 20, 30, 30));
+        expectCurveEndsAt30((ctx) => {
+            ctx.relCurveTo(10, 10, 20, 20, 30, 30);
+        });
     });
 
     it("draws an arc", () => {
@@ -347,8 +355,8 @@ describe("Context — line settings", () => {
 
     it("sets and gets miter limit", () => {
         const ctx = createTestContext();
-        ctx.setMiterLimit(5.0);
-        expect(ctx.getMiterLimit()).toBeCloseTo(5.0);
+        ctx.setMiterLimit(5);
+        expect(ctx.getMiterLimit()).toBeCloseTo(5);
     });
 
     it("sets and gets tolerance", () => {
@@ -923,7 +931,10 @@ describe("Surface — createContext", () => {
 describe("Surface — finish", () => {
     it("finishes a surface", () => {
         const surface = createTestSurface();
-        expect(() => surface.finish()).not.toThrow();
+
+        expect(() => {
+            surface.finish();
+        }).not.toThrow();
     });
 });
 
@@ -947,18 +958,26 @@ describe("Surface — createForRectangle", () => {
 describe("Surface — flush and markDirty", () => {
     it("flushes a surface", () => {
         const surface = createTestSurface();
-        expect(() => surface.flush()).not.toThrow();
+
+        expect(() => {
+            surface.flush();
+        }).not.toThrow();
     });
 
     it("marks a surface dirty", () => {
         const surface = createTestSurface();
-        expect(() => surface.markDirty()).not.toThrow();
+
+        expect(() => {
+            surface.markDirty();
+        }).not.toThrow();
     });
 });
 
 describe("Surface — writeToPng", () => {
     it("writes surface to PNG file", () => {
-        const tmpPath = "/tmp/gtkx-test-cairo-write.png";
+        const outputDir = mkdtempSync(join(tmpdir(), "gtkx-cairo-"));
+        const tmpPath = join(outputDir, "write.png");
+
         try {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             const ctx = Context.create(surface);
@@ -967,7 +986,7 @@ describe("Surface — writeToPng", () => {
             surface.writeToPng(tmpPath);
             expect(existsSync(tmpPath)).toBe(true);
         } finally {
-            if (existsSync(tmpPath)) unlinkSync(tmpPath);
+            rmSync(outputDir, { recursive: true, force: true });
         }
     });
 });
@@ -1001,7 +1020,7 @@ describe("Surface — getReferenceCount", () => {
     });
 });
 
-describe("ImageSurface", () => {
+describe("ImageSurface (1)", () => {
     it("creates an image surface", () => {
         const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface).toBeInstanceOf(Surface);
@@ -1034,12 +1053,14 @@ describe("ImageSurface", () => {
         const surface = ImageSurface.create(Format.ARGB32, 10, 10);
         expect(surface.getStride()).toBeGreaterThanOrEqual(40);
     });
+});
 
+describe("ImageSurface (2)", () => {
     describe("getData", () => {
         it("returns data with correct length", () => {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             const data = surface.getData();
-            expect(data.length).toBe(surface.getStride() * surface.getHeight());
+            expect(data).toHaveLength(surface.getStride() * surface.getHeight());
         });
 
         it("contains painted pixel values", () => {
@@ -1057,7 +1078,7 @@ describe("ImageSurface", () => {
         it("returns empty array for zero-size surface", () => {
             const surface = ImageSurface.create(Format.ARGB32, 0, 0);
             const data = surface.getData();
-            expect(data.length).toBe(0);
+            expect(data).toHaveLength(0);
         });
     });
 });
@@ -1097,6 +1118,7 @@ describe("Region", () => {
             { x: 20, y: 20, width: 10, height: 10 },
             { x: 40, y: 40, width: 10, height: 10 },
         ]);
+
         expect(region.numRectangles()).toBe(3);
     });
 

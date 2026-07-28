@@ -4,22 +4,43 @@ import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
 import { getWidgetNodeText } from "./widget-accessible-properties.js";
 
-const DEFAULT_MAX_LENGTH = 7000;
-const INDENT = "  ";
-
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 /**
  * Options controlling how a widget tree is rendered to a string by
  * {@link prettyWidget} and {@link logWidget}.
  */
-export type PrettyWidgetOptions = {
+type PrettyWidgetOptions = {
     /** Truncates the output once it exceeds this many characters. */
     maxLength?: number;
     /** Whether to apply ANSI color highlighting; defaults to the terminal capabilities. */
     highlight?: boolean;
     /** Resolves an `id` attribute to show for each widget. */
     getId?: WidgetIdResolver;
+    /** Stops descending past this depth, replacing deeper children with a summary line. */
+    maxDepth?: number;
+};
+
+type Colors = {
+    tag: (s: string) => string;
+    attr: (s: string) => string;
+    value: (s: string) => string;
+};
+
+type FormatContext = {
+    getId: WidgetIdResolver | undefined;
+    colors: Colors;
+    maxDepth: number | undefined;
+};
+
+const DEFAULT_MAX_LENGTH = 7000;
+const INDENT = "  ";
+
+const ansi = {
+    cyan: "\u{1B}[36m",
+    yellow: "\u{1B}[33m",
+    green: "\u{1B}[32m",
+    reset: "\u{1B}[0m",
 };
 
 const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [string, string][] => {
@@ -30,6 +51,7 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
     }
 
     const name = widget.getName();
+
     if (name) {
         attrs.push(["name", name]);
     }
@@ -45,38 +67,38 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
     }
 
     const idAttrs = attrs.filter(([key]) => key === "id");
+
     const otherAttrs = sortStringsBy(
         attrs.filter(([key]) => key !== "id"),
         ([key]) => key,
     );
+
     return [...idAttrs, ...otherAttrs];
 };
 
-type Colors = {
-    tag: (s: string) => string;
-    attr: (s: string) => string;
-    value: (s: string) => string;
-};
-
-const ansi = {
-    cyan: "\x1b[36m",
-    yellow: "\x1b[33m",
-    green: "\x1b[32m",
-    reset: "\x1b[0m",
-};
-
 const shouldHighlight = (): boolean => {
-    if (typeof process === "undefined") return false;
-    if (process.env.COLORS === "false" || process.env.NO_COLOR) return false;
-    if (process.env.COLORS === "true" || process.env.FORCE_COLOR) return true;
+    if (typeof process === "undefined") {
+        return false;
+    }
+
+    if (process.env.COLORS === "false" || process.env.NO_COLOR) {
+        return false;
+    }
+
+    if (process.env.COLORS === "true" || process.env.FORCE_COLOR) {
+        return true;
+    }
+
     return process.stdout.isTTY;
 };
 
-const createColors = (enabled: boolean): Colors => {
-    if (!enabled) {
+const createColors = (isEnabled: boolean): Colors => {
+    if (!isEnabled) {
         const identity = (s: string): string => s;
+
         return { tag: identity, attr: identity, value: identity };
     }
+
     return {
         tag: (s) => `${ansi.cyan}${s}${ansi.reset}`,
         attr: (s) => `${ansi.yellow}${s}${ansi.reset}`,
@@ -86,21 +108,57 @@ const createColors = (enabled: boolean): Colors => {
 
 const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;");
 
-const formatAttrs = (attrs: [string, string][], colors: Colors): string =>
-    attrs.map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`).join("");
+const formatAttr = (key: string, value: string, colors: Colors): string => {
+    const quoted = `"${escapeAttrValue(value)}"`;
 
-const formatWidget = (
-    widget: Gtk.Widget,
-    depth: number,
-    getId: WidgetIdResolver | undefined,
-    colors: Colors,
-): string => {
+    return ` ${colors.attr(key)}=${colors.value(quoted)}`;
+};
+
+const formatAttrs = (attrs: [string, string][], colors: Colors): string =>
+    attrs.map(([key, value]) => formatAttr(key, value, colors)).join("");
+
+const countChildren = (widget: Gtk.Widget): number => {
+    let count = 0;
+    let child = widget.getFirstChild();
+
+    while (child) {
+        count += 1;
+        child = child.getNextSibling();
+    }
+
+    return count;
+};
+
+const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+    const { getId, colors } = ctx;
+    const indent = INDENT.repeat(depth);
+    const count = countChildren(widget);
+    const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
+    const plural = count === 1 ? "" : "s";
+    const summary = `… ${String(count)} child widget${plural} hidden${hint}`;
+
+    return `${indent}${INDENT}${colors.tag(summary)}\n`;
+};
+
+const formatChildren = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+    let output = "";
+    let child = widget.getFirstChild();
+
+    while (child) {
+        output += formatWidget(child, depth + 1, ctx);
+        child = child.getNextSibling();
+    }
+
+    return output;
+};
+
+const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+    const { getId, colors, maxDepth } = ctx;
     const indent = INDENT.repeat(depth);
     const tag = widget.constructor.name;
     const attrs = formatAttrs(buildAttrs(widget, getId), colors);
     const openTag = `${colors.tag("<")}${colors.tag(tag)}${attrs}${colors.tag(">")}`;
     const closeTag = `${colors.tag("</")}${colors.tag(tag)}${colors.tag(">")}`;
-
     const text = getWidgetNodeText(widget);
     const firstChild = widget.getFirstChild();
 
@@ -109,16 +167,28 @@ const formatWidget = (
     }
 
     let output = `${indent}${openTag}\n`;
+
     if (text) {
         output += `${indent}${INDENT}${text}\n`;
     }
-    let child = firstChild;
-    while (child) {
-        output += formatWidget(child, depth + 1, getId, colors);
-        child = child.getNextSibling();
+
+    if (firstChild && maxDepth !== undefined && depth >= maxDepth) {
+        output += formatHiddenChildrenLine(widget, depth, ctx);
+        output += `${indent}${closeTag}\n`;
+
+        return output;
     }
+
+    output += formatChildren(widget, depth, ctx);
     output += `${indent}${closeTag}\n`;
+
     return output;
+};
+
+const resolveMaxLength = (options: PrettyWidgetOptions): number => {
+    const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
+
+    return options.maxLength ?? envLimit;
 };
 
 /**
@@ -129,20 +199,19 @@ const formatWidget = (
  * @param options Formatting options such as truncation length and highlighting.
  * @returns The formatted representation of the tree.
  */
-export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
-    const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
-    const maxLength = options.maxLength ?? envLimit;
+const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
+    const maxLength = resolveMaxLength(options);
 
     if (maxLength === 0) {
         return "";
     }
 
-    const highlight = options.highlight ?? shouldHighlight();
-    const colors = createColors(highlight);
-
+    const isHighlight = options.highlight ?? shouldHighlight();
+    const colors = createColors(isHighlight);
     let output = "";
+
     for (const root of roots(container)) {
-        output += formatWidget(root, 0, options.getId, colors);
+        output += formatWidget(root, 0, { getId: options.getId, colors, maxDepth: options.maxDepth });
     }
 
     if (output.length > maxLength) {
@@ -158,9 +227,12 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
  * @param container A single scope or an array of scopes to format and print.
  * @param options Formatting options passed through to {@link prettyWidget}.
  */
-export const logWidget = (container: Container | Container[], options?: PrettyWidgetOptions): void => {
+const logWidget = (container: Container | Container[], options?: PrettyWidgetOptions): void => {
     const containers: Container[] = Array.isArray(container) ? container : [container];
+
     for (const target of containers) {
         console.log(prettyWidget(target, options));
     }
 };
+
+export { prettyWidget, logWidget, type PrettyWidgetOptions };

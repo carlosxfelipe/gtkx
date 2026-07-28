@@ -7,6 +7,14 @@ import { WebKitWebView } from "@gtkx/jsx/webkit";
 import { quit } from "@gtkx/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
+type BrowserState = {
+    url: string;
+    isLoading: boolean;
+    canGoBack: boolean;
+    canGoForward: boolean;
+    progress: number;
+};
+
 const START_URL = "https://gtkx.dev";
 
 const urlBarStyle = css`
@@ -21,17 +29,17 @@ const progressStyle = css`
 
 const normalizeUrl = (targetUrl: string): string => {
     const trimmed = targetUrl.trim();
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        return trimmed;
+    }
+
     return `https://${trimmed}`;
 };
 
-interface BrowserState {
-    url: string;
-    isLoading: boolean;
-    canGoBack: boolean;
-    canGoForward: boolean;
-    progress: number;
-}
+const navigateTo = (webViewRef: RefObject<WebKit.WebView | null>, targetUrl: string) => {
+    webViewRef.current?.loadUri(normalizeUrl(targetUrl));
+};
 
 const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
     const [state, setState] = useState<BrowserState>({
@@ -42,10 +50,16 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
         progress: 0,
     });
 
-    const setUrl = (url: string) => setState((s) => ({ ...s, url }));
+    useEffect(() => {
+        navigateTo(webViewRef, START_URL);
+    }, [webViewRef]);
+
+    const setUrl = (url: string) => {
+        setState((s) => ({ ...s, url }));
+    };
 
     const navigate = (targetUrl: string) => {
-        webViewRef.current?.loadUri(normalizeUrl(targetUrl));
+        navigateTo(webViewRef, targetUrl);
     };
 
     const handleLoadChanged = (loadEvent: WebKit.LoadEvent, webView: WebKit.WebView) => {
@@ -65,6 +79,27 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
 
     return { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress };
 };
+
+const UrlEntry = ({
+    url,
+    onUrlChanged,
+    onActivate,
+}: {
+    url: string;
+    onUrlChanged: (value: string) => void;
+    onActivate: () => void;
+}) => (
+    <GtkEntry
+        text={url}
+        onChanged={(entry: Gtk.Entry) => {
+            onUrlChanged(entry.getText());
+        }}
+        onActivate={onActivate}
+        hexpand
+        cssClasses={[urlBarStyle]}
+        placeholderText="Enter URL..."
+    />
+);
 
 const NavigationButtons = ({
     canGoBack,
@@ -99,32 +134,27 @@ const NavigationButtons = ({
 
 const BrowserWindow = () => {
     const webViewRef = useRef<WebKit.WebView | null>(null);
+
     const { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress } =
         useBrowserController(webViewRef);
-    const { url, isLoading, canGoBack, canGoForward, progress } = state;
-    const navigateRef = useRef(navigate);
-    navigateRef.current = navigate;
 
-    useEffect(() => {
-        navigateRef.current(START_URL);
-    }, []);
+    const { url, isLoading, canGoBack, canGoForward, progress } = state;
 
     return (
         <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onCloseRequest={quit}>
             <AdwToolbarView
-                topBar={
+                topBar={(
                     <AdwHeaderBar
-                        titleWidget={
-                            <GtkEntry
-                                text={url}
-                                onChanged={(entry: Gtk.Entry) => setUrl(entry.getText())}
-                                onActivate={() => navigate(url)}
-                                hexpand
-                                cssClasses={[urlBarStyle]}
-                                placeholderText="Enter URL..."
+                        titleWidget={(
+                            <UrlEntry
+                                url={url}
+                                onUrlChanged={setUrl}
+                                onActivate={() => {
+                                    navigate(url);
+                                }}
                             />
-                        }
-                        start={
+                        )}
+                        start={(
                             <NavigationButtons
                                 canGoBack={canGoBack}
                                 canGoForward={canGoForward}
@@ -132,12 +162,11 @@ const BrowserWindow = () => {
                                 onBack={() => webViewRef.current?.goBack()}
                                 onForward={() => webViewRef.current?.goForward()}
                                 onReloadOrStop={() =>
-                                    isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()
-                                }
+                                    isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()}
                             />
-                        }
+                        )}
                     />
-                }
+                )}
             >
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                     <GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />
@@ -154,8 +183,10 @@ const BrowserWindow = () => {
     );
 };
 
-export const App = () => (
+const App = () => (
     <AdwApplication>
         <BrowserWindow />
     </AdwApplication>
 );
+
+export { App };

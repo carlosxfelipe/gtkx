@@ -1,13 +1,13 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import { tFn } from "../../analysis/descriptor.js";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { tFn } from "../../analysis/descriptor.js";
+import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { callableReferencesClassStruct } from "./class-struct-record.js";
+import { hasClassStructReference } from "./class-struct-record.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -18,32 +18,73 @@ import {
     renderReturnDescriptor,
 } from "./method.js";
 
-export const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
-    if (fn.cIdentifier === undefined) return undefined;
+const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
+    if (fn.cIdentifier === undefined) {
+        return undefined;
+    }
+
     const library = context.namespace.sharedLibrary;
-    if (library === undefined) return undefined;
+
+    if (library === undefined) {
+        return undefined;
+    }
+
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
+
     return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
-const namespaceFunctionEmittable = (context: ModuleContext, fn: GirFunction): boolean =>
+// `moved-to` names the type member this function is also reachable as, so the namespace-level copy
+// is a second export of one binding. Suppressing it is only right when that member is really
+// emitted: 15 of Gtk-4.0's 28 `moved-to` targets are enum or error-domain members codegen emits no
+// static for, and dropping those would delete API with nothing to replace it.
+const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): boolean => {
+    const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
+
+    if (typeName === undefined || memberName === undefined) {
+        return false;
+    }
+
+    const resolved = context.library.resolveType(context.namespace.name, typeName);
+
+    if (resolved?.kind !== "class" && resolved?.kind !== "interface" && resolved?.kind !== "record") {
+        return false;
+    }
+
+    const members = [...resolved.value.methods, ...resolved.value.functions, ...resolved.value.constructors];
+
+    return members.some((member) => member.name === memberName);
+};
+
+const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): boolean =>
     fn.introspectable &&
+    !isMovedOntoEmittedMember(context, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
-    !callableReferencesClassStruct(context, fn) &&
+    !hasClassStructReference(context, fn) &&
     !hasCallerAllocatedArrayLength(context.library, fn);
 
-export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!namespaceFunctionEmittable(context, fn)) return;
+const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
+    if (!canEmitNamespaceFunction(context, fn)) {
+        return;
+    }
+
     const expression = renderFnExpression(context, fn);
-    if (expression === undefined) return;
+
+    if (expression === undefined) {
+        return;
+    }
+
     const cIdentifier = fn.cIdentifier;
-    if (cIdentifier === undefined) return;
+
+    if (cIdentifier === undefined) {
+        return;
+    }
+
     const bindingName = toCamelIdentifier(cIdentifier);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
-
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
     const declaration = renderNamespaceFunctionDeclaration(context, fn, exportName, bindingName);
     context.module.appendDeclaration(`${renderJsDoc(fn.doc)}${declaration}`);
@@ -57,51 +98,76 @@ const renderNamespaceFunctionDeclaration = (
 ): string => {
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
     const finishCIdentifier = finishFn?.cIdentifier;
-    if (finishFn !== undefined && finishCIdentifier !== undefined && namespaceFunctionEmittable(context, finishFn)) {
+
+    if (finishFn !== undefined && finishCIdentifier !== undefined && canEmitNamespaceFunction(context, finishFn)) {
         const finishExport = namespaceFunctionExportName(
             finishCIdentifier,
             finishFn.name,
             context.namespace.cSymbolPrefixes,
         );
+
         const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
         const body = renderPromisifiedBody(context, fn, finishExport, bindingName);
+
         return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
     }
+
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
+
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
 };
 
-export const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
+const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
     if (girName.length > 0) {
         return toCamelIdentifier(girName);
     }
+
     const stripped = stripLongestPrefix(cIdentifier, symbolPrefixes);
+
     return toCamelIdentifier(stripped);
 };
 
 const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     let best = "";
+
     for (const prefix of prefixes) {
         const candidate = `${prefix}_`;
+
         if (input.startsWith(candidate) && candidate.length > best.length) {
             best = candidate;
         }
     }
+
     return best.length === 0 ? input : input.slice(best.length);
 };
 
-export const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
-    for (const fn of namespace.functions) {
-        if (fn.parameters.length > 0) continue;
-        if (!fn.introspectable || fn.shadowedBy !== undefined || fn.cIdentifier === undefined) continue;
-        const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
-        if (fn.name === "init") {
-            context.module.appendRegistration(`${exportName}();`);
-        } else if (fn.name === "finalize") {
-            context.addRuntimeImport("onExit");
-            context.module.appendRegistration(`onExit(${exportName});`);
-        }
+const isBootstrapFunction = (fn: GirFunction): boolean =>
+    fn.parameters.length === 0 && fn.introspectable && fn.shadowedBy === undefined && fn.cIdentifier !== undefined;
+
+const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
+    if (fn.name === "init") {
+        context.module.appendRegistration(`${exportName}();`);
+
+        return;
+    }
+
+    if (fn.name === "finalize") {
+        context.addRuntimeImport("onExit");
+        context.module.appendRegistration(`onExit(${exportName});`);
     }
 };
+
+const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
+    for (const fn of namespace.functions) {
+        if (!isBootstrapFunction(fn) || fn.cIdentifier === undefined) {
+            continue;
+        }
+
+        const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
+        appendBootstrapRegistration(context, fn, exportName);
+    }
+};
+
+export { renderFnExpression, generateNamespaceFunction, namespaceFunctionExportName, generateNamespaceBootstrap };

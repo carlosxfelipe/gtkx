@@ -1,7 +1,25 @@
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "../src/index.js";
+
+const errorHook = () => {
+    throw new Error("Hook error");
+};
+
+const useCounter = (initial: number) => {
+    const [count, setCount] = useState(initial);
+
+    return {
+        count,
+        increment: () => {
+            setCount((c) => c + 1);
+        },
+        decrement: () => {
+            setCount((c) => c - 1);
+        },
+    };
+};
 
 describe("renderHook", () => {
     it("renders a hook and returns its result", async () => {
@@ -11,11 +29,12 @@ describe("renderHook", () => {
 
     it("updates result when hook state changes", async () => {
         const { result } = await renderHook(() => useState(0));
-
         expect(result.current[0]).toBe(0);
-
         const [, setState] = result.current;
-        await act(() => setState(10));
+
+        await act(() => {
+            setState(10);
+        });
 
         expect(result.current[0]).toBe(10);
     });
@@ -39,13 +58,14 @@ describe("renderHook initialProps", () => {
 describe("renderHook rerender", () => {
     it("re-renders the hook with the same props", async () => {
         let renderCount = 0;
+
         const { result, rerender } = await renderHook(() => {
             renderCount++;
+
             return renderCount;
         });
 
         expect(result.current).toBe(1);
-
         await rerender();
         expect(result.current).toBe(2);
     });
@@ -56,7 +76,6 @@ describe("renderHook rerender", () => {
         });
 
         expect(result.current).toBe(20);
-
         await rerender({ multiplier: 5 });
         expect(result.current).toBe(50);
     });
@@ -64,12 +83,17 @@ describe("renderHook rerender", () => {
     it("preserves hook state across rerenders", async () => {
         const { result } = await renderHook(() => {
             const [count, setCount] = useState(0);
-            return { count, increment: () => setCount((c) => c + 1) };
+
+            return { count, increment: () => {
+                setCount((c) => c + 1);
+            } };
         });
 
         expect(result.current.count).toBe(0);
 
-        await act(() => result.current.increment());
+        await act(() => {
+            result.current.increment();
+        });
 
         expect(result.current.count).toBe(1);
     });
@@ -77,32 +101,34 @@ describe("renderHook rerender", () => {
 
 describe("renderHook unmount", () => {
     it("unmounts the component containing the hook", async () => {
-        let unmounted = false;
+        let isUnmounted = false;
+
         const { unmount } = await renderHook(() => {
             useEffect(() => {
                 return () => {
-                    unmounted = true;
+                    isUnmounted = true;
                 };
             }, []);
         });
 
-        expect(unmounted).toBe(false);
+        expect(isUnmounted).toBe(false);
         await unmount();
-        expect(unmounted).toBe(true);
+        expect(isUnmounted).toBe(true);
     });
 
     it("cleans up after unmount", async () => {
         const cleanup: (() => void)[] = [];
+
         const { unmount } = await renderHook(() => {
             useEffect(() => {
                 return () => {
-                    cleanup.push(() => {});
+                    cleanup.push(vi.fn());
                 };
             }, []);
         });
 
         await unmount();
-        expect(cleanup.length).toBe(1);
+        expect(cleanup).toHaveLength(1);
     });
 });
 
@@ -114,41 +140,40 @@ describe("renderHook wrapper option", () => {
 
     it("applies a user wrapper around the hook so it can supply context", async () => {
         const Ctx = createContext<string>("default");
-        let wrapperRendered = false;
+        const rendered: { wrapper: boolean } = { wrapper: false };
 
         const ContextWrapper = ({ children }: { children: ReactNode }) => {
-            wrapperRendered = true;
+            useLayoutEffect(() => {
+                rendered.wrapper = true;
+            });
+
             return <Ctx.Provider value="from-wrapper">{children}</Ctx.Provider>;
         };
 
         const { result } = await renderHook(() => useContext(Ctx), { wrapper: ContextWrapper });
-
-        expect(wrapperRendered).toBe(true);
+        expect(rendered.wrapper).toBe(true);
         expect(result.current).toBe("from-wrapper");
     });
 });
 
 describe("renderHook error handling", () => {
     it("throws when hook throws on initial render", async () => {
-        const errorHook = () => {
-            throw new Error("Hook error");
-        };
-
         await expect(renderHook(errorHook)).rejects.toThrow("Hook error");
     });
 
     it("throws when hook throws on rerender", async () => {
         let shouldThrow = false;
+
         const conditionalErrorHook = () => {
             if (shouldThrow) {
                 throw new Error("Rerender error");
             }
+
             return "ok";
         };
 
         const { result, rerender } = await renderHook(conditionalErrorHook);
         expect(result.current).toBe("ok");
-
         shouldThrow = true;
         await expect(rerender()).rejects.toThrow("Rerender error");
     });
@@ -157,11 +182,12 @@ describe("renderHook error handling", () => {
 describe("renderHook complex hooks state", () => {
     it("works with useState", async () => {
         const { result } = await renderHook(() => useState({ count: 0 }));
-
         expect(result.current[0]).toEqual({ count: 0 });
-
         const [, setState] = result.current;
-        await act(() => setState({ count: 5 }));
+
+        await act(() => {
+            setState({ count: 5 });
+        });
 
         expect(result.current[0]).toEqual({ count: 5 });
     });
@@ -176,7 +202,6 @@ describe("renderHook complex hooks state", () => {
 
         const callback1 = result.current;
         expect(callback1()).toBe(1);
-
         await rerender({ value: 2 });
         const callback2 = result.current;
         expect(callback2()).toBe(2);
@@ -187,11 +212,11 @@ describe("renderHook complex hooks state", () => {
         const { result, rerender } = await renderHook(() => {
             const ref = useRef(0);
             ref.current++;
+
             return ref;
         });
 
         expect(result.current.current).toBe(1);
-
         await rerender();
         expect(result.current.current).toBe(2);
     });
@@ -205,6 +230,7 @@ describe("renderHook complex hooks effects", () => {
             ({ value }: { value: string }) => {
                 useEffect(() => {
                     effects.push(`effect:${value}`);
+
                     return () => {
                         effects.push(`cleanup:${value}`);
                     };
@@ -214,35 +240,33 @@ describe("renderHook complex hooks effects", () => {
         );
 
         expect(effects).toEqual(["effect:a"]);
-
         await rerender({ value: "b" });
         expect(effects).toEqual(["effect:a", "cleanup:a", "effect:b"]);
-
         await unmount();
         expect(effects).toEqual(["effect:a", "cleanup:a", "effect:b", "cleanup:b"]);
     });
 
     it("works with custom hooks", async () => {
-        const useCounter = (initial: number) => {
-            const [count, setCount] = useState(initial);
-            return {
-                count,
-                increment: () => setCount((c) => c + 1),
-                decrement: () => setCount((c) => c - 1),
-            };
-        };
-
         const { result } = await renderHook(({ initial }: { initial: number }) => useCounter(initial), {
             initialProps: { initial: 10 },
         });
 
         expect(result.current.count).toBe(10);
 
-        await act(() => result.current.increment());
+        await act(() => {
+            result.current.increment();
+        });
+
         expect(result.current.count).toBe(11);
 
-        await act(() => result.current.decrement());
-        await act(() => result.current.decrement());
+        await act(() => {
+            result.current.decrement();
+        });
+
+        await act(() => {
+            result.current.decrement();
+        });
+
         expect(result.current.count).toBe(9);
     });
 });

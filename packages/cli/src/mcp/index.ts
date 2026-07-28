@@ -1,22 +1,46 @@
 import { McpClient } from "./client.js";
 
-let globalClient: McpClient | null = null;
-
-export const startMcpClient = async (applicationId: string): Promise<McpClient> => {
-    if (globalClient) {
-        return globalClient;
-    }
-
-    globalClient = new McpClient({ applicationId });
-
-    await globalClient.connect().catch(() => {});
-
-    return globalClient;
+type McpClientController = {
+    start: (applicationId: string) => Promise<McpClient>;
+    stop: () => void;
 };
 
-export const stopMcpClient = (): void => {
-    if (globalClient) {
-        globalClient.disconnect();
-        globalClient = null;
+const { start: startMcpClient, stop: stopMcpClient } = createMcpClientController();
+
+async function connectQuietly(client: McpClient): Promise<boolean> {
+    try {
+        await client.connect();
+
+        return true;
+    } catch {
+        return false;
     }
-};
+}
+
+function createMcpClientController(): McpClientController {
+    let current: McpClient | null = null;
+
+    return {
+        start: async (applicationId: string): Promise<McpClient> => {
+            if (current) {
+                return current;
+            }
+
+            const client = new McpClient({ applicationId });
+            current = client;
+            await connectQuietly(client);
+
+            return client;
+        },
+        stop: (): void => {
+            if (!current) {
+                return;
+            }
+
+            current.disconnect();
+            current = null;
+        },
+    };
+}
+
+export { startMcpClient, stopMcpClient };

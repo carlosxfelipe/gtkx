@@ -1,17 +1,70 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { WaitForOptions } from "./types.js";
 import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
-import type { WaitForOptions } from "./types.js";
+
+type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
+type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
+type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
 
 const DEFAULT_INTERVAL = 50;
+const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const copyStackTrace = (target: Error, source: Error): void => {
-    if (source.stack) {
-        target.stack = source.stack.replace(source.message, target.message);
+    const { stack } = source;
+
+    if (stack === undefined) {
+        return;
     }
+
+    const index = stack.indexOf(source.message);
+
+    if (index === -1) {
+        target.stack = stack;
+
+        return;
+    }
+
+    target.stack = stack.slice(0, index) + target.message + stack.slice(index + source.message.length);
+};
+
+const pollUntilSuccess = async <T>(
+    callback: () => T | Promise<T>,
+    timeout: number,
+    interval: number,
+): Promise<PollResult<T>> => {
+    const startTime = Date.now();
+    let lastError: Error | null = null;
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const result = await callback();
+            await delay(0);
+
+            return { status: "resolved", value: result };
+        } catch (error) {
+            lastError = error as Error;
+            await delay(interval);
+        }
+    }
+
+    return { status: "timedout", lastError };
+};
+
+const buildTimeoutError = (
+    timeout: number,
+    lastError: Error | null,
+    stackTraceError: Error,
+    onTimeout: ((error: Error) => Error) | undefined,
+): Error => {
+    const error = timeoutError(timeout, lastError);
+    const finalError = onTimeout ? onTimeout(error) : error;
+    copyStackTrace(finalError, stackTraceError);
+
+    return finalError;
 };
 
 /**
@@ -22,7 +75,7 @@ const copyStackTrace = (target: Error, source: Error): void => {
  * @param options Optional timeout, interval, and timeout error customization.
  * @returns The callback's result once it succeeds.
  */
-export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
+const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     if (typeof callback !== "function") {
         throw new TypeError("Received `callback` arg must be a function");
     }
@@ -33,41 +86,24 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
         runWithActEnvironment(false, async () => {
             const config = getConfig();
             const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-            const startTime = Date.now();
-            let lastError: Error | null = null;
+            const result = await pollUntilSuccess(callback, timeout, interval);
 
-            while (Date.now() - startTime < timeout) {
-                try {
-                    const result = await callback();
-                    await delay(0);
-                    return result;
-                } catch (error) {
-                    lastError = error as Error;
-                    await delay(interval);
-                }
+            if (result.status === "resolved") {
+                return result.value;
             }
 
-            const error = timeoutError(timeout, lastError);
-            const finalError = onTimeout ? onTimeout(error) : error;
-            copyStackTrace(finalError, stackTraceError);
-            throw finalError;
+            throw buildTimeoutError(timeout, result.lastError, stackTraceError, onTimeout);
         }),
     );
 };
 
-type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
-
-type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
-
-const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget => {
-    if (typeof elementOrCallback === "function") {
-        return elementOrCallback();
-    }
-    return elementOrCallback;
-};
+const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
+    typeof elementOrCallback === "function" ? elementOrCallback() : elementOrCallback;
 
 const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
-    if (widget === null) return true;
+    if (widget === null) {
+        return true;
+    }
 
     try {
         return widget.getRoot() === null;
@@ -78,12 +114,11 @@ const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
 
 const isTargetRemoved = (target: RemovalTarget): boolean => {
     if (Array.isArray(target)) {
-        return target.length === 0 || target.every(isWidgetRemoved);
+        return target.every((widget) => isWidgetRemoved(widget));
     }
+
     return isWidgetRemoved(target);
 };
-
-const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
 /**
  * Waits until the given widget or widgets are detached from the tree. Rejects
@@ -93,11 +128,12 @@ const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
  * returning them to observe for removal.
  * @param options Optional timeout and interval settings.
  */
-export const waitForElementToBeRemoved = (
+const waitForElementToBeRemoved = (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
 ): Promise<void> => {
     const stackTraceError = new Error("STACK_TRACE_MESSAGE");
+
     if (isTargetRemoved(getTarget(elementOrCallback))) {
         return Promise.reject(
             new Error(
@@ -105,10 +141,15 @@ export const waitForElementToBeRemoved = (
             ),
         );
     }
+
     return waitFor(
         () => {
-            if (!isTargetRemoved(getTarget(elementOrCallback))) throw ELEMENT_NOT_REMOVED;
+            if (!isTargetRemoved(getTarget(elementOrCallback))) {
+                throw ELEMENT_NOT_REMOVED;
+            }
         },
         { ...options, stackTraceError },
     );
 };
+
+export { waitFor, waitForElementToBeRemoved };

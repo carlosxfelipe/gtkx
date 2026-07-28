@@ -1,26 +1,31 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+const metadataStore: WeakMap<object, Map<string, unknown>> = new WeakMap();
 
-type AccessibleMetadata = Map<string, unknown>;
+const setAccessibleMetadata = (widget: object, name: string, value: unknown): void => {
+    let entries = metadataStore.get(widget);
 
-const accessibleMetadata = new WeakMap<Gtk.Accessible, AccessibleMetadata>();
-
-export const setAccessibleMetadata = (accessible: Gtk.Accessible, propName: string, value: unknown): void => {
-    let entry = accessibleMetadata.get(accessible);
-    if (!entry) {
-        entry = new Map();
-        accessibleMetadata.set(accessible, entry);
+    if (entries === undefined) {
+        entries = new Map();
+        metadataStore.set(widget, entries);
     }
-    entry.set(propName, value);
+
+    entries.set(name, value);
 };
 
-export const deleteAccessibleMetadata = (accessible: Gtk.Accessible, propName: string): void => {
-    const entry = accessibleMetadata.get(accessible);
-    if (entry) entry.delete(propName);
+const deleteAccessibleMetadata = (widget: object, name: string): void => {
+    metadataStore.get(widget)?.delete(name);
 };
 
-export const getAccessibleMetadata = <T = unknown>(accessible: Gtk.Accessible, propName: string): T | null => {
-    const entry = accessibleMetadata.get(accessible);
-    if (!entry) return null;
-    const value = entry.get(propName);
-    return (value as T) ?? null;
+/**
+ * Returns the last value applied for an accessible prop on a widget, or null when none was applied.
+ *
+ * @param widget The widget to read from.
+ * @param name The accessible prop name.
+ * @returns The last applied value, or null.
+ */
+const getAccessibleMetadata = (widget: object, name: string): unknown => {
+    const value = metadataStore.get(widget)?.get(name);
+
+    return value === undefined ? null : value;
 };
+
+export { setAccessibleMetadata, deleteAccessibleMetadata, getAccessibleMetadata };

@@ -19,11 +19,16 @@ use native::ffi::{GArrayData, ListData, ListPayload, Slot, Stash, StashData};
 
 use helpers::{boxed_handle, napi_mock};
 
+fn i32_element_size() -> u32 {
+    u32::try_from(size_of::<i32>()).expect("i32 size fits in a guint")
+}
+
 fn struct_item_codec() -> Codec {
     Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
+        inline: false,
     })
 }
 
@@ -97,18 +102,13 @@ fn unresolvable_fundamental_item_codec() -> Codec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "no_such_array_ref_symbol_12345".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
+        inline: false,
     })
 }
 
-fn gobject_refcount(ptr: *mut std::ffi::c_void) -> u32 {
-    unsafe { (*(ptr as *mut gtk4::glib::gobject_ffi::GObject)).ref_count }
-}
-
 fn new_gobject() -> (glib::Object, *mut c_void) {
-    let obj = glib::Object::new::<glib::Object>();
-    let ptr = glib::translate::ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_none(&obj).0
-        as *mut c_void;
-    (obj, ptr)
+    let (obj, ptr, _) = helpers::fresh_gobject();
+    (obj, ptr.cast())
 }
 
 fn number(value: f64) -> sys::napi_value {
@@ -146,15 +146,21 @@ fn assert_full_element_container_releases_on_drop(kind: ArrayKind, container: Ow
     helpers::run(|| {
         let env = helpers::fake_env();
         let (_obj, obj_ptr) = new_gobject();
-        let before = gobject_refcount(obj_ptr);
+        let before = unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) };
 
         let descriptor = array_codec(gobject_item_codec(Ownership::Full), kind, container);
         let val = array(&env, &[object(&env, Handle::from_glib_borrow(obj_ptr))]);
         let encoded = descriptor.encode(&env, val).unwrap();
-        assert_eq!(gobject_refcount(obj_ptr), before + 1);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before + 1
+        );
 
         drop(encoded);
-        assert_eq!(gobject_refcount(obj_ptr), before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before
+        );
     });
 }
 
@@ -198,7 +204,7 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let (_obj, obj_ptr) = new_gobject();
-        let before = gobject_refcount(obj_ptr);
+        let before = unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) };
 
         let descriptor = array_codec(
             gobject_item_codec(Ownership::Full),
@@ -212,13 +218,16 @@ fn encode_glist_handles_full_ownership_transfers_to_callee_when_disarmed() {
         let Stash::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
-        let list = storage.ptr() as *mut gtk4::glib::ffi::GList;
+        let list = storage.ptr().cast::<gtk4::glib::ffi::GList>();
         unsafe {
             gtk4::glib::ffi::g_list_free(list);
             gtk4::glib::gobject_ffi::g_object_unref(obj_ptr.cast());
         }
         drop(encoded);
-        assert_eq!(gobject_refcount(obj_ptr), before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before
+        );
     });
 }
 
@@ -227,7 +236,7 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
     helpers::run(|| {
         let env = helpers::fake_env();
         let (_obj, obj_ptr) = new_gobject();
-        let before = gobject_refcount(obj_ptr);
+        let before = unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) };
 
         let descriptor = array_codec(
             gobject_item_codec(Ownership::Full),
@@ -242,7 +251,10 @@ fn encode_glist_handles_releases_acquired_elements_when_later_element_is_null() 
             ],
         );
         assert!(descriptor.encode(&env, val).is_err());
-        assert_eq!(gobject_refcount(obj_ptr), before);
+        assert_eq!(
+            unsafe { helpers::get_gobject_refcount(obj_ptr.cast()) },
+            before
+        );
     });
 }
 
@@ -449,7 +461,7 @@ fn encode_string_array_full_ownership_transfers_glib_container() {
             panic!("expected storage")
         };
 
-        let container = storage.ptr() as *mut *mut std::ffi::c_char;
+        let container = storage.ptr().cast::<*mut c_char>();
         let first = unsafe { std::ffi::CStr::from_ptr(*container) };
         let second = unsafe { std::ffi::CStr::from_ptr(*container.add(1)) };
         assert_eq!(first.to_str().unwrap(), "foo");
@@ -491,9 +503,7 @@ fn encode_string_array_borrowed_container_and_elements_roundtrips() {
         };
         assert!(matches!(storage.data(), StashData::StrV(_)));
 
-        let ptrs = unsafe {
-            std::slice::from_raw_parts(storage.ptr() as *const *const std::ffi::c_char, 2)
-        };
+        let ptrs = unsafe { std::slice::from_raw_parts(storage.ptr() as *const *const c_char, 2) };
         let s = unsafe { std::ffi::CStr::from_ptr(ptrs[0]) };
         assert_eq!(s.to_str().unwrap(), "foo");
         assert!(ptrs[1].is_null());
@@ -522,7 +532,7 @@ fn encode_string_array_element_transfer_hands_over_duplicates() {
         assert_eq!(ptrs.len(), 2);
         assert!(ptrs[1].is_null());
 
-        let dup = unsafe { std::ffi::CStr::from_ptr(ptrs[0] as *const std::ffi::c_char) };
+        let dup = unsafe { std::ffi::CStr::from_ptr(ptrs[0] as *const c_char) };
         assert_eq!(dup.to_str().unwrap(), "foo");
         unsafe { glib::ffi::g_free(ptrs[0]) };
     });
@@ -542,9 +552,7 @@ fn encode_string_array_borrowed_keeps_elements() {
         let Stash::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
-        let ptrs = unsafe {
-            std::slice::from_raw_parts(storage.ptr() as *const *const std::ffi::c_char, 2)
-        };
+        let ptrs = unsafe { std::slice::from_raw_parts(storage.ptr() as *const *const c_char, 2) };
         let s = unsafe { std::ffi::CStr::from_ptr(ptrs[0]) };
         assert_eq!(s.to_str().unwrap(), "foo");
         assert!(ptrs[1].is_null());
@@ -604,11 +612,11 @@ fn encode_pointer_array_full_ownership_transfers_glib_container() {
         assert_eq!(handles.len(), 1);
         assert!(ptrs.is_empty());
 
-        let container = storage.ptr() as *mut *mut std::ffi::c_void;
+        let container = storage.ptr().cast::<*mut c_void>();
         assert!(!unsafe { *container }.is_null());
         assert!(unsafe { *container.add(1) }.is_null());
 
-        unsafe { glib::ffi::g_free(container as *mut std::ffi::c_void) };
+        unsafe { glib::ffi::g_free(container.cast::<c_void>()) };
     });
 }
 
@@ -923,9 +931,9 @@ fn encode_garray_explicit_element_size_used() {
     });
 }
 
-fn encode_scalar_storage(env: &Env, descriptor: &ArrayCodec, values: &[sys::napi_value]) -> Stash {
+fn encode_scalar_storage(env: Env, descriptor: &ArrayCodec, values: &[sys::napi_value]) -> Stash {
     descriptor
-        .encode(env, array(env, values))
+        .encode(&env, array(&env, values))
         .expect("scalar array encode should succeed")
 }
 
@@ -941,13 +949,30 @@ macro_rules! assert_scalar_storage {
     };
 }
 
+macro_rules! assert_full_scalar_storage {
+    ($encoded:expr, $ty:ty, $expected:expr) => {
+        let Stash::Storage(storage) = &$encoded else {
+            panic!("expected storage")
+        };
+        assert!(
+            matches!(storage.data(), StashData::Unit),
+            "a transfer-full scalar array must hand the callee a glib-owned buffer, got {:?}",
+            storage.data()
+        );
+        let expected: &[$ty] = $expected;
+        let items =
+            unsafe { std::slice::from_raw_parts(storage.ptr() as *const $ty, expected.len()) };
+        assert_eq!(items, expected);
+    };
+}
+
 #[test]
 fn encode_zero_terminated_integer_array_appends_terminator() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = u16_zero_terminated_full();
-        let encoded = encode_scalar_storage(&env, &descriptor, &[number(1.0), number(2.0)]);
-        assert_scalar_storage!(encoded, U16Vec, &[1u16, 2, 0]);
+        let encoded = encode_scalar_storage(env, &descriptor, &[number(1.0), number(2.0)]);
+        assert_full_scalar_storage!(encoded, u16, &[1u16, 2, 0]);
     });
 }
 
@@ -956,8 +981,8 @@ fn encode_zero_terminated_empty_integer_array_is_only_terminator() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = i32_zero_terminated(Ownership::Full);
-        let encoded = encode_scalar_storage(&env, &descriptor, &[]);
-        assert_scalar_storage!(encoded, I32Vec, &[0i32]);
+        let encoded = encode_scalar_storage(env, &descriptor, &[]);
+        assert_full_scalar_storage!(encoded, i32, &[0i32]);
     });
 }
 
@@ -966,8 +991,8 @@ fn encode_zero_terminated_enum_flags_array_appends_terminator() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = array_codec(enum_flags_item_codec(), ArrayKind::Array, Ownership::Full);
-        let encoded = encode_scalar_storage(&env, &descriptor, &[number(3.0), number(1.0)]);
-        assert_scalar_storage!(encoded, I32Vec, &[3i32, 1, 0]);
+        let encoded = encode_scalar_storage(env, &descriptor, &[number(3.0), number(1.0)]);
+        assert_full_scalar_storage!(encoded, i32, &[3i32, 1, 0]);
     });
 }
 
@@ -980,16 +1005,16 @@ fn encode_zero_terminated_float_array_appends_terminator() {
             ArrayKind::Array,
             Ownership::Full,
         );
-        let encoded = encode_scalar_storage(&env, &f32_descriptor, &[number(1.5), number(2.5)]);
-        assert_scalar_storage!(encoded, F32Vec, &[1.5f32, 2.5, 0.0]);
+        let encoded = encode_scalar_storage(env, &f32_descriptor, &[number(1.5), number(2.5)]);
+        assert_full_scalar_storage!(encoded, f32, &[1.5f32, 2.5, 0.0]);
 
         let f64_descriptor = array_codec(
             Codec::Float(FloatCodec::F64),
             ArrayKind::Array,
             Ownership::Full,
         );
-        let encoded = encode_scalar_storage(&env, &f64_descriptor, &[number(1.25)]);
-        assert_scalar_storage!(encoded, F64Vec, &[1.25f64, 0.0]);
+        let encoded = encode_scalar_storage(env, &f64_descriptor, &[number(1.25)]);
+        assert_full_scalar_storage!(encoded, f64, &[1.25f64, 0.0]);
     });
 }
 
@@ -1002,8 +1027,8 @@ fn encode_zero_terminated_boolean_array_appends_terminator() {
             ArrayKind::Array,
             Ownership::Full,
         );
-        let encoded = encode_scalar_storage(&env, &descriptor, &[boolean(true)]);
-        assert_scalar_storage!(encoded, I32Vec, &[1i32, 0]);
+        let encoded = encode_scalar_storage(env, &descriptor, &[boolean(true)]);
+        assert_full_scalar_storage!(encoded, i32, &[1i32, 0]);
     });
 }
 
@@ -1016,16 +1041,16 @@ fn encode_zero_terminated_bigint_array_appends_terminator() {
             ArrayKind::Array,
             Ownership::Full,
         );
-        let encoded = encode_scalar_storage(&env, &u64_descriptor, &[bigint(5), bigint(9)]);
-        assert_scalar_storage!(encoded, U64Vec, &[5u64, 9, 0]);
+        let encoded = encode_scalar_storage(env, &u64_descriptor, &[bigint(5), bigint(9)]);
+        assert_full_scalar_storage!(encoded, u64, &[5u64, 9, 0]);
 
         let i64_descriptor = array_codec(
             Codec::BigInt(BigIntCodec::I64),
             ArrayKind::Array,
             Ownership::Full,
         );
-        let encoded = encode_scalar_storage(&env, &i64_descriptor, &[bigint(-7)]);
-        assert_scalar_storage!(encoded, I64Vec, &[-7i64, 0]);
+        let encoded = encode_scalar_storage(env, &i64_descriptor, &[bigint(-7)]);
+        assert_full_scalar_storage!(encoded, i64, &[-7i64, 0]);
     });
 }
 
@@ -1037,7 +1062,7 @@ fn encode_length_bounded_scalar_arrays_append_no_terminator() {
             sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed),
             fixed_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed),
         ] {
-            let encoded = encode_scalar_storage(&env, &descriptor, &[number(7.0)]);
+            let encoded = encode_scalar_storage(env, &descriptor, &[number(7.0)]);
             assert_scalar_storage!(encoded, I32Vec, &[7i32]);
         }
     });
@@ -1059,7 +1084,7 @@ fn zero_terminated_scalar_array_roundtrips_through_encode_and_decode() {
         let env = helpers::fake_env();
         let descriptor = i32_zero_terminated(Ownership::Borrowed);
         let encoded =
-            encode_scalar_storage(&env, &descriptor, &[number(7.0), number(8.0), number(9.0)]);
+            encode_scalar_storage(env, &descriptor, &[number(7.0), number(8.0), number(9.0)]);
         let Stash::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
@@ -1093,12 +1118,14 @@ fn encode_bigint_array_roundtrips_through_storage() {
                 BigIntCodec::I64 => {
                     let slice =
                         unsafe { std::slice::from_raw_parts(storage.ptr() as *const i64, 2) };
-                    assert_eq!(slice, &[big as i64, 7]);
+                    let expected = i64::try_from(big).expect("value fits in i64");
+                    assert_eq!(slice, &[expected, 7]);
                 }
                 BigIntCodec::U64 => {
                     let slice =
                         unsafe { std::slice::from_raw_parts(storage.ptr() as *const u64, 2) };
-                    assert_eq!(slice, &[big as u64, 7]);
+                    let expected = u64::try_from(big).expect("value fits in u64");
+                    assert_eq!(slice, &[expected, 7]);
                 }
             }
         }
@@ -1197,7 +1224,7 @@ fn decode_gptrarray_frees_container_when_element_decode_fails() {
         );
         assert!(
             descriptor
-                .decode(&env, &Stash::Ptr(ptr_array as *mut std::ffi::c_void))
+                .decode(&env, &Stash::Ptr(ptr_array.cast::<c_void>()))
                 .is_err()
         );
 
@@ -1220,7 +1247,7 @@ fn decode_glist_frees_spine_when_element_decode_fails() {
         );
         assert!(
             descriptor
-                .decode(&env, &Stash::Ptr(list as *mut std::ffi::c_void))
+                .decode(&env, &Stash::Ptr(list.cast::<c_void>()))
                 .is_err()
         );
     });
@@ -1296,7 +1323,7 @@ fn decode_null_terminated_string_array_from_ptr() {
         let s1 = CString::new("second").unwrap();
         let mut ptrs: Vec<*const c_char> = vec![s0.as_ptr(), s1.as_ptr(), std::ptr::null()];
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(ptrs.as_mut_ptr() as *mut c_void))
+            .decode(&env, &Stash::Ptr(ptrs.as_mut_ptr().cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
@@ -1312,13 +1339,13 @@ fn decode_null_terminated_string_array_full_ownership_frees() {
             Ownership::Full,
         );
         let strv = unsafe {
-            let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 3) as *mut *mut c_char;
+            let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 3).cast::<*mut c_char>();
             *arr = glib::ffi::g_strdup(c"a".as_ptr());
             *arr.add(1) = glib::ffi::g_strdup(c"b".as_ptr());
             arr
         };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(strv as *mut c_void))
+            .decode(&env, &Stash::Ptr(strv.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
@@ -1334,12 +1361,12 @@ fn decode_null_terminated_borrowed_string_array_full_ownership_frees_vector_only
             Ownership::Full,
         );
         let strv = unsafe {
-            let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 2) as *mut *mut c_char;
+            let arr = glib::ffi::g_malloc0(size_of::<*mut c_char>() * 2).cast::<*mut c_char>();
             *arr = c"borrowed".as_ptr().cast_mut();
             arr
         };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(strv as *mut c_void))
+            .decode(&env, &Stash::Ptr(strv.cast::<c_void>()))
             .unwrap();
         let items = decoded_items(&decoded);
         assert_eq!(
@@ -1358,7 +1385,7 @@ fn decode_null_terminated_ptr_array_from_ptr() {
         let h1 = boxed_handle();
         let mut ptrs: Vec<*mut c_void> = vec![h0.as_ptr(), h1.as_ptr(), std::ptr::null_mut()];
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(ptrs.as_mut_ptr() as *mut c_void))
+            .decode(&env, &Stash::Ptr(ptrs.as_mut_ptr().cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
@@ -1370,12 +1397,12 @@ fn decode_null_terminated_ptr_array_full_ownership_frees() {
         let env = helpers::fake_env();
         let descriptor = array_codec(struct_item_codec(), ArrayKind::Array, Ownership::Full);
         let arr = unsafe {
-            let mem = glib::ffi::g_malloc0(size_of::<*mut c_void>() * 2) as *mut *mut c_void;
+            let mem = glib::ffi::g_malloc0(size_of::<*mut c_void>() * 2).cast::<*mut c_void>();
             *mem = boxed_handle().as_ptr();
             mem
         };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(arr as *mut c_void))
+            .decode(&env, &Stash::Ptr(arr.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
     });
@@ -1394,7 +1421,7 @@ fn decode_glist_empty_and_populated() {
         let list =
             unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(list as *mut c_void))
+            .decode(&env, &Stash::Ptr(list.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
     });
@@ -1408,7 +1435,7 @@ fn decode_gslist_full_ownership_frees_list() {
         let list =
             unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(list as *mut c_void))
+            .decode(&env, &Stash::Ptr(list.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
     });
@@ -1423,13 +1450,13 @@ fn decode_garray_from_borrowed_ptr() {
             ArrayKind::GArray,
             Ownership::Full,
         );
-        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
+        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, i32_element_size(), 0) };
         let value: i32 = 42;
         unsafe {
-            glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1);
+            glib::ffi::g_array_append_vals(g_array, (&raw const value).cast::<c_void>(), 1);
         }
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(g_array as *mut c_void))
+            .decode(&env, &Stash::Ptr(g_array.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
     });
@@ -1460,10 +1487,10 @@ fn decode_garray_storage_owned_does_not_double_free() {
             ArrayKind::GArray,
             Ownership::Full,
         );
-        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
+        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, i32_element_size(), 0) };
         let storage = native::ffi::StashStorage::new(
-            g_array as *mut c_void,
-            native::ffi::StashData::GArray(GArrayData {
+            g_array.cast::<c_void>(),
+            StashData::GArray(GArrayData {
                 ptr: g_array,
                 should_free: true,
             }),
@@ -1481,7 +1508,7 @@ fn decode_gptrarray_from_ptr() {
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().as_ptr()) };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(ptr_array as *mut c_void))
+            .decode(&env, &Stash::Ptr(ptr_array.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
     });
@@ -1515,14 +1542,14 @@ fn decode_gbytearray_from_ptr_and_empty() {
             ba
         };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(ba as *mut c_void))
+            .decode(&env, &Stash::Ptr(ba.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 3);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
 
         let empty = unsafe { glib::ffi::g_byte_array_new() };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(empty as *mut c_void))
+            .decode(&env, &Stash::Ptr(empty.cast::<c_void>()))
             .unwrap();
         assert!(decoded_items(&decoded).is_empty());
         unsafe { glib::ffi::g_byte_array_unref(empty) };
@@ -1545,7 +1572,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
             glib::ffi::g_byte_array_ref(ba)
         };
         let decoded = descriptor
-            .decode(&env, &Stash::Ptr(ba as *mut c_void))
+            .decode(&env, &Stash::Ptr(ba.cast::<c_void>()))
             .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
@@ -1773,9 +1800,10 @@ fn ptr_to_value_gptrarray() {
         );
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().as_ptr()) };
-        let value =
-            unsafe { descriptor.read(&env, ReadSource::Value(ptr_array as *mut c_void, "array")) }
-                .unwrap();
+        let value = unsafe {
+            descriptor.read(&env, ReadSource::Value(ptr_array.cast::<c_void>(), "array"))
+        }
+        .unwrap();
         assert_eq!(decoded_items(&value).len(), 1);
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
@@ -1796,8 +1824,9 @@ fn ptr_to_value_gbytearray() {
             glib::ffi::g_byte_array_append(ba, bytes.as_ptr(), 1);
             ba
         };
-        let value = unsafe { descriptor.read(&env, ReadSource::Value(ba as *mut c_void, "array")) }
-            .unwrap();
+        let value =
+            unsafe { descriptor.read(&env, ReadSource::Value(ba.cast::<c_void>(), "array")) }
+                .unwrap();
         assert_eq!(decoded_items(&value).len(), 1);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
@@ -1812,13 +1841,11 @@ fn ptr_to_value_garray() {
             ArrayKind::GArray,
             Ownership::Borrowed,
         );
-        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
+        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, i32_element_size(), 0) };
         let value: i32 = 1;
-        unsafe {
-            glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1)
-        };
+        unsafe { glib::ffi::g_array_append_vals(g_array, (&raw const value).cast::<c_void>(), 1) };
         let decoded =
-            unsafe { descriptor.read(&env, ReadSource::Value(g_array as *mut c_void, "array")) }
+            unsafe { descriptor.read(&env, ReadSource::Value(g_array.cast::<c_void>(), "array")) }
                 .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
         unsafe { glib::ffi::g_array_unref(g_array) };
@@ -1833,7 +1860,7 @@ fn ptr_to_value_glist() {
         let list =
             unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let decoded =
-            unsafe { descriptor.read(&env, ReadSource::Value(list as *mut c_void, "array")) }
+            unsafe { descriptor.read(&env, ReadSource::Value(list.cast::<c_void>(), "array")) }
                 .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
         unsafe { glib::ffi::g_list_free(list) };
@@ -1850,7 +1877,7 @@ fn ptr_to_value_plain_array() {
         let decoded = unsafe {
             descriptor.read(
                 &env,
-                ReadSource::Value(data.as_mut_ptr() as *mut c_void, "array"),
+                ReadSource::Value(data.as_mut_ptr().cast::<c_void>(), "array"),
             )
         }
         .unwrap();
@@ -1886,7 +1913,7 @@ fn size_from_args_reads_ref_integer_storage() {
         let size_storage = native::ffi::StashStorage::from(vec![2i32]);
         let ffi_args = [Stash::Storage(size_storage)];
         let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
         )];
         let decoded = descriptor
             .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
@@ -1904,9 +1931,9 @@ fn size_from_args_reads_ref_integer_ptr() {
         let data: Vec<i32> = vec![10, 20];
         let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let size: i32 = 2;
-        let ffi_args = [Stash::Ptr(&size as *const i32 as *mut c_void)];
+        let ffi_args = [Stash::Ptr((&raw const size).cast_mut().cast::<c_void>())];
         let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
         )];
         let decoded = descriptor
             .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
@@ -1925,7 +1952,7 @@ fn size_from_args_ref_null_ptr_falls_through_to_error() {
         let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let ffi_args = [Stash::Ptr(std::ptr::null_mut())];
         let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32)).expect("valid Ref inner"),
+            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
         )];
         assert!(
             descriptor
@@ -1965,7 +1992,7 @@ fn trait_methods_delegate_to_inherent_implementations() {
             Decoder::read(
                 &ptr_ty,
                 &env,
-                ReadSource::Value(data.as_mut_ptr() as *mut c_void, "ctx"),
+                ReadSource::Value(data.as_mut_ptr().cast::<c_void>(), "ctx"),
             )
         }
         .unwrap();
@@ -2015,7 +2042,7 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = helpers::make_bool_param_spec();
-        let before = helpers::param_spec_refcount(pspec);
+        let before = unsafe { helpers::param_spec_refcount(pspec) };
 
         let descriptor = array_codec(
             unresolvable_fundamental_item_codec(),
@@ -2023,12 +2050,14 @@ fn encode_glist_handles_fails_and_unwinds_when_element_transfer_fails() {
             Ownership::Full,
         );
         let val = array(&env, &[object(&env, Handle::from_glib_borrow(pspec))]);
-        helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
-            pspec,
-            before,
-            descriptor.encode(&env, val).map(|_| ()),
-            "an unresolvable element ref function must fail the transfer",
-        );
+        unsafe {
+            helpers::assert_unresolvable_symbol_failure_keeps_param_spec(
+                pspec,
+                before,
+                descriptor.encode(&env, val).map(|_| ()),
+                "an unresolvable element ref function must fail the transfer",
+            );
+        }
     });
 }
 
@@ -2055,7 +2084,7 @@ fn encode_glist_strings_full_container_full_elements_releases_when_call_never_ha
         assert!(*items_duped);
         assert!(!data.should_free);
         let first = unsafe {
-            std::ffi::CStr::from_ptr((*(data.ptr as *mut glib::ffi::GList)).data as *const c_char)
+            std::ffi::CStr::from_ptr((*data.ptr.cast::<glib::ffi::GList>()).data as *const c_char)
         };
         assert_eq!(first.to_str().unwrap(), "a");
         drop(encoded);
@@ -2117,13 +2146,13 @@ fn decode_zero_terminated_scalar_array_full_ownership_frees_buffer() {
         let env = helpers::fake_env();
         let descriptor = i32_zero_terminated(Ownership::Full);
         let buffer = unsafe {
-            let mem = glib::ffi::g_malloc0(size_of::<i32>() * 4) as *mut i32;
+            let mem = glib::ffi::g_malloc0(size_of::<i32>() * 4).cast::<i32>();
             *mem = 7;
             *mem.add(1) = 8;
             *mem.add(2) = 9;
             mem
         };
-        assert_decodes_to_seven_eight_nine(&env, &descriptor, buffer as *mut c_void);
+        assert_decodes_to_seven_eight_nine(&env, &descriptor, buffer.cast::<c_void>());
     });
 }
 
@@ -2138,10 +2167,10 @@ fn write_return_to_pointer_full_string_array_hands_caller_owned_container() {
         );
         let val = array(&env, &[string("alpha"), string("beta")]);
         let mut slot: *mut c_void = std::ptr::null_mut();
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
+        let ret = (&raw mut slot).cast::<c_void>();
         PtrWriter::write_return_to_ptr(&descriptor, &env, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(!slot.is_null());
-        let strv = unsafe { glib::StrV::from_glib_full(slot as *mut *mut c_char) };
+        let strv = unsafe { glib::StrV::from_glib_full(slot.cast::<*mut c_char>()) };
         let items: Vec<String> = strv
             .iter()
             .map(|item| unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string())
@@ -2160,18 +2189,19 @@ fn write_return_to_pointer_null_err_and_non_array_write_null() {
             Ownership::Full,
         );
         let mut slot: *mut c_void = 7 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
-        let null_val: Result<Unknown, ()> = Ok(napi_mock::to_unknown(&env, napi_mock::fake_null()));
+        let ret = (&raw mut slot).cast::<c_void>();
+        let null_val: Result<Unknown<'_>, ()> =
+            Ok(napi_mock::to_unknown(&env, napi_mock::fake_null()));
         PtrWriter::write_return_to_ptr(&descriptor, &env, unsafe { Slot::new(ret) }, &null_val);
         assert!(slot.is_null());
 
         slot = 7 as *mut c_void;
-        let err_val: Result<Unknown, ()> = Err(());
+        let err_val: Result<Unknown<'_>, ()> = Err(());
         PtrWriter::write_return_to_ptr(&descriptor, &env, unsafe { Slot::new(ret) }, &err_val);
         assert!(slot.is_null());
 
         slot = 7 as *mut c_void;
-        let num_val: Result<Unknown, ()> =
+        let num_val: Result<Unknown<'_>, ()> =
             Ok(napi_mock::to_unknown(&env, napi_mock::fake_double(1.0)));
         PtrWriter::write_return_to_ptr(&descriptor, &env, unsafe { Slot::new(ret) }, &num_val);
         assert!(slot.is_null());
@@ -2185,8 +2215,162 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let descriptor = i32_zero_terminated(Ownership::Full);
         let val = array(&env, &[string("not a number")]);
         let mut slot: *mut c_void = 7 as *mut c_void;
-        let ret = &mut slot as *mut *mut c_void as *mut c_void;
+        let ret = (&raw mut slot).cast::<c_void>();
         PtrWriter::write_return_to_ptr(&descriptor, &env, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(slot.is_null());
+    });
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct InlinePair {
+    first: i32,
+    second: i32,
+}
+
+fn inline_pair_codec(ownership: Ownership, kind: ArrayKind, size_index: Option<u32>) -> ArrayCodec {
+    ArrayCodec::new(
+        Box::new(Codec::Struct(StructCodec {
+            ownership: Ownership::Borrowed,
+            size: Some(size_of::<InlinePair>()),
+            caller_allocated: false,
+            inline: false,
+        })),
+        kind,
+        ownership,
+        size_index,
+        None,
+        Some(size_of::<InlinePair>()),
+    )
+    .expect("valid inline array codec")
+}
+
+fn read_inline_pair(env: &Env, value: sys::napi_value) -> InlinePair {
+    let ptr = native::value::handle_ptr(napi_mock::to_unknown(env, value), "inline element")
+        .expect("an inline element decodes to a handle");
+    unsafe { ptr.cast::<InlinePair>().read() }
+}
+
+#[test]
+fn a_sized_array_cannot_decode_without_its_length_parameter() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = sized_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed);
+        let elements: [i32; 3] = [7, 8, 9];
+        let stash = Stash::Ptr(elements.as_ptr().cast_mut().cast::<c_void>());
+        let Err(error) = codec.decode(&env, &stash) else {
+            panic!("a sized array has no terminator to scan for");
+        };
+        assert!(error.to_string().contains("length parameter"));
+    });
+}
+
+#[test]
+fn a_fixed_array_argument_must_match_its_declared_length() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = fixed_array_type(Codec::Float(FloatCodec::F32), 4, Ownership::Borrowed);
+        let short = array(&env, &[number(1.0), number(2.0)]);
+        let error = codec
+            .encode(&env, short)
+            .expect_err("a short array would make the callee read past the buffer");
+        assert!(error.to_string().contains("exactly 4 elements"));
+        assert!(
+            codec
+                .encode(
+                    &env,
+                    array(&env, &[number(1.0), number(2.0), number(3.0), number(4.0)]),
+                )
+                .is_ok()
+        );
+    });
+}
+
+#[test]
+fn a_gptrarray_argument_is_encoded_as_a_real_gptrarray() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = array_codec(
+            gobject_item_codec(Ownership::Borrowed),
+            ArrayKind::GPtrArray,
+            Ownership::Borrowed,
+        );
+        let (first, first_ptr) = new_gobject();
+        let (second, second_ptr) = new_gobject();
+        let value = array(
+            &env,
+            &[
+                object(&env, Handle::from_glib_borrow(first_ptr)),
+                object(&env, Handle::from_glib_borrow(second_ptr)),
+            ],
+        );
+
+        let encoded = codec.encode(&env, value).expect("encode should succeed");
+        let ptr = encoded.as_ptr("GPtrArray").expect("a container pointer");
+        let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
+        assert_eq!(unsafe { (*ptr_array).len }, 2);
+        let pdata = unsafe { (*ptr_array).pdata };
+        assert_eq!(unsafe { *pdata.add(0) }, first_ptr);
+        assert_eq!(unsafe { *pdata.add(1) }, second_ptr);
+
+        drop(encoded);
+        drop(first);
+        drop(second);
+    });
+}
+
+#[test]
+fn an_inline_struct_array_decodes_elements_by_value() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = ArrayCodec::new(
+            Box::new(Codec::Struct(StructCodec {
+                ownership: Ownership::Borrowed,
+                size: Some(size_of::<InlinePair>()),
+                caller_allocated: false,
+                inline: false,
+            })),
+            ArrayKind::Fixed,
+            Ownership::Borrowed,
+            None,
+            Some(2),
+            Some(size_of::<InlinePair>()),
+        )
+        .expect("valid fixed inline array codec");
+
+        let elements = [
+            InlinePair {
+                first: 1,
+                second: 5,
+            },
+            InlinePair {
+                first: 9,
+                second: 3,
+            },
+        ];
+        let stash = Stash::Ptr(elements.as_ptr().cast_mut().cast::<c_void>());
+        let decoded = codec.decode(&env, &stash).expect("decode should succeed");
+        let items = decoded_items(&decoded);
+        assert_eq!(items.len(), 2);
+        assert_eq!(read_inline_pair(&env, items[0]), elements[0]);
+        assert_eq!(read_inline_pair(&env, items[1]), elements[1]);
+    });
+}
+
+#[test]
+fn an_inline_struct_array_round_trips_through_encode() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = inline_pair_codec(Ownership::Borrowed, ArrayKind::Array, None);
+        let source = InlinePair {
+            first: 11,
+            second: 22,
+        };
+        let handle = Handle::from_glib_borrow((&raw const source).cast_mut().cast::<c_void>());
+        let encoded = codec
+            .encode(&env, array(&env, &[object(&env, handle)]))
+            .expect("encode should succeed");
+        let ptr = encoded.as_ptr("inline array").expect("a container pointer");
+        assert_eq!(unsafe { ptr.cast::<InlinePair>().read() }, source);
     });
 }

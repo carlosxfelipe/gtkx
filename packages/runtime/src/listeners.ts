@@ -1,34 +1,50 @@
-import type { SignalHandler } from "./signal.js";
+import { isSignalHandlerConnected, type SignalHandler } from "./signal.js";
 
 type SignalConnectable = {
-    connect(signal: string, handler: SignalHandler, after?: boolean): number;
+    connect(signal: string, handler: SignalHandler, isAfter?: boolean): number;
     disconnect(handlerId: number): void;
 };
 
-const listenerTable = new WeakMap<object, Map<string, Map<SignalHandler, number>>>();
+const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, number>>> = new WeakMap();
 
 const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
     listenerTable.get(instance)?.get(signal)?.get(handler);
 
 const trackListener = (instance: object, signal: string, handler: SignalHandler, handlerId: number): void => {
     let bySignal = listenerTable.get(instance);
+
     if (!bySignal) {
         bySignal = new Map();
         listenerTable.set(instance, bySignal);
     }
+
     let byHandler = bySignal.get(signal);
+
     if (!byHandler) {
         byHandler = new Map();
         bySignal.set(signal, byHandler);
     }
+
     byHandler.set(handler, handlerId);
 };
 
-const untrackListener = (instance: object, signal: string, handler: SignalHandler): void => {
+const untrackHandlerId = (instance: object, signal: string, handlerId: number): void => {
     const bySignal = listenerTable.get(instance);
     const byHandler = bySignal?.get(signal);
-    byHandler?.delete(handler);
-    if (byHandler?.size === 0) bySignal?.delete(signal);
+
+    if (byHandler === undefined) {
+        return;
+    }
+
+    for (const [handler, id] of byHandler) {
+        if (id === handlerId) {
+            byHandler.delete(handler);
+        }
+    }
+
+    if (byHandler.size === 0) {
+        bySignal?.delete(signal);
+    }
 };
 
 /**
@@ -38,10 +54,10 @@ const untrackListener = (instance: object, signal: string, handler: SignalHandle
  * @param instance The object emitting the signal.
  * @param signal The signal name to connect to.
  * @param handler The callback invoked on each emission.
- * @param after When true, run the handler after the default handler.
+ * @param isAfter When true, run the handler after the default handler.
  */
-export function onSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, after?: boolean): void {
-    const handlerId = instance.connect(signal, handler, after);
+function onSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean): void {
+    const handlerId = instance.connect(signal, handler, isAfter);
     trackListener(instance, signal, handler, handlerId);
 }
 
@@ -52,17 +68,19 @@ export function onSignal(instance: SignalConnectable, signal: string, handler: S
  * @param instance The object emitting the signal.
  * @param signal The signal name to connect to.
  * @param handler The callback invoked on the first emission.
- * @param after When true, run the handler after the default handler.
+ * @param isAfter When true, run the handler after the default handler.
  */
-export function onceSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, after?: boolean): void {
+function onceSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean): void {
     let handlerId = 0;
+
     const wrapped: SignalHandler = (...args) => {
-        untrackListener(instance, signal, wrapped);
-        untrackListener(instance, signal, handler);
+        untrackHandlerId(instance, signal, handlerId);
         instance.disconnect(handlerId);
+
         return handler(...args);
     };
-    handlerId = instance.connect(signal, wrapped, after);
+
+    handlerId = instance.connect(signal, wrapped, isAfter);
     trackListener(instance, signal, wrapped, handlerId);
     trackListener(instance, signal, handler, handlerId);
 }
@@ -75,10 +93,20 @@ export function onceSignal(instance: SignalConnectable, signal: string, handler:
  * @param signal The signal name the handler was connected to.
  * @param handler The handler to disconnect.
  */
-export function offSignal(instance: SignalConnectable, signal: string, handler: SignalHandler): void {
+function offSignal(instance: SignalConnectable, signal: string, handler: SignalHandler): void {
     const handlerId = findListenerHandlerId(instance, signal, handler);
-    if (handlerId !== undefined) {
-        instance.disconnect(handlerId);
-        untrackListener(instance, signal, handler);
+
+    if (handlerId === undefined) {
+        return;
     }
+
+    untrackHandlerId(instance, signal, handlerId);
+
+    if (!isSignalHandlerConnected(instance, handlerId)) {
+        return;
+    }
+
+    instance.disconnect(handlerId);
 }
+
+export { onSignal, onceSignal, offSignal };

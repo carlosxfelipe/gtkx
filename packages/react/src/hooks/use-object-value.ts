@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import { useCallback, useRef, useSyncExternalStore } from "react";
-import { type ObjectProp, resolveObjectProp } from "../utils/object-prop.js";
+import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
 type ObjectValueCache<T extends GObject.Object, V> = {
     object: T | null;
@@ -9,42 +9,46 @@ type ObjectValueCache<T extends GObject.Object, V> = {
     value: V;
 };
 
-export function useObjectValue<T extends GObject.Object, V>(
-    object: ObjectProp<T>,
+function useObjectValue<T extends GObject.Object, V>(
+    object: RefProp<T>,
     signal: string,
     read: (object: T | null) => V,
 ): V {
-    const resolved = resolveObjectProp(object);
-    const readRef = useRef(read);
-    readRef.current = read;
+    const resolved = resolveRefProp(object);
     const cacheRef = useRef<ObjectValueCache<T, V> | null>(null);
-
-    const readNow = useCallback((): ObjectValueCache<T, V> => {
-        const cache = { object: resolved, signal, value: readRef.current(resolved) };
-        cacheRef.current = cache;
-        return cache;
-    }, [resolved, signal]);
-
-    const getSnapshot = useCallback((): V => {
-        const cache = cacheRef.current;
-        if (cache !== null && cache.object === resolved && cache.signal === signal) {
-            return cache.value;
-        }
-        return readNow().value;
-    }, [resolved, signal, readNow]);
 
     const subscribe = useCallback(
         (onStoreChange: () => void): (() => void) => {
-            if (resolved === null) return () => {};
+            if (resolved === null) {
+                return (): void => undefined;
+            }
+
             const handler: SignalHandler = () => {
-                readNow();
+                cacheRef.current = null;
                 onStoreChange();
             };
+
             resolved.on(signal, handler);
+
             return () => resolved.off(signal, handler);
         },
-        [resolved, signal, readNow],
+        [resolved, signal],
     );
+
+    const getSnapshot = (): V => {
+        const cache = cacheRef.current;
+
+        if (cache !== null && cache.object === resolved && cache.signal === signal) {
+            return cache.value;
+        }
+
+        const value = read(resolved);
+        cacheRef.current = { object: resolved, signal, value };
+
+        return value;
+    };
 
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
+
+export { useObjectValue };

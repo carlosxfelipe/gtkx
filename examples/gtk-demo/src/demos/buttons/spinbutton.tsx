@@ -1,9 +1,21 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkSpinButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
+
+type SpinRowProps = {
+    value: number;
+    setValue: (v: number) => void;
+};
+
+type SpinRowConfig = {
+    row: number;
+    label: string;
+    spinName: string;
+    adjustment: Omit<React.ComponentProps<typeof GtkAdjustment>, "value">;
+    spin: React.ComponentProps<typeof GtkSpinButton>;
+} & SpinRowProps;
 
 const MONTHS = [
     "January",
@@ -21,14 +33,62 @@ const MONTHS = [
 ];
 
 const GTK_INPUT_ERROR = -1;
+const DECIMAL_PREFIX_PATTERN = /^\s*([+-]?\d+)/;
+
+const spinbuttonDemo: Demo = {
+    id: "spinbutton",
+    title: "Spin Buttons",
+    description:
+        "GtkSpinButton provides convenient ways to input data that can be seen as a value in a range. " +
+        "The examples here show that this does not necessarily mean numeric values, " +
+        "and it can include custom formatting.",
+    keywords: ["GtkEntry"],
+    component: SpinButtonDemo,
+    sourceCode,
+    resizable: false,
+};
+
+const parseDecimal = (text: string): number => {
+    const match = DECIMAL_PREFIX_PATTERN.exec(text);
+
+    return match ? Number(match[1]) : NaN;
+};
+
+const isValidTimeOfDay = (hours: number, minutes: number): boolean =>
+    !Number.isNaN(hours) && !Number.isNaN(minutes) && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+
+const parseTimeOfDay = (text: string): number | null => {
+    const parts = text.split(":");
+
+    if (parts.length !== 2) {
+        return null;
+    }
+
+    const hours = parseDecimal(parts[0] ?? "");
+    const minutes = parseDecimal(parts[1] ?? "");
+
+    if (!isValidTimeOfDay(hours, minutes)) {
+        return null;
+    }
+
+    return hours * 60 + minutes;
+};
 
 const handleHexInput = (spin: Gtk.SpinButton): [number, number] => {
     const text = spin.getText();
-    const match = text.match(/^\s*([+-]?)(?:0[xX])?([0-9a-fA-F]+)$/);
-    if (!match) return [GTK_INPUT_ERROR, 0];
+    const match = /^\s*([+-]?)(?:0[xX])?([0-9a-fA-F]+)$/.exec(text);
+
+    if (!match) {
+        return [GTK_INPUT_ERROR, 0];
+    }
+
     const sign = match[1] === "-" ? -1 : 1;
     const parsed = sign * Number.parseInt(match[2] ?? "", 16);
-    if (Number.isNaN(parsed)) return [GTK_INPUT_ERROR, 0];
+
+    if (Number.isNaN(parsed)) {
+        return [GTK_INPUT_ERROR, 0];
+    }
+
     return [1, parsed];
 };
 
@@ -36,18 +96,18 @@ const handleHexOutput = (spin: Gtk.SpinButton) => {
     const value = spin.getValue();
     const text = Math.abs(value) < 1e-5 ? "0x00" : `0x${Math.round(value).toString(16).toUpperCase().padStart(2, "0")}`;
     spin.setText(text);
+
     return true;
 };
 
 const handleTimeInput = (spin: Gtk.SpinButton): [number, number] => {
-    const text = spin.getText();
-    const parts = text.split(":");
-    if (parts.length !== 2) return [GTK_INPUT_ERROR, 0];
-    const hours = Number.parseInt(parts[0] ?? "", 10);
-    const minutes = Number.parseInt(parts[1] ?? "", 10);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return [GTK_INPUT_ERROR, 0];
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return [GTK_INPUT_ERROR, 0];
-    return [1, hours * 60 + minutes];
+    const minutesSinceMidnight = parseTimeOfDay(spin.getText());
+
+    if (minutesSinceMidnight === null) {
+        return [GTK_INPUT_ERROR, 0];
+    }
+
+    return [1, minutesSinceMidnight];
 };
 
 const handleTimeOutput = (spin: Gtk.SpinButton) => {
@@ -55,67 +115,59 @@ const handleTimeOutput = (spin: Gtk.SpinButton) => {
     const hours = Math.floor(value / 60);
     const minutes = Math.round((value / 60 - hours) * 60);
     spin.setText(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
+
     return true;
 };
 
-function useMonthSpinHandlers() {
-    const handleMonthInput = (spin: Gtk.SpinButton): [number, number] => {
-        const text = spin.getText().toLowerCase();
-        for (let i = 0; i < MONTHS.length; i++) {
-            if (MONTHS[i]?.toLowerCase().startsWith(text)) {
-                return [1, i + 1];
-            }
+const handleMonthInput = (spin: Gtk.SpinButton): [number, number] => {
+    const text = spin.getText().toLowerCase();
+
+    for (const [i, month] of MONTHS.entries()) {
+        if (month.toLowerCase().startsWith(text)) {
+            return [1, i + 1];
         }
-        return [GTK_INPUT_ERROR, 0];
-    };
+    }
 
-    const handleMonthOutput = (spin: Gtk.SpinButton) => {
-        const value = spin.getValue();
-        const index = Math.round(value) - 1;
-        spin.setText(MONTHS[index] ?? "January");
-        return true;
-    };
+    return [GTK_INPUT_ERROR, 0];
+};
 
-    return { handleMonthInput, handleMonthOutput };
-}
+const handleMonthOutput = (spin: Gtk.SpinButton) => {
+    const value = spin.getValue();
+    const index = Math.round(value) - 1;
+    spin.setText(MONTHS[index] ?? "January");
 
-interface SpinRowProps {
-    value: number;
-    setValue: (v: number) => void;
-}
-
-interface SpinRowConfig extends SpinRowProps {
-    row: number;
-    label: string;
-    spinName: string;
-    adjustment: Omit<React.ComponentProps<typeof GtkAdjustment>, "value">;
-    spin: React.ComponentProps<typeof GtkSpinButton>;
-}
+    return true;
+};
 
 const SpinRow = ({ row, label, spinName, value, setValue, adjustment, spin }: SpinRowConfig) => {
     const [spinWidget, setSpinWidget] = useState<Gtk.SpinButton | null>(null);
 
     return (
         <>
-            <Grid.Child component={GtkLabel} column={0} row={row} useUnderline xalign={1} mnemonicWidget={spinWidget}>
-                {label}
-            </Grid.Child>
-            <Grid.Child
-                component={GtkSpinButton}
-                column={1}
-                row={row}
-                ref={(node) => {
-                    setSpinWidget(node);
-                }}
-                name={spinName}
-                halign={Gtk.Align.START}
-                adjustment={<GtkAdjustment {...adjustment} value={value} />}
-                onValueChanged={(widget) => setValue(widget.getValue())}
-                {...spin}
-            />
-            <Grid.Child component={GtkLabel} column={2} row={row} widthChars={10} xalign={1}>
-                {String(value)}
-            </Grid.Child>
+            <GtkGridLayoutChild column={0} row={row}>
+                <GtkLabel useUnderline xalign={1} mnemonicWidget={spinWidget}>
+                    {label}
+                </GtkLabel>
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={1} row={row}>
+                <GtkSpinButton
+                    ref={(node) => {
+                        setSpinWidget(node);
+                    }}
+                    name={spinName}
+                    halign={Gtk.Align.START}
+                    adjustment={<GtkAdjustment {...adjustment} value={value} />}
+                    onValueChanged={(widget) => {
+                        setValue(widget.getValue());
+                    }}
+                    {...spin}
+                />
+            </GtkGridLayoutChild>
+            <GtkGridLayoutChild column={2} row={row}>
+                <GtkLabel widthChars={10} xalign={1}>
+                    {String(value)}
+                </GtkLabel>
+            </GtkGridLayoutChild>
         </>
     );
 };
@@ -126,7 +178,7 @@ const NumericSpinRow = (props: SpinRowProps) => (
         row={0}
         label="_Numeric"
         spinName="basic_spin"
-        adjustment={{ lower: -10000, upper: 10000, stepIncrement: 0.5, pageIncrement: 100 }}
+        adjustment={{ lower: -10_000, upper: 10_000, stepIncrement: 0.5, pageIncrement: 100 }}
         spin={{
             widthChars: 5,
             digits: 2,
@@ -168,15 +220,9 @@ const TimeSpinRow = (props: SpinRowProps) => (
     />
 );
 
-interface MonthSpinRowProps extends SpinRowProps {
-    onInput: (spin: Gtk.SpinButton) => [number, number];
-    onOutput: (spin: Gtk.SpinButton) => boolean;
-}
-
-const MonthSpinRow = ({ value, setValue, onInput, onOutput }: MonthSpinRowProps) => (
+const MonthSpinRow = (props: SpinRowProps) => (
     <SpinRow
-        value={value}
-        setValue={setValue}
+        {...props}
         row={3}
         label="_Month"
         spinName="month_spin"
@@ -185,42 +231,26 @@ const MonthSpinRow = ({ value, setValue, onInput, onOutput }: MonthSpinRowProps)
             widthChars: 9,
             wrap: true,
             updatePolicy: Gtk.SpinButtonUpdatePolicy.IF_VALID,
-            onInput,
-            onOutput,
+            onInput: handleMonthInput,
+            onOutput: handleMonthOutput,
         }}
     />
 );
 
-const SpinButtonDemo = () => {
+function SpinButtonDemo() {
     const [numericValue, setNumericValue] = useState(0);
     const [hexValue, setHexValue] = useState(0);
     const [timeValue, setTimeValue] = useState(0);
     const [monthValue, setMonthValue] = useState(1);
 
-    const monthHandlers = useMonthSpinHandlers();
-
     return (
-        <Grid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+        <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
             <NumericSpinRow value={numericValue} setValue={setNumericValue} />
             <HexSpinRow value={hexValue} setValue={setHexValue} />
             <TimeSpinRow value={timeValue} setValue={setTimeValue} />
-            <MonthSpinRow
-                value={monthValue}
-                setValue={setMonthValue}
-                onInput={monthHandlers.handleMonthInput}
-                onOutput={monthHandlers.handleMonthOutput}
-            />
-        </Grid>
+            <MonthSpinRow value={monthValue} setValue={setMonthValue} />
+        </GtkGrid>
     );
-};
+}
 
-export const spinbuttonDemo: Demo = {
-    id: "spinbutton",
-    title: "Spin Buttons",
-    description:
-        "GtkSpinButton provides convenient ways to input data that can be seen as a value in a range. The examples here show that this does not necessarily mean numeric values, and it can include custom formatting.",
-    keywords: ["GtkEntry"],
-    component: SpinButtonDemo,
-    sourceCode,
-    resizable: false,
-};
+export { spinbuttonDemo };

@@ -17,8 +17,7 @@ permissions:
   packages: read
 
 env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
   changes:
@@ -28,7 +27,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Detect changes
         id: filter
@@ -40,7 +39,7 @@ jobs:
               - '!**/*.md'
 
   # The image is built once per architecture on a native runner (QEMU emulation
-  # would have to compile weston and cargo-llvm-cov, which blows any sane budget)
+  # would have to compile cargo-llvm-cov, which blows any sane budget)
   # and the per-arch digests are merged into one manifest list by `image-manifest`.
   # arm64 exists for publish.yml's native addon build on ubuntu-24.04-arm.
   image:
@@ -59,14 +58,14 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Log in to GHCR
         if: &can-push github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -113,7 +112,7 @@ jobs:
       ref: ${{ steps.meta.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Compute image tags
         id: meta
@@ -138,7 +137,7 @@ jobs:
 
       - name: Log in to GHCR
         if: *can-push
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -165,13 +164,21 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Lint
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm lint
           image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Report failures to Nx Cloud
+        if: &fix-ci always() && env.NX_CLOUD_ACCESS_TOKEN != ''
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
 
   test:
     needs: [changes, image-manifest]
@@ -180,13 +187,21 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm test
           image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
 
   typecheck:
     needs: [changes, image-manifest]
@@ -195,13 +210,21 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Typecheck
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm typecheck
           image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
 
   publish-e2e:
     needs: [changes, image-manifest]
@@ -210,7 +233,7 @@ jobs:
     timeout-minutes: 50
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Publish to Verdaccio, then scaffold, build, and test a consumer app
         uses: ./.github/actions/run-ci-command
@@ -266,13 +289,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      # The macro runner is ARM64; a fresh build is forced so the x86_64 remote
-      # cache can never satisfy the native addon or platform-specific outputs.
-      TURBO_TOKEN: ""
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Probe runner
         shell: bash
@@ -289,7 +308,7 @@ jobs:
             libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
             libgirepository1.0-dev gobject-introspection \
             gvfs libgles2 libgl1-mesa-dri \
-            weston dbus \
+            dbus \
             adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
             hicolor-icon-theme librsvg2-common \
             fontconfig fonts-noto-core fonts-dejavu-core \
@@ -311,57 +330,91 @@ jobs:
         shell: bash
         run: echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
 
-      - name: Cache the headless weston build
-        id: weston
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Restore the headless sway build
+        id: sway
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: /opt/weston
-          key: weston-12.0.4-r2-${{ runner.os }}-${{ runner.arch }}
+          path: /opt/sway
+          key: &sway-key sway-1.10.1-wlroots-0.18.2-deps-r4-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Build weston with the headless backend
-        if: steps.weston.outputs.cache-hit != 'true'
+      - name: Build sway with the headless backend
+        if: steps.sway.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          # The runner's apt weston (jammy) ships no headless backend, so the vitest
-          # per-worker compositor can't start. Build a headless-capable weston from
-          # source; 12.x is the newest that builds against the runner's stock
-          # libwayland. The benches are non-interactive, so no --fake-seat is needed.
+          set -euo pipefail
           sudo apt-get install -y --no-install-recommends \
-            ninja-build python3-pip pkg-config \
-            libwayland-dev libwayland-bin libpixman-1-dev \
-            libinput-dev libevdev-dev libxkbcommon-dev libdrm-dev libudev-dev \
+            ninja-build python3-pip pkg-config cmake \
+            libpixman-1-dev libxkbcommon-dev libudev-dev libevdev-dev libmtdev-dev \
             libdbus-1-dev libcairo2-dev libpango1.0-dev libglib2.0-dev \
-            libpng-dev libfontconfig1-dev libseat-dev libsystemd-dev libpam0g-dev
-          sudo pip3 install --quiet meson
-          # jammy's wayland-protocols (1.25) predates weston 12's >= 1.31 floor; the
-          # package is data-only (XML + pkg-config), so build the newer release into
-          # /usr where weston's meson discovers it. Runtime weston needs none of it.
-          WP=1.31
-          curl -fsSL "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${WP}/downloads/wayland-protocols-${WP}.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
-          meson setup "$RUNNER_TEMP/wayland-protocols-${WP}/build" "$RUNNER_TEMP/wayland-protocols-${WP}" \
-            --prefix=/usr -Dtests=false
-          sudo ninja -C "$RUNNER_TEMP/wayland-protocols-${WP}/build" install
-          WESTON=12.0.4
-          curl -fsSL "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON}/downloads/weston-${WESTON}.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
-          meson setup "$RUNNER_TEMP/weston-${WESTON}/build" "$RUNNER_TEMP/weston-${WESTON}" \
-            --prefix=/opt/weston --libdir=lib --buildtype=release \
-            -Dbackend-default=headless \
-            -Dbackend-drm=false -Dbackend-x11=false -Dbackend-rdp=false \
-            -Dbackend-vnc=false -Dbackend-wayland=false -Dbackend-pipewire=false \
-            -Drenderer-gl=false -Dxwayland=false -Dremoting=false -Dpipewire=false \
-            -Dsystemd=false -Dcolor-management-lcms=false \
-            -Dimage-jpeg=false -Dimage-webp=false -Dtest-junit-xml=false \
-            -Ddemo-clients=false -Dsimple-clients=[] -Dtools=[]
-          sudo ninja -C "$RUNNER_TEMP/weston-${WESTON}/build" install
+            libpng-dev libjson-c-dev libpcre2-dev scdoc hwdata bison
+          sudo pip3 install --quiet "meson>=1.3"
 
-      - name: Put the headless weston on PATH
+          PREFIX=/opt/sway
+          export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+          export LD_LIBRARY_PATH="$PREFIX/lib:${LD_LIBRARY_PATH:-}"
+          export CPPFLAGS="-I$PREFIX/include"
+
+          build() {
+            local url="$1" dir="$2"
+            shift 2
+            curl -fsSL "$url" -o "$RUNNER_TEMP/src.tar"
+            tar -xf "$RUNNER_TEMP/src.tar" -C "$RUNNER_TEMP"
+            meson setup "$RUNNER_TEMP/$dir/build" "$RUNNER_TEMP/$dir" \
+              --prefix="$PREFIX" --libdir=lib --buildtype=release "$@"
+            ninja -C "$RUNNER_TEMP/$dir/build" install
+          }
+
+          build \
+            "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.23.1/downloads/wayland-1.23.1.tar.xz" \
+            "wayland-1.23.1" -Dtests=false -Ddocumentation=false -Ddtd_validation=false
+          build \
+            "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.36/downloads/wayland-protocols-1.36.tar.xz" \
+            "wayland-protocols-1.36" -Dtests=false
+          build \
+            "https://dri.freedesktop.org/libdrm/libdrm-2.4.125.tar.xz" \
+            "libdrm-2.4.125" -Dtests=false -Dcairo-tests=disabled -Dman-pages=disabled \
+            -Dvalgrind=disabled -Dintel=disabled -Dradeon=disabled -Damdgpu=disabled \
+            -Dnouveau=disabled -Dvmwgfx=disabled
+          build \
+            "https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.2.0/downloads/libdisplay-info-0.2.0.tar.xz" \
+            "libdisplay-info-0.2.0"
+
+          build \
+            "https://www.cairographics.org/releases/pixman-0.42.2.tar.gz" \
+            "pixman-0.42.2"
+          build \
+            "https://xkbcommon.org/download/libxkbcommon-1.7.0.tar.xz" \
+            "libxkbcommon-1.7.0" -Denable-docs=false -Denable-tools=false \
+            -Denable-wayland=false -Denable-x11=false -Denable-xkbregistry=false \
+            -Denable-bash-completion=false
+
+          build \
+            "https://gitlab.freedesktop.org/libinput/libinput/-/archive/1.26.1/libinput-1.26.1.tar.gz" \
+            "libinput-1.26.1" -Dlibwacom=false -Ddebug-gui=false -Dtests=false \
+            -Ddocumentation=false
+
+          build \
+            "https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.18.2/downloads/wlroots-0.18.2.tar.gz" \
+            "wlroots-0.18.2" -Dbackends= -Dxwayland=disabled -Dsession=disabled -Dexamples=false
+          build \
+            "https://github.com/swaywm/sway/releases/download/1.10.1/sway-1.10.1.tar.gz" \
+            "sway-1.10.1" -Dtray=disabled -Dman-pages=disabled -Dgdk-pixbuf=disabled \
+            -Dswaybar=false -Dswaynag=false -Ddefault-wallpaper=false \
+            -Dzsh-completions=false -Dbash-completions=false -Dfish-completions=false
+
+      - name: Save the headless sway build
+        if: steps.sway.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /opt/sway
+          key: *sway-key
+
+      - name: Put the headless sway on PATH
         shell: bash
         run: |
-          echo "/opt/weston/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/weston/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
-          # GITHUB_ENV only affects later steps, so set the runtime path inline for
-          # this in-step sanity check against the freshly installed libweston.
-          LD_LIBRARY_PATH="/opt/weston/lib:$LD_LIBRARY_PATH" /opt/weston/bin/weston --version
+          echo "/opt/sway/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=/opt/sway/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          LD_LIBRARY_PATH="/opt/sway/lib:${LD_LIBRARY_PATH:-}" /opt/sway/bin/sway --version
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -372,12 +425,12 @@ jobs:
         shell: bash
         run: |
           corepack enable
-          corepack prepare pnpm@11.15.1 --activate
+          corepack prepare pnpm@11.17.0 --activate
 
       - name: Set up Rust
         shell: bash
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Install dependencies and build the benchmark prerequisites
@@ -387,7 +440,7 @@ jobs:
           pnpm build
 
       - name: Run the TypeScript benchmarks under CodSpeed
-        uses: CodSpeedHQ/action@f99becdce5e5d51fd556489ebef684f4ecfd6286 # v4.18.5
+        uses: CodSpeedHQ/action@f22792bfac16f3e14eb9fbea76f4a48e9cc22b93 # v4.19.1
         with:
           mode: walltime
-          run: pnpm --filter @gtkx/e2e bench
+          run: pnpm bench

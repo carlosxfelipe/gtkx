@@ -4,22 +4,30 @@ import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./p
 
 const log = createLogger("css");
 
-export class StyleSheet {
+class StyleSheet {
     private css = "";
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;
 
     private ensureProvider(): Gtk.CssProvider {
-        if (this.provider) return this.provider;
+        if (this.provider) {
+            return this.provider;
+        }
+
         const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
         attachParsingErrorLogger(provider, log, "CSS");
+
         return provider;
     }
 
     private scheduleUpdate(): void {
-        if (this.updateScheduled) return;
+        if (this.updateScheduled) {
+            return;
+        }
+
         this.updateScheduled = true;
+
         queueMicrotask(() => {
             this.updateScheduled = false;
             this.ensureProvider().loadFromString(this.css);
@@ -31,3 +39,5 @@ export class StyleSheet {
         this.scheduleUpdate();
     }
 }
+
+export { StyleSheet };

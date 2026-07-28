@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { build } from "../src/builder.js";
 
 type ViteConfigSnapshot = {
-    plugins: Array<{ name?: string } | null>;
+    plugins: ({ name?: string } | null)[];
     build: {
         ssr: string;
         outDir: string;
@@ -15,20 +16,19 @@ type ViteConfigSnapshot = {
     ssr: { noExternal: boolean };
 };
 
+const APP_VERSION_DEFINE = "__APP_VERSION__";
+
 const { viteBuildMock } = vi.hoisted(() => ({
-    viteBuildMock: vi.fn(async (_config: ViteConfigSnapshot) => undefined),
+    viteBuildMock: vi.fn<(config: ViteConfigSnapshot) => Promise<void>>(() => Promise.resolve()),
 }));
-
-vi.mock("vite", async (importActual) => {
-    const actual = await importActual<typeof import("vite")>();
-    return { ...actual, build: viteBuildMock };
-});
-
-import { build } from "../src/builder.js";
 
 function getViteConfig(): ViteConfigSnapshot {
     const call = viteBuildMock.mock.calls[0];
-    if (!call) throw new Error("vite.build was not invoked");
+
+    if (!call) {
+        throw new Error("vite.build was not invoked");
+    }
+
     return call[0];
 }
 
@@ -40,13 +40,18 @@ const restoreSpies = (): void => {
     vi.restoreAllMocks();
 };
 
+vi.mock("vite", async (importActual) => {
+    const actual = await importActual<typeof import("vite")>();
+
+    return { ...actual, build: viteBuildMock };
+});
+
 describe("build (core config)", () => {
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
     it("invokes vite with the entry as the SSR target and bundle.js as the entry filename", async () => {
         await build({ entry: "src/index.tsx" });
-
         const config = getViteConfig();
         expect(config.build.ssr).toBe("src/index.tsx");
         expect(config.build.rolldownOptions.output.entryFileNames).toBe("bundle.js");
@@ -81,8 +86,8 @@ describe("build (plugin order)", () => {
 
     it("registers all gtkx vite plugins in order", async () => {
         await build({ entry: "src/index.tsx" });
-
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
+
         expect(pluginNames).toEqual([
             "gtkx:config",
             "gtkx:undeclared-library",
@@ -99,9 +104,9 @@ describe("build (plugin order)", () => {
     it("appends gtkx plugins after user-supplied plugins", async () => {
         const userPlugin = { name: "user-plugin" };
         await build({ entry: "src/index.tsx", vite: { plugins: [userPlugin] } });
-
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames[0]).toBe("user-plugin");
+
         expect(pluginNames.slice(1)).toEqual([
             "gtkx:config",
             "gtkx:undeclared-library",
@@ -123,26 +128,21 @@ describe("build (root resolution)", () => {
     it("falls back to process.cwd() for the gtkx-native plugin when no vite root is given", async () => {
         const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue("/fake/project");
         await build({ entry: "src/index.tsx" });
-
         expect(cwdSpy).toHaveBeenCalled();
         const nativePlugin = getViteConfig().plugins.find((p) => p?.name === "gtkx:native");
         expect(nativePlugin).toBeDefined();
-
         cwdSpy.mockRestore();
     });
 
     it("uses the user-supplied vite root and does not call process.cwd()", async () => {
         const cwdSpy = vi.spyOn(process, "cwd");
         await build({ entry: "src/index.tsx", vite: { root: "/explicit/root" } });
-
         expect(cwdSpy).not.toHaveBeenCalled();
-
         cwdSpy.mockRestore();
     });
 
     it("forwards a custom assetBase to the gtkx-built-url plugin", async () => {
         await build({ entry: "src/index.tsx", assetBase: "../share/app" });
-
         const builtUrlPlugin = getViteConfig().plugins.find((p) => p?.name === "gtkx:built-url");
         expect(builtUrlPlugin).toBeDefined();
     });
@@ -155,16 +155,17 @@ describe("build (define and rolldown)", () => {
     it("merges user-supplied define entries while forcing NODE_ENV to production", async () => {
         await build({
             entry: "src/index.tsx",
-            vite: { define: { __APP_VERSION__: JSON.stringify("1.2.3") } },
+            vite: { define: { [APP_VERSION_DEFINE]: JSON.stringify("1.2.3") } },
         });
 
         const config = getViteConfig();
-        expect(config.define.__APP_VERSION__).toBe(JSON.stringify("1.2.3"));
+        expect(config.define[APP_VERSION_DEFINE]).toBe(JSON.stringify("1.2.3"));
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 
     it("preserves user rolldown output options while overriding entryFileNames", async () => {
         const userOutput = { format: "es" as const, sourcemap: true };
+
         await build({
             entry: "src/index.tsx",
             vite: { build: { rolldownOptions: { output: userOutput } } },

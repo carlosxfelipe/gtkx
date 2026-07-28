@@ -5,6 +5,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV LANG=C.UTF-8
 
+# A dbgsym depends on an exact version of its library. ddebs carries the libadwaita
+# dbgsym only for the release pocket, so -updates is held off for that source to keep
+# libadwaita-1-0 and libadwaita-1-0-dbgsym on the one version both archives publish.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg ubuntu-dbgsym-keyring \
     && codename="$(. /etc/os-release; echo "$VERSION_CODENAME")" \
@@ -13,6 +16,8 @@ RUN apt-get update \
     && printf 'deb http://archive.ubuntu.com/ubuntu %s-proposed main\n' "$codename" > /etc/apt/sources.list.d/proposed.list \
     && printf 'Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n' \
         "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed \
+    && printf 'Package: src:libadwaita-1\nPin: release a=%s-updates\nPin-Priority: -1\n' \
+        "$codename" > /etc/apt/preferences.d/libadwaita-updates \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -26,6 +31,7 @@ RUN apt-get update \
         gvfs \
         libgles2 \
         libgl1-mesa-dri \
+        sway \
         weston \
         xwayland-run \
         dbus \
@@ -45,32 +51,6 @@ RUN apt-get update \
         libadwaita-1-0-dbgsym \
         libglib2.0-0t64-dbgsym \
     && rm -rf /var/lib/apt/lists/*
-
-# ubuntu:26.04 packages weston 14, whose headless backend provides no input seat,
-# so a GTK popover's autohide grab fails and the popover never maps under the
-# vitest headless compositor. weston 15 adds --fake-seat (which the headless
-# display setup passes), so build it from source over the packaged runtime.
-ARG WESTON_VERSION=15.0.1
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        meson ninja-build hwdata wayland-protocols libwayland-bin \
-        libwayland-dev libpixman-1-dev libinput-dev libxkbcommon-dev \
-        libcairo2-dev libdrm-dev libudev-dev libseat-dev libdbus-1-dev \
-    && curl -fsSL "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON_VERSION}/downloads/weston-${WESTON_VERSION}.tar.xz" \
-        | tar -xJ -C /tmp \
-    && meson setup /tmp/weston-${WESTON_VERSION}/build /tmp/weston-${WESTON_VERSION} \
-        --prefix=/usr --buildtype=release \
-        -Dbackend-default=headless -Dbackend-drm=false -Dbackend-rdp=false \
-        -Dbackend-vnc=false -Dbackend-pipewire=false -Dbackend-x11=false \
-        -Drenderer-gl=false -Drenderer-vulkan=false -Dxwayland=false \
-        -Dremoting=false -Dpipewire=false -Dimage-jpeg=false -Dimage-webp=false \
-        -Dshell-lua=false -Dshell-ivi=false -Dshell-kiosk=false \
-        -Dcolor-management-lcms=false -Ddemo-clients=false \
-        -Dsimple-clients=[] -Dtools=[] -Dtests=false \
-    && ninja -C /tmp/weston-${WESTON_VERSION}/build install \
-    && weston --version \
-    && weston --help 2>&1 | grep -q -- '--fake-seat' \
-    && rm -rf /tmp/weston-${WESTON_VERSION} /var/lib/apt/lists/*
 
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
@@ -97,10 +77,14 @@ ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain stable \
+# Keep in sync with /rust-toolchain.toml (stable) and scripts/run-headless.ts (nightly), which pin
+# the same toolchains for local builds; the image is built without the repository checked out.
+ARG RUST_VERSION=1.97.1
+ARG RUST_NIGHTLY=nightly-2026-07-26
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN rustup toolchain install nightly --profile minimal --component llvm-tools-preview --component rust-src --component miri \
+RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview --component rust-src --component miri \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
 RUN cargo install cargo-llvm-cov --locked \
@@ -110,7 +94,6 @@ RUN if [ -d /usr/share/vulkan/icd.d ]; then \
         find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete; \
     fi
 
-ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0
 
 LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"

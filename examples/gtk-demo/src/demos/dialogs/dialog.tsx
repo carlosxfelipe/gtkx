@@ -1,12 +1,21 @@
-import { Grid } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkGridLayoutChild, GtkLabel, GtkSeparator } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
-interface DialogEntryRowProps {
+type DialogEntryFieldProps = {
+    row: number;
+    label: string;
+    entryName: string;
+    text: string;
+    setText: (v: string) => void;
+    widget: Gtk.Entry | null;
+    setWidget: (w: Gtk.Entry | null) => void;
+};
+
+type DialogEntryRowProps = {
     entry1: string;
     setEntry1: (v: string) => void;
     entry2: string;
@@ -16,7 +25,55 @@ interface DialogEntryRowProps {
     entry2Widget: Gtk.Entry | null;
     setEntry2Widget: (w: Gtk.Entry | null) => void;
     onOpenInteractive: () => void;
-}
+};
+
+type InteractiveDialogProps = {
+    entry1Text: string;
+    setEntry1Text: (v: string) => void;
+    entry2Text: string;
+    setEntry2Text: (v: string) => void;
+    onResponse: (response: string) => void;
+};
+
+const dialogDemo: Demo = {
+    id: "dialog",
+    title: "Dialogs",
+    description: "Dialogs are used to pop up transient windows for information and user feedback.",
+    keywords: ["GtkMessageDialog"],
+    component: DialogDemo,
+    sourceCode,
+    resizable: false,
+};
+
+const DialogEntryField = ({
+    row,
+    label,
+    entryName,
+    text,
+    setText,
+    widget,
+    setWidget,
+}: DialogEntryFieldProps) => (
+    <>
+        <GtkGridLayoutChild column={0} row={row}>
+            <GtkLabel useUnderline mnemonicWidget={widget}>
+                {label}
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={row}>
+            <GtkEntry
+                name={entryName}
+                ref={(node) => {
+                    setWidget(node);
+                }}
+                text={text}
+                onChanged={(e) => {
+                    setText(e.getText());
+                }}
+            />
+        </GtkGridLayoutChild>
+    </>
+);
 
 const DialogEntryRow = ({
     entry1,
@@ -31,36 +88,26 @@ const DialogEntryRow = ({
 }: DialogEntryRowProps) => (
     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
         <GtkButton label="_Interactive Dialog" useUnderline valign={Gtk.Align.START} onClicked={onOpenInteractive} />
-        <Grid rowSpacing={4} columnSpacing={4}>
-            <Grid.Child component={GtkLabel} column={0} row={0} useUnderline mnemonicWidget={entry1Widget}>
-                _Entry 1
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
+        <GtkGrid rowSpacing={4} columnSpacing={4}>
+            <DialogEntryField
                 row={0}
-                name="demo-entry-1"
-                ref={(node) => {
-                    setEntry1Widget(node);
-                }}
+                label="_Entry 1"
+                entryName="demo-entry-1"
                 text={entry1}
-                onChanged={(e) => setEntry1(e.getText())}
+                setText={setEntry1}
+                widget={entry1Widget}
+                setWidget={setEntry1Widget}
             />
-            <Grid.Child component={GtkLabel} column={0} row={1} useUnderline mnemonicWidget={entry2Widget}>
-                E_ntry 2
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
+            <DialogEntryField
                 row={1}
-                name="demo-entry-2"
-                ref={(node) => {
-                    setEntry2Widget(node);
-                }}
+                label="E_ntry 2"
+                entryName="demo-entry-2"
                 text={entry2}
-                onChanged={(e) => setEntry2(e.getText())}
+                setText={setEntry2}
+                widget={entry2Widget}
+                setWidget={setEntry2Widget}
             />
-        </Grid>
+        </GtkGrid>
     </GtkBox>
 );
 
@@ -68,7 +115,7 @@ const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: (
     <AdwAlertDialog
         name="message-dialog"
         heading="Test message"
-        body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
+        body={clickCount === 1 ? "Has been shown once" : `Has been shown ${String(clickCount)} times`}
         defaultResponse="ok"
         closeResponse="cancel"
         responses={[
@@ -79,14 +126,6 @@ const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: (
     />
 );
 
-interface InteractiveDialogProps {
-    entry1Text: string;
-    setEntry1Text: (v: string) => void;
-    entry2Text: string;
-    setEntry2Text: (v: string) => void;
-    onResponse: (response: string) => void;
-}
-
 const InteractiveFields = ({
     entry1Text,
     setEntry1Text,
@@ -95,37 +134,28 @@ const InteractiveFields = ({
 }: Omit<InteractiveDialogProps, "onResponse">) => {
     const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
+
     return (
-        <Grid rowSpacing={6} columnSpacing={6} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-            <Grid.Child component={GtkLabel} column={0} row={0} useUnderline mnemonicWidget={dialogEntry1Widget}>
-                _Entry 1
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
+        <GtkGrid rowSpacing={6} columnSpacing={6} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            <DialogEntryField
                 row={0}
-                name="dialog-entry-1"
-                ref={(node) => {
-                    setDialogEntry1Widget(node);
-                }}
+                label="_Entry 1"
+                entryName="dialog-entry-1"
                 text={entry1Text}
-                onChanged={(e) => setEntry1Text(e.getText())}
+                setText={setEntry1Text}
+                widget={dialogEntry1Widget}
+                setWidget={setDialogEntry1Widget}
             />
-            <Grid.Child component={GtkLabel} column={0} row={1} useUnderline mnemonicWidget={dialogEntry2Widget}>
-                E_ntry 2
-            </Grid.Child>
-            <Grid.Child
-                component={GtkEntry}
-                column={1}
+            <DialogEntryField
                 row={1}
-                name="dialog-entry-2"
-                ref={(node) => {
-                    setDialogEntry2Widget(node);
-                }}
+                label="E_ntry 2"
+                entryName="dialog-entry-2"
                 text={entry2Text}
-                onChanged={(e) => setEntry2Text(e.getText())}
+                setText={setEntry2Text}
+                widget={dialogEntry2Widget}
+                setWidget={setDialogEntry2Widget}
             />
-        </Grid>
+        </GtkGrid>
     );
 };
 
@@ -146,14 +176,14 @@ const InteractiveDialog = ({
             { id: "ok", label: "_OK" },
         ]}
         onResponse={onResponse}
-        extraChild={
+        extraChild={(
             <InteractiveFields
                 entry1Text={entry1Text}
                 setEntry1Text={setEntry1Text}
                 entry2Text={entry2Text}
                 setEntry2Text={setEntry2Text}
             />
-        }
+        )}
     />
 );
 
@@ -184,6 +214,7 @@ function useDialogDemoState() {
             setEntry1(dialogEntry1Text);
             setEntry2(dialogEntry2Text);
         }
+
         setShowInteractiveDialog(false);
     };
 
@@ -210,8 +241,9 @@ function useDialogDemoState() {
     };
 }
 
-const DialogDemo = () => {
+function DialogDemo() {
     const state = useDialogDemoState();
+
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -237,7 +269,12 @@ const DialogDemo = () => {
                 onOpenInteractive={state.handleOpenInteractiveDialog}
             />
             {state.showMessageDialog && (
-                <MessageDialog clickCount={state.clickCount} onClose={() => state.setShowMessageDialog(false)} />
+                <MessageDialog
+                    clickCount={state.clickCount}
+                    onClose={() => {
+                        state.setShowMessageDialog(false);
+                    }}
+                />
             )}
             {state.showInteractiveDialog && (
                 <InteractiveDialog
@@ -250,14 +287,6 @@ const DialogDemo = () => {
             )}
         </GtkBox>
     );
-};
+}
 
-export const dialogDemo: Demo = {
-    id: "dialog",
-    title: "Dialogs",
-    description: "Dialogs are used to pop up transient windows for information and user feedback.",
-    keywords: ["GtkMessageDialog"],
-    component: DialogDemo,
-    sourceCode,
-    resizable: false,
-};
+export { dialogDemo };

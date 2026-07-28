@@ -39,8 +39,6 @@
         "src"
     ],
     "scripts": {
-        "build": "tsc -b tsconfig.lib.json",
-        "typecheck": "tsc -b --emitDeclarationOnly",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
@@ -49,7 +47,7 @@
     "dependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@homebridge/dbus-native": "^0.7.7"
+        "@homebridge/dbus-native": "^0.7.8"
     },
     "devDependencies": {
         "vitest": "catalog:"

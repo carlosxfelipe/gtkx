@@ -1,6 +1,3 @@
-/// <reference path="./dbus-native.d.ts" />
-
-import { EventEmitter } from "node:events";
 import { type InterfaceDescriptor, sessionBus } from "@homebridge/dbus-native";
 
 const NOTIFICATIONS_NAME = "org.freedesktop.Notifications";
@@ -24,31 +21,37 @@ const DESCRIPTOR: InterfaceDescriptor = {
     },
 };
 
-class NotificationService extends EventEmitter {
+const startNotificationService = async (busAddress: string): Promise<() => void> => {
+    const bus = sessionBus({ busAddress });
+    bus.exportInterface(new NotificationService(), NOTIFICATIONS_PATH, DESCRIPTOR);
+
+    await new Promise<void>((resolve, reject) => {
+        bus.requestName(NOTIFICATIONS_NAME, 0, (error) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve();
+            }
+        });
+    });
+
+    return () => bus.connection.stream.destroy();
+};
+
+class NotificationService extends EventTarget {
     private lastId = 0;
+
+    CloseNotification = (): void => undefined;
 
     Notify(): number {
         this.lastId += 1;
+
         return this.lastId;
     }
-
-    CloseNotification(): void {}
 
     GetCapabilities(): string[] {
         return ["body", "actions"];
     }
 }
 
-export const startNotificationService = async (busAddress: string): Promise<() => void> => {
-    const bus = sessionBus({ busAddress });
-    bus.exportInterface(new NotificationService(), NOTIFICATIONS_PATH, DESCRIPTOR);
-
-    await new Promise<void>((resolve, reject) => {
-        bus.requestName(NOTIFICATIONS_NAME, 0, (error) => {
-            if (error) reject(error);
-            else resolve();
-        });
-    });
-
-    return () => bus.connection.stream.destroy();
-};
+export { startNotificationService };

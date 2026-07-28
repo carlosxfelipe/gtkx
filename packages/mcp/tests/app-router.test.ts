@@ -1,25 +1,26 @@
-import EventEmitter from "node:events";
 import { Duplex } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AppRouter } from "../src/app-router.js";
-import { ErrorCode, ProtocolError } from "../src/protocol/errors.js";
 import type { Message, Request, Response } from "../src/protocol/schemas.js";
-import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "../src/transport.js";
-
-class FakeSocket extends Duplex {
-    lines: string[] = [];
-
-    override _write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
-        this.lines.push(chunk.toString());
-        callback();
-    }
-}
+import { type AppRegisteredEvent, AppRouter, type AppUnregisteredEvent } from "../src/app-router.js";
+import { ErrorCode, ProtocolError } from "../src/protocol/errors.js";
+import {
+    type AppConnections,
+    connectionDisconnectionEvent,
+    connectionRequestEvent,
+    ProtocolConnection,
+} from "../src/transport.js";
 
 type TestConnection = ProtocolConnection & {
     socket: FakeSocket;
 };
 
+type RouterContext = {
+    connections: FakeAppConnections;
+    router: AppRouter;
+};
+
 const createdConnections: TestConnection[] = [];
+const ctx = {} as RouterContext;
 
 function makeConnection(id: string): TestConnection {
     const socket = new FakeSocket();
@@ -27,48 +28,67 @@ function makeConnection(id: string): TestConnection {
     connection.id = id;
     connection.socket = socket;
     createdConnections.push(connection);
+
     return connection;
 }
 
-class FakeAppConnections extends EventEmitter<AppConnectionEvents> implements AppConnections {
-    sent: Array<{ connectionId: string; message: Message }> = [];
-
-    send(connectionId: string, message: Message): void {
-        this.sent.push({ connectionId, message });
-    }
-}
-
 function lastResponse(connections: FakeAppConnections): Response | undefined {
-    const entry = connections.sent[connections.sent.length - 1];
-    return entry?.message as Response | undefined;
+    const entry = connections.sent.at(-1);
+
+    return entry?.message;
 }
 
 function lastOutgoingRequest(conn: TestConnection): Request {
-    const line = conn.socket.lines[conn.socket.lines.length - 1];
-    if (!line) throw new Error("No outgoing request captured");
+    const line = conn.socket.lines.at(-1);
+
+    if (!line) {
+        throw new Error("No outgoing request captured");
+    }
+
     return JSON.parse(line) as Request;
 }
 
-type RouterContext = {
-    connections: FakeAppConnections;
-    router: AppRouter;
-};
+function emitRequest(conn: TestConnection, request: Request): void {
+    ctx.connections.dispatchEvent(connectionRequestEvent(conn, request));
+}
 
-const ctx = {} as RouterContext;
+function emitDisconnection(conn: TestConnection): void {
+    ctx.connections.dispatchEvent(connectionDisconnectionEvent(conn));
+}
 
 function emitRegister(
     conn: TestConnection,
     params: { applicationId: string; pid?: number; projectRoot?: string },
     id = "req-1",
 ): void {
-    ctx.connections.emit("request", conn, { id, method: "app.register", params });
+    emitRequest(conn, { id, method: "app.register", params });
+}
+
+function onUnregistered(router: AppRouter): ReturnType<typeof vi.fn> {
+    const listener = vi.fn();
+
+    router.addEventListener("appUnregistered", (event) => {
+        listener((event as AppUnregisteredEvent).detail);
+    });
+
+    return listener;
+}
+
+function onRegistered(router: AppRouter): ReturnType<typeof vi.fn> {
+    const listener = vi.fn();
+
+    router.addEventListener("appRegistered", (event) => {
+        listener((event as AppRegisteredEvent).detail);
+    });
+
+    return listener;
 }
 
 function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: ReturnType<typeof vi.fn> } {
     const conn = makeConnection("c1");
-    const onUnregister = vi.fn();
-    ctx.router.on("appUnregistered", onUnregister);
+    const onUnregister = onUnregistered(ctx.router);
     emitRegister(conn, { applicationId: "app-a", pid: 1 });
+
     return { conn, onUnregister };
 }
 
@@ -79,24 +99,49 @@ function setupRouterContext(): void {
         ctx.connections = new FakeAppConnections();
         ctx.router = new AppRouter(ctx.connections);
     });
+
     afterEach(() => {
         for (const connection of createdConnections) {
             connection.rejectPending(new Error("test teardown"));
         }
+
         vi.useRealTimers();
     });
 }
 
+function registerAppForContext(applicationId: string, connectionId = "c1"): TestConnection {
+    const conn = makeConnection(connectionId);
+    emitRegister(conn, { applicationId, pid: 1 }, "reg");
+    ctx.connections.sent.length = 0;
+
+    return conn;
+}
+
+class FakeSocket extends Duplex {
+    lines: string[] = [];
+
+    override _write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+        this.lines.push(chunk.toString());
+        callback();
+    }
+}
+
+class FakeAppConnections extends EventTarget implements AppConnections {
+    sent: { connectionId: string; message: Message }[] = [];
+
+    send(connectionId: string, message: Message): void {
+        this.sent.push({ connectionId, message });
+    }
+}
+
 describe("AppRouter registration — basics", () => {
     setupRouterContext();
+
     it("registers an app and emits appRegistered with its info", () => {
         const { connections, router } = ctx;
         const conn = makeConnection("c1");
-        const onRegister = vi.fn();
-        router.on("appRegistered", onRegister);
-
+        const onRegister = onRegistered(router);
         emitRegister(conn, { applicationId: "app-a", pid: 1234 });
-
         expect(onRegister).toHaveBeenCalledWith({ applicationId: "app-a", pid: 1234 });
         expect(router.hasConnectedApps()).toBe(true);
         expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1234 }]);
@@ -106,7 +151,6 @@ describe("AppRouter registration — basics", () => {
     it("keeps the registered project root and exposes the default app's root", () => {
         const { router } = ctx;
         expect(router.getProjectRoot()).toBeUndefined();
-
         emitRegister(makeConnection("c1"), { applicationId: "app-a", pid: 1, projectRoot: "/projects/app-a" });
         emitRegister(makeConnection("c2"), { applicationId: "app-b", pid: 2, projectRoot: "/projects/app-b" }, "req-2");
 
@@ -114,13 +158,13 @@ describe("AppRouter registration — basics", () => {
             { applicationId: "app-a", pid: 1, projectRoot: "/projects/app-a" },
             { applicationId: "app-b", pid: 2, projectRoot: "/projects/app-b" },
         ]);
+
         expect(router.getProjectRoot()).toBe("/projects/app-a");
     });
 
     it("registers without a project root and reports it as undefined", () => {
         const { router } = ctx;
         emitRegister(makeConnection("c1"), { applicationId: "app-a", pid: 1 });
-
         expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1 }]);
         expect(router.getProjectRoot()).toBeUndefined();
     });
@@ -128,11 +172,8 @@ describe("AppRouter registration — basics", () => {
     it("rejects registration with invalid params", () => {
         const { connections, router } = ctx;
         const conn = makeConnection("c1");
-        const onRegister = vi.fn();
-        router.on("appRegistered", onRegister);
-
+        const onRegister = onRegistered(router);
         emitRegister(conn, { applicationId: "app-a" });
-
         expect(onRegister).not.toHaveBeenCalled();
         expect(router.hasConnectedApps()).toBe(false);
         const response = lastResponse(connections);
@@ -142,7 +183,7 @@ describe("AppRouter registration — basics", () => {
     it("replies with methodNotFound for unknown request methods", () => {
         const { connections } = ctx;
         const conn = makeConnection("c1");
-        connections.emit("request", conn, { id: "req-1", method: "something.else" });
+        emitRequest(conn, { id: "req-1", method: "something.else" });
         const response = lastResponse(connections);
         expect(response?.id).toBe("req-1");
         expect(response?.error?.code).toBe(ErrorCode.METHOD_NOT_FOUND);
@@ -151,11 +192,11 @@ describe("AppRouter registration — basics", () => {
 
 describe("AppRouter registration — explicit unregister", () => {
     setupRouterContext();
+
     it("unregisters an app via app.unregister and emits appUnregistered", () => {
         const { connections, router } = ctx;
         const { conn, onUnregister } = registerWithUnregisterSpy();
-        connections.emit("request", conn, { id: "req-2", method: "app.unregister" });
-
+        emitRequest(conn, { id: "req-2", method: "app.unregister" });
         expect(onUnregister).toHaveBeenCalledWith("app-a");
         expect(router.hasConnectedApps()).toBe(false);
         expect(lastResponse(connections)).toEqual({ id: "req-2", result: { success: true } });
@@ -164,11 +205,8 @@ describe("AppRouter registration — explicit unregister", () => {
     it("ignores app.unregister from a connection that never registered", () => {
         const { connections, router } = ctx;
         const conn = makeConnection("c1");
-        const onUnregister = vi.fn();
-        router.on("appUnregistered", onUnregister);
-
-        connections.emit("request", conn, { id: "req-1", method: "app.unregister" });
-
+        const onUnregister = onUnregistered(router);
+        emitRequest(conn, { id: "req-1", method: "app.unregister" });
         expect(onUnregister).not.toHaveBeenCalled();
         expect(lastResponse(connections)).toEqual({ id: "req-1", result: { success: true } });
     });
@@ -176,29 +214,27 @@ describe("AppRouter registration — explicit unregister", () => {
 
 describe("AppRouter registration — disconnect", () => {
     setupRouterContext();
-    it("removes the app when its connection disconnects", () => {
-        const { connections, router } = ctx;
-        const { conn, onUnregister } = registerWithUnregisterSpy();
-        connections.emit("disconnection", conn);
 
+    it("removes the app when its connection disconnects", () => {
+        const { router } = ctx;
+        const { conn, onUnregister } = registerWithUnregisterSpy();
+        emitDisconnection(conn);
         expect(onUnregister).toHaveBeenCalledWith("app-a");
         expect(router.hasConnectedApps()).toBe(false);
     });
 
     it("ignores disconnection from a connection without a registered app", () => {
-        const { connections, router } = ctx;
+        const { router } = ctx;
         const conn = makeConnection("c1");
-        const onUnregister = vi.fn();
-        router.on("appUnregistered", onUnregister);
-
-        connections.emit("disconnection", conn);
-
+        const onUnregister = onUnregistered(router);
+        emitDisconnection(conn);
         expect(onUnregister).not.toHaveBeenCalled();
     });
 });
 
 describe("AppRouter getDefaultApp", () => {
     setupRouterContext();
+
     it("returns undefined when no apps are connected", () => {
         expect(ctx.router.getDefaultApp()).toBeUndefined();
     });
@@ -207,13 +243,13 @@ describe("AppRouter getDefaultApp", () => {
         const { router } = ctx;
         const conn = makeConnection("c1");
         emitRegister(conn, { applicationId: "app-a", pid: 1 });
-
         expect(router.getDefaultApp()?.info.applicationId).toBe("app-a");
     });
 });
 
 describe("AppRouter waitForApp", () => {
     setupRouterContext();
+
     it("resolves immediately when an app is already registered", async () => {
         const { router } = ctx;
         const conn = makeConnection("c1");
@@ -229,9 +265,7 @@ describe("AppRouter waitForApp", () => {
         const { router } = ctx;
         const promise = router.waitForApp(5000);
         const conn = makeConnection("c1");
-
         emitRegister(conn, { applicationId: "app-late", pid: 99 });
-
         await expect(promise).resolves.toEqual({ applicationId: "app-late", pid: 99 });
     });
 
@@ -242,22 +276,14 @@ describe("AppRouter waitForApp", () => {
     });
 });
 
-function registerAppForContext(applicationId: string, connectionId = "c1"): TestConnection {
-    const conn = makeConnection(connectionId);
-    emitRegister(conn, { applicationId, pid: 1 }, "reg");
-    ctx.connections.sent.length = 0;
-    return conn;
-}
-
 describe("AppRouter sendToApp — happy paths", () => {
     setupRouterContext();
+
     it("sends a request to the named app and resolves with the response result", async () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.router.sendToApp("app-a", "ping", { hello: "world" });
         const sent = lastOutgoingRequest(conn);
-
         conn.feed(`${JSON.stringify({ id: sent.id, result: { ok: true } })}\n`);
-
         await expect(promise).resolves.toEqual({ ok: true });
     });
 
@@ -265,9 +291,7 @@ describe("AppRouter sendToApp — happy paths", () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.router.sendToApp(undefined, "ping");
         const sent = lastOutgoingRequest(conn);
-
         conn.feed(`${JSON.stringify({ id: sent.id, result: 42 })}\n`);
-
         await expect(promise).resolves.toBe(42);
     });
 
@@ -275,16 +299,15 @@ describe("AppRouter sendToApp — happy paths", () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.router.sendToApp("app-a", "ping");
         const sent = lastOutgoingRequest(conn);
-
         conn.feed(`${JSON.stringify({ id: "unknown", result: 1 })}\n`);
         conn.feed(`${JSON.stringify({ id: sent.id, result: 2 })}\n`);
-
         await expect(promise).resolves.toBe(2);
     });
 });
 
 describe("AppRouter sendToApp — lookup errors", () => {
     setupRouterContext();
+
     it("rejects with appNotFound when the named app is unknown", async () => {
         await expect(ctx.router.sendToApp("missing", "ping")).rejects.toMatchObject({
             code: ErrorCode.APP_NOT_FOUND,
@@ -300,10 +323,10 @@ describe("AppRouter sendToApp — lookup errors", () => {
 
 describe("AppRouter sendToApp — transport errors", () => {
     setupRouterContext();
+
     it("rejects with connectionWriteFailed and removes the app when the underlying send fails", async () => {
         const conn = registerAppForContext("app-a");
-        const onUnregister = vi.fn();
-        ctx.router.on("appUnregistered", onUnregister);
+        const onUnregister = onUnregistered(ctx.router);
         conn.socket.destroy();
 
         await expect(ctx.router.sendToApp("app-a", "ping")).rejects.toMatchObject({
@@ -318,10 +341,8 @@ describe("AppRouter sendToApp — transport errors", () => {
         const customRouter = new AppRouter(ctx.connections, { requestTimeout: 5000 });
         const conn = makeConnection("c2");
         emitRegister(conn, { applicationId: "app-x", pid: 1 }, "reg");
-
         const promise = customRouter.sendToApp("app-x", "slow");
         vi.advanceTimersByTime(5000);
-
         await expect(promise).rejects.toMatchObject({ code: ErrorCode.REQUEST_TIMEOUT });
     });
 
@@ -338,6 +359,7 @@ describe("AppRouter sendToApp — transport errors", () => {
         );
 
         await expect(promise).rejects.toBeInstanceOf(ProtocolError);
+
         await expect(promise).rejects.toMatchObject({
             code: ErrorCode.INTERNAL_ERROR,
             message: "boom",

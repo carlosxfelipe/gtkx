@@ -1,27 +1,40 @@
 import { createVirtualNamespace } from "./virtual-module.js";
 
 const VIRTUAL_PREFIX = "\0gtkx-resources:";
+const VIRTUAL_INIT = "\0gtkx-resources-init";
+const BUNDLE_FILENAME = "gtkx.gresource";
+const REL_SEPARATOR = "\0rel=";
+const REFRESH_EXPORT = "__refresh";
+const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-export const VIRTUAL_INIT = "\0gtkx-resources-init";
-
-export const BUNDLE_FILENAME = "gtkx.gresource";
-
-export const REL_SEPARATOR = "\0rel=";
-
-export const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
-
-export const escapeXml = (value: string): string =>
+const escapeXml = (value: string): string =>
     value.replaceAll(/[<>&"']/g, (char) => {
         switch (char) {
-            case "<":
+            case "<": {
                 return "&lt;";
-            case ">":
+            }
+            case ">": {
                 return "&gt;";
-            case "&":
+            }
+            case "&": {
                 return "&amp;";
-            case '"':
+            }
+            case "\"": {
                 return "&quot;";
-            default:
+            }
+            default: {
                 return "&apos;";
+            }
         }
     });
+
+export {
+    VIRTUAL_INIT,
+    BUNDLE_FILENAME,
+    REL_SEPARATOR,
+    REFRESH_EXPORT,
+    escapeXml,
+    isVirtual,
+    toVirtualId,
+    fromVirtualId,
+};

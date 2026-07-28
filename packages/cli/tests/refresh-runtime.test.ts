@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { createModuleRegistration, isRefreshBoundary, performRefresh } from "../src/refresh-runtime.js";
 
+const ES_MODULE_FLAG = "__esModule";
+
+const NullComponent = () => null;
+
+const lowercaseHelper = function lowercaseHelper() {
+    return 1;
+};
+
+const esModuleExports = (exports: Record<string, unknown>): Record<string, unknown> => ({
+    [ES_MODULE_FLAG]: true,
+    ...exports,
+});
+
 describe("createModuleRegistration", () => {
     it("returns registration helpers for a module id", () => {
         const reg = createModuleRegistration("mod-1");
@@ -10,8 +23,10 @@ describe("createModuleRegistration", () => {
 
     it("registers components without throwing", () => {
         const reg = createModuleRegistration("mod-2");
-        const Component = () => null;
-        expect(() => reg.$RefreshReg$(Component, "Component")).not.toThrow();
+
+        expect(() => {
+            reg.$RefreshReg$(NullComponent, "Component");
+        }).not.toThrow();
     });
 
     it("exposes a $RefreshSig$ signature factory function", () => {
@@ -28,6 +43,7 @@ describe("isRefreshBoundary", () => {
             },
             {} as Record<string, unknown>,
         );
+
         expect(isRefreshBoundary(Component)).toBe(true);
     });
 
@@ -39,19 +55,18 @@ describe("isRefreshBoundary", () => {
         expect(isRefreshBoundary({})).toBe(false);
     });
 
-    it("returns false when only __esModule is present", () => {
-        expect(isRefreshBoundary({ __esModule: true })).toBe(false);
+    it("returns false when only the ES module flag is present", () => {
+        expect(isRefreshBoundary(esModuleExports({}))).toBe(false);
     });
 
     it("returns true when all named exports are PascalCase functions", () => {
-        const ComponentA = () => null;
-        const ComponentB = () => null;
-        expect(isRefreshBoundary({ __esModule: true, ComponentA, ComponentB })).toBe(true);
+        expect(
+            isRefreshBoundary(esModuleExports({ ComponentA: NullComponent, ComponentB: NullComponent })),
+        ).toBe(true);
     });
 
     it("returns false when any non-component export is present", () => {
-        const Component = () => null;
-        expect(isRefreshBoundary({ Component, helper: () => 1 })).toBe(false);
+        expect(isRefreshBoundary({ Component: NullComponent, helper: () => 1 })).toBe(false);
     });
 
     it("recognizes React.memo-wrapped components", () => {
@@ -65,15 +80,14 @@ describe("isRefreshBoundary", () => {
     });
 
     it("returns false when a non-PascalCase named function is exported", () => {
-        const helper = function lowercaseHelper() {
-            return 1;
-        };
-        expect(isRefreshBoundary({ helper })).toBe(false);
+        expect(isRefreshBoundary({ helper: lowercaseHelper })).toBe(false);
     });
 });
 
 describe("performRefresh", () => {
     it("does not throw when invoked", () => {
-        expect(() => performRefresh()).not.toThrow();
+        expect(() => {
+            performRefresh();
+        }).not.toThrow();
     });
 });
