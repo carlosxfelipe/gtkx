@@ -205,10 +205,10 @@ function createItemNumberGenerator(start: number) {
 
 const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();
-    rectangle.x = x;
-    rectangle.y = y;
-    rectangle.width = width;
-    rectangle.height = height;
+    rectangle.x = Math.round(x);
+    rectangle.y = Math.round(y);
+    rectangle.width = Math.round(width);
+    rectangle.height = Math.round(height);
 
     return rectangle;
 };

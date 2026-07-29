@@ -54,6 +54,27 @@ const triggerContextMenu = async (canvas: Gtk.Fixed, x: number, y: number): Prom
     }
 };
 
+const findMenuButton = async (name: string): Promise<Gtk.Button> =>
+    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name })) as Gtk.Button;
+
+const openContextMenuAt = async (x: number, y: number): Promise<Gtk.Fixed> => {
+    await renderDemo(dndDemo);
+    const canvas = await findCanvas();
+    await triggerContextMenu(canvas, x, y);
+
+    return canvas;
+};
+
+const clickEnabledMenuButton = async (name: string): Promise<void> => {
+    const button = await findMenuButton(name);
+
+    await waitFor(() => {
+        expect(button.getSensitive()).toBe(true);
+    });
+
+    await userEvent.click(button);
+};
+
 const beginDragRevealingTrash = async (item: Gtk.Label, trash: Gtk.Box): Promise<Gtk.DragSource | null> => {
     const dragSource = findController(item, Gtk.DragSource);
     expect(dragSource).toBeInstanceOf(Gtk.DragSource);
@@ -259,12 +280,9 @@ describe("dndDemo swatch palette", () => {
 
 describe("dndDemo context menu", () => {
     it("adds a new item via the context menu's New button", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
+        const canvas = await openContextMenuAt(50, 50);
         const initialItemCount = within(canvas).getAllByText(/^Item /).length;
-        await triggerContextMenu(canvas, 50, 50);
-        const newButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New" })) as Gtk.Button;
-        await userEvent.click(newButton);
+        await userEvent.click(await findMenuButton("New"));
 
         await waitFor(() => {
             expect(within(canvas).getAllByText(/^Item /)).toHaveLength(initialItemCount + 1);
@@ -272,16 +290,8 @@ describe("dndDemo context menu", () => {
     });
 
     it("opens an inline edit entry via the context menu's Edit button when right-clicking on an item", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
-        await triggerContextMenu(canvas, 45, 45);
-        const editButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Edit" })) as Gtk.Button;
-
-        await waitFor(() => {
-            expect(editButton.getSensitive()).toBe(true);
-        });
-
-        await userEvent.click(editButton);
+        await openContextMenuAt(45, 45);
+        await clickEnabledMenuButton("Edit");
 
         await waitFor(() => {
             const boxes = screen.queryAllByRole(Gtk.AccessibleRole.TEXT_BOX);
@@ -291,28 +301,26 @@ describe("dndDemo context menu", () => {
     });
 
     it("deletes the targeted item via the context menu's Delete button", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
-        await triggerContextMenu(canvas, 45, 45);
-        const menuDeleteButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" })) as Gtk.Button;
-
-        await waitFor(() => {
-            expect(menuDeleteButton.getSensitive()).toBe(true);
-        });
-
-        await userEvent.click(menuDeleteButton);
+        await openContextMenuAt(45, 45);
+        await clickEnabledMenuButton("Delete");
 
         await waitFor(() => {
             expect(screen.queryByName("item1")).toBeNull();
         });
     });
 
+    it("rounds fractional pointer coordinates into the popover's integer pointing rectangle", async () => {
+        await openContextMenuAt(225.5, 130.25);
+        const popover = (await screen.findByName("context-menu")) as Gtk.Popover;
+        const [ok, rectangle] = popover.getPointingTo();
+        expect(ok).toBe(true);
+        expect([rectangle.x, rectangle.y]).toEqual([226, 130]);
+    });
+
     it("does not enable Edit or Delete when the context menu opens away from any item", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
-        await triggerContextMenu(canvas, 600, 600);
-        const editButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Edit" })) as Gtk.Button;
-        const menuDeleteButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" })) as Gtk.Button;
+        await openContextMenuAt(600, 600);
+        const editButton = await findMenuButton("Edit");
+        const menuDeleteButton = await findMenuButton("Delete");
         expect(editButton.getSensitive()).toBe(false);
         expect(menuDeleteButton.getSensitive()).toBe(false);
     });
