@@ -65,6 +65,30 @@ const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
     return columnView;
 };
 
+const booleanEditableIn = (columnView: Gtk.ColumnView): Gtk.EditableLabel | undefined =>
+    collectEditableLabels(columnView).find((e) => e.getText() === "true" || e.getText() === "false");
+
+const booleanEditableAtRow = async (sidebar: Gtk.ListView, index: number): Promise<Gtk.EditableLabel | undefined> => {
+    await userEvent.selectOptions(sidebar, index);
+
+    return booleanEditableIn((await screen.findByName("column-view")) as Gtk.ColumnView);
+};
+
+const selectSchemaWithBooleanKey = async (): Promise<Gtk.EditableLabel> => {
+    const sidebar = (await screen.findByName("sidebar")) as Gtk.ListView;
+    const rowCount = sidebar.getModel()?.getNItems() ?? 0;
+
+    for (let index = 0; index < rowCount; index++) {
+        const editable = await booleanEditableAtRow(sidebar, index);
+
+        if (editable !== undefined) {
+            return editable;
+        }
+    }
+
+    throw new Error("No GSettings schema installed on this system exposes a boolean-valued key");
+};
+
 const openKeySearch = async (): Promise<Gtk.SearchEntry> => {
     const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
     await userEvent.click(toggle);
@@ -260,11 +284,7 @@ describe("listviewSettingsDemo value editing", () => {
 
         try {
             await renderDemo(listviewSettingsDemo);
-            const columnView = await selectFirstSchemaWithKeys();
-            const editables = collectEditableLabels(columnView);
-            const boolEditable = editables.find((e) => e.getText() === "true" || e.getText() === "false");
-            expect(boolEditable, "expected a boolean-valued key in the first schema").toBeDefined();
-            const target = boolEditable as Gtk.EditableLabel;
+            const target = await selectSchemaWithBooleanKey();
             const flipped = target.getText() === "true" ? "false" : "true";
             setValueSpy.mockClear();
             target.setText(flipped);
