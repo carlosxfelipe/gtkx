@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
+import { hasSameText } from "./text.js";
 
 type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
     attach: (parent: P, child: C, info: PlaceInfo) => unknown;
@@ -201,7 +202,9 @@ const deferred = <P extends GObject.Object, V>(
 /** Builds a behavior for a text prop kept in controlled-input sync: set when provided, never reset. */
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
-        Reflect.set(object, prop, next);
+        if (!hasSameText(object, prop, next)) {
+            Reflect.set(object, prop, next);
+        }
     });
 
 /** Behavior for a container that installs its single child with `setChild`. */

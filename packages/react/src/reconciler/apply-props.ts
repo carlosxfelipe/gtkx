@@ -7,7 +7,7 @@ import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-prop
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
-import { isContentPaintableProp, markTextDirty } from "./text.js";
+import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
 type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
@@ -38,9 +38,17 @@ const isReservedName = (name: string, info: TypeInfo): boolean =>
 const isSkippedValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
 
+const writeValue = (object: GObject.Object, name: string, value: unknown): void => {
+    if (hasSameText(object, name, value)) {
+        return;
+    }
+
+    Reflect.set(object, name, value);
+};
+
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) {
-        Reflect.set(object, name, info.defaults[name]);
+        writeValue(object, name, info.defaults[name]);
     }
 };
 
@@ -48,12 +56,12 @@ const setOrReset = (object: GObject.Object, info: TypeInfo, name: string, value:
     if (value === undefined) {
         resetPlain(object, info, name);
     } else {
-        Reflect.set(object, name, value);
+        writeValue(object, name, value);
     }
 };
 
 const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
-    if (buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) === text) {
+    if (bufferText(buffer) === text) {
         return;
     }
 
@@ -63,7 +71,7 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
 };
 
 const isBufferText = (node: ElementNode, name: string): node is ElementNode & { object: Gtk.TextBuffer } =>
-    name === "text" && node.contentKind === "buffer" && node.object instanceof Gtk.TextBuffer;
+    name === TEXT_PROP && node.contentKind === "buffer" && node.object instanceof Gtk.TextBuffer;
 
 const propText = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
 

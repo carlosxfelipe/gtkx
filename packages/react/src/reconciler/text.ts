@@ -1,3 +1,4 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { drain, indexBeforeOrEnd } from "@gtkx/utils";
@@ -17,6 +18,7 @@ const dirtyHosts: Set<ElementNode> = new Set();
 const tagTables: WeakMap<object, Gtk.TextTagTable> = new WeakMap();
 const TEXT_CONTENT_KINDS: Set<string> = new Set(["label", "buffer", "tag"]);
 const PAINTABLE_PROP = "paintable";
+const TEXT_PROP = "text";
 
 const CONTENT_MIX_RULES: { kind: ContentKind; prop: string; message: string }[] = [
     {
@@ -37,6 +39,24 @@ const CONTENT_MIX_RULES: { kind: ContentKind; prop: string; message: string }[] 
 ];
 
 const charLength = (text: string): number => text[Symbol.iterator]().toArray().length;
+
+const bufferText = (buffer: Gtk.TextBuffer): string =>
+    buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
+
+const currentText = (object: GObject.Object): string | null => {
+    if (object instanceof Gtk.TextBuffer) {
+        return bufferText(object);
+    }
+
+    if (object instanceof Gtk.Editable || object instanceof Gtk.EntryBuffer) {
+        return object.getText();
+    }
+
+    return null;
+};
+
+const hasSameText = (object: GObject.Object, prop: string, value: unknown): boolean =>
+    prop === TEXT_PROP && typeof value === "string" && currentText(object) === value;
 
 const contentTextLength = (node: ContentChild): number => {
     if (node.kind === TEXT_KIND) {
@@ -371,7 +391,10 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
 };
 
 export {
+    TEXT_PROP,
     textRestrictionError,
+    bufferText,
+    hasSameText,
     canAcceptText,
     isContentPaintableProp,
     markTextDirty,
