@@ -28,11 +28,8 @@ const imagesDemo: Demo = {
 
 const loadSvgPaintable = (resourcePath: string): Gtk.Svg => {
     const bytes = Gio.resourcesLookupData(resourcePath, Gio.ResourceLookupFlags.NONE);
-    const svg = Gtk.Svg.newFromBytes(bytes);
-    svg.play();
-    svg.setState(0);
 
-    return svg;
+    return Gtk.Svg.newFromBytes(bytes);
 };
 
 const createGifPaintable = (): Gtk.MediaFile | null => {
@@ -49,6 +46,25 @@ const createGifPaintable = (): Gtk.MediaFile | null => {
         return null;
     }
 };
+
+const SvgImage = ({ name, svg }: { name?: string; svg: Gtk.Svg }) => (
+    <GtkImage
+        name={name}
+        paintable={svg}
+        pixelSize={128}
+        onRealize={(image) => {
+            const clock = image.getFrameClock();
+
+            if (clock) {
+                svg.setFrameClock(clock);
+                svg.play();
+            }
+        }}
+        onUnrealize={() => {
+            svg.pause();
+        }}
+    />
+);
 
 const ImagesPanel = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
@@ -77,7 +93,7 @@ const StatefulIconPanel = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <ImagesPanel title="Stateful icon">
-                <GtkImage name="stateful-icon-image" paintable={svg} pixelSize={128} />
+                <SvgImage name="stateful-icon-image" svg={svg} />
             </ImagesPanel>
             <GtkSwitch
                 halign={Gtk.Align.START}
@@ -98,7 +114,7 @@ const PathAnimationPanel = () => {
 
     return (
         <ImagesPanel title="Path animation">
-            <GtkImage paintable={svg} pixelSize={128} />
+            <SvgImage name="path-animation-image" svg={svg} />
         </ImagesPanel>
     );
 };

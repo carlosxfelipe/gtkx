@@ -1,8 +1,27 @@
+import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { imagesDemo } from "../../../src/demos/drawing/images.js";
 import { renderDemo } from "../../test-utils.js";
+
+const CHECKMARK_PATH = "M 10 35";
+const CROSS_PATH = "M 5 35";
+const TRANSITION_TIMEOUT = 4000;
+
+const renderPaintable = (paintable: Gdk.Paintable): string => {
+    const snapshot = Gtk.Snapshot.new();
+    paintable.snapshot(snapshot, 128, 128);
+    const node = snapshot.toNode();
+
+    return node === null ? "" : String.fromCharCode(...(node.serialize().getData() ?? []));
+};
+
+const findStatefulSvg = async (): Promise<Gtk.Svg> => {
+    const image = (await screen.findByName("stateful-icon-image")) as Gtk.Image;
+
+    return image.getPaintable() as Gtk.Svg;
+};
 
 describe("imagesDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -70,8 +89,7 @@ describe("imagesDemo toggle", () => {
 describe("imagesDemo stateful icon switch", () => {
     it("drives the SVG paintable between its two states as the switch is flipped", async () => {
         await renderDemo(imagesDemo);
-        const image = (await screen.findByName("stateful-icon-image")) as Gtk.Image;
-        const svg = image.getPaintable() as Gtk.Svg;
+        const svg = await findStatefulSvg();
         expect(svg).toBeInstanceOf(Gtk.Svg);
         expect(svg.getState()).toBe(0);
         const toggle = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
@@ -90,6 +108,34 @@ describe("imagesDemo stateful icon switch", () => {
         });
 
         expect(svg.getState()).toBe(0);
+    });
+
+    it("repaints the icon from the checkmark to the cross as the switch is flipped", async () => {
+        await renderDemo(imagesDemo);
+        const svg = await findStatefulSvg();
+        expect(renderPaintable(svg)).toContain(CHECKMARK_PATH);
+        const toggle = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
+        await userEvent.click(toggle);
+
+        await waitFor(
+            () => {
+                const painted = renderPaintable(svg);
+                expect(painted).toContain(CROSS_PATH);
+                expect(painted).not.toContain(CHECKMARK_PATH);
+            },
+            { timeout: TRANSITION_TIMEOUT },
+        );
+
+        await userEvent.click(toggle);
+
+        await waitFor(
+            () => {
+                const painted = renderPaintable(svg);
+                expect(painted).toContain(CHECKMARK_PATH);
+                expect(painted).not.toContain(CROSS_PATH);
+            },
+            { timeout: TRANSITION_TIMEOUT },
+        );
     });
 });
 
