@@ -16,7 +16,8 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@gtkx/config": "workspace:*"
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*"
     },
     "nx": {
         "targets": {
@@ -41,7 +42,12 @@
                     "codegen"
                 ],
                 "inputs": [
-                    "default"
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/dist/**"

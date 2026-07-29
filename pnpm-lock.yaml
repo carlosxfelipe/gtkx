@@ -125,6 +125,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
 
   examples/gtk-demo:
     dependencies:
@@ -184,6 +187,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
 
   packages/cli:
     dependencies:
@@ -504,7 +510,7 @@ importers:
     devDependencies:
       '@napi-rs/cli':
         specifier: ^3.8.0
-        version: 3.8.0(@emnapi/runtime@1.11.2)(@types/node@26.1.2)(supports-color@7.2.0)
+        version: 3.8.0(@emnapi/runtime@1.9.2)(@types/node@26.1.2)(supports-color@7.2.0)
 
   packages/react:
     dependencies:
@@ -7623,7 +7629,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@napi-rs/cli@3.8.0(@emnapi/runtime@1.11.2)(@types/node@26.1.2)(supports-color@7.2.0)':
+  '@napi-rs/cli@3.8.0(@emnapi/runtime@1.9.2)(@types/node@26.1.2)(supports-color@7.2.0)':
     dependencies:
       '@inquirer/prompts': 8.5.2(@types/node@26.1.2)
       '@napi-rs/cross-toolchain': 1.0.3(supports-color@7.2.0)
@@ -7639,7 +7645,7 @@ snapshots:
       typanion: 3.14.0
       typescript: 6.0.3
     optionalDependencies:
-      '@emnapi/runtime': 1.11.2
+      '@emnapi/runtime': 1.9.2
     transitivePeerDependencies:
       - '@napi-rs/cross-toolchain-arm64-target-aarch64'
       - '@napi-rs/cross-toolchain-arm64-target-armv7'

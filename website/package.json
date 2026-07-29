@@ -37,7 +37,12 @@
                     "reference"
                 ],
                 "inputs": [
-                    "default"
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{md,js,d.ts,json}",
+                        "transitive": true
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/.vitepress/dist/**"

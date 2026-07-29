@@ -65,6 +65,9 @@
                 "src/gtkx-env.d.ts!",
                 "src/app.tsx!",
                 "src/index.tsx!"
+            ],
+            "ignoreDependencies": [
+                "@gtkx/testing"
             ]
         }
     }

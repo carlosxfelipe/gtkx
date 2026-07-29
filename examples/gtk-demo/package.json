@@ -54,7 +54,12 @@
                     "codegen"
                 ],
                 "inputs": [
-                    "default"
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/dist/**"
