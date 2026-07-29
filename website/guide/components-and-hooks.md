@@ -179,36 +179,63 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 `SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example). The `component` prop accepts high-level components such as `DropDown` as well as intrinsic elements.
 
-### ConstraintLayout
+### GtkConstraintLayout
 
-`ConstraintLayout` builds a `Gtk.ConstraintLayout` for a container's `layoutManager` prop, replacing manual `Gtk.Constraint` and `Gtk.ConstraintGuide` construction. Widgets are referenced by their `name` prop, with `"super"` (or an omitted `target`/`source`) meaning the container itself. Referencing an unknown name throws with a message telling you which `name` to set.
+`Gtk.ConstraintLayout` solves a system of linear relations to place its children. It goes on a container's `layoutManager` prop and takes three props of its own: `constraints` holds `GtkConstraint` elements, `guides` holds `GtkConstraintGuide` elements, and `vfl` takes Visual Format Language blocks.
 
-- `ConstraintLayout.Constraint` declares one relation.
-- `ConstraintLayout.Guide` declares an invisible spacer with min, natural, and max sizes.
-- `ConstraintLayout.Vfl` applies Visual Format Language `lines`.
+A `GtkConstraint` names two participants: `target` and `source`, each a `Gtk.ConstraintTarget`, which is any widget or guide. Leaving `source` out (or passing `null`) means the widget that owns the layout, and leaving both `source` and `sourceAttribute` out makes the relation a constant. `relation` defaults to equality, `multiplier` to 1, `constant` to 0, and `strength` to required.
 
-Below, a constraint pins the button's start edge 8 pixels from the container's, leaving `source` omitted so it resolves to the container:
+Targets are objects rather than names, so capture them in state and render the constraints once they resolve. Below, a constraint pins the button's start edge 8 pixels from the container's:
 
 ```tsx
-import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkConstraint, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { useState } from "react";
+
+function Constrained() {
+    const [button, setButton] = useState<Gtk.Button | null>(null);
+
+    return (
+        <GtkBox
+            layoutManager={
+                <GtkConstraintLayout
+                    constraints={button && (
+                        <GtkConstraint
+                            target={button}
+                            targetAttribute={Gtk.ConstraintAttribute.START}
+                            sourceAttribute={Gtk.ConstraintAttribute.START}
+                            constant={8}
+                        />
+                    )}
+                />
+            }
+        >
+            <GtkButton ref={setButton} label="Constrained" />
+        </GtkBox>
+    );
+}
+```
+
+Every `GtkConstraint` property is construct-only in GTK4, so a constraint cannot be edited in place. Give the element a `key` that changes with whatever varies and React builds a new one; changing a construct-only prop without changing the key throws instead of silently doing nothing.
+
+`GtkConstraintGuide` is an invisible spacer with `minWidth`/`minHeight`, `natWidth`/`natHeight`, `maxWidth`/`maxHeight`, and a `strength` for its natural size. Its properties are ordinary, so it updates in place, and its object works as the `target` or `source` of a constraint.
+
+A `vfl` block is `{ lines, hspacing, vspacing, views }`, where `views` maps the names used in the description to targets. The block is compared field by field and `views` by identity, so memoize the map, otherwise every render tears the parsed constraints down and rebuilds them:
+
+```tsx
+const views = useMemo(
+    () => (a === null || b === null ? null : new Map<string, Gtk.ConstraintTarget>([["a", a], ["b", b]])),
+    [a, b],
+);
 
 <GtkBox
     layoutManager={
-        <ConstraintLayout>
-            <ConstraintLayout.Constraint
-                target="button1"
-                targetAttribute={Gtk.ConstraintAttribute.START}
-                sourceAttribute={Gtk.ConstraintAttribute.START}
-                constant={8}
-            />
-        </ConstraintLayout>
+        <GtkConstraintLayout vfl={views && [{ lines: ["H:|-[a(==b)]-12-[b]-|"], hspacing: 8, vspacing: 8, views }]} />
     }
 >
-    <GtkButton name="button1" label="Constrained" />
-</GtkBox>
 ```
+
+`examples/gtk-demo` has three worked demos under `src/demos/constraints`: a static layout with a guide, an interactive one whose divider follows a drag gesture, and a VFL version of the same arrangement.
 
 ## Hooks
 

@@ -1,37 +1,36 @@
 import type { ReactNode } from "react";
-import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, type GtkBoxProps } from "@gtkx/jsx/gtk";
-import { ConstraintChildButtons } from "./child-buttons.js";
+import { GtkBox, type GtkBoxProps, GtkConstraint } from "@gtkx/jsx/gtk";
+import { type ChildButtonHandlers, ConstraintChildButtons } from "./child-buttons.js";
+
+type ConstraintContainerProps = {
+    layoutManager: GtkBoxProps["layoutManager"];
+    handlers: ChildButtonHandlers;
+    controllers?: GtkBoxProps["controllers"];
+};
 
 const A = Gtk.ConstraintAttribute;
 
-const TopEdgeConstraint = (): ReactNode => (
-    <ConstraintLayout.Constraint target="button1" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+const topEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
+    <GtkConstraint target={target} targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
 );
 
-const BottomEdgeConstraint = (): ReactNode => (
-    <ConstraintLayout.Constraint target="button3" targetAttribute={A.BOTTOM} sourceAttribute={A.BOTTOM} constant={-8} />
+const bottomEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
+    <GtkConstraint target={target} targetAttribute={A.BOTTOM} sourceAttribute={A.BOTTOM} constant={-8} />
 );
 
-const StartEdgeConstraint = ({ target }: { target: string }): ReactNode => (
-    <ConstraintLayout.Constraint target={target} targetAttribute={A.START} sourceAttribute={A.START} constant={8} />
+const startEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
+    <GtkConstraint target={target} targetAttribute={A.START} sourceAttribute={A.START} constant={8} />
 );
 
-const EndEdgeConstraint = ({ target }: { target: string }): ReactNode => (
-    <ConstraintLayout.Constraint target={target} targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
+const endEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
+    <GtkConstraint target={target} targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
 );
 
-const ConstraintContainer = ({
-    layoutManager,
-    controllers,
-}: {
-    layoutManager: GtkBoxProps["layoutManager"];
-    controllers?: GtkBoxProps["controllers"];
-}): ReactNode => (
+const ConstraintContainer = ({ layoutManager, handlers, controllers }: ConstraintContainerProps): ReactNode => (
     <GtkBox name="container" hexpand vexpand layoutManager={layoutManager} controllers={controllers}>
-        <ConstraintChildButtons />
+        <ConstraintChildButtons {...handlers} />
     </GtkBox>
 );
 
-export { BottomEdgeConstraint, ConstraintContainer, EndEdgeConstraint, StartEdgeConstraint, TopEdgeConstraint };
+export { bottomEdgeConstraint, ConstraintContainer, endEdgeConstraint, startEdgeConstraint, topEdgeConstraint };

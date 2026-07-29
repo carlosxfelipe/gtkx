@@ -10,6 +10,7 @@ import { Prop } from "../components/element.js";
 import {
     applyAdoptedProps,
     applyElementProps,
+    assertConstructOnlyUnchanged,
     flushBehaviors,
     mountBehaviors,
     unmountBehaviors,
@@ -126,12 +127,7 @@ const hostConfig = {
         }
     },
     commitUpdate: (instance: Instance, _type: string, prevProps: Props, nextProps: Props): void => {
-        if (instance.kind === ELEMENT_KIND) {
-            applyElementProps(instance, prevProps, nextProps);
-        } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
-            applyAdoptedProps(lazyTarget(instance, instance.adopted), prevProps, nextProps);
-            instance.props = nextProps;
-        }
+        updateInstance(instance, prevProps, nextProps);
     },
     hideInstance: (instance: Instance): void => {
         setWidgetVisible(instance, false);
@@ -197,6 +193,21 @@ function createPriorityTracker(): PriorityTracker {
         },
     };
 }
+
+const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
+    if (instance.kind === ELEMENT_KIND) {
+        assertConstructOnlyUnchanged(instance.typeName, prev, next);
+        applyElementProps(instance, prev, next);
+
+        return;
+    }
+
+    if (instance.kind === LAZY_KIND && instance.adopted !== null) {
+        assertConstructOnlyUnchanged(instance.typeName, prev, next);
+        applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
+        instance.props = next;
+    }
+};
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
     if (!isRootElement(container)) {

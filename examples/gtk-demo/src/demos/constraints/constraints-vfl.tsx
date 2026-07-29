@@ -1,7 +1,8 @@
-import { ConstraintLayout } from "@gtkx/components";
-import { GtkBox } from "@gtkx/jsx/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { useMemo } from "react";
 import type { Demo } from "../types.js";
-import { ConstraintChildButtons } from "./child-buttons.js";
+import { ConstraintChildButtons, useChildButtons } from "./child-buttons.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
 
 const VFL_CONSTRAINTS = [
@@ -26,18 +27,32 @@ const constraintsVflDemo: Demo = {
 };
 
 function ConstraintsVflDemo() {
+    const [buttons, handlers] = useChildButtons();
+
+    const views = useMemo(
+        () =>
+            buttons === null
+                ? null
+                : new Map<string, Gtk.ConstraintTarget>([
+                        ["button1", buttons.button1],
+                        ["button2", buttons.button2],
+                        ["button3", buttons.button3],
+                    ]),
+        [buttons],
+    );
+
     return (
         <GtkBox
             name="container"
             hexpand
             vexpand
             layoutManager={(
-                <ConstraintLayout>
-                    <ConstraintLayout.Vfl lines={VFL_CONSTRAINTS} hspacing={8} vspacing={8} />
-                </ConstraintLayout>
+                <GtkConstraintLayout
+                    vfl={views && [{ lines: VFL_CONSTRAINTS, hspacing: 8, vspacing: 8, views }]}
+                />
             )}
         >
-            <ConstraintChildButtons />
+            <ConstraintChildButtons {...handlers} />
         </GtkBox>
     );
 }

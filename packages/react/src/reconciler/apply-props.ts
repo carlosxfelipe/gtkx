@@ -90,6 +90,25 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
     }
 };
 
+const constructOnlyChangeError = (typeName: string, name: string): Error =>
+    new Error(
+        `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
+        "GTK accepts it only while the object is being built, so give the element a key that " +
+        `changes with '${name}' and React will build a new one.`,
+    );
+
+const assertConstructOnlyUnchanged = (typeName: string, prev: Props, next: Props): void => {
+    const info = typeInfoFor(typeName);
+
+    eachChangedName(prev, next, (name) => {
+        if (!info.constructOnly.has(name) || Object.is(prev[name], next[name])) {
+            return;
+        }
+
+        throw constructOnlyChangeError(typeName, name);
+    });
+};
+
 const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior): void => {
     if (behavior.update === undefined) {
         return;
@@ -220,4 +239,12 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     applyHandlers(target, info, prev, next);
 };
 
-export { markFlush, flushBehaviors, mountBehaviors, unmountBehaviors, applyElementProps, applyAdoptedProps };
+export {
+    markFlush,
+    flushBehaviors,
+    mountBehaviors,
+    unmountBehaviors,
+    applyElementProps,
+    applyAdoptedProps,
+    assertConstructOnlyUnchanged,
+};

@@ -3,8 +3,16 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { AdwPreferencesPage } from "@gtkx/jsx/adw";
 import { GtkBox } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+
+function NamedBox({ boxRef, name }: { boxRef: RefObject<Gtk.Box | null>; name: string }) {
+    return <GtkBox ref={boxRef} cssName={name} />;
+}
+
+function KeyedBox({ boxRef, name }: { boxRef: RefObject<Gtk.Box | null>; name: string }) {
+    return <GtkBox key={name} ref={boxRef} cssName={name} />;
+}
 
 describe("construct-only properties", () => {
     it("sets cssName during widget construction", async () => {
@@ -12,19 +20,6 @@ describe("construct-only properties", () => {
         await render(<GtkBox ref={ref} cssName="my-custom-widget" />);
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getCssName()).toBe("my-custom-widget");
-    });
-
-    it("does not update cssName on re-render", async () => {
-        const ref = createRef<Gtk.Box>();
-
-        function App({ name }: { name: string }) {
-            return <GtkBox ref={ref} cssName={name} />;
-        }
-
-        const { rerender } = await render(<App name="initial-name" />);
-        expect(ref.current?.getCssName()).toBe("initial-name");
-        await rerender(<App name="changed-name" />);
-        expect(ref.current?.getCssName()).toBe("initial-name");
     });
 
     it("creates widget without construct-only prop set", async () => {
@@ -40,5 +35,27 @@ describe("construct-only properties", () => {
         expect(ref.current).not.toBeNull();
         expect(ref.current?.name).toBe("general");
         expect(ref.current?.getTitle()).toBe("General");
+    });
+});
+
+describe("construct-only property changes", () => {
+    it("throws when a construct-only prop changes on re-render", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { rerender } = await render(<NamedBox boxRef={boxRef} name="initial-name" />);
+        expect(boxRef.current?.getCssName()).toBe("initial-name");
+
+        await expect(rerender(<NamedBox boxRef={boxRef} name="changed-name" />)).rejects.toThrow(
+            /construct-only prop 'cssName' of <GtkBox>/,
+        );
+    });
+
+    it("applies the new value when the key changes with it", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { rerender } = await render(<KeyedBox boxRef={boxRef} name="initial-name" />);
+        const initial = boxRef.current;
+        expect(initial?.getCssName()).toBe("initial-name");
+        await rerender(<KeyedBox boxRef={boxRef} name="changed-name" />);
+        expect(boxRef.current).not.toBe(initial);
+        expect(boxRef.current?.getCssName()).toBe("changed-name");
     });
 });

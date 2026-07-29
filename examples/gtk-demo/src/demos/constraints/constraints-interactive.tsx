@@ -1,14 +1,15 @@
-import { ConstraintLayout } from "@gtkx/components";
+import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkGestureDrag } from "@gtkx/jsx/gtk";
+import { GtkConstraint, GtkConstraintGuide, GtkConstraintLayout, GtkGestureDrag } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "../types.js";
+import { type ChildButtons, useChildButtons } from "./child-buttons.js";
 import {
-    BottomEdgeConstraint,
+    bottomEdgeConstraint,
     ConstraintContainer,
-    EndEdgeConstraint,
-    StartEdgeConstraint,
-    TopEdgeConstraint,
+    endEdgeConstraint,
+    startEdgeConstraint,
+    topEdgeConstraint,
 } from "./constraint-helpers.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
@@ -26,15 +27,15 @@ const constraintsInteractiveDemo: Demo = {
     defaultWidth: 260,
 };
 
-const renderDividerConstraints = (dividerOffset: number | null) => (
+const renderDividerConstraints = (divider: Gtk.ConstraintGuide, dividerOffset: number | null): ReactNode => (
     <>
-        <ConstraintLayout.Guide id="divider" />
-        <ConstraintLayout.Constraint target="divider" targetAttribute={A.WIDTH} sourceAttribute={A.NONE} constant={0} />
+        <GtkConstraint target={divider} targetAttribute={A.WIDTH} sourceAttribute={A.NONE} constant={0} />
         {dividerOffset === null
             ? null
             : (
-                    <ConstraintLayout.Constraint
-                        target="divider"
+                    <GtkConstraint
+                        key={dividerOffset}
+                        target={divider}
                         targetAttribute={A.LEFT}
                         sourceAttribute={A.LEFT}
                         constant={dividerOffset}
@@ -43,65 +44,63 @@ const renderDividerConstraints = (dividerOffset: number | null) => (
     </>
 );
 
-const renderHorizontalConstraints = () => (
+const renderHorizontalConstraints = (buttons: ChildButtons, divider: Gtk.ConstraintGuide): ReactNode => (
     <>
-        <StartEdgeConstraint target="button1" />
-        <ConstraintLayout.Constraint
-            target="button1"
-            targetAttribute={A.END}
-            source="divider"
-            sourceAttribute={A.START}
-        />
-        <ConstraintLayout.Constraint
-            target="button2"
-            targetAttribute={A.START}
-            source="divider"
-            sourceAttribute={A.END}
-        />
-        <EndEdgeConstraint target="button2" />
-        <StartEdgeConstraint target="button3" />
-        <ConstraintLayout.Constraint
-            target="button3"
-            targetAttribute={A.END}
-            source="divider"
-            sourceAttribute={A.START}
-        />
+        {startEdgeConstraint(buttons.button1)}
+        <GtkConstraint target={buttons.button1} targetAttribute={A.END} source={divider} sourceAttribute={A.START} />
+        <GtkConstraint target={buttons.button2} targetAttribute={A.START} source={divider} sourceAttribute={A.END} />
+        {endEdgeConstraint(buttons.button2)}
+        {startEdgeConstraint(buttons.button3)}
+        <GtkConstraint target={buttons.button3} targetAttribute={A.END} source={divider} sourceAttribute={A.START} />
     </>
 );
 
-const renderVerticalConstraints = () => (
+const renderVerticalConstraints = (buttons: ChildButtons): ReactNode => (
     <>
-        <TopEdgeConstraint />
-        <ConstraintLayout.Constraint
-            target="button2"
+        {topEdgeConstraint(buttons.button1)}
+        <GtkConstraint
+            target={buttons.button2}
             targetAttribute={A.TOP}
-            source="button1"
+            source={buttons.button1}
             sourceAttribute={A.BOTTOM}
         />
-        <ConstraintLayout.Constraint
-            target="button3"
+        <GtkConstraint
+            target={buttons.button3}
             targetAttribute={A.TOP}
-            source="button2"
+            source={buttons.button2}
             sourceAttribute={A.BOTTOM}
         />
-        <BottomEdgeConstraint />
+        {bottomEdgeConstraint(buttons.button3)}
     </>
 );
 
-const renderLayout = (dividerOffset: number | null) => (
-    <ConstraintLayout>
-        {renderDividerConstraints(dividerOffset)}
-        {renderHorizontalConstraints()}
-        {renderVerticalConstraints()}
-    </ConstraintLayout>
+const renderLayout = (
+    buttons: ChildButtons | null,
+    divider: Gtk.ConstraintGuide | null,
+    dividerRef: (guide: Gtk.ConstraintGuide | null) => void,
+    dividerOffset: number | null,
+): ReactElement => (
+    <GtkConstraintLayout
+        guides={<GtkConstraintGuide ref={dividerRef} name="divider" />}
+        constraints={buttons && divider && (
+            <>
+                {renderDividerConstraints(divider, dividerOffset)}
+                {renderHorizontalConstraints(buttons, divider)}
+                {renderVerticalConstraints(buttons)}
+            </>
+        )}
+    />
 );
 
 function ConstraintsInteractive() {
+    const [buttons, handlers] = useChildButtons();
+    const [divider, setDivider] = useState<Gtk.ConstraintGuide | null>(null);
     const [dividerOffset, setDividerOffset] = useState<number | null>(null);
 
     return (
         <ConstraintContainer
-            layoutManager={renderLayout(dividerOffset)}
+            handlers={handlers}
+            layoutManager={renderLayout(buttons, divider, setDivider, dividerOffset)}
             controllers={(
                 <GtkGestureDrag
                     onDragUpdate={(offsetX, _offsetY, self) => {
