@@ -50,7 +50,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("ChildrenProps"),
     },
     GtkTextChildAnchor: {
-        props: internal("ChildrenProps"),
+        props: internal("GtkTextChildAnchorProps"),
     },
     GtkGridLayoutChild: {
         lazy: true,

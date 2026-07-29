@@ -26,9 +26,12 @@ type DetachInfo = {
  * GObject instance and a private per-node `context` built once by `createContext`. A slot hook
  * claims a child by returning a non-`undefined` value; that value, or `resolve`, is the object
  * the container adopts for the child. `update` returns the prop names it consumed so those props
- * are not also set as plain GObject properties.
+ * are not also set as plain GObject properties. `create` builds the GObject for types whose
+ * constructor does more than set properties, and is consulted for its own type only, never
+ * inherited by subtypes.
  */
 type ElementBehavior<T extends GObject.Object = GObject.Object> = {
+    create?: (props: Props) => GObject.Object;
     createContext?: (object: T) => unknown;
     attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
     reorder?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;

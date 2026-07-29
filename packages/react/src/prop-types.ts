@@ -66,6 +66,11 @@ type GtkConstraintLayoutProps = {
     vfl?: VflConstraints[] | null | undefined;
 };
 
+/** Props of `GtkTextChildAnchor`, which embeds either a child widget or a paintable in a text buffer. */
+type GtkTextChildAnchorProps = {
+    paintable?: Gdk.Paintable | null | undefined;
+} & ChildrenProps;
+
 type GtkHeaderBarProps = {
     start?: ReactNode | null | undefined;
     end?: ReactNode | null | undefined;
@@ -122,6 +127,7 @@ export {
     type GMenuProps,
     type GtkShortcutControllerProps,
     type GtkOverlayProps,
+    type GtkTextChildAnchorProps,
     type GtkConstraintLayoutProps,
     type GtkHeaderBarProps,
     type GtkScaleProps,

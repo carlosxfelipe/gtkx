@@ -11,6 +11,7 @@ import {
     type ElementNode,
     type LazyNode,
 } from "./node.js";
+import { ELEMENTS } from "./registry.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
 type ContentType = { kind: ContentKind; type: bigint };
@@ -59,6 +60,12 @@ const instantiate = (type: bigint, input: Props): GObject.Object => {
     return new cls(input);
 };
 
+const createObject = (typeName: string, type: bigint, input: Props): GObject.Object => {
+    const create = ELEMENTS[typeName]?.behaviors?.find((behavior) => behavior.create !== undefined)?.create;
+
+    return create === undefined ? instantiate(type, input) : create(input);
+};
+
 const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
     const info = typeInfoFor(typeName);
 
@@ -67,7 +74,7 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     }
 
     const type = typeFromName(typeName);
-    const object = instantiate(type, constructInput(info, props));
+    const object = createObject(typeName, type, constructInput(info, props));
 
     return createElementNode(typeName, object, dispatch, resolveContentKind(type));
 };

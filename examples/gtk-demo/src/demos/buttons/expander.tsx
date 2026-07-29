@@ -1,5 +1,4 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import { TextPaintable } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -8,6 +7,7 @@ import {
     GtkLabel,
     GtkScrolledWindow,
     GtkTextBuffer,
+    GtkTextChildAnchor,
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
@@ -35,13 +35,6 @@ const expanderDemo: Demo = {
     sourceCode,
 };
 
-const applyLogoTag = (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => {
-    const start = buffer.getIterAtMark(mark);
-    const end = buffer.getIterAtMark(mark);
-    end.forwardChar();
-    buffer.applyTagByName("logo", start, end);
-};
-
 const DetailsView = ({ texture }: { texture: Gdk.Texture }) => (
     <GtkScrolledWindow
         minContentHeight={100}
@@ -65,7 +58,7 @@ const DetailsView = ({ texture }: { texture: Gdk.Texture }) => (
                 <GtkTextBuffer>
                     {DETAILS_TEXT}
                     <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
-                        <TextPaintable paintable={texture} onInserted={applyLogoTag} />
+                        <GtkTextChildAnchor paintable={texture} />
                     </GtkTextTag>
                 </GtkTextBuffer>
             )}

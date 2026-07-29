@@ -1,4 +1,4 @@
-import { DropDown, TextPaintable } from "@gtkx/components";
+import { DropDown } from "@gtkx/components";
 import { Context, Format, ImageSurface } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
@@ -295,8 +295,8 @@ const TextViewImagesSection = ({ iconPaintable, nuclearPaintable }: ImagesSectio
             {"Images. "}
         </GtkTextTag>
         {"The buffer can have images in it: "}
-        {iconPaintable && <TextPaintable paintable={iconPaintable} />}
-        <TextPaintable paintable={nuclearPaintable} />
+        {iconPaintable && <GtkTextChildAnchor paintable={iconPaintable} />}
+        <GtkTextChildAnchor paintable={nuclearPaintable} />
         {" for example.\n\n"}
     </>
 );

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { TextPaintable } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
@@ -132,7 +131,7 @@ function sayWord(word: string): void {
 function InlineIcon({ iconName, size }: { iconName: string; size: number }) {
     const paintable = useMemo(() => lookupIconPaintable(iconName, size), [iconName, size]);
 
-    return paintable ? <TextPaintable paintable={paintable} /> : null;
+    return paintable ? <GtkTextChildAnchor paintable={paintable} /> : null;
 }
 
 function removeGhostAnchor({ mark, buffer, view, label, anchor }: GhostAnchorArgs) {

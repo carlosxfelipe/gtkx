@@ -140,6 +140,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             ),
         ],
     },
+    GtkTextChildAnchor: {
+        behaviors: [{ create: () => Gtk.TextChildAnchor.new() }],
+    },
     GtkTextView: {
         behaviors: [
             slot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {

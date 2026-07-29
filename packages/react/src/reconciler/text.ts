@@ -1,6 +1,7 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { drain, indexBeforeOrEnd } from "@gtkx/utils";
-import type { ContentChild, ElementNode, ParentNode, TextNode } from "./node.js";
+import type { ContentChild, ContentKind, ElementNode, ParentNode, TextNode } from "./node.js";
 import type { Props } from "./registry.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
 
@@ -15,6 +16,25 @@ type BufferBuild = {
 const dirtyHosts: Set<ElementNode> = new Set();
 const tagTables: WeakMap<object, Gtk.TextTagTable> = new WeakMap();
 const TEXT_CONTENT_KINDS: Set<string> = new Set(["label", "buffer", "tag"]);
+const PAINTABLE_PROP = "paintable";
+
+const CONTENT_MIX_RULES: { kind: ContentKind; prop: string; message: string }[] = [
+    {
+        kind: "label",
+        prop: "label",
+        message: "<GtkLabel> cannot mix a `label` prop with text children; use one or the other",
+    },
+    {
+        kind: "buffer",
+        prop: "text",
+        message: "<GtkTextBuffer> cannot mix a `text` prop with content children; use one or the other",
+    },
+    {
+        kind: "anchor",
+        prop: PAINTABLE_PROP,
+        message: "<GtkTextChildAnchor> cannot mix a `paintable` prop with a child widget; use one or the other",
+    },
+];
 
 const charLength = (text: string): number => text[Symbol.iterator]().toArray().length;
 
@@ -149,12 +169,12 @@ const validateContentMix = (node: ElementNode, props: Props): void => {
         return;
     }
 
-    if (node.contentKind === "label" && props.label !== undefined) {
-        throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
-    }
+    const violated = CONTENT_MIX_RULES.find(
+        (rule) => rule.kind === node.contentKind && props[rule.prop] !== undefined,
+    );
 
-    if (node.contentKind === "buffer" && props.text !== undefined) {
-        throw new Error("<GtkTextBuffer> cannot mix a `text` prop with content children; use one or the other");
+    if (violated !== undefined) {
+        throw new Error(violated.message);
     }
 };
 
@@ -204,8 +224,31 @@ const insertTag = (build: BufferBuild, node: ElementNode): void => {
     }
 };
 
+const contentPaintable = (node: ElementNode): Gdk.Paintable | null => {
+    const value = node.props[PAINTABLE_PROP];
+
+    return value instanceof Gdk.Paintable ? value : null;
+};
+
+const isContentPaintableProp = (node: ElementNode, name: string): boolean =>
+    name === PAINTABLE_PROP && node.contentKind === "anchor";
+
 const insertAnchor = (build: BufferBuild, node: ElementNode): void => {
-    const anchor = build.buffer.createChildAnchor(build.buffer.getEndIter());
+    const paintable = contentPaintable(node);
+
+    if (paintable !== null) {
+        build.buffer.insertPaintable(build.buffer.getEndIter(), paintable);
+
+        return;
+    }
+
+    const anchor = node.object;
+
+    if (!(anchor instanceof Gtk.TextChildAnchor)) {
+        return;
+    }
+
+    build.buffer.insertChildAnchor(build.buffer.getEndIter(), anchor);
     const child = node.content[0];
 
     if (build.view !== null && child?.kind === ELEMENT_KIND && child.object instanceof Gtk.Widget) {
@@ -330,6 +373,7 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
 export {
     textRestrictionError,
     canAcceptText,
+    isContentPaintableProp,
     markTextDirty,
     enclosingHost,
     addContent,

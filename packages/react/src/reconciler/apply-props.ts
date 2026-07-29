@@ -7,6 +7,7 @@ import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-prop
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
+import { isContentPaintableProp, markTextDirty } from "./text.js";
 
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
 type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
@@ -71,6 +72,12 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
 
     if (value !== undefined && isBufferText(node, name)) {
         applyBufferText(node.object, propText(value));
+
+        return;
+    }
+
+    if (isContentPaintableProp(node, name)) {
+        markTextDirty(node);
 
         return;
     }

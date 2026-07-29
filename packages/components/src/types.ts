@@ -1,4 +1,3 @@
-import type * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type {
     GtkColumnViewColumnProps,
@@ -187,14 +186,6 @@ type SizeGroupProps = {
 /** Adds a single widget, rendered by the given component, to the enclosing {@link SizeGroup}. */
 type SizeGroupChildProps<C extends ElementType> = ChildProps<C>;
 
-/** Props for {@link TextPaintable}. */
-type TextPaintableProps = {
-    /** The paintable inserted into the enclosing text buffer at this position. */
-    paintable: Gdk.Paintable;
-    /** Called with the buffer and the position mark right after the paintable is inserted. */
-    onInserted?: (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => void;
-};
-
 export {
     type ChildProps,
     type WidgetProps,
@@ -211,5 +202,4 @@ export {
     type ListViewProps,
     type SizeGroupProps,
     type SizeGroupChildProps,
-    type TextPaintableProps,
 };
