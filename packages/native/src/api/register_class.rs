@@ -9,6 +9,7 @@ use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
+use crate::handle::Handle;
 use crate::value::ClosureHandle;
 
 pub struct VfuncCallback(ClosureHandle);
@@ -55,13 +56,34 @@ pub struct RegisterClassInterface {
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
 
-/// Optional configuration for `registerClass`: vfunc overrides and implemented interfaces.
+pub struct PspecHandle(*mut gobject_ffi::GParamSpec);
+
+impl FromNapiValue for PspecHandle {
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
+        let external = unsafe { <&External<Handle>>::from_napi_value(env, napi_val)? };
+        Ok(Self(external.as_ptr().cast::<gobject_ffi::GParamSpec>()))
+    }
+}
+
+/// A property the registered class installs on its class structure.
+#[napi(object, object_to_js = false)]
+pub struct RegisterClassProperty {
+    /// Property id the class's `get_property`/`set_property` vfuncs dispatch on. Must be non-zero.
+    pub id: u32,
+    /// Handle to the `GParamSpec` describing the property. Ownership transfers to the class.
+    #[napi(ts_type = "ExternalObject<Handle>")]
+    pub pspec: PspecHandle,
+}
+
+/// Optional configuration for `registerClass`: vfunc overrides, implemented interfaces and properties.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassOptions {
     /// Virtual function overrides for the class itself.
     pub vfuncs: Option<Vec<RegisterClassVfunc>>,
     /// Interfaces the class implements, each with its own vfuncs.
     pub interfaces: Option<Vec<RegisterClassInterface>>,
+    /// Properties to install on the class.
+    pub properties: Option<Vec<RegisterClassProperty>>,
 }
 
 impl RegisterClassVfunc {
@@ -94,8 +116,30 @@ impl RegisterClassInterface {
     }
 }
 
+impl RegisterClassProperty {
+    fn into_raw(self) -> Result<RawProperty> {
+        if self.id == 0 {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "register_class: property id must be non-zero",
+            ));
+        }
+
+        let pspec = self.pspec.0;
+
+        if pspec.is_null() {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "register_class: property pspec must not be null",
+            ));
+        }
+
+        Ok(RawProperty { id: self.id, pspec })
+    }
+}
+
 impl RegisterClassOptions {
-    fn into_raw(self) -> Result<(Vec<RawVfunc>, Vec<RawInterface>)> {
+    fn into_raw(self) -> Result<(Vec<RawVfunc>, Vec<RawInterface>, Vec<RawProperty>)> {
         let vfuncs = self
             .vfuncs
             .unwrap_or_default()
@@ -108,7 +152,13 @@ impl RegisterClassOptions {
             .into_iter()
             .map(RegisterClassInterface::into_raw)
             .collect::<Result<_>>()?;
-        Ok((vfuncs, interfaces))
+        let properties = self
+            .properties
+            .unwrap_or_default()
+            .into_iter()
+            .map(RegisterClassProperty::into_raw)
+            .collect::<Result<_>>()?;
+        Ok((vfuncs, interfaces, properties))
     }
 }
 
@@ -123,6 +173,23 @@ struct RawInterface {
     type_: glib::Type,
     vtable_size: Option<u32>,
     vfuncs: Vec<RawVfunc>,
+}
+
+struct RawProperty {
+    id: u32,
+    pspec: *mut gobject_ffi::GParamSpec,
+}
+
+impl RawProperty {
+    unsafe fn install_into(self, class_ptr: *mut c_void) {
+        unsafe {
+            gobject_ffi::g_object_class_install_property(
+                class_ptr.cast::<gobject_ffi::GObjectClass>(),
+                self.id,
+                self.pspec,
+            );
+        }
+    }
 }
 
 impl RawVfunc {
@@ -150,17 +217,51 @@ impl RawVfunc {
     }
 }
 
+struct InterfaceInit {
+    vfuncs: Option<Vec<RawVfunc>>,
+}
+
+// GLib hands `iface_data` back untouched from the `GInterfaceInfo` the registration passed in, so it is
+// the `InterfaceInit` allocated below and no other thread can reach it. The vfuncs are taken out on the
+// first call so a second initialization of the same interface installs nothing twice.
+unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut c_void) {
+    let data = unsafe { &mut *iface_data.cast::<InterfaceInit>() };
+
+    let Some(vfuncs) = data.vfuncs.take() else {
+        return;
+    };
+
+    for vfunc in vfuncs {
+        unsafe { vfunc.install_into(vtable) };
+    }
+}
+
+// Runs when GLib tears the interface vtable down, which returns the allocation `add_to` handed over.
+unsafe extern "C" fn finalize_interface_vtable(_vtable: *mut c_void, iface_data: *mut c_void) {
+    drop(unsafe { Box::from_raw(iface_data.cast::<InterfaceInit>()) });
+}
+
 impl RawInterface {
-    unsafe fn install(self, class_ptr: *mut c_void) {
-        let iface_vtable =
-            unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
-        assert!(
-            !iface_vtable.is_null(),
-            "register_class: conforming type is missing the vtable for interface '{}'",
-            self.type_.name()
-        );
-        for vfunc in self.vfuncs {
-            unsafe { vfunc.install_into(iface_vtable) };
+    // An interface inherited from the parent shares the parent's vtable until the derived type adds
+    // its own implementation, so the vfuncs must go in through `g_type_add_interface_static` rather
+    // than be written into the peeked vtable, which would patch every instance of the parent type.
+    unsafe fn add_to(self, instance_type: glib::ffi::GType) {
+        let data = Box::into_raw(Box::new(InterfaceInit {
+            vfuncs: Some(self.vfuncs),
+        }));
+
+        let info = gobject_ffi::GInterfaceInfo {
+            interface_init: Some(init_interface_vtable),
+            interface_finalize: Some(finalize_interface_vtable),
+            interface_data: data.cast::<c_void>(),
+        };
+
+        unsafe {
+            gobject_ffi::g_type_add_interface_static(
+                instance_type,
+                self.type_.into_glib(),
+                &raw const info,
+            );
         }
     }
 }
@@ -170,6 +271,7 @@ struct ClassRegistration {
     parent_type: glib::Type,
     vfuncs: Vec<RawVfunc>,
     interfaces: Vec<RawInterface>,
+    properties: Vec<RawProperty>,
 }
 
 impl ClassRegistration {
@@ -266,6 +368,7 @@ impl ClassRegistration {
         name_ptr: *const c_char,
         vfuncs: Vec<RawVfunc>,
         interfaces: Vec<RawInterface>,
+        properties: Vec<RawProperty>,
         class_size: u16,
         instance_size: u16,
     ) -> anyhow::Result<usize> {
@@ -295,14 +398,18 @@ impl ClassRegistration {
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
+        for iface in interfaces {
+            unsafe { iface.add_to(new_type) };
+        }
+
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         for vfunc in vfuncs {
             unsafe { vfunc.install_into(class_ptr) };
         }
 
-        for iface in interfaces {
-            unsafe { iface.install(class_ptr) };
+        for property in properties {
+            unsafe { property.install_into(class_ptr) };
         }
 
         Ok(new_type)
@@ -329,6 +436,7 @@ impl ClassRegistration {
             self.name.as_ptr(),
             self.vfuncs,
             self.interfaces,
+            self.properties,
             class_size,
             instance_size,
         )?;
@@ -353,9 +461,9 @@ pub fn register_class(
         )
     })?;
     let parent_type = type_from_bigint(&parent_type, "register_class: parent")?;
-    let (vfuncs, interfaces) = match options {
+    let (vfuncs, interfaces, properties) = match options {
         Some(options) => options.into_raw()?,
-        None => (Vec::new(), Vec::new()),
+        None => (Vec::new(), Vec::new(), Vec::new()),
     };
     let type_ = native_result(
         "register_class",
@@ -364,6 +472,7 @@ pub fn register_class(
             parent_type,
             vfuncs,
             interfaces,
+            properties,
         }
         .execute(),
     )?;
@@ -388,6 +497,7 @@ mod tests {
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
                 interfaces: Vec::new(),
+                properties: Vec::new(),
             };
             let type_ = request.execute().expect("registration should succeed");
             assert_ne!(type_, 0);
@@ -406,6 +516,7 @@ mod tests {
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
                 interfaces: Vec::new(),
+                properties: Vec::new(),
             };
             assert!(request.execute().is_err());
         });
@@ -423,6 +534,7 @@ mod tests {
                     type_: glib::Object::static_type(),
                     vfuncs: Vec::new(),
                 }],
+                properties: Vec::new(),
             };
             let error = request
                 .execute()
@@ -446,6 +558,7 @@ mod tests {
                     type_: plugin_type,
                     vfuncs: Vec::new(),
                 }],
+                properties: Vec::new(),
             };
             let error = request
                 .execute()
@@ -469,6 +582,7 @@ mod tests {
                     type_: plugin_type,
                     vfuncs: Vec::new(),
                 }],
+                properties: Vec::new(),
             };
             let type_ = request
                 .execute()
@@ -520,6 +634,7 @@ mod tests {
                     return_codec: Codec::Void(crate::ffi::codec::VoidCodec),
                 }],
             }],
+            properties: Vec::new(),
         };
         let query = gobject_ffi::GTypeQuery {
             type_: 1,
