@@ -22,7 +22,15 @@
     "nx": {
         "targets": {
             "test:asan": {
-                "cache": false
+                "cache": false,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/vitest:build",
+                    "@gtkx/cli:build",
+                    "@gtkx/components:build",
+                    "@gtkx/css:build",
+                    "@gtkx/gl:build"
+                ]
             }
         }
     }
