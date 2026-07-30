@@ -1,4 +1,4 @@
-import type { ErrorInfo, ReactNode } from "react";
+import type { ErrorInfo, ReactNode, ReactPortal } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
@@ -161,8 +161,8 @@ const quit = (): typeof Gdk.EVENT_STOP => {
  * @param key An optional stable key.
  * @returns A React portal.
  */
-const createPortal = (children: ReactNode, container: Container, key?: string): ReactNode =>
-    Object.assign(reconciler.createPortal(children, container, null, key ?? null), { type: "gtkx-portal", props: {} });
+const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
+    reconciler.createPortal(children, container, null, key ?? null) as unknown as ReactPortal;
 
 export {
     setReconcilerErrorHandler,
