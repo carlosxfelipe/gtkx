@@ -26,7 +26,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
         return;
     }
 
-    if (isClassStructRecord(context.library, context.namespace.name, record)) {
+    if (isClassStructRecord(context.namespace.name, record)) {
         return;
     }
 

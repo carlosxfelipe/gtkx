@@ -28,6 +28,7 @@ type CodegenRunnerOptions = {
     userLazyElements?: string[];
     userProps?: Record<string, ModuleExport>;
     userOmitProps?: OmittedProps;
+    classStructs?: string[];
     gl?: GlCodegenOptions;
     force?: boolean;
 };
@@ -141,10 +142,14 @@ const emitStoresWithConfig = async (config: {
     girPath: string[];
 }): Promise<StoreResult> => {
     const { options, gi, jsx, libraries, girPath } = config;
+    const classStructs = options.classStructs ?? [];
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
-    const isGiRegenerated = options.force === true || !isGiStoreFresh(gi.storeDir, libraries, girPath);
-    const namespaces = isGiRegenerated ? runGiCodegen(loadLibrary(), gi, libraries, girPath) : 0;
+    const isGiRegenerated = options.force === true || !isGiStoreFresh(gi.storeDir, libraries, girPath, classStructs);
+
+    const namespaces = isGiRegenerated
+        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath, classStructs })
+        : 0;
 
     if (jsx === undefined) {
         return { regenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };

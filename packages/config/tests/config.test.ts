@@ -3,6 +3,7 @@ import {
     type Config,
     defineConfig,
     isValidApplicationId,
+    resolveClassStructs,
     resolveConfig,
     resolveOmitProps,
     resolveReactCompilerOptions,
@@ -466,5 +467,23 @@ describe("validateConfig (elements.config)", () => {
     it("collects the omitted props of every element entry", () => {
         const elements = { config: { GtkButton: { omitProps: ["child"] }, GtkLabel: { lazy: true } } };
         expect(resolveOmitProps(elements)).toEqual({ GtkButton: ["child"] });
+    });
+});
+
+describe("validateConfig (classStructs)", () => {
+    it("accepts qualified GIR record names", () => {
+        expect(() => {
+            validateWithAppId({ classStructs: ["GObject.TypeClass", "Pango.AttrClass"] });
+        }).not.toThrow();
+    });
+
+    it("rejects an empty record name", () => {
+        expect(() => {
+            validateWithAppId({ classStructs: [""] });
+        }).toThrow(/must be a qualified GIR record name/);
+    });
+
+    it("resolves to an empty list when unset", () => {
+        expect(resolveClassStructs(undefined)).toEqual([]);
     });
 });

@@ -25,7 +25,7 @@ type TsTypeTarget = {
     renderGtype: () => string;
 };
 
-const willEmitEntity = (library: Library, type: EntityType): boolean => {
+const willEmitEntity = (type: EntityType): boolean => {
     switch (type.kind) {
         case "callback": {
             return type.value.introspectable && type.value.name.length > 0;
@@ -33,9 +33,8 @@ const willEmitEntity = (library: Library, type: EntityType): boolean => {
         case "record": {
             return (
                 type.value.introspectable &&
-                !type.value.isVtable &&
                 type.value.name.length > 0 &&
-                !isClassStructRecord(library, type.namespace.name, type.value)
+                !isClassStructRecord(type.namespace.name, type.value)
             );
         }
         case "alias":
@@ -51,11 +50,10 @@ const renderPrimitiveType = (target: TsTypeTarget, type: Extract<GirType, { kind
     type.category === "gtype" ? target.renderGtype() : PRIMITIVE_TS_TYPE[type.category];
 
 const renderEntityType = (
-    library: Library,
     target: TsTypeTarget,
     type: EntityType,
     name: ReferenceName | undefined,
-): string => renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
+): string => renderNamedType(target, type, willEmitEntity(type) ? name : undefined);
 
 const renderBaseType = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
     if (ref === undefined) {
@@ -82,7 +80,7 @@ const renderBaseType = (library: Library, target: TsTypeTarget, ref: TypeId | un
         case "record":
         case "enum":
         case "alias": {
-            return renderEntityType(library, target, type, name);
+            return renderEntityType(target, type, name);
         }
         case "carray":
         case "list":

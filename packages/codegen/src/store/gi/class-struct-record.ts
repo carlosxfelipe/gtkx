@@ -1,37 +1,37 @@
 import type { GirFunction } from "../../gir/function.js";
-import type { Library } from "../../gir/library.js";
 import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 
-const TYPE_STRUCT_ROOTS = new Set(["GObject.TypeClass", "GObject.TypeInterface"]);
-const EXPLICIT_CLASS_STRUCTS = new Set(["Pango.AttrClass"]);
+/**
+ * The class and interface structs GIR does not annotate. Every other vtable carries
+ * `glib:is-gtype-struct-for`, which the parser records as `GirRecord.isVtable`; these seven are
+ * unannotated because they are the roots the annotation is defined against, or because their library
+ * predates it. Qualified GIR names, extended by `classStructs` in `gtkx.config.ts`.
+ */
+const BUILTIN_CLASS_STRUCTS: string[] = [
+    "GObject.EnumClass",
+    "GObject.FlagsClass",
+    "GObject.TypeClass",
+    "GObject.TypeInterface",
+    "GObject.TypePluginClass",
+    "Gtk.EditableClass",
+    "Pango.AttrClass",
+];
 
-const qualify = (namespaceName: string, name: string): string => `${namespaceName}.${name}`;
+const classStructs: Set<string> = new Set(BUILTIN_CLASS_STRUCTS);
 
-const isClassStructRecord = (library: Library, namespaceName: string, record: GirRecord): boolean => {
-    const qualified = qualify(namespaceName, record.name);
+/** Installs the project's extra class structs on top of the built-in set; set once per run. */
+const setClassStructs = (names: string[]): void => {
+    classStructs.clear();
 
-    if (TYPE_STRUCT_ROOTS.has(qualified) || EXPLICIT_CLASS_STRUCTS.has(qualified)) {
-        return true;
+    for (const name of [...BUILTIN_CLASS_STRUCTS, ...names]) {
+        classStructs.add(name);
     }
-
-    const first = record.fields[0];
-
-    // A class struct embeds its parent vtable by value (`GTypeClass g_type_class`); an instance
-    // struct stores a pointer to it (`GTypeClass *g_class`). Only the first is a vtable.
-    if (first?.type === undefined || first.cType?.endsWith("*") === true) {
-        return false;
-    }
-
-    const name = library.nameFor(first.type);
-
-    if (name === undefined) {
-        return false;
-    }
-
-    return TYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
 };
+
+const isClassStructRecord = (namespaceName: string, record: GirRecord): boolean =>
+    record.isVtable || classStructs.has(`${namespaceName}.${record.name}`);
 
 const isClassStructRef = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) {
@@ -46,7 +46,7 @@ const isClassStructRef = (context: ModuleContext, ref: TypeId | undefined): bool
 
     switch (type.kind) {
         case "record": {
-            return isClassStructRecord(context.library, type.namespace.name, type.value);
+            return isClassStructRecord(type.namespace.name, type.value);
         }
         case "carray":
         case "list": {
@@ -69,4 +69,4 @@ const hasClassStructReference = (context: ModuleContext, fn: GirFunction): boole
     isClassStructRef(context, fn.returnValue.type) ||
     fn.parameters.some((parameter) => isClassStructRef(context, parameter.type));
 
-export { isClassStructRecord, isClassStructRef, hasClassStructReference };
+export { setClassStructs, isClassStructRecord, isClassStructRef, hasClassStructReference };

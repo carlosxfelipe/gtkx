@@ -1,6 +1,7 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
+    resolveClassStructs,
     resolveElementComponents,
     resolveElementProps,
     resolveLazyElements,
@@ -42,6 +43,7 @@ type CodegenOptionsInput = {
     libraries: string[];
     girPath: string[];
     elements: Config["elements"];
+    classStructs: Config["classStructs"];
 };
 
 type PreparedCodegen = CodegenInputs & { force: boolean };
@@ -69,7 +71,7 @@ const removeSharedStoreShadow = (cwd: string): void => {
     }
 };
 
-const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, elements, classStructs }: CodegenOptionsInput) => ({
     libraries,
     girPath,
     gi: {
@@ -90,6 +92,7 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
     userProps: resolveElementProps(elements),
     userLazyElements: resolveLazyElements(elements),
     userOmitProps: resolveOmitProps(elements),
+    classStructs: resolveClassStructs(classStructs),
 });
 
 const disabledCodegenResult = (configFile: string | undefined): RunCodegenResult => ({
@@ -140,7 +143,13 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath, elements: config.elements }),
+        ...codegenOptions({
+            store,
+            libraries,
+            girPath,
+            elements: config.elements,
+            classStructs: config.classStructs,
+        }),
         force,
     });
 

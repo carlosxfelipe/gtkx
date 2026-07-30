@@ -38,6 +38,8 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`elements`** carries per-element configuration keyed by GLib type name. Its `behaviors` key points at a module of custom `behaviors` and `lazy` flags, covered in [Customizing elements](#advanced-customizing-elements) below; that module is imported by your app at runtime. Its `config` key holds the entries codegen reads: `component` and `props` override what a generated element renders and extends, and `omitProps` lists properties to leave out of an element's generated props.
 
+**`classStructs`** lists qualified GIR record names to treat as class structs, such as `["Pango.AttrClass"]`. A class struct is a vtable rather than data, so it is never bound: the record gets no class, and any function mentioning one is left out. GIR marks them with `glib:is-gtype-struct-for` and codegen follows that, plus a built-in list of the few the annotation cannot cover (`GObject.TypeClass` and `GObject.TypeInterface` are what it points at, and `GObject.EnumClass`, `GObject.FlagsClass`, `GObject.TypePluginClass`, `Pango.AttrClass` and `Gtk.EditableClass` predate it). Names you add here extend that list, for a library that ships an unannotated vtable of its own.
+
 **`codegen`** controls binding generation, which is on by default. Set it to `false` for a project that already has a binding store installed, such as an example inside a workspace that shares the store built at the root: the CLI then resolves that installed store instead of generating its own. A project with generation turned off has no GIR data of its own, so `gtkx docs` has nothing to document there.
 
 ## What codegen emits
@@ -126,28 +128,30 @@ Every hook receives the GObject instance and a private per-element `context` bui
 - **`flush`** runs just after the surrounding commit settles, for props that must wait until children exist, as `GtkStack`'s `visibleChildName` does.
 - **`mount` / `unmount`** run once the element is created and when it leaves the tree.
 
-Your own behaviors go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Write a module that default-exports a map keyed by GLib type name, giving each type its `behaviors` and annotating each hook's node parameter with the concrete class:
+Your own behaviors go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Write a module that default-exports a map keyed by GLib type name, giving each type its `behaviors` and wrapping each one in `defineBehavior` with the class it applies to:
 
 ```ts
 // src/elements.ts
 import type * as Gtk from "@gtkx/gi/gtk";
-import { defineElements } from "@gtkx/react/config";
+import { defineBehavior, defineElements } from "@gtkx/react/config";
 
 export default defineElements({
     GtkWidget: {
         behaviors: [
-            {
-                update: (widget: Gtk.Widget, prev, next) => {
+            defineBehavior<Gtk.Widget>({
+                update: (widget, prev, next) => {
                     if (!Object.is(prev.cursorName, next.cursorName) && typeof next.cursorName === "string") {
                         widget.setCursorFromName(next.cursorName);
                     }
                     return ["cursorName"];
                 },
-            },
+            }),
         ],
     },
 });
 ```
+
+The type argument is what gives `widget` its type. A behavior written as a bare object literal still works, but each hook's object parameter is then typed `never`, so it has to be annotated by hand.
 
 Point `elements.behaviors` at it and declare the prop on the generated interface:
 

@@ -2,6 +2,7 @@ export {
     GIR_LIBRARY_PATTERN,
     isValidApplicationId,
     LIBRARIES_WILDCARD,
+    resolveClassStructs,
     resolveElementComponents,
     resolveElementProps,
     resolveLazyElements,

@@ -136,23 +136,23 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     return entries;
 };
 
-const recordEntry = (library: Library, namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
+const recordEntry = (namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
     if (!record.introspectable || record.isVtable || record.name.length === 0) {
         return undefined;
     }
 
-    if (isClassStructRecord(library, namespace.name, record)) {
+    if (isClassStructRecord(namespace.name, record)) {
         return undefined;
     }
 
     return { kind: "record", namespace, name: record.name, doc: record.doc, record };
 };
 
-const recordEntries = (library: Library, namespace: GirNamespace): GiSymbolEntry[] => {
+const recordEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     const entries: GiSymbolEntry[] = [];
 
     for (const record of namespace.records) {
-        const entry = recordEntry(library, namespace, record);
+        const entry = recordEntry(namespace, record);
 
         if (entry !== undefined) {
             entries.push(entry);
@@ -322,7 +322,7 @@ class ApiReference {
     private indexNamespace(namespace: GirNamespace): void {
         const entries = [
             ...classEntries(namespace),
-            ...recordEntries(this.library, namespace),
+            ...recordEntries(namespace),
             ...valueEntries(namespace),
         ];
 

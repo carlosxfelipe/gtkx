@@ -132,11 +132,23 @@ const registerElements = (
 
 /**
  * Identity helper that types the module named by the `elements` entry of `gtkx.config.ts`, enabling
- * editor autocompletion and type checking. Key each entry by GLib type name and annotate each hook's
- * object parameter with the concrete GObject class the behavior applies to.
+ * editor autocompletion and type checking. Key each entry by GLib type name and write each behavior
+ * with {@link defineBehavior} so its hooks receive the concrete GObject class.
  */
 const defineElements = (elements: Record<string, ElementConfig<never>>): Record<string, ElementConfig<never>> =>
     elements;
+
+/**
+ * Types one behavior against the GObject class it applies to, so every hook's object parameter is
+ * inferred rather than annotated by hand. Pass the class as the type argument.
+ *
+ * ```ts
+ * defineElements({
+ *     GtkFrame: { behaviors: [defineBehavior<Gtk.Frame>({ attach: (frame, child) => frame.setChild(child) })] },
+ * });
+ * ```
+ */
+const defineBehavior = <T extends GObject.Object>(hooks: ElementBehavior<T>): ElementBehavior<never> => hooks;
 
 /** Spreads one config across many GLib type names. */
 const forTypes = (types: string[], config: ElementConfig<never>): Record<string, ElementConfig<never>> =>
@@ -151,6 +163,7 @@ export {
     mergeElementConfigs,
     registerElements,
     defineElements,
+    defineBehavior,
     forTypes,
     internal,
     type Props,
