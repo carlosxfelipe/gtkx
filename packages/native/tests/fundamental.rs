@@ -1,15 +1,12 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
 use gtk4::glib;
-
-use native::handle::Fundamental;
-
 use helpers::{
     make_bool_param_spec as create_param_spec, param_spec_ref, param_spec_refcount,
     param_spec_unref,
 };
+use native::handle::Fundamental;
+use test_support as helpers;
 
 fn ref_after_extra_ref_and_scoped_full(
     ptr: *mut c_void,

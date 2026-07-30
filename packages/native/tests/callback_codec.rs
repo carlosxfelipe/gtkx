@@ -1,17 +1,14 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
 use std::cell::Cell;
 use std::ffi::c_void;
 
 use libffi::middle as libffi;
-
 use napi::Env;
 use napi::bindgen_prelude::Unknown;
-
 use native::ffi;
 use native::ffi::closure::ClosureState;
 use native::ffi::codec::{CallbackCodec, CallbackScope, Codec, Encoder, VoidCodec};
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn callback_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
     CallbackCodec {

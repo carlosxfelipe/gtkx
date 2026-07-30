@@ -1,6 +1,5 @@
-use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::sys;
+use napi::{Env, sys};
 
 struct JsRef {
     raw: sys::napi_ref,

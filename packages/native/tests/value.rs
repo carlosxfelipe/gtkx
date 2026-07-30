@@ -1,23 +1,16 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
-use gtk4::gdk;
-use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
-use gtk4::prelude::ObjectType as _;
-use gtk4::prelude::StaticType as _;
-
-use napi::Env;
-use napi::JsValue as _;
+use gtk4::prelude::{ObjectType as _, StaticType as _};
+use gtk4::{gdk, glib};
 use napi::bindgen_prelude::{External, Unknown};
-
+use napi::{Env, JsValue as _};
 use native::ffi;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, FundamentalCodec, IntegerCodec, ObjectCodec,
     Ownership, RefCodec, StringCodec,
 };
-
+use test_support as helpers;
 use test_support::napi_mock;
 
 fn gobject_type_of(ownership: Ownership) -> Codec {

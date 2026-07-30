@@ -1,11 +1,9 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
 use std::ffi::c_void;
 
-use napi::Env;
-use napi::sys;
+use napi::{Env, sys};
 use native::value::{TypedView, ViewKind};
+use test_support as helpers;
+use test_support::napi_mock;
 
 const ALL_KINDS: [ViewKind; 12] = [
     ViewKind::Int8,

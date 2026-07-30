@@ -1,8 +1,6 @@
-use test_support as helpers;
-
 use gtk4::glib;
-
 use native::ffi::library_cache::FfiCache;
+use test_support as helpers;
 
 #[test]
 fn ffi_cache_default_is_empty() {

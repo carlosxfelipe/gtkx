@@ -1,6 +1,7 @@
 use std::ffi::{c_char, c_void};
 
-use glib::{self, gobject_ffi, translate::IntoGlib as _};
+use glib::translate::IntoGlib as _;
+use glib::{self, gobject_ffi};
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -86,46 +87,52 @@ pub struct RegisterClassOptions {
     pub properties: Option<Vec<RegisterClassProperty>>,
 }
 
-impl RegisterClassVfunc {
-    fn into_raw(self) -> Result<RawVfunc> {
-        Ok(RawVfunc {
-            byte_offset: self.byte_offset as usize,
-            js_fn: self.r#fn.0,
-            arg_codecs: self
+impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
+    type Error = Error;
+
+    fn try_from(vfunc: RegisterClassVfunc) -> Result<Self> {
+        Ok(Self {
+            byte_offset: vfunc.byte_offset as usize,
+            js_fn: vfunc.r#fn.0,
+            arg_codecs: vfunc
                 .arg_descriptors
                 .into_iter()
                 .map(Descriptor::into_codec)
                 .collect::<Result<_>>()?,
-            return_codec: self.return_descriptor.into_codec()?,
+            return_codec: vfunc.return_descriptor.into_codec()?,
         })
     }
 }
 
-impl RegisterClassInterface {
-    fn into_raw(self) -> Result<RawInterface> {
-        let type_ = type_from_bigint(&self.r#type, "register_class: interface")?;
-        Ok(RawInterface {
+impl TryFrom<RegisterClassInterface> for ResolvedInterface {
+    type Error = Error;
+
+    fn try_from(interface: RegisterClassInterface) -> Result<Self> {
+        let type_ = type_from_bigint(&interface.r#type, "register_class: interface")?;
+        Ok(Self {
             type_,
-            vtable_size: self.vtable_size,
-            vfuncs: self
+            vtable_size: interface.vtable_size,
+            vfuncs: interface
                 .vfuncs
                 .into_iter()
-                .map(RegisterClassVfunc::into_raw)
+                .map(ResolvedVfunc::try_from)
                 .collect::<Result<_>>()?,
         })
     }
 }
 
-impl RegisterClassProperty {
-    fn into_raw(self) -> Result<RawProperty> {
-        if self.id == 0 {
+impl TryFrom<RegisterClassProperty> for ResolvedProperty {
+    type Error = Error;
+
+    fn try_from(property: RegisterClassProperty) -> Result<Self> {
+        if property.id == 0 {
             return Err(Error::new(
                 Status::InvalidArg,
                 "register_class: property id must be non-zero",
             ));
         }
 
-        let pspec = self.pspec.0;
+        let pspec = property.pspec.0;
 
         if pspec.is_null() {
             return Err(Error::new(
@@ -134,53 +141,66 @@ impl RegisterClassProperty {
             ));
         }
 
-        Ok(RawProperty { id: self.id, pspec })
+        Ok(Self {
+            id: property.id,
+            pspec,
+        })
     }
 }
 
-impl RegisterClassOptions {
-    fn into_raw(self) -> Result<(Vec<RawVfunc>, Vec<RawInterface>, Vec<RawProperty>)> {
-        let vfuncs = self
-            .vfuncs
-            .unwrap_or_default()
-            .into_iter()
-            .map(RegisterClassVfunc::into_raw)
-            .collect::<Result<_>>()?;
-        let interfaces = self
-            .interfaces
-            .unwrap_or_default()
-            .into_iter()
-            .map(RegisterClassInterface::into_raw)
-            .collect::<Result<_>>()?;
-        let properties = self
-            .properties
-            .unwrap_or_default()
-            .into_iter()
-            .map(RegisterClassProperty::into_raw)
-            .collect::<Result<_>>()?;
-        Ok((vfuncs, interfaces, properties))
+#[derive(Default)]
+struct ResolvedOptions {
+    vfuncs: Vec<ResolvedVfunc>,
+    interfaces: Vec<ResolvedInterface>,
+    properties: Vec<ResolvedProperty>,
+}
+
+impl TryFrom<RegisterClassOptions> for ResolvedOptions {
+    type Error = Error;
+
+    fn try_from(options: RegisterClassOptions) -> Result<Self> {
+        Ok(Self {
+            vfuncs: options
+                .vfuncs
+                .unwrap_or_default()
+                .into_iter()
+                .map(ResolvedVfunc::try_from)
+                .collect::<Result<_>>()?,
+            interfaces: options
+                .interfaces
+                .unwrap_or_default()
+                .into_iter()
+                .map(ResolvedInterface::try_from)
+                .collect::<Result<_>>()?,
+            properties: options
+                .properties
+                .unwrap_or_default()
+                .into_iter()
+                .map(ResolvedProperty::try_from)
+                .collect::<Result<_>>()?,
+        })
     }
 }
 
-struct RawVfunc {
+struct ResolvedVfunc {
     byte_offset: usize,
     js_fn: ClosureHandle,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
 }
 
-struct RawInterface {
+struct ResolvedInterface {
     type_: glib::Type,
     vtable_size: Option<u32>,
-    vfuncs: Vec<RawVfunc>,
+    vfuncs: Vec<ResolvedVfunc>,
 }
 
-struct RawProperty {
+struct ResolvedProperty {
     id: u32,
     pspec: *mut gobject_ffi::GParamSpec,
 }
 
-impl RawProperty {
+impl ResolvedProperty {
     unsafe fn install_into(self, class_ptr: *mut c_void) {
         unsafe {
             gobject_ffi::g_object_class_install_property(
@@ -192,7 +212,7 @@ impl RawProperty {
     }
 }
 
-impl RawVfunc {
+impl ResolvedVfunc {
     // `vtable_base` is a GTypeClass/GTypeInterface vtable allocated by GLib, so it carries at least
     // pointer alignment, and `validate_vfunc_offset` has already rejected any `byte_offset` that is
     // not a multiple of `align_of::<*mut c_void>()`. The resulting slot pointer is therefore
@@ -218,7 +238,7 @@ impl RawVfunc {
 }
 
 struct InterfaceInit {
-    vfuncs: Option<Vec<RawVfunc>>,
+    vfuncs: Option<Vec<ResolvedVfunc>>,
 }
 
 // GLib hands `iface_data` back untouched from the `GInterfaceInfo` the registration passed in, so it is
@@ -241,7 +261,7 @@ unsafe extern "C" fn finalize_interface_vtable(_vtable: *mut c_void, iface_data:
     drop(unsafe { Box::from_raw(iface_data.cast::<InterfaceInit>()) });
 }
 
-impl RawInterface {
+impl ResolvedInterface {
     // An interface inherited from the parent shares the parent's vtable until the derived type adds
     // its own implementation, so the vfuncs must go in through `g_type_add_interface_static` rather
     // than be written into the peeked vtable, which would patch every instance of the parent type.
@@ -269,9 +289,9 @@ impl RawInterface {
 struct ClassRegistration {
     name: glib::GString,
     parent_type: glib::Type,
-    vfuncs: Vec<RawVfunc>,
-    interfaces: Vec<RawInterface>,
-    properties: Vec<RawProperty>,
+    vfuncs: Vec<ResolvedVfunc>,
+    interfaces: Vec<ResolvedInterface>,
+    properties: Vec<ResolvedProperty>,
 }
 
 impl ClassRegistration {
@@ -366,9 +386,9 @@ impl ClassRegistration {
     fn register_type(
         parent_type: glib::Type,
         name_ptr: *const c_char,
-        vfuncs: Vec<RawVfunc>,
-        interfaces: Vec<RawInterface>,
-        properties: Vec<RawProperty>,
+        vfuncs: Vec<ResolvedVfunc>,
+        interfaces: Vec<ResolvedInterface>,
+        properties: Vec<ResolvedProperty>,
         class_size: u16,
         instance_size: u16,
     ) -> anyhow::Result<usize> {
@@ -461,18 +481,18 @@ pub fn register_class(
         )
     })?;
     let parent_type = type_from_bigint(&parent_type, "register_class: parent")?;
-    let (vfuncs, interfaces, properties) = match options {
-        Some(options) => options.into_raw()?,
-        None => (Vec::new(), Vec::new(), Vec::new()),
+    let resolved = match options {
+        Some(options) => ResolvedOptions::try_from(options)?,
+        None => ResolvedOptions::default(),
     };
     let type_ = native_result(
         "register_class",
         ClassRegistration {
             name,
             parent_type,
-            vfuncs,
-            interfaces,
-            properties,
+            vfuncs: resolved.vfuncs,
+            interfaces: resolved.interfaces,
+            properties: resolved.properties,
         }
         .execute(),
     )?;
@@ -481,9 +501,10 @@ pub fn register_class(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use glib::prelude::StaticType as _;
     use glib::translate::FromGlib as _;
+
+    use super::*;
 
     fn gstring(name: &str) -> glib::GString {
         glib::GString::from_string_checked(name.to_owned()).expect("valid type name")
@@ -529,7 +550,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassNonInterfaceType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![RawInterface {
+                interfaces: vec![ResolvedInterface {
                     vtable_size: None,
                     type_: glib::Object::static_type(),
                     vfuncs: Vec::new(),
@@ -553,7 +574,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassNonConformingType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![RawInterface {
+                interfaces: vec![ResolvedInterface {
                     vtable_size: None,
                     type_: plugin_type,
                     vfuncs: Vec::new(),
@@ -577,7 +598,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassConformingType"),
                 parent_type: glib::TypeModule::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![RawInterface {
+                interfaces: vec![ResolvedInterface {
                     vtable_size: None,
                     type_: plugin_type,
                     vfuncs: Vec::new(),
@@ -615,10 +636,10 @@ mod tests {
             name: gstring("GtkxRegisterClassBoundedInterfaceType"),
             parent_type: glib::Object::static_type(),
             vfuncs: Vec::new(),
-            interfaces: vec![RawInterface {
+            interfaces: vec![ResolvedInterface {
                 type_: glib::Object::static_type(),
                 vtable_size: Some(16),
-                vfuncs: vec![RawVfunc {
+                vfuncs: vec![ResolvedVfunc {
                     byte_offset: 24,
                     js_fn: ClosureHandle::from_js_value(
                         &test_support::fake_env(),

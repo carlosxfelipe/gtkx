@@ -2,7 +2,6 @@ use std::ffi::{c_char, c_void};
 use std::ptr;
 
 use napi::sys;
-
 use test_support::napi_mock;
 
 #[test]

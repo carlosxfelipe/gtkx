@@ -1,16 +1,10 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_void};
 use std::rc::Rc;
 
 use gtk4::glib;
-use napi::Env;
-use napi::JsValue as _;
 use napi::bindgen_prelude::External;
-use napi::sys;
-
+use napi::{Env, JsValue as _, sys};
 use native::ffi::closure::ClosureState;
 use native::ffi::codec::{
     BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, Ownership, RefCodec,
@@ -21,6 +15,8 @@ use native::ffi::{
 };
 use native::handle::Handle;
 use native::value::ClosureHandle;
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn js_fn_handle(env: &Env, value: sys::napi_value) -> ClosureHandle {
     ClosureHandle::from_js_value(env, &napi_mock::to_unknown(env, value))

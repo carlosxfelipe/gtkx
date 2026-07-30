@@ -1,11 +1,8 @@
-use test_support as helpers;
-
-use gtk4::gdk;
-use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
-
+use gtk4::{gdk, glib};
 use native::Boxed;
+use test_support as helpers;
 
 #[test]
 fn from_glib_full_records_pointer_and_type() {
@@ -85,7 +82,6 @@ mod boxed_free_dispatch {
 
     use gtk4::glib;
     use gtk4::glib::translate::FromGlib as _;
-
     use native::Boxed;
 
     use super::helpers;
@@ -144,7 +140,6 @@ mod free_fn {
     use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
     use gtk4::glib;
-
     use native::Boxed;
 
     use super::helpers;

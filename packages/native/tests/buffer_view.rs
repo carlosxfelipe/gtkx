@@ -9,7 +9,6 @@ use native::ffi::codec::{
     EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
 };
 use native::value::{TypedView, ViewKind};
-
 use test_support as helpers;
 
 fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {

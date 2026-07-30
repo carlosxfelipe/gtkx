@@ -1,8 +1,7 @@
 use std::ffi::c_void;
 
-use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::sys;
+use napi::{Env, sys};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewKind {

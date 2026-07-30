@@ -20,6 +20,9 @@ enum_dispatch = "0.3"
 [build-dependencies]
 napi-build = "2"
 
+[workspace]
+members = ["test-support"]
+
 [lints.rust]
 elided_lifetimes_in_paths = "warn"
 trivial_casts = "warn"
@@ -32,9 +35,6 @@ cognitive_complexity = "warn"
 too_many_arguments = "warn"
 too_many_lines = "warn"
 type_complexity = "warn"
-# The crate is an internal FFI shim compiled into a .node addon, never published
-# to crates.io, so prose docs on its items are out of scope per the project's
-# public-API-only documentation policy. Safety docs on unsafe fns are not.
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 

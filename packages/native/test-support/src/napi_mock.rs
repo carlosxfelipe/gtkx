@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::rc::Rc;
 
-use napi::Env;
-use napi::sys;
+use napi::{Env, sys};
 
 pub type FnImpl = Rc<dyn Fn(&[sys::napi_value]) -> sys::napi_value>;
 
@@ -68,6 +67,7 @@ impl Recorder {
     }
 }
 
+#[derive(Default)]
 struct State {
     values: Vec<*mut FakeValue>,
     refs: Vec<*mut RefEntry>,
@@ -87,22 +87,6 @@ impl State {
         }
         for ptr in self.refs.drain(..) {
             drop(unsafe { Box::from_raw(ptr) });
-        }
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            values: Vec::new(),
-            refs: Vec::new(),
-            finalizers: Vec::new(),
-            global: None,
-            pending_exception: None,
-            thrown_exceptions: Vec::new(),
-            error_values: Vec::new(),
-            fatal_exceptions: Vec::new(),
-            recorder: Recorder::default(),
         }
     }
 }
@@ -150,7 +134,10 @@ fn fv<'a>(value: sys::napi_value) -> Option<&'a FakeValue> {
     }
     let ptr = value.cast::<FakeValue>();
     let live = STATE.with_borrow(|state| state.values.contains(&ptr));
-    assert!(live, "napi_mock: unknown or stale napi_value handle {value:?}");
+    assert!(
+        live,
+        "napi_mock: unknown or stale napi_value handle {value:?}"
+    );
     Some(unsafe { &*ptr })
 }
 
@@ -964,7 +951,7 @@ pub unsafe extern "C" fn napi_get_array_length(
 ) -> sys::napi_status {
     record("napi_get_array_length");
     pending_guard!();
-    let Some(FakeValue::Array(items)) = fv(value)  else {
+    let Some(FakeValue::Array(items)) = fv(value) else {
         return expected_status(value, sys::Status::napi_array_expected);
     };
     unsafe { *result = items.borrow().len() as u32 };
@@ -1061,6 +1048,7 @@ pub unsafe extern "C" fn napi_is_arraybuffer(
     ok!()
 }
 
+#[allow(clippy::too_many_arguments)]
 unsafe fn write_view_info(
     length: *mut usize,
     data: *mut *mut c_void,
@@ -1108,7 +1096,7 @@ pub unsafe extern "C" fn napi_get_typedarray_info(
         length: view_len,
         byte_offset: view_off,
         shared,
-    }) = fv(typedarray) 
+    }) = fv(typedarray)
     else {
         return sys::Status::napi_invalid_arg;
     };
@@ -1145,7 +1133,7 @@ pub unsafe extern "C" fn napi_get_dataview_info(
         byte_length,
         byte_offset: view_off,
         shared,
-    }) = fv(dataview) 
+    }) = fv(dataview)
     else {
         return sys::Status::napi_invalid_arg;
     };
@@ -1299,7 +1287,7 @@ pub unsafe extern "C" fn napi_reference_unref(
     result: *mut u32,
 ) -> sys::napi_status {
     record("napi_reference_unref");
-    let Some(entry) = ref_entry(ref_)  else {
+    let Some(entry) = ref_entry(ref_) else {
         return sys::Status::napi_invalid_arg;
     };
     if entry.count.get() == 0 {
@@ -1597,11 +1585,13 @@ pub unsafe extern "C" fn napi_get_last_error_info(
 ) -> sys::napi_status {
     record("napi_get_last_error_info");
     thread_local! {
-        static INFO: sys::napi_extended_error_info = sys::napi_extended_error_info {
-            error_message: c"gtkx-mock".as_ptr(),
-            engine_reserved: std::ptr::null_mut(),
-            engine_error_code: 0,
-            error_code: sys::Status::napi_ok,
+        static INFO: sys::napi_extended_error_info = const {
+            sys::napi_extended_error_info {
+                error_message: c"gtkx-mock".as_ptr(),
+                engine_reserved: std::ptr::null_mut(),
+                engine_error_code: 0,
+                error_code: sys::Status::napi_ok,
+            }
         };
     }
     INFO.with(|info| unsafe { *result = std::ptr::from_ref(info) });

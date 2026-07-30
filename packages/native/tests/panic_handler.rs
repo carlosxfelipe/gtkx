@@ -1,6 +1,5 @@
-use test_support as helpers;
-
 use native::host::panic_handler::{format_panic_payload, guard_ffi_boundary};
+use test_support as helpers;
 
 fn catch_with_silent_hook<F: FnOnce() + std::panic::UnwindSafe>(f: F) -> std::thread::Result<()> {
     let previous = std::panic::take_hook();

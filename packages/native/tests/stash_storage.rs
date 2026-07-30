@@ -1,5 +1,3 @@
-use test_support as helpers;
-
 use std::ffi::{CStr, CString, c_char, c_void};
 
 use gtk4::glib;
@@ -10,6 +8,7 @@ use native::ffi::{
     GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListPayload, Stash, StashData, StashStorage,
     build_list,
 };
+use test_support as helpers;
 
 fn make_glist_one() -> *mut glib::ffi::GList {
     unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }

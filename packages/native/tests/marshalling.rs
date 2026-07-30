@@ -1,16 +1,10 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
-use napi::Env;
-use napi::JsValue as _;
-use napi::sys;
-
+use helpers::{f32_array_codec, i32_array_codec, napi_mock};
+use napi::{Env, JsValue as _, sys};
 use native::ffi::Stash;
 use native::ffi::codec::{ArrayCodec, BufferCodec, Decoder as _, Encoder as _};
-
-use helpers::napi_mock;
-use helpers::{f32_array_codec, i32_array_codec};
+use test_support as helpers;
 
 fn decode_array_items(
     env: &Env,

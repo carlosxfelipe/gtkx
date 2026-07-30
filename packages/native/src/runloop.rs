@@ -14,8 +14,7 @@ use glib::ffi::{
 use libloading::os::unix::Library;
 use napi::Env;
 
-use crate::host::error_reporter;
-use crate::host::log_writer;
+use crate::host::{error_reporter, log_writer};
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;

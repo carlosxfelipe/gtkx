@@ -7,7 +7,6 @@ mod slot;
 mod stash;
 
 pub use slot::Slot;
-
 pub use stash::{
     CallbackValue, GArrayData, GLIST_OPS, GPtrArrayData, GSLIST_OPS, ListData, ListNode, ListOps,
     ListPayload, PendingTransfer, ReleaseKind, Stash, StashData, StashStorage, build_list,

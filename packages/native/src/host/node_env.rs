@@ -1,7 +1,6 @@
 use std::cell::Cell;
 
-use napi::sys;
-use napi::{Env, Status};
+use napi::{Env, Status, sys};
 
 use super::panic_handler::guard_ffi_boundary;
 

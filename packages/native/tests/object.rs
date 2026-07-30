@@ -1,11 +1,9 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
-
 use native::handle::Handle;
+use test_support as helpers;
 
 fn create_test_gobject() -> glib::Object {
     glib::Object::new::<glib::Object>()

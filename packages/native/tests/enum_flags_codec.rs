@@ -1,6 +1,5 @@
-use test_support as helpers;
-
 use native::ffi::codec::{Encoder as _, EnumFlagsCodec, EnumFlagsKind, IntegerCodec};
+use test_support as helpers;
 
 fn orientation_codec() -> EnumFlagsCodec {
     EnumFlagsCodec {
