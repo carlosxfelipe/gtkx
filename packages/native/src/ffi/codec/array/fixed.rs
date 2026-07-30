@@ -36,8 +36,9 @@ impl ArrayContainer for FixedArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        codec.decode_length_bounded(env, self.name(), stash, self.fixed_size as usize)
+        codec.decode_length_bounded(env, self.name(), stash, self.fixed_size as usize, transfer)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {

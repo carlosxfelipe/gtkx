@@ -5,9 +5,8 @@ use napi::JsValue as _;
 use napi::bindgen_prelude::Unknown;
 use native::ffi;
 use native::ffi::Slot;
-use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PtrWriter, ReadSource, SlotInit};
-use test_support::napi_mock;
-use test_support::{fake_env, run};
+use native::ffi::codec::{BooleanCodec, Decoder, Encoder, PtrWriter, ReadCtx, SlotInit};
+use test_support::{fake_env, napi_mock, run};
 
 extern "C" fn ret_true() -> i32 {
     1
@@ -103,7 +102,7 @@ fn ptr_to_value_treats_nonzero_as_true() {
             Decoder::read(
                 &BooleanCodec,
                 &env,
-                ReadSource::Value((&raw const anchor).cast::<c_void>().cast_mut(), "ctx"),
+                ReadCtx::value((&raw const anchor).cast::<c_void>().cast_mut(), "ctx"),
             )
         }
         .unwrap();
@@ -113,7 +112,7 @@ fn ptr_to_value_treats_nonzero_as_true() {
             Decoder::read(
                 &BooleanCodec,
                 &env,
-                ReadSource::Value(std::ptr::null_mut(), "ctx"),
+                ReadCtx::value(std::ptr::null_mut(), "ctx"),
             )
         }
         .unwrap();
@@ -128,16 +127,14 @@ fn read_from_pointer_reads_i32_slot() {
 
         let truthy_slot: i32 = 1;
         let truthy_ptr = (&raw const truthy_slot).cast::<c_void>();
-        let read =
-            unsafe { Decoder::read(&BooleanCodec, &env, ReadSource::Slot(truthy_ptr, "ctx")) }
-                .unwrap();
+        let read = unsafe { Decoder::read(&BooleanCodec, &env, ReadCtx::slot(truthy_ptr, "ctx")) }
+            .unwrap();
         assert_eq!(napi_mock::read_bool(read.raw()), Some(true));
 
         let falsy_slot: i32 = 0;
         let falsy_ptr = (&raw const falsy_slot).cast::<c_void>();
         let read_zero =
-            unsafe { Decoder::read(&BooleanCodec, &env, ReadSource::Slot(falsy_ptr, "ctx")) }
-                .unwrap();
+            unsafe { Decoder::read(&BooleanCodec, &env, ReadCtx::slot(falsy_ptr, "ctx")) }.unwrap();
         assert_eq!(napi_mock::read_bool(read_zero.raw()), Some(false));
     });
 }

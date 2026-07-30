@@ -1,15 +1,14 @@
-pub(super) use super::{
-    Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadSource, SlotInit,
-};
-pub(super) use crate::ffi;
-pub(super) use crate::value;
-pub(super) use napi::Env;
-pub(super) use napi::ValueType;
-pub(super) use napi::bindgen_prelude::*;
+use std::ffi::c_char;
 pub(super) use std::ffi::c_void;
 
+pub(super) use napi::bindgen_prelude::*;
+pub(super) use napi::{Env, ValueType};
+
+pub(super) use super::{
+    Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadCtx, ReadSource, SlotInit,
+};
 use crate::host::error_reporter::ReportErr as _;
-use std::ffi::c_char;
+pub(super) use crate::{ffi, value};
 
 macro_rules! bail_expected {
     ($expected:expr, $label:expr) => {
@@ -33,12 +32,13 @@ macro_rules! reject_return_codec {
 pub(super) use reject_return_codec;
 
 macro_rules! read_value_non_null {
-    (|$self_:ident, $env:ident, $ptr:ident| $body:expr) => {
+    (|$self_:ident, $env:ident, $ptr:ident, $transfer:pat_param| $body:expr) => {
         unsafe fn read_value<'e>(
             &$self_,
             $env: &'e ::napi::Env,
             $ptr: *mut ::std::ffi::c_void,
             _context: &str,
+            $transfer: $crate::ffi::codec::Ownership,
         ) -> ::anyhow::Result<::napi::bindgen_prelude::Unknown<'e>> {
             $self_.decode_non_null($env, $ptr, |$ptr| $body)
         }
@@ -88,10 +88,10 @@ pub(super) fn write_object_ptr(
     slot: ffi::Slot,
     value: Unknown<'_>,
     label: &str,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<ffi::PendingTransfer>> {
     let object_ptr = value::handle_ptr(value, label)?;
     unsafe { slot.store(object_ptr) };
-    Ok(())
+    Ok(None)
 }
 
 pub(super) fn write_return_object_ptr<F>(
@@ -116,7 +116,7 @@ pub(super) fn swap_owned_slot<A, R>(
     label: &str,
     acquire: A,
     release: R,
-) -> anyhow::Result<()>
+) -> anyhow::Result<Option<ffi::PendingTransfer>>
 where
     A: FnOnce(*mut c_void) -> *mut c_void,
     R: FnOnce(*mut c_void),
@@ -129,13 +129,13 @@ where
     };
     if !init.is_initialized() {
         unsafe { slot.store(owned) };
-        return Ok(());
+        return Ok(None);
     }
     let old_ptr = unsafe { slot.swap(owned) };
     if !old_ptr.is_null() {
         release(old_ptr);
     }
-    Ok(())
+    Ok(None)
 }
 
 // The callee owns the container from here on, so the pending transfers are disarmed. Only the

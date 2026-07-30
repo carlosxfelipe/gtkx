@@ -2,8 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
 
-use ::libffi::low as libffi_low;
-use ::libffi::middle as libffi;
+use ::libffi::{low as libffi_low, middle as libffi};
 use napi::Env;
 use napi::bindgen_prelude::{
     Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
@@ -11,7 +10,7 @@ use napi::bindgen_prelude::{
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadSource, SlotInit, str_to_glib_full,
+    Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadCtx, SlotInit, str_to_glib_full,
 };
 use crate::host::error_reporter::{self, ReportErr};
 use crate::host::node_env;
@@ -63,6 +62,7 @@ pub struct ClosureData {
     pending_destroy: Cell<bool>,
     retained_strings: RefCell<HashMap<CString, *mut c_char>>,
     retained_containers: RefCell<Vec<Stash>>,
+    retained_transfers: RefCell<Vec<crate::ffi::PendingTransfer>>,
 }
 
 impl ClosureData {
@@ -86,6 +86,7 @@ impl ClosureData {
             pending_destroy: Cell::new(false),
             retained_strings: RefCell::new(HashMap::new()),
             retained_containers: RefCell::new(Vec::new()),
+            retained_transfers: RefCell::new(Vec::new()),
         }
     }
 }
@@ -94,6 +95,9 @@ impl Drop for ClosureData {
     fn drop(&mut self) {
         for (_, ptr) in self.retained_strings.get_mut().drain() {
             unsafe { glib::ffi::g_free(ptr.cast()) };
+        }
+        for transfer in self.retained_transfers.get_mut().drain(..) {
+            transfer.release_now();
         }
     }
 }
@@ -285,7 +289,12 @@ impl ClosureData {
         siblings: &[Stash],
     ) -> anyhow::Result<Unknown<'e>> {
         if !matches!(codec, Codec::Array(_)) {
-            return unsafe { codec.read(env, ReadSource::Slot(arg_ptr, "callback arg")) };
+            return unsafe {
+                codec.read(
+                    env,
+                    ReadCtx::slot(arg_ptr, "callback arg").with_transfer(codec.transfer()),
+                )
+            };
         }
         let value_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
 
@@ -378,7 +387,7 @@ impl ClosureData {
             let ClosureArgs { js_args, ref_slots } =
                 unsafe { self.read_args(&env, args) }.map_err(CallbackError::Infrastructure)?;
             let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
-            flush_refs(&env, &ref_slots);
+            self.flush_refs(&env, &ref_slots);
             let ret = if capture_result {
                 Ok(return_value)
             } else {
@@ -436,6 +445,33 @@ impl ClosureData {
     // `ClosureData`.
     pub fn retain_container(&self, stash: Stash) {
         self.retained_containers.borrow_mut().push(stash);
+    }
+
+    fn retain_transfer(&self, transfer: crate::ffi::PendingTransfer) {
+        self.retained_transfers.borrow_mut().push(transfer);
+    }
+
+    fn flush_refs(&self, env: &Env, ref_slots: &[RefSlot<'_>]) {
+        for slot in ref_slots {
+            if slot.inner_ptr.is_null() {
+                continue;
+            }
+            let Some(new_value) = read_ref_value(env, slot.obj) else {
+                continue;
+            };
+            let written = slot
+                .inner_codec
+                .write_value_to_ptr(
+                    env,
+                    unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
+                    new_value,
+                    slot.init,
+                )
+                .report_err("callback: failed to write out-parameter");
+            if let Some(Some(transfer)) = written {
+                self.retain_transfer(transfer);
+            }
+        }
     }
 
     #[must_use]
@@ -522,10 +558,7 @@ fn seed_ref<'e>(
         | Codec::Boolean(_)
         | Codec::Unichar(_) => {
             let seeded = unsafe {
-                inner_codec.read(
-                    env,
-                    ReadSource::Slot(inner_ptr.cast_const(), "inout ref seed"),
-                )
+                inner_codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "inout ref seed"))
             }
             .report_err("callback: failed to seed inout ref");
             match seeded {
@@ -534,25 +567,6 @@ fn seed_ref<'e>(
             }
         }
         _ => Ok(value::js_null(env)?),
-    }
-}
-
-fn flush_refs(env: &Env, ref_slots: &[RefSlot<'_>]) {
-    for slot in ref_slots {
-        if slot.inner_ptr.is_null() {
-            continue;
-        }
-        let Some(new_value) = read_ref_value(env, slot.obj) else {
-            continue;
-        };
-        slot.inner_codec
-            .write_value_to_ptr(
-                env,
-                unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
-                new_value,
-                slot.init,
-            )
-            .report_err("callback: failed to write out-parameter");
     }
 }
 

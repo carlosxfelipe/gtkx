@@ -132,10 +132,16 @@ pub unsafe fn install(
     }
 }
 
-pub fn schedule_cleanup(
+/// # Safety
+///
+/// `gobject` must be null, or a pointer to a `GObject` that stays live until the idle callback
+/// this queues has run: the wrapper's own toggle reference keeps it alive until this removes it.
+/// It must be called on the thread `install` ran on, whose main context dispatches the callback,
+/// because the qdata it steals holds a non-`Send` `Rc`.
+pub unsafe fn schedule_cleanup(
     handle: Option<Rc<WrapperHandle>>,
     generation: u64,
-    gobject_ptr: usize,
+    gobject: *mut glib::gobject_ffi::GObject,
     napi_ref: sys::napi_ref,
 ) {
     glib::idle_add_local_once(move || {
@@ -150,10 +156,9 @@ pub fn schedule_cleanup(
                 return;
             }
 
-            let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
             handle.generation.set(0);
             LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
-                live.remove(&gobject_ptr);
+                live.remove(&(gobject as usize));
             });
             unsafe {
                 drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
@@ -208,17 +213,19 @@ fn resync_wrapper_level(gobject_ptr: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use test_support::napi_mock;
 
+    use super::*;
+
     fn release_wrapper(handle: &Rc<WrapperHandle>, gobject: *mut glib::gobject_ffi::GObject) {
-        schedule_cleanup(
-            Some(Rc::clone(handle)),
-            handle.generation.get(),
-            gobject as usize,
-            handle.napi_ref.get(),
-        );
+        unsafe {
+            schedule_cleanup(
+                Some(Rc::clone(handle)),
+                handle.generation.get(),
+                gobject,
+                handle.napi_ref.get(),
+            );
+        }
         test_support::pump_default_context_until(|| !unsafe { has_wrapper(gobject) });
     }
 
@@ -268,7 +275,7 @@ mod tests {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
             let (handle, _) = unsafe { install(obj_ptr, napi_ref) };
-            schedule_cleanup(Some(Rc::clone(&handle)), 999, obj_ptr as usize, napi_ref);
+            unsafe { schedule_cleanup(Some(Rc::clone(&handle)), 999, obj_ptr, napi_ref) };
             test_support::pump_default_context_until(|| false);
             assert!(unsafe { has_wrapper(obj_ptr) });
             release_wrapper(&handle, obj_ptr);
@@ -282,7 +289,7 @@ mod tests {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
             let (handle, generation) = unsafe { install(obj_ptr, napi_ref) };
-            schedule_cleanup(Some(handle), generation, obj_ptr as usize, napi_ref);
+            unsafe { schedule_cleanup(Some(handle), generation, obj_ptr, napi_ref) };
             test_support::pump_default_context_until(|| !unsafe { has_wrapper(obj_ptr) });
             assert!(!unsafe { has_wrapper(obj_ptr) });
             assert!(napi_mock::reference_is_deleted(napi_ref));
@@ -294,7 +301,7 @@ mod tests {
     fn schedule_cleanup_without_a_handle_deletes_the_reference() {
         node_env::run_installed(|| {
             let napi_ref = napi_mock::fake_reference();
-            schedule_cleanup(None, 0, 0, napi_ref);
+            unsafe { schedule_cleanup(None, 0, std::ptr::null_mut(), napi_ref) };
             test_support::pump_default_context_until(|| napi_mock::reference_is_deleted(napi_ref));
             assert!(napi_mock::reference_is_deleted(napi_ref));
         });

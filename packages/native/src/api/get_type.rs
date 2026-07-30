@@ -1,15 +1,13 @@
-use std::ffi::c_void;
-
 use glib::gobject_ffi;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::handle::Handle;
 
-fn gobject_type(gobject_ptr: *mut c_void) -> u64 {
-    if gobject_ptr.is_null() {
+fn gobject_type(handle: &Handle) -> u64 {
+    let Some(gobject_ptr) = handle.as_gobject_ptr() else {
         return 0;
-    }
+    };
 
     let instance = gobject_ptr.cast::<gobject_ffi::GTypeInstance>();
     let g_class = unsafe { (*instance).g_class };
@@ -23,32 +21,50 @@ fn gobject_type(gobject_ptr: *mut c_void) -> u64 {
     type_ as u64
 }
 
-/// Returns the `GType` of the `GObject` referenced by `handle`, or 0 when the pointer is null.
+/// Returns the `GType` of the `GObject` referenced by `handle`, or 0 when the handle does not
+/// reference a `GObject`.
 #[napi(catch_unwind)]
 pub fn get_type(handle: &External<Handle>) -> Result<BigInt> {
-    let type_ = gobject_type(handle.as_ptr());
+    let type_ = gobject_type(handle);
     Ok(BigInt::from(type_))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use glib::prelude::StaticType as _;
     use glib::translate::IntoGlib as _;
 
+    use super::*;
+
     #[test]
-    fn returns_zero_for_null_pointer() {
+    fn returns_zero_for_a_null_object_handle() {
         test_support::run(|| {
-            assert_eq!(gobject_type(std::ptr::null_mut()), 0);
+            assert_eq!(
+                gobject_type(&Handle::from_glib_borrow(std::ptr::null_mut())),
+                0
+            );
+        });
+    }
+
+    #[test]
+    fn returns_zero_for_a_handle_that_is_not_a_gobject() {
+        test_support::run(|| {
+            let mut record: u64 = 0;
+            let handle = Handle::from_glib_borrow((&raw mut record).cast());
+            assert_eq!(gobject_type(&handle), 0);
         });
     }
 
     #[test]
     fn reads_gtype_from_instance() {
         test_support::run(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            let type_ = gobject_type(obj_ptr.cast());
-            assert_eq!(type_, glib::Object::static_type().into_glib() as u64);
+            let (obj, _, _) = test_support::fresh_gobject();
+            let handle = Handle::decoded_gobject(obj.clone());
+            assert_eq!(
+                gobject_type(&handle),
+                glib::Object::static_type().into_glib() as u64
+            );
+            drop(handle.take_owned());
             drop(obj);
         });
     }

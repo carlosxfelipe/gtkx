@@ -1,5 +1,3 @@
-use std::ffi::c_void;
-
 use anyhow::Context as _;
 use libffi::middle as libffi;
 use napi::Env;
@@ -8,11 +6,8 @@ use napi_derive::napi;
 
 use super::bind::CallDescriptor;
 use super::native_result;
-use crate::ffi::{
-    self,
-    codec::{Codec, Decoder as _, Encoder as _},
-    library_cache::FfiCache,
-};
+use crate::ffi::codec::{Codec, Decoder as _, Encoder as _};
+use crate::ffi::{self};
 
 fn execute_call<'e>(
     env: &'e Env,
@@ -39,36 +34,15 @@ fn execute_call<'e>(
         stash.append_libffi_args(&mut ffi_args);
     }
 
-    let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(descriptor.arg_codecs.len());
-    for codec in &descriptor.arg_codecs {
-        codec.append_ffi_arg_types(&mut arg_types);
-    }
     anyhow::ensure!(
-        arg_types.len() == ffi_args.len(),
+        descriptor.native_arg_count == ffi_args.len(),
         "{symbol_name}: the call interface declares {} native arguments but {} were marshalled",
-        arg_types.len(),
+        descriptor.native_arg_count,
         ffi_args.len()
     );
 
-    let cif = descriptor.cif.get_or_init(|| {
-        libffi::Builder::new()
-            .res(return_codec.libffi_type())
-            .args(arg_types)
-            .into_cif()
-    });
-
-    let symbol_ptr = FfiCache::with::<_, anyhow::Result<_>>(|state| {
-        let symbol = unsafe {
-            state.resolve_symbol::<unsafe extern "C" fn() -> ()>(
-                &descriptor.library_name,
-                symbol_name,
-            )
-        }?;
-        Ok(libffi::CodePtr(symbol as *mut c_void))
-    })?;
-
     let result = return_codec
-        .call_cif(cif, symbol_ptr, &ffi_args)
+        .call_cif(&descriptor.cif, descriptor.symbol()?, &ffi_args)
         .with_context(|| format!("calling {symbol_name}"))?;
 
     for stash in &stashes {
@@ -150,18 +124,18 @@ pub fn call<'env>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ffi::codec::IntegerCodec;
     use test_support::napi_mock;
 
+    use super::*;
+    use crate::ffi::codec::IntegerCodec;
+
     fn descriptor(symbol: &str, arg_codecs: Vec<Codec>, return_codec: Codec) -> CallDescriptor {
-        CallDescriptor {
-            library_name: "libgtk-4.so.1".to_owned(),
-            symbol_name: symbol.to_owned(),
+        crate::api::bind::prepare(
+            "libgtk-4.so.1".to_owned(),
+            symbol.to_owned(),
             arg_codecs,
             return_codec,
-            cif: std::cell::OnceCell::new(),
-        }
+        )
     }
 
     #[test]
@@ -202,6 +176,20 @@ mod tests {
                 Vec::new(),
                 Codec::Integer(IntegerCodec::U32),
             );
+            assert!(execute_call(&env, &descriptor, &[]).is_err());
+        });
+    }
+
+    #[test]
+    fn reports_a_marshalling_arity_mismatch() {
+        test_support::run(|| {
+            let env = napi_mock::fake_env();
+            let mut descriptor = descriptor(
+                "gtk_get_major_version",
+                Vec::new(),
+                Codec::Integer(IntegerCodec::U32),
+            );
+            descriptor.native_arg_count = 1;
             assert!(execute_call(&env, &descriptor, &[]).is_err());
         });
     }

@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::{byte_count_from_f64, native_result};
-use crate::ffi::codec::{Codec, Decoder as _, ReadSource};
+use crate::ffi::codec::{Codec, Decoder as _, ReadCtx};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 
@@ -14,7 +14,7 @@ fn read_field<'e>(
     field_ptr: *const c_void,
     field_codec: &Codec,
 ) -> anyhow::Result<Unknown<'e>> {
-    unsafe { field_codec.read(env, ReadSource::Slot(field_ptr, "field read")) }
+    unsafe { field_codec.read(env, ReadCtx::slot(field_ptr, "field read")) }
 }
 
 /// Reads and decodes a value at `offset` bytes into the handle's memory, using `fieldDescriptor`
@@ -35,9 +35,10 @@ pub fn read<'env>(
 
 #[cfg(test)]
 mod tests {
+    use test_support::napi_mock;
+
     use super::*;
     use crate::ffi::codec::{FloatCodec, IntegerCodec};
-    use test_support::napi_mock;
 
     #[test]
     fn reads_an_integer_field() {

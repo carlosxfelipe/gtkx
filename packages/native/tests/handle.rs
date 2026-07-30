@@ -1,5 +1,3 @@
-use test_support as helpers;
-
 use std::cell::Cell;
 use std::ffi::c_void;
 use std::rc::Rc;
@@ -7,24 +5,23 @@ use std::rc::Rc;
 use gtk4::glib;
 use gtk4::glib::translate::from_glib_full;
 use gtk4::prelude::ObjectType as _;
-
-use native::handle::{Fundamental, Handle};
-use native::value::wrapper;
-use test_support::napi_mock;
-
 use helpers::{
     get_gobject_refcount, make_bool_param_spec as param_spec_ptr, param_spec_ref,
     param_spec_refcount, param_spec_unref, pump_default_context_until,
 };
+use native::handle::{Fundamental, Handle};
+use native::value::wrapper;
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn owned_fundamental(ptr: *mut c_void) -> Handle {
-    Handle::Fundamental(unsafe { Fundamental::from_glib_full(ptr, Some(param_spec_unref)) })
+    Handle::from(unsafe { Fundamental::from_glib_full(ptr, Some(param_spec_unref)) })
 }
 
 fn borrowed_fundamental(ptr: *mut c_void) -> Handle {
     let fundamental =
         unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
-    Handle::Fundamental(fundamental)
+    Handle::from(fundamental)
 }
 
 fn decoded_gobject_handle() -> Handle {
@@ -49,7 +46,7 @@ fn boxed_handle_records_pointer() {
     helpers::run(|| {
         let (boxed, ptr) = helpers::owned_rgba_boxed();
 
-        let handle = Handle::Boxed(boxed);
+        let handle = Handle::from(boxed);
 
         assert_eq!(handle.as_ptr(), ptr);
     });
@@ -187,13 +184,12 @@ fn take_owned_on_a_borrowed_handle_returns_none() {
 fn size_hint_distinguishes_handle_variants() {
     helpers::run(|| {
         let (boxed, _boxed_ptr) = helpers::owned_rgba_boxed();
-        let boxed_hint = Handle::Boxed(boxed).size_hint();
+        let boxed_hint = Handle::from(boxed).size_hint();
 
         let pspec = param_spec_ptr();
-        let fundamental_hint = Handle::Fundamental(unsafe {
-            Fundamental::from_glib_full(pspec, Some(param_spec_unref))
-        })
-        .size_hint();
+        let fundamental_hint =
+            Handle::from(unsafe { Fundamental::from_glib_full(pspec, Some(param_spec_unref)) })
+                .size_hint();
 
         assert!(boxed_hint > 0);
         assert!(fundamental_hint > 0);
@@ -238,12 +234,14 @@ fn wrapped_gobject_owned_by_worker() -> WrappedGobject {
 
 fn release_wrapper(wrapped: WrappedGobject) {
     let napi_ref = wrapped.napi_ref;
-    wrapper::schedule_cleanup(
-        Some(wrapped.binding),
-        wrapped.generation,
-        wrapped.ptr,
-        napi_ref.cast(),
-    );
+    unsafe {
+        wrapper::schedule_cleanup(
+            Some(wrapped.binding),
+            wrapped.generation,
+            wrapped.ptr as *mut glib::gobject_ffi::GObject,
+            napi_ref.cast(),
+        );
+    }
     pump_default_context_until(|| napi_mock::reference_is_deleted(napi_ref));
 }
 

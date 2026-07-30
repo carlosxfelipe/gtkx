@@ -1,21 +1,16 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
-use napi::Env;
-use napi::JsValue as _;
-use napi::bindgen_prelude::{External, Unknown};
-
-use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, FundamentalCodec, Ownership, ReadSource};
-use native::handle::Handle;
-
-use helpers::napi_mock;
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
-    assert_write_return_err_writes_null, make_bool_param_spec as create_param_spec,
+    assert_write_return_err_writes_null, make_bool_param_spec as create_param_spec, napi_mock,
     param_spec_refcount, read_slot, write_return_into_slot,
 };
+use napi::bindgen_prelude::{External, Unknown};
+use napi::{Env, JsValue as _};
+use native::ffi;
+use native::ffi::codec::{Decoder, Encoder, FundamentalCodec, Ownership, ReadCtx};
+use native::handle::Handle;
+use test_support as helpers;
 
 fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     for _ in 0..count {
@@ -349,7 +344,7 @@ fn ptr_to_value_wraps_fundamental() {
         let before = unsafe { param_spec_refcount(pspec) };
 
         let value =
-            unsafe { fundamental(Ownership::Borrowed).read(&env, ReadSource::Value(pspec, "ctx")) }
+            unsafe { fundamental(Ownership::Borrowed).read(&env, ReadCtx::value(pspec, "ctx")) }
                 .expect("ptr_to_value should succeed");
         assert!(napi_mock::read_external(value.raw()).is_some());
         assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);

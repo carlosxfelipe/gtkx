@@ -1,14 +1,12 @@
-use crate::ffi::{
-    self,
-    codec::{
-        Decoder, Encoder, IntegerBacked, IntegerCodec, PtrWriter, ReadSource, SlotInit,
-        forward_ffi_encoder,
-    },
-};
-use crate::value;
-use napi::Env;
-use napi::ValueType;
 use napi::bindgen_prelude::Unknown;
+use napi::{Env, ValueType};
+
+use crate::ffi::codec::{
+    Decoder, Encoder, IntegerBacked, IntegerCodec, PtrWriter, ReadCtx, SlotInit,
+    forward_ffi_encoder,
+};
+use crate::ffi::{self};
+use crate::value;
 
 #[allow(clippy::cast_possible_truncation)]
 fn enum_member_from_f64(n: f64) -> anyhow::Result<i32> {
@@ -84,8 +82,8 @@ impl Encoder for EnumFlagsCodec {
 }
 
 impl Decoder for EnumFlagsCodec {
-    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
-        unsafe { self.storage.read(env, src) }
+    unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
+        unsafe { self.storage.read(env, ctx) }
     }
 }
 
@@ -100,7 +98,7 @@ impl PtrWriter for EnumFlagsCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         self.validate(value)?;
 
         PtrWriter::write_value_to_ptr(&self.storage, env, slot, value, init)

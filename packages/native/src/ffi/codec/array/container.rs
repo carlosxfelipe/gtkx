@@ -45,8 +45,9 @@ pub(super) trait ArrayContainer {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        codec.decode_null_terminated(env, self.name(), stash)
+        codec.decode_null_terminated(env, self.name(), stash, transfer)
     }
 
     fn decode_with_context<'e>(
@@ -56,8 +57,9 @@ pub(super) trait ArrayContainer {
         stash: &ffi::Stash,
         _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        self.decode(codec, env, stash)
+        self.decode(codec, env, stash, transfer)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {

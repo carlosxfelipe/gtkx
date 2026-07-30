@@ -32,6 +32,7 @@ impl ArrayContainer for ListArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let ops = self.ops;
         let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
@@ -48,7 +49,7 @@ impl ArrayContainer for ListArrayCodec {
             Some(node.data)
         });
 
-        let is_full = codec.ownership.is_full();
+        let is_full = transfer.is_full();
         codec.decode_ptr_iter(env, nodes, move || {
             if is_full {
                 unsafe { (ops.free)(ptr) };

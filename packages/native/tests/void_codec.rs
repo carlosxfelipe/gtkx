@@ -5,7 +5,7 @@ use libffi::middle;
 use napi::JsValue as _;
 use native::ffi;
 use native::ffi::Slot;
-use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource, VoidCodec};
+use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadCtx, VoidCodec};
 use test_support::napi_mock;
 
 static CALLED: AtomicBool = AtomicBool::new(false);
@@ -79,14 +79,14 @@ fn ptr_to_value_yields_undefined() {
             Decoder::read(
                 &VoidCodec,
                 &env,
-                ReadSource::Value(std::ptr::null_mut(), "ctx"),
+                ReadCtx::value(std::ptr::null_mut(), "ctx"),
             )
         }
         .unwrap();
         assert!(napi_mock::is_undefined(from_null.raw()));
 
         let from_ptr =
-            unsafe { Decoder::read(&VoidCodec, &env, ReadSource::Value(8 as *mut c_void, "ctx")) }
+            unsafe { Decoder::read(&VoidCodec, &env, ReadCtx::value(8 as *mut c_void, "ctx")) }
                 .unwrap();
         assert!(napi_mock::is_undefined(from_ptr.raw()));
     });
@@ -98,8 +98,7 @@ fn read_from_pointer_yields_undefined() {
         let env = test_support::fake_env();
         let slot: usize = 42;
         let ptr = (&raw const slot).cast::<c_void>();
-        let read =
-            unsafe { Decoder::read(&VoidCodec, &env, ReadSource::Slot(ptr, "ctx")) }.unwrap();
+        let read = unsafe { Decoder::read(&VoidCodec, &env, ReadCtx::slot(ptr, "ctx")) }.unwrap();
         assert!(napi_mock::is_undefined(read.raw()));
     });
 }

@@ -1,5 +1,6 @@
 use anyhow::bail;
-use glib::{self, translate::IntoGlib as _};
+use glib::translate::IntoGlib as _;
+use glib::{self};
 
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
@@ -56,7 +57,11 @@ impl BoxedCodec {
         Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into())
     }
 
-    fn write_inline(&self, slot: ffi::Slot, value: Unknown<'_>) -> anyhow::Result<()> {
+    fn write_inline(
+        &self,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let Some(size) = self.size else {
             bail!(
                 "Cannot write the inline boxed field '{}': its size is unknown",
@@ -73,7 +78,7 @@ impl BoxedCodec {
         unsafe {
             std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
         }
-        Ok(())
+        Ok(None)
     }
 
     fn try_resolve_type_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
@@ -143,15 +148,16 @@ impl Decoder for BoxedCodec {
         env: &'e Env,
         ptr: *const c_void,
         context: &str,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if self.inline {
-            return unsafe { self.read_value(env, ptr.cast_mut(), context) };
+            return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
         }
         let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
-        unsafe { self.read_value(env, inner_ptr, context) }
+        unsafe { self.read_value(env, inner_ptr, context, transfer) }
     }
 
-    read_value_non_null!(|self, env, ptr| {
+    read_value_non_null!(|self, env, ptr, _transfer| {
         if self.free_fn_name.is_some() || self.caller_allocated {
             return Ok(value::handle_to_unknown(
                 env,
@@ -171,7 +177,7 @@ impl PtrWriter for BoxedCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         if self.inline {
             return self.write_inline(slot, value);
         }

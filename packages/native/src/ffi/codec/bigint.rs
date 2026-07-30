@@ -1,9 +1,8 @@
 use anyhow::bail;
 
-use super::IntegerCodec;
-use super::forward_ffi_encoder;
 use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
+use super::{IntegerCodec, forward_ffi_encoder};
 
 #[derive(Debug, Clone, Copy)]
 pub enum BigIntCodec {
@@ -155,8 +154,8 @@ impl Encoder for BigIntCodec {
 }
 
 impl Decoder for BigIntCodec {
-    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
-        let int = match src {
+    unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
+        let int = match ctx.source {
             ReadSource::Call(stash) => match stash {
                 ffi::Stash::I64(v) => i128::from(*v),
                 ffi::Stash::U64(v) => i128::from(*v),
@@ -195,9 +194,10 @@ impl PtrWriter for BigIntCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         _init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let int = self.integer_from_value(value)?;
         let stash = self.checked_to_stash(int)?;
-        unsafe { stash.write_scalar_to_ptr(slot.as_ptr()) }
+        unsafe { stash.write_scalar_to_ptr(slot.as_ptr()) }?;
+        Ok(None)
     }
 }

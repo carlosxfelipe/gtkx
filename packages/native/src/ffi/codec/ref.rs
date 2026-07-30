@@ -141,8 +141,8 @@ impl Encoder for RefCodec {
 }
 
 impl Decoder for RefCodec {
-    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
-        let storage = match src {
+    unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
+        let storage = match ctx.source {
             ReadSource::Call(stash) => {
                 let Some(storage) = stash.as_storage_or_null("Ref")? else {
                     return Ok(value::js_null(env)?);
@@ -155,8 +155,11 @@ impl Decoder for RefCodec {
                     return Ok(value::js_null(env)?);
                 }
                 return unsafe {
-                    self.inner_codec
-                        .read(env, ReadSource::Slot(inner_ptr, "ref inner"))
+                    self.inner_codec.read(
+                        env,
+                        ReadCtx::slot(inner_ptr, "ref inner")
+                            .with_transfer(self.inner_codec.transfer()),
+                    )
                 };
             }
             ReadSource::Value(..) => bail!("This codec cannot be read from pointer"),
@@ -173,8 +176,11 @@ impl Decoder for RefCodec {
             | Codec::Float(_)
             | Codec::Boolean(_)
             | Codec::Unichar(_) => unsafe {
-                self.inner_codec
-                    .read(env, ReadSource::Slot(storage.ptr(), "Ref inner"))
+                self.inner_codec.read(
+                    env,
+                    ReadCtx::slot(storage.ptr(), "Ref inner")
+                        .with_transfer(self.inner_codec.transfer()),
+                )
             },
             Codec::String(string_codec) => Self::decode_ref_string(env, storage, string_codec),
             Codec::HashTable(_) => {

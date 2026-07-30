@@ -206,9 +206,9 @@ macro_rules! impl_numeric_codecs {
             unsafe fn read<'e>(
                 &self,
                 env: &'e Env,
-                src: ReadSource<'_>,
+                ctx: ReadCtx<'_>,
             ) -> anyhow::Result<Unknown<'e>> {
-                let number = match src {
+                let number = match ctx.source {
                     ReadSource::Call(stash) => stash.to_number()?,
                     ReadSource::Slot($slot_ptr, $slot_context) => {
                         let $slot_self = self;
@@ -243,11 +243,11 @@ macro_rules! impl_numeric_codecs {
                 slot: ffi::Slot,
                 value: Unknown<'_>,
                 _init: $crate::ffi::codec::SlotInit,
-            ) -> anyhow::Result<()> {
+            ) -> anyhow::Result<Option<$crate::ffi::PendingTransfer>> {
                 let n = <$kind>::number_from_value(value)?;
                 self.check_range(n)?;
                 unsafe { self.write_ptr(slot.as_ptr().cast::<u8>(), n) };
-                Ok(())
+                Ok(None)
             }
         }
     };

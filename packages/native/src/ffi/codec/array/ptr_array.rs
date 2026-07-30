@@ -47,6 +47,7 @@ impl ArrayContainer for GPtrArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GPtrArray")? else {
             return super::build_js_array(env, Vec::new());
@@ -57,7 +58,7 @@ impl ArrayContainer for GPtrArrayCodec {
         let pdata = unsafe { (*ptr_array).pdata };
         let items = (0..len).map(move |i| unsafe { *pdata.add(i) });
 
-        let is_full = codec.ownership.is_full();
+        let is_full = transfer.is_full();
         codec.decode_ptr_iter(env, items, move || {
             if is_full {
                 unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };

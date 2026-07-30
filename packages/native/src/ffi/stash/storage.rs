@@ -21,6 +21,7 @@ impl std::fmt::Debug for StashStorage {
 }
 
 #[derive(Debug)]
+#[must_use = "a PendingTransfer owns memory and leaks unless it is stored or released"]
 pub struct PendingTransfer {
     ptr: *mut c_void,
     release: ReleaseKind,

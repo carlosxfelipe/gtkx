@@ -1,16 +1,14 @@
 use std::ffi::CString;
 
 use anyhow::bail;
+pub use container::ArrayKind;
+use container::{ArrayContainer, ArrayContainerCodec};
+use item::ItemCodec;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::{Codec, FloatCodec};
 use crate::value::TypedView;
-
-pub use container::ArrayKind;
-
-use container::{ArrayContainer, ArrayContainerCodec};
-use item::ItemCodec;
 
 mod byte_array;
 mod container;
@@ -96,7 +94,7 @@ impl Encoder for ArrayCodec {
 
 impl Decoder for ArrayCodec {
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
-        self.container.decode(self, env, stash)
+        self.container.decode(self, env, stash, self.ownership)
     }
 
     unsafe fn read_value<'e>(
@@ -104,11 +102,13 @@ impl Decoder for ArrayCodec {
         env: &'e Env,
         ptr: *mut c_void,
         _context: &str,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
             return build_js_array(env, Vec::new());
         }
-        self.decode_call(env, &ffi::Stash::Ptr(ptr))
+        self.container
+            .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
     }
 
     fn decode_with_context<'e>(
@@ -119,7 +119,7 @@ impl Decoder for ArrayCodec {
         arg_codecs: &[Codec],
     ) -> anyhow::Result<Unknown<'e>> {
         self.container
-            .decode_with_context(self, env, stash, ffi_args, arg_codecs)
+            .decode_with_context(self, env, stash, ffi_args, arg_codecs, self.ownership)
     }
 }
 
@@ -291,7 +291,7 @@ impl ArrayCodec {
             .map(|index| unsafe {
                 self.item_codec.read(
                     env,
-                    ReadSource::Value(data.add(index * stride).cast_mut().cast(), "array element"),
+                    ReadCtx::value(data.add(index * stride).cast_mut().cast(), "array element"),
                 )
             })
             .collect()

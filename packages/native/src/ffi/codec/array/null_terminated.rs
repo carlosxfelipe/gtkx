@@ -150,6 +150,7 @@ impl ArrayCodec {
         env: &'e Env,
         name: &str,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let ffi::Stash::Ptr(ptr) = stash else {
             anyhow::bail!("A {name} can only be decoded from a raw pointer")
@@ -158,27 +159,33 @@ impl ArrayCodec {
             return build_js_array(env, Vec::new());
         }
         if let Some(stride) = self.inline_element_size() {
-            return self.decode_zero_terminated_contiguous(env, stride, *ptr, |env, base, len| {
-                self.decode_inline(env, stride, base, len)
-            });
+            return Self::decode_zero_terminated_contiguous(
+                env,
+                stride,
+                *ptr,
+                transfer,
+                |env, base, len| self.decode_inline(env, stride, base, len),
+            );
         }
 
         match self.item_codec("array")? {
-            ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr),
-            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr),
+            ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr, transfer),
+            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr, transfer),
             codec @ (ItemCodec::Integer(_)
             | ItemCodec::EnumFlags(_)
             | ItemCodec::BigInt(_)
             | ItemCodec::Float(_)
-            | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(env, codec, *ptr),
+            | ItemCodec::Boolean) => {
+                self.decode_zero_terminated_scalar_array(env, codec, *ptr, transfer)
+            }
         }
     }
 
     fn decode_zero_terminated_contiguous<'e, F>(
-        &self,
         env: &'e Env,
         stride: usize,
         ptr: *mut c_void,
+        transfer: Ownership,
         decode: F,
     ) -> anyhow::Result<Unknown<'e>>
     where
@@ -187,7 +194,7 @@ impl ArrayCodec {
         let base = ptr as *const u8;
         let values = decode(env, base, zero_terminated_len(base, stride));
 
-        if self.ownership.is_full() {
+        if transfer.is_full() {
             unsafe { glib::ffi::g_free(ptr) };
         }
 
@@ -198,6 +205,7 @@ impl ArrayCodec {
         &self,
         env: &'e Env,
         ptr: *mut c_void,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let ptr_array = ptr as *const *mut c_void;
         let mut i = 0isize;
@@ -210,7 +218,7 @@ impl ArrayCodec {
             Some(item_ptr)
         });
 
-        let is_full = self.ownership.is_full();
+        let is_full = transfer.is_full();
         self.decode_ptr_iter(env, items, move || {
             if is_full {
                 unsafe { glib::ffi::g_free(ptr) };
@@ -223,20 +231,26 @@ impl ArrayCodec {
         env: &'e Env,
         codec: ItemCodec,
         ptr: *mut c_void,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_zero_terminated_contiguous(env, codec.element_size(), ptr, |env, base, len| {
-            self.decode_contiguous(env, codec, base, len)
-        })
+        Self::decode_zero_terminated_contiguous(
+            env,
+            codec.element_size(),
+            ptr,
+            transfer,
+            |env, base, len| self.decode_contiguous(env, codec, base, len),
+        )
     }
 
     fn decode_null_terminated_string_array<'e>(
         &self,
         env: &'e Env,
         ptr: *mut c_void,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let items_full = matches!(&*self.item_codec, Codec::String(string_codec) if string_codec.ownership.is_full());
 
-        if self.ownership.is_full() {
+        if transfer.is_full() {
             let strv = if items_full {
                 unsafe { glib::StrV::from_glib_full(ptr.cast::<*mut c_char>()) }
             } else {

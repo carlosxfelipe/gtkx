@@ -43,7 +43,11 @@ impl StructCodec {
         )
     }
 
-    fn write_inline(&self, slot: ffi::Slot, value: Unknown<'_>) -> anyhow::Result<()> {
+    fn write_inline(
+        &self,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let Some(size) = self.size else {
             bail!("Cannot write an inline struct field whose size is unknown")
         };
@@ -54,7 +58,7 @@ impl StructCodec {
         unsafe {
             std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
         }
-        Ok(())
+        Ok(None)
     }
 
     fn write_pointer_slot(
@@ -63,11 +67,11 @@ impl StructCodec {
         value: Unknown<'_>,
         init: SlotInit,
         size: usize,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let src_ptr = value::handle_ptr(value, "Struct field write")?;
         if src_ptr.is_null() {
             unsafe { slot.store(std::ptr::null_mut()) };
-            return Ok(());
+            return Ok(None);
         }
         if !init.is_initialized() {
             let out_ptr = if self.ownership.is_full() {
@@ -76,7 +80,7 @@ impl StructCodec {
                 src_ptr
             };
             unsafe { slot.store(out_ptr) };
-            return Ok(());
+            return Ok(None);
         }
         let dest_ptr = unsafe { slot.load() };
         if dest_ptr.is_null() {
@@ -85,7 +89,7 @@ impl StructCodec {
         unsafe {
             std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), dest_ptr.cast::<u8>(), size);
         }
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -106,15 +110,16 @@ impl Decoder for StructCodec {
         env: &'e Env,
         ptr: *const c_void,
         context: &str,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if self.inline {
-            return unsafe { self.read_value(env, ptr.cast_mut(), context) };
+            return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
         }
         let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
-        unsafe { self.read_value(env, inner_ptr, context) }
+        unsafe { self.read_value(env, inner_ptr, context, transfer) }
     }
 
-    read_value_non_null!(|self, env, ptr| {
+    read_value_non_null!(|self, env, ptr, _transfer| {
         let handle = if self.caller_allocated {
             Handle::from_glib_borrow(ptr)
         } else {
@@ -134,7 +139,7 @@ impl PtrWriter for StructCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         if self.inline {
             return self.write_inline(slot, value);
         }

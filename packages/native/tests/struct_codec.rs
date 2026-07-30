@@ -1,20 +1,12 @@
 use std::ffi::c_void;
 
 use gtk4::glib;
-
-use native::Handle;
-use native::ffi;
-use native::ffi::Slot;
-use native::ffi::codec::{
-    Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit, StructCodec,
-};
-
-use napi::Env;
-use napi::JsValue as _;
 use napi::bindgen_prelude::{External, Unknown};
-
-use test_support::napi_mock;
-use test_support::write_return_into_slot;
+use napi::{Env, JsValue as _};
+use native::ffi::Slot;
+use native::ffi::codec::{Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec};
+use native::{Handle, ffi};
+use test_support::{napi_mock, write_return_into_slot};
 
 test_support::g_free_recorder!();
 
@@ -50,7 +42,7 @@ fn null_guarded_short_circuits_null_pointer() {
             Decoder::read(
                 &struct_type(),
                 &env,
-                ReadSource::Value(std::ptr::null_mut(), "ctx"),
+                ReadCtx::value(std::ptr::null_mut(), "ctx"),
             )
         }
         .unwrap();
@@ -65,7 +57,7 @@ fn null_guarded_runs_decode_for_non_null_pointer() {
         let source: u64 = 0xDEAD_BEEF;
         let ptr = &raw const source as *mut c_void;
         let decoded =
-            unsafe { Decoder::read(&struct_type(), &env, ReadSource::Value(ptr, "ctx")) }.unwrap();
+            unsafe { Decoder::read(&struct_type(), &env, ReadCtx::value(ptr, "ctx")) }.unwrap();
         assert!(napi_mock::read_external(decoded.raw()).is_some());
     });
 }
@@ -277,7 +269,7 @@ fn an_inline_field_is_read_at_its_own_address() {
             Decoder::read(
                 &inline_struct_codec(),
                 &env,
-                ReadSource::Slot(field_ptr, "field read"),
+                ReadCtx::slot(field_ptr, "field read"),
             )
         }
         .expect("an inline field decodes from its own address");

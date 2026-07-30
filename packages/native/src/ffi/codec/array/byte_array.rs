@@ -61,14 +61,16 @@ impl ArrayContainer for GByteArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
+        let _ = codec;
         let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
             return build_js_array(env, Vec::new());
         };
 
         let byte_array = ptr.cast::<glib::ffi::GByteArray>();
         let storage_owns = matches!(stash, ffi::Stash::Storage(_));
-        let adopted: Option<glib::ByteArray> = (codec.ownership.is_full() && !storage_owns)
+        let adopted: Option<glib::ByteArray> = (transfer.is_full() && !storage_owns)
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
         let data = unsafe { (*byte_array).data };

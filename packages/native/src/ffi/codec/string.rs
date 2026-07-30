@@ -56,7 +56,7 @@ impl Decoder for StringCodec {
         })
     }
 
-    read_value_non_null!(|self, env, ptr| {
+    read_value_non_null!(|self, env, ptr, _transfer| {
         let string = unsafe { lossy_c_string(ptr as *const c_char) };
         Ok(string.into_unknown(env)?)
     });
@@ -86,19 +86,26 @@ impl PtrWriter for StringCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let new_ptr = match read_string(value)? {
             Some(s) => str_to_glib_full(&s)?.cast::<c_void>(),
             None => std::ptr::null_mut(),
         };
+        if self.ownership.is_borrowed() {
+            unsafe { slot.store(new_ptr) };
+            return Ok(Some(ffi::PendingTransfer::new(
+                new_ptr,
+                ffi::ReleaseKind::GFree,
+            )));
+        }
         if !init.is_initialized() {
             unsafe { slot.store(new_ptr) };
-            return Ok(());
+            return Ok(None);
         }
         let old_ptr = unsafe { slot.swap(new_ptr) };
-        if self.ownership.is_full() && !old_ptr.is_null() {
+        if !old_ptr.is_null() {
             unsafe { glib::ffi::g_free(old_ptr) };
         }
-        Ok(())
+        Ok(None)
     }
 }

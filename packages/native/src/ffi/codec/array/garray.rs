@@ -77,6 +77,7 @@ impl ArrayContainer for GArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
             return build_js_array(env, Vec::new());
@@ -88,7 +89,7 @@ impl ArrayContainer for GArrayCodec {
         let len = unsafe { (*g_array).len as usize };
         let values = codec.decode_contiguous(env, item, data, len);
 
-        if codec.ownership.is_full() {
+        if transfer.is_full() {
             let storage_owns = matches!(stash, ffi::Stash::Storage(_));
             if !storage_owns {
                 unsafe { glib::ffi::g_array_unref(ptr.cast::<glib::ffi::GArray>()) };

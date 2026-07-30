@@ -1,13 +1,11 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
 use std::ffi::c_void;
 
 use napi::JsValue as _;
 use napi::sys::napi_value;
-
-use native::ffi::codec::{BigIntCodec, Decoder, Encoder, PtrWriter, ReadSource, SlotInit};
+use native::ffi::codec::{BigIntCodec, Decoder, Encoder, PtrWriter, ReadCtx, SlotInit};
 use native::ffi::{self, Slot, StashData};
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn assert_encodes_i64(build: impl FnOnce() -> napi_value, expected: i64) {
     helpers::run(move || {
@@ -59,7 +57,7 @@ fn assert_reads_value(codec: BigIntCodec, bits: usize, expected: i128) {
     helpers::run(move || {
         let env = helpers::fake_env();
         let ptr = std::ptr::without_provenance_mut::<c_void>(bits);
-        let value = unsafe { codec.read(&env, ReadSource::Value(ptr, "ctx")) }
+        let value = unsafe { codec.read(&env, ReadCtx::value(ptr, "ctx")) }
             .expect("read from Value should succeed");
         assert_eq!(napi_mock::read_bigint_i128(value.raw()), Some(expected));
     });

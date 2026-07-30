@@ -58,8 +58,8 @@ impl Encoder for UnicharCodec {
 }
 
 impl Decoder for UnicharCodec {
-    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
-        let ch = match src {
+    unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
+        let ch = match ctx.source {
             ReadSource::Call(stash) => {
                 let cp = match stash {
                     ffi::Stash::U32(v) => *v,

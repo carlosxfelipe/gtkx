@@ -1,23 +1,17 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
 use gtk4::glib;
-
-use napi::Env;
-use napi::JsValue as _;
-use napi::bindgen_prelude::{External, Unknown};
-
-use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, ReadSource};
-use native::handle::Handle;
-
-use helpers::napi_mock;
 use helpers::{
     assert_decode_null_yields_null, assert_read_null_yields_null,
-    assert_write_return_err_writes_null, fresh_gobject, get_gobject_refcount, read_slot,
+    assert_write_return_err_writes_null, fresh_gobject, get_gobject_refcount, napi_mock, read_slot,
     write_return_into_slot,
 };
+use napi::bindgen_prelude::{External, Unknown};
+use napi::{Env, JsValue as _};
+use native::ffi;
+use native::ffi::codec::{Decoder, Encoder, ObjectCodec, Ownership, ReadCtx};
+use native::handle::Handle;
+use test_support as helpers;
 
 fn borrowed() -> ObjectCodec {
     ObjectCodec {
@@ -217,7 +211,7 @@ fn ptr_to_value_wraps_borrowed_object() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let value =
-            unsafe { borrowed().read(&env, ReadSource::Value(obj_ptr.cast::<c_void>(), "ctx")) }
+            unsafe { borrowed().read(&env, ReadCtx::value(obj_ptr.cast::<c_void>(), "ctx")) }
                 .expect("ptr_to_value should succeed");
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before + 1);

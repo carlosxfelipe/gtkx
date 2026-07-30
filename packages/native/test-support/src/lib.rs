@@ -2,24 +2,20 @@ use std::cell::RefCell;
 use std::ffi::c_void;
 
 use gtk4::gdk;
-use gtk4::glib::{self, translate::IntoGlib as _};
-use gtk4::prelude::ObjectType as _;
-use gtk4::prelude::StaticType as _;
-
+use gtk4::glib::translate::IntoGlib as _;
+use gtk4::glib::{self};
+use gtk4::prelude::{ObjectType as _, StaticType as _};
+use napi::bindgen_prelude::Unknown;
+use napi::{Env, JsValue as _};
 use native::Handle;
-
-use native::ffi::Slot;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    IntegerCodec, Ownership, PtrWriter, ReadSource, SlotInit,
+    IntegerCodec, Ownership, PtrWriter, ReadCtx, SlotInit,
 };
 use native::ffi::library_cache::FfiCache;
+use native::ffi::{PendingTransfer, Slot};
 use native::handle::Boxed;
 use native::host::node_env;
-
-use napi::Env;
-use napi::JsValue as _;
-use napi::bindgen_prelude::Unknown;
 
 macro_rules! keep_symbols {
     ($($symbol:ident),* $(,)?) => {
@@ -190,20 +186,20 @@ pub fn pump_default_context_until(done: impl Fn() -> bool) {
     }
 }
 
-pub fn allocate_test_boxed(type_: glib::Type) -> *mut std::ffi::c_void {
+pub fn allocate_test_boxed(type_: glib::Type) -> *mut c_void {
     unsafe {
         let rgba = gdk::RGBA::new(1.0, 0.5, 0.25, 1.0);
         glib::gobject_ffi::g_boxed_copy(type_.into_glib(), rgba.as_ptr() as *const _)
     }
 }
 
-pub fn owned_rgba_boxed() -> (Boxed, *mut std::ffi::c_void) {
+pub fn owned_rgba_boxed() -> (Boxed, *mut c_void) {
     let type_ = gdk::RGBA::static_type();
     let ptr = allocate_test_boxed(type_);
     (Boxed::from_glib_full(type_, ptr), ptr)
 }
 
-pub unsafe fn is_valid_boxed_ptr(ptr: *mut std::ffi::c_void, type_: glib::Type) -> bool {
+pub unsafe fn is_valid_boxed_ptr(ptr: *mut c_void, type_: glib::Type) -> bool {
     if ptr.is_null() {
         return false;
     }
@@ -269,7 +265,7 @@ pub fn assert_decode_null_yields_null<C: Decoder>(codec: &C) {
 
 pub fn assert_read_null_yields_null<C: Decoder>(codec: &C) {
     let env = fake_env();
-    let value = unsafe { codec.read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) }
+    let value = unsafe { codec.read(&env, ReadCtx::value(std::ptr::null_mut(), "ctx")) }
         .expect("null ptr_to_value should succeed");
     assert!(napi_mock::is_null(value.raw()));
 }
@@ -283,7 +279,7 @@ pub unsafe fn read_slot<'e, C: Decoder>(
     unsafe {
         codec.read(
             env,
-            ReadSource::Slot(&slot as *const *mut c_void as *const c_void, "ctx"),
+            ReadCtx::slot((&raw const slot).cast::<c_void>(), "ctx"),
         )
     }
 }
@@ -296,10 +292,28 @@ pub fn write_return_into_slot<C: PtrWriter>(
     let mut slot: *mut c_void = std::ptr::null_mut();
     codec.write_return_to_ptr(
         env,
-        unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+        unsafe { Slot::new((&raw mut slot).cast::<c_void>()) },
         value,
     );
     slot
+}
+
+pub fn write_owned_value_into_slot<C: PtrWriter>(
+    env: &Env,
+    codec: &C,
+    initial: *mut c_void,
+    value: Unknown<'_>,
+) -> (*mut c_void, Option<PendingTransfer>) {
+    let mut slot: *mut c_void = initial;
+    let transfer = codec
+        .write_value_to_ptr(
+            env,
+            unsafe { Slot::new((&raw mut slot).cast::<c_void>()) },
+            value,
+            SlotInit::Initialized,
+        )
+        .expect("write_value_to_ptr should succeed");
+    (slot, transfer)
 }
 
 pub fn write_value_into_slot<C: PtrWriter>(
@@ -308,25 +322,21 @@ pub fn write_value_into_slot<C: PtrWriter>(
     initial: *mut c_void,
     value: Unknown<'_>,
 ) -> *mut c_void {
-    let mut slot: *mut c_void = initial;
-    codec
-        .write_value_to_ptr(
-            env,
-            unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-            value,
-            SlotInit::Initialized,
-        )
-        .expect("write_value_to_ptr should succeed");
+    let (slot, transfer) = write_owned_value_into_slot(env, codec, initial, value);
+    assert!(
+        transfer.is_none(),
+        "this codec allocates the value it writes; use write_owned_value_into_slot"
+    );
     slot
 }
 
 pub fn assert_write_return_err_writes_null<C: PtrWriter>(codec: &C) {
     let env = fake_env();
     let mut slot: *mut c_void = std::ptr::dangling_mut::<c_void>();
-    let value: Result<Unknown, ()> = Err(());
+    let value: Result<Unknown<'_>, ()> = Err(());
     codec.write_return_to_ptr(
         &env,
-        unsafe { Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
+        unsafe { Slot::new((&raw mut slot).cast::<c_void>()) },
         &value,
     );
     assert!(slot.is_null());

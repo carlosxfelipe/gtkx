@@ -1,23 +1,19 @@
-use test_support as helpers;
-
 use std::ffi::{CString, c_char, c_void};
 
 use gtk4::glib;
-
-use napi::Env;
-use napi::JsValue as _;
+use helpers::{boxed_handle, napi_mock};
 use napi::bindgen_prelude::{External, Unknown};
-use napi::sys;
-
+use napi::{Env, JsValue as _, sys};
 use native::Handle;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
     EnumFlagsKind, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership, PtrWriter,
-    ReadSource, RefCodec, StringCodec, StructCodec,
+    ReadCtx, RefCodec, StringCodec, StructCodec,
 };
 use native::ffi::{GArrayData, ListData, ListPayload, Slot, Stash, StashData};
+use test_support as helpers;
 
-use helpers::{boxed_handle, napi_mock};
+helpers::g_free_recorder!();
 
 fn i32_element_size() -> u32 {
     u32::try_from(size_of::<i32>()).expect("i32 size fits in a guint")
@@ -1782,9 +1778,8 @@ fn ptr_to_value_null_yields_empty() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = i32_zero_terminated(Ownership::Borrowed);
-        let value =
-            unsafe { descriptor.read(&env, ReadSource::Value(std::ptr::null_mut(), "array")) }
-                .unwrap();
+        let value = unsafe { descriptor.read(&env, ReadCtx::value(std::ptr::null_mut(), "array")) }
+            .unwrap();
         assert!(decoded_items(&value).is_empty());
     });
 }
@@ -1800,10 +1795,9 @@ fn ptr_to_value_gptrarray() {
         );
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().as_ptr()) };
-        let value = unsafe {
-            descriptor.read(&env, ReadSource::Value(ptr_array.cast::<c_void>(), "array"))
-        }
-        .unwrap();
+        let value =
+            unsafe { descriptor.read(&env, ReadCtx::value(ptr_array.cast::<c_void>(), "array")) }
+                .unwrap();
         assert_eq!(decoded_items(&value).len(), 1);
         unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
     });
@@ -1825,8 +1819,7 @@ fn ptr_to_value_gbytearray() {
             ba
         };
         let value =
-            unsafe { descriptor.read(&env, ReadSource::Value(ba.cast::<c_void>(), "array")) }
-                .unwrap();
+            unsafe { descriptor.read(&env, ReadCtx::value(ba.cast::<c_void>(), "array")) }.unwrap();
         assert_eq!(decoded_items(&value).len(), 1);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
@@ -1845,7 +1838,7 @@ fn ptr_to_value_garray() {
         let value: i32 = 1;
         unsafe { glib::ffi::g_array_append_vals(g_array, (&raw const value).cast::<c_void>(), 1) };
         let decoded =
-            unsafe { descriptor.read(&env, ReadSource::Value(g_array.cast::<c_void>(), "array")) }
+            unsafe { descriptor.read(&env, ReadCtx::value(g_array.cast::<c_void>(), "array")) }
                 .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
         unsafe { glib::ffi::g_array_unref(g_array) };
@@ -1860,7 +1853,7 @@ fn ptr_to_value_glist() {
         let list =
             unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), boxed_handle().as_ptr()) };
         let decoded =
-            unsafe { descriptor.read(&env, ReadSource::Value(list.cast::<c_void>(), "array")) }
+            unsafe { descriptor.read(&env, ReadCtx::value(list.cast::<c_void>(), "array")) }
                 .unwrap();
         assert_eq!(decoded_items(&decoded).len(), 1);
         unsafe { glib::ffi::g_list_free(list) };
@@ -1877,7 +1870,7 @@ fn ptr_to_value_plain_array() {
         let decoded = unsafe {
             descriptor.read(
                 &env,
-                ReadSource::Value(data.as_mut_ptr().cast::<c_void>(), "array"),
+                ReadCtx::value(data.as_mut_ptr().cast::<c_void>(), "array"),
             )
         }
         .unwrap();
@@ -1992,7 +1985,7 @@ fn trait_methods_delegate_to_inherent_implementations() {
             Decoder::read(
                 &ptr_ty,
                 &env,
-                ReadSource::Value(data.as_mut_ptr().cast::<c_void>(), "ctx"),
+                ReadCtx::value(data.as_mut_ptr().cast::<c_void>(), "ctx"),
             )
         }
         .unwrap();
@@ -2372,5 +2365,58 @@ fn an_inline_struct_array_round_trips_through_encode() {
             .expect("encode should succeed");
         let ptr = encoded.as_ptr("inline array").expect("a container pointer");
         assert_eq!(unsafe { ptr.cast::<InlinePair>().read() }, source);
+    });
+}
+
+#[test]
+fn reading_a_transfer_full_array_from_a_borrowed_slot_does_not_free_it() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = array_codec(
+            Codec::Integer(IntegerCodec::I32),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let mut backing: Vec<i32> = vec![1, 2, 3, 0];
+        let slot: *mut c_void = backing.as_mut_ptr().cast();
+
+        drain_g_freed();
+        let value = unsafe { codec.read(&env, ReadCtx::value(slot, "field read")) }
+            .expect("a borrowed read should succeed");
+
+        assert!(
+            drain_g_freed().is_empty(),
+            "a borrowed read must not free the container it read"
+        );
+        let items = napi_mock::read_array(value.raw()).expect("the read yields an array");
+        assert_eq!(items.len(), 3);
+    });
+}
+
+#[test]
+fn decoding_a_transfer_full_array_return_still_frees_it() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = array_codec(
+            Codec::Integer(IntegerCodec::I32),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let owned = unsafe { glib::ffi::g_malloc0(4 * size_of::<i32>()) };
+        unsafe {
+            owned
+                .cast::<i32>()
+                .copy_from_nonoverlapping([7, 8, 0].as_ptr(), 3);
+        };
+
+        drain_g_freed();
+        codec
+            .decode(&env, &Stash::Ptr(owned))
+            .expect("a transfer-full return should decode");
+
+        assert!(
+            drain_g_freed().contains(&(owned as usize)),
+            "a transfer-full call return still frees the container"
+        );
     });
 }

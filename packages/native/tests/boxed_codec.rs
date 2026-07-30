@@ -1,28 +1,22 @@
-use test_support as helpers;
-
 use std::ffi::c_void;
 
-use gtk4::gdk;
-use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
-
-use napi::Env;
-use napi::JsValue as _;
+use gtk4::{gdk, glib};
+use helpers::{
+    assert_decode_null_yields_null, assert_read_null_yields_null,
+    assert_write_return_err_writes_null, napi_mock, read_slot, write_return_into_slot,
+    write_value_into_slot,
+};
 use napi::bindgen_prelude::{External, Unknown};
-
+use napi::{Env, JsValue as _};
 use native::ffi;
 use native::ffi::codec::{
-    BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit, StructCodec,
+    BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec,
 };
 use native::handle::Handle;
 use native::value::handle_ptr;
-
-use helpers::napi_mock;
-use helpers::{
-    assert_decode_null_yields_null, assert_read_null_yields_null,
-    assert_write_return_err_writes_null, read_slot, write_return_into_slot, write_value_into_slot,
-};
+use test_support as helpers;
 
 fn rgba_type_name() -> String {
     gdk::RGBA::static_type().name().to_string()
@@ -84,7 +78,7 @@ fn assert_is_handle(value: &Unknown<'_>) {
 
 fn assert_read_aliases_source<C: Decoder>(codec: &C, original: *mut c_void, message: &str) {
     let env = helpers::fake_env();
-    let value = unsafe { codec.read(&env, ReadSource::Value(original, "ctx")) }
+    let value = unsafe { codec.read(&env, ReadCtx::value(original, "ctx")) }
         .expect("ptr_to_value should succeed");
     let ptr = handle_ptr(value, "ctx").expect("expected Object value");
     assert_eq!(ptr, original, "{message}");
@@ -323,7 +317,7 @@ fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
         let (type_, original) = rgba_boxed_alloc();
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
-            let value = unsafe { boxed(ownership).read(&env, ReadSource::Value(original, "ctx")) }
+            let value = unsafe { boxed(ownership).read(&env, ReadCtx::value(original, "ctx")) }
                 .expect("ptr_to_value should succeed");
             let ptr = handle_ptr(value, "ctx").expect("expected Object value");
             assert_ne!(
@@ -653,10 +647,9 @@ fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
         for ownership in [Ownership::Borrowed, Ownership::Full] {
-            let value = unsafe {
-                struct_type(ownership, Some(64)).read(&env, ReadSource::Value(raw, "ctx"))
-            }
-            .expect("struct ptr_to_value should succeed");
+            let value =
+                unsafe { struct_type(ownership, Some(64)).read(&env, ReadCtx::value(raw, "ctx")) }
+                    .expect("struct ptr_to_value should succeed");
             let ptr = handle_ptr(value, "ctx").expect("expected Object value");
             assert_ne!(
                 ptr, raw,
@@ -675,7 +668,7 @@ fn struct_ptr_to_value_without_size_wraps_unowned() {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
         let value = unsafe {
-            struct_type(Ownership::Borrowed, None).read(&env, ReadSource::Value(raw, "ctx"))
+            struct_type(Ownership::Borrowed, None).read(&env, ReadCtx::value(raw, "ctx"))
         }
         .expect("struct ptr_to_value without size should succeed");
         let ptr = handle_ptr(value, "ctx").expect("expected Object value");
@@ -779,11 +772,9 @@ mod free_fn {
     use std::ffi::c_void;
 
     use gtk4::glib;
-
     use napi::Env;
-
     use native::ffi;
-    use native::ffi::codec::{BoxedCodec, Decoder, Ownership, ReadSource};
+    use native::ffi::codec::{BoxedCodec, Decoder, Ownership, ReadCtx};
     use native::value::handle_ptr;
 
     use super::helpers;
@@ -828,7 +819,7 @@ mod free_fn {
     }
 
     fn ptr_to_value_wrapper(descriptor: &BoxedCodec, env: &Env, ptr: *mut c_void) -> *mut c_void {
-        let value = unsafe { descriptor.read(env, ReadSource::Value(ptr, "ctx")) }
+        let value = unsafe { descriptor.read(env, ReadCtx::value(ptr, "ctx")) }
             .expect("ptr_to_value with freeFnName should succeed");
         handle_ptr(value, "ctx").expect("expected Object value")
     }

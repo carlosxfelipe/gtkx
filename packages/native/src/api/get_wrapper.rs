@@ -12,9 +12,11 @@ pub fn get_wrapper<'env>(
     env: &'env Env,
     handle: &External<Handle>,
 ) -> Result<Option<Object<'env>>> {
-    let gobject_ptr = handle.as_ptr() as usize;
+    let Some(gobject_ptr) = handle.as_gobject_ptr() else {
+        return Ok(None);
+    };
 
-    let napi_ref = unsafe { wrapper::wrapper_ref(gobject_ptr as *mut _) };
+    let napi_ref = unsafe { wrapper::wrapper_ref(gobject_ptr) };
 
     if !napi_ref.is_null() {
         let mut raw_value: sys::napi_value = std::ptr::null_mut();

@@ -32,8 +32,8 @@ impl Encoder for BooleanCodec {
 }
 
 impl Decoder for BooleanCodec {
-    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
-        let b = match src {
+    unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
+        let b = match ctx.source {
             ReadSource::Call(stash) => match stash {
                 ffi::Stash::I32(value) => *value != 0,
                 _ => anyhow::bail!("Expected a boolean ffi::Stash, got {stash:?}"),
@@ -66,9 +66,9 @@ impl PtrWriter for BooleanCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         _init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let b = read_bool(value)?;
         unsafe { slot.as_ptr().cast::<i32>().write_unaligned(b.into_glib()) };
-        Ok(())
+        Ok(None)
     }
 }

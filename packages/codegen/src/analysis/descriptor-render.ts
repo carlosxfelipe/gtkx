@@ -54,6 +54,8 @@ type RenderDescriptorOptions = {
     argIndexMap?: Map<number, number> | undefined;
     callerAllocated?: boolean;
     isInline?: boolean;
+    /** Set on the return value of a callable with no instance parameter, which creates what it returns. */
+    isNewlyCreated?: boolean;
 };
 
 type ArgIndexOptions = {
@@ -100,6 +102,14 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
     gptrarray: "ptrArray",
     garray: "gArray",
 };
+
+/**
+ * `glib:type-name` of every fundamental whose instances are born with a floating reference, so a
+ * callable that creates one hands back a claim nobody has taken rather than an owned reference.
+ * GIR annotates those returns `transfer-ownership="full"` all the same, so the annotation alone
+ * cannot tell them apart from a genuinely owned return such as `g_param_spec_ref`.
+ */
+const FLOATING_FUNDAMENTALS: Set<string> = new Set(["GParam"]);
 
 // A callable that drops parameters (varargs, and the closure/destroy slots folded into a callback)
 // shifts every later parameter left, so a GIR length index has to be looked up in the emitted list
@@ -378,16 +388,36 @@ const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     });
 };
 
+// A freshly created floating instance is claimed by sinking it, which is what the fundamental's
+// declared ref function does, so it is marshalled as transfer-none: adopting the floating reference
+// instead would leave the handle releasing a claim it never took.
+const sunkOwnership = (
+    ancestor: AncestorFundamental,
+    ownership: Ownership,
+    isNewlyCreated: boolean,
+): Ownership => {
+    if (!isNewlyCreated || ownership !== "full" || ancestor.typeName === undefined) {
+        return ownership;
+    }
+
+    return FLOATING_FUNDAMENTALS.has(ancestor.typeName) ? "borrowed" : ownership;
+};
+
 // GIR marks only the root of a fundamental hierarchy with `glib:fundamental` and its ref/unref pair,
 // so a derived type such as GtkPropertyExpression carries neither and has to inherit both.
 const classOrInterfaceExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" }>,
     ownership: Ownership,
+    isNewlyCreated: boolean,
 ): string => {
     const ancestor = fundamentalAncestor(context, resolved);
 
-    return ancestor === undefined ? tObject(ownership) : renderFundamental({ ...ancestor, ownership });
+    if (ancestor === undefined) {
+        return tObject(ownership);
+    }
+
+    return renderFundamental({ ...ancestor, ownership: sunkOwnership(ancestor, ownership, isNewlyCreated) });
 };
 
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
@@ -624,7 +654,7 @@ const expressionForResolved = (
     switch (resolved.kind) {
         case "class":
         case "interface": {
-            return classOrInterfaceExpression(context, resolved, ownership);
+            return classOrInterfaceExpression(context, resolved, ownership, options.isNewlyCreated ?? false);
         }
         case "record": {
             return recordExpression(context, resolved, ownership, {

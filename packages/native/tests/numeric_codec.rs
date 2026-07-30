@@ -1,18 +1,16 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
 use std::ffi::c_void;
 
 use libffi::middle;
-use native::ffi::Slot;
-use native::ffi::codec::{
-    Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadSource, SlotInit,
-};
-use native::ffi::{self};
-
-use napi::Env;
-use napi::JsValue as _;
 use napi::bindgen_prelude::{External, Unknown};
+use napi::{Env, JsValue as _};
+use native::ffi::codec::{
+    Decoder, Encoder, FloatCodec, IntegerCodec, PtrWriter, ReadCtx, SlotInit,
+};
+use native::ffi::{
+    Slot, {self},
+};
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn double(env: &Env, value: f64) -> Unknown<'_> {
     napi_mock::to_unknown(env, napi_mock::fake_double(value))
@@ -276,13 +274,13 @@ fn integer_pointer_codec_round_trips() {
                 &Ok(double(&env, 5.0)),
             );
             let read =
-                unsafe { Decoder::read(&kind, &env, ReadSource::Slot(ret.cast_const(), "ctx")) }
+                unsafe { Decoder::read(&kind, &env, ReadCtx::slot(ret.cast_const(), "ctx")) }
                     .unwrap();
             assert_eq!(napi_mock::read_double(read.raw()), Some(5.0));
 
             PtrWriter::write_return_to_ptr(&kind, &env, unsafe { Slot::new(ret) }, &Err(()));
             let zero =
-                unsafe { Decoder::read(&kind, &env, ReadSource::Slot(ret.cast_const(), "ctx")) }
+                unsafe { Decoder::read(&kind, &env, ReadCtx::slot(ret.cast_const(), "ctx")) }
                     .unwrap();
             assert_eq!(napi_mock::read_double(zero.raw()), Some(0.0));
 
@@ -297,7 +295,7 @@ fn integer_pointer_codec_round_trips() {
             )
             .unwrap();
             let from_field =
-                unsafe { Decoder::read(&kind, &env, ReadSource::Value(12 as *mut c_void, "ctx")) }
+                unsafe { Decoder::read(&kind, &env, ReadCtx::value(12 as *mut c_void, "ctx")) }
                     .unwrap();
             assert_eq!(napi_mock::read_double(from_field.raw()), Some(12.0));
             assert!(
@@ -392,9 +390,9 @@ unsafe fn assert_pointer_codec_round_trip<K>(
         SlotInit::Initialized,
     )
     .unwrap();
-    unsafe { Decoder::read(kind, env, ReadSource::Slot(ptr.cast_const(), "c")) }.unwrap();
+    unsafe { Decoder::read(kind, env, ReadCtx::slot(ptr.cast_const(), "c")) }.unwrap();
     PtrWriter::write_return_to_ptr(kind, env, unsafe { Slot::new(ptr) }, &Ok(double(env, 1.0)));
-    unsafe { Decoder::read(kind, env, ReadSource::Value(value_ptr, "c")) }.unwrap();
+    unsafe { Decoder::read(kind, env, ReadCtx::value(value_ptr, "c")) }.unwrap();
 }
 
 #[test]
@@ -511,8 +509,7 @@ fn float_codec_encode_decode_and_raw_ptr() {
                 &Ok(double(&env, 1.0)),
             );
             assert!(
-                unsafe { Decoder::read(&kind, &env, ReadSource::Slot(ret.cast_const(), "c")) }
-                    .is_ok()
+                unsafe { Decoder::read(&kind, &env, ReadCtx::slot(ret.cast_const(), "c")) }.is_ok()
             );
             PtrWriter::write_return_to_ptr(&kind, &env, unsafe { Slot::new(ret) }, &Err(()));
             PtrWriter::write_value_to_ptr(
@@ -524,7 +521,7 @@ fn float_codec_encode_decode_and_raw_ptr() {
             )
             .unwrap();
             assert!(
-                unsafe { Decoder::read(&kind, &env, ReadSource::Value(std::ptr::null_mut(), "c")) }
+                unsafe { Decoder::read(&kind, &env, ReadCtx::value(std::ptr::null_mut(), "c")) }
                     .is_ok()
             );
             assert!(
@@ -606,7 +603,7 @@ fn enum_flags_pointer_codec() {
         )
         .unwrap();
         let read =
-            unsafe { Decoder::read(&enum_flags, &env, ReadSource::Slot(ptr.cast_const(), "c")) }
+            unsafe { Decoder::read(&enum_flags, &env, ReadCtx::slot(ptr.cast_const(), "c")) }
                 .unwrap();
         assert_eq!(napi_mock::read_double(read.raw()), Some(1.0));
         PtrWriter::write_return_to_ptr(
@@ -619,7 +616,7 @@ fn enum_flags_pointer_codec() {
             Decoder::read(
                 &enum_flags,
                 &env,
-                ReadSource::Value(std::ptr::without_provenance_mut::<c_void>(1), "c"),
+                ReadCtx::value(std::ptr::without_provenance_mut::<c_void>(1), "c"),
             )
         }
         .unwrap();
@@ -722,10 +719,9 @@ fn u64_read_beyond_2_53_errors_instead_of_rounding() {
     let env = helpers::fake_env();
     let stored: u64 = 9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
-    let err =
-        unsafe { Decoder::read(&IntegerCodec::U64, &env, ReadSource::Slot(ptr, "test read")) }
-            .map(|_| ())
-            .expect_err("a u64 beyond 2^53 must not round silently");
+    let err = unsafe { Decoder::read(&IntegerCodec::U64, &env, ReadCtx::slot(ptr, "test read")) }
+        .map(|_| ())
+        .expect_err("a u64 beyond 2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
     assert!(err.to_string().contains("test read"));
 }
@@ -735,10 +731,9 @@ fn i64_read_beyond_negative_2_53_errors_instead_of_rounding() {
     let env = helpers::fake_env();
     let stored: i64 = -9_007_199_254_740_993;
     let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
-    let err =
-        unsafe { Decoder::read(&IntegerCodec::I64, &env, ReadSource::Slot(ptr, "test read")) }
-            .map(|_| ())
-            .expect_err("an i64 beyond -2^53 must not round silently");
+    let err = unsafe { Decoder::read(&IntegerCodec::I64, &env, ReadCtx::slot(ptr, "test read")) }
+        .map(|_| ())
+        .expect_err("an i64 beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
 }
 
@@ -749,7 +744,7 @@ fn u64_read_at_2_53_still_converts() {
         let stored: u64 = 9_007_199_254_740_992;
         let ptr = std::ptr::from_ref(&stored).cast::<c_void>();
         let value =
-            unsafe { Decoder::read(&IntegerCodec::U64, &env, ReadSource::Slot(ptr, "test read")) }
+            unsafe { Decoder::read(&IntegerCodec::U64, &env, ReadCtx::slot(ptr, "test read")) }
                 .expect("2^53 itself is exactly representable");
         assert_eq!(
             napi_mock::read_double(value.raw()),

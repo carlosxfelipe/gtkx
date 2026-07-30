@@ -1,30 +1,21 @@
-use test_support as helpers;
-
 use std::cell::RefCell;
 use std::ffi::c_void;
 
 use gtk4::glib;
-
-use napi::Env;
-use napi::JsValue as _;
-use napi::bindgen_prelude::{External, Unknown};
-use napi::sys;
-
-use native::Handle;
-use native::ffi::Slot;
-use native::ffi::Stash;
-use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, FloatCodec, FundamentalCodec,
-    HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec, Ownership, StringCodec,
-    StructCodec,
-};
-use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource};
-
-use helpers::napi_mock;
 use helpers::{
     boxed_handle, fresh_gobject as new_object_with_refcount,
-    make_bool_param_spec as create_param_spec,
+    make_bool_param_spec as create_param_spec, napi_mock,
 };
+use napi::bindgen_prelude::{External, Unknown};
+use napi::{Env, JsValue as _, sys};
+use native::Handle;
+use native::ffi::codec::{
+    ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, Decoder, Encoder, FloatCodec,
+    FundamentalCodec, HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec, Ownership,
+    PtrWriter, ReadCtx, StringCodec, StructCodec,
+};
+use native::ffi::{Slot, Stash};
+use test_support as helpers;
 
 helpers::g_free_recorder!();
 
@@ -225,8 +216,8 @@ fn assert_encoded_float(encoder: &HashTableEntryCodec, value: Unknown<'_>, expec
 fn assert_boolean_ptr_reads_true(env: &Env, ptr: *mut c_void) {
     let codec = Codec::Boolean(BooleanCodec);
 
-    let value = unsafe { codec.read(env, ReadSource::Value(ptr, "test")) }
-        .expect("decoding should succeed");
+    let value =
+        unsafe { codec.read(env, ReadCtx::value(ptr, "test")) }.expect("decoding should succeed");
 
     assert_eq!(napi_mock::read_bool(value.raw()), Some(true));
 }
@@ -363,7 +354,7 @@ fn ptr_to_value_boolean_false() {
         let codec = Codec::Boolean(BooleanCodec);
         let ptr = std::ptr::null_mut::<c_void>();
 
-        let value = unsafe { codec.read(&env, ReadSource::Value(ptr, "test")) }
+        let value = unsafe { codec.read(&env, ReadCtx::value(ptr, "test")) }
             .expect("decoding should succeed");
 
         assert_eq!(napi_mock::read_bool(value.raw()), Some(false));
@@ -390,7 +381,7 @@ fn ptr_to_value_float() {
             mem.cast::<c_void>()
         };
 
-        let value = unsafe { codec.read(&env, ReadSource::Value(ptr, "test")) }
+        let value = unsafe { codec.read(&env, ReadCtx::value(ptr, "test")) }
             .expect("decoding should succeed");
 
         let n = napi_mock::read_double(value.raw()).expect("Expected Number");
@@ -402,7 +393,7 @@ fn ptr_to_value_float() {
 
 fn read_borrowed_struct_value(env: &Env, ptr: *mut c_void) -> Unknown<'_> {
     let codec = struct_codec_with(Ownership::Borrowed, Some(16));
-    unsafe { codec.read(env, ReadSource::Value(ptr, "test")) }.expect("decoding should succeed")
+    unsafe { codec.read(env, ReadCtx::value(ptr, "test")) }.expect("decoding should succeed")
 }
 
 #[test]
@@ -760,8 +751,7 @@ fn hashtable_ptr_to_value_null_and_populated() {
         let env = helpers::fake_env();
         let ht = integer_integer_ht(Ownership::Borrowed);
 
-        let empty =
-            unsafe { ht.read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) }.unwrap();
+        let empty = unsafe { ht.read(&env, ReadCtx::value(std::ptr::null_mut(), "ctx")) }.unwrap();
         assert!(
             napi_mock::read_array(empty.raw())
                 .expect("Expected array")
@@ -770,8 +760,7 @@ fn hashtable_ptr_to_value_null_and_populated() {
 
         let hash_table = helpers::make_integer_hash_table(&[(1, 10)]);
         let decoded =
-            unsafe { ht.read(&env, ReadSource::Value(hash_table.cast::<c_void>(), "ctx")) }
-                .unwrap();
+            unsafe { ht.read(&env, ReadCtx::value(hash_table.cast::<c_void>(), "ctx")) }.unwrap();
         assert_eq!(
             napi_mock::read_array(decoded.raw())
                 .expect("Expected array")

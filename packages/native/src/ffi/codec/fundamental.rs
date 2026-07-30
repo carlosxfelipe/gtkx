@@ -71,15 +71,16 @@ impl Decoder for FundamentalCodec {
         env: &'e Env,
         ptr: *const c_void,
         context: &str,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if self.inline {
-            return unsafe { self.read_value(env, ptr.cast_mut(), context) };
+            return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
         }
         let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
-        unsafe { self.read_value(env, inner_ptr, context) }
+        unsafe { self.read_value(env, inner_ptr, context, transfer) }
     }
 
-    read_value_non_null!(|self, env, ptr| {
+    read_value_non_null!(|self, env, ptr, _transfer| {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
         Ok(value::handle_to_unknown(env, fundamental.into())?)
@@ -95,7 +96,7 @@ impl PtrWriter for FundamentalCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         swap_owned_slot(
             slot,

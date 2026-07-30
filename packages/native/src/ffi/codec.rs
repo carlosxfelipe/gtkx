@@ -1,13 +1,13 @@
 use std::ffi::c_void;
 
-use crate::ffi;
-use crate::value;
 use anyhow::bail;
 use enum_dispatch::enum_dispatch;
 use libffi::middle as libffi;
 use napi::Env;
 use napi::bindgen_prelude::Unknown;
 use napi_derive::napi;
+
+use crate::{ffi, value};
 
 mod array;
 mod bigint;
@@ -27,18 +27,15 @@ mod r#struct;
 mod unichar;
 mod void;
 
-pub use array::ArrayCodec;
-pub use array::ArrayKind;
+pub use array::{ArrayCodec, ArrayKind};
 pub use bigint::BigIntCodec;
 pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
-pub use callback::CallbackCodec;
-pub use callback::CallbackScope;
+pub use callback::{CallbackCodec, CallbackScope};
 pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
-pub use hashtable::HashTableCodec;
-pub use hashtable::HashTableEntryCodec;
+pub use hashtable::{HashTableCodec, HashTableEntryCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
 pub use object::ObjectCodec;
 pub use r#ref::RefCodec;
@@ -109,11 +106,48 @@ impl Ownership {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ReadSource<'a> {
     Call(&'a ffi::Stash),
     Slot(*const c_void, &'a str),
     Value(*mut c_void, &'a str),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ReadCtx<'a> {
+    pub source: ReadSource<'a>,
+    pub transfer: Ownership,
+}
+
+impl<'a> ReadCtx<'a> {
+    #[must_use]
+    pub fn call(stash: &'a ffi::Stash) -> Self {
+        Self {
+            source: ReadSource::Call(stash),
+            transfer: Ownership::Borrowed,
+        }
+    }
+
+    #[must_use]
+    pub fn slot(ptr: *const c_void, context: &'a str) -> Self {
+        Self {
+            source: ReadSource::Slot(ptr, context),
+            transfer: Ownership::Borrowed,
+        }
+    }
+
+    #[must_use]
+    pub fn value(ptr: *mut c_void, context: &'a str) -> Self {
+        Self {
+            source: ReadSource::Value(ptr, context),
+            transfer: Ownership::Borrowed,
+        }
+    }
+
+    #[must_use]
+    pub fn with_transfer(self, transfer: Ownership) -> Self {
+        Self { transfer, ..self }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,11 +223,15 @@ pub trait Decoder {
     /// this codec describes, and must stay valid for the duration of the call. For
     /// `ReadSource::Slot` the pointer must additionally point at an initialized machine word.
     /// `env` must be the environment of the thread currently running the JavaScript main loop.
-    unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
-        match src {
+    unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
+        match ctx.source {
             ReadSource::Call(stash) => self.decode_call(env, stash),
-            ReadSource::Value(ptr, context) => unsafe { self.read_value(env, ptr, context) },
-            ReadSource::Slot(ptr, context) => unsafe { self.read_pointer_slot(env, ptr, context) },
+            ReadSource::Value(ptr, context) => unsafe {
+                self.read_value(env, ptr, context, ctx.transfer)
+            },
+            ReadSource::Slot(ptr, context) => unsafe {
+                self.read_pointer_slot(env, ptr, context, ctx.transfer)
+            },
         }
     }
 
@@ -213,13 +251,14 @@ pub trait Decoder {
         env: &'e Env,
         _ptr: *mut c_void,
         _context: &str,
+        _transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let _ = env;
         bail!("This type cannot be read from pointer")
     }
 
     fn decode<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
-        unsafe { self.read(env, ReadSource::Call(stash)) }
+        unsafe { self.read(env, ReadCtx::call(stash)) }
     }
 
     fn decode_with_context<'e>(
@@ -243,9 +282,15 @@ pub trait Decoder {
         env: &'e Env,
         ptr: *const c_void,
         context: &str,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
-        unsafe { self.read(env, ReadSource::Value(inner_ptr, context)) }
+        unsafe {
+            self.read(
+                env,
+                ReadCtx::value(inner_ptr, context).with_transfer(transfer),
+            )
+        }
     }
 
     fn decode_non_null<'e, F>(
@@ -293,7 +338,7 @@ pub trait PtrWriter {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let _ = (env, slot, value, init);
         bail!("This type cannot be written to a raw pointer")
     }
@@ -342,18 +387,34 @@ pub enum Codec {
 
 impl Codec {
     #[must_use]
+    pub fn transfer(&self) -> Ownership {
+        match self {
+            Self::Object(codec) => codec.ownership,
+            Self::Boxed(codec) => codec.ownership,
+            Self::Struct(codec) => codec.ownership,
+            Self::String(codec) => codec.ownership,
+            Self::Array(codec) => codec.ownership,
+            Self::HashTable(codec) => codec.ownership,
+            Self::Fundamental(codec) => codec.ownership,
+            Self::Ref(codec) => codec.inner_codec.transfer(),
+            Self::Integer(_)
+            | Self::BigInt(_)
+            | Self::Float(_)
+            | Self::EnumFlags(_)
+            | Self::Void(_)
+            | Self::Boolean(_)
+            | Self::Buffer(_)
+            | Self::Callback(_)
+            | Self::Unichar(_) => Ownership::Borrowed,
+        }
+    }
+
+    #[must_use]
     pub fn is_handle_backed(&self) -> bool {
         matches!(
             self,
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_)
         )
-    }
-
-    // True when `write_value_to_ptr` stores a pointer to memory it allocated itself, which the slot
-    // it was written into does not own.
-    #[must_use]
-    pub fn allocates_written_value(&self) -> bool {
-        matches!(self, Codec::String(_))
     }
 }
 

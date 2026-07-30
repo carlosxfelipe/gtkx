@@ -1,12 +1,11 @@
+use glib::translate::{
+    Borrowed, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr, from_glib_borrow, from_glib_full,
+};
+use glib::{self};
+
 use super::prelude::*;
 use crate::handle::Handle;
 use crate::value::wrapper;
-use glib::{
-    self,
-    translate::{
-        Borrowed, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr, from_glib_borrow, from_glib_full,
-    },
-};
 
 // A transfer-none pointer is decoded by taking a reference of our own and leaving any floating
 // reference alone: the float is the creator's only claim on the object, so sinking it here would
@@ -87,12 +86,8 @@ impl Decoder for ObjectCodec {
         })
     }
 
-    read_value_non_null!(|self, env, ptr| unsafe {
-        tracked_gobject_value(
-            env,
-            ptr.cast::<glib::gobject_ffi::GObject>(),
-            Ownership::Borrowed,
-        )
+    read_value_non_null!(|self, env, ptr, transfer| unsafe {
+        tracked_gobject_value(env, ptr.cast::<glib::gobject_ffi::GObject>(), transfer)
     });
 }
 
@@ -105,7 +100,7 @@ impl PtrWriter for ObjectCodec {
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         if self.ownership.is_borrowed() {
             return write_object_ptr(slot, value, "Object field write");
         }

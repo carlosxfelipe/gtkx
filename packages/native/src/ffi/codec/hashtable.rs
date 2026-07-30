@@ -284,8 +284,13 @@ impl Encoder for HashTableCodec {
     }
 }
 
-impl Decoder for HashTableCodec {
-    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+impl HashTableCodec {
+    fn decode_table<'e>(
+        &self,
+        env: &'e Env,
+        stash: &ffi::Stash,
+        transfer: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
         let Some(hash_ptr) = stash.as_non_null_ptr("GHashTable")? else {
             return value::js_array(env, Vec::new()).map_err(Into::into);
         };
@@ -310,21 +315,27 @@ impl Decoder for HashTableCodec {
                 {
                     let key_value = self
                         .key_codec
-                        .read(env, ReadSource::Value(key_ptr, "hash table key"))?;
+                        .read(env, ReadCtx::value(key_ptr, "hash table key"))?;
                     let val_value = self
                         .value_codec
-                        .read(env, ReadSource::Value(value_ptr, "hash table value"))?;
+                        .read(env, ReadCtx::value(value_ptr, "hash table value"))?;
                     pairs.push(value::js_array(env, vec![key_value, val_value])?);
                 }
             }
             Ok(pairs)
         })();
 
-        if self.ownership.is_full() {
+        if transfer.is_full() {
             unsafe { glib::ffi::g_hash_table_unref(hash_ptr.cast::<glib::ffi::GHashTable>()) };
         }
 
         Ok(value::js_array(env, pairs?)?)
+    }
+}
+
+impl Decoder for HashTableCodec {
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        self.decode_table(env, stash, self.ownership)
     }
 
     unsafe fn read_value<'e>(
@@ -332,8 +343,9 @@ impl Decoder for HashTableCodec {
         env: &'e Env,
         ptr: *mut c_void,
         _context: &str,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_call(env, &ffi::Stash::Ptr(ptr))
+        self.decode_table(env, &ffi::Stash::Ptr(ptr), transfer)
     }
 }
 

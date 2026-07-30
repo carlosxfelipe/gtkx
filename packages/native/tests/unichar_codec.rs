@@ -4,7 +4,7 @@ use libffi::middle;
 use napi::JsValue as _;
 use native::ffi;
 use native::ffi::Slot;
-use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadSource, UnicharCodec};
+use native::ffi::codec::{Decoder, Encoder, PtrWriter, ReadCtx, UnicharCodec};
 use test_support::napi_mock;
 
 extern "C" fn ret_codepoint() -> u32 {
@@ -172,7 +172,7 @@ fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
             Decoder::read(
                 &UnicharCodec,
                 &env,
-                ReadSource::Value('X' as usize as *mut c_void, "ctx"),
+                ReadCtx::value('X' as usize as *mut c_void, "ctx"),
             )
         }
         .unwrap();
@@ -182,7 +182,7 @@ fn ptr_to_value_decodes_codepoint_and_replaces_invalid() {
             Decoder::read(
                 &UnicharCodec,
                 &env,
-                ReadSource::Value(0x0011_0000 as *mut c_void, "ctx"),
+                ReadCtx::value(0x0011_0000 as *mut c_void, "ctx"),
             )
         }
         .unwrap();
@@ -201,14 +201,13 @@ fn read_from_pointer_decodes_codepoint_and_replaces_invalid() {
         let valid_slot: u32 = 'M' as u32;
         let valid_ptr = (&raw const valid_slot).cast::<c_void>();
         let read =
-            unsafe { Decoder::read(&UnicharCodec, &env, ReadSource::Slot(valid_ptr, "ctx")) }
-                .unwrap();
+            unsafe { Decoder::read(&UnicharCodec, &env, ReadCtx::slot(valid_ptr, "ctx")) }.unwrap();
         assert_eq!(napi_mock::read_string(read.raw()), Some("M".to_owned()));
 
         let invalid_slot: u32 = 0x0011_0000;
         let invalid_ptr = (&raw const invalid_slot).cast::<c_void>();
         let read_invalid =
-            unsafe { Decoder::read(&UnicharCodec, &env, ReadSource::Slot(invalid_ptr, "ctx")) }
+            unsafe { Decoder::read(&UnicharCodec, &env, ReadCtx::slot(invalid_ptr, "ctx")) }
                 .unwrap();
         assert_eq!(
             napi_mock::read_string(read_invalid.raw()),

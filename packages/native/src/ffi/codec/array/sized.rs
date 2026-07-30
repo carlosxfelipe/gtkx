@@ -25,6 +25,7 @@ impl ArrayContainer for SizedArrayCodec {
         _codec: &ArrayCodec,
         _env: &'e Env,
         _stash: &ffi::Stash,
+        _transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         bail!(
             "A sized array cannot be decoded without its length parameter (index {})",
@@ -39,10 +40,11 @@ impl ArrayContainer for SizedArrayCodec {
         stash: &ffi::Stash,
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let length =
             ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)?;
-        codec.decode_length_bounded(env, self.name(), stash, length)
+        codec.decode_length_bounded(env, self.name(), stash, length, transfer)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {
@@ -144,10 +146,11 @@ impl ArrayCodec {
         name: &str,
         stash: &ffi::Stash,
         length: usize,
+        transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         match self.decode_sized_from_stash(env, stash, length) {
             Some(result) => result,
-            None => self.decode_null_terminated(env, name, stash),
+            None => self.decode_null_terminated(env, name, stash, transfer),
         }
     }
 }

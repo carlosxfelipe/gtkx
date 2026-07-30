@@ -1,19 +1,17 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
-use napi::bindgen_prelude::FromNapiValue as _;
-use native::ffi::descriptor::Descriptor;
-
 use std::ffi::c_void;
 
 use libffi::middle;
 use napi::JsValue as _;
+use napi::bindgen_prelude::FromNapiValue as _;
 use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
     BooleanCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder, IntegerCodec, Ownership,
-    PtrWriter, ReadSource, SlotInit, StructCodec, VoidCodec,
+    PtrWriter, ReadCtx, SlotInit, StructCodec, VoidCodec,
 };
+use native::ffi::descriptor::Descriptor;
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn assert_ownership_predicates_mutually_exclusive() {
     assert!(Ownership::Full.is_full());
@@ -120,7 +118,7 @@ fn pointer_codec_ptr_to_value_default_bails() {
             Decoder::read(
                 &callback_codec(),
                 &env,
-                ReadSource::Value(8 as *mut c_void, "ctx"),
+                ReadCtx::value(8 as *mut c_void, "ctx"),
             )
         }
         .is_err()
@@ -132,7 +130,7 @@ fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
     let env = helpers::fake_env();
     let mut inner: *mut c_void = 8 as *mut c_void;
     let ptr = (&raw mut inner).cast_const().cast::<c_void>();
-    let result = unsafe { Decoder::read(&callback_codec(), &env, ReadSource::Slot(ptr, "ctx")) };
+    let result = unsafe { Decoder::read(&callback_codec(), &env, ReadCtx::slot(ptr, "ctx")) };
     assert!(result.is_err());
 }
 

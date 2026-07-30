@@ -26,7 +26,7 @@ impl Encoder for VoidCodec {
 }
 
 impl Decoder for VoidCodec {
-    unsafe fn read<'e>(&self, env: &'e Env, _src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
+    unsafe fn read<'e>(&self, env: &'e Env, _ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
         Ok(value::js_undefined(env)?)
     }
 }

@@ -315,6 +315,7 @@ const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string
     return renderDescriptor(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
         argIndexOffset: instanceOffset,
         argIndexMap: emittedArgIndices(fn, instanceOffset),
+        isNewlyCreated: fn.instance === undefined,
     });
 };
 

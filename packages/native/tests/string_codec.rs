@@ -1,22 +1,17 @@
-use test_support as helpers;
-
 use std::ffi::{CStr, CString, c_char, c_void};
 
 use gtk4::glib;
-
-use napi::Env;
-use napi::JsValue as _;
-use napi::bindgen_prelude::Unknown;
-
-use native::Handle;
-use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, Ownership, ReadSource, StringCodec};
-
-use helpers::napi_mock;
 use helpers::{
-    assert_decode_null_yields_null, assert_read_null_yields_null, read_slot,
-    write_return_into_slot, write_value_into_slot,
+    assert_decode_null_yields_null, assert_read_null_yields_null, napi_mock, read_slot,
+    write_owned_value_into_slot, write_return_into_slot,
 };
+use napi::bindgen_prelude::{External, Unknown};
+use napi::{Env, JsValue as _};
+use native::ffi::codec::{Decoder, Encoder, Ownership, ReadCtx, StringCodec};
+use native::ffi::descriptor::Descriptor;
+use native::ffi::{PendingTransfer, ReleaseKind};
+use native::{Handle, ffi};
+use test_support as helpers;
 
 helpers::g_free_recorder!();
 
@@ -153,10 +148,7 @@ fn ptr_to_value_reads_string() {
         let env = helpers::fake_env();
         let cstring = CString::new("ptr-value").unwrap();
         let value = unsafe {
-            borrowed().read(
-                &env,
-                ReadSource::Value(cstring.as_ptr() as *mut c_void, "ctx"),
-            )
+            borrowed().read(&env, ReadCtx::value(cstring.as_ptr() as *mut c_void, "ctx"))
         }
         .expect("ptr_to_value should succeed");
         assert_eq!(
@@ -218,7 +210,7 @@ fn write_return_to_pointer_non_string_writes_null() {
 fn write_value_to_pointer_writes_string() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let slot = write_value_into_slot(
+        let (slot, transfer) = write_owned_value_into_slot(
             &env,
             &borrowed(),
             std::ptr::null_mut(),
@@ -227,13 +219,19 @@ fn write_value_to_pointer_writes_string() {
         assert!(!slot.is_null());
         let read = unsafe { CStr::from_ptr(slot as *const c_char) };
         assert_eq!(read.to_str().unwrap(), "field");
-        unsafe { glib::ffi::g_free(slot) };
+        transfer
+            .expect("the caller owns the written string")
+            .release_now();
     });
 }
 
 fn assert_write_value_to_pointer_writes_null(env: &Env, value: Unknown<'_>) {
-    let slot = write_value_into_slot(env, &borrowed(), std::ptr::dangling_mut::<c_void>(), value);
+    let (slot, transfer) =
+        write_owned_value_into_slot(env, &borrowed(), std::ptr::dangling_mut::<c_void>(), value);
     assert!(slot.is_null());
+    transfer
+        .expect("a null write still reports the slot no longer owns a string")
+        .release_now();
 }
 
 #[test]
@@ -255,25 +253,27 @@ fn write_over_previous_string(
     env: &Env,
     codec: &StringCodec,
     value: napi::sys::napi_value,
-) -> (*mut c_void, *mut c_void, bool) {
+) -> (*mut c_void, *mut c_void, bool, Option<PendingTransfer>) {
     let previous = unsafe { glib::ffi::g_strdup(c"stale".as_ptr()) }.cast::<c_void>();
     drain_g_freed();
-    let slot = write_value_into_slot(env, codec, previous, napi_mock::to_unknown(env, value));
+    let (slot, transfer) =
+        write_owned_value_into_slot(env, codec, previous, napi_mock::to_unknown(env, value));
     let previous_freed = drain_g_freed().contains(&(previous as usize));
-    (slot, previous, previous_freed)
+    (slot, previous, previous_freed, transfer)
 }
 
 #[test]
 fn write_value_to_pointer_full_frees_previous_owned_string() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let (slot, previous, previous_freed) =
+        let (slot, previous, previous_freed, transfer) =
             write_over_previous_string(&env, &full(), napi_mock::fake_string("fresh"));
 
         assert!(
             previous_freed,
             "an owned slot overwrite must free the previous string"
         );
+        assert!(transfer.is_none());
         assert!(!slot.is_null());
         assert_ne!(slot, previous);
         let read = unsafe { CStr::from_ptr(slot as *const c_char) };
@@ -286,13 +286,14 @@ fn write_value_to_pointer_full_frees_previous_owned_string() {
 fn write_value_to_pointer_full_null_write_frees_previous_owned_string() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let (slot, _previous, previous_freed) =
+        let (slot, _previous, previous_freed, transfer) =
             write_over_previous_string(&env, &full(), napi_mock::fake_null());
 
         assert!(
             previous_freed,
             "clearing an owned slot must free the previous string"
         );
+        assert!(transfer.is_none());
         assert!(slot.is_null());
     });
 }
@@ -301,7 +302,7 @@ fn write_value_to_pointer_full_null_write_frees_previous_owned_string() {
 fn write_value_to_pointer_borrowed_keeps_previous_string() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let (slot, previous, previous_freed) =
+        let (slot, previous, previous_freed, transfer) =
             write_over_previous_string(&env, &borrowed(), napi_mock::fake_string("fresh"));
 
         assert!(
@@ -310,7 +311,11 @@ fn write_value_to_pointer_borrowed_keeps_previous_string() {
         );
         let kept = unsafe { CStr::from_ptr(previous as *const c_char) };
         assert_eq!(kept.to_str().unwrap(), "stale");
-        unsafe { glib::ffi::g_free(slot) };
+        drain_g_freed();
+        transfer
+            .expect("the caller owns the written string")
+            .release_now();
+        assert_eq!(drain_g_freed(), vec![slot as usize]);
         unsafe { glib::ffi::g_free(previous) };
     });
 }
@@ -320,16 +325,14 @@ fn a_struct_handle_owns_the_strings_written_into_its_fields() {
     helpers::run(|| {
         let block = unsafe { glib::ffi::g_malloc0(16) };
         let handle = Handle::owned_struct(block);
-        let fields = handle
-            .field_store()
-            .expect("a struct handle owns its fields");
+        let fields = handle.field_store();
         let first = unsafe { glib::ffi::g_strdup(c"first".as_ptr()) }.cast::<c_void>();
         let second = unsafe { glib::ffi::g_strdup(c"second".as_ptr()) }.cast::<c_void>();
 
-        unsafe { fields.adopt(0, first) };
+        fields.adopt(0, PendingTransfer::new(first, ReleaseKind::GFree));
         drain_g_freed();
 
-        unsafe { fields.adopt(0, second) };
+        fields.adopt(0, PendingTransfer::new(second, ReleaseKind::GFree));
         assert_eq!(drain_g_freed(), vec![first as usize]);
 
         drop(handle);
@@ -340,10 +343,126 @@ fn a_struct_handle_owns_the_strings_written_into_its_fields() {
 }
 
 #[test]
-fn a_borrowed_handle_has_no_field_store() {
-    assert!(
-        Handle::from_glib_borrow(std::ptr::dangling_mut())
+fn every_handle_kind_owns_the_strings_written_into_its_fields() {
+    helpers::run(|| {
+        let (boxed, _) = helpers::owned_rgba_boxed();
+        let handle = Handle::from(boxed);
+        let field = unsafe { glib::ffi::g_strdup(c"field".as_ptr()) }.cast::<c_void>();
+
+        handle
             .field_store()
-            .is_none()
-    );
+            .adopt(0, PendingTransfer::new(field, ReleaseKind::GFree));
+        drain_g_freed();
+
+        drop(handle);
+        assert!(drain_g_freed().contains(&(field as usize)));
+    });
+}
+
+fn write_string_field(env: &Env, handle: &External<Handle>, ownership: Ownership, text: &str) {
+    native::api::write::write(
+        env,
+        handle,
+        Descriptor::String {
+            ownership,
+            length: None,
+        },
+        0.0,
+        napi_mock::to_unknown(env, napi_mock::fake_string(text)),
+    )
+    .expect("field write should succeed");
+}
+
+#[test]
+fn repeated_owned_field_writes_free_the_displaced_string_once() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let handle = External::new(Handle::owned_struct(unsafe { glib::ffi::g_malloc0(16) }));
+
+        write_string_field(&env, &handle, Ownership::Full, "first");
+        let first = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
+        drain_g_freed();
+
+        write_string_field(&env, &handle, Ownership::Full, "second");
+        assert_eq!(
+            drain_g_freed(),
+            vec![first as usize],
+            "the displaced string must be freed exactly once"
+        );
+
+        let second = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
+        unsafe { glib::ffi::g_free(second) };
+    });
+}
+
+#[test]
+fn a_transfer_none_field_write_is_owned_by_the_handle() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let handle = External::new(Handle::owned_struct(unsafe { glib::ffi::g_malloc0(16) }));
+
+        write_string_field(&env, &handle, Ownership::Borrowed, "first");
+        let first = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
+        drain_g_freed();
+
+        write_string_field(&env, &handle, Ownership::Borrowed, "second");
+        assert_eq!(
+            drain_g_freed(),
+            vec![first as usize],
+            "the handle releases the string it displaced"
+        );
+
+        let second = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
+        drop(handle);
+        assert!(drain_g_freed().contains(&(second as usize)));
+    });
+}
+
+#[test]
+fn a_transfer_none_field_write_on_a_boxed_handle_does_not_leak() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (boxed, _) = helpers::owned_rgba_boxed();
+        let handle = External::new(Handle::from(boxed));
+
+        write_string_field(&env, &handle, Ownership::Borrowed, "field");
+        let written = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
+        drain_g_freed();
+
+        drop(handle);
+        assert!(drain_g_freed().contains(&(written as usize)));
+    });
+}
+
+#[test]
+fn a_borrowed_write_hands_its_allocation_to_the_caller() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let value = napi_mock::to_unknown(&env, napi_mock::fake_string("field"));
+        let (slot, transfer) =
+            write_owned_value_into_slot(&env, &borrowed(), std::ptr::null_mut(), value);
+
+        let transfer =
+            transfer.expect("a transfer-none string write allocates the value it stores");
+        assert!(!slot.is_null());
+        drain_g_freed();
+        transfer.release_now();
+        assert_eq!(drain_g_freed(), vec![slot as usize]);
+    });
+}
+
+#[test]
+fn an_owned_write_keeps_its_allocation_in_the_slot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let value = napi_mock::to_unknown(&env, napi_mock::fake_string("field"));
+        let (slot, transfer) =
+            write_owned_value_into_slot(&env, &full(), std::ptr::null_mut(), value);
+
+        assert!(
+            transfer.is_none(),
+            "a transfer-full string write leaves the slot owning the value"
+        );
+        unsafe { glib::ffi::g_free(slot) };
+    });
 }

@@ -1,15 +1,13 @@
-use test_support as helpers;
-use test_support::napi_mock;
-
 use std::ffi::c_void;
 
 use libffi::middle;
-
 use native::ffi::codec::{
     BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder,
-    FundamentalCodec, IntegerCodec, Ownership, ReadSource, RefCodec, StructCodec, VoidCodec,
+    FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec, StructCodec, VoidCodec,
 };
 use native::ffi::{self, StashData, StashStorage};
+use test_support as helpers;
+use test_support::napi_mock;
 
 fn callback_codec() -> CallbackCodec {
     CallbackCodec {
@@ -170,7 +168,7 @@ fn ref_read_from_value_source_errors() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let result =
-            unsafe { i32_ref_codec().read(&env, ReadSource::Value(std::ptr::null_mut(), "ctx")) };
+            unsafe { i32_ref_codec().read(&env, ReadCtx::value(std::ptr::null_mut(), "ctx")) };
         assert!(result.is_err());
     });
 }
