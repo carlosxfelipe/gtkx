@@ -77,14 +77,14 @@ ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
-# Keep in sync with /rust-toolchain.toml (stable) and scripts/run-headless.ts (nightly), which pin
+# Keep in sync with /rust-toolchain.toml (stable) and scripts/rust-nightly.ts (nightly), which pin
 # the same toolchains for local builds; the image is built without the repository checked out.
 ARG RUST_VERSION=1.97.1
 ARG RUST_NIGHTLY=nightly-2026-07-28
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview --component rust-src --component miri \
+RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview --component rust-src --component miri --component rustfmt \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
 RUN cargo install cargo-llvm-cov --locked \
