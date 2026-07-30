@@ -15,6 +15,14 @@ const resolveLibrariesMock = vi.mocked(resolveLibraries);
 
 const stringContaining = (expected: string): string => expect.stringContaining(expected) as string;
 
+const docsCall = (overrides: Record<string, unknown>): Record<string, unknown> => ({
+    libraries: ["Gtk-4.0"],
+    girPath: ["/usr/share/gir-1.0"],
+    props: {},
+    omitProps: {},
+    ...overrides,
+});
+
 const run = (overrides: DocsArgs): Promise<unknown> => {
     const handler = docs.run;
 
@@ -32,30 +40,43 @@ const run = (overrides: DocsArgs): Promise<unknown> => {
     return Promise.resolve(handler({ rawArgs: [], args, cmd: docs }));
 };
 
+function mockedNamespaces() {
+    return [
+        {
+            name: "Gtk",
+            directory: "gtk",
+            link: "/reference/gtk/",
+            elements: [
+                { text: "GtkBox", link: "/reference/gtk/box" },
+                { text: "GtkButton", link: "/reference/gtk/button" },
+            ],
+        },
+        {
+            name: "Adw",
+            directory: "adw",
+            link: "/reference/adw/",
+            elements: [{ text: "AdwHeaderBar", link: "/reference/adw/header-bar" }],
+        },
+    ];
+}
+
+function mockedMergeOmitProps(...maps: Record<string, string[]>[]): Record<string, string[]> {
+    const merged: Record<string, string[]> = {};
+
+    for (const map of maps) {
+        Object.assign(merged, map);
+    }
+
+    return merged;
+}
+
 vi.mock("@gtkx/codegen", () => ({
     resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
     resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
-    readBuiltinElements: vi.fn(() => Promise.resolve({ components: {}, lazyElements: [], props: {} })),
-    writeDocs: vi.fn(() => ({
-        regenerated: true,
-        namespaces: [
-            {
-                name: "Gtk",
-                directory: "gtk",
-                link: "/reference/gtk/",
-                elements: [
-                    { text: "GtkBox", link: "/reference/gtk/box" },
-                    { text: "GtkButton", link: "/reference/gtk/button" },
-                ],
-            },
-            {
-                name: "Adw",
-                directory: "adw",
-                link: "/reference/adw/",
-                elements: [{ text: "AdwHeaderBar", link: "/reference/adw/header-bar" }],
-            },
-        ],
-    })),
+    mergeOmitProps: vi.fn(mockedMergeOmitProps),
+    readBuiltinElements: vi.fn(() =>
+        Promise.resolve({ components: {}, lazyElements: [], props: {}, omitProps: {} })),
+    writeDocs: vi.fn(() => ({ regenerated: true, namespaces: mockedNamespaces() })),
 }));
 
 vi.mock("@gtkx/config", () => ({
@@ -75,14 +96,11 @@ describe("docs command", () => {
         expect(loadConfigMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(resolveLibrariesMock).toHaveBeenCalledWith(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
 
-        expect(writeDocsMock).toHaveBeenCalledWith({
-            libraries: ["Gtk-4.0"],
-            girPath: ["/usr/share/gir-1.0"],
+        expect(writeDocsMock).toHaveBeenCalledWith(docsCall({
             outDir: stringContaining("custom/dir/docs/reference"),
             basePath: "/reference",
-            props: {},
             force: false,
-        });
+        }));
 
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
     });
@@ -95,14 +113,11 @@ describe("docs command", () => {
 
         await run({ cwd: "/custom/dir", out: "site/elements", "base-path": "/elements", force: true });
 
-        expect(writeDocsMock).toHaveBeenCalledWith({
-            libraries: ["Gtk-4.0"],
-            girPath: ["/usr/share/gir-1.0"],
+        expect(writeDocsMock).toHaveBeenCalledWith(docsCall({
             outDir: stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
-            props: {},
             force: true,
-        });
+        }));
     });
 
     it("reports up to date when nothing was regenerated", async () => {

@@ -660,10 +660,21 @@ describe("codegen widget-slot props", () => {
         );
     });
 
-    it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
+    it("omits the `child` property the configured children slot writes", () => {
         const body = interfaceBody(getSource(reactPipeline, "gtk"), "GtkButton");
-        expect(body).toContain("child?: Gtk$.Widget | null | undefined;");
-        expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
+        expect(body).not.toContain("child?:");
+        expect(body).not.toContain("onNotifyChild?:");
+    });
+
+    it("omits the `content` property the configured children slot writes, keeping its sibling slot", () => {
+        const body = interfaceBody(getSource(reactPipeline, "adw"), "AdwNavigationSplitView");
+        expect(body).not.toContain("content?:");
+        expect(body).toContain("sidebar?: Adw$.NavigationPage | ReactElement | null | undefined;");
+    });
+
+    it("keeps an object property no children slot writes", () => {
+        const body = interfaceBody(getSource(reactPipeline, "gtk"), "GtkDragSource");
+        expect(body).toContain("content?: Gdk$.ContentProvider | ReactElement | null | undefined;");
     });
 
     it("extends the configured base props interface on a container-prop host", () => {

@@ -26,3 +26,4 @@ export {
 } from "./react/element-config.js";
 export { runCodegen } from "./runner.js";
 export type { ElementProps } from "./store/jsx/element-prop-imports.js";
+export { mergeOmitProps, type OmittedProps } from "./store/jsx/omitted-props.js";

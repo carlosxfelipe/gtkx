@@ -9,12 +9,8 @@ import { renderHandlerParameters, renderHandlerResultType } from "../../analysis
 import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
-import {
-    giNamespaceAlias,
-    hasExposedMethod,
-    isIntrinsicElementClass,
-    signalHandlerName,
-} from "./intrinsic-elements.js";
+import { getGlibName, giNamespaceAlias, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
+import { isOmittedProp } from "./omitted-props.js";
 
 type IntrinsicElementPropsEntries = {
     propLines: string[];
@@ -75,7 +71,7 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     const tsType = renderReactPropType(state.types, property.type, false);
     const doc = renderJsDoc(property.doc);
 
-    if (isObjectProp(state.owner, property, jsName)) {
+    if (isObjectProp(state.owner.library, property)) {
         state.propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
         state.objectPropNames.push(jsName);
 
@@ -99,7 +95,7 @@ const acceptCollectorProperty = (state: PropCollectorState, property: GirPropert
 
     const jsName = toCamelIdentifier(property.name);
 
-    if (state.seen.has(jsName)) {
+    if (state.seen.has(jsName) || isOmittedProp(getGlibName(state.owner.klass), jsName)) {
         return;
     }
 
@@ -215,20 +211,12 @@ const isGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
-const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsName: string): boolean => {
+const isObjectProp = (library: Library, property: GirProperty): boolean => {
     if (!property.writable || property.constructOnly) {
         return false;
     }
 
-    if (!isGObjectType(owner.library, property.type)) {
-        return false;
-    }
-
-    if (jsName === "child" && hasExposedMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
-        return false;
-    }
-
-    return true;
+    return isGObjectType(library, property.type);
 };
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {

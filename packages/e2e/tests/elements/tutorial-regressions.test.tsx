@@ -53,21 +53,19 @@ const closeShell = (
 );
 
 const detailShell = (buttonRef: Ref<Gtk.Button | null>, onBack: () => void): ReactElement => (
-    <AdwNavigationSplitView
-        content={(
-            <AdwNavigationPage title="Details">
-                <AdwToolbarView
-                    topBar={(
-                        <AdwHeaderBar
-                            start={<GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={onBack} />}
-                        />
-                    )}
-                >
-                    <GtkLabel>Detail body</GtkLabel>
-                </AdwToolbarView>
-            </AdwNavigationPage>
-        )}
-    />
+    <AdwNavigationSplitView>
+        <AdwNavigationPage title="Details">
+            <AdwToolbarView
+                topBar={(
+                    <AdwHeaderBar
+                        start={<GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={onBack} />}
+                    />
+                )}
+            >
+                <GtkLabel>Detail body</GtkLabel>
+            </AdwToolbarView>
+        </AdwNavigationPage>
+    </AdwNavigationSplitView>
 );
 
 describe("tutorial regressions", () => {

@@ -25,11 +25,14 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`:
  * the GIR libraries to bind, extra `.gir` search paths, the GApplication id,
  * a module of per-element configuration (lazy flags and custom behaviors),
- * per-element component wrappers keyed by GLib type name, the React Compiler and
- * codegen settings, and additional user event signals to suppress during React
- * commits.
+ * per-element component wrappers and omitted props keyed by GLib type name, the
+ * React Compiler and codegen settings, and additional user event signals to
+ * suppress during React commits.
  */
 type Config = z.infer<typeof configSchema>;
+/** A `{ module, export }` reference to a named export, as element config entries carry it. */
+type ModuleExport = z.infer<typeof moduleExportSchema>;
+type ElementConfigEntry = z.infer<typeof elementConfigSchema>;
 
 /**
  * Configuration reduced to the values needed at runtime: the GApplication
@@ -154,6 +157,14 @@ const elementConfigSchema = z.object({
     component: moduleExportSchema.optional(),
     props: moduleExportSchema.optional(),
     lazy: z.boolean({ error: "must be a boolean" }).optional(),
+    omitProps: z
+        .array(
+            z.string({ error: "must be a non-empty property name" }).min(1, {
+                error: "must be a non-empty property name",
+            }),
+            { error: "must be an array of property names" },
+        )
+        .optional(),
 });
 
 const elementsSchema = z.object({
@@ -249,6 +260,27 @@ const resolveLazyElements = (elements: Config["elements"]): string[] =>
         .filter(([, entry]) => entry.lazy === true)
         .map(([type]) => type);
 
+const elementEntryValues = <T>(
+    elements: Config["elements"],
+    pick: (entry: ElementConfigEntry) => T | undefined,
+): Record<string, T> =>
+    Object.fromEntries(
+        Object.entries(elements?.config ?? {}).flatMap(([type, entry]) => {
+            const value = pick(entry);
+
+            return value === undefined ? [] : [[type, value] as const];
+        }),
+    );
+
+const resolveElementComponents = (elements: Config["elements"]): Record<string, ModuleExport> =>
+    elementEntryValues(elements, (entry) => entry.component);
+
+const resolveElementProps = (elements: Config["elements"]): Record<string, ModuleExport> =>
+    elementEntryValues(elements, (entry) => entry.props);
+
+const resolveOmitProps = (elements: Config["elements"]): Record<string, string[]> =>
+    elementEntryValues(elements, (entry) => entry.omitProps);
+
 const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
@@ -266,8 +298,12 @@ export {
     validateConfig,
     mergeConfig,
     resolveLazyElements,
+    resolveElementComponents,
+    resolveElementProps,
+    resolveOmitProps,
     resolveConfig,
     type ResolvedReactCompilerOptions,
     type Config,
+    type ModuleExport,
     type ResolvedConfig,
 };

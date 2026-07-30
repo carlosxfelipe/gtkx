@@ -36,7 +36,7 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`userEventSignals`** maps GLib type names to signal names that represent user interaction, such as `{ GtkEditable: ["changed"] }`. While a React commit is applying your props, these signals are suppressed on the committing tree, so a handler like `onChanged` only ever reports the user editing the widget and never echoes a programmatic write React itself performed. A built-in table covers GTK4 and Adwaita; entries you add here are unioned with it, and the type name may be a class or an interface, applying to every type that inherits or implements it.
 
-**`elements`** points at a module of per-element configuration, keyed by GLib type name, where each entry sets a `lazy` flag and custom `behaviors`, covered in [Customizing elements](#advanced-customizing-elements) below. The module is imported by your app at runtime; codegen never reads it.
+**`elements`** carries per-element configuration keyed by GLib type name. Its `behaviors` key points at a module of custom `behaviors` and `lazy` flags, covered in [Customizing elements](#advanced-customizing-elements) below; that module is imported by your app at runtime. Its `config` key holds the entries codegen reads: `component` and `props` override what a generated element renders and extends, and `omitProps` lists properties to leave out of an element's generated props.
 
 **`codegen`** controls binding generation, which is on by default. Set it to `false` for a project that already has a binding store installed, such as an example inside a workspace that shares the store built at the root: the CLI then resolves that installed store instead of generating its own. A project with generation turned off has no GIR data of its own, so `gtkx docs` has nothing to document there.
 
@@ -96,7 +96,8 @@ Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, a
 
 - **Properties become camelCase props.** Every introspectable property that is writable, construct, or construct-only becomes an optional prop under its camelCase name: GIR's `show-title-buttons` is `showTitleButtons`. Property and signal documentation from the GIR is carried onto the generated props as JSDoc, so hovering a prop in your editor shows the upstream documentation.
 - **Every property gets a notify handler.** Each introspectable property gets an `onNotifyX` prop whose handler receives `(value, self)`, including read-only ones, except writable object-valued (element-accepting) properties, which expose the value as a child element prop instead. This is how you observe properties GTK4 changes on its own, such as a window's `defaultWidth`.
-- **Object-typed props also accept elements.** A writable, non-construct-only property whose type is itself a GObject class accepts a `ReactElement` in addition to an instance, so you can write `sidebar={<AdwNavigationPage ... />}` and let the reconciler construct and manage the child. The one exception is `child` on widgets with a `setChild` method, where JSX `children` already covers the element case.
+- **Object-typed props also accept elements.** A writable, non-construct-only property whose type is itself a GObject class accepts a `ReactElement` in addition to an instance, so you can write `sidebar={<AdwNavigationPage ... />}` and let the reconciler construct and manage the child.
+- **Props a container fills from its children are left out.** An element whose config lists `omitProps` drops those properties from its generated props entirely, so each slot has exactly one spelling. That is how the `child` property of every `setChild` container and the `content` property of `AdwToolbarView`, the split views, and the Adwaita windows disappear: JSX `children` writes them. The list is explicit per GLib type, and your own entries are added to the built-in ones.
 - **Signals become `on` handlers.** Every signal becomes `on` plus the UpperCamelCase signal name (`clicked` becomes `onClicked`, `row-activated` becomes `onRowActivated`), and the handler receives the signal's parameters followed by `self`, the widget instance, with parameter types rendered from the GIR.
 - **`ref` yields the native instance.** Every element accepts `ref?: Ref<Self | null>`, where `Self` is the `@gtkx/gi` class (`Gtk.Button`, `Adw.ToastOverlay`). This is your escape hatch to the full imperative API.
 
@@ -148,7 +149,7 @@ export default defineElements({
 });
 ```
 
-Point `elements` at it and declare the prop on the generated interface:
+Point `elements.behaviors` at it and declare the prop on the generated interface:
 
 ```ts
 // gtkx.config.ts
@@ -157,7 +158,7 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
-    elements: "./src/elements.ts",
+    elements: { behaviors: "./src/elements.ts" },
 });
 ```
 

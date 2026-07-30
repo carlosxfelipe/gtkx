@@ -99,12 +99,11 @@ export const Window = () => {
                                 </AdwToolbarView>
                             </AdwNavigationPage>
                         }
-                        content={
-                            <AdwNavigationPage title={selectionTitle(selection, lists)}>
-                                <ContentPane />
-                            </AdwNavigationPage>
-                        }
-                    />
+                    >
+                        <AdwNavigationPage title={selectionTitle(selection, lists)}>
+                            <ContentPane />
+                        </AdwNavigationPage>
+                    </AdwNavigationSplitView>
                 </AdwToastOverlay>
                 <Dialogs />
             </AdwApplicationWindow>

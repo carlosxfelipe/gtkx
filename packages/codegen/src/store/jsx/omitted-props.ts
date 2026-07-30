@@ -1,0 +1,32 @@
+/** Props left out of the generated element props, keyed by GLib type name. */
+type OmittedProps = Record<string, string[]>;
+
+const omittedProps: Map<string, Set<string>> = new Map();
+
+/** Installs the props each element omits (GLib type name → prop names); set once per run. */
+const setOmittedProps = (props: OmittedProps): void => {
+    omittedProps.clear();
+
+    for (const [glibName, names] of Object.entries(props)) {
+        omittedProps.set(glibName, new Set(names));
+    }
+};
+
+/** Whether the element config declares this prop omitted for the type that declares the property. */
+const isOmittedProp = (glibName: string | undefined, jsName: string): boolean =>
+    glibName !== undefined && omittedProps.get(glibName)?.has(jsName) === true;
+
+/** Merges omitted-prop maps keyed by GLib type name, concatenating the names each map contributes. */
+const mergeOmitProps = (...maps: OmittedProps[]): OmittedProps => {
+    const merged: OmittedProps = {};
+
+    for (const map of maps) {
+        for (const [glibName, names] of Object.entries(map)) {
+            merged[glibName] = [...(merged[glibName] ?? []), ...names];
+        }
+    }
+
+    return merged;
+};
+
+export { setOmittedProps, isOmittedProp, mergeOmitProps, type OmittedProps };

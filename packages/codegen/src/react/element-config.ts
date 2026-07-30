@@ -1,14 +1,16 @@
 import type { ModuleExport } from "@gtkx/react/config";
 import { readdirSync } from "node:fs";
+import type { OmittedProps } from "../store/jsx/omitted-props.js";
 
 /** The codegen-relevant subset of a React element config; behaviors are ignored at codegen time. */
-type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport };
+type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport; omitProps?: string[] };
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
 type BuiltinElements = {
     components: Record<string, ModuleExport>;
     lazyElements: string[];
     props: Record<string, ModuleExport>;
+    omitProps: OmittedProps;
 };
 
 const CONFIG_ENTRYPOINT = "config";
@@ -59,6 +61,10 @@ const applyBuiltinElement = (target: BuiltinElements, type: string, config: Buil
         target.props[type] = config.props;
     }
 
+    if (config.omitProps !== undefined) {
+        target.omitProps[type] = [...(target.omitProps[type] ?? []), ...config.omitProps];
+    }
+
     if (config.lazy === true) {
         target.lazyElements.push(type);
     }
@@ -78,7 +84,7 @@ const collectBuiltinElements = (target: BuiltinElements, elements: Record<string
 const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string): Promise<BuiltinElements> => {
     const present = presentNamespaceDirs(giStoreDir);
     const entrypoints = configEntrypoints(reactSubexports, present);
-    const result: BuiltinElements = { components: {}, lazyElements: [], props: {} };
+    const result: BuiltinElements = { components: {}, lazyElements: [], props: {}, omitProps: {} };
 
     for (const entrypoint of entrypoints) {
         collectBuiltinElements(result, await importBuiltinElements(entrypoint));

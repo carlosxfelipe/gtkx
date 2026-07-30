@@ -11,8 +11,8 @@ import {
     list,
     slot,
 } from "../reconciler/behaviors.js";
-import { type ElementConfig, registerElements } from "../reconciler/registry.js";
-import { BUILTIN_ELEMENTS } from "./element-config.js";
+import { type ElementConfig, forTypes, registerElements } from "../reconciler/registry.js";
+import { BUILTIN_ELEMENTS, CHILD_SETTER_TYPES, CONTENT_SETTER_TYPES } from "./element-config.js";
 
 type AdwChildSetter =
     | Adw.Bin |
@@ -73,42 +73,12 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
 
 /** The runtime half of the built-in element configuration: the behaviors bound to each GObject type. */
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
-    AdwBin: {
+    ...forTypes(CHILD_SETTER_TYPES, {
         behaviors: [childSetter],
-    },
-    AdwClamp: {
-        behaviors: [childSetter],
-    },
-    AdwClampScrollable: {
-        behaviors: [childSetter],
-    },
-    AdwNavigationPage: {
-        behaviors: [childSetter],
-    },
-    AdwSplitButton: {
-        behaviors: [childSetter],
-    },
-    AdwStatusPage: {
-        behaviors: [childSetter],
-    },
-    AdwTabOverview: {
-        behaviors: [childSetter],
-    },
-    AdwToastOverlay: {
-        behaviors: [childSetter],
-    },
-    AdwToggle: {
-        behaviors: [childSetter],
-    },
-    AdwBottomSheet: {
+    }),
+    ...forTypes(CONTENT_SETTER_TYPES, {
         behaviors: [contentSetter],
-    },
-    AdwFlap: {
-        behaviors: [contentSetter],
-    },
-    AdwOverlaySplitView: {
-        behaviors: [contentSetter],
-    },
+    }),
     AdwDialog: {
         behaviors: [childSetter, breakpoints],
     },

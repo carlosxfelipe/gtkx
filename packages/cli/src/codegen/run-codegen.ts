@@ -1,6 +1,11 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
-import { resolveLazyElements } from "@gtkx/config/internal";
+import {
+    resolveElementComponents,
+    resolveElementProps,
+    resolveLazyElements,
+    resolveOmitProps,
+} from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
@@ -64,18 +69,6 @@ const removeSharedStoreShadow = (cwd: string): void => {
     }
 };
 
-const userModuleExports = (
-    elements: Config["elements"],
-    key: "component" | "props",
-): Record<string, { module: string; export: string }> =>
-    Object.fromEntries(
-        Object.entries(elements?.config ?? {}).flatMap(([type, entry]) => {
-            const ref = entry[key];
-
-            return ref === undefined ? [] : [[type, ref] as const];
-        }),
-    );
-
 const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
     libraries,
     girPath,
@@ -93,9 +86,10 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
                     version: store.react.version,
                 },
     reactSubexports: store.react?.subexports ?? [],
-    userComponents: userModuleExports(elements, "component"),
-    userProps: userModuleExports(elements, "props"),
+    userComponents: resolveElementComponents(elements),
+    userProps: resolveElementProps(elements),
     userLazyElements: resolveLazyElements(elements),
+    userOmitProps: resolveOmitProps(elements),
 });
 
 const disabledCodegenResult = (configFile: string | undefined): RunCodegenResult => ({

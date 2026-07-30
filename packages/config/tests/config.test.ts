@@ -4,6 +4,7 @@ import {
     defineConfig,
     isValidApplicationId,
     resolveConfig,
+    resolveOmitProps,
     resolveReactCompilerOptions,
     validateConfig,
 } from "../src/config.js";
@@ -448,5 +449,22 @@ describe("validateConfig (elements.config)", () => {
             });
         },
         ).toThrow(/must be a module specifier/);
+    });
+
+    it("accepts per-element omitted props", () => {
+        expect(() => {
+            validateWithAppId({ elements: { config: { GtkButton: { omitProps: ["child"] } } } });
+        }).not.toThrow();
+    });
+
+    it("rejects an empty omitted prop name", () => {
+        expect(() => {
+            validateWithAppId({ elements: { config: { GtkButton: { omitProps: [""] } } } });
+        }).toThrow(/must be a non-empty property name/);
+    });
+
+    it("collects the omitted props of every element entry", () => {
+        const elements = { config: { GtkButton: { omitProps: ["child"] }, GtkLabel: { lazy: true } } };
+        expect(resolveOmitProps(elements)).toEqual({ GtkButton: ["child"] });
     });
 });

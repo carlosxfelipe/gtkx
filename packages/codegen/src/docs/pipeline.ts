@@ -6,6 +6,7 @@ import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
+import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
@@ -27,6 +28,7 @@ type DocsOptions = {
     outDir: string;
     basePath?: string;
     props?: ElementProps;
+    omitProps?: OmittedProps;
     force?: boolean;
 };
 
@@ -214,6 +216,7 @@ const writePages = (outDir: string, pages: Page[]): void => {
 
 const writeDocs = (options: DocsOptions): DocsResult => {
     setElementProps(options.props ?? {});
+    setOmittedProps(options.omitProps ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     const cached = cachedDocsResult(options, manifestPath);

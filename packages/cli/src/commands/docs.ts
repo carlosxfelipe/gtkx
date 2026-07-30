@@ -1,5 +1,14 @@
-import { type ElementProps, readBuiltinElements, resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
+import {
+    type ElementProps,
+    mergeOmitProps,
+    type OmittedProps,
+    readBuiltinElements,
+    resolveGirPath,
+    resolveLibraries,
+    writeDocs,
+} from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
+import { resolveOmitProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { existsSync } from "node:fs";
@@ -55,13 +64,15 @@ const docs = defineCommand({
         const libraries = resolveLibraries(config.libraries, girPath);
         const startedAt = Date.now();
         const outDir = resolve(cwd, args.out);
+        const builtin = await resolveDocsElements(cwd);
 
         const { regenerated, namespaces } = writeDocs({
             libraries,
             girPath,
             outDir,
             basePath: args["base-path"],
-            props: await resolveDocsProps(cwd),
+            props: builtin.props,
+            omitProps: mergeOmitProps(builtin.omitProps, resolveOmitProps(config.elements)),
             force: args.force,
         });
 
@@ -80,16 +91,16 @@ const docs = defineCommand({
     },
 });
 
-const resolveDocsProps = async (cwd: string): Promise<ElementProps> => {
+const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omitProps: OmittedProps }> => {
     const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
 
     if (!existsSync(giStoreDir)) {
-        return {};
+        return { props: {}, omitProps: {} };
     }
 
-    const { props } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
+    const { props, omitProps } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
 
-    return props;
+    return { props, omitProps };
 };
 
 export { docs };

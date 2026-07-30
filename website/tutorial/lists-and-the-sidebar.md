@@ -281,12 +281,11 @@ export const Window = () => {
                         </AdwToolbarView>
                     </AdwNavigationPage>
                 }
-                content={
-                    <AdwNavigationPage title={title}>
-                        <ContentPane />
-                    </AdwNavigationPage>
-                }
-            />
+            >
+                <AdwNavigationPage title={title}>
+                    <ContentPane />
+                </AdwNavigationPage>
+            </AdwNavigationSplitView>
         </AdwApplicationWindow>
     );
 };

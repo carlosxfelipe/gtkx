@@ -9,6 +9,7 @@ import { buildGirIndex } from "./gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
+import { type OmittedProps, setOmittedProps } from "./omitted-props.js";
 
 type JsxNamespaceFile = {
     directory: string;
@@ -25,6 +26,7 @@ type JsxGenerationOptions = {
     reactSubexports?: string[];
     components?: ElementComponentOverrides;
     props?: ElementProps;
+    omitProps?: OmittedProps;
     lazyElements?: string[];
 };
 
@@ -47,6 +49,7 @@ type JsxNamespaceContext = {
 
 const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}): JsxFiles => {
     setElementProps(options.props ?? {});
+    setOmittedProps(options.omitProps ?? {});
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
     const girIndex = buildGirIndex(library);

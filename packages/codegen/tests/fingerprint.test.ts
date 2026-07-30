@@ -6,6 +6,7 @@ const jsxInput = (overrides: Partial<JsxFingerprintInput> = {}): JsxFingerprintI
     components: {},
     lazyElements: [],
     props: {},
+    omitProps: {},
     ...overrides,
 });
 
@@ -46,6 +47,17 @@ describe("computeJsxFingerprint", () => {
         ).value;
 
         expect(withProps).not.toBe(base);
+    });
+
+    it("changes when the omitted props change", () => {
+        const base = computeJsxFingerprint(jsxInput(), 0).value;
+        expect(computeJsxFingerprint(jsxInput({ omitProps: { AdwBin: ["child"] } }), 0).value).not.toBe(base);
+    });
+
+    it("is stable regardless of omitted prop order", () => {
+        const a = computeJsxFingerprint(jsxInput({ omitProps: { AdwFlap: ["content", "flap"] } }), 0).value;
+        const b = computeJsxFingerprint(jsxInput({ omitProps: { AdwFlap: ["flap", "content"] } }), 0).value;
+        expect(a).toBe(b);
     });
 
     it("is stable regardless of component key order", () => {

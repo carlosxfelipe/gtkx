@@ -50,14 +50,17 @@ type ModuleExport = { module: string; export: string };
 /**
  * Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is
  * created by its parent container, as pages and layout children are), the custom behaviors bound to
- * its type, an optional component that wraps the generated element, and the base props interface its
- * generated props extend. `component` and `props` are inert at runtime; they are read only by codegen.
+ * its type, an optional component that wraps the generated element, the base props interface its
+ * generated props extend, and the GObject properties to leave out of the generated props (those a
+ * behavior already writes from children, such as the `child` and `content` properties). `component`,
+ * `props` and `omitProps` are inert at runtime; they are read only by codegen.
  */
 type ElementConfig<T extends GObject.Object = GObject.Object> = {
     lazy?: boolean;
     behaviors?: ElementBehavior<T>[];
     component?: ModuleExport;
     props?: ModuleExport;
+    omitProps?: string[];
 };
 
 /**
@@ -76,22 +79,19 @@ const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], isPrepend
 };
 
 const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPrepended = false): ElementConfig => {
-    const entry: ElementConfig = { ...base };
+    const { behaviors, lazy, omitProps, ...rest } = added;
+    const entry: ElementConfig = { ...base, ...rest };
 
-    if (added.behaviors !== undefined) {
-        entry.behaviors = mergeBehaviors(entry, added.behaviors as ElementBehavior[], isPrepended);
+    if (behaviors !== undefined) {
+        entry.behaviors = mergeBehaviors(base, behaviors as ElementBehavior[], isPrepended);
     }
 
-    if (added.lazy === true) {
+    if (omitProps !== undefined) {
+        entry.omitProps = [...(base.omitProps ?? []), ...omitProps];
+    }
+
+    if (lazy === true) {
         entry.lazy = true;
-    }
-
-    if (added.component !== undefined) {
-        entry.component = added.component;
-    }
-
-    if (added.props !== undefined) {
-        entry.props = added.props;
     }
 
     return entry;
@@ -99,8 +99,9 @@ const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPr
 
 /**
  * Merges maps of {@link ElementConfig} keyed by GLib type name into one, concatenating each type's
- * behaviors in the order the maps are given (an earlier map's behaviors come first) and taking the last
- * lazy flag, component, and props seen. Use it to combine an app's element config with its behaviors.
+ * behaviors and omitted props in the order the maps are given (an earlier map's behaviors come first)
+ * and taking the last lazy flag, component, and props seen. Use it to combine an app's element config
+ * with its behaviors.
  */
 const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): Record<string, ElementConfig> => {
     const merged: Record<string, ElementConfig> = {};

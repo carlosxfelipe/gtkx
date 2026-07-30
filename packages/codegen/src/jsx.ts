@@ -7,6 +7,7 @@ import {
 } from "./fingerprint.js";
 import { type ModuleExport, readBuiltinElements } from "./react/element-config.js";
 import { type JsxStoreOptions, writeJsxStore } from "./store/jsx-store.js";
+import { mergeOmitProps, type OmittedProps } from "./store/jsx/omitted-props.js";
 import { generateJsxFiles } from "./store/jsx/pipeline.js";
 
 type RunJsxCodegenOptions = {
@@ -17,6 +18,7 @@ type RunJsxCodegenOptions = {
     userComponents: Record<string, ModuleExport>;
     userLazyElements: string[];
     userProps: Record<string, ModuleExport>;
+    userOmitProps: OmittedProps;
     giRegenerated: boolean;
     force: boolean;
 };
@@ -36,12 +38,14 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     const components = { ...builtin.components, ...options.userComponents };
     const lazyElements = [...builtin.lazyElements, ...options.userLazyElements];
     const props = { ...builtin.props, ...options.userProps };
+    const omitProps = mergeOmitProps(builtin.omitProps, options.userOmitProps);
 
     const fingerprintInput: JsxFingerprintInput = {
         reactVersion: options.jsx.version,
         components,
         lazyElements,
         props,
+        omitProps,
     };
 
     if (!options.force && !options.giRegenerated) {
@@ -57,6 +61,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         components,
         lazyElements,
         props,
+        omitProps,
     });
 
     writeJsxStore(options.jsx, namespaces, metadata, {

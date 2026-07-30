@@ -126,6 +126,24 @@ describe("writeDocs", () => {
     registerSignalAndMethodTests();
 });
 
+describe("writeDocs with omitted props", () => {
+    const outDir = join(workDir, "omitted");
+
+    it("leaves the omitted props out of the element page", () => {
+        writeDocs({
+            libraries: ["Gtk-4.0"],
+            girPath: GIR_PATH,
+            outDir,
+            omitProps: { GtkButton: ["child"] },
+        });
+
+        const button = page(outDir, join("gtk", "button.md"));
+        expect(button).not.toContain("### `child`");
+        expect(button).toContain("### `label`");
+        expect(page(outDir, join("gtk", "frame.md"))).toContain("### `child`");
+    });
+});
+
 describe("writeDocs with a custom base path", () => {
     const outDir = join(workDir, "custom");
 

@@ -214,14 +214,6 @@ const hasMatchingAncestorName = (
     isMatch: (glibName: string) => boolean,
 ): boolean => hasMatchingAncestor(klass, namespace, library, (_klass, glibName) => isMatch(glibName));
 
-const hasExposedMethod = (
-    klass: GirClass,
-    namespace: GirNamespace,
-    library: Library,
-    methodName: string,
-): boolean =>
-    hasMatchingAncestor(klass, namespace, library, (current) => current.methods.some((m) => m.name === methodName));
-
 const isIntrinsicElementClass = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
     hasMatchingAncestorName(klass, namespace, library, (glibName) => glibName === "GObject");
 
@@ -253,7 +245,6 @@ export {
     newlyImplementedInterfaces,
     collectInterfacePropsClasses,
     ancestorGlibNames,
-    hasExposedMethod,
     isIntrinsicElementClass,
     collectIntrinsicElementClasses,
     type GlibNamedClass,

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { GiStoreOptions } from "./store/gi-store.js";
 import type { JsxStoreOptions } from "./store/jsx-store.js";
+import type { OmittedProps } from "./store/jsx/omitted-props.js";
 import { checkModules } from "./compile.js";
 import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
@@ -26,6 +27,7 @@ type CodegenRunnerOptions = {
     userComponents?: Record<string, ModuleExport>;
     userLazyElements?: string[];
     userProps?: Record<string, ModuleExport>;
+    userOmitProps?: OmittedProps;
     gl?: GlCodegenOptions;
     force?: boolean;
 };
@@ -95,11 +97,13 @@ const jsxUserOptions = (
     userComponents: Record<string, ModuleExport>;
     userLazyElements: string[];
     userProps: Record<string, ModuleExport>;
+    userOmitProps: OmittedProps;
 } => ({
     reactSubexports: options.reactSubexports ?? [],
     userComponents: options.userComponents ?? {},
     userLazyElements: options.userLazyElements ?? [],
     userProps: options.userProps ?? {},
+    userOmitProps: options.userOmitProps ?? {},
 });
 
 const emitJsxStore = async (input: {

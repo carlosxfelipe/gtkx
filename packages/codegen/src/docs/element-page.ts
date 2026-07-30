@@ -13,6 +13,7 @@ import {
     newlyImplementedInterfaces,
     signalHandlerName,
 } from "../store/jsx/intrinsic-elements.js";
+import { isOmittedProp } from "../store/jsx/omitted-props.js";
 import { isObjectProp } from "../store/jsx/props.js";
 import {
     classMethodEntries,
@@ -120,12 +121,7 @@ const propertyEntry = (
     property: GirProperty,
     jsName: string,
 ): PropEntry => {
-    const isObject = isObjectProp(
-        { library: context.library, klass: owner.klass, namespace: owner.namespace },
-        property,
-        jsName,
-    );
-
+    const isObject = isObjectProp(context.library, property);
     const baseType = renderDocsType(context.library, property.type, false);
     const type = isObject ? `${baseType} | ReactElement` : baseType;
     const meta: string[] = [`\`${type}\``];
@@ -149,14 +145,14 @@ const propertyEntry = (
     return { name: jsName, meta: meta.join(" · "), doc: docMarkdown(property.doc) };
 };
 
-const propJsName = (property: GirProperty, seen: Set<string>): string | undefined => {
+const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>): string | undefined => {
     if (!property.introspectable) {
         return undefined;
     }
 
     const jsName = toCamelIdentifier(property.name);
 
-    if (seen.has(jsName)) {
+    if (seen.has(jsName) || isOmittedProp(owner.glibName, jsName)) {
         return undefined;
     }
 
@@ -169,7 +165,7 @@ const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen:
     const entries: PropEntry[] = [];
 
     for (const property of owner.klass.properties) {
-        const jsName = propJsName(property, seen);
+        const jsName = propJsName(property, owner, seen);
 
         if (jsName !== undefined) {
             entries.push(propertyEntry(context, owner, property, jsName));

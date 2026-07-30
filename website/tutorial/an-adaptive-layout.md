@@ -100,8 +100,9 @@ The split view has both properties too. Pass them down, still in `src/components
     minSidebarWidth={220}
     maxSidebarWidth={300}
     sidebar={/* ... */}
-    content={/* ... */}
-/>
+>
+    {/* ... */}
+</AdwNavigationSplitView>
 ```
 
 `collapsed` flows one way: the breakpoint decides, the store records, the widget follows. `showContent` does not, which is why the handler is there. Once collapsed, the split view shows a back button in the content header and responds to the system back gesture, and both change `show-content` inside GTK4 on their own. If that change never reaches the store, the next render passes the old `showContent` back down and the pane you navigated away from snaps into view.
