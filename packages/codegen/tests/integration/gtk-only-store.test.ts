@@ -73,6 +73,16 @@ const emittedFiles = (root: string): string[] => {
     return collected;
 };
 
+const descriptorFor = (source: string, symbol: string): string => {
+    const start = source.indexOf(`t.fn("libgtk-4.so.1", "${symbol}"`);
+
+    if (start === -1) {
+        throw new Error(`No binding emitted for ${symbol}`);
+    }
+
+    return source.slice(start, source.indexOf("});", start));
+};
+
 afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
 });
@@ -106,5 +116,15 @@ describe("a project that declares Gtk-4.0 without Adw-1", () => {
         expect(files.length).toBeGreaterThan(0);
         const offenders = files.filter((file) => readFileSync(file, "utf8").includes("@gtkx/react/adw"));
         expect(offenders).toEqual([]);
+    });
+
+    it("marshals a derived fundamental return through the ref pair it inherits", () => {
+        const source = readFileSync(join(gi.storeDir, "gtk", "gtk.js"), "utf8");
+        const derived = descriptorFor(source, "gtk_property_expression_new");
+        expect(derived).toContain("returns: t.fundamental(");
+        expect(derived).toContain("gtk_expression_unref");
+        expect(derived).not.toContain("returns: t.object");
+        const root = descriptorFor(source, "gtk_bool_filter_get_expression");
+        expect(root).toContain("returns: t.fundamental(");
     });
 });

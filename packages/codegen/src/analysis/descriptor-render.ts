@@ -378,23 +378,16 @@ const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     });
 };
 
+// GIR marks only the root of a fundamental hierarchy with `glib:fundamental` and its ref/unref pair,
+// so a derived type such as GtkPropertyExpression carries neither and has to inherit both.
 const classOrInterfaceExpression = (
+    context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" }>,
     ownership: Ownership,
 ): string => {
-    const cls = resolved.value;
+    const ancestor = fundamentalAncestor(context, resolved);
 
-    if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
-        return tObject(ownership);
-    }
-
-    return renderFundamental({
-        lib: resolved.namespace.sharedLibrary ?? "",
-        refFunc: cls.glibRefFunc,
-        unrefFunc: cls.glibUnrefFunc,
-        typeName: cls.glibTypeName,
-        ownership,
-    });
+    return ancestor === undefined ? tObject(ownership) : renderFundamental({ ...ancestor, ownership });
 };
 
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
@@ -631,7 +624,7 @@ const expressionForResolved = (
     switch (resolved.kind) {
         case "class":
         case "interface": {
-            return classOrInterfaceExpression(resolved, ownership);
+            return classOrInterfaceExpression(context, resolved, ownership);
         }
         case "record": {
             return recordExpression(context, resolved, ownership, {
