@@ -1340,6 +1340,7 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
     return (
         <GtkGLArea
             ref={glAreaRef}
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             useEs
             onRender={handleRender}
             onResize={handleResize}
@@ -1548,6 +1549,7 @@ const ShadertoyGLAreaPanel = ({
             <GtkGLArea
                 name="shadertoy-gl-area"
                 ref={glAreaRef}
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 useEs
                 onRender={handleRender}
                 onResize={handleResize}

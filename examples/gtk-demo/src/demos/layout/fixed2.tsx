@@ -41,9 +41,13 @@ function computeFixedTransform(
 ): Gsk.Transform | undefined {
     const angle = duration * 90;
     const scale = 2 + Math.sin(duration * Math.PI);
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const labelWidth = label?.getAllocatedWidth() ?? 50;
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const labelHeight = label?.getAllocatedHeight() ?? 20;
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const containerWidth = fixed?.getAllocatedWidth() ?? 400;
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const containerHeight = fixed?.getAllocatedHeight() ?? 300;
     const centerPoint = new Graphene.Point();
     centerPoint.init(containerWidth / 2, containerHeight / 2);

@@ -57,7 +57,9 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
 
     if (widget instanceof Gtk.DropDown) {
         widget.setSelected(selection);
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     } else if (widget instanceof Gtk.ComboBox) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         widget.setActive(selection);
     }
 };

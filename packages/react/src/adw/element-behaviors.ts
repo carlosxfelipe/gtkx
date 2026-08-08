@@ -27,8 +27,10 @@ type AdwChildSetter =
     Adw.ToastOverlay |
     Adw.Toggle;
 
+// eslint-disable-next-line @typescript-eslint/no-deprecated
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.Flap | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
+// eslint-disable-next-line @typescript-eslint/no-deprecated
 type PageHost = Adw.PreferencesDialog | Adw.PreferencesWindow;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
 
@@ -125,6 +127,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 "actions",
                 "GtkWidget",
                 (row, child) => {
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     row.addAction(child);
                 },
                 (row, child) => {
@@ -137,9 +140,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>("AdwNavigationPage")],
     },
     AdwLeaflet: {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()],
     },
     AdwWrapBox: {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()],
     },
     AdwCarousel: {
@@ -191,13 +196,16 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     AdwSqueezer: {
         behaviors: [
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             addRemoveSlot<Gtk.Widget, Adw.Squeezer>(
                 "children",
                 "GtkWidget",
                 (squeezer, child) => {
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     squeezer.add(child);
                 },
                 (squeezer, child) => {
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     squeezer.remove(child);
                 },
             ),

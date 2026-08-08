@@ -866,6 +866,7 @@ const applyRgba = (value: Gdk.RGBA | null, apply: (color: Gdk.RGBA) => void) => 
 const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
     <>
         <GtkGridLayoutChild column={0} row={row}>
+            {/* eslint-disable-next-line @typescript-eslint/no-deprecated */}
             <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
                 {label}
             </GtkLabel>
@@ -876,6 +877,7 @@ const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
                 rgba={rgba}
                 dialog={<GtkColorDialog />}
                 onNotifyRgba={onChanged}
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 valign={Gtk.Align.BASELINE}
             />
         </GtkGridLayoutChild>
@@ -930,6 +932,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
         <GtkScale
             hexpand
             widthRequest={100}
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             valign={Gtk.Align.BASELINE}
             adjustment={(
                 <GtkAdjustment
@@ -951,6 +954,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
 const SliderEntryRow = (props: SliderEntryRowProps) => (
     <>
         <GtkGridLayoutChild column={0} row={props.row}>
+            {/* eslint-disable-next-line @typescript-eslint/no-deprecated */}
             <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
                 {props.label}
             </GtkLabel>
@@ -961,6 +965,7 @@ const SliderEntryRow = (props: SliderEntryRowProps) => (
                 name={props.entryName}
                 widthChars={4}
                 maxWidthChars={4}
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 valign={Gtk.Align.BASELINE}
                 text={props.displayText}
                 onActivate={props.onEntryActivate}
@@ -1190,6 +1195,7 @@ const FontFeaturesPreviewControlsRow = ({
                     name="plain_toggle"
                     label="Plain"
                     active={viewMode === "plain"}
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     valign={Gtk.Align.BASELINE}
                     onToggled={handlePlainToggled}
                 />
@@ -1198,6 +1204,7 @@ const FontFeaturesPreviewControlsRow = ({
                     label="Waterfall"
                     group={plainToggle}
                     active={viewMode === "waterfall"}
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     valign={Gtk.Align.BASELINE}
                     onToggled={handleWaterfallToggled}
                 />

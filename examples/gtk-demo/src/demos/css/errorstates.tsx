@@ -172,6 +172,7 @@ const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
         <GtkLabel
             useUnderline
             halign={Gtk.Align.END}
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             valign={Gtk.Align.BASELINE}
             cssClasses={["dim-label"]}
             mnemonicWidget={target}
@@ -191,6 +192,7 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
                 ref={(node) => {
                     setDetailsEntry(node);
                 }}
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 valign={Gtk.Align.BASELINE}
                 onChanged={onChange}
             />
@@ -213,6 +215,7 @@ const MoreDetailsEntryRow = ({
                 ref={(node) => {
                     setMoreDetailsEntry(node);
                 }}
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 valign={Gtk.Align.BASELINE}
                 cssClasses={hasMoreDetailsError ? ["error"] : []}
                 tooltipText={hasMoreDetailsError ? "Must have details first" : ""}
@@ -236,6 +239,7 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                     setLevelScale(node);
                 }}
                 orientation={Gtk.Orientation.HORIZONTAL}
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 valign={Gtk.Align.BASELINE}
                 drawValue={false}
                 adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
@@ -254,6 +258,7 @@ const ModeErrorLabel = ({ setErrorLabel }: ModeErrorLabelProps) => (
                 setErrorLabel(node);
             }}
             halign={Gtk.Align.START}
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             valign={Gtk.Align.BASELINE}
             cssClasses={["error"]}
         >
@@ -276,6 +281,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                         setModeSwitch(node);
                     }}
                     halign={Gtk.Align.START}
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     valign={Gtk.Align.BASELINE}
                     accessibleKeyShortcuts="Control+M"
                     accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
