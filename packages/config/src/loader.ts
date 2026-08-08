@@ -23,8 +23,11 @@ type LoadConfigOptions = {
     mode?: string | undefined;
 };
 
+/** Reads a project's configuration once per directory, caching what it loads and what it resolves. */
 type ConfigLoader = {
+    /** Loads the configuration file the given directory resolves to, as {@link loadConfig} does. */
     load: (cwd: string) => Promise<LoadedConfig>;
+    /** Loads the configuration for the given directory and reduces it to what the build and the app need. */
     resolve: (cwd: string) => Promise<ResolvedConfig>;
 };
 
@@ -79,4 +82,4 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
     };
 };
 
-export { loadConfig, createConfigLoader, type LoadedConfig, type LoadConfigOptions, type ConfigLoader };
+export { loadConfig, createConfigLoader, type LoadedConfig, type ConfigLoader };

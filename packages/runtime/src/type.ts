@@ -15,6 +15,7 @@ import { LIB } from "./library.js";
 
 /** Object tagged with its GLib type through a `__type__` GType field. */
 type TypedClass = {
+    /** GType the object's class is registered under. */
     __type__: bigint;
 };
 
@@ -119,6 +120,7 @@ const isTypedClass = (value: unknown): value is TypedClass =>
     typeof value === "object" && value !== null && "__type__" in value && typeof value.__type__ === "bigint";
 
 /** Returns whether `type` is `ancestorType` or descends from it. */
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- mirrors g_type_is_a from the C API */
 function typeIsA(type: bigint, ancestorType: bigint): boolean {
     return gTypeIsA(type, ancestorType) as boolean;
 }
@@ -150,6 +152,7 @@ function typeName(type: bigint): string | null {
 }
 
 /** Returns whether `value` is a typed wrapper whose GType is or descends from `gtype`. */
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- mirrors g_type_is_a from the C API */
 function valueIsA(value: unknown, gtype: bigint): boolean {
     return isTypedClass(value) && typeIsA(value.__type__, gtype);
 }
@@ -284,6 +287,5 @@ export {
     resolveBoxedType,
     resolveFundamentalType,
     resolveDescriptorType,
-    type ResolvableDescriptor,
     type TypedClass,
 };

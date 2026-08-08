@@ -17,8 +17,14 @@ import { gtkx } from "./plugin.js";
 
 type FlatConfig = TSESLint.FlatConfig.Config;
 
+type PublicApi = {
+    entrypoints: string[];
+    modules: { path: string }[];
+};
+
 const SOURCES = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"];
 const JS_SOURCES = ["**/*.{js,jsx,mjs,cjs}"];
+const TS_SOURCES = ["**/*.{ts,tsx,mts,cts}"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
 const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
 const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
@@ -27,52 +33,6 @@ const TOOLING = ["**/*.config.{ts,mts,cts,js,mjs,cjs}", "**/*.config.base.ts", "
 const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
 const DEPENDENCY_CHECKS = { checkObsoleteDependencies: false };
 const CLI_OPTIONAL_DEPS = ["@gtkx/native", "@gtkx/react", "@gtkx/testing", "vitest"];
-
-const UPSTREAM_BOOLEANS = [
-    "IS_REACT_ACT_ENVIRONMENT",
-    "cssMinify",
-    "exact",
-    "external",
-    "globals",
-    "minify",
-    "noExternal",
-    "private",
-    "skipSelf",
-    "ssr",
-    "ssrEmitAssets",
-];
-
-const BOOLEAN_NAME_MIRRORS = [
-    "AccessibleProps",
-    "BasicValueMap",
-    "ByRoleOptions",
-    "CodegenArgs",
-    "Config",
-    "CreateCommandArgs",
-    "DocsArgs",
-    "FakeWidgetOverrides",
-    "GirAlias",
-    "GirCallable",
-    "GirCallback",
-    "GirClass",
-    "GirConstant",
-    "GirEnum",
-    "GirField",
-    "GirFunction",
-    "GirNamespace",
-    "GirParameter",
-    "GirProperty",
-    "GirRecord",
-    "GirReturnValue",
-    "ListItem",
-    "MatcherContext",
-    "MatcherOptions",
-    "MatcherResult",
-    "NormalizerOptions",
-    "RenderGridViewOptions",
-    "SupervisedChild",
-    "TextContentOptions",
-];
 
 const NX_CONFIGS: FlatConfig[] = [
     {
@@ -190,6 +150,7 @@ const SOURCE_EXTENDS = [
 
 const SOURCE_RULES: Linter.RulesRecord = {
     "@stylistic/max-len": ["error", { code: 120 }],
+    "unicorn/consistent-boolean-name": "error",
     "@stylistic/comma-dangle": [
         "error",
         {
@@ -222,10 +183,12 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/switch-exhaustiveness-check": "error",
     curly: ["error", "all"],
     "gtkx/accessor-naming": "error",
-    "gtkx/boolean-name": ["error", { mirrors: BOOLEAN_NAME_MIRRORS, mirrorProperties: UPSTREAM_BOOLEANS }],
+    "gtkx/brand-naming": "error",
     "gtkx/cognitive-complexity": ["error", { max: 5 }],
     "gtkx/module-section-order": "error",
+    "gtkx/no-comments": "error",
     "gtkx/no-inline-exports": "error",
+    "gtkx/no-library-prefix": "off",
     "gtkx/statement-padding": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
@@ -242,6 +205,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "react-hooks/incompatible-library": "error",
     "react-hooks/unsupported-syntax": "error",
     "sonarjs/cognitive-complexity": "off",
+    "sonarjs/deprecation": "off",
     "sonarjs/prefer-read-only-props": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
@@ -268,7 +232,26 @@ const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecor
 const scopeTo = (files: string[], configs: (FlatConfig | FlatConfig[])[]): FlatConfig[] =>
     configs.flat().map((entry) => ({ ...entry, files }));
 
-const config = (root: string): FlatConfig[] => [
+const documentPublicApi = (root: string, surface: PublicApi): FlatConfig => ({
+    files: TS_SOURCES,
+    ignores: TESTS,
+    plugins: { gtkx },
+    rules: {
+        "gtkx/public-api-jsdoc": [
+            "off",
+            { entrypoints: surface.entrypoints, modules: surface.modules.map((entry) => entry.path), root },
+        ],
+    },
+});
+
+const classifyEntrypoints = (surface: PublicApi): FlatConfig => ({
+    files: MANIFESTS,
+    languageOptions: { parser: jsonc },
+    plugins: { gtkx },
+    rules: { "gtkx/public-entrypoints": ["error", { entrypoints: surface.entrypoints }] },
+});
+
+const config = (root: string, surface: PublicApi): FlatConfig[] => [
     includeIgnoreFile(join(root, ".gitignore")),
     { ignores: IGNORES },
     ...scopeTo(SOURCES, SOURCE_EXTENDS),
@@ -279,6 +262,8 @@ const config = (root: string): FlatConfig[] => [
         rules: SOURCE_RULES,
     },
     ...NX_CONFIGS,
+    documentPublicApi(root, surface),
+    classifyEntrypoints(surface),
     { files: CORE_SOURCES, ignores: ADW_SOURCES, rules: restrictAdwImports(ADW_CORE_MESSAGE, []) },
     {
         files: ["packages/react/src/**/*.{ts,tsx}", "packages/components/src/**/*.{ts,tsx}"],
@@ -292,10 +277,6 @@ const config = (root: string): FlatConfig[] => [
     {
         files: ["packages/cli/src/**/*.ts", "packages/utils/src/process/**/*.ts"],
         rules: { "unicorn/no-process-exit": "off" },
-    },
-    {
-        files: ["packages/runtime/src/type.ts"],
-        rules: { "unicorn/consistent-boolean-name": "off" },
     },
     ...scopeTo(TESTS, [vitest.configs.recommended]),
     { files: TESTS, rules: TEST_RULES },

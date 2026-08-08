@@ -14,12 +14,6 @@ type CreateCommandArgs = {
     overwrite?: boolean | undefined;
 };
 
-/**
- * Citty command definition for the CLI `create` subcommand. It declares the
- * scaffolder's arguments (target name, application ID, package manager,
- * TypeScript and Vitest toggles, prompt behavior, and overwrite) and runs the
- * scaffolder to generate a new GTKX application.
- */
 const scaffoldCommand = defineCommand({
     meta: {
         name: "create",
@@ -114,4 +108,4 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     }
 };
 
-export { scaffoldCommand, runCreate, type CreateCommandArgs };
+export { scaffoldCommand, runCreate };

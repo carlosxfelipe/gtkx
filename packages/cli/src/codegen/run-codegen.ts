@@ -246,6 +246,5 @@ export {
     syncSchemaEnv,
     ensureGenerated,
     resolveConfigWatch,
-    type RunCodegenOptions,
     type RunCodegenResult,
 };

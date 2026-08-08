@@ -22,11 +22,12 @@
     },
     "nx": {
         "implicitDependencies": [
+            "@gtkx/cli",
+            "@gtkx/codegen",
             "@gtkx/components",
             "@gtkx/config",
             "@gtkx/css",
             "@gtkx/gl",
-            "@gtkx/native",
             "@gtkx/react",
             "@gtkx/runtime",
             "@gtkx/testing",
@@ -54,11 +55,22 @@
                 "cache": true,
                 "dependsOn": [
                     "gtkx:codegen",
-                    "^build"
+                    "@gtkx/cli:build",
+                    "@gtkx/codegen:build",
+                    "@gtkx/components:build",
+                    "@gtkx/config:build",
+                    "@gtkx/css:build",
+                    "@gtkx/gl:build",
+                    "@gtkx/react:build",
+                    "@gtkx/runtime:build",
+                    "@gtkx/testing:build",
+                    "@gtkx/vitest:build"
                 ],
                 "inputs": [
                     "default",
                     "^production",
+                    "{workspaceRoot}/api.json",
+                    "{workspaceRoot}/packages/eslint/src/api-entrypoints.ts",
                     {
                         "dependentTasksOutputFiles": "**/*.{d.ts,d.cts,d.mts}",
                         "transitive": true
@@ -94,7 +106,11 @@
                     "gtkx:codegen",
                     "@gtkx/gl:codegen",
                     "reference"
-                ]
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
             },
             "typecheck": {
                 "dependsOn": [

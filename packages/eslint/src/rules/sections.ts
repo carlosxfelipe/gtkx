@@ -8,6 +8,7 @@ const CONTIGUOUS: Set<Section> = new Set<Section>(["imports", "exports"]);
 const SECTION_BY_TYPE: Partial<Record<AST_NODE_TYPES, Section>> = {
     [AST_NODE_TYPES.ClassDeclaration]: "classes",
     [AST_NODE_TYPES.ExportAllDeclaration]: "exports",
+    [AST_NODE_TYPES.ExportDefaultDeclaration]: "exports",
     [AST_NODE_TYPES.ExpressionStatement]: "side effects",
     [AST_NODE_TYPES.FunctionDeclaration]: "functions",
     [AST_NODE_TYPES.ImportDeclaration]: "imports",
@@ -44,4 +45,4 @@ const getSection = (node: TSESTree.Node): Section | undefined => {
     return SECTION_BY_TYPE[node.type];
 };
 
-export { ORDER, CONTIGUOUS, rankFor, getSection, type Section };
+export { CONTIGUOUS, rankFor, getSection, type Section };
