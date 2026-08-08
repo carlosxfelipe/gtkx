@@ -14,8 +14,9 @@ const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
     window.getDisplay().getDefaultSeat() !== null;
 
 const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    if (root.getAllocatedWidth() === 0) {
+    const [isComputed, allocation] = root.computeBounds(root);
+
+    if (!isComputed || allocation.getWidth() === 0) {
         return WINDOW_NOT_ALLOCATED;
     }
 

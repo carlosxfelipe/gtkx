@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, typeName } from "@gtkx/runtime";
-import { getOrInsert } from "@gtkx/utils";
+import { getOrInsert, packageVersion } from "@gtkx/utils";
 import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
@@ -10,14 +10,12 @@ import { Prop } from "../components/element.js";
 import {
     applyAdoptedProps,
     applyElementProps,
-    assertConstructOnlyUnchanged,
+    assertPropsCanChange,
+    flushAccessible,
     flushBehaviors,
-    mountBehaviors,
-    unmountBehaviors,
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
-import { typeInfoFor } from "./metadata.js";
 import {
     type AnyNode,
     createElementNode,
@@ -54,6 +52,8 @@ const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
 const priority = createPriorityTracker();
 
 const hostConfig = {
+    rendererPackageName: "@gtkx/react",
+    rendererVersion: packageVersion(import.meta.url, "@gtkx/react/package.json"),
     supportsMutation: true,
     supportsPersistence: false,
     supportsHydration: false,
@@ -74,18 +74,11 @@ const hostConfig = {
         attachChild(parent, child, null);
     },
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
-        if (instance.kind !== ELEMENT_KIND) {
-            return false;
-        }
-
-        validateContentMix(instance, props);
-
-        return typeInfoFor(instance.typeName).hasMount;
-    },
-    commitMount: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
-            mountBehaviors(instance);
+            validateContentMix(instance, props);
         }
+
+        return false;
     },
     shouldSetTextContent: (): boolean => false,
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
@@ -95,6 +88,7 @@ const hostConfig = {
     resetAfterCommit: (): void => {
         flushTextHosts();
         flushBehaviors();
+        flushAccessible();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,
@@ -138,7 +132,6 @@ const hostConfig = {
     detachDeletedInstance: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
             disconnectAllHandlers(instance);
-            unmountBehaviors(instance);
         } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             disconnectAllHandlers(lazyTarget(instance, instance.adopted));
         }
@@ -194,14 +187,14 @@ function createPriorityTracker(): PriorityTracker {
 
 const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
     if (instance.kind === ELEMENT_KIND) {
-        assertConstructOnlyUnchanged(instance.typeName, prev, next);
+        assertPropsCanChange(instance.typeName, prev, next);
         applyElementProps(instance, prev, next);
 
         return;
     }
 
     if (instance.kind === LAZY_KIND && instance.adopted !== null) {
-        assertConstructOnlyUnchanged(instance.typeName, prev, next);
+        assertPropsCanChange(instance.typeName, prev, next);
         applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
         instance.props = next;
     }
