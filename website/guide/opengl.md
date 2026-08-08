@@ -10,7 +10,7 @@ description: "Draw with OpenGL in a GTKX app using @gtkx/gl: generated OpenGL 4.
 It is a separate install:
 
 ```bash
-npm install @gtkx/gl@rc
+npm install @gtkx/gl
 ```
 
 ## What the package contains
@@ -48,7 +48,7 @@ Like every JSX `on*` prop, these handlers receive the area that emitted the sign
 
 Realize and unrealize come from `Gtk.Widget`, so they track the widget's lifetime rather than the component's. React mounts your component first, and realization follows when the widget's window is shown.
 
-Several props shape the context before it exists. `useEs` asks for an OpenGL ES context, `allowedApis` restricts which APIs may be chosen, and `hasDepthBuffer` and `hasStencilBuffer` add those attachments to the framebuffer. Once the area is realized, `area.getApi()` tells you what you actually got.
+Several props shape the context before it exists. `allowedApis` restricts which APIs may be chosen, so `allowedApis={Gdk.GLAPI.GLES}` asks for an OpenGL ES context, and `hasDepthBuffer` and `hasStencilBuffer` add those attachments to the framebuffer. Once the area is realized, `area.getApi()` tells you what you actually got.
 
 ## A simple example
 

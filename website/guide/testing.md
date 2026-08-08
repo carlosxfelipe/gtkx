@@ -9,10 +9,10 @@ GTKX ships with a React Testing Library-inspired testing package, which provides
 
 ## Setup
 
-A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx@rc`) ships this config. To add testing to a project scaffolded without it, start with the install:
+A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) ships this config. To add testing to a project scaffolded without it, start with the install:
 
 ```bash
-npm install -D @gtkx/testing@rc vitest
+npm install -D @gtkx/testing vitest
 ```
 
 Then point a `test` script at `vitest` and write `vitest.config.ts`:
@@ -129,21 +129,36 @@ Importing `@gtkx/testing` extends `expect` with widget-aware matchers, so assert
 expect(label).toHaveTextContent(/world/);
 expect(button).toHaveAccessibleName("Save");
 expect(entry).toHaveDisplayValue("typed value");
-expect(entry).toHavePlaceholderText("Search tasks");
 expect(check).toBeChecked();
 expect(toggle).toBePressed();
-expect(expander).toBeExpanded();
-expect(row).toBeSelected();
 expect(scale).toHaveValue(50);
 ```
 
 The text matchers take a string or `RegExp` (`toHaveTextContent` matches substrings; the others match exactly) and assert non-emptiness when called with no argument. The boolean state matchers throw when the widget does not expose that state at all, which catches querying the wrong widget rather than silently passing.
 
+GTK keeps accessibility separate from widget properties, so anything a screen reader would announce is asserted through `toHaveAccessibleState` and `toHaveAccessibleProperty`. Each takes the value type that attribute carries, and asserts only that it is set when you leave the value out:
+
+```ts
+expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
+expect(row).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+expect(toggle).toHaveAccessibleState(Gtk.AccessibleState.PRESSED, Gtk.AccessibleTristate.MIXED);
+expect(entry).toHaveAccessibleProperty(Gtk.AccessibleProperty.PLACEHOLDER);
+expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.AccessibleSort.DESCENDING);
+```
+
+`toAppearBefore` and `toAppearAfter` compare two widgets by their position in the widget tree, and the `toContainAnyBy*` and `toContainOneBy*` families run a query against the widget's own subtree:
+
+```ts
+expect(heading).toAppearBefore(body);
+expect(form).toContainAnyByRole(Gtk.AccessibleRole.BUTTON);
+expect(form).toContainOneByLabelText("Email");
+```
+
 ## Debugging
 
 When a query fails, look at the tree the way the queries see it. `screen.debug()` prints an HTML-like dump of the widget tree annotated with roles, names, and accessibility attributes. `logWidget(container)` prints the same dump for an arbitrary widget, and `prettyWidget(container)` returns it as a string instead of printing. `screen.logRoles()` groups every widget in the tree by role, which is the fastest way to answer "what role does this widget actually report?". `getSuggestedQuery(widget)` recommends the best query for a widget, preferring role, then label text, then the weaker kinds.
 
-For visual inspection, `screen.screenshot()` renders the window off-screen, writes the PNG to a temp file, logs a `file://` path you can open, and returns the base64 image data; the lower-level `screenshot(widget)` returns the data without saving. For poking at a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same tree dumps, queries, and screenshots to any MCP client.
+For visual inspection, `screenshot(widget)` renders a widget off-screen and returns the base64 PNG data; pass `{ path }` to also write the image to a file, creating missing directories. `screen.screenshot()` takes the same options and captures what is on screen rather than one render's subtree, which in practice is the active toplevel window: GTK4 exposes no position for a toplevel, so several windows cannot be composited into a single image. Target another window by finding it first, with `screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "…" })`. For poking at a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same tree dumps, queries, and screenshots to any MCP client.
 
 ::: tip
 Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.

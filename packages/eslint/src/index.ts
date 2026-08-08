@@ -188,7 +188,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "gtkx/module-section-order": "error",
     "gtkx/no-comments": "error",
     "gtkx/no-inline-exports": "error",
-    "gtkx/no-library-prefix": "off",
+    "gtkx/no-library-prefix": "error",
     "gtkx/statement-padding": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
@@ -238,7 +238,7 @@ const documentPublicApi = (root: string, surface: PublicApi): FlatConfig => ({
     plugins: { gtkx },
     rules: {
         "gtkx/public-api-jsdoc": [
-            "off",
+            "error",
             { entrypoints: surface.entrypoints, modules: surface.modules.map((entry) => entry.path), root },
         ],
     },

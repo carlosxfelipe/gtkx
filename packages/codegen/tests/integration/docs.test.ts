@@ -1,3 +1,4 @@
+/* eslint-disable gtkx/no-library-prefix */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

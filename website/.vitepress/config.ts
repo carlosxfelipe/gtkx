@@ -36,6 +36,7 @@ const guideSidebar = [
     { text: "Configuration and Codegen", link: "/guide/configuration-and-codegen" },
     { text: "Async Operations", link: "/guide/async-operations" },
     { text: "Error Handling", link: "/guide/error-handling" },
+    { text: "Subclassing GObject", link: "/guide/subclassing" },
     { text: "Components", link: "/guide/components" },
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
     { text: "CSS", link: "/guide/css" },
@@ -72,6 +73,12 @@ const frontmatterHead = (frontmatter: Record<string, unknown>): HeadConfig[] => 
     return Array.isArray(existing) ? (existing as HeadConfig[]) : [];
 };
 
+const getPageImage = (frontmatter: Record<string, unknown>): string =>
+    typeof frontmatter.image === "string" ? `${url}${frontmatter.image}` : ogImage;
+
+const getOgType = (relativePath: string): string =>
+    relativePath !== "blog/index.md" && relativePath.startsWith("blog/") ? "article" : "website";
+
 export default defineConfig({
     title,
     description,
@@ -97,11 +104,8 @@ export default defineConfig({
         ["link", { rel: "manifest", href: "/site.webmanifest" }],
         ["meta", { name: "theme-color", content: "#e03a3e" }],
         ...fontPreloads,
-        ["meta", { property: "og:type", content: "website" }],
         ["meta", { property: "og:site_name", content: title }],
-        ["meta", { property: "og:image", content: ogImage }],
         ["meta", { name: "twitter:card", content: "summary_large_image" }],
-        ["meta", { name: "twitter:image", content: ogImage }],
     ],
 
     transformPageData(pageData) {
@@ -110,14 +114,18 @@ export default defineConfig({
         const pageUrl = route ? `${url}/${route}` : `${url}/`;
         const pageTitle = isHome ? pageData.title : `${pageData.title} | ${title}`;
         const pageDescription = pageData.description || description;
+        const pageImage = getPageImage(pageData.frontmatter);
 
         const head: HeadConfig[] = [
             ["link", { rel: "canonical", href: pageUrl }],
+            ["meta", { property: "og:type", content: getOgType(pageData.relativePath) }],
             ["meta", { property: "og:url", content: pageUrl }],
             ["meta", { property: "og:title", content: pageTitle }],
             ["meta", { property: "og:description", content: pageDescription }],
+            ["meta", { property: "og:image", content: pageImage }],
             ["meta", { name: "twitter:title", content: pageTitle }],
             ["meta", { name: "twitter:description", content: pageDescription }],
+            ["meta", { name: "twitter:image", content: pageImage }],
         ];
 
         pageData.frontmatter.head = [...frontmatterHead(pageData.frontmatter), ...head];
@@ -138,7 +146,17 @@ export default defineConfig({
 
         const index = sources.map((s) => `- [${s.text}](${url}/${s.file})`).join("\n");
         const header = `# ${title}\n\n> ${description}\n`;
-        await writeFile(join(siteConfig.outDir, "llms.txt"), `${header}\n## Documentation\n\n${index}\n`);
+
+        const optional = [
+            `- [API Reference](${url}/reference/): generated TypeScript API for every published package`,
+            ...typedocSidebar.map((entry) => `- [${entry.text}](${url}${entry.link})`),
+            `- [Blog](${url}/blog/)`,
+        ].join("\n");
+
+        await writeFile(
+            join(siteConfig.outDir, "llms.txt"),
+            `${header}\n## Documentation\n\n${index}\n\n## Optional\n\n${optional}\n`,
+        );
 
         await writeFile(
             join(siteConfig.outDir, "llms-full.txt"),
@@ -156,7 +174,7 @@ export default defineConfig({
             { text: "Reference", link: "/reference/" },
             { text: "Blog", link: "/blog/" },
             { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
-            { text: "1.0 RC", link: "/blog/gtkx-1-0-rc-1" },
+            { text: "1.0", link: "/blog/gtkx-1-0" },
         ],
         sidebar: {
             "/guide/": guideSidebar,
@@ -165,7 +183,7 @@ export default defineConfig({
             "/blog/": [
                 {
                     text: "Blog",
-                    items: [{ text: "GTKX 1.0 RC1", link: "/blog/gtkx-1-0-rc-1" }],
+                    items: [{ text: "GTKX 1.0", link: "/blog/gtkx-1-0" }],
                 },
             ],
         },

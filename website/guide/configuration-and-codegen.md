@@ -29,6 +29,17 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 - **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. Reach for them for what only the GNOME platform provides, and use the Node standard library for everything else. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, which codegen builds in a temporary directory and then renames into place, so a crash never leaves half a package.
 - **`@gtkx/jsx`** (in `node_modules/.gtkx/jsx`) holds the React layer: per-namespace modules exporting one PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a global `React.JSX.IntrinsicElements` augmentation so the elements type-check. It also emits a `metadata` module recording, per element, the signal-handler-to-signal-name map, the construct-only and constructable prop sets, the GIR default values, and the merged element prop rules. The reconciler reads that metadata at runtime through the `virtual:gtkx-config` module the CLI's Vite plugin serves. The same pass that generates your types generates that metadata, so your types and runtime prop application cannot drift.
 
+### Byte arrays that are really C strings
+
+A handful of C functions take a NUL-terminated `const char *` that GIR describes as an array of bytes. The generated signature reads like a byte buffer, `GLib.Variant.newBytestring(string: number[])`, but the C function calls `strlen` on it, so the value stops at the first zero byte and everything after it is dropped with no error.
+
+Codegen detects that shape from the GIR and appends a note to the binding's documentation naming the affected parameter, so the constraint is visible in your editor and in the API reference. For binary payloads, go through `GLib.Bytes` instead:
+
+```ts
+const variant = GLib.Variant.newFromBytes(GLib.VariantType.new("ay"), GLib.Bytes.new(buffer), true);
+variant.getDataAsBytes().getData(); // every byte, including zeros
+```
+
 ## The JSX prop model
 
 Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, and its props interface is assembled from the GIR according to a small set of rules:
@@ -55,14 +66,13 @@ Run `gtkx docs --help` if you need the pages somewhere else or their links roote
 
 Property setting alone cannot express everything GTK4 does. Adding a child is `insertChildAfter` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with **element behaviors**: a behavior is a small object of React-node lifecycle hooks bound to a GLib type, and the reconciler calls its hooks as elements of that type are created, populated, updated, and removed. A built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more); you register your own through the `elements` module, keyed by GLib type name with `defineElements`.
 
-Every hook receives the GObject instance and a private per-element `context` built once by the behavior's `createContext(node)`. The hooks are:
+Every hook receives the GObject instance and a private per-element `context` built once by the behavior's `initialize(object)`. The hooks are:
 
 - **`attach` / `detach`** place and remove a child in a slot. `attach` receives the child plus placement info (`slot`, `index`, `sibling`); returning a non-`undefined` value claims the child, and a returned GObject becomes the object the container adopts (otherwise `resolve` supplies it). A child no behavior claims is set on its named property directly.
 - **`reorder`** moves an already-placed child; without it, a reordered slot is rebuilt.
 - **`resolve`** returns the object the container created for a placed child (a page, a layout child), used by later `reorder` and `detach`.
 - **`update`** runs on every commit with the previous and next props; apply scalar or array props here, and return the prop names you handled so GTKX does not also set them as plain properties.
 - **`flush`** runs just after the surrounding commit settles, for props that must wait until children exist, as `GtkStack`'s `visibleChildName` does.
-- **`mount` / `unmount`** run once the element is created and when it leaves the tree.
 
 Your own behaviors go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Write a module that default-exports a map keyed by GLib type name, giving each type its `behaviors` and wrapping each one in `defineBehavior` with the class it applies to:
 
