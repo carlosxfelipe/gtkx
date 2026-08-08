@@ -14,9 +14,6 @@
         "^@gtkx/jsx(/.*)?$"
     ],
     "ignoreIssues": {
-        "packages/utils/src/process/index.ts": [
-            "exports"
-        ],
         "**/gtkx.config.ts": [
             "exports"
         ],
