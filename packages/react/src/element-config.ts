@@ -4,7 +4,6 @@ const SINGLE_CHILD_TYPES: string[] = [
     "GtkAspectFrame",
     "GtkButton",
     "GtkCheckButton",
-    "GtkComboBox",
     "GtkDragIcon",
     "GtkExpander",
     "GtkFlowBoxChild",
@@ -42,6 +41,9 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("ChildrenProps"),
         component: internal("createWindowComponent"),
         omittedProps: ["child"],
+    },
+    GtkApplicationWindow: {
+        component: internal("createApplicationWindowComponent"),
     },
     GtkLabel: {
         props: internal("ChildrenProps"),
@@ -112,6 +114,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     GtkSizeGroup: {
         props: internal("GtkSizeGroupProps"),
+        component: internal("createPortaledComponent"),
     },
     GtkConstraintLayout: {
         props: internal("GtkConstraintLayoutProps"),

@@ -233,6 +233,14 @@ describe("writeDocs with the built-in Adwaita element config", () => {
         expect(expanderRow).toContain("Widgets added at the start of the row, before its title.");
         expect(expanderRow).toContain("### `suffix`");
     });
+
+    it("documents the multi-layout view's slot index signature", () => {
+        const multiLayoutView = page(outDir, join("adw", "multi-layout-view.md"));
+        expect(multiLayoutView).toContain("### `layouts`");
+        expect(multiLayoutView).toContain("`Adw.Layout` elements added to the view");
+        expect(multiLayoutView).toContain("### `${string}Slot`");
+        expect(multiLayoutView).toContain("so `sidebarSlot` fills the slot with id `sidebar`");
+    });
 });
 
 describe("writeDocs with a custom base path", () => {

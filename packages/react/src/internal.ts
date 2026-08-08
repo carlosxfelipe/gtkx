@@ -1,8 +1,12 @@
 import "./bootstrap.js";
 
 /** @internal */
+export { createApplicationWindowComponent } from "./components/application-window.js";
+/** @internal */
 export { createApplicationComponent } from "./components/application.js";
 export { createElementComponent } from "./components/element.js";
+/** @internal */
+export { createPortaledComponent } from "./components/portaled.js";
 /** @internal */
 export { createWindowComponent } from "./components/window.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
