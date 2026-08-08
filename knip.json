@@ -20,18 +20,6 @@
         "packages/utils/src/process/index.ts": [
             "exports"
         ],
-        "packages/codegen/src/gir/annotations.ts": [
-            "exports"
-        ],
-        "packages/codegen/src/store/gi/callables.ts": [
-            "exports"
-        ],
-        "packages/codegen/src/store/gi/doc-spec.ts": [
-            "exports"
-        ],
-        "packages/codegen/src/store/gi/vtable.ts": [
-            "exports"
-        ],
         "**/gtkx.config.ts": [
             "exports"
         ],
