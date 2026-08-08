@@ -23,7 +23,6 @@ import {
     createElementNode,
     createPropNode,
     createTextNode,
-    type Dispatch,
     ELEMENT_KIND,
     type ElementNode,
     type Instance,
@@ -58,6 +57,10 @@ const hostConfig = {
     supportsMutation: true,
     supportsPersistence: false,
     supportsHydration: false,
+    supportsMicrotasks: true,
+    scheduleMicrotask: (fn: () => void): void => {
+        queueMicrotask(fn);
+    },
     isPrimaryRenderer: true,
     noTimeout: -1,
     scheduleTimeout: (fn: (...args: unknown[]) => unknown, delay?: number): ReturnType<typeof setTimeout> =>
@@ -234,14 +237,6 @@ const setWidgetVisible = (instance: Instance, isVisible: boolean): void => {
     }
 };
 
-const runDiscrete: Dispatch = (fn) => {
-    try {
-        return priority.withDiscrete(fn);
-    } finally {
-        reconciler.flushSyncWork();
-    }
-};
-
 const adoptContainer = (container: GObject.Object): ElementNode => {
     const name = typeName(getInstanceType(container));
 
@@ -249,7 +244,7 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
         throw new Error("Cannot adopt a container whose GType has no registered name");
     }
 
-    return createElementNode(name, container, runDiscrete, null);
+    return createElementNode(name, container, priority.withDiscrete, null);
 };
 
 const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>
@@ -260,7 +255,7 @@ const createNode = (type: string, props: Props): Instance => {
         return createPropNode(props.propName as string);
     }
 
-    const node = resolveElementNode(type, props, runDiscrete);
+    const node = resolveElementNode(type, props, priority.withDiscrete);
 
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);

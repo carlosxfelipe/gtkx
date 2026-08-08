@@ -98,6 +98,7 @@ export {
     getWidgetErrorMessage,
     getWidgetInvalidState,
     getWidgetNodeText,
+    getWidgetNodeText as getWidgetText,
     getWidgetTextContent,
 } from "./widget-accessible-properties.js";
 export { within } from "./within.js";
