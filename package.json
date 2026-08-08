@@ -55,7 +55,7 @@
                 ]
             },
             "coverage": {
-                "command": "vitest run --coverage --maxWorkers=50%",
+                "command": "vitest run --coverage",
                 "cache": true,
                 "dependsOn": [
                     "codegen",
