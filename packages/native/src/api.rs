@@ -6,12 +6,35 @@ pub mod get_type;
 pub mod get_wrapper;
 pub mod init;
 pub mod keep_alive;
+pub mod new_object;
 pub mod quit;
 pub mod read;
 pub mod register_class;
 pub mod resolve_type;
 pub mod set_wrapper;
+pub mod vtable;
 pub mod write;
+
+macro_rules! handle_newtype {
+    ($name:ident, $ptr:ty) => {
+        pub struct $name($ptr);
+
+        impl ::napi::bindgen_prelude::FromNapiValue for $name {
+            unsafe fn from_napi_value(
+                env: ::napi::sys::napi_env,
+                napi_val: ::napi::sys::napi_value,
+            ) -> ::napi::Result<Self> {
+                let external = unsafe {
+                    <&::napi::bindgen_prelude::External<$crate::handle::Handle>>::from_napi_value(
+                        env, napi_val,
+                    )?
+                };
+                Ok(Self(external.as_ptr().cast()))
+            }
+        }
+    };
+}
+pub(crate) use handle_newtype;
 
 pub(crate) fn native_result<T>(context: &str, result: anyhow::Result<T>) -> napi::Result<T> {
     result.map_err(|error| {

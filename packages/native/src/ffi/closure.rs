@@ -10,7 +10,8 @@ use napi::bindgen_prelude::{
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    Codec, Decoder as _, Encoder as _, PtrWriter as _, ReadCtx, SlotInit, str_to_glib_full,
+    Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
+    str_to_glib_full,
 };
 use crate::host::error_reporter::{self, ReportErr};
 use crate::host::node_env;
@@ -203,6 +204,22 @@ impl ClosureState {
                 drop(unsafe { Box::from_raw(state_address as *mut Self) });
             });
         });
+    }
+
+    /// The same release as [`ClosureState::destroy`], shaped as a `GClosureNotify`,
+    /// `void (*) (gpointer data, GClosure *closure)`, for the notifier slots `g_cclosure_new`,
+    /// `g_closure_add_finalize_notifier` and `g_closure_add_invalidate_notifier` type that way.
+    ///
+    /// # Safety
+    ///
+    /// `user_data` carries every requirement [`ClosureState::destroy`] states, and this forwards to
+    /// it unchanged, so the in-flight and off-thread deferrals hold exactly as documented there.
+    /// `closure` is the `GClosure` being finalized; it is never read, so any value is accepted.
+    pub unsafe extern "C" fn destroy_as_closure_notify(
+        user_data: *mut c_void,
+        _closure: *mut c_void,
+    ) {
+        unsafe { Self::destroy(user_data) };
     }
 }
 
@@ -546,23 +563,27 @@ fn seed_ref<'e>(
     if inner_ptr.is_null() {
         return Ok(value::js_null(env)?);
     }
-    match inner_codec {
+    let seeded = match inner_codec {
         Codec::Integer(_)
         | Codec::BigInt(_)
         | Codec::Float(_)
         | Codec::EnumFlags(_)
         | Codec::Boolean(_)
-        | Codec::Unichar(_) => {
-            let seeded = unsafe {
-                inner_codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "inout ref seed"))
-            }
-            .report_err("callback: failed to seed inout ref");
-            match seeded {
-                Some(unknown) => Ok(unknown),
-                None => Ok(value::js_null(env)?),
-            }
+        | Codec::Unichar(_) => unsafe {
+            inner_codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "inout ref seed"))
         }
-        _ => Ok(value::js_null(env)?),
+        .report_err("callback: failed to seed inout ref"),
+        Codec::Array(array_codec) if !array_codec.is_length_bounded() => {
+            let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
+            unsafe { array_codec.read_value(env, value_ptr, "inout ref seed", Ownership::Borrowed) }
+                .report_err("callback: failed to seed inout ref")
+        }
+        _ => None,
+    };
+
+    match seeded {
+        Some(unknown) => Ok(unknown),
+        None => Ok(value::js_null(env)?),
     }
 }
 

@@ -8,7 +8,7 @@ use native::Handle;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
     EnumFlagsKind, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership, PtrWriter,
-    ReadCtx, RefCodec, StringCodec, StructCodec,
+    ReadCtx, RefCodec, SlotInit, StringCodec, StructCodec,
 };
 use native::ffi::{GArrayData, ListData, ListPayload, Slot, Stash, StashData};
 use test_support as helpers;
@@ -1895,22 +1895,28 @@ fn size_from_args_reads_integer_argument() {
     });
 }
 
+fn decode_sized_array_with_ref_size<'e>(
+    env: &'e Env,
+    data: &[i32],
+    ffi_args: &[Stash],
+) -> anyhow::Result<Unknown<'e>> {
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
+    let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
+    let arg_codecs = [Codec::Ref(
+        RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
+    )];
+
+    descriptor.decode_with_context(env, &stash, ffi_args, &arg_codecs)
+}
+
 #[test]
 fn size_from_args_reads_ref_integer_storage() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor =
-            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
         let data: Vec<i32> = vec![10, 20];
-        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let size_storage = native::ffi::StashStorage::from(vec![2i32]);
         let ffi_args = [Stash::Storage(size_storage)];
-        let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
-        )];
-        let decoded = descriptor
-            .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
-            .unwrap();
+        let decoded = decode_sized_array_with_ref_size(&env, &data, &ffi_args).unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
 }
@@ -1919,18 +1925,10 @@ fn size_from_args_reads_ref_integer_storage() {
 fn size_from_args_reads_ref_integer_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor =
-            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
         let data: Vec<i32> = vec![10, 20];
-        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let size: i32 = 2;
         let ffi_args = [Stash::Ptr((&raw const size).cast_mut().cast::<c_void>())];
-        let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
-        )];
-        let decoded = descriptor
-            .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
-            .unwrap();
+        let decoded = decode_sized_array_with_ref_size(&env, &data, &ffi_args).unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
 }
@@ -1939,19 +1937,9 @@ fn size_from_args_reads_ref_integer_ptr() {
 fn size_from_args_ref_null_ptr_falls_through_to_error() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor =
-            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
         let data: Vec<i32> = vec![1];
-        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let ffi_args = [Stash::Ptr(std::ptr::null_mut())];
-        let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
-        )];
-        assert!(
-            descriptor
-                .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
-                .is_err()
-        );
+        assert!(decode_sized_array_with_ref_size(&env, &data, &ffi_args).is_err());
     });
 }
 
@@ -2417,6 +2405,99 @@ fn decoding_a_transfer_full_array_return_still_frees_it() {
         assert!(
             drain_g_freed().contains(&(owned as usize)),
             "a transfer-full call return still frees the container"
+        );
+    });
+}
+
+fn strv_items(container: *mut c_void) -> Vec<String> {
+    let strv = unsafe { glib::StrV::from_glib_full(container.cast::<*mut c_char>()) };
+
+    strv.iter()
+        .map(|item| unsafe { glib::GStr::from_ptr_lossy(item.as_ptr()) }.to_string())
+        .collect()
+}
+
+#[test]
+fn write_value_to_pointer_fills_an_uninitialized_out_parameter() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = array_codec(
+            string_item_codec(Ownership::Full),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let val = array(&env, &[string("weight"), string("style")]);
+        let mut slot: *mut c_void = std::ptr::null_mut();
+        let target = (&raw mut slot).cast::<c_void>();
+
+        let transfer = PtrWriter::write_value_to_ptr(
+            &descriptor,
+            &env,
+            unsafe { Slot::new(target) },
+            val,
+            SlotInit::Uninitialized,
+        )
+        .expect("writing a full-transfer array out parameter should succeed");
+
+        assert!(transfer.is_none());
+        assert!(!slot.is_null());
+        assert_eq!(
+            strv_items(slot),
+            vec!["weight".to_string(), "style".to_string()]
+        );
+    });
+}
+
+#[test]
+fn write_value_to_pointer_releases_the_container_an_inout_parameter_held() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = array_codec(
+            string_item_codec(Ownership::Full),
+            ArrayKind::Array,
+            Ownership::Full,
+        );
+        let previous = glib::StrV::from(vec!["stale"]).into_raw().cast::<c_void>();
+        let mut slot: *mut c_void = previous;
+        let target = (&raw mut slot).cast::<c_void>();
+        let val = array(&env, &[string("fresh")]);
+
+        PtrWriter::write_value_to_ptr(
+            &descriptor,
+            &env,
+            unsafe { Slot::new(target) },
+            val,
+            SlotInit::Initialized,
+        )
+        .expect("replacing an inout array should succeed");
+
+        assert_ne!(slot, previous);
+        assert_eq!(strv_items(slot), vec!["fresh".to_string()]);
+    });
+}
+
+#[test]
+fn write_value_to_pointer_rejects_a_transfer_none_array() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = array_codec(
+            string_item_codec(Ownership::Borrowed),
+            ArrayKind::Array,
+            Ownership::Borrowed,
+        );
+        let val = array(&env, &[string("borrowed")]);
+        let mut slot: *mut c_void = std::ptr::null_mut();
+        let target = (&raw mut slot).cast::<c_void>();
+
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &descriptor,
+                &env,
+                unsafe { Slot::new(target) },
+                val,
+                SlotInit::Uninitialized,
+            )
+            .is_err()
         );
     });
 }

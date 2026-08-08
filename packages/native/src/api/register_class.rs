@@ -1,17 +1,21 @@
-use std::ffi::{c_char, c_void};
+use std::collections::HashSet;
+use std::ffi::c_void;
 
-use glib::translate::IntoGlib as _;
+use glib::translate::{IntoGlib as _, from_glib_none};
 use glib::{self, gobject_ffi};
-use napi::Env;
 use napi::bindgen_prelude::*;
+use napi::{Env, sys};
 use napi_derive::napi;
 
-use crate::api::{native_result, type_from_bigint};
-use crate::ffi::closure::ClosureState;
+use crate::api::vtable::{query_type, validate_vfunc_offset};
+use crate::api::{handle_newtype, native_result, type_from_bigint};
+use crate::ffi::closure::{ClosureData, ClosureState};
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
-use crate::value::ClosureHandle;
+use crate::host::panic_handler::guard_ffi_boundary;
+use crate::host::{error_reporter, node_env};
+use crate::value::{self, ClosureHandle, pending_wrapper};
 
 pub struct VfuncCallback(ClosureHandle);
 
@@ -51,20 +55,13 @@ pub struct RegisterClassInterface {
     pub r#type: BigInt,
     /// Byte size of the interface's vtable struct, used to bounds-check each vfunc's `byteOffset`.
     /// `g_type_query` reports nothing for an interface type, so the size has to come from the same
-    /// generated metadata the offsets do; when it is omitted the offsets are only alignment-checked.
+    /// generated metadata the offsets do, and an interface declaring vfuncs is rejected without it.
     pub vtable_size: Option<u32>,
     /// Interface vfunc implementations to install.
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
 
-pub struct PspecHandle(*mut gobject_ffi::GParamSpec);
-
-impl FromNapiValue for PspecHandle {
-    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Handle>>::from_napi_value(env, napi_val)? };
-        Ok(Self(external.as_ptr().cast::<gobject_ffi::GParamSpec>()))
-    }
-}
+handle_newtype!(PspecHandle, *mut gobject_ffi::GParamSpec);
 
 /// A property the registered class installs on its class structure.
 #[napi(object, object_to_js = false)]
@@ -214,14 +211,20 @@ impl ResolvedProperty {
 
 impl ResolvedVfunc {
     #[allow(clippy::cast_ptr_alignment)]
-    unsafe fn install_into(self, vtable_base: *mut c_void) {
+    unsafe fn install_into(self, vtable_base: *mut c_void) -> ClosureState {
         let Self {
             byte_offset,
             js_fn,
             arg_codecs,
             return_codec,
         } = self;
-        let state = ClosureState::boxed(js_fn, arg_codecs, return_codec, None, false);
+        let state = ClosureState::new(ClosureData::new(
+            js_fn,
+            arg_codecs,
+            return_codec,
+            None,
+            false,
+        ));
         unsafe {
             let slot = vtable_base
                 .cast::<u8>()
@@ -229,12 +232,13 @@ impl ResolvedVfunc {
                 .cast::<*mut c_void>();
             slot.write(state.code_ptr);
         }
-        std::mem::forget(state);
+        state
     }
 }
 
 struct InterfaceInit {
     vfuncs: Option<Vec<ResolvedVfunc>>,
+    installed: Vec<ClosureState>,
 }
 
 unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut c_void) {
@@ -245,7 +249,8 @@ unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut
     };
 
     for vfunc in vfuncs {
-        unsafe { vfunc.install_into(vtable) };
+        let state = unsafe { vfunc.install_into(vtable) };
+        data.installed.push(state);
     }
 }
 
@@ -257,6 +262,7 @@ impl ResolvedInterface {
     unsafe fn add_to(self, instance_type: glib::ffi::GType) {
         let data = Box::into_raw(Box::new(InterfaceInit {
             vfuncs: Some(self.vfuncs),
+            installed: Vec::new(),
         }));
 
         let info = gobject_ffi::GInterfaceInfo {
@@ -275,6 +281,132 @@ impl ResolvedInterface {
     }
 }
 
+unsafe fn associate_pending_wrapper(
+    gobject: *mut gobject_ffi::GObject,
+    wrapper: sys::napi_value,
+    associate: sys::napi_value,
+) -> Result<()> {
+    let env = node_env::env();
+    let object: glib::Object = unsafe { from_glib_none(gobject) };
+    let handle = value::handle_to_unknown(&env, Handle::decoded_gobject(object))?;
+    let wrapper = unsafe { Unknown::from_napi_value(env.raw(), wrapper) }?;
+    let associate: Function<'_, FnArgs<(Unknown<'_>, Unknown<'_>)>, ()> =
+        unsafe { Function::from_napi_value(env.raw(), associate) }?;
+
+    associate.call(FnArgs::from((handle, wrapper)))
+}
+
+unsafe fn adopt_pending_wrapper(instance: *mut gobject_ffi::GTypeInstance) {
+    let leaf_gtype = unsafe { (*(*instance).g_class).g_type };
+    let gobject = instance.cast::<gobject_ffi::GObject>();
+
+    let Some((wrapper, associate)) = pending_wrapper::claim(gobject, leaf_gtype) else {
+        return;
+    };
+
+    if let Err(error) = unsafe { associate_pending_wrapper(gobject, wrapper, associate) } {
+        error_reporter::report_str(&format!(
+            "instance init: binding the wrapper failed: {error}"
+        ));
+    }
+}
+
+unsafe extern "C" fn init_instance(instance: *mut gobject_ffi::GTypeInstance, _class: *mut c_void) {
+    guard_ffi_boundary("instance init", || unsafe {
+        adopt_pending_wrapper(instance);
+    });
+}
+
+struct ClassInit {
+    vfuncs: Vec<ResolvedVfunc>,
+    properties: Vec<ResolvedProperty>,
+    interfaces: Vec<glib::Type>,
+    installed: Vec<ClosureState>,
+}
+
+unsafe fn override_property(
+    class_ptr: *mut gobject_ffi::GObjectClass,
+    pspec: *mut gobject_ffi::GParamSpec,
+    next_id: &mut u32,
+) {
+    let name = unsafe { gobject_ffi::g_param_spec_get_name(pspec) };
+
+    if !unsafe { gobject_ffi::g_object_class_find_property(class_ptr, name) }.is_null() {
+        return;
+    }
+
+    unsafe { gobject_ffi::g_object_class_override_property(class_ptr, *next_id, name) };
+
+    *next_id += 1;
+}
+
+unsafe fn override_interface_properties(
+    class_ptr: *mut c_void,
+    interface_type: glib::Type,
+    next_id: &mut u32,
+) {
+    let vtable = unsafe { gobject_ffi::g_type_default_interface_ref(interface_type.into_glib()) };
+
+    if vtable.is_null() {
+        return;
+    }
+
+    let mut count: u32 = 0;
+    let pspecs = unsafe { gobject_ffi::g_object_interface_list_properties(vtable, &raw mut count) };
+    let class_ptr = class_ptr.cast::<gobject_ffi::GObjectClass>();
+
+    for index in 0..count as usize {
+        unsafe { override_property(class_ptr, *pspecs.add(index), next_id) };
+    }
+
+    unsafe { glib::ffi::g_free(pspecs.cast::<c_void>()) };
+    unsafe { gobject_ffi::g_type_default_interface_unref(vtable) };
+}
+
+unsafe fn install_properties(
+    class_ptr: *mut c_void,
+    properties: Vec<ResolvedProperty>,
+    interfaces: &[glib::Type],
+) {
+    let mut next_id = properties
+        .iter()
+        .map(|property| property.id)
+        .max()
+        .unwrap_or(0)
+        + 1;
+
+    for property in properties {
+        unsafe { property.install_into(class_ptr) };
+    }
+
+    for interface_type in interfaces {
+        unsafe { override_interface_properties(class_ptr, *interface_type, &mut next_id) };
+    }
+}
+
+unsafe fn apply_class_init(class_ptr: *mut c_void, class_data: *mut c_void) {
+    let data = unsafe { &mut *class_data.cast::<ClassInit>() };
+
+    for vfunc in std::mem::take(&mut data.vfuncs) {
+        let state = unsafe { vfunc.install_into(class_ptr) };
+        data.installed.push(state);
+    }
+
+    unsafe {
+        install_properties(
+            class_ptr,
+            std::mem::take(&mut data.properties),
+            &data.interfaces,
+        );
+    }
+}
+
+unsafe extern "C" fn init_class(class_ptr: *mut c_void, class_data: *mut c_void) {
+    guard_ffi_boundary("class init", || unsafe {
+        apply_class_init(class_ptr, class_data);
+    });
+}
+
 struct ClassRegistration {
     name: glib::GString,
     parent_type: glib::Type,
@@ -289,71 +421,36 @@ impl ClassRegistration {
             anyhow::bail!("Type name '{}' is already registered", self.name);
         }
 
-        let mut query = gobject_ffi::GTypeQuery {
-            type_: 0,
-            type_name: std::ptr::null(),
-            class_size: 0,
-            instance_size: 0,
-        };
-        unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &raw mut query) };
-        if query.type_ == 0 {
-            anyhow::bail!("parent type could not be queried");
-        }
-        Ok(query)
-    }
-
-    fn validate_vfunc_offset(
-        byte_offset: usize,
-        pointer_align: usize,
-        pointer_size: usize,
-        class_size: Option<u32>,
-        label: &str,
-    ) -> anyhow::Result<()> {
-        if !byte_offset.is_multiple_of(pointer_align) {
-            anyhow::bail!(
-                "{label} byte_offset {byte_offset} is not aligned to a pointer ({pointer_align})"
-            );
-        }
-        let end = byte_offset
-            .checked_add(pointer_size)
-            .ok_or_else(|| anyhow::anyhow!("{label} byte_offset overflow"))?;
-        if let Some(class_size) = class_size
-            && end > class_size as usize
-        {
-            anyhow::bail!("{label} byte_offset {byte_offset} exceeds class size {class_size}");
-        }
-        Ok(())
+        query_type(self.parent_type)
+            .ok_or_else(|| anyhow::anyhow!("parent type could not be queried"))
     }
 
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
-        let pointer_align = align_of::<*mut c_void>();
-        let pointer_size = size_of::<*mut c_void>();
-
         for vfunc in &self.vfuncs {
-            Self::validate_vfunc_offset(
-                vfunc.byte_offset,
-                pointer_align,
-                pointer_size,
-                Some(query.class_size),
-                "vfunc",
-            )?;
+            validate_vfunc_offset(vfunc.byte_offset, query.class_size, "vfunc")?;
         }
 
         for iface in &self.interfaces {
+            let Some(vtable_size) = iface.vtable_size else {
+                if iface.vfuncs.is_empty() {
+                    continue;
+                }
+
+                anyhow::bail!(
+                    "interface {} declares vfuncs without a vtable size, which would leave their \
+                     byte offsets bounded only by their alignment",
+                    iface.type_
+                );
+            };
+
             for vfunc in &iface.vfuncs {
-                Self::validate_vfunc_offset(
-                    vfunc.byte_offset,
-                    pointer_align,
-                    pointer_size,
-                    iface.vtable_size,
-                    "interface vfunc",
-                )?;
+                validate_vfunc_offset(vfunc.byte_offset, vtable_size, "interface vfunc")?;
             }
         }
         Ok(())
     }
 
-    fn validate_interfaces(&self) -> anyhow::Result<()> {
+    fn validate_interface_types(&self) -> anyhow::Result<()> {
         for iface in &self.interfaces {
             if !iface.type_.is_a(glib::Type::INTERFACE) {
                 anyhow::bail!(
@@ -361,49 +458,50 @@ impl ClassRegistration {
                     iface.type_.name()
                 );
             }
-            if !self.parent_type.is_a(iface.type_) {
-                anyhow::bail!(
-                    "register_class: parent type '{}' does not conform to interface '{}'",
-                    self.parent_type.name(),
-                    iface.type_.name()
-                );
-            }
         }
         Ok(())
     }
 
-    fn register_type(
-        parent_type: glib::Type,
-        name_ptr: *const c_char,
-        vfuncs: Vec<ResolvedVfunc>,
-        interfaces: Vec<ResolvedInterface>,
-        properties: Vec<ResolvedProperty>,
-        class_size: u16,
-        instance_size: u16,
-    ) -> anyhow::Result<usize> {
+    fn register_type(self, class_size: u16, instance_size: u16) -> anyhow::Result<usize> {
+        let Self {
+            name,
+            parent_type,
+            vfuncs,
+            interfaces,
+            properties,
+        } = self;
+
+        let class_data = Box::into_raw(Box::new(ClassInit {
+            vfuncs,
+            properties,
+            interfaces: adopted_interface_types(&interfaces, parent_type),
+            installed: Vec::new(),
+        }));
+
         let info = gobject_ffi::GTypeInfo {
             class_size,
             base_init: None,
             base_finalize: None,
-            class_init: None,
+            class_init: Some(init_class),
             class_finalize: None,
-            class_data: std::ptr::null_mut(),
+            class_data: class_data.cast::<c_void>(),
             instance_size,
             n_preallocs: 0,
-            instance_init: None,
+            instance_init: Some(init_instance),
             value_table: std::ptr::null(),
         };
 
         let new_type = unsafe {
             gobject_ffi::g_type_register_static(
                 parent_type.into_glib(),
-                name_ptr,
+                name.as_ptr(),
                 &raw const info,
                 0,
             )
         };
 
         if new_type == 0 {
+            drop(unsafe { Box::from_raw(class_data) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
@@ -411,18 +509,97 @@ impl ClassRegistration {
             unsafe { iface.add_to(new_type) };
         }
 
-        let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
-
-        for vfunc in vfuncs {
-            unsafe { vfunc.install_into(class_ptr) };
-        }
-
-        for property in properties {
-            unsafe { property.install_into(class_ptr) };
-        }
+        unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         Ok(new_type)
     }
+}
+
+fn adopted_interface_types(
+    interfaces: &[ResolvedInterface],
+    parent_type: glib::Type,
+) -> Vec<glib::Type> {
+    interfaces
+        .iter()
+        .filter(|iface| !parent_type.is_a(iface.type_))
+        .map(|iface| iface.type_)
+        .collect()
+}
+
+struct UnmetPrerequisite {
+    interface_type: glib::Type,
+    prerequisite: glib::Type,
+}
+
+fn find_unmet_prerequisite(
+    iface: &ResolvedInterface,
+    parent_type: glib::Type,
+    added: &HashSet<glib::Type>,
+) -> Option<UnmetPrerequisite> {
+    iface
+        .type_
+        .interface_prerequisites()
+        .into_iter()
+        .find(|prerequisite| !parent_type.is_a(*prerequisite) && !added.contains(prerequisite))
+        .map(|prerequisite| UnmetPrerequisite {
+            interface_type: iface.type_,
+            prerequisite,
+        })
+}
+
+fn take_ready_interfaces(
+    pending: &mut Vec<ResolvedInterface>,
+    parent_type: glib::Type,
+    added: &HashSet<glib::Type>,
+) -> (Vec<ResolvedInterface>, Option<UnmetPrerequisite>) {
+    let mut ready = Vec::with_capacity(pending.len());
+    let mut blocked = Vec::new();
+    let mut unmet = None;
+
+    for iface in std::mem::take(pending) {
+        match find_unmet_prerequisite(&iface, parent_type, added) {
+            Some(found) => {
+                unmet.get_or_insert(found);
+                blocked.push(iface);
+            }
+            None => ready.push(iface),
+        }
+    }
+
+    *pending = blocked;
+
+    (ready, unmet)
+}
+
+fn unmet_prerequisite_error(parent_type: glib::Type, unmet: &UnmetPrerequisite) -> anyhow::Error {
+    anyhow::anyhow!(
+        "register_class: parent type '{}' does not meet prerequisite '{}' of interface '{}'",
+        parent_type.name(),
+        unmet.prerequisite.name(),
+        unmet.interface_type.name()
+    )
+}
+
+fn sort_interfaces(
+    interfaces: Vec<ResolvedInterface>,
+    parent_type: glib::Type,
+) -> anyhow::Result<Vec<ResolvedInterface>> {
+    let mut pending = interfaces;
+    let mut added: HashSet<glib::Type> = HashSet::new();
+    let mut sorted: Vec<ResolvedInterface> = Vec::with_capacity(pending.len());
+
+    while !pending.is_empty() {
+        let (ready, unmet) = take_ready_interfaces(&mut pending, parent_type, &added);
+
+        if let Some(unmet) = unmet.filter(|_| ready.is_empty()) {
+            return Err(unmet_prerequisite_error(parent_type, &unmet));
+        }
+
+        added.extend(ready.iter().map(|iface| iface.type_));
+        sorted.extend(ready);
+    }
+
+    Ok(sorted)
 }
 
 fn fits_in_type_info_size(size: u32, label: &str) -> anyhow::Result<u16> {
@@ -432,23 +609,15 @@ fn fits_in_type_info_size(size: u32, label: &str) -> anyhow::Result<u16> {
 }
 
 impl ClassRegistration {
-    fn execute(self) -> anyhow::Result<u64> {
+    fn execute(mut self) -> anyhow::Result<u64> {
         let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
-        self.validate_interfaces()?;
+        self.validate_interface_types()?;
+        self.interfaces = sort_interfaces(std::mem::take(&mut self.interfaces), self.parent_type)?;
 
         let class_size = fits_in_type_info_size(query.class_size, "class")?;
         let instance_size = fits_in_type_info_size(query.instance_size, "instance")?;
-
-        let new_type = Self::register_type(
-            self.parent_type,
-            self.name.as_ptr(),
-            self.vfuncs,
-            self.interfaces,
-            self.properties,
-            class_size,
-            instance_size,
-        )?;
+        let new_type = self.register_type(class_size, instance_size)?;
 
         Ok(new_type as u64)
     }
@@ -490,13 +659,55 @@ pub fn register_class(
 
 #[cfg(test)]
 mod tests {
+    use std::mem::offset_of;
+
     use glib::prelude::StaticType as _;
     use glib::translate::FromGlib as _;
 
     use super::*;
+    use crate::ffi::codec::release_construction_ref;
 
     fn gstring(name: &str) -> glib::GString {
         glib::GString::from_string_checked(name.to_owned()).expect("valid type name")
+    }
+
+    fn interface_entry(
+        type_: glib::Type,
+        vtable_size: Option<u32>,
+        vfuncs: Vec<ResolvedVfunc>,
+    ) -> ResolvedInterface {
+        ResolvedInterface {
+            type_,
+            vtable_size,
+            vfuncs,
+        }
+    }
+
+    fn plain_interface(type_: glib::Type) -> ResolvedInterface {
+        interface_entry(type_, None, Vec::new())
+    }
+
+    #[allow(clippy::cast_ptr_alignment)]
+    fn interface_slot_pointers(
+        type_: glib::Type,
+        interface: glib::Type,
+        byte_offsets: &[usize],
+    ) -> Vec<*mut c_void> {
+        let class_ptr = unsafe { gobject_ffi::g_type_class_ref(type_.into_glib()) };
+        let vtable =
+            unsafe { gobject_ffi::g_type_interface_peek(class_ptr, interface.into_glib()) };
+        assert!(!vtable.is_null(), "the type should carry the interface");
+
+        byte_offsets
+            .iter()
+            .map(|byte_offset| unsafe {
+                vtable
+                    .cast::<u8>()
+                    .add(*byte_offset)
+                    .cast::<*mut c_void>()
+                    .read()
+            })
+            .collect()
     }
 
     #[test]
@@ -539,11 +750,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassNonInterfaceType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![ResolvedInterface {
-                    vtable_size: None,
-                    type_: glib::Object::static_type(),
-                    vfuncs: Vec::new(),
-                }],
+                interfaces: vec![plain_interface(glib::Object::static_type())],
                 properties: Vec::new(),
             };
             let error = request
@@ -555,26 +762,60 @@ mod tests {
     }
 
     #[test]
-    fn execute_rejects_a_nonconforming_interface_without_registering() {
+    fn execute_rejects_an_interface_whose_prerequisite_the_parent_misses() {
         test_support::run(|| {
-            let plugin_type =
-                unsafe { glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type()) };
             let request = ClassRegistration {
-                name: gstring("GtkxRegisterClassNonConformingType"),
+                name: gstring("GtkxRegisterClassMissingPrerequisiteType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![ResolvedInterface {
-                    vtable_size: None,
-                    type_: plugin_type,
-                    vfuncs: Vec::new(),
-                }],
+                interfaces: vec![plain_interface(gtk4::Editable::static_type())],
                 properties: Vec::new(),
             };
             let error = request
                 .execute()
-                .expect_err("non-conforming parent must be rejected");
-            assert!(error.to_string().contains("does not conform to interface"));
-            assert!(glib::Type::from_name("GtkxRegisterClassNonConformingType").is_none());
+                .expect_err("an unmet prerequisite must be rejected");
+            assert!(error.to_string().contains("does not meet prerequisite"));
+            assert!(error.to_string().contains("GtkWidget"));
+            assert!(glib::Type::from_name("GtkxRegisterClassMissingPrerequisiteType").is_none());
+        });
+    }
+
+    #[test]
+    fn execute_accepts_an_interface_whose_vtable_introspection_leaves_out() {
+        test_support::run(|| {
+            let plugin_type =
+                unsafe { glib::Type::from_glib(gobject_ffi::g_type_plugin_get_type()) };
+            let request = ClassRegistration {
+                name: gstring("GtkxRegisterClassUnknownLayoutType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![plain_interface(plugin_type)],
+                properties: Vec::new(),
+            };
+            let type_ = request
+                .execute()
+                .expect("an interface with no known vtable should register");
+            let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+            assert!(unsafe { glib::Type::from_glib(raw) }.is_a(plugin_type));
+        });
+    }
+
+    #[test]
+    fn execute_accepts_an_interface_the_parent_does_not_implement() {
+        test_support::run(|| {
+            let request = ClassRegistration {
+                name: gstring("GtkxRegisterClassNewInterfaceType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![plain_interface(list_model_type())],
+                properties: Vec::new(),
+            };
+            let type_ = request
+                .execute()
+                .expect("an interface the parent lacks should register");
+            assert_ne!(type_, 0);
+            let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+            assert!(unsafe { glib::Type::from_glib(raw) }.is_a(list_model_type()));
         });
     }
 
@@ -587,11 +828,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassConformingType"),
                 parent_type: glib::TypeModule::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![ResolvedInterface {
-                    vtable_size: None,
-                    type_: plugin_type,
-                    vfuncs: Vec::new(),
-                }],
+                interfaces: vec![plain_interface(plugin_type)],
                 properties: Vec::new(),
             };
             let type_ = request
@@ -603,63 +840,316 @@ mod tests {
         });
     }
 
-    #[test]
-    fn validate_vfunc_offset_accepts_aligned_offset_within_bounds() {
-        ClassRegistration::validate_vfunc_offset(8, 8, 8, Some(64), "vfunc")
-            .expect("aligned in-bounds offset should validate");
+    fn register_subtype(name: &str, parent_type: glib::Type) -> glib::Type {
+        let type_ = ClassRegistration {
+            name: gstring(name),
+            parent_type,
+            vfuncs: Vec::new(),
+            interfaces: Vec::new(),
+            properties: Vec::new(),
+        }
+        .execute()
+        .expect("registration should succeed");
+        let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+
+        unsafe { glib::Type::from_glib(raw) }
+    }
+
+    fn register_plain_subtype(name: &str) -> glib::Type {
+        register_subtype(name, glib::Object::static_type())
     }
 
     #[test]
-    fn validate_vfunc_offset_rejects_unaligned_offset() {
-        assert!(ClassRegistration::validate_vfunc_offset(4, 8, 8, Some(64), "vfunc").is_err());
+    fn the_installed_instance_init_binds_a_pending_wrapper_before_construction_returns() {
+        node_env::run_installed(|| {
+            let type_ = register_plain_subtype("GtkxRegisterClassPendingWrapperType");
+            let (wrapper, associate) = test_support::pending_values();
+            let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper, associate) };
+            let object = glib::Object::with_type(type_);
+
+            assert_eq!(
+                guard.claimed_instance(),
+                Some(glib::prelude::ObjectType::as_ptr(&object))
+            );
+            assert_eq!(test_support::napi_mock::count("napi_call_function"), 1);
+
+            drop(guard);
+            drop(object);
+            test_support::napi_mock::reset();
+            test_support::pump_default_context_until(|| false);
+        });
     }
 
     #[test]
-    fn validate_vfunc_offset_rejects_offset_beyond_class_size() {
-        assert!(ClassRegistration::validate_vfunc_offset(64, 8, 8, Some(64), "vfunc").is_err());
+    fn the_installed_instance_init_leaves_an_instance_nobody_is_waiting_for_alone() {
+        node_env::run_installed(|| {
+            let type_ = register_plain_subtype("GtkxRegisterClassUnclaimedType");
+            let object = glib::Object::with_type(type_);
+            let object_ptr = glib::prelude::ObjectType::as_ptr(&object);
+
+            assert!(!unsafe { value::wrapper::has_wrapper(object_ptr) });
+            assert_eq!(test_support::napi_mock::count("napi_call_function"), 0);
+
+            drop(object);
+        });
     }
 
     #[test]
-    fn validate_layout_bounds_interface_offsets_against_the_declared_vtable_size() {
-        let registration = ClassRegistration {
-            name: gstring("GtkxRegisterClassBoundedInterfaceType"),
+    fn the_wrapper_a_floating_instance_binds_owns_the_reference_construction_hands_back() {
+        node_env::run_installed(|| {
+            let type_ = register_subtype(
+                "GtkxRegisterClassFloatingClaimType",
+                glib::InitiallyUnowned::static_type(),
+            );
+            let (wrapper, associate) = test_support::pending_values();
+            let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper, associate) };
+            let instance = unsafe {
+                gobject_ffi::g_object_new_with_properties(
+                    type_.into_glib(),
+                    0,
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                )
+            };
+
+            assert_eq!(guard.claimed_instance(), Some(instance));
+            assert_eq!(unsafe { gobject_ffi::g_object_is_floating(instance) }, 0);
+
+            unsafe { release_construction_ref(instance) };
+
+            assert_eq!(unsafe { test_support::get_gobject_refcount(instance) }, 1);
+
+            drop(guard);
+            test_support::napi_mock::reset();
+            test_support::pump_default_context_until(|| false);
+        });
+    }
+
+    fn void_vfunc(byte_offset: usize) -> ResolvedVfunc {
+        ResolvedVfunc {
+            byte_offset,
+            js_fn: ClosureHandle::from_js_value(
+                &test_support::fake_env(),
+                &test_support::napi_mock::to_unknown(
+                    &test_support::fake_env(),
+                    test_support::napi_mock::fake_function(|_| {
+                        test_support::napi_mock::fake_undefined()
+                    }),
+                ),
+            )
+            .expect("a reference to the callback"),
+            arg_codecs: Vec::new(),
+            return_codec: Codec::Void(crate::ffi::codec::VoidCodec),
+        }
+    }
+
+    fn interface_registration(
+        name: &str,
+        vtable_size: Option<u32>,
+        vfuncs: Vec<ResolvedVfunc>,
+    ) -> ClassRegistration {
+        ClassRegistration {
+            name: gstring(name),
             parent_type: glib::Object::static_type(),
             vfuncs: Vec::new(),
-            interfaces: vec![ResolvedInterface {
-                type_: glib::Object::static_type(),
-                vtable_size: Some(16),
-                vfuncs: vec![ResolvedVfunc {
-                    byte_offset: 24,
-                    js_fn: ClosureHandle::from_js_value(
-                        &test_support::fake_env(),
-                        &test_support::napi_mock::to_unknown(
-                            &test_support::fake_env(),
-                            test_support::napi_mock::fake_function(|_| {
-                                test_support::napi_mock::fake_undefined()
-                            }),
-                        ),
-                    )
-                    .expect("a reference to the callback"),
-                    arg_codecs: Vec::new(),
-                    return_codec: Codec::Void(crate::ffi::codec::VoidCodec),
-                }],
-            }],
+            interfaces: vec![interface_entry(
+                glib::Object::static_type(),
+                vtable_size,
+                vfuncs,
+            )],
             properties: Vec::new(),
-        };
-        let query = gobject_ffi::GTypeQuery {
+        }
+    }
+
+    fn layout_query() -> gobject_ffi::GTypeQuery {
+        gobject_ffi::GTypeQuery {
             type_: 1,
             type_name: std::ptr::null(),
             class_size: 128,
             instance_size: 128,
-        };
+        }
+    }
+
+    #[test]
+    fn validate_layout_bounds_interface_offsets_against_the_declared_vtable_size() {
+        let registration = interface_registration(
+            "GtkxRegisterClassBoundedInterfaceType",
+            Some(16),
+            vec![void_vfunc(24)],
+        );
+
         let error = registration
-            .validate_layout(&query)
+            .validate_layout(&layout_query())
             .expect_err("an interface offset past the vtable must be rejected");
         assert!(error.to_string().contains("exceeds class size 16"));
     }
 
     #[test]
-    fn validate_vfunc_offset_rejects_end_overflow() {
-        assert!(ClassRegistration::validate_vfunc_offset(usize::MAX, 8, 8, None, "vfunc").is_err());
+    fn validate_layout_rejects_interface_vfuncs_declared_without_a_vtable_size() {
+        let registration = interface_registration(
+            "GtkxRegisterClassUnboundedInterfaceType",
+            None,
+            vec![void_vfunc(4096)],
+        );
+
+        let error = registration
+            .validate_layout(&layout_query())
+            .expect_err("an interface vfunc with no vtable size must be rejected");
+        assert!(error.to_string().contains("without a vtable size"));
+    }
+
+    #[test]
+    fn validate_layout_allows_an_interface_that_declares_no_vfuncs_without_a_vtable_size() {
+        let registration =
+            interface_registration("GtkxRegisterClassEmptyInterfaceType", None, Vec::new());
+
+        registration
+            .validate_layout(&layout_query())
+            .expect("an interface with no vfuncs needs no vtable size");
+    }
+
+    fn list_model_vtable_size() -> u32 {
+        u32::try_from(size_of::<gtk4::gio::ffi::GListModelInterface>())
+            .expect("the vtable size fits in a u32")
+    }
+
+    fn list_model_slot_offsets() -> [usize; 3] {
+        [
+            offset_of!(gtk4::gio::ffi::GListModelInterface, get_item_type),
+            offset_of!(gtk4::gio::ffi::GListModelInterface, get_n_items),
+            offset_of!(gtk4::gio::ffi::GListModelInterface, get_item),
+        ]
+    }
+
+    fn selection_model_slot_offsets() -> [usize; 2] {
+        [
+            offset_of!(gtk4::ffi::GtkSelectionModelInterface, is_selected),
+            offset_of!(
+                gtk4::ffi::GtkSelectionModelInterface,
+                get_selection_in_range
+            ),
+        ]
+    }
+
+    fn list_model_type() -> glib::Type {
+        gtk4::gio::ListModel::static_type()
+    }
+
+    #[test]
+    fn execute_adds_a_prerequisite_interface_before_the_interface_that_requires_it() {
+        test_support::run(|| {
+            let request = ClassRegistration {
+                name: gstring("GtkxRegisterClassPrerequisiteOrderType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![
+                    plain_interface(gtk4::SelectionModel::static_type()),
+                    plain_interface(list_model_type()),
+                ],
+                properties: Vec::new(),
+            };
+            let type_ = request
+                .execute()
+                .expect("an interface listed before its prerequisite should still register");
+            let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+            let registered = unsafe { glib::Type::from_glib(raw) };
+            assert!(registered.is_a(list_model_type()));
+            assert!(registered.is_a(gtk4::SelectionModel::static_type()));
+        });
+    }
+
+    #[test]
+    fn execute_rejects_a_prerequisite_neither_the_parent_nor_the_other_interfaces_meet() {
+        test_support::run(|| {
+            let request = ClassRegistration {
+                name: gstring("GtkxRegisterClassUnlistedPrerequisiteType"),
+                parent_type: glib::Object::static_type(),
+                vfuncs: Vec::new(),
+                interfaces: vec![plain_interface(gtk4::SelectionModel::static_type())],
+                properties: Vec::new(),
+            };
+            let error = request
+                .execute()
+                .expect_err("a prerequisite nothing provides must be rejected");
+            assert!(error.to_string().contains("does not meet prerequisite"));
+            assert!(error.to_string().contains("GListModel"));
+            assert!(glib::Type::from_name("GtkxRegisterClassUnlistedPrerequisiteType").is_none());
+        });
+    }
+
+    fn registered_type(name: &str, interfaces: Vec<ResolvedInterface>) -> glib::Type {
+        let type_ = ClassRegistration {
+            name: gstring(name),
+            parent_type: glib::Object::static_type(),
+            vfuncs: Vec::new(),
+            interfaces,
+            properties: Vec::new(),
+        }
+        .execute()
+        .expect("an adopted interface should register");
+        let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+
+        unsafe { glib::Type::from_glib(raw) }
+    }
+
+    #[test]
+    fn execute_leaves_a_slot_the_class_fills_nowhere_as_null() {
+        test_support::run(|| {
+            let registered = registered_type(
+                "GtkxRegisterClassEmptySlotType",
+                vec![plain_interface(list_model_type())],
+            );
+
+            let slots =
+                interface_slot_pointers(registered, list_model_type(), &list_model_slot_offsets());
+
+            assert!(slots.iter().all(|slot| slot.is_null()));
+        });
+    }
+
+    #[test]
+    fn execute_installs_the_slots_the_class_fills_and_only_those() {
+        test_support::run(|| {
+            let registered = registered_type(
+                "GtkxRegisterClassFilledSlotsType",
+                vec![interface_entry(
+                    list_model_type(),
+                    Some(list_model_vtable_size()),
+                    vec![void_vfunc(offset_of!(
+                        gtk4::gio::ffi::GListModelInterface,
+                        get_n_items
+                    ))],
+                )],
+            );
+            assert!(registered.is_a(list_model_type()));
+
+            let slots =
+                interface_slot_pointers(registered, list_model_type(), &list_model_slot_offsets());
+
+            assert!(slots[0].is_null());
+            assert!(!slots[1].is_null());
+            assert!(slots[2].is_null());
+        });
+    }
+
+    #[test]
+    fn execute_keeps_the_implementations_an_interface_installs_by_default() {
+        test_support::run(|| {
+            let registered = registered_type(
+                "GtkxRegisterClassDefaultsType",
+                vec![
+                    plain_interface(list_model_type()),
+                    plain_interface(gtk4::SelectionModel::static_type()),
+                ],
+            );
+
+            let slots = interface_slot_pointers(
+                registered,
+                gtk4::SelectionModel::static_type(),
+                &selection_model_slot_offsets(),
+            );
+
+            assert!(slots.iter().all(|slot| !slot.is_null()));
+        });
     }
 }

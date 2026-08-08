@@ -360,4 +360,8 @@ impl PtrWriter for HashTableCodec {
             encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(env, v));
         unsafe { ret.store(table) };
     }
+
+    write_container_value_to_ptr!("hash table", "hashtable pointer write", |_| {
+        ffi::ReleaseKind::HashTableUnref
+    });
 }

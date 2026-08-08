@@ -46,6 +46,69 @@ macro_rules! read_value_non_null {
 }
 pub(super) use read_value_non_null;
 
+macro_rules! read_inlineable_pointer_slot {
+    () => {
+        unsafe fn read_pointer_slot<'e>(
+            &self,
+            env: &'e ::napi::Env,
+            ptr: *const ::std::ffi::c_void,
+            context: &str,
+            transfer: $crate::ffi::codec::Ownership,
+        ) -> ::anyhow::Result<::napi::bindgen_prelude::Unknown<'e>> {
+            if self.inline {
+                return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
+            }
+            let inner_ptr = unsafe { ptr.cast::<*mut ::std::ffi::c_void>().read_unaligned() };
+            unsafe { self.read_value(env, inner_ptr, context, transfer) }
+        }
+    };
+}
+pub(super) use read_inlineable_pointer_slot;
+
+macro_rules! write_container_value_to_ptr {
+    ($noun:literal, $label:literal, $release:expr) => {
+        fn write_value_to_ptr(
+            &self,
+            env: &::napi::Env,
+            slot: $crate::ffi::Slot,
+            value: ::napi::bindgen_prelude::Unknown<'_>,
+            init: $crate::ffi::codec::SlotInit,
+        ) -> ::anyhow::Result<::std::option::Option<$crate::ffi::PendingTransfer>> {
+            ::anyhow::ensure!(
+                self.ownership.is_full(),
+                ::std::concat!(
+                    "A transfer-none ",
+                    $noun,
+                    " cannot be written through a pointer: nothing would own the container"
+                )
+            );
+
+            let container = $crate::ffi::codec::prelude::encode_and_leak_container(
+                &::std::result::Result::Ok(value),
+                $label,
+                |value| $crate::ffi::codec::Encoder::encode(self, env, value),
+            );
+
+            if !init.is_initialized() {
+                unsafe { slot.store(container) };
+
+                return ::std::result::Result::Ok(::std::option::Option::None);
+            }
+
+            let previous = unsafe { slot.swap(container) };
+
+            if !previous.is_null() {
+                let release: fn(&Self) -> $crate::ffi::ReleaseKind = $release;
+
+                $crate::ffi::PendingTransfer::new(previous, release(self)).release_now();
+            }
+
+            ::std::result::Result::Ok(::std::option::Option::None)
+        }
+    };
+}
+pub(super) use write_container_value_to_ptr;
+
 macro_rules! write_return_transferred {
     ($label:expr) => {
         fn write_return_to_ptr(

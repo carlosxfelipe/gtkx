@@ -6,7 +6,9 @@ use napi::Env;
 use napi::bindgen_prelude::Unknown;
 use native::ffi;
 use native::ffi::closure::ClosureState;
-use native::ffi::codec::{CallbackCodec, CallbackScope, Codec, Encoder, VoidCodec};
+use native::ffi::codec::{
+    CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, Encoder, VoidCodec,
+};
 use test_support as helpers;
 use test_support::napi_mock;
 
@@ -15,12 +17,29 @@ fn callback_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
         arg_codecs: Vec::new(),
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy,
+        destroy_kind: DestroyNotifyKind::default(),
+        has_user_data: true,
         user_data_index: Some(0),
         scope,
     }
 }
 
+fn closure_notify_codec() -> CallbackCodec {
+    CallbackCodec {
+        destroy_kind: DestroyNotifyKind::ClosureNotify,
+        ..callback_codec(true, CallbackScope::Notified)
+    }
+}
+
 fn closureless_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
+    CallbackCodec {
+        has_user_data: false,
+        user_data_index: None,
+        ..callback_codec(has_destroy, scope)
+    }
+}
+
+fn opaque_user_data_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
     CallbackCodec {
         user_data_index: None,
         ..callback_codec(has_destroy, scope)
@@ -88,7 +107,7 @@ fn invoke_through_cif(codec: &CallbackCodec) -> Invocation {
     encoded.append_libffi_args(&mut args);
     assert_eq!(args.len(), arity);
 
-    let has_user_data = codec.user_data_index.is_some();
+    let has_user_data = codec.has_user_data;
     let target = target_for(arity, has_user_data);
 
     RECORDED.set(None);
@@ -178,6 +197,19 @@ fn a_closureless_callback_is_invoked_with_the_trampoline_alone() {
 }
 
 #[test]
+fn a_callee_taking_user_data_gets_its_slot_even_when_the_callback_declares_none() {
+    helpers::run(|| {
+        let invocation = invoke_through_cif(&opaque_user_data_codec(true, CallbackScope::Notified));
+        assert_eq!(invocation.arity, 3);
+        assert!(invocation.user_data.is_some());
+        assert_eq!(
+            invocation.destroy,
+            Some(ClosureState::destroy as *mut c_void)
+        );
+    });
+}
+
+#[test]
 fn notified_with_destroy_invokes_with_real_destroy_notify() {
     helpers::run(|| {
         let invocation = invoke_through_cif(&callback_codec(true, CallbackScope::Notified));
@@ -186,6 +218,42 @@ fn notified_with_destroy_invokes_with_real_destroy_notify() {
             invocation.destroy,
             Some(ClosureState::destroy as *mut c_void)
         );
+    });
+}
+
+#[test]
+fn the_default_destroy_kind_is_the_one_argument_destroy_notify() {
+    assert_eq!(
+        DestroyNotifyKind::default(),
+        DestroyNotifyKind::DestroyNotify
+    );
+}
+
+#[test]
+fn a_closure_notify_destroy_kind_installs_the_two_argument_entry_point() {
+    helpers::run(|| {
+        let invocation = invoke_through_cif(&closure_notify_codec());
+        assert_eq!(invocation.arity, 3);
+        assert_eq!(
+            invocation.destroy,
+            Some(ClosureState::destroy_as_closure_notify as *mut c_void)
+        );
+        assert_ne!(
+            invocation.destroy,
+            Some(ClosureState::destroy as *mut c_void)
+        );
+    });
+}
+
+#[test]
+fn a_closure_notify_destroy_kind_is_still_dropped_by_the_scope() {
+    helpers::run(|| {
+        let codec = CallbackCodec {
+            scope: CallbackScope::Call,
+            ..closure_notify_codec()
+        };
+        let invocation = invoke_through_cif(&codec);
+        assert_eq!(invocation.destroy, Some(std::ptr::null_mut()));
     });
 }
 

@@ -52,6 +52,13 @@ impl ArrayCodec {
     pub(crate) fn ptr_array_item(&self) -> Option<Box<Codec>> {
         matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
     }
+
+    fn container_release(&self) -> ffi::ReleaseKind {
+        match &*self.item_codec {
+            Codec::String(item) if item.ownership.is_full() => ffi::ReleaseKind::StrFreeV,
+            _ => ffi::ReleaseKind::GFree,
+        }
+    }
 }
 
 pub(super) fn build_js_array<'e>(
@@ -134,6 +141,8 @@ impl PtrWriter for ArrayCodec {
             encode_and_leak_container(value, "array vfunc return", |v| self.encode(env, v));
         unsafe { ret.store(container) };
     }
+
+    write_container_value_to_ptr!("array", "array pointer write", Self::container_release);
 }
 
 pub(super) fn dup_strings_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
