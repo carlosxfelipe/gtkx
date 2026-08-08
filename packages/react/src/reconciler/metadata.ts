@@ -9,6 +9,7 @@ type TypeInfo = {
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
     deferred: Set<string>;
+    declaredConstructOnly: Set<string>;
     isLazy: boolean;
     hasFlush: boolean;
     hasMount: boolean;
@@ -75,6 +76,7 @@ const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => 
     }
 
     addAll(info.deferred, deferredProps(behavior));
+    addAll(info.declaredConstructOnly, behavior.constructOnly);
 };
 
 const resolveBehaviorFlags = (info: TypeInfo): void => {
@@ -92,6 +94,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         userEventSignals: new Set(),
         behaviors: [],
         deferred: new Set(),
+        declaredConstructOnly: new Set(),
         isLazy: false,
         hasFlush: false,
         hasMount: false,

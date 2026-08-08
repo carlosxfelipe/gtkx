@@ -23,22 +23,22 @@ describe("render - AboutDialog credit sections", () => {
         expect(ref.current).toHaveObjectProperty("programName", "GTKX");
     });
 
-    it("keeps the initial sections when the prop changes", async () => {
+    it("rejects sections changed after they are applied", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
         const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />, {
             container: rootElement,
         });
 
-        await rerender(
-            <GtkAboutDialog
-                ref={ref}
-                programName="GTKX"
-                creditSections={[{ sectionName: "Translation", people: ["Alan Turing"] }]}
-            />,
-        );
-
-        expect(ref.current).toHaveObjectProperty("programName", "GTKX");
+        await expect(
+            rerender(
+                <GtkAboutDialog
+                    ref={ref}
+                    programName="GTKX"
+                    creditSections={[{ sectionName: "Translation", people: ["Alan Turing"] }]}
+                />,
+            ),
+        ).rejects.toThrow(/Cannot change the construct-only prop 'creditSections' of <GtkAboutDialog>/);
     });
 
     it("applies sections provided after mount only once", async () => {

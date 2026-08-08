@@ -4,6 +4,7 @@ import type { AlertDialogResponse } from "./prop-types.js";
 import {
     addRemoveSlot,
     adoptedChildrenSlot,
+    applicationCreator,
     boxSlot,
     childSetterSlot,
     contentSetterSlot,
@@ -74,6 +75,9 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
 );
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
+    AdwApplication: {
+        behaviors: [applicationCreator(Adw.Application)],
+    },
     ...forTypes(CHILD_SETTER_TYPES, {
         behaviors: [childSetter],
     }),
