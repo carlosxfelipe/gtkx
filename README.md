@@ -108,7 +108,7 @@ React Native and similar frameworks hide the native toolkit so one API can run e
 
 ### Why Node.js, and why generated bindings
 
-GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [Why GTKX guide](https://gtkx.dev/guide/why-gtkx) covers the comparison in full.
+GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [Why GTKX guide](https://gtkx.dev/guide/why-gtkx) covers what running on Node.js means day to day.
 
 GTKX generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back. Codegen covers the whole GTK4 and Adwaita surface.
 
@@ -121,10 +121,10 @@ GTKX is Linux-only and needs Node.js 24 or later. See [Requirements](#requiremen
 Scaffold a new app with the `create-gtkx` initializer:
 
 ```sh
-npm create gtkx@rc
+npm create gtkx
 ```
 
-The same command works with other package managers: `pnpm create gtkx@rc` or `yarn create gtkx@rc`.
+The same command works with other package managers: `pnpm create gtkx` or `yarn create gtkx`.
 
 Then run your new app:
 
@@ -145,7 +145,7 @@ The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tu
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
+- Linux with the GTK4 (4.20 or later) and GLib development libraries, plus Adwaita (1.8 or later) once your project binds `Adw-1`
 - Node.js 24 or later
 
 The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.
@@ -161,7 +161,7 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
 ## Status
 
-GTKX 1.0 is at the release candidate stage.
+GTKX 1.0 is released.
 
 ## Contributing
 
