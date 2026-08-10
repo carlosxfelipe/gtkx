@@ -1,5 +1,5 @@
 ---
-title: "GTKX 1.0: Native GTK4 Apps with React on Linux"
+title: "GTKX 1.0: The React framework for Linux"
 description: "GTKX renders native GTK4 and Adwaita applications from React on Linux. In 1.0 the element surface is generated on your machine from the GObject-Introspection data your development packages already install, so every widget on the system is a typed JSX element, with its properties as props and its signals as handlers."
 image: /tasks-screenshot.png
 ---
