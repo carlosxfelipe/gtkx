@@ -21,6 +21,15 @@ const STEPS: Record<string, { label: string; cmd: string; out: string[] }> = {
         cmd: "gtkx build",
         out: ["[gtkx] Building src/index.tsx", "[gtkx] Build complete: dist/bundle.js"],
     },
+    deploy: {
+        label: "deploy",
+        cmd: "gtkx deploy",
+        out: [
+            "[gtkx] Deploying Tasks 1.0.0-1 as tasks (x86_64) to flatpak",
+            "[gtkx] Validated the desktop entry and the metainfo",
+            "[gtkx] Built build/com.example.Tasks-1.0.0-x86_64.flatpak (52.4 MiB)",
+        ],
+    },
     codegen: {
         label: "codegen",
         cmd: "gtkx codegen",
