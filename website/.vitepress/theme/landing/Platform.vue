@@ -19,7 +19,7 @@ const STEPS: Record<string, { label: string; cmd: string; out: string[] }> = {
     build: {
         label: "build",
         cmd: "gtkx build",
-        out: ["[gtkx] Building src/index.tsx", "[gtkx] Build complete: dist/bundle.js"],
+        out: ["[gtkx] Building src/index.tsx", "[gtkx] Build complete: dist/bundle.mjs"],
     },
     deploy: {
         label: "deploy",

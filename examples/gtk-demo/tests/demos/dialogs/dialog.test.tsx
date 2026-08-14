@@ -30,10 +30,13 @@ describe("dialogDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(dialogDemo.id).toBe("dialog");
         expect(dialogDemo.title).toBe("Dialogs");
-        expect(dialogDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(dialogDemo.keywords)).toBe(true);
-        expect(typeof dialogDemo.sourceCode).toBe("string");
-        expect(dialogDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(dialogDemo.description).toBe(
+            "Dialogs are used to pop up transient windows for information and user feedback.",
+        );
+
+        expect(dialogDemo.keywords).toEqual([]);
+        expect(dialogDemo.sourceCode).toContain("const dialogDemo: Demo = {");
         expect(dialogDemo.component).toBeTypeOf("function");
     });
 
@@ -128,7 +131,7 @@ describe("dialogDemo interactive dialog entries", () => {
         const interactive = await openInteractiveDialog();
         const dialogEntry1 = await screen.findByName("dialog-entry-1", { as: Gtk.Entry });
         expect(dialogEntry1).toHaveDisplayValue("orig");
-        await userEvent.type(dialogEntry1, "-edited");
+        await userEvent.type(dialogEntry1, "-edited", { initialSelectionStart: "orig".length });
         expect(dialogEntry1).toHaveDisplayValue("orig-edited");
         await userEvent.click(within(interactive).getByRole(Gtk.AccessibleRole.BUTTON, { name: /Cancel/ }));
         await expectDialogClosed("interactive-dialog");

@@ -9,7 +9,7 @@ use helpers::{
     get_gobject_refcount, make_bool_param_spec as param_spec_ptr, param_spec_ref,
     param_spec_refcount, param_spec_unref, pump_default_context_until,
 };
-use native::handle::{Fundamental, Handle};
+use native::handle::{BorrowScope, Fundamental, Handle};
 use native::value::wrapper;
 use test_support as helpers;
 use test_support::napi_mock;
@@ -171,12 +171,120 @@ fn take_owned_consumes_the_object_once() {
 }
 
 #[test]
+fn release_owned_drops_the_reference_the_handle_holds() {
+    helpers::run(|| {
+        let (obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
+
+        handle.release_owned();
+
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, initial_ref - 1);
+
+        drop(handle);
+        drop(obj);
+    });
+}
+
+#[test]
+fn a_call_scoped_gobject_handle_owns_nothing_until_it_is_invalidated() {
+    helpers::run(|| {
+        let (obj, obj_ptr, before) = helpers::fresh_gobject();
+        let handle = Handle::borrowed_gobject(obj_ptr);
+
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
+        assert_eq!(handle.as_gobject_ptr(), Some(obj_ptr));
+        assert!(handle.take_owned().is_none());
+        assert!(!handle.is_invalidated());
+
+        handle.invalidate();
+
+        assert!(handle.is_invalidated());
+        assert!(handle.as_gobject_ptr().is_none());
+        assert!(handle.as_ptr().is_null());
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
+
+        drop(obj);
+    });
+}
+
+#[test]
+fn invalidating_a_borrowed_handle_ends_its_reference() {
+    let raw = 0xABCD_1234usize as *mut c_void;
+    let handle = Handle::from_glib_borrow(raw);
+
+    assert!(!handle.is_invalidated());
+    assert_eq!(handle.as_ptr(), raw);
+
+    handle.invalidate();
+
+    assert!(handle.is_invalidated());
+    assert!(handle.as_ptr().is_null());
+}
+
+#[test]
+fn a_borrow_scope_hands_back_only_the_borrows_taken_while_it_was_open() {
+    helpers::run(|| {
+        let before = Handle::from_glib_borrow(0x1000usize as *mut c_void);
+        let scope = BorrowScope::open();
+        let inside = Handle::from_glib_borrow(0x2000usize as *mut c_void);
+        let (obj, obj_ptr, _) = helpers::fresh_gobject();
+        let call_scoped = Handle::borrowed_gobject(obj_ptr);
+        let collected = scope.close();
+        let after = Handle::from_glib_borrow(0x3000usize as *mut c_void);
+
+        assert_eq!(collected.len(), 2);
+
+        for handle in &collected {
+            handle.invalidate();
+        }
+
+        assert!(inside.is_invalidated());
+        assert!(call_scoped.is_invalidated());
+        assert!(!before.is_invalidated());
+        assert!(!after.is_invalidated());
+
+        drop(obj);
+    });
+}
+
+#[test]
+fn a_borrow_scope_that_is_never_closed_stops_collecting_when_it_is_dropped() {
+    helpers::run(|| {
+        drop(BorrowScope::open());
+
+        let handle = Handle::from_glib_borrow(0x4000usize as *mut c_void);
+        let collected = BorrowScope::open().close();
+
+        assert!(collected.is_empty());
+        assert!(!handle.is_invalidated());
+    });
+}
+
+#[test]
 fn take_owned_on_a_borrowed_handle_returns_none() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let handle = Handle::from_glib_borrow(obj.as_ptr().cast::<c_void>());
 
         assert!(handle.take_owned().is_none());
+    });
+}
+
+#[test]
+fn a_field_of_a_borrowed_owner_stops_reaching_it_when_the_borrow_ends() {
+    helpers::run(|| {
+        let mut owner = [0u32; 4];
+        let owner_ptr = owner.as_mut_ptr().cast::<c_void>();
+        let owner_handle = Handle::from_glib_borrow(owner_ptr);
+        let field = Handle::field(&owner_handle, size_of::<u32>() * 2);
+
+        assert_eq!(field.as_ptr(), owner_ptr.wrapping_byte_add(8));
+        assert_eq!(field.size_hint(), 0);
+        assert!(!field.is_invalidated());
+
+        owner_handle.invalidate();
+
+        assert!(field.is_invalidated());
+        assert!(field.as_ptr().is_null());
     });
 }
 

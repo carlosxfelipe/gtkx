@@ -2,9 +2,11 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { Buffer } from "node:buffer";
 import { describe, expect, it, vi } from "vitest";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { createAppRenderer } from "./render-app.js";
+import { findButton } from "./test-utils.js";
 
 const renderDemo = createAppRenderer("org.gtkx.gtkdemoint");
 
@@ -16,7 +18,7 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
 
     for (let i = 0; i < selectionModel.getNItems(); i++) {
         await userEvent.selectOptions(sidebar, i);
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        const run = await findButton("Run");
 
         if (run.getSensitive()) {
             selectedIndex = i;
@@ -37,8 +39,8 @@ const findNotebook = async (): Promise<Gtk.Notebook> => await screen.findByName(
 
 const expectDialogShown = async (): Promise<void> => {
     await waitFor(async () => {
-        const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
-        expect(dialogs.length).toBeGreaterThan(0);
+        const [dialog] = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
+        expect(dialog).toBeVisible();
     });
 };
 
@@ -46,6 +48,26 @@ const openMenuItem = async (name: string): Promise<void> => {
     const menuButton = await screen.findByName("menu-button", { as: Gtk.MenuButton });
     await userEvent.click(menuButton);
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name }));
+};
+
+const expectShortcutsDialogShown = async (): Promise<void> => {
+    await expectDialogShown();
+    const [shortcutLabel] = await screen.findAllByText("Search demos");
+    expect(shortcutLabel).toBeRooted();
+};
+
+const expectInteractiveDebugging = async (activate: () => Promise<void>): Promise<void> => {
+    const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
+
+    try {
+        await activate();
+
+        await waitFor(() => {
+            expect(debugSpy).toHaveBeenCalledWith(true);
+        });
+    } finally {
+        debugSpy.mockRestore();
+    }
 };
 
 describe("App search toggle", () => {
@@ -66,7 +88,7 @@ describe("App run button", () => {
     it("enables the Run button after a demo with a component is selected", async () => {
         await renderDemo();
         await selectFirstDemoWithComponent();
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        const run = await findButton("Run");
         expect(run).toBeEnabled();
     });
 
@@ -75,7 +97,7 @@ describe("App run button", () => {
         await selectFirstDemoWithComponent();
         const windowsBefore = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
         const beforeCount = windowsBefore.length;
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        const run = await findButton("Run");
         await userEvent.click(run);
 
         await waitFor(async () => {
@@ -96,7 +118,8 @@ describe("App about menu", () => {
         await renderDemo();
         const display = Gdk.Display.getDefault();
         expect(display, "no default display available").not.toBeNull();
-        expect(() => Gio.resourcesLookupData(logoResourcePath, Gio.ResourceLookupFlags.NONE)).not.toThrow();
+        const logo = Gio.resourcesLookupData(logoResourcePath, Gio.ResourceLookupFlags.NONE).getData() ?? [];
+        expect(Buffer.from(logo.slice(0, 64)).toString("utf8")).toContain("<svg");
     });
 });
 
@@ -104,11 +127,9 @@ describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
         await renderDemo();
         const tabs = await screen.findAllByRole(Gtk.AccessibleRole.TAB);
-        const [infoTab, sourceTab] = tabs;
         expect(tabs).toHaveLength(2);
-        expect(infoTab).toBeInstanceOf(Gtk.Widget);
-        expect(sourceTab).toBeInstanceOf(Gtk.Widget);
-        expect(sourceTab).not.toBe(infoTab);
+        expect(tabs[0]).toHaveTextContent("Info");
+        expect(tabs[1]).toHaveTextContent("Source");
     });
 
     it("advances the page when the notebook page is set", async () => {
@@ -129,27 +150,32 @@ describe("App notebook", () => {
 describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
         await renderDemo();
-        await openMenuItem("Keyboard Shortcuts");
-        await expectDialogShown();
-        const shortcutLabels = await screen.findAllByText("Search demos");
-        expect(shortcutLabels.length).toBeGreaterThan(0);
+        await openMenuItem("Keyboard Shortcuts Ctrl+?");
+        await expectShortcutsDialogShown();
     });
 });
 
 describe("App inspector activation", () => {
     it("invokes Gtk.Window.setInteractiveDebugging when the inspector menu entry is activated", async () => {
-        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-
-        try {
+        await expectInteractiveDebugging(async () => {
             await renderDemo();
-            await openMenuItem("Inspector");
+            await openMenuItem("Inspector Shift+Ctrl+I");
+        });
+    });
+});
 
-            await waitFor(() => {
-                expect(debugSpy).toHaveBeenCalled();
-            });
-        } finally {
-            debugSpy.mockRestore();
-        }
+describe("App action accelerators", () => {
+    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
+        await expectInteractiveDebugging(async () => {
+            const body = await renderMainWindowBody();
+            await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
+        });
+    });
+
+    it("opens the keyboard shortcuts dialog when Ctrl+? is pressed", async () => {
+        const body = await renderMainWindowBody();
+        await userEvent.keyboard(body, "{Control>}?{/Control}");
+        await expectShortcutsDialogShown();
     });
 });
 
@@ -163,21 +189,6 @@ describe("App global shortcuts", () => {
         await waitFor(() => {
             expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
         });
-    });
-
-    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
-        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-
-        try {
-            const body = await renderMainWindowBody();
-            await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
-
-            await waitFor(() => {
-                expect(debugSpy).toHaveBeenCalledWith(true);
-            });
-        } finally {
-            debugSpy.mockRestore();
-        }
     });
 
     it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {

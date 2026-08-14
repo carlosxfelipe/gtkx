@@ -51,12 +51,16 @@
     "devDependencies": {
         "@gtkx/codegen": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@gtkx/vitest": "workspace:*",
-        "@types/node": "catalog:",
-        "vitest": "catalog:"
+        "@types/node": "catalog:"
     },
     "nx": {
         "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            },
             "codegen": {
                 "cache": true,
                 "dependsOn": [

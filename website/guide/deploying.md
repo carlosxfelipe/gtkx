@@ -88,7 +88,7 @@ Every target installs the same tree, under `/usr` for deb, rpm, and AppImage, an
 ```
 bin/<binaryName>                              a launcher script
 lib/<binaryName>/node                         the bundled Node.js
-lib/<binaryName>/bundle.js                    the app
+lib/<binaryName>/bundle.mjs                   the app
 lib/<binaryName>/gtkx.node                    the native addon
 lib/<binaryName>/gschemas.compiled            compiled settings schemas
 share/applications/<id>.desktop               generated
@@ -97,7 +97,7 @@ share/icons/hicolor/**/apps/<id>.svg          copied from data/icons
 share/glib-2.0/schemas/<id>*.gschema.xml      copied from data/
 ```
 
-`bundle.js`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves all three relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
+`bundle.mjs`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves all three relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
 
 ## Why Node.js is bundled
 

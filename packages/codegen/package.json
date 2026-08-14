@@ -45,6 +45,16 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
     "engines": {
         "node": ">=24"
     },
@@ -53,6 +63,7 @@
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
         "fast-xml-parser": "^5.10.1",
+        "fast-xml-validator": "^1.4.1",
         "typescript": "catalog:"
     }
 }

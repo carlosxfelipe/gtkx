@@ -6,13 +6,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listviewWordsDemo } from "../../../src/demos/lists/listview-words.js";
-import { findOpenButton, renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 const tempDirRef = { path: "" };
 
 async function renderDemoAndClickOpen() {
     await renderDemo(listviewWordsDemo);
-    const openButton = await findOpenButton();
+    const openButton = await findButton("Open");
     await userEvent.click(openButton);
 }
 
@@ -40,9 +40,9 @@ describe("listviewWordsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewWordsDemo.id).toBe("listview-words");
         expect(listviewWordsDemo.title).toBe("Lists/Words");
-        expect(listviewWordsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewWordsDemo.keywords)).toBe(true);
-        expect(typeof listviewWordsDemo.sourceCode).toBe("string");
+        expect(listviewWordsDemo.description).toContain("This demo shows filtering a long list - of words.");
+        expect(listviewWordsDemo.keywords).toEqual(["GtkListView", "GtkFilterListModel", "GtkInscription"]);
+        expect(listviewWordsDemo.sourceCode).toContain("const listviewWordsDemo: Demo = {");
         expect(listviewWordsDemo.defaultWidth).toBe(400);
         expect(listviewWordsDemo.defaultHeight).toBe(600);
         expect(listviewWordsDemo.component).toBeTypeOf("function");
@@ -52,14 +52,13 @@ describe("listviewWordsDemo metadata", () => {
 describe("listviewWordsDemo layout", () => {
     it("installs a header bar with an Open button", async () => {
         await renderDemo(listviewWordsDemo);
-        const openButton = await findOpenButton();
+        const openButton = await findButton("Open");
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
         await renderDemo(listviewWordsDemo);
-        const entry = await screen.findByPlaceholderText("Search words...");
-        expect(entry).toBeInstanceOf(Gtk.SearchEntry);
+        expect(await screen.findByPlaceholderText("Search words...")).toBe(await findSearchEntry());
     });
 
     it("renders a GtkListView with NONE selection", async () => {

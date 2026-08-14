@@ -3,12 +3,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { shadertoyDemo } from "../../../src/demos/opengl/shadertoy.js";
-import { renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 const PRESET_NAMES = ["Alien Planet", "Mandelbrot", "Neon", "Cogs", "Glowing Stars"];
-
-const findButton = async (name: string): Promise<Gtk.Button> =>
-    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
 
 const clickPreset = async (name: string): Promise<void> => {
     await userEvent.click(await findButton(name));
@@ -26,10 +23,9 @@ describe("shadertoyDemo", () => {
     it("exposes the expected metadata", () => {
         expect(shadertoyDemo.id).toBe("shadertoy");
         expect(shadertoyDemo.title).toBe("OpenGL/Shadertoy");
-        expect(shadertoyDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(shadertoyDemo.keywords)).toBe(true);
-        expect(typeof shadertoyDemo.sourceCode).toBe("string");
-        expect(shadertoyDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(shadertoyDemo.description).toContain("Generate pixels using a custom fragment shader.");
+        expect(shadertoyDemo.keywords).toEqual(["GtkGLArea"]);
+        expect(shadertoyDemo.sourceCode).toContain("const shadertoyDemo: Demo = {");
         expect(shadertoyDemo.component).toBeTypeOf("function");
     });
 
@@ -55,11 +51,11 @@ describe("shadertoyDemo", () => {
 describe("shadertoyDemo shader presets", () => {
     it("exposes Restart, Clear, and one button per shader preset", async () => {
         await renderDemo(shadertoyDemo);
-        expect(await findButton("Restart the demo")).toBeInstanceOf(Gtk.Button);
-        expect(await findButton("Clear the text view")).toBeInstanceOf(Gtk.Button);
+        expect(await findButton("Restart the demo")).toBeEnabled();
+        expect(await findButton("Clear the text view")).toBeEnabled();
 
         for (const presetName of PRESET_NAMES) {
-            expect(await findButton(presetName)).toBeInstanceOf(Gtk.Button);
+            expect(await findButton(presetName)).toBeEnabled();
         }
     });
 });

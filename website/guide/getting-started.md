@@ -60,7 +60,7 @@ The key belongs at the top level of the file, alongside `packages:` and `allowBu
 
 `npm run dev` runs `gtkx dev`. Leave it running while you work: saving a component patches it into the window that is already open, and a change Fast Refresh cannot patch restarts the app.
 
-`npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. `npm run deploy` goes further and packages the app as a Flatpak, a `.deb`, an `.rpm`, or an AppImage, with the desktop entry and AppStream metadata generated for you: see [Deploying](/guide/deploying).
+`npm run build` bundles the app to `dist/bundle.mjs`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. `npm run deploy` goes further and packages the app as a Flatpak, a `.deb`, an `.rpm`, or an AppImage, with the desktop entry and AppStream metadata generated for you: see [Deploying](/guide/deploying).
 
 ## Project structure
 
@@ -91,7 +91,7 @@ createRoot().render(<App />);
 
 The application element picks up its `applicationId` from `gtkx.config.ts` automatically. An Adwaita app adds `Adw-1` to its `libraries` and uses `<AdwApplication>`, imported from `@gtkx/jsx/adw`, in place of `<GtkApplication>` (see [Your First Window](/tutorial/your-first-window)).
 
-Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root, and unmounting the application element quits the application it started. It returns `true`, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}`.
+Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root, and unmounting the application element quits the application it started. It returns `true` when it unmounted a root, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}`.
 
 ## Next
 

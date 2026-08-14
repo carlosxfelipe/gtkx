@@ -30,15 +30,15 @@ dist/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg      0.49 kB │
 dist/gschemas.compiled                                               0.63 kB
 dist/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg               1.47 kB │ gzip:   0.38 kB
 dist/gtkx.node                                                   1,624.69 kB
-dist/bundle.js                                                   4,067.30 kB │ gzip: 510.94 kB
+dist/bundle.mjs                                                  4,067.30 kB │ gzip: 510.94 kB
 
 ✓ built in 694ms
-[gtkx] Build complete: dist/bundle.js
+[gtkx] Build complete: dist/bundle.mjs
 ```
 
-Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. Keep them together and the app is self-contained. Move `bundle.js` on its own and the settings schema goes missing on the first `useSetting` call.
+Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. Keep them together and the app is self-contained. Move `bundle.mjs` on its own and the settings schema goes missing on the first `useSetting` call.
 
-`node dist/bundle.js` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
+`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
@@ -116,7 +116,7 @@ npm run deploy
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
-[gtkx] Build complete: dist/bundle.js
+[gtkx] Build complete: dist/bundle.mjs
 [gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
 [gtkx] Staged 12 files into build/stage
 [gtkx] Wrote build/targets/appimage/AppRun
@@ -141,10 +141,11 @@ Every package installs the same tree, under `/usr` here and under `/app` in the 
 ```
 /usr/bin/gtkx-tutorial                                    a launcher script
 /usr/lib/gtkx-tutorial/node                               the bundled Node.js
-/usr/lib/gtkx-tutorial/bundle.js                          the app
+/usr/lib/gtkx-tutorial/bundle.mjs                         the app
 /usr/lib/gtkx-tutorial/gtkx.node                          the native addon
 /usr/lib/gtkx-tutorial/gschemas.compiled                  the compiled schema
 /usr/share/applications/com.gtkx.tutorial.desktop         generated
+/usr/share/dbus-1/services/com.gtkx.tutorial.service      generated
 /usr/share/metainfo/com.gtkx.tutorial.metainfo.xml        generated
 /usr/share/icons/hicolor/**/apps/com.gtkx.tutorial.svg    from data/icons
 /usr/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml from data/

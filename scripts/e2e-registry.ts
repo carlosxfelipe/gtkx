@@ -384,7 +384,7 @@ async function verifyAppStarts(appDir: string, launch: AppLaunch): Promise<void>
 }
 
 async function verifyBuiltAppStarts(appDir: string): Promise<void> {
-    await verifyAppStarts(appDir, { command: process.execPath, args: ["dist/bundle.js"] });
+    await verifyAppStarts(appDir, { command: process.execPath, args: ["dist/bundle.mjs"] });
 }
 
 export {

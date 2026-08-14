@@ -374,6 +374,33 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 }
 
 #[test]
+fn an_inline_boxed_cannot_be_read_from_a_pointer_slot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (type_, original) = rgba_boxed_alloc();
+        let slot: *mut c_void = original;
+        let slot_ptr = (&raw const slot).cast::<c_void>();
+        let codec = BoxedCodec {
+            caller_allocated: true,
+            inline: true,
+            size: Some(size_of::<gdk::ffi::GdkRGBA>()),
+            ..boxed(Ownership::Borrowed)
+        };
+        let result = unsafe { codec.read(&env, ReadCtx::slot(slot_ptr, "inline slot")) };
+        let Err(error) = result else {
+            panic!("an inline boxed reached through a pointer slot must be rejected")
+        };
+
+        assert!(
+            format!("{error:#}").contains("has no pointer slot to read"),
+            "an inline boxed has no owner to alias here, so it must fail loudly rather than copy"
+        );
+
+        free_rgba(type_, original);
+    });
+}
+
+#[test]
 fn read_from_pointer_dereferences_slot() {
     helpers::run(|| {
         let env = helpers::fake_env();

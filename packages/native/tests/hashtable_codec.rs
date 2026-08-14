@@ -10,9 +10,9 @@ use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _, sys};
 use native::Handle;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, Decoder, Encoder, FloatCodec,
-    FundamentalCodec, HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec, Ownership,
-    PtrWriter, ReadCtx, StringCodec, StructCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BooleanCodec, BoxedCodec, Codec, Decoder, Encoder,
+    FloatCodec, FundamentalCodec, HashTableCodec, HashTableEntryCodec, IntegerCodec, ObjectCodec,
+    Ownership, PtrWriter, ReadCtx, StringCodec, StructCodec,
 };
 use native::ffi::{Slot, Stash};
 use test_support as helpers;
@@ -116,8 +116,7 @@ fn gptrarray_codec_of(item_codec: Codec) -> Codec {
             Box::new(item_codec),
             ArrayKind::GPtrArray,
             Ownership::Borrowed,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid gptrarray codec"),
@@ -151,6 +150,7 @@ fn borrowed_string_codec() -> Codec {
 fn full_gobject_codec() -> Codec {
     Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
+        is_call_scoped: false,
     })
 }
 
@@ -625,6 +625,7 @@ fn full_sized_struct_encoder_installs_g_free_destroy() {
 fn full_gobject_encoder_installs_unref_destroy() {
     let encoder = HashTableEntryCodec::Handle(Box::new(Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
+        is_call_scoped: false,
     })));
     assert!(encoder.free_func().unwrap().is_some());
 }
@@ -1041,8 +1042,7 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
                 Box::new(full_boxed_codec()),
                 ArrayKind::GPtrArray,
                 Ownership::Borrowed,
-                None,
-                None,
+                ArrayBounds::NONE,
                 None,
             )
             .expect("valid gptrarray codec"),

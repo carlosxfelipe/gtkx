@@ -7,14 +7,17 @@ use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _};
 use native::ffi;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, FundamentalCodec, IntegerCodec, ObjectCodec,
-    Ownership, RefCodec, StringCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, FundamentalCodec, IntegerCodec,
+    ObjectCodec, Ownership, RefCodec, StringCodec,
 };
 use test_support as helpers;
 use test_support::napi_mock;
 
 fn gobject_type_of(ownership: Ownership) -> Codec {
-    Codec::Object(ObjectCodec { ownership })
+    Codec::Object(ObjectCodec {
+        ownership,
+        is_call_scoped: false,
+    })
 }
 
 fn string_type_of(ownership: Ownership) -> Codec {
@@ -53,8 +56,7 @@ fn gobject_glist_type_of(container: Ownership) -> Codec {
             Box::new(gobject_type_of(Ownership::Borrowed)),
             ArrayKind::GList,
             container,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid glist codec"),
@@ -67,8 +69,7 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
             Box::new(string_type_of(item)),
             kind,
             container,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid array codec"),
@@ -378,6 +379,22 @@ fn object_ptr_returns_handle_pointer() {
             native::value::handle_ptr(unknown, "GObject").unwrap(),
             obj_ptr
         );
+    });
+}
+
+#[test]
+fn object_ptr_errors_for_an_invalidated_handle() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let obj = glib::Object::new::<glib::Object>();
+        let handle = native::Handle::borrowed_gobject(obj.as_ptr());
+        handle.invalidate();
+
+        let unknown = External::new(handle).into_unknown(&env).unwrap();
+        let error = native::value::handle_ptr(unknown, "GObject")
+            .expect_err("an invalidated handle should be rejected");
+
+        assert!(format!("{error:#}").contains("only valid until the override returns"));
     });
 }
 

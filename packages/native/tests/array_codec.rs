@@ -6,9 +6,9 @@ use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _, sys};
 use native::Handle;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
-    EnumFlagsKind, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership, PtrWriter,
-    ReadCtx, RefCodec, SlotInit, StringCodec, StructCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder,
+    EnumFlagsCodec, EnumFlagsKind, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec,
+    Ownership, PtrWriter, ReadCtx, RefCodec, SlotInit, StringCodec, StructCodec,
 };
 use native::ffi::{GArrayData, ListData, ListPayload, Slot, Stash, StashData};
 use test_support as helpers;
@@ -61,7 +61,8 @@ fn u16_zero_terminated_full() -> ArrayCodec {
 }
 
 fn array_codec(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec::new(Box::new(item), kind, ownership, None, None, None).expect("valid array codec")
+    ArrayCodec::new(Box::new(item), kind, ownership, ArrayBounds::NONE, None)
+        .expect("valid array codec")
 }
 
 fn sized_array_type(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
@@ -69,8 +70,7 @@ fn sized_array_type(item: Codec, size_index: u32, ownership: Ownership) -> Array
         Box::new(item),
         ArrayKind::Sized,
         ownership,
-        Some(size_index),
-        None,
+        ArrayBounds::sized(size_index),
         None,
     )
     .expect("valid sized array codec")
@@ -81,15 +81,17 @@ fn fixed_array_type(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec 
         Box::new(item),
         ArrayKind::Fixed,
         ownership,
-        None,
-        Some(size),
+        ArrayBounds::fixed(size),
         None,
     )
     .expect("valid fixed array codec")
 }
 
 fn gobject_item_codec(ownership: Ownership) -> Codec {
-    Codec::Object(ObjectCodec { ownership })
+    Codec::Object(ObjectCodec {
+        ownership,
+        is_call_scoped: false,
+    })
 }
 
 fn unresolvable_fundamental_item_codec() -> Codec {
@@ -1609,6 +1611,24 @@ fn decode_with_context_sized_array() {
 }
 
 #[test]
+fn decode_with_context_sized_array_rejects_a_length_beyond_the_javascript_limit() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor =
+            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
+        let data: Vec<i32> = vec![5, 6, 7];
+        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
+        let ffi_args = [Stash::U32(134_217_729)];
+        let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
+        let Err(error) = descriptor.decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
+        else {
+            panic!("an oversized length is rejected");
+        };
+        assert!(error.to_string().contains("134217729 elements"));
+    });
+}
+
+#[test]
 fn decode_with_context_sized_array_null_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();
@@ -1679,6 +1699,121 @@ fn decode_with_context_fixed_rejects_non_ptr() {
         assert!(
             descriptor
                 .decode_with_context(&env, &Stash::Storage(storage), &[], &[])
+                .is_err()
+        );
+    });
+}
+
+fn cursor_array_type(item: Codec, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec::new(
+        Box::new(item),
+        ArrayKind::Cursor,
+        ownership,
+        ArrayBounds::cursor(0, 1),
+        None,
+    )
+    .expect("valid cursor array codec")
+}
+
+fn cursor_args(data: &[u8]) -> ([Stash; 2], [Codec; 2]) {
+    (
+        [
+            Stash::Ptr(data.as_ptr() as *mut c_void),
+            Stash::U32(u32::try_from(data.len()).expect("a test buffer fits in a u32")),
+        ],
+        [
+            Codec::Array(cursor_array_type(
+                Codec::Integer(IntegerCodec::U8),
+                Ownership::Borrowed,
+            )),
+            Codec::Integer(IntegerCodec::U32),
+        ],
+    )
+}
+
+#[test]
+fn a_cursor_array_decodes_the_tail_of_the_base_buffer() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let data: Vec<u8> = vec![1, 2, 3, 4];
+        let (ffi_args, arg_codecs) = cursor_args(&data);
+        let stash = Stash::Ptr(unsafe { data.as_ptr().add(2) } as *mut c_void);
+        let decoded = descriptor
+            .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
+            .unwrap();
+        assert_eq!(decoded_items(&decoded).len(), 2);
+    });
+}
+
+#[test]
+fn a_cursor_array_at_the_end_of_the_base_buffer_decodes_to_nothing() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let data: Vec<u8> = vec![1, 2, 3];
+        let (ffi_args, arg_codecs) = cursor_args(&data);
+        let stash = Stash::Ptr(unsafe { data.as_ptr().add(3) } as *mut c_void);
+        let decoded = descriptor
+            .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
+            .unwrap();
+        assert!(decoded_items(&decoded).is_empty());
+    });
+}
+
+#[test]
+fn a_cursor_array_outside_the_base_buffer_is_rejected() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let data: Vec<u8> = vec![1, 2, 3];
+        let (ffi_args, arg_codecs) = cursor_args(&data);
+        let stash = Stash::Ptr(unsafe { data.as_ptr().add(4) } as *mut c_void);
+        assert!(
+            descriptor
+                .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
+                .is_err()
+        );
+    });
+}
+
+#[test]
+fn a_cursor_array_null_pointer_decodes_to_nothing() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let data: Vec<u8> = Vec::new();
+        let (ffi_args, arg_codecs) = cursor_args(&data);
+        let decoded = descriptor
+            .decode_with_context(
+                &env,
+                &Stash::Ptr(std::ptr::null_mut()),
+                &ffi_args,
+                &arg_codecs,
+            )
+            .unwrap();
+        assert!(decoded_items(&decoded).is_empty());
+    });
+}
+
+#[test]
+fn a_cursor_array_cannot_be_encoded() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        assert!(descriptor.encode(&env, array(&env, &[])).is_err());
+    });
+}
+
+#[test]
+fn a_cursor_array_cannot_be_decoded_without_its_base_buffer() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let data: Vec<u8> = vec![7];
+        assert!(
+            descriptor
+                .decode(&env, &Stash::Ptr(data.as_ptr() as *mut c_void))
                 .is_err()
         );
     });
@@ -2219,8 +2354,11 @@ fn inline_pair_codec(ownership: Ownership, kind: ArrayKind, size_index: Option<u
         })),
         kind,
         ownership,
-        size_index,
-        None,
+        ArrayBounds {
+            base_param_index: None,
+            size_param_index: size_index,
+            fixed_size: None,
+        },
         Some(size_of::<InlinePair>()),
     )
     .expect("valid inline array codec")
@@ -2313,8 +2451,7 @@ fn an_inline_struct_array_decodes_elements_by_value() {
             })),
             ArrayKind::Fixed,
             Ownership::Borrowed,
-            None,
-            Some(2),
+            ArrayBounds::fixed(2),
             Some(size_of::<InlinePair>()),
         )
         .expect("valid fixed inline array codec");

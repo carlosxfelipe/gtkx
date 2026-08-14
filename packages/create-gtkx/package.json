@@ -62,12 +62,17 @@
     "devDependencies": {
         "@types/ejs": "catalog:",
         "@types/node": "catalog:",
-        "memfs": "^4.68.1",
         "typescript": "catalog:",
         "vitest": "catalog:"
     },
     "nx": {
         "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            },
             "copy-templates": {
                 "cache": true,
                 "inputs": [

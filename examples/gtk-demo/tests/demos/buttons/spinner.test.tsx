@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { spinnerDemo } from "../../../src/demos/buttons/spinner.js";
-import { renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 const renderSpinners = async (): Promise<Gtk.Spinner[]> => {
     await renderDemo(spinnerDemo);
@@ -12,9 +12,6 @@ const renderSpinners = async (): Promise<Gtk.Spinner[]> => {
 
 const findEntries = async (): Promise<Gtk.Entry[]> =>
     await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
-
-const findButton = async (name: string): Promise<Gtk.Button> =>
-    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
 
 const expectSpinning = async (areSpinning: boolean): Promise<void> => {
     await waitFor(() => {
@@ -27,9 +24,9 @@ describe("spinnerDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(spinnerDemo.id).toBe("spinner");
         expect(spinnerDemo.title).toBe("Spinner");
-        expect(typeof spinnerDemo.sourceCode).toBe("string");
-        expect(spinnerDemo.description.length).toBeGreaterThan(0);
-        expect(spinnerDemo.keywords).toContain("gtkspinner");
+        expect(spinnerDemo.sourceCode).toContain("const spinnerDemo: Demo = {");
+        expect(spinnerDemo.description).toBe("GtkSpinner allows to show that background activity is on-going.");
+        expect(spinnerDemo.keywords).toEqual(["gtkspinner"]);
         expect(spinnerDemo.isResizable).toBe(false);
     });
 });

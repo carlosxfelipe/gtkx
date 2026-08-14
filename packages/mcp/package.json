@@ -45,6 +45,16 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
     "engines": {
         "node": ">=24"
     },
@@ -54,5 +64,9 @@
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "zod": "catalog:"
+    },
+    "devDependencies": {
+        "@gtkx/vitest": "workspace:*",
+        "vitest": "catalog:"
     }
 }

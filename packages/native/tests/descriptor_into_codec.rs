@@ -104,6 +104,7 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
 
     let object = Descriptor::Object {
         ownership: Ownership::Borrowed,
+        is_call_scoped: None,
     };
     assert!(matches!(codec(object), Codec::Object(_)));
 
@@ -144,6 +145,7 @@ fn array_descriptor_recurses_into_its_item_codec() {
         item_descriptor: nested(Descriptor::Int32),
         array_kind: ArrayKind::Fixed,
         ownership: Ownership::Borrowed,
+        base_param_index: None,
         size_param_index: None,
         fixed_size: Some(3),
         element_size: None,
@@ -227,6 +229,7 @@ fn array_descriptor_propagates_codec_construction_errors() {
         item_descriptor: nested(Descriptor::Int32),
         array_kind: ArrayKind::Fixed,
         ownership: Ownership::Borrowed,
+        base_param_index: None,
         size_param_index: None,
         fixed_size: None,
         element_size: None,
