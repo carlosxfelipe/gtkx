@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/components",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "High-level GTKX components for declarative collection views, menus, and containers with attach-time placement",
     "keywords": [
         "gtkx",
@@ -43,7 +43,6 @@
         "src"
     ],
     "scripts": {
-        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "nx": {
@@ -68,7 +67,6 @@
         "react": "^19.2"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.7.1",
         "@gtkx/config": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
