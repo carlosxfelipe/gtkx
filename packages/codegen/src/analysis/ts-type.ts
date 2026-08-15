@@ -12,6 +12,7 @@ import {
     type TypeId,
 } from "../gir/type-id.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
+import { isByteSequence } from "./type-shape.js";
 
 type ReferenceName = {
     namespaceName: string;
@@ -21,10 +22,14 @@ type ReferenceName = {
 type TsTypeTarget = {
     containerStyle: "map" | "record";
     callbackType: string;
-    shouldRenderByteArrayAsNumber: boolean;
+    byteArrayType: string;
     renderNamed: (resolved: GirType | undefined, name: ReferenceName) => string;
     renderGtype: () => string;
 };
+
+const BYTE_ARRAY_TYPE = "Uint8Array";
+const BYTE_ARRAY_INPUT_TYPE = "Uint8Array | number[]";
+const NUMBER_ARRAY_TYPE = "number[]";
 
 const willEmitEntity = (type: EntityType): boolean => isEmittableEntity(type.value);
 
@@ -97,12 +102,12 @@ const renderContainerType = (
 };
 
 const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
-    if (type.kind === "list" && type.flavor === "gbytearray" && target.shouldRenderByteArrayAsNumber) {
-        return "number[]";
-    }
-
     if (type.kind === "carray" && hasUnknownArrayLength(type)) {
         return "number";
+    }
+
+    if (isByteSequence(library, type)) {
+        return target.byteArrayType;
     }
 
     return `${renderBaseType(library, target, type.element)}[]`;
@@ -120,19 +125,33 @@ const renderNamedType = (
     return target.renderNamed(resolved, name);
 };
 
-const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
+const getByteArrayType = (library: Library): string =>
+    library.isByteArrayTyped ? BYTE_ARRAY_TYPE : NUMBER_ARRAY_TYPE;
+
+const moduleTarget = (context: ModuleContext, byteArrayType: string): TsTypeTarget => ({
     containerStyle: "map",
     callbackType: "((...args: any[]) => any)",
-    shouldRenderByteArrayAsNumber: true,
+    byteArrayType,
     renderNamed: (_resolved, name) => context.qualify(name.namespaceName, name.typeName),
     renderGtype: () => gtypeTsType(context),
 });
 
-const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
-    const base = renderBaseType(context.library, moduleTarget(context), ref);
+const renderModuleType = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+    isNullable: boolean,
+    byteArrayType: string,
+): string => {
+    const base = renderBaseType(context.library, moduleTarget(context, byteArrayType), ref);
 
     return isNullable ? `${base} | null` : base;
 };
+
+const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
+    renderModuleType(context, ref, isNullable, getByteArrayType(context.library));
+
+const renderParameterTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
+    renderModuleType(context, ref, isNullable, BYTE_ARRAY_INPUT_TYPE);
 
 const recordTypeTarget = (
     library: Library,
@@ -142,7 +161,7 @@ const recordTypeTarget = (
     const target: TsTypeTarget = {
         containerStyle: "record",
         callbackType: "((...args: unknown[]) => unknown)",
-        shouldRenderByteArrayAsNumber: false,
+        byteArrayType: getByteArrayType(library),
         renderNamed: (resolved, name) => {
             if (resolved?.kind === "alias") {
                 return resolved.value.target === undefined
@@ -158,4 +177,4 @@ const recordTypeTarget = (
     return target;
 };
 
-export { renderBaseType, renderTsType, recordTypeTarget, type TsTypeTarget };
+export { renderBaseType, renderParameterTsType, renderTsType, recordTypeTarget, type TsTypeTarget };

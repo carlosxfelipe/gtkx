@@ -69,6 +69,15 @@ type PlainTypeMembersOptions = {
     hasGtype: boolean;
 };
 
+const RUNTIME_OWNED_LIFETIME_METHODS: Set<string> = new Set([
+    "force_floating",
+    "free",
+    "ref",
+    "ref_sink",
+    "take_ref",
+    "unref",
+]);
+
 const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
         `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
@@ -373,6 +382,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
+    !RUNTIME_OWNED_LIFETIME_METHODS.has(callable.name) &&
     !hasUnmarshalableParam(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
@@ -408,6 +418,20 @@ const renderStaticSignature = (
     };
 };
 
+const staticMemberName = (
+    context: ModuleContext,
+    callable: GirFunction,
+    resolveName: (girName: string) => string | undefined,
+): string | undefined => {
+    if (!isEmittableCallable(context, callable)) {
+        return undefined;
+    }
+
+    const name = resolveName(callable.name);
+
+    return name !== undefined && isEmittableMemberName(name) ? name : undefined;
+};
+
 const collectStaticMembers = (
     context: ModuleContext,
     group: GirFunction[],
@@ -416,7 +440,7 @@ const collectStaticMembers = (
     const members: StaticMember[] = [];
 
     for (const callable of group) {
-        const name = isEmittableCallable(context, callable) ? resolveName(callable.name) : undefined;
+        const name = staticMemberName(context, callable, resolveName);
 
         if (name !== undefined) {
             members.push({ callable, name });
@@ -427,12 +451,9 @@ const collectStaticMembers = (
 };
 
 const staticMembers = (context: ModuleContext, callables: Callables): StaticMember[] => [
-    ...collectStaticMembers(context, callables.constructors, constructorMemberName),
+    ...collectStaticMembers(context, callables.constructors, memberName),
     ...collectStaticMembers(context, callables.functions, memberName),
 ];
-
-const constructorMemberNames = (context: ModuleContext, constructors: GirFunction[]): string[] =>
-    collectStaticMembers(context, constructors, constructorMemberName).map((member) => member.name);
 
 const collectStaticEntries = (
     context: ModuleContext,
@@ -513,10 +534,8 @@ export {
     dedupeCallables,
     generateBindings,
     matchStaticFinishFunction,
-    indexMethodsByName,
     isEmittableCallable,
     renderStaticSignature,
-    constructorMemberNames,
     renderStaticHead,
     renderPlainTypeMembers,
     staticMembers,

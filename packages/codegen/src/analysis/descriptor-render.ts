@@ -24,10 +24,12 @@ import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
 import { isValueMarshalable } from "../store/gi/value-marshalable.js";
 import {
+    type ArrayLayout,
     type ListDescriptorName,
     type Ownership,
     type ScalarDescriptorName,
     tArray,
+    tBiguint64,
     tBoxed,
     tByteArray,
     tCallback,
@@ -40,6 +42,7 @@ import {
     tHashTable,
     tInt32,
     tList,
+    tNumericByteArray,
     tObject,
     tRef,
     tScalar,
@@ -50,7 +53,7 @@ import {
     tUint64,
     tVoid,
 } from "./descriptor.js";
-import { carrayFor, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
+import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
@@ -220,7 +223,7 @@ const listExpression = (
     const ownership = transferOwnership(transfer);
 
     if (type.flavor === "gbytearray") {
-        return tByteArray(ownership);
+        return context.library.isByteArrayTyped ? tByteArray(ownership) : tNumericByteArray(ownership);
     }
 
     const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
@@ -387,7 +390,7 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
     }
 
     if (category === "pointer") {
-        return tUint64;
+        return tBiguint64;
     }
 
     if (category === "gtype") {
@@ -703,7 +706,7 @@ const cursorArrayExpression = (
     context: ModuleContext,
     ref: CArrayType,
     transfer: ParameterTransfer,
-    options: CursorArgIndexOptions,
+    options: CursorArgIndexOptions & { layout: ArrayLayout },
 ): string =>
     tCursorArray(
         elementExpression(context, ref, transfer, options),
@@ -712,8 +715,14 @@ const cursorArrayExpression = (
             lengthIndex: mapArgIndex(options, options.cursor.lengthIndex),
         },
         transferOwnership(transfer),
-        inlineElementSize(context, ref, options.hasOutIndirection),
+        options.layout,
     );
+
+const arrayLayout = (context: ModuleContext, ref: CArrayType, options: ArgIndexOptions): ArrayLayout => ({
+    elementSize: inlineElementSize(context, ref, options.hasOutIndirection),
+    isBytes:
+        context.library.isByteArrayTyped && !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
+});
 
 const arrayExpression = (
     context: ModuleContext,
@@ -722,9 +731,10 @@ const arrayExpression = (
     options: ArgIndexOptions,
 ): string => {
     const { cursor } = options;
+    const layout = arrayLayout(context, ref, options);
 
     if (cursor !== undefined) {
-        return cursorArrayExpression(context, ref, transfer, { ...options, cursor });
+        return cursorArrayExpression(context, ref, transfer, { ...options, cursor, layout });
     }
 
     if (hasUnknownArrayLength(ref)) {
@@ -733,17 +743,16 @@ const arrayExpression = (
 
     const ownership = transferOwnership(transfer);
     const element = elementExpression(context, ref, transfer, options);
-    const size = inlineElementSize(context, ref, options.hasOutIndirection);
 
     if (ref.lengthParameterIndex !== undefined) {
-        return tSizedArray(element, mapArgIndex(options, ref.lengthParameterIndex), ownership, size);
+        return tSizedArray(element, mapArgIndex(options, ref.lengthParameterIndex), ownership, layout);
     }
 
     if (ref.fixedSize !== undefined) {
-        return tFixedArray(element, ref.fixedSize, ownership, size);
+        return tFixedArray(element, ref.fixedSize, ownership, layout);
     }
 
-    return tArray(element, ownership, size);
+    return tArray(element, ownership, layout);
 };
 
 const elementPointerDepth = (elementCType: string | undefined, hasOutIndirection: boolean): number => {

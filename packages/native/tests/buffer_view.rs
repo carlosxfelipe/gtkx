@@ -12,8 +12,15 @@ use native::value::{TypedView, ViewKind};
 use test_support as helpers;
 
 fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec::new(Box::new(item), kind, ownership, ArrayBounds::NONE, None)
-        .expect("valid array codec")
+    ArrayCodec::new(
+        Box::new(item),
+        kind,
+        ownership,
+        ArrayBounds::NONE,
+        None,
+        false,
+    )
+    .expect("valid array codec")
 }
 
 fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
@@ -23,6 +30,7 @@ fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCo
         ownership,
         ArrayBounds::sized(size_index),
         None,
+        false,
     )
     .expect("valid sized array codec")
 }
@@ -34,6 +42,7 @@ fn fixed_array_of(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
         ownership,
         ArrayBounds::fixed(size),
         None,
+        false,
     )
     .expect("valid fixed array codec")
 }
@@ -99,6 +108,37 @@ fn assert_passthrough(item: Codec, view_kind: ViewKind) {
             panic!("expected a pointer passthrough, got {encoded:?}");
         };
         assert_eq!(ptr, expected_ptr);
+    });
+}
+
+#[test]
+fn a_view_into_the_middle_of_its_buffer_encodes_from_its_own_start() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut data: Vec<u8> = (0u8..8).collect();
+        let base = data.as_mut_ptr().cast::<c_void>();
+        let offset = 3usize;
+        let view = helpers::napi_mock::to_unknown(
+            &env,
+            helpers::napi_mock::fake_typed_array(TypedarrayType::uint8_array, base, 4, offset),
+        );
+        let encoded = encode_view(
+            &array_of(
+                Codec::Integer(IntegerCodec::U8),
+                ArrayKind::Array,
+                Ownership::Borrowed,
+            ),
+            env,
+            view,
+        )
+        .expect("a byte view should encode");
+        let Stash::Ptr(ptr) = encoded else {
+            panic!("expected a pointer passthrough, got {encoded:?}");
+        };
+        assert_eq!(
+            ptr,
+            unsafe { base.cast::<u8>().add(offset) }.cast::<c_void>()
+        );
     });
 }
 

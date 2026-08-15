@@ -1,4 +1,4 @@
-import { errorMessage, normalizeError } from "@gtkx/utils";
+import { errorCode, errorMessage, normalizeError } from "@gtkx/utils";
 import { existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,6 +63,7 @@ const CHECK_OPTIONS = {
 const CHECK_DIR = ".gtkx-check";
 const FAILED_CHECK_DIR = `${CHECK_DIR}.failed`;
 const LEGACY_CHECK_PREFIX = `${CHECK_DIR}-`;
+const ESM_SCOPE_MANIFEST = `${JSON.stringify({ type: "module" }, null, 4)}\n`;
 
 const FORMAT_HOST: ts.FormatDiagnosticsHost = {
     getCanonicalFileName: (fileName) => fileName,
@@ -88,6 +89,16 @@ const linkToolingModules = (projectDir: string): (() => void) => {
     return () => {
         rmSync(link, { force: true });
     };
+};
+
+const ensureModuleScope = (projectDir: string): void => {
+    try {
+        writeFileSync(join(projectDir, "package.json"), ESM_SCOPE_MANIFEST, { flag: "wx" });
+    } catch (error) {
+        if (errorCode(error) !== "EEXIST") {
+            throw error;
+        }
+    }
 };
 
 const isProjectFile = (rel: string): boolean =>
@@ -215,6 +226,7 @@ const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
 };
 
 const compileProject = (params: CompileProjectParams): void => {
+    ensureModuleScope(params.projectDir);
     const unlinkToolingModules = linkToolingModules(params.projectDir);
 
     try {

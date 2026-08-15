@@ -366,6 +366,21 @@ const visitInlineStructFields = (
     }
 };
 
+const inlineLeafCount = (context: ModuleContext, fields: GirField[]): number => {
+    let count = 0;
+
+    visitInlineStructFields(context, fields, 0, {
+        leaf: () => {
+            count += 1;
+        },
+        nested: (_jsName, nested) => {
+            count += inlineLeafCount(context, nested);
+        },
+    });
+
+    return count;
+};
+
 const elementAccessExpr = (descriptor: string, offset: number): string =>
     `read(__array, ${descriptor}, __base + ${String(offset)})`;
 
@@ -452,7 +467,7 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
 };
 
 const structArraySetterStatements = (context: ModuleContext, options: StructArrayAccessorOptions): string => {
-    const { elementDescriptor, offset, elementSize, elementFields } = options;
+    const { elementDescriptor, offset, elementSize, elementFields, lengthExpr } = options;
     const writes: string[] = [];
 
     appendElementWriteStatements(context, {
@@ -468,7 +483,7 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${String(offset)}) as ReturnType<typeof getHandle>;`,
         "for (const [__index, __element] of __value.entries()) {",
-        indent(loop, 1),
+        indent(`if (__index >= ${lengthExpr}) {\n    break;\n}\n\n${loop}`, 1),
         "}",
         `write(getHandle(this), __descriptor, ${String(offset)}, __array);`,
     ].join("\n");
@@ -543,7 +558,7 @@ const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): 
 
     const shape = resolveStructArrayShape(context, elements, siblingFields);
 
-    if (shape === undefined) {
+    if (shape === undefined || inlineLeafCount(context, elements.elementFields) === 0) {
         return undefined;
     }
 

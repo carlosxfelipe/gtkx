@@ -4,6 +4,7 @@ use std::ffi::{CStr, c_char, c_int, c_void};
 use std::rc::Rc;
 
 use napi::{Env, sys};
+use native::value::ViewKind;
 
 pub type FnImpl = Rc<dyn Fn(&[sys::napi_value]) -> sys::napi_value>;
 
@@ -37,7 +38,11 @@ pub enum FakeValue {
         byte_offset: usize,
         shared: bool,
     },
-    ArrayBuffer,
+    ArrayBuffer {
+        data: *mut c_void,
+        length: usize,
+        owned: Option<Vec<u8>>,
+    },
     SharedArrayBuffer,
 }
 
@@ -454,6 +459,30 @@ pub fn read_array(value: sys::napi_value) -> Option<Vec<sys::napi_value>> {
     }
 }
 
+pub fn read_bytes(value: sys::napi_value) -> Option<Vec<u8>> {
+    match fv(value)? {
+        FakeValue::TypedArray {
+            kind,
+            data,
+            length,
+            byte_offset,
+            ..
+        } => {
+            let element_size = ViewKind::try_from(*kind).ok()?.element_size();
+            let byte_length = length.checked_mul(element_size)?;
+
+            if byte_length == 0 || data.is_null() {
+                return Some(Vec::new());
+            }
+
+            let base = unsafe { data.cast::<u8>().add(*byte_offset) };
+
+            Some(unsafe { std::slice::from_raw_parts(base, byte_length) }.to_vec())
+        }
+        _ => None,
+    }
+}
+
 pub fn value_type(value: sys::napi_value) -> Option<sys::napi_valuetype> {
     Some(typeof_of(fv(value)?))
 }
@@ -482,7 +511,7 @@ fn typeof_of(value: &FakeValue) -> sys::napi_valuetype {
         | FakeValue::Array(_)
         | FakeValue::TypedArray { .. }
         | FakeValue::DataView { .. }
-        | FakeValue::ArrayBuffer
+        | FakeValue::ArrayBuffer { .. }
         | FakeValue::SharedArrayBuffer => sys::ValueType::napi_object,
     }
 }
@@ -918,6 +947,97 @@ pub unsafe extern "C" fn napi_set_named_property(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn napi_create_arraybuffer(
+    _env: sys::napi_env,
+    byte_length: usize,
+    data: *mut *mut c_void,
+    result: *mut sys::napi_value,
+) -> sys::napi_status {
+    record("napi_create_arraybuffer");
+    let mut buffer = vec![0u8; byte_length];
+    let ptr = buffer.as_mut_ptr().cast::<c_void>();
+    if !data.is_null() {
+        unsafe { *data = ptr };
+    }
+    unsafe {
+        *result = alloc(FakeValue::ArrayBuffer {
+            data: ptr,
+            length: byte_length,
+            owned: Some(buffer),
+        });
+    }
+    ok!()
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn napi_create_external_arraybuffer(
+    _env: sys::napi_env,
+    external_data: *mut c_void,
+    byte_length: usize,
+    _finalize_cb: sys::napi_finalize,
+    _finalize_hint: *mut c_void,
+    result: *mut sys::napi_value,
+) -> sys::napi_status {
+    record("napi_create_external_arraybuffer");
+    let buffer = alloc(FakeValue::ArrayBuffer {
+        data: external_data,
+        length: byte_length,
+        owned: None,
+    });
+    STATE.with_borrow_mut(|state| {
+        state.finalizers.push(Finalizer {
+            value: buffer,
+            cb: _finalize_cb,
+            data: external_data,
+            hint: _finalize_hint,
+        });
+    });
+    unsafe { *result = buffer };
+    ok!()
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn napi_create_typedarray(
+    _env: sys::napi_env,
+    kind: sys::napi_typedarray_type,
+    length: usize,
+    arraybuffer: sys::napi_value,
+    byte_offset: usize,
+    result: *mut sys::napi_value,
+) -> sys::napi_status {
+    record("napi_create_typedarray");
+    let Some(FakeValue::ArrayBuffer {
+        data,
+        length: buffer_length,
+        ..
+    }) = fv(arraybuffer)
+    else {
+        return sys::Status::napi_invalid_arg;
+    };
+    let Ok(view_kind) = ViewKind::try_from(kind) else {
+        return sys::Status::napi_invalid_arg;
+    };
+    let fits = length
+        .checked_mul(view_kind.element_size())
+        .and_then(|span| byte_offset.checked_add(span))
+        .is_some_and(|end| end <= *buffer_length);
+
+    if !fits {
+        return sys::Status::napi_invalid_arg;
+    }
+    unsafe {
+        *result = alloc(FakeValue::TypedArray {
+            kind,
+            data: *data,
+            length,
+            byte_offset,
+            shared: false,
+        });
+    }
+    ok!()
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn napi_create_array(
     _env: sys::napi_env,
     result: *mut sys::napi_value,
@@ -1044,37 +1164,50 @@ pub unsafe extern "C" fn napi_is_arraybuffer(
     result: *mut bool,
 ) -> sys::napi_status {
     record("napi_is_arraybuffer");
-    unsafe { *result = matches!(fv(value), Some(FakeValue::ArrayBuffer)) };
+    unsafe { *result = matches!(fv(value), Some(FakeValue::ArrayBuffer { .. })) };
     ok!()
 }
 
-#[allow(clippy::too_many_arguments)]
-unsafe fn write_view_info(
+struct ViewInfo {
+    data: *mut c_void,
+    length: usize,
+    byte_length: usize,
+    byte_offset: usize,
+    shared: bool,
+}
+
+struct ViewInfoOut {
     length: *mut usize,
     data: *mut *mut c_void,
     arraybuffer: *mut sys::napi_value,
     byte_offset: *mut usize,
-    view_data: *mut c_void,
-    view_length: usize,
-    view_offset: usize,
-    view_shared: bool,
-) {
+}
+
+unsafe fn write_view_info(out: &ViewInfoOut, view: &ViewInfo) {
     unsafe {
-        if !length.is_null() {
-            *length = view_length;
+        if !out.length.is_null() {
+            *out.length = view.length;
         }
-        if !data.is_null() {
-            *data = view_data;
+        if !out.data.is_null() {
+            *out.data = view
+                .data
+                .cast::<u8>()
+                .add(view.byte_offset)
+                .cast::<c_void>();
         }
-        if !arraybuffer.is_null() {
-            *arraybuffer = alloc(if view_shared {
+        if !out.arraybuffer.is_null() {
+            *out.arraybuffer = alloc(if view.shared {
                 FakeValue::SharedArrayBuffer
             } else {
-                FakeValue::ArrayBuffer
+                FakeValue::ArrayBuffer {
+                    data: view.data,
+                    length: view.byte_offset + view.byte_length,
+                    owned: None,
+                }
             });
         }
-        if !byte_offset.is_null() {
-            *byte_offset = view_offset;
+        if !out.byte_offset.is_null() {
+            *out.byte_offset = view.byte_offset;
         }
     }
 }
@@ -1100,19 +1233,27 @@ pub unsafe extern "C" fn napi_get_typedarray_info(
     else {
         return sys::Status::napi_invalid_arg;
     };
+    let Ok(view_kind) = ViewKind::try_from(*kind) else {
+        return sys::Status::napi_invalid_arg;
+    };
     unsafe {
         if !type_.is_null() {
             *type_ = *kind;
         }
         write_view_info(
-            length,
-            data,
-            arraybuffer,
-            byte_offset,
-            *view_data,
-            *view_len,
-            *view_off,
-            *shared,
+            &ViewInfoOut {
+                length,
+                data,
+                arraybuffer,
+                byte_offset,
+            },
+            &ViewInfo {
+                data: *view_data,
+                length: *view_len,
+                byte_length: *view_len * view_kind.element_size(),
+                byte_offset: *view_off,
+                shared: *shared,
+            },
         );
     }
     ok!()
@@ -1139,14 +1280,19 @@ pub unsafe extern "C" fn napi_get_dataview_info(
     };
     unsafe {
         write_view_info(
-            bytelength,
-            data,
-            arraybuffer,
-            byte_offset,
-            *view_data,
-            *byte_length,
-            *view_off,
-            *shared,
+            &ViewInfoOut {
+                length: bytelength,
+                data,
+                arraybuffer,
+                byte_offset,
+            },
+            &ViewInfo {
+                data: *view_data,
+                length: *byte_length,
+                byte_length: *byte_length,
+                byte_offset: *view_off,
+                shared: *shared,
+            },
         );
     }
     ok!()
@@ -1500,7 +1646,7 @@ fn coerced_string_content(value: sys::napi_value) -> String {
             | FakeValue::External(_)
             | FakeValue::TypedArray { .. }
             | FakeValue::DataView { .. }
-            | FakeValue::ArrayBuffer
+            | FakeValue::ArrayBuffer { .. }
             | FakeValue::SharedArrayBuffer,
         ) => "[object Object]".to_owned(),
     }

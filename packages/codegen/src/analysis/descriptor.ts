@@ -87,6 +87,11 @@ type FundamentalOptions = {
 
 type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
 
+type ArrayLayout = {
+    elementSize?: number | undefined;
+    isBytes: boolean;
+};
+
 type BindArgs = {
     libExpr: string;
     symbolExpr: string;
@@ -156,6 +161,7 @@ const tUint8: string = T.uint8;
 const tUint32: string = T.uint32;
 const tInt32: string = T.int32;
 const tUint64: string = T.uint64;
+const tBiguint64: string = T.biguint64;
 const tGtype: string = T.gtype;
 const tBuffer: string = T.buffer;
 
@@ -229,44 +235,69 @@ const tFlags = (lib: string, typeFnName: string, isSigned: boolean): string =>
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
+const tNumericByteArray = (ownership: Ownership): string =>
+    call("array", [
+        tUint8,
+        sourceStringLiteral("gbytearray"),
+        sourceStringLiteral(ownership),
+    ]);
+
 const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
     call(name, [element, sourceStringLiteral(ownership)]);
 
-const tArray = (element: string, ownership?: Ownership, elementSize?: number): string =>
+const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): string | undefined => {
+    if (ownership === undefined) {
+        return undefined;
+    }
+
+    const entries = [
+        layout.elementSize === undefined ? undefined : `elementSize: ${String(layout.elementSize)}`,
+        layout.isBytes ? "isBytes: true" : undefined,
+    ].filter((entry): entry is string => entry !== undefined);
+
+    return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;
+};
+
+const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("array", [
         element,
         ownership === undefined ? undefined : sourceStringLiteral("array"),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : `{ elementSize: ${String(elementSize)} }`,
+        arrayLayoutArg(ownership, layout),
     ]);
 
 const tSizedArray = (
     element: string,
     lengthIndex: number,
-    ownership?: Ownership,
-    elementSize?: number,
+    ownership: Ownership | undefined,
+    layout: ArrayLayout,
 ): string =>
     call("sizedArray", [
         element,
         String(lengthIndex),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : String(elementSize),
+        arrayLayoutArg(ownership, layout),
     ]);
 
-const tCursorArray = (element: string, bounds: GirCursorBounds, ownership?: Ownership, elementSize?: number): string =>
+const tCursorArray = (
+    element: string,
+    bounds: GirCursorBounds,
+    ownership: Ownership | undefined,
+    layout: ArrayLayout,
+): string =>
     call("cursorArray", [
         element,
         `{ baseParamIndex: ${String(bounds.baseIndex)}, sizeParamIndex: ${String(bounds.lengthIndex)} }`,
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : String(elementSize),
+        arrayLayoutArg(ownership, layout),
     ]);
 
-const tFixedArray = (element: string, length: number, ownership?: Ownership, elementSize?: number): string =>
+const tFixedArray = (element: string, length: number, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("fixedArray", [
         element,
         String(length),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : String(elementSize),
+        arrayLayoutArg(ownership, layout),
     ]);
 
 const tCallback = (spec: CallbackSpecParts): string => {
@@ -296,6 +327,7 @@ export {
     tUint32,
     tInt32,
     tUint64,
+    tBiguint64,
     tGtype,
     tBuffer,
     tScalar,
@@ -310,6 +342,7 @@ export {
     tEnum,
     tFlags,
     tByteArray,
+    tNumericByteArray,
     tList,
     tArray,
     tSizedArray,
@@ -318,6 +351,7 @@ export {
     tCallback,
     tBind,
     tFn,
+    type ArrayLayout,
     type Ownership,
     type ScalarDescriptorName,
     type ListDescriptorName,

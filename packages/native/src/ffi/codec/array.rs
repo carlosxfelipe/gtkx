@@ -7,7 +7,7 @@ use item::ItemCodec;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::codec::{Codec, FloatCodec};
+use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec};
 use crate::value::TypedView;
 
 mod byte_array;
@@ -26,6 +26,7 @@ pub struct ArrayCodec {
     pub item_codec: Box<Codec>,
     pub ownership: Ownership,
     pub element_size: Option<usize>,
+    pub(crate) is_bytes: bool,
     pub(crate) container: ArrayContainerCodec,
 }
 
@@ -36,11 +37,18 @@ impl ArrayCodec {
         ownership: Ownership,
         bounds: ArrayBounds,
         element_size: Option<usize>,
+        is_bytes: bool,
     ) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            !is_bytes || ItemCodec::from_codec(&item_codec).is_some_and(ItemCodec::is_byte),
+            "A byte array descriptor needs a u8 item codec, got {item_codec:?}"
+        );
+
         Ok(Self {
             item_codec,
             ownership,
             element_size,
+            is_bytes,
             container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
     }
@@ -123,7 +131,7 @@ impl Decoder for ArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
-            return build_js_array(env, Vec::new());
+            return self.decode_empty_sequence(env);
         }
         self.container
             .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
@@ -187,6 +195,15 @@ trait ArrayKindEncoder {
         item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash>;
+
+    fn encode_pointer_words(
+        &self,
+        _kind: BigIntCodec,
+        _array: &[Unknown<'_>],
+        _ownership: Ownership,
+    ) -> Option<anyhow::Result<ffi::Stash>> {
+        None
+    }
 }
 
 fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
@@ -323,6 +340,30 @@ impl ArrayCodec {
             .collect()
     }
 
+    pub(crate) fn decode_empty_sequence<'e>(&self, env: &'e Env) -> anyhow::Result<Unknown<'e>> {
+        if self.is_bytes {
+            return Ok(unsafe { value::js_byte_array(env, std::ptr::null(), 0) }?);
+        }
+
+        build_js_array(env, Vec::new())
+    }
+
+    pub(crate) fn decode_bytes_or_items<'e>(
+        &self,
+        env: &'e Env,
+        data: *const u8,
+        len: usize,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.is_bytes {
+            return Ok(unsafe { value::js_byte_array(env, data, len) }?);
+        }
+
+        let values = self.decode_contiguous(env, self.item_codec(context)?, data, len)?;
+
+        build_js_array(env, values)
+    }
+
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
         ItemCodec::from_codec(&self.item_codec).ok_or_else(|| {
             anyhow::anyhow!("Unsupported {context} item codec: {:?}", self.item_codec)
@@ -384,6 +425,10 @@ impl ArrayCodec {
                 kind.to_stash_storage(&Self::extract_terminated_numbers(array, zero_terminated)?),
             ),
             ItemCodec::BigInt(kind) => {
+                if let Some(result) = encoder.encode_pointer_words(kind, array, self.ownership) {
+                    return result;
+                }
+
                 let storage = if zero_terminated {
                     let mut items = array.to_vec();
                     items.push(0f64.into_unknown(&env)?);
@@ -511,6 +556,21 @@ impl ArrayCodec {
         })
     }
 
+    fn decode_ptr_item<'e>(
+        &self,
+        env: &'e Env,
+        item_ptr: *mut c_void,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if matches!(&*self.item_codec, Codec::BigInt(_)) {
+            return unsafe {
+                self.item_codec
+                    .read(env, ReadCtx::value(item_ptr, "pointer array element"))
+            };
+        }
+
+        self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr))
+    }
+
     fn decode_ptr_iter<'e>(
         &self,
         env: &'e Env,
@@ -519,7 +579,7 @@ impl ArrayCodec {
     ) -> anyhow::Result<Unknown<'e>> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
         let result = ptrs.into_iter().try_for_each(|item_ptr| {
-            values.push(self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr))?);
+            values.push(self.decode_ptr_item(env, item_ptr)?);
             anyhow::Ok(())
         });
         release();

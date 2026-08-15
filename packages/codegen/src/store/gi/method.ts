@@ -1,4 +1,4 @@
-import { camelCase, sourceStringLiteral } from "@gtkx/utils";
+import { camelCase, escapeIdentifierStart, sourceStringLiteral } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -19,7 +19,7 @@ import {
     inputParameters,
     parameterIdentifier,
 } from "../../analysis/param-structure.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
 import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
 import { areClosuresInvoked } from "./closure-invocation.js";
@@ -86,12 +86,7 @@ type PlanArgsContext = {
     folded: Set<number>;
 };
 
-const memberName = (girName: string): string => {
-    const camel = camelCase(girName);
-
-    return /^\d/.test(camel) ? `_${camel}` : camel;
-};
-
+const memberName = (girName: string): string => escapeIdentifierStart(camelCase(girName));
 const methodExportName = (fn: GirFunction): string => memberName(fn.name);
 
 const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string => {
@@ -125,7 +120,7 @@ const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter:
         return comparator;
     }
 
-    const base = renderTsType(context, parameter.type, parameter.nullable);
+    const base = renderParameterTsType(context, parameter.type, parameter.nullable);
 
     return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
 };

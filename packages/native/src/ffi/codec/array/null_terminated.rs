@@ -156,7 +156,10 @@ impl ArrayCodec {
             anyhow::bail!("A {name} can only be decoded from a raw pointer")
         };
         if ptr.is_null() {
-            return build_js_array(env, Vec::new());
+            return self.decode_empty_sequence(env);
+        }
+        if self.is_bytes {
+            return Self::decode_zero_terminated_bytes(env, *ptr, transfer);
         }
         if let Some(stride) = self.inline_element_size() {
             return Self::decode_zero_terminated_contiguous(
@@ -175,9 +178,13 @@ impl ArrayCodec {
             | ItemCodec::EnumFlags(_)
             | ItemCodec::BigInt(_)
             | ItemCodec::Float(_)
-            | ItemCodec::Boolean) => {
-                self.decode_zero_terminated_scalar_array(env, codec, *ptr, transfer)
-            }
+            | ItemCodec::Boolean) => Self::decode_zero_terminated_contiguous(
+                env,
+                codec.element_size(),
+                *ptr,
+                transfer,
+                |env, base, len| self.decode_contiguous(env, codec, base, len),
+            ),
         }
     }
 
@@ -226,20 +233,19 @@ impl ArrayCodec {
         })
     }
 
-    fn decode_zero_terminated_scalar_array<'e>(
-        &self,
-        env: &'e Env,
-        codec: ItemCodec,
+    fn decode_zero_terminated_bytes(
+        env: &Env,
         ptr: *mut c_void,
         transfer: Ownership,
-    ) -> anyhow::Result<Unknown<'e>> {
-        Self::decode_zero_terminated_contiguous(
-            env,
-            codec.element_size(),
-            ptr,
-            transfer,
-            |env, base, len| self.decode_contiguous(env, codec, base, len),
-        )
+    ) -> anyhow::Result<Unknown<'_>> {
+        let base = ptr as *const u8;
+        let bytes = unsafe { value::js_byte_array(env, base, zero_terminated_len(base, 1)) };
+
+        if transfer.is_full() {
+            unsafe { glib::ffi::g_free(ptr) };
+        }
+
+        Ok(bytes?)
     }
 
     fn decode_null_terminated_string_array<'e>(

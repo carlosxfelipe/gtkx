@@ -48,6 +48,21 @@ const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 const SIGNALS_SUFFIX = "Signals";
 const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
+const DEPRECATED_SIGNAL_ALIASES: Map<string, string> = new Map([
+    ["addEventListener", "on"],
+    ["removeEventListener", "off"],
+]);
+
+const deprecatedAliasDoc = (method: string): string => {
+    const replacement = DEPRECATED_SIGNAL_ALIASES.get(method);
+
+    if (replacement === undefined) {
+        return "";
+    }
+
+    return `/** @deprecated Since 1.2. Use \`${replacement}\` instead. Removed in v2. */\n`;
+};
+
 const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] => {
     if (klass.glibGetType === undefined) {
         return [];
@@ -68,7 +83,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
 
     const connectDefault = isRootObject
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");"
-        : "default:\n    return super.connect(signal, handler, isAfter);";
+        : "default:\n    return super.connect(signal as never, handler as never, isAfter);";
 
     const emitDefault = isRootObject
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");"
@@ -129,13 +144,25 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
         (signal) => `${signalDoc(signal)}${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
     );
 
-    const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
+    const entries = [
+        ...signalEntries,
+        ...renderNotifyDetailEntries(context, klass, suffix),
+        ...renderCustomNotifyEntry(context, klass, suffix),
+    ];
 
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };
 
 const signalDoc = (signal: GirCallable): string =>
     renderJsDoc(signal.doc, undefined, handlerSpec(signal, signal.parameters));
+
+const renderCustomNotifyEntry = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
+    if (context.namespace.name !== "GObject" || klass.name !== "Object") {
+        return [];
+    }
+
+    return [`[detail: \`notify::\${string}\`]: ${gobjectObjectMapRef(context, suffix)}["notify"];`];
+};
 
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
     const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
@@ -191,7 +218,6 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
     const lines = [
         `__signals__?: ${map};`,
         `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
-        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number;`,
         `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
@@ -200,8 +226,8 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
         const chainable = (methods: string[], trailing: string): void => {
             for (const method of methods) {
                 lines.push(
+                    deprecatedAliasDoc(method) +
                     `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`,
-                    `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}${trailing}): this;`,
                 );
             }
         };
