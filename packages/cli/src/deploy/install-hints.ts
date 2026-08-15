@@ -47,10 +47,14 @@ const PACKAGE_FOR_TOOL: Record<string, FamilyPackages> = {
     tar: { arch: "tar", debian: "tar", fedora: "tar", suse: "tar" },
 };
 
-const EXTRA_HINTS: Record<string, string> = {
-    "flatpak-builder": "or: flatpak install --user -y flathub org.flatpak.Builder",
-    "flatpak-node-generator":
-        "pipx install git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node",
+const GENERATOR_SOURCE = "git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node";
+
+const EXTRA_HINTS: Record<string, string[]> = {
+    "flatpak-builder": ["or: flatpak install --user -y flathub org.flatpak.Builder"],
+    "flatpak-node-generator": [
+        `pipx install ${GENERATOR_SOURCE}`,
+        `or, when the installed copy is too old to vendor pnpm: pipx install --force ${GENERATOR_SOURCE}`,
+    ],
 };
 
 const unquote = (value: string): string => QUOTED.exec(value)?.[1] ?? value;
@@ -99,10 +103,9 @@ const detectPackageFamily = (): PackageFamily => {
 const installHints = (tool: string, family: PackageFamily): string[] => {
     const packageName = PACKAGE_FOR_TOOL[tool]?.[family];
     const command = INSTALL_COMMAND[family];
-    const extra = EXTRA_HINTS[tool];
     const install = packageName !== undefined && command !== undefined ? [`${command} ${packageName}`] : [];
 
-    return extra === undefined ? install : [...install, extra];
+    return [...install, ...(EXTRA_HINTS[tool] ?? [])];
 };
 
 export { detectPackageFamily, installHints };
