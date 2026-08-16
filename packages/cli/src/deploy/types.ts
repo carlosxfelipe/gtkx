@@ -19,9 +19,25 @@ type StagedFile = {
 
 type NodeRuntime = {
     path: string;
+    licenseFile: string | null;
     version: string;
     glibcFloor: string | null;
     isStripped: boolean;
+};
+
+type Notice = {
+    subject: string;
+    license: string;
+    source: string | null;
+    copyright: string[];
+    text: string | null;
+};
+
+type NoticeSection = {
+    title: string;
+    files: string[];
+    summary: string[];
+    notices: Notice[];
 };
 
 type DeployDeveloper = {
@@ -49,6 +65,12 @@ type DeployFileAssociation = {
     extension: string;
     mimeType: string;
     description: string | null;
+};
+
+type DeployExtraFile = {
+    destination: string;
+    source: string;
+    mode: number | null;
 };
 
 type DeployDesktopAction = {
@@ -118,7 +140,7 @@ type DeploySettings = {
     desktopActions: DeployDesktopAction[];
     desktopEntry: Record<string, string>;
     isDbusActivatable: boolean;
-    extraFiles: Record<string, string>;
+    extraFiles: DeployExtraFile[];
     versions: DeployVersions;
     arch: DeployArch;
     paths: DeployPaths;
@@ -130,6 +152,7 @@ type DeployPayload = {
     settings: DeploySettings;
     node: NodeRuntime | null;
     stage: StagedFile[];
+    notices: NoticeSection[];
     overlays: Record<DeployTargetName, StagedFile[]>;
 };
 
@@ -157,6 +180,7 @@ export type {
     DeployConfig,
     DeployDesktopAction,
     DeployDeveloper,
+    DeployExtraFile,
     DeployFileAssociation,
     DeployManifest,
     DeployPaths,
@@ -169,6 +193,8 @@ export type {
     DeployTool,
     DeployVersions,
     NodeRuntime,
+    Notice,
+    NoticeSection,
     PackageFamily,
     StagedFile,
 };

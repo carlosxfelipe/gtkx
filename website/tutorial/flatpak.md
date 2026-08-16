@@ -48,7 +48,7 @@ That directory still holds the tasks you added throughout this tutorial, with no
 
 ## What the sandbox does not grant
 
-The generated manifest asks for these permissions, and you can replace them with `deploy.flatpak.finishArgs`:
+The generated manifest asks for these permissions, and `deploy.flatpak.finishArgs` adds to them:
 
 ```yaml
 finish-args:
@@ -66,7 +66,7 @@ Those grant a window on screen and hardware rendering. There is no `--filesystem
 
 **No network permission**, because the app never opens a socket. Everything it knows lives in one JSON file and one GSettings schema.
 
-Permissions are the one part of packaging that stays a deliberate decision, which is why `finishArgs` is hand-authored rather than derived. A short list backed by portals is the quickest thing for a reviewer to approve.
+Permissions are the one part of packaging that stays a deliberate decision, which is why anything beyond that baseline is hand-authored rather than derived. A short list backed by portals is the quickest thing for a reviewer to approve.
 
 ## The modes
 

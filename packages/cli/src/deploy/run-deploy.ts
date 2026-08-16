@@ -17,11 +17,13 @@ import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
 import { validateDesktopEntry, validateMetainfo } from "./freedesktop/validate.js";
 import { resolveNodeRuntime } from "./node-runtime/index.js";
+import { collectNotices } from "./notices/collect.js";
 import { type StagedMetadata, stageOverlays, stagePayload } from "./payload/stage.js";
 import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
 import { missingDeployError } from "./settings/starter.js";
+import { finishArgsFor, hasDisplaySocket } from "./targets/flatpak-manifest.js";
 import { detectPackageManager } from "./targets/flatpak-sources.js";
 import {
     APPSTREAMCLI,
@@ -78,10 +80,19 @@ const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata, ar
     info("Validated the desktop entry and the metainfo");
 };
 
-const warnMissingNetwork = (settings: DeploySettings): void => {
-    const finishArgs = settings.deploy.flatpak?.finishArgs;
+const warnMissingDisplay = (settings: DeploySettings, finishArgs: string[]): void => {
+    if (hasDisplaySocket(finishArgs)) {
+        return;
+    }
 
-    if (finishArgs === undefined || finishArgs.includes(NETWORK_ARG)) {
+    warn(
+        `The flatpak permissions grant no display socket, so ${settings.name} will start without a window. ` +
+        "Grant one through `deploy.flatpak.finishArgs`, such as `--socket=wayland`.",
+    );
+};
+
+const warnMissingNetwork = (settings: DeploySettings, finishArgs: string[]): void => {
+    if (settings.deploy.flatpak?.finishArgs === undefined || finishArgs.includes(NETWORK_ARG)) {
         return;
     }
 
@@ -90,6 +101,16 @@ const warnMissingNetwork = (settings: DeploySettings): void => {
     }
 
     warn(`This app declares ${WEBKIT_LIBRARY} but its flatpak permissions omit ${NETWORK_ARG}, so pages will not load`);
+};
+
+const warnFlatpakPermissions = (targets: DeployTarget[], settings: DeploySettings): void => {
+    if (targets.every((target) => target.name !== "flatpak")) {
+        return;
+    }
+
+    const finishArgs = finishArgsFor(settings);
+    warnMissingDisplay(settings, finishArgs);
+    warnMissingNetwork(settings, finishArgs);
 };
 
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
@@ -125,7 +146,7 @@ const preflight = (targets: DeployTarget[], settings: DeploySettings, shouldPrin
     const report = probeTools([...required, ...packagerTools]);
     assertTools(report);
     warnMissingOptional(report);
-    warnMissingNetwork(settings);
+    warnFlatpakPermissions(targets, settings);
 };
 
 const resolveTargetNames = (options: DeployOptions, settings: DeploySettings): string[] => {
@@ -165,8 +186,9 @@ const buildPayload = async (
 
     const stage = stagePayload({ settings, node, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(settings, settings.paths.stage)}`);
+    const notices = collectNotices({ settings, node });
 
-    return { settings, node, stage, overlays: stageOverlays(settings) };
+    return { settings, node, stage, notices, overlays: stageOverlays(settings, notices) };
 };
 
 const renderTargetManifests = (
