@@ -194,6 +194,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/config
 
+  packages/cairo:
+    dependencies:
+      '@gtkx/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+    devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.2.0
+      fast-xml-parser:
+        specifier: ^5.10.1
+        version: 5.10.1
+
   packages/cli:
     dependencies:
       '@babel/core':
