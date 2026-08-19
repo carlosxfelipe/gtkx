@@ -276,6 +276,24 @@ impl Handle {
         (!ptr.is_null()).then(|| ptr.cast::<glib::gobject_ffi::GObject>())
     }
 
+    /// The pointer a fundamental handle references, or `None` once its borrow has ended. An
+    /// invalidated handle keeps the pointer it was built over, so the check is what stops a reader
+    /// from reaching memory a C caller only lent for the length of one invocation.
+    #[must_use]
+    pub fn as_fundamental_ptr(&self) -> Option<*mut c_void> {
+        if self.is_invalidated() {
+            return None;
+        }
+
+        let HandleKind::Fundamental(fundamental) = &self.inner.kind else {
+            return None;
+        };
+
+        let ptr = fundamental.as_ptr();
+
+        (!ptr.is_null()).then_some(ptr)
+    }
+
     /// Hands the owned reference over to the caller, which becomes responsible for releasing it.
     #[must_use]
     pub fn take_owned(&self) -> Option<glib::Object> {

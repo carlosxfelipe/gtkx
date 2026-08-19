@@ -29,6 +29,7 @@ import {
     isCollectibleCallerOut,
     isHandlePassedInPlace,
     isHandlePassing,
+    isValueType,
     renderCallerOutInstance,
 } from "./param-marshal.js";
 
@@ -42,6 +43,14 @@ type InputParameterOptions = {
 type CallExpressionOptions = {
     fn: GirFunction;
     isForcedNullable?: boolean | undefined;
+};
+
+type MarshalledArgumentOptions = {
+    context: ModuleContext;
+    ref: TypeId;
+    name: string;
+    isNullable: boolean;
+    isValueMarshalled: boolean;
 };
 
 type PromisifyContext = {
@@ -64,12 +73,14 @@ type CallArgPlan = {
 type ReturnDescriptorPlan = {
     descriptor: string;
     isSkipped: boolean;
+    isUnpacked: boolean;
 };
 
 type ParamDescriptorOptions = {
     direction?: "out" | "inout";
     isCallerAllocated?: boolean;
     isConsumed?: boolean;
+    isUnpacked?: boolean;
 };
 
 type ArgIndexOptions = {
@@ -113,6 +124,9 @@ const requiresClosureMarshal = (context: ModuleContext, fn: GirFunction, ref: Ty
 const requiresClosureAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): boolean =>
     parameter.type !== undefined && requiresClosureMarshal(context, fn, parameter.type);
 
+const isValueRead = (parameter: GirParameter): boolean =>
+    !isInoutParameter(parameter) && parameter.cType?.includes("const ") === true;
+
 const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string => {
     const comparator = itemComparatorTsType(context, fn, parameter);
 
@@ -120,7 +134,7 @@ const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter:
         return comparator;
     }
 
-    const base = renderParameterTsType(context, parameter.type, parameter.nullable);
+    const base = renderParameterTsType(context, parameter.type, parameter.nullable, isValueRead(parameter));
 
     return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
 };
@@ -171,18 +185,34 @@ const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputPa
     return result;
 };
 
+const isUnwrappedValue = (context: ModuleContext, ref: TypeId | undefined): boolean =>
+    context.library.isValueUnwrapped && ref !== undefined && isValueType(context, ref);
+
+const renderReturnedTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable: boolean): string =>
+    isUnwrappedValue(context, ref) ? "unknown" : renderTsType(context, ref, isNullable);
+
+const isUnpackedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
+    isCallerAllocatedOut(parameter) &&
+    isCollectibleCallerOut(context, parameter) &&
+    isUnwrappedValue(context, parameter.type);
+
+const renderOutTsType = (context: ModuleContext, parameter: GirParameter): string =>
+    isUnpackedOutParameter(context, parameter)
+        ? "unknown"
+        : renderTsType(context, parameter.type, parameter.nullable);
+
 const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
     const outs = returnedOutParameters(context, fn);
 
     const primary = shouldOmitPrimaryReturn(context.library, fn.returnValue)
         ? undefined
-        : renderTsType(context, fn.returnValue.type, fn.returnValue.nullable);
+        : renderReturnedTsType(context, fn.returnValue.type, fn.returnValue.nullable);
 
     if (outs.length === 0) {
         return primary ?? "void";
     }
 
-    const outTypes = outs.map(({ parameter }) => renderTsType(context, parameter.type, parameter.nullable));
+    const outTypes = outs.map(({ parameter }) => renderOutTsType(context, parameter));
 
     return foldOutParamShape(primary, outTypes);
 };
@@ -356,6 +386,10 @@ const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOpti
         parts.push("isConsumed: true");
     }
 
+    if (options.isUnpacked === true) {
+        parts.push("isUnpacked: true");
+    }
+
     return `{ ${parts.join(", ")} }`;
 };
 
@@ -368,7 +402,11 @@ const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): Return
         isNewlyCreated: fn.instance === undefined,
     });
 
-    return { descriptor, isSkipped: isSkippedPrimaryReturn(context.library, fn.returnValue) };
+    return {
+        descriptor,
+        isSkipped: isSkippedPrimaryReturn(context.library, fn.returnValue),
+        isUnpacked: isUnwrappedValue(context, fn.returnValue.type),
+    };
 };
 
 const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] => {
@@ -509,7 +547,11 @@ const planCallerOut = (
         context.addRuntimeImport("getHandle");
 
         return {
-            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isCallerAllocated: true }),
+            paramLiteral: paramDescriptorLiteral(descriptor, {
+                direction: "out",
+                isCallerAllocated: true,
+                isUnpacked: isUnpackedOutParameter(context, parameter),
+            }),
             inputExpr: renderCallerOutInstance(context, parameter),
         };
     }
@@ -602,7 +644,25 @@ const closureArgument = (context: ModuleContext, name: string, isNullable: boole
     return `${helper}(${name})`;
 };
 
-const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: string): string => {
+const valueArgument = (context: ModuleContext, name: string, isNullable: boolean): string => {
+    const helper = isNullable ? "tryToValueHandle" : "toValueHandle";
+    context.addRuntimeImport(helper);
+
+    return `${helper}(${name})`;
+};
+
+const hashtableArgument = (
+    context: ModuleContext,
+    valueRef: TypeId,
+    name: string,
+    isValueMarshalled: boolean,
+): string => {
+    if (isValueMarshalled && isValueType(context, valueRef)) {
+        context.addRuntimeImport("toValueHandle");
+
+        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, toValueHandle(v)]) : null`;
+    }
+
     if (isHandlePassing(context, valueRef)) {
         context.addRuntimeImport("getHandle");
 
@@ -612,35 +672,42 @@ const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: strin
     return `${name} ? globalThis.Array.from(${name}) : null`;
 };
 
-const mapHandleExpression = (name: string, isNullable: boolean): string =>
-    isNullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
+const mapItemExpression = (name: string, isNullable: boolean, helper: string): string =>
+    isNullable ? `${name}?.map((item) => ${helper}(item))` : `${name}.map((item) => ${helper}(item))`;
 
-const collectionArgument = (
-    context: ModuleContext,
-    type: GirType | undefined,
-    name: string,
-    isNullable: boolean,
-): string | undefined => {
+const itemHelper = (context: ModuleContext, element: TypeId, isValueMarshalled: boolean): string => {
+    const helper = isValueMarshalled && isValueType(context, element) ? "toValueHandle" : "getHandle";
+    context.addRuntimeImport(helper);
+
+    return helper;
+};
+
+const collectionArgument = (options: MarshalledArgumentOptions & { type: GirType | undefined }): string | undefined => {
+    const { context, type, name, isNullable, isValueMarshalled } = options;
+
     if (type?.kind === "hashtable") {
-        return hashtableArgument(context, type.value, name);
+        return hashtableArgument(context, type.value, name, isValueMarshalled);
     }
 
-    if (!isMappableSequence(context, type)) {
+    const element = mappableElement(context, type);
+
+    if (element === undefined) {
         return undefined;
     }
 
-    context.addRuntimeImport("getHandle");
-
-    return mapHandleExpression(name, isNullable);
+    return mapItemExpression(name, isNullable, itemHelper(context, element, isValueMarshalled));
 };
 
-const isMappableSequence = (context: ModuleContext, type: GirType | undefined): boolean => {
+const mappableElement = (context: ModuleContext, type: GirType | undefined): TypeId | undefined => {
     if (type?.kind === "carray") {
-        return !hasUnknownArrayLength(type) && isHandlePassing(context, type.element);
+        return hasUnknownArrayLength(type) ? undefined : mappableRef(context, type.element);
     }
 
-    return type?.kind === "list" && isHandlePassing(context, type.element);
+    return type?.kind === "list" ? mappableRef(context, type.element) : undefined;
 };
+
+const mappableRef = (context: ModuleContext, element: TypeId): TypeId | undefined =>
+    isHandlePassing(context, element) ? element : undefined;
 
 const parameterCallExpression = (
     context: ModuleContext,
@@ -662,13 +729,40 @@ const parameterCallExpression = (
         return closureArgument(context, name, isNullable);
     }
 
-    if (isHandlePassing(context, ref)) {
-        return handleArgument(context, name, isNullable);
+    const marshalled = marshalledArgument({
+        context,
+        ref,
+        name,
+        isNullable,
+        isValueMarshalled: isValueRead(parameter),
+    });
+
+    if (marshalled !== undefined) {
+        return marshalled;
     }
 
     const type = context.library.typeFor(ref);
 
-    return collectionArgument(context, type, name, isNullable) ?? name;
+    return (
+        collectionArgument({
+            context,
+            ref,
+            type,
+            name,
+            isNullable,
+            isValueMarshalled: isValueRead(parameter),
+        }) ?? name
+    );
+};
+
+const marshalledArgument = (options: MarshalledArgumentOptions): string | undefined => {
+    const { context, ref, name, isNullable, isValueMarshalled } = options;
+
+    if (isValueMarshalled && isValueType(context, ref)) {
+        return valueArgument(context, name, isNullable);
+    }
+
+    return isHandlePassing(context, ref) ? handleArgument(context, name, isNullable) : undefined;
 };
 
 export {

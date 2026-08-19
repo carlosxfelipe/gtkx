@@ -203,7 +203,7 @@ describe("hypertextDemo speaker icon", () => {
         const gesture = getController(speaker, Gtk.GestureClick);
         await fireEvent(gesture, "pressed", 1, 0, 0);
         expect(spawnMock).toHaveBeenCalledTimes(1);
-        expect(spawnMock.mock.calls[0]?.[0]).toBe("espeak-ng");
+        expect(spawnMock.mock.calls[0]?.[0]).toMatch(/(^|\/)espeak-ng$/u);
         expect(spawnMock.mock.calls[0]?.[1]).toEqual(["tag"]);
     });
 });

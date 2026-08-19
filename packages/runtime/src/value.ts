@@ -23,7 +23,16 @@ import {
 } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
 import { toNative } from "./native-value.js";
-import { getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
+import {
+    INT32_MAXIMUM,
+    INT32_MINIMUM,
+    INT64_MAXIMUM,
+    INT64_MINIMUM,
+    isStringArray,
+    resolveGtype,
+    UINT64_MAXIMUM,
+} from "./param-spec.js";
+import { describeValueKind, getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import {
     getStrvType,
     isResolvableDescriptor,
@@ -53,7 +62,9 @@ import {
     TYPE_UINT64,
     TYPE_ULONG,
     TYPE_VARIANT,
+    type TypedClass,
     typeFundamental,
+    typeIsA,
     typeName,
 } from "./type.js";
 
@@ -65,6 +76,15 @@ type ValueType = {
 type ValueGetter = (value: ExternalObject<Handle>) => unknown;
 type ValueWriter = ValueType["set"];
 type ValueNarrower = (jsValue: unknown) => unknown;
+/**
+ * JavaScript value a `GObject.Value` can be built from without being told which GType to hold, for the
+ * parameters that take one. A string holds `gchararray`, a boolean `gboolean`, an integer within `gint`
+ * range `gint` and any other number `gdouble`, a `bigint` `gint64` or `guint64` past its range, an array
+ * of strings `GStrv`, a wrapper instance the GType it carries, and `null` a NULL `gpointer`, which is
+ * what GJS infers for it and which few callees accept. Reaching a GType inference cannot name, such as
+ * `guchar` or an enumeration, takes an explicitly initialized `GObject.Value` instead.
+ */
+type JsValue = string | number | bigint | boolean | string[] | TypedClass | null;
 
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();
@@ -456,6 +476,89 @@ function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
     valueWriterFor(getValueType(value))(value, jsValue);
 }
 
+const numberValueGType = (jsValue: number): bigint =>
+    Number.isSafeInteger(jsValue) && jsValue >= INT32_MINIMUM && jsValue <= INT32_MAXIMUM ? TYPE_INT : TYPE_DOUBLE;
+
+const arrayValueGType = (jsValue: unknown[]): bigint => (isStringArray(jsValue) ? getStrvType() : TYPE_INVALID);
+const wideValueGType = (jsValue: bigint): bigint => (jsValue > INT64_MAXIMUM ? TYPE_UINT64 : TYPE_INT64);
+
+const bigintValueGType = (jsValue: bigint): bigint =>
+    jsValue < INT64_MINIMUM || jsValue > UINT64_MAXIMUM ? TYPE_INVALID : wideValueGType(jsValue);
+
+const objectValueGType = (jsValue: object | null, wrapperType: bigint): bigint => {
+    if (jsValue === null) {
+        return TYPE_POINTER;
+    }
+
+    return Array.isArray(jsValue) ? arrayValueGType(jsValue) : wrapperType;
+};
+
+function inferValueGType(jsValue: unknown, wrapperType: bigint): bigint {
+    switch (typeof jsValue) {
+        case "string": {
+            return TYPE_STRING;
+        }
+        case "boolean": {
+            return TYPE_BOOLEAN;
+        }
+        case "number": {
+            return numberValueGType(jsValue);
+        }
+        case "bigint": {
+            return bigintValueGType(jsValue);
+        }
+        case "object": {
+            return objectValueGType(jsValue, wrapperType);
+        }
+        case "function":
+        case "symbol":
+        case "undefined": {
+            return TYPE_INVALID;
+        }
+    }
+}
+
+const marshalFailure = (jsValue: unknown): string =>
+    typeof jsValue === "bigint"
+        ? `Cannot marshal ${String(jsValue)} into a GObject.Value: outside the range of gint64 and guint64`
+        : `Cannot marshal ${describeValueKind(jsValue)} into a GObject.Value`;
+
+const wrapperGType = (jsValue: unknown): bigint =>
+    typeof jsValue === "object" && jsValue !== null ? resolveGtype(jsValue) : TYPE_INVALID;
+
+/**
+ * Marshals a value passed where a `GObject.Value` is expected into a value handle: an already-built
+ * value yields its own handle, and any other {@link JsValue} is stored in a new one initialized to the
+ * GType inferred from it.
+ * @param jsValue Value to store, or an already-built `GObject.Value`.
+ * @throws {ValueMarshalError} When no GType can be inferred from the value.
+ */
+function toValueHandle(jsValue: unknown): ExternalObject<Handle> {
+    const wrapperType = wrapperGType(jsValue);
+
+    if (typeIsA(wrapperType, resolveBoxedType(VALUE_T))) {
+        return getHandle(jsValue as object);
+    }
+
+    const type = inferValueGType(jsValue, wrapperType);
+
+    if (type === TYPE_INVALID) {
+        throw new ValueMarshalError(marshalFailure(jsValue));
+    }
+
+    const value = newValueForType(type);
+    intoValue(value, jsValue);
+
+    return value;
+}
+
+/** Same as {@link toValueHandle}, but passes a null or undefined value through as no value at all. */
+const tryToValueHandle = (jsValue: unknown): ExternalObject<Handle> | undefined =>
+    jsValue == null ? undefined : toValueHandle(jsValue);
+
+const isValueDescriptor = (descriptor: Descriptor): boolean =>
+    descriptor.kind === "boxed" && descriptor.typeName === "GValue";
+
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
 
@@ -463,7 +566,11 @@ const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => 
         return toNative(descriptor, value);
     }
 
-    return value == null ? null : getHandle(value);
+    if (value == null) {
+        return null;
+    }
+
+    return isValueDescriptor(descriptor) ? toValueHandle(value) : getHandle(value);
 };
 
 const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint => {
@@ -483,6 +590,13 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
     return gValue;
 }
 
+/**
+ * Reads what a `GObject.Value` holds as its JavaScript form, wrapping an object, boxed, param, variant,
+ * or fundamental payload in the class registered for its GType, and handing back a string, number,
+ * `bigint`, boolean, or array of strings for the rest.
+ * @param value Handle of an initialized value to read.
+ * @throws {Error} When the GType it holds has no JavaScript form, such as a non-null `gpointer`.
+ */
 function fromValue(value: ExternalObject<Handle>): unknown {
     const type = getValueType(value);
     const get = resolveValueGetter(type);
@@ -523,13 +637,23 @@ function inoutValueForBoxedDescriptor(descriptor: Descriptor, boxed: object): Ex
     return newBoxedValue(descriptor, boxed, setStaticBoxedBind);
 }
 
+/** Thrown when a value passed where a `GObject.Value` is expected holds no GType one can be built from. */
+class ValueMarshalError extends TypeError {
+    /** Name callers match on when the error is caught as a plain `TypeError`. */
+    public override name = "ValueMarshalError";
+}
+
 export {
     getValueType,
     intoValue,
     copyValue,
     getBoxedValue,
     setBoxedValue,
+    type JsValue,
     toValue,
+    toValueHandle,
+    tryToValueHandle,
+    ValueMarshalError,
     fromValue,
     newValueForDescriptor,
     newValueForType,

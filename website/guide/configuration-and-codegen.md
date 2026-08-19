@@ -46,6 +46,57 @@ Record fields appear as accessors: a getter wherever the read lands on the right
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 
+## Passing a GValue
+
+A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter the callee only reads — a `const GValue *` in C — is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
+
+```ts
+Gdk.ContentProvider.newForValue("payload");             // gchararray
+Gdk.ContentProvider.newForValue(rgba);                  // GdkRGBA
+widget.updateProperty([Gtk.AccessibleProperty.LABEL], ["Save"]);
+dropTarget.emit("drop", "payload", x, y);
+```
+
+A signal *handler* still receives a `GObject.Value`, since a handler for a binding transform produces its result by writing into the value it is given.
+
+What each JavaScript value infers to:
+
+| Value | GType |
+| --- | --- |
+| string | `gchararray` |
+| boolean | `gboolean` |
+| number, whole and within `gint` range | `gint` |
+| any other number | `gdouble` |
+| `bigint` | `gint64`, or `guint64` from 2^63 up; outside the 64-bit range it throws |
+| array of strings | `GStrv` |
+| a wrapper instance | the GType it carries |
+| `null` | a NULL `gpointer` |
+
+`null` infers a NULL `gpointer` because that is what GJS infers, so code ported from it behaves the same — but few callees accept a `gpointer`, and it is rarely what you want. A nullable parameter takes `null` as *no value at all*, passing the callee a NULL `GValue *`, and clearing a typed slot takes a value of that type holding nothing, such as `TYPE_OBJECT` with `setObject(null)`.
+
+Inference covers what a JavaScript value can say on its own, which leaves two cases for an explicitly initialized value:
+
+**A GType no JavaScript value names.** `guchar`, `guint`, `gfloat`, `glong`, enumerations, flags, and a GValue holding a GType are unreachable, since a number infers as `gint` or `gdouble` and a GType is a `bigint`. Name the type yourself:
+
+```ts
+const value = new GObject.Value();
+value.init(GObject.TYPE_UCHAR);
+value.setUchar(200);
+```
+
+**A `GValue` the callee fills in.** A mutable `GValue *` is storage the callee initializes itself — `Gtk.Expression.evaluate`, `Gdk.Display.getSetting`, `Gtk.accessiblePropertyInitValue` — so those parameters are typed `GObject.Value` alone and take one you allocate with `new GObject.Value()`. Handing them an already-initialized value is what `g_value_init` refuses.
+
+**A payload negotiated by an interface GType.** A wrapper infers its own concrete type, so a `Gdk.Texture` becomes `GdkMemoryTexture` and a file from `Gio.File.newForPath` becomes `GLocalFile`. Clipboard and drag-and-drop match GTypes exactly, so a drop target declaring `types={[Gio.File.prototype.__type__]}` never sees a provider built from a bare file. Initialize the value to the interface instead:
+
+```ts
+const value = new GObject.Value();
+value.init(Gio.File.prototype.__type__);
+value.setObject(file);
+Gdk.ContentProvider.newForValue(value);
+```
+
+Passing a `GObject.Value` you built yourself always works, wherever inference would guess something else.
+
 ## Future flags
 
 The `future` block opts into behavior that becomes the default in the next major version, so you can migrate one change at a time instead of all at once during an upgrade. Every flag is off by default, and codegen never warns about one you have not set.
@@ -61,13 +112,17 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
 - **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties. It does not cover the handwritten Cairo overrides or the OpenGL bindings, which already use typed arrays.
 
-Parameters accept `Uint8Array | number[]` either way, so turning the flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
+  Parameters accept `Uint8Array | number[]` either way, so turning this flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
+
+- **`v2ValueReturns`**: hands back what a `GObject.Value` holds rather than the value itself, the read-direction counterpart of the inference above. It covers the bindings whose return type or caller-allocated out parameter is a `GValue`: `Gtk.DropTarget.getValue`, `Gtk.ConstantExpression.getValue`, `Gdk.Clipboard.readValueAsync`, `Gtk.Builder.valueFromStringType`, `Gtk.TreeModel.getValue`, and a handful more. Their type becomes `unknown`, since GIR says nothing about what the value holds, so the call site asserts the type it asked for: `(await clipboard.readValueAsync(Gio.File.prototype.__type__, 0, null)) as Gio.File`. Signal parameters and properties keep handing over a `GObject.Value`, which a handler for a binding transform writes into.
+
+  Unlike the byte sequence flag, this one only changes what comes *back*; the `GObject.Value | JsValue` parameter widening is not part of it and applies either way. `tsc` reports every return site that needs attention, since `unknown` cannot be used without an assertion.
 
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
 
 ### When a flag graduates
 
-In the next major the new behavior becomes unconditional and the key is removed. Leaving `v2ByteArrays: true` behind will be accepted as a no-op with a single warning naming the key, and `v2ByteArrays: false` will be a configuration error, because at that point it can no longer be honored.
+In the next major each flag's behavior becomes unconditional and its key is removed. Leaving a graduated flag at `true` will be accepted as a no-op with a single warning naming the key, and setting it to `false` will be a configuration error, because at that point it can no longer be honored.
 
 ## The JSX prop model
 
