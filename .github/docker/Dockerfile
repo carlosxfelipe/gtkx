@@ -91,8 +91,8 @@ ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
-ARG RUST_VERSION=1.97.1
-ARG RUST_NIGHTLY=nightly-2026-08-12
+ARG RUST_VERSION=1.98.0
+ARG RUST_NIGHTLY=nightly-2026-08-20
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 

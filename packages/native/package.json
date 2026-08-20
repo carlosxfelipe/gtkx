@@ -80,6 +80,9 @@
                 "{projectRoot}/tests/**/*",
                 "{projectRoot}/test-support/**/*",
                 "{workspaceRoot}/scripts/run-headless.ts",
+                "{workspaceRoot}/scripts/cargo-nightly.ts",
+                "{workspaceRoot}/scripts/coverage-target.ts",
+                "{workspaceRoot}/scripts/rust-nightly.ts",
                 "{workspaceRoot}/packages/utils/src/**/*"
             ]
         },

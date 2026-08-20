@@ -18,9 +18,9 @@
         "@gtkx/cairo": "workspace:*",
         "@gtkx/components": "workspace:*",
         "@gtkx/css": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "react": "catalog:"
     },
