@@ -68,6 +68,21 @@ impl ConstructProperties {
     }
 }
 
+fn ensure_instantiable(type_: glib::Type) -> Result<()> {
+    let is_abstract = unsafe {
+        gobject_ffi::g_type_test_flags(type_.into_glib(), gobject_ffi::G_TYPE_FLAG_ABSTRACT) != 0
+    };
+
+    if is_abstract {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: cannot instantiate abstract type '{type_}'"),
+        ));
+    }
+
+    Ok(())
+}
+
 unsafe fn construct(
     type_: glib::Type,
     properties: &ConstructProperties,
@@ -146,7 +161,8 @@ fn finish_construction<'env>(
 /// it by calling `associate` with the instance's handle and the wrapper. A type registered through
 /// `registerClass` binds them from its `instance_init`, before `constructed` runs, so a
 /// `constructed` override already sees a fully usable wrapper; any other type binds them once
-/// construction has returned. When construction hands back an instance that already carries a
+/// construction has returned. An abstract `gtype` is rejected before anything is constructed.
+/// When construction hands back an instance that already carries a
 /// wrapper — it reached JavaScript and was wrapped before `g_object_new` returned — that existing
 /// wrapper is returned instead of binding `wrapper`, so the caller can adopt it; otherwise the
 /// call returns `null`.
@@ -162,6 +178,7 @@ pub fn new_object<'env>(
     associate: Associator<'env>,
 ) -> Result<Option<Object<'env>>> {
     let type_ = type_from_bigint(&gtype, "new_object:")?;
+    ensure_instantiable(type_)?;
     let properties = ConstructProperties::new(names, &values)?;
     let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
     let ptr = unsafe { construct(type_, &properties) }?;

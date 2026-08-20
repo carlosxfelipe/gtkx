@@ -2,7 +2,7 @@ import { type ExternalObject, type Handle, read } from "@gtkx/native";
 import { bind } from "./bind.js";
 import { biguint64T, booleanT, stringT, uint32T, voidT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
-import { getInstanceType } from "./registry.js";
+import { getHandle, getInstanceType } from "./registry.js";
 import {
     getStrvType,
     isTypedClass,
@@ -33,15 +33,17 @@ import {
 } from "./type.js";
 
 type ValueGuard = (value: unknown) => boolean;
-type ParamLayout = { flags: number; valueType: bigint };
+type ParamLayout = { flags: number; valueType: bigint; ownerType: bigint };
 
 const PARAM_READABLE = 1;
 const PARAM_WRITABLE = 2;
 const PARAM_CONSTRUCT_ONLY = 8;
 const PARAM_LAX_VALIDATION = 16;
+const PARAM_EXPLICIT_NOTIFY = 1 << 30;
 const READ_FLAGS = PARAM_READABLE | PARAM_WRITABLE | PARAM_CONSTRUCT_ONLY | PARAM_LAX_VALIDATION;
 const FLAGS_BYTE_OFFSET = 16;
 const VALUE_TYPE_BYTE_OFFSET = 24;
+const OWNER_TYPE_BYTE_OFFSET = 32;
 const LAYOUT_PROBE_NAME = "gtkx-param-layout";
 const INT8_MINIMUM = -128;
 const INT8_MAXIMUM = 127;
@@ -112,9 +114,49 @@ const getParamFlags = (pspec: ExternalObject<Handle>): number => read(pspec, uin
 const getParamValueType = (pspec: ExternalObject<Handle>): bigint =>
     read(pspec, biguint64T, VALUE_TYPE_BYTE_OFFSET) as bigint;
 
+const getParamOwnerType = (pspec: ExternalObject<Handle>): bigint =>
+    read(pspec, biguint64T, OWNER_TYPE_BYTE_OFFSET) as bigint;
+
+/**
+ * Reads the `GParamFlags` bitfield of a `GObject.ParamSpec`.
+ *
+ * @param spec The param spec wrapper to read.
+ * @returns The spec's flags.
+ */
+const getParamSpecFlags = (spec: object): number => {
+    assertParamLayout();
+
+    return getParamFlags(getHandle(spec));
+};
+
+/**
+ * Reads the GType of the values a `GObject.ParamSpec` describes.
+ *
+ * @param spec The param spec wrapper to read.
+ * @returns The GType of the spec's values.
+ */
+const getParamSpecValueType = (spec: object): bigint => {
+    assertParamLayout();
+
+    return getParamValueType(getHandle(spec));
+};
+
+/**
+ * Reads the GType a `GObject.ParamSpec` is installed on.
+ *
+ * @param spec The param spec wrapper to read.
+ * @returns The owning GType, or `TYPE_INVALID` while the spec is not installed on any type.
+ */
+const getParamSpecOwnerType = (spec: object): bigint => {
+    assertParamLayout();
+
+    return getParamOwnerType(getHandle(spec));
+};
+
 const isParamWritable = (flags: number): boolean => (flags & PARAM_WRITABLE) !== 0;
 const isParamConstructOnly = (flags: number): boolean => (flags & PARAM_CONSTRUCT_ONLY) !== 0;
 const isParamLaxlyValidated = (flags: number): boolean => (flags & PARAM_LAX_VALIDATION) !== 0;
+const isParamExplicitlyNotified = (flags: number): boolean => (flags & PARAM_EXPLICIT_NOTIFY) !== 0;
 
 const wasParamValueModified = (pspec: ExternalObject<Handle>, value: ExternalObject<Handle>): boolean =>
     paramValueValidate(pspec, value) as boolean;
@@ -217,7 +259,11 @@ function readProbeLayout(flags: number): ParamLayout {
     paramSpecRefSink(probe);
 
     try {
-        return { flags: getParamFlags(probe), valueType: getParamValueType(probe) };
+        return {
+            flags: getParamFlags(probe),
+            valueType: getParamValueType(probe),
+            ownerType: getParamOwnerType(probe),
+        };
     } finally {
         paramSpecUnref(probe);
     }
@@ -226,7 +272,11 @@ function readProbeLayout(flags: number): ParamLayout {
 function isLayoutIntact(flags: number): boolean {
     const layout = readProbeLayout(flags);
 
-    return (layout.flags & READ_FLAGS) === flags && layout.valueType === TYPE_BOOLEAN;
+    return (
+        (layout.flags & READ_FLAGS) === flags &&
+        layout.valueType === TYPE_BOOLEAN &&
+        layout.ownerType === TYPE_INVALID
+    );
 }
 
 function assertParamLayout(): void {
@@ -249,6 +299,9 @@ function assertParamLayout(): void {
 export {
     WHOLE_NUMBER_RANGES,
     getParamFlags,
+    getParamSpecFlags,
+    getParamSpecOwnerType,
+    getParamSpecValueType,
     getParamValueType,
     INT32_MAXIMUM,
     INT32_MINIMUM,
@@ -256,6 +309,7 @@ export {
     INT64_MINIMUM,
     isParamConstructOnly,
     isStringArray,
+    isParamExplicitlyNotified,
     isParamLaxlyValidated,
     isParamWritable,
     resolveGtype,

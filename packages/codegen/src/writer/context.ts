@@ -35,6 +35,7 @@ class ModuleContext {
         }
 
         this.module.imports.addSideEffect("../gobject/overrides/object.js");
+        this.module.imports.addSideEffect("../gobject/overrides/param-spec-getters.js");
         this.module.imports.addSideEffect("../gobject/overrides/value.js");
     }
 

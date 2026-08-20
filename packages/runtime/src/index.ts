@@ -24,19 +24,23 @@ export {
     setObjectProperty,
 } from "./object.js";
 /** @public */
+export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
+/** @public */
 export { promisify, trimFinish } from "./promisify.js";
 /** @public */
-export { coerceObjectProperty } from "./properties.js";
+export { coerceObjectProperty, newParamSpecOverride } from "./properties.js";
 /** @public */
 export { matchAllRegex, matchRegex } from "./regex.js";
 /** @public */
-export { type Interface, registerClass } from "./register-class.js";
+export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
 /** @public */
 export {
     getClassType,
     getHandle,
     getInstanceType,
     getWrapperClass,
+    peekTypeClass,
+    registerClassStruct,
     registerInterface,
     registerWrapperClass,
     registerWrapperClassResolver,

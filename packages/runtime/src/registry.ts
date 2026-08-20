@@ -2,6 +2,7 @@ import {
     type ExternalObject,
     getFundamentalWrapper,
     getType,
+    getTypeClass,
     getWrapper,
     type Handle,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
@@ -9,8 +10,16 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
-import type { Mixin, MixinReceiver } from "./mixin.js";
-import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
+import { copyLayerMembers, type Mixin, type MixinReceiver } from "./mixin.js";
+import {
+    TYPE_INVALID,
+    TYPE_OBJECT,
+    type TypedClass,
+    typeInterfaces,
+    typeIsA,
+    typeName,
+    typeParent,
+} from "./type.js";
 
 /**
  * Static side of class `C` with its construct signature preserved but the members named `K`
@@ -95,6 +104,8 @@ type InterfaceLayout = {
 };
 
 const classRegistry: Map<bigint, AnyClass> = new Map();
+const classStructRegistry: Map<bigint, AnyClass> = new Map();
+const composedClassStructRegistry: Map<bigint, AnyClass> = new Map();
 const interfaceMixinRegistry: Map<bigint, Mixin> = new Map();
 const composedClassRegistry: Map<bigint, AnyClass> = new Map();
 const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
@@ -102,6 +113,7 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
+const typeClassHandles: Map<bigint, ExternalObject<Handle>> = new Map();
 const wrapperClassResolvers: WeakMap<AnyClass, WrapperClassResolver> = new WeakMap();
 
 function setClassType(cls: AnyClass, type: bigint): void {
@@ -133,6 +145,16 @@ function getInstanceType(instance: object): bigint {
     const handle = handleMap.get(instance);
 
     return handle === undefined ? TYPE_INVALID : getType(handle);
+}
+
+function coerceGType(value: unknown): unknown {
+    if (typeof value !== "function") {
+        return value;
+    }
+
+    const type = getClassType(value as AnyClass);
+
+    return type === TYPE_INVALID ? value : type;
 }
 
 function registerClassType(cls: AnyClass, type: bigint): void {
@@ -187,6 +209,129 @@ function registerWrapperClassResolver(cls: AnyClass, resolver: WrapperClassResol
 
 function markDerivedClass(cls: AnyClass): void {
     derivedClasses.add(cls);
+}
+
+/**
+ * Registers the wrapper class of a type's class struct, such as `Gtk.WidgetClass` for `Gtk.Widget`,
+ * so `registerClass` can hand a `classInit` hook the new type's class struct wrapped in it.
+ * @param cls Wrapper class of the type's instances, already registered through
+ * `registerWrapperClass`.
+ * @param structClass Wrapper class of the type's class struct.
+ */
+function registerClassStruct(cls: AnyClass, structClass: AnyClass): void {
+    const type = getClassType(cls);
+
+    if (type !== TYPE_INVALID) {
+        classStructRegistry.set(type, structClass);
+    }
+}
+
+function collectClassStructClasses(type: bigint): AnyClass[] {
+    const structs: AnyClass[] = [];
+    let current = type;
+
+    while (current !== TYPE_INVALID) {
+        const structClass = classStructRegistry.get(current);
+
+        if (structClass !== undefined) {
+            structs.push(structClass);
+        }
+
+        current = typeParent(current);
+    }
+
+    return structs;
+}
+
+function composeClassStructClass(structs: AnyClass[]): AnyClass | undefined {
+    const [nearest, ...ancestors] = structs;
+
+    if (nearest === undefined || ancestors.length === 0) {
+        return nearest;
+    }
+
+    const composed: AnyClass = class extends nearest {};
+    Object.defineProperty(composed, "name", { value: nearest.name });
+
+    for (const structClass of ancestors) {
+        copyLayerMembers(composed, structClass.prototype);
+    }
+
+    return composed;
+}
+
+function getClassStructClass(type: bigint): AnyClass | undefined {
+    const cached = composedClassStructRegistry.get(type);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const composed = composeClassStructClass(collectClassStructClasses(type));
+
+    if (composed !== undefined) {
+        composedClassStructRegistry.set(type, composed);
+    }
+
+    return composed;
+}
+
+function peekedTypeLabel(type: bigint | AnyClass, gtype: bigint): string {
+    const name = typeName(gtype);
+
+    if (name !== null) {
+        return name;
+    }
+
+    return typeof type === "bigint" ? String(type) : type.name;
+}
+
+function getTypeClassHandle(gtype: bigint): ExternalObject<Handle> {
+    const cached = typeClassHandles.get(gtype);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const handle = getTypeClass(gtype);
+    typeClassHandles.set(gtype, handle);
+
+    return handle;
+}
+
+/**
+ * Returns a GObject type's class struct, wrapped in the class-struct wrapper classes registered
+ * for the type's ancestry, such as `Gtk.WidgetClass` composed with `GObject.ObjectClass` for a
+ * widget type. The class is referenced so it exists even before the type's first instance, and
+ * the reference is deliberately never released: once created, a class struct lives for the rest
+ * of the process. Backs the `peek` statics of generated GTypeStruct wrappers, such as
+ * `GObject.ObjectClass.peek` and `Gtk.WidgetClass.peek`.
+ *
+ * @param type GType to peek the class struct of, or a registered wrapper class of the type.
+ * @param base When given, wrapper class of the type the peeked type must derive from; the peek
+ * throws for a type outside that lineage. Without it any GObject type is accepted.
+ * @returns The wrapped class struct.
+ */
+function peekTypeClass(type: bigint | AnyClass, base?: AnyClass): object {
+    const gtype = typeof type === "bigint" ? type : getClassType(type);
+
+    if (!typeIsA(gtype, TYPE_OBJECT)) {
+        throw new TypeError(`peekTypeClass: '${peekedTypeLabel(type, gtype)}' is not a GObject type`);
+    }
+
+    if (base !== undefined && !typeIsA(gtype, getClassType(base))) {
+        throw new TypeError(`peekTypeClass: '${peekedTypeLabel(type, gtype)}' does not derive from '${base.name}'`);
+    }
+
+    const structClass = getClassStructClass(gtype);
+
+    if (structClass === undefined) {
+        throw new TypeError(
+            `peekTypeClass: no ancestor of '${peekedTypeLabel(type, gtype)}' registers a class struct wrapper`,
+        );
+    }
+
+    return wrapHandle(getTypeClassHandle(gtype), structClass);
 }
 
 function resolveAncestorType(ancestor: AnyClass): bigint | undefined {
@@ -481,10 +626,15 @@ function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty>
 }
 
 export {
+    coerceGType,
     describeValueKind,
+    getClassStructClass,
     getClassType,
     getInstanceType,
+    getTypeClassHandle,
     markDerivedClass,
+    peekTypeClass,
+    registerClassStruct,
     registerClassType,
     registerWrapperClass,
     registerWrapperClassResolver,
