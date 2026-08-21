@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/native",
     "version": "1.3.0",
-    "description": "Rust addon under GTKX that loads shared libraries, marshals values, and tracks GObject handles",
+    "description": "Rust addon for GTK: loads libraries, marshals values, tracks GObjects.",
     "keywords": [
         "gtkx",
         "gtk",

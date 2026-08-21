@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/animated",
     "version": "1.3.0",
-    "description": "React Spring animations for GTKX: animated widget components driven by the GTK frame clock",
+    "description": "Spring animations for GTK widgets, driven by the GTK4 frame clock.",
     "keywords": [
         "gtkx",
         "gtk",

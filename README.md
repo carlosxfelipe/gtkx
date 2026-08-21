@@ -5,9 +5,9 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  The React framework for Linux.<br />
-  Write native Linux applications with React and TypeScript.
-  Built on the GNOME stack and standard web tooling.
+  The React framework for Linux, built on GTK.<br />
+  Write native GTK4 desktop applications with React and TypeScript.
+  Real GTK widgets, the GNOME stack, and standard web tooling.
 </p>
 
 <p align="center">

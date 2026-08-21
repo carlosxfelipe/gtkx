@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/cli",
     "version": "1.3.0",
-    "description": "Command-line tool and Vite plugin stack that scaffolds, develops, builds, and documents GTKX applications",
+    "description": "GTK app toolchain for React: scaffold, dev server, build, docs.",
     "keywords": [
         "gtkx",
         "gtk",
