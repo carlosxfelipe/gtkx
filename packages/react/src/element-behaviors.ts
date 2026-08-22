@@ -36,6 +36,11 @@ import {
 import { applyWrite } from "./reconciler/signals.js";
 import { applyStyle, CSS_CLASSES_PROP, styleClass } from "./reconciler/style.js";
 
+type SelectedIndexState = { desired: number | undefined };
+
+const SELECTED_INDEX_PROP = "selectedIndex";
+const NO_SELECTION = -1;
+
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
         behaviors: [childSetterSlot()],
@@ -114,6 +119,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             wrappingIndexedSlot(Gtk.ListBoxRow, (row, inner) => {
                 row.setChild(inner);
             }),
+            selectedIndexBehavior(),
         ],
     },
     GtkFlowBox: {
@@ -458,6 +464,80 @@ function updateStyle(widget: Gtk.Widget, prev: Props, next: Props): Iterable<str
 
 function styleBehavior(): ElementBehavior<Gtk.Widget> {
     return { update: updateStyle };
+}
+
+function selectedRowIndex(box: Gtk.ListBox): number {
+    return box.getSelectedRow()?.getIndex() ?? NO_SELECTION;
+}
+
+function selectedIndexError(value: number): Error {
+    return new Error(
+        "The 'selectedIndex' of a <GtkListBox> must be a whole number, or -1 to select no row; " +
+        `received ${String(value)}.`,
+    );
+}
+
+function desiredIndex(value: unknown): number | undefined {
+    if (value === null) {
+        return NO_SELECTION;
+    }
+
+    if (typeof value !== "number") {
+        return undefined;
+    }
+
+    if (!Number.isSafeInteger(value)) {
+        throw selectedIndexError(value);
+    }
+
+    return value;
+}
+
+function selectRowAt(box: Gtk.ListBox, row: Gtk.ListBoxRow): void {
+    applyWrite(SELECTED_INDEX_PROP, () => {
+        box.selectRow(row);
+    });
+}
+
+function clearSelection(box: Gtk.ListBox): void {
+    applyWrite(SELECTED_INDEX_PROP, () => {
+        box.unselectAll();
+    });
+}
+
+function applySelectedIndex(box: Gtk.ListBox, state: SelectedIndexState): void {
+    const { desired } = state;
+
+    if (desired === undefined || selectedRowIndex(box) === desired) {
+        return;
+    }
+
+    if (desired < 0) {
+        clearSelection(box);
+
+        return;
+    }
+
+    const row = box.getRowAtIndex(desired);
+
+    if (row !== null) {
+        selectRowAt(box, row);
+    }
+}
+
+function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
+    return {
+        deferred: [SELECTED_INDEX_PROP],
+        initialize: (): SelectedIndexState => ({ desired: undefined }),
+        update: (_box, _prev, next, context) => {
+            (context as SelectedIndexState).desired = desiredIndex(next[SELECTED_INDEX_PROP]);
+
+            return [SELECTED_INDEX_PROP];
+        },
+        flush: (box, context) => {
+            applySelectedIndex(box, context as SelectedIndexState);
+        },
+    };
 }
 
 const addMainOption = (application: Gtk.Application, option: MainOption): void => {
