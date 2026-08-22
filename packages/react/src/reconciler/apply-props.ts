@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty } from "@gtkx/runtime";
-import { drain, isDeepEqual, kebabCase } from "@gtkx/utils";
+import { drain, isDeepEqual, kebabCase, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
@@ -31,7 +31,7 @@ const signalForProp = (info: TypeInfo, name: string): string => {
     }
 
     if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length) {
-        return `notify::${kebabCase(name.slice(NOTIFY_PREFIX.length))}`;
+        return `notify::${unsanitizeIdentifier(kebabCase(name.slice(NOTIFY_PREFIX.length)))}`;
     }
 
     return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
@@ -48,7 +48,7 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
         return;
     }
 
-    applyWrite(() => {
+    applyWrite(name, () => {
         Reflect.set(object, name, coerceObjectProperty(object, name, value));
     });
 };
@@ -72,7 +72,7 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
         return;
     }
 
-    applyWrite(() => {
+    applyWrite(TEXT_PROP, () => {
         buffer.beginIrreversibleAction();
         buffer.setText(text, -1);
         buffer.endIrreversibleAction();
@@ -191,7 +191,7 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
     const desired = "sensitive" in next ? next.sensitive : info.defaults.sensitive;
 
     if (typeof desired === "boolean") {
-        applyWrite(() => {
+        applyWrite("sensitive", () => {
             Reflect.set(node.object, "sensitive", desired);
         });
     }
