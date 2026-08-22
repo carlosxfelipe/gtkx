@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "paths": {
+            "@react-navigation/core": [
+                "./packages/navigation/node_modules/@react-navigation/core/lib/typescript/src/index.d.ts"
+            ],
+            "@react-navigation/routers": [
+                "./packages/navigation/node_modules/@react-navigation/routers/lib/typescript/src/index.d.ts"
+            ]
+        }
+    }
+}
