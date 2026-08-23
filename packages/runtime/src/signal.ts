@@ -1,5 +1,5 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import type { TypedClass } from "./type.js";
+import { getOrInsert, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -11,6 +11,8 @@ import {
     boxedT,
     type CallbackDescriptor,
     objectT,
+    refT,
+    sizedArrayT,
     stringT,
     uint32T,
     uint64T,
@@ -19,6 +21,7 @@ import {
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
+import { TYPE_INVALID, type TypedClass, typeInterfaces, typeParent } from "./type.js";
 import {
     fromValue,
     getBoxedValue,
@@ -70,6 +73,9 @@ const connectCache = createBindCache();
 const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
+const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
+const signalNameCache: Map<bigint, string[]> = new Map();
+const gSignalListIds = bind(LIB, "g_signal_list_ids", [biguint64T, refT(uint32T)], sizedArrayT(uint32T, 1, "full"));
 
 const gSignalEmitv = bind(
     LIB,
@@ -197,11 +203,45 @@ function hasSignalListener(instance: object, signals?: string[]): boolean {
     });
 }
 
-const getSignalId = (instance: object, signal: string): number => {
-    const type: bigint = (instance as TypedClass).__type__;
+const signalIdFor = (type: bigint, signal: string): number =>
+    gSignalLookup(getSignalBaseName(signal), type) as number;
 
-    return gSignalLookup(getSignalBaseName(signal), type) as number;
+const ownSignalNames = (type: bigint): string[] => {
+    const countRef = { value: 0 };
+
+    return (gSignalListIds(type, countRef) as number[]).map((id) => gSignalName(id) as string);
 };
+
+const addSignalNames = (names: Set<string>, type: bigint): void => {
+    for (const name of ownSignalNames(type)) {
+        names.add(name);
+    }
+};
+
+const handlerNameFor = (signal: string): string => `on${upperFirst(toCamelIdentifier(signal))}`;
+
+/** The signal a generated `on…` handler prop names on the given type, or `undefined` when it carries none. */
+const signalForHandlerName = (type: bigint, handlerName: string): string | undefined =>
+    signalNamesFor(type).find((signal) => handlerNameFor(signal) === handlerName);
+
+const buildSignalNames = (type: bigint): string[] => {
+    const names: Set<string> = new Set();
+
+    for (let current = type; current !== TYPE_INVALID; current = typeParent(current)) {
+        addSignalNames(names, current);
+
+        for (const iface of typeInterfaces(current)) {
+            addSignalNames(names, iface);
+        }
+    }
+
+    return [...names];
+};
+
+const signalNamesFor = (type: bigint): string[] => getOrInsert(signalNameCache, type, buildSignalNames);
+
+const getSignalId = (instance: object, signal: string): number =>
+    signalIdFor((instance as TypedClass).__type__, signal);
 
 function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
     const key = `${String(type)}\0${getSignalBaseName(signal)}`;
@@ -232,13 +272,7 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     return handlerId;
 }
 
-function overrideSignalClassClosure(type: bigint, signal: string, handler: SignalHandler): void {
-    const signalId = gSignalLookup(signal, type) as number;
-
-    if (signalId === 0) {
-        return;
-    }
-
+function overrideSignalClassClosure(type: bigint, signalId: number, handler: SignalHandler): void {
     gSignalOverrideClassClosure(signalId, type, toClosure(handler));
 }
 
@@ -342,7 +376,9 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 }
 
 export {
+    signalForHandlerName,
     getSignalBaseName,
+    signalIdFor,
     connectClosureSignal,
     connectSignal,
     type DeclaredSignalTypes,

@@ -1,11 +1,11 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { coerceObjectProperty } from "@gtkx/runtime";
-import { drain, isDeepEqual, kebabCase, unsanitizeIdentifier } from "@gtkx/utils";
+import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
+import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { type TypeInfo, typeInfoFor } from "./metadata.js";
+import { getPropertyName, hasProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
@@ -16,29 +16,53 @@ type PropChange = { prev: Props; next: Props };
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
-const HANDLER_PREFIX = "on";
 const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
 const accessibleDirty: Map<ElementNode, Props> = new Map();
-const mapWatched: WeakSet<ElementNode> = new WeakSet();
+const mapWatched: WeakMap<ElementNode, () => void> = new WeakMap();
 const pendingMap: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
+const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
 
-const signalForProp = (info: TypeInfo, name: string): string => {
+const unknownSignalError = (typeName: string, name: string): Error =>
+    new Error(
+        `The handler prop '${name}' of <${typeName}> names no signal ${typeName} carries. Name a ` +
+        `signal the element carries, or declare the one '${name}' stands for on ${typeName} when ` +
+        "its class is registered.",
+    );
+
+const lookedUpSignal = (target: SignalTarget, name: string): string => {
+    const type = getInstanceType(target.object);
+    const signal = type === TYPE_INVALID ? undefined : signalForHandlerName(type, name);
+
+    if (signal === undefined) {
+        throw unknownSignalError(target.typeName, name);
+    }
+
+    return signal;
+};
+
+const signalForProp = (target: SignalTarget, info: TypeInfo, name: string): string => {
     if (name === NOTIFY_PREFIX) {
         return "notify";
     }
 
     if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length) {
-        return `notify::${unsanitizeIdentifier(kebabCase(name.slice(NOTIFY_PREFIX.length)))}`;
+        const accessor = notifiedAccessor(name);
+        const property = getPropertyName(target.object, accessor) ?? unsanitizeIdentifier(kebabCase(accessor));
+
+        return `notify::${property}`;
     }
 
-    return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
+    return info.signals[name] ?? lookedUpSignal(target, name);
 };
 
 const isReservedName = (name: string, info: TypeInfo): boolean =>
-    REACT_RESERVED_PROPS.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
+    REACT_RESERVED_PROPS.has(name) ||
+    (isHandlerName(name) && !hasProperty(info, name)) ||
+    (isAccessibleProp(name) && !hasProperty(info, name)) ||
+    info.constructOnly.has(name);
 
 const isSkippedValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
@@ -197,18 +221,20 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
     }
 };
 
+const applyHandler = (target: SignalTarget, info: TypeInfo, name: string, next: Props): void => {
+    const value = next[name];
+
+    if (typeof value === "function") {
+        connectHandler(target, name, signalForProp(target, info, name), value as SignalHandler);
+    } else {
+        disconnectHandler(target, name);
+    }
+};
+
 const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
     eachChangedName(prev, next, (name) => {
-        if (!isHandlerName(name)) {
-            return;
-        }
-
-        const value = next[name];
-
-        if (typeof value === "function") {
-            connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
-        } else {
-            disconnectHandler(target, name);
+        if (isHandlerName(name) && !hasProperty(info, name)) {
+            applyHandler(target, info, name, next);
         }
     });
 };
@@ -229,6 +255,15 @@ const flushBehaviors = (): void => {
     drain(flushDirty, (node) => {
         eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context));
     });
+};
+
+const teardownBehaviors = (node: ElementNode): void => {
+    flushDirty.delete(node);
+    unwatchMap(node);
+
+    for (const [behavior, context] of node.contexts) {
+        behavior.teardown?.(node.object, context);
+    }
 };
 
 const applyAccessible = (object: GObject.Object, prev: Props | null, next: Props): void => {
@@ -260,12 +295,23 @@ const watchMap = (node: ElementNode): void => {
         return;
     }
 
-    mapWatched.add(node);
-
-    object.connect("map", () => {
+    const onMapped = (): undefined => {
         pendingMap.add(node);
         setTimeout(settleAccessible, 0);
+    };
+
+    object.on("map", onMapped);
+
+    mapWatched.set(node, () => {
+        object.off("map", onMapped);
     });
+};
+
+const unwatchMap = (node: ElementNode): void => {
+    mapWatched.get(node)?.();
+    mapWatched.delete(node);
+    pendingMap.delete(node);
+    accessibleDirty.delete(node);
 };
 
 const settleAccessible = (): void => {
@@ -319,6 +365,7 @@ export {
     flushAccessible,
     settleAccessible,
     flushBehaviors,
+    teardownBehaviors,
     applyElementProps,
     applyAdoptedProps,
     assertPropsCanChange,

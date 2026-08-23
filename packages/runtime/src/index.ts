@@ -30,7 +30,12 @@ export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from 
 /** @public */
 export { promisify, trimFinish } from "./promisify.js";
 /** @public */
-export { coerceObjectProperty, newParamSpecOverride } from "./properties.js";
+export {
+    coerceObjectProperty,
+    getDeclaredPropertyName,
+    isReadableProperty,
+    newParamSpecOverride,
+} from "./properties.js";
 /** @public */
 export { matchAllRegex, matchRegex } from "./regex.js";
 /** @public */
@@ -52,7 +57,14 @@ export {
     type WrapperClassResolver,
 } from "./registry.js";
 /** @public */
-export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";
+export {
+    connectSignal,
+    disconnectSignal,
+    emitSignal,
+    getSignalBaseName,
+    type SignalHandler,
+    signalForHandlerName,
+} from "./signal.js";
 /** @public */
 export { t } from "./t.js";
 /** @public */

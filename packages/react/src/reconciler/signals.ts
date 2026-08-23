@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
-import { camelCase, getOrInsert } from "@gtkx/utils";
+import { getOrInsert, toCamelIdentifier } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
@@ -12,7 +12,7 @@ const pendingWrites: (string | null)[] = [];
 const canonicalNames: Map<string, string> = new Map();
 
 const isApplyingWrite = (): boolean => pendingWrites.length > 0;
-const canonicalName = (property: string): string => getOrInsert(canonicalNames, property, camelCase);
+const canonicalName = (property: string): string => getOrInsert(canonicalNames, property, toCamelIdentifier);
 
 const runWrite = <T>(property: string | null, write: () => T): T => {
     pendingWrites.push(property === null ? null : canonicalName(property));
@@ -32,9 +32,11 @@ const notifyBindingFor = (signal: string): NotifyBinding | null => {
         return { property: null };
     }
 
-    return signal.startsWith(NOTIFY_DETAIL_PREFIX)
-        ? { property: canonicalName(signal.slice(NOTIFY_DETAIL_PREFIX.length)) }
-        : null;
+    if (!signal.startsWith(NOTIFY_DETAIL_PREFIX)) {
+        return null;
+    }
+
+    return { property: canonicalName(signal.slice(NOTIFY_DETAIL_PREFIX.length)) };
 };
 
 const notifiedProperty = (notify: NotifyBinding, args: unknown[]): string | null => {
