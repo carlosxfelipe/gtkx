@@ -19,6 +19,7 @@ import {
     listProjectFiles,
     removeCliProject,
     runCli,
+    runCliOrThrow,
     STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
@@ -45,6 +46,13 @@ type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
 type DeployProbe = { project: CliProject; status: number | null };
 type DeployRun = { status: number | null; output: string };
 
+type BuildMetadata = {
+    generator: string;
+    formatVersion: number;
+    schemas: string[];
+    packages: { name: string; version: string | null; dir: string }[];
+};
+
 type DeploySetup = {
     prefix: string;
     config: string;
@@ -57,6 +65,7 @@ const APPLICATION_ID = "com.gtkx.clideploy";
 const OUT_DIR = "build";
 const TARGETS = "appimage,deb,flatpak,rpm";
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const STAGE_PREFIX = "stage/";
 const BINARY_NAME = "gtkx-cli-deploy";
 const MODULE_DIR = `/run/build/${BINARY_NAME}`;
@@ -100,6 +109,10 @@ const MIME_FILENAME = `${APPLICATION_ID}.xml`;
 const MIME_INSTALL = `install -Dm644 ${MIME_FILENAME} ${FLATPAK_DEST}/share/mime/packages/${MIME_FILENAME}`;
 const HELPER_INSTALL = `install -Dm755 tools/helper.sh ${FLATPAK_DEST}/lib/${BINARY_NAME}/helper.sh`;
 const LICENSE_INSTALL = `install -Dm644 LICENSE ${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/LICENSE`;
+
+const SCHEMA_INSTALL =
+    `install -Dm644 data/${SCHEMA_FILE} ${FLATPAK_DEST}/share/glib-2.0/schemas/${SCHEMA_FILE}`;
+
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
 const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "--nosocket=fallback-x11"];
@@ -119,8 +132,15 @@ const MANIFEST = {
     license: "MPL-2.0",
     author: "GTKX <hello@gtkx.dev>",
     type: "module",
-    imports: { "#data/*": "./data/*" },
 };
+
+const SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="${APPLICATION_ID}" path="/com/gtkx/clideploy/">
+        <key name="probe" type="s"><default>'ready'</default></key>
+    </schema>
+</schemalist>
+`;
 
 const DEPLOY_FIELDS = `        name: "Deploy Probe",
         summary: "Probes what the deploy command writes",
@@ -218,11 +238,12 @@ const NPM_LOCKFILE = `{
 
 const APP_SOURCE = `import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot } from "@gtkx/react";
+import schema from "../data/${SCHEMA_FILE}";
 
 createRoot().render(
     <GtkApplication>
         <GtkApplicationWindow title="Probe">
-            <GtkLabel label="probe" />
+            <GtkLabel label={String(schema.id)} />
         </GtkApplicationWindow>
     </GtkApplication>,
 );
@@ -231,9 +252,11 @@ createRoot().render(
 const EXPECTED_STAGED = [
     join(STAGE_PREFIX, "bin", BINARY_NAME),
     join(STAGE_PREFIX, "lib", BINARY_NAME, "bundle.mjs"),
+    join(STAGE_PREFIX, "lib", BINARY_NAME, "gschemas.compiled"),
     join(STAGE_PREFIX, "lib", BINARY_NAME, "gtkx.node"),
     join(STAGE_PREFIX, "share", "applications", `${APPLICATION_ID}.desktop`),
     join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
+    join(STAGE_PREFIX, "share", "glib-2.0", "schemas", SCHEMA_FILE),
 ];
 
 const EXPECTED_MANIFESTS = [
@@ -247,7 +270,8 @@ const EXPECTED_MANIFESTS = [
 const COPYRIGHT_PATH = join("overlay", "deb", "share", "doc", BINARY_NAME, "copyright");
 const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
 const NOTICE_TARGETS = ["appimage", "flatpak", "rpm"];
-const PACKAGES_MANIFEST = "gtkx-packages.json";
+const BUILD_METADATA = "gtkx-schemas.json";
+const LEGACY_PACKAGES_METADATA = "gtkx-packages.json";
 const NODE_STANZA = `Files: lib/${BINARY_NAME}/node`;
 const NATIVE_STANZA = `Files: lib/${BINARY_NAME}/gtkx.node`;
 const BUNDLE_STANZA = `Files: lib/${BINARY_NAME}/bundle.mjs`;
@@ -303,17 +327,20 @@ const RUNTIME_NODE = `        node: { source: "path", path: "${RUNTIME_BINARY}" 
 
 const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`;
 
-const config = (body: string): string =>
+const config = (body: string, applicationIcon: string | null = "data/icons"): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
+    (applicationIcon === null ? "" : `    applicationIcon: ${JSON.stringify(applicationIcon)},\n`) +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const wildcardConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n    libraries: "*",\n` +
+    "    applicationIcon: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const bareConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
+    "    applicationIcon: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const sourceConfig = (source: string, extra = ""): string =>
@@ -326,6 +353,7 @@ const projectFiles = (): Record<string, string> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,
     LICENSE: "Mozilla Public License Version 2.0\n",
     [join("data", ICON_PATH)]: "<svg/>\n",
+    [join("data", SCHEMA_FILE)]: SCHEMA,
     [join("src", "index.tsx")]: APP_SOURCE,
     [HELPER_SOURCE]: HELPER_SCRIPT,
     [NOTES_SOURCE]: NOTES,
@@ -501,6 +529,89 @@ describe("gtkx deploy (manifests only)", () => {
     it("leaves the relations that carry no release of their own alone", () => {
         expect(packagedDepends(state.project, NFPM_PATH)).toContain("hicolor-icon-theme");
         expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("libGLESv2.so.2()(64bit)");
+    });
+});
+
+describe("gtkx deploy (application icon selection)", () => {
+    it("packages an application-id icon in the project root by default", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-default-icon-",
+            config: config(DEPLOY_BLOCK, null),
+            files: { ...projectFiles(), [`${APPLICATION_ID}.svg`]: "<svg/>\n" },
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+
+            expect(outputNames(project)).toContain(
+                join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
+            );
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("preserves scaled and symbolic files in a configured hicolor theme", () => {
+        const scaled = join("hicolor", "128x128@2", "apps", `${APPLICATION_ID}.png`);
+        const symbolic = join("hicolor", "symbolic", "apps", `${APPLICATION_ID}-symbolic.svg`);
+
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-icon-variants-",
+            config: config(DEPLOY_BLOCK, "data/variant-icons"),
+            files: {
+                ...projectFiles(),
+                [join("data", "variant-icons", scaled)]: "png\n",
+                [join("data", "variant-icons", symbolic)]: "<svg/>\n",
+            },
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+
+            expect(outputNames(project)).toEqual(expect.arrayContaining([
+                join(STAGE_PREFIX, "share", "icons", scaled),
+                join(STAGE_PREFIX, "share", "icons", symbolic),
+            ]));
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx deploy (invalid application icon themes)", () => {
+    it("fails when the project provides no application icon", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-missing-icon-",
+            config: config(DEPLOY_BLOCK, null),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("fails when the application icon is outside a usable icon-theme layout", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-malformed-icon-theme-",
+            config: config(DEPLOY_BLOCK, "data/malformed-icons"),
+            files: {
+                ...projectFiles(),
+                [join("data", "malformed-icons", "random", `${APPLICATION_ID}.svg`)]: "<svg/>\n",
+            },
+            hasStore: true,
+        });
+
+        try {
+            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+        } finally {
+            removeCliProject(project);
+        }
     });
 });
 
@@ -703,6 +814,7 @@ describe("gtkx deploy (flatpak source mode payload)", () => {
             expect(appModule["build-commands"]).toContain(MIME_INSTALL);
             expect(appModule["build-commands"]).toContain(HELPER_INSTALL);
             expect(appModule["build-commands"]).toContain(LICENSE_INSTALL);
+            expect(appModule["build-commands"]).toContain(SCHEMA_INSTALL);
             expect(appModule["build-commands"]).toContain(NOTICES_INSTALL);
             expect(findInlineSource(appModule, NOTICES_FILENAME)?.contents).toContain(NOTICES_HEADING);
         } finally {
@@ -814,9 +926,9 @@ describe("gtkx deploy (third-party notices)", () => {
         }
     });
 
-    it("keeps the build metadata it collects them from out of the package", () => {
+    it("keeps the unified build metadata it collects notices from out of the package", () => {
         const staged = outputNames(state.project);
-        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, PACKAGES_MANIFEST));
+        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, BUILD_METADATA));
         expect(staged).toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, "bundle.mjs"));
     });
 
@@ -864,6 +976,13 @@ describe("gtkx deploy (a bundle with nothing third-party in it)", () => {
         expect(state.status).toBe(0);
         expect(noticesFor(state.project, "rpm")).not.toContain(DEPENDENCY_SECTION);
     });
+
+    it("accepts build metadata with no schema sources", () => {
+        const path = join(state.project.root, "dist", BUILD_METADATA);
+        const metadata = JSON.parse(readFileSync(path, "utf8")) as BuildMetadata;
+        expect(state.status).toBe(0);
+        expect(metadata.schemas).toEqual([]);
+    });
 });
 
 describe("gtkx deploy (a build whose packages have moved)", () => {
@@ -885,10 +1004,32 @@ describe("gtkx deploy (a build whose packages have moved)", () => {
             removeCliProject(project);
         }
     });
+
+    it("does not stage legacy build metadata left in dist", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-legacy-metadata-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            writeFileSync(join(project.root, "dist", LEGACY_PACKAGES_METADATA), "{}\n");
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+            expect(runCli(project, args).status).toBe(0);
+
+            expect(outputNames(project)).not.toContain(
+                join(STAGE_PREFIX, "lib", BINARY_NAME, LEGACY_PACKAGES_METADATA),
+            );
+        } finally {
+            removeCliProject(project);
+        }
+    });
 });
 
 describe("gtkx deploy (a build it cannot account for)", () => {
-    it("fails when the build it packages recorded no bundled packages", () => {
+    it("fails when the build metadata is missing", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-deploy-stale-build-",
             config: config(DEPLOY_BLOCK),
@@ -898,10 +1039,66 @@ describe("gtkx deploy (a build it cannot account for)", () => {
 
         try {
             expect(runCli(project, ["build"]).status).toBe(0);
-            rmSync(join(project.root, "dist", PACKAGES_MANIFEST));
+            rmSync(join(project.root, "dist", BUILD_METADATA));
             const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
-            expect(runCli(project, args).status).not.toBe(0);
+            expect(() => runCliOrThrow(project, args)).toThrow();
         } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx deploy (build metadata it cannot trust)", () => {
+    it("fails when the format or a package record is invalid", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-newer-build-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            const metadataPath = join(project.root, "dist", BUILD_METADATA);
+            const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as BuildMetadata;
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+
+            for (const invalid of [
+                { ...metadata, formatVersion: 2 },
+                { ...metadata, packages: [{ name: "invalid", version: 1, dir: ".." }] },
+            ]) {
+                writeFileSync(metadataPath, `${JSON.stringify(invalid, null, 4)}\n`);
+                expect(() => runCliOrThrow(project, args)).toThrow();
+            }
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("fails when an in-project schema link escapes the project", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-schema-escape-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        const outsideSchema = `${project.root}-outside.gschema.xml`;
+        const linkedName = `${APPLICATION_ID}.escaped.gschema.xml`;
+        const linkedPath = `data/${linkedName}`;
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            writeFileSync(outsideSchema, SCHEMA);
+            symlinkSync(outsideSchema, join(project.root, "data", linkedName));
+            const metadataPath = join(project.root, "dist", BUILD_METADATA);
+            const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as BuildMetadata;
+            const escapedMetadata = `${JSON.stringify({ ...metadata, schemas: [linkedPath] }, null, 4)}\n`;
+            writeFileSync(metadataPath, escapedMetadata);
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+            expect(() => runCliOrThrow(project, args)).toThrow();
+        } finally {
+            rmSync(outsideSchema, { force: true });
             removeCliProject(project);
         }
     });

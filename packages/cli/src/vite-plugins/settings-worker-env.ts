@@ -1,16 +1,20 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
+import { createConfigLoader } from "@gtkx/config/internal";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
 function gtkxSettingsWorkerEnv(): Plugin {
+    const loadConfig = createConfigLoader();
+
     return {
         name: "gtkx:settings-worker-env",
         enforce: "pre",
 
-        config(config: UserConfig) {
-            const root = config.root ?? process.cwd();
-            const dir = stageAndCompileProjectSchemas(root, resolveDataDir(root));
+        async config(config: UserConfig) {
+            const loaded = await loadConfig.load(config.root ?? process.cwd());
+            const dataDir = loaded.config.future?.v2ResourceImports === true ? null : resolveDataDir(loaded.root);
+            const dir = stageAndCompileProjectSchemas(loaded.root, dataDir);
 
             if (dir === null) {
                 return;

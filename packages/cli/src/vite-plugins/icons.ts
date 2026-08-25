@@ -1,14 +1,21 @@
+import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
+import { createConfigLoader } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
-import { resolveDataDir } from "../internal/data-dir.js";
+import {
+    relativeIconPath,
+    resolveApplicationIcon,
+    type ResolvedApplicationIcon,
+} from "../internal/icon-path.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 
 type PluginState = {
-    iconsDir: string | null;
+    applicationId: string;
+    source: ResolvedApplicationIcon;
 };
 
 const ICONS_DIR = "icons";
@@ -20,14 +27,25 @@ const XDG_ENV_BANNER = [
     "].join(\":\");",
 ].join("\n");
 
-const findIconFiles = (iconsDir: string | null): ListedFile[] =>
-    iconsDir === null ? [] : listFilesRecursive(iconsDir);
+const findIconFiles = (state: PluginState): ListedFile[] => {
+    if (state.source.kind === "theme") {
+        return listFilesRecursive(state.source.path);
+    }
 
-const resolveIconsDir = (config: UserConfig): string | null => {
-    const root = config.root ?? process.cwd();
-    const dataDir = resolveDataDir(root);
+    if (state.source.kind === "none") {
+        return [];
+    }
 
-    return dataDir === null ? null : join(root, dataDir, ICONS_DIR);
+    return [{
+        absPath: state.source.path,
+        rel: relativeIconPath(state.applicationId, state.source.path),
+    }];
+};
+
+const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
+    const { config: gtkxConfig, root } = await loadConfig.load(config.root ?? process.cwd());
+    state.applicationId = gtkxConfig.applicationId;
+    state.source = resolveApplicationIcon(root, gtkxConfig.applicationId, gtkxConfig.applicationIcon);
 };
 
 const emitIcons = (ctx: AssetEmitter, icons: ListedFile[]): void => {
@@ -40,9 +58,10 @@ const emitIcons = (ctx: AssetEmitter, icons: ListedFile[]): void => {
     }
 };
 
-function gtkxIcons(): Plugin {
+function gtkxIcons(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
-        iconsDir: null,
+        applicationId: "",
+        source: { kind: "none" },
     };
 
     return {
@@ -50,12 +69,12 @@ function gtkxIcons(): Plugin {
         enforce: "pre",
         apply: "build",
 
-        config(config: UserConfig) {
-            state.iconsDir = resolveIconsDir(config);
+        async config(config: UserConfig) {
+            await applyUserConfig(state, config, loadConfig);
         },
 
         outputOptions(options) {
-            if (findIconFiles(state.iconsDir).length === 0) {
+            if (findIconFiles(state).length === 0) {
                 return;
             }
 
@@ -63,7 +82,7 @@ function gtkxIcons(): Plugin {
         },
 
         buildEnd() {
-            emitIcons(this, findIconFiles(state.iconsDir));
+            emitIcons(this, findIconFiles(state));
         },
     };
 }

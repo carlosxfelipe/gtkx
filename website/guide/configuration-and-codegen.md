@@ -31,9 +31,26 @@ export default defineConfig({
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
+- **`applicationIcon`**: a project-relative icon-theme directory, or one SVG, PNG, or XPM file to install as the
+  desktop application icon. Directories keep their theme layout; a single file is placed under `hicolor` and
+  renamed to the application ID. When omitted, GTKX uses exactly one `<applicationId>.svg`, `.png`, or `.xpm`
+  file in the project root, if present; multiple matches require an explicit choice.
 - **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. A write silences all of them, and silences `notify` only for the property it writes, so a property the widget changes in reaction still reaches its `onNotifyX`. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
 - **`future`**: opts into behavior that becomes the default in the next major. See [Future flags](#future-flags).
+
+### The application resource base
+
+GTKX derives a resource base from `applicationId` by prefixing `/` and replacing dots with slashes, so
+`com.example.Tasks` becomes `/com/example/Tasks`. It exports the result as `resourceBasePath` from
+`virtual:gtkx-config` and uses the same prefix for derived `?resource` paths and `?icon` assets. An explicit
+absolute `?resource=/path` remains exactly the path you supply.
+
+`GtkApplication` and `AdwApplication` elements default their `resourceBasePath` prop to that config-derived
+value. GApplication can derive the same value from its application ID, but GTKX supplies it explicitly so the
+application and its generated resources stay aligned. Consequently, overriding an element's `applicationId`
+prop alone does not move those resources; also pass `resourceBasePath` when intentionally using a different
+resource tree.
 
 ## What codegen emits
 
@@ -136,6 +153,43 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
   Flip the flag and run `tsc`: destructuring sites written for the old tuple, such as `const [, contents] = await file.loadContentsAsync(null)`, become type errors pointing at what to update.
 - **`v2InoutReturns`**: stops repeating an inout record or boxed parameter in a method's return value. Such a parameter is mutated in place — the instance you pass is the instance the callee updates — so the returned entry was always the same object you already hold. `Gsk.Path.getNext(point)` becomes `boolean` instead of `[boolean, PathPoint]`, `Pango.Matrix.transformRectangle(rect)` becomes `void` instead of `Rectangle`, and mixed cases only drop the repeated entry: `Soup.MessageHeadersIter.next` keeps its other out parameters. Primitive inout parameters, which cannot be mutated in place, stay in the result either way, and signal emission and virtual methods already work this way. `tsc` flags every call site that destructured the repeated value.
+- **`v2ResourceImports`**: replaces the `#data/` import map with relative, query-suffixed asset imports. Remove
+  `"imports": { "#data/*": "./data/*" }` from `package.json`, then migrate assets and schemas separately:
+
+  ```ts
+  // Before
+  import logoUri from "#data/logo.png";
+  import schema from "#data/com.example.Tasks.gschema.xml";
+
+  // After, from src/app.tsx
+  import logoPath from "../data/logo.png?resource";
+  import schema from "../data/com.example.Tasks.gschema.xml";
+  ```
+
+  `?resource` bundles an asset and returns its GResource path; `?resource=/org/example/exact.png` chooses an
+  exact path. Use `?url` when an API needs a real file. Schema imports stay query-free and become typed from
+  their relative import. While this flag is staged, a bare relative asset import is rejected so every call
+  site has to choose deliberately. Build a URI only where an API requires one: `` `resource://${logoPath}` ``.
+
+  `?icon` bundles an SVG, PNG, or XPM as a private icon-theme resource and returns its extensionless icon
+  name. `?icon=example-confirm-symbolic` overrides that name, which is useful for libraries that ship their
+  own icons:
+
+  ```ts
+  import confirmIcon from "./icons/scalable/actions/confirm.svg?icon=example-confirm-symbolic";
+  ```
+
+  An import below an `icons/hicolor/<size>/<context>/` or `icons/<size>/<context>/` tree keeps its recognized
+  hicolor layout, including directories such as `scalable/actions` and `16x16/apps`. A file outside one of
+  those layouts is placed directly in the app's resource icon path as an unthemed fallback; put symbolic and
+  size-specific icons in a theme layout when recoloring or size selection matters. Dependency imports use the
+  consuming application's resource prefix, and GTKX registers that private path with the current icon theme,
+  so they need no system installation. Choose package-specific icon names because two imports cannot claim
+  the same icon name and layout.
+
+  Production builds place these bundled assets in `gtkx.gresource` beside `bundle.mjs`. Generated resource
+  modules load and register that file automatically; no application bootstrap code or data-file installation
+  rule is required.
 
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
 

@@ -180,7 +180,13 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
         extraFiles: resolveExtraFiles(deploy),
         versions: core.versions,
         arch: resolveArch(),
-        paths: resolvePaths({ root: request.root, deploy, outDirOverride: request.outDirOverride }),
+        paths: resolvePaths({
+            root: request.root,
+            deploy,
+            applicationIcon: request.config.applicationIcon,
+            applicationId: request.config.applicationId,
+            outDirOverride: request.outDirOverride,
+        }),
         ...resolveLibraries(request.root, request.config),
         deploy,
     };

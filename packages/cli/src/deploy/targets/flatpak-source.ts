@@ -120,12 +120,11 @@ const metadataInstallCommands = (settings: DeploySettings): string[] => [
 const schemaInstallCommands = (settings: DeploySettings): string[] =>
     settings.paths.schemaFiles.map((file) => {
         const name = posix.basename(file);
+        const source = projectRelative(settings, file);
+        const destination = `${DESTINATION}/share/glib-2.0/schemas/${shellArgument(name)}`;
+        assertInsideProject(settings, { destination, source, resolved: file });
 
-        return installCommand(
-            projectRelative(settings, file),
-            `${DESTINATION}/share/glib-2.0/schemas/${shellArgument(name)}`,
-            "m644",
-        );
+        return installCommand(source, destination, "m644");
     });
 
 const iconInstallCommand = (settings: DeploySettings, source: string, rel: string): string =>
@@ -136,17 +135,17 @@ const iconInstallCommand = (settings: DeploySettings, source: string, rel: strin
     );
 
 const iconInstallCommands = (settings: DeploySettings): string[] => {
-    const { iconsDir, iconFile } = settings.paths;
+    const source = settings.paths.applicationIcon;
 
-    if (iconFile !== null) {
-        return [iconInstallCommand(settings, iconFile, iconPathFor(settings, iconFile))];
+    if (source.kind === "file") {
+        return [iconInstallCommand(settings, source.path, iconPathFor(settings, source.path))];
     }
 
-    if (iconsDir === null) {
+    if (source.kind === "none") {
         return [];
     }
 
-    return listFilesRecursive(iconsDir).map((icon) => iconInstallCommand(settings, icon.absPath, icon.rel));
+    return listFilesRecursive(source.path).map((icon) => iconInstallCommand(settings, icon.absPath, icon.rel));
 };
 
 const assertInsideProject = (settings: DeploySettings, installed: InstalledFile): void => {
