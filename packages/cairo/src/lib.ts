@@ -31,13 +31,6 @@ const SURFACE_FULL_T: BoxedDescriptor = t.boxed("CairoSurface", {
     getTypeFnName: "cairo_gobject_surface_get_type",
 });
 
-const SURFACE_MAPPING_LEASE: ReturnType<typeof t.lease> = t.lease(CAIRO_LIBRARY, "cairo_surface_unmap_image", {
-    getUserDataFnName: "cairo_surface_get_user_data",
-    setUserDataFnName: "cairo_surface_set_user_data",
-});
-
-const SURFACE_ACCESS_T: Descriptor = SURFACE_MAPPING_LEASE.access(SURFACE_T);
-
 const DEVICE_T: BoxedDescriptor = t.boxed("CairoDevice", {
     ownership: "borrowed",
     sharedLibrary: CAIRO_GOBJECT_LIBRARY,
@@ -104,8 +97,6 @@ const SCALED_FONT_FULL_T: BoxedDescriptor = t.boxed("CairoScaledFont", {
     getTypeFnName: "cairo_gobject_scaled_font_get_type",
 });
 
-const FC_PATTERN_T: BoxedDescriptor = t.boxed("FcPattern", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
-const FT_FACE_T: BoxedDescriptor = t.boxed("FT_Face", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 const MATRIX_T: BoxedDescriptor = t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 
 const RECTANGLE_T: BoxedDescriptor = t.boxed("cairo_rectangle_t", {
@@ -130,17 +121,11 @@ const RECTANGLE_LIST_T: BoxedDescriptor = t.boxed("cairo_rectangle_list_t", {
 });
 
 const GLYPH_T: BoxedDescriptor = t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
-const GLYPH_RESOURCE: ReturnType<typeof t.resource> = t.resource(CAIRO_LIBRARY, "cairo_glyph_free");
 
 const TEXT_CLUSTER_T: BoxedDescriptor = t.boxed("cairo_text_cluster_t", {
     ownership: "borrowed",
     sharedLibrary: CAIRO_LIBRARY,
 });
-
-const TEXT_CLUSTER_RESOURCE: ReturnType<typeof t.resource> = t.resource(
-    CAIRO_LIBRARY,
-    "cairo_text_cluster_free",
-);
 
 const TEXT_EXTENTS_T: BoxedDescriptor = t.boxed("cairo_text_extents_t", {
     ownership: "borrowed",
@@ -173,14 +158,11 @@ export {
     CONTEXT_T,
     DEVICE_T,
     DOUBLE_BUFFER_T,
-    FC_PATTERN_T,
     FONT_EXTENTS_T,
     FONT_FACE_FULL_T,
     FONT_FACE_T,
     FONT_OPTIONS_FULL_T,
     FONT_OPTIONS_T,
-    FT_FACE_T,
-    GLYPH_RESOURCE,
     GLYPH_T,
     MATRIX_T,
     PATH_T,
@@ -194,11 +176,8 @@ export {
     REGION_T,
     SCALED_FONT_FULL_T,
     SCALED_FONT_T,
-    SURFACE_ACCESS_T,
     SURFACE_FULL_T,
-    SURFACE_MAPPING_LEASE,
     SURFACE_T,
     TEXT_CLUSTER_T,
-    TEXT_CLUSTER_RESOURCE,
     TEXT_EXTENTS_T,
 };
