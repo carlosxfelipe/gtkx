@@ -27,6 +27,7 @@ const tutorialItems = [
     { text: "Reminders", link: "/tutorial/reminders" },
     { text: "Appendix A: Testing", link: "/tutorial/testing" },
     { text: "Appendix B: Packaging", link: "/tutorial/packaging" },
+    { text: "Internationalization", link: "/tutorial/internationalization" },
     { text: "Appendix C: Flathub", link: "/tutorial/flatpak" },
 ];
 
@@ -45,6 +46,7 @@ const guideSidebar = [
     { text: "Animations", link: "/guide/animations" },
     { text: "Cairo", link: "/guide/cairo" },
     { text: "OpenGL", link: "/guide/opengl" },
+    { text: "Internationalization", link: "/guide/internationalization" },
     { text: "Testing", link: "/guide/testing" },
     { text: "MCP", link: "/guide/mcp" },
     { text: "Deploying", link: "/guide/deploying" },

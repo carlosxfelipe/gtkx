@@ -12,6 +12,7 @@
         "@gtkx/css",
         "@gtkx/forms",
         "@gtkx/gl",
+        "@gtkx/i18n",
         "@gtkx/navigation",
         "@gtkx/react",
         "@gtkx/react/config",

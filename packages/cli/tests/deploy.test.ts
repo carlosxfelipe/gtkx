@@ -43,7 +43,7 @@ type FlatpakModule = {
 type FlatpakManifest = { modules: FlatpakModule[]; "finish-args": string[]; cleanup: string[] };
 type NfpmContent = { dst: string; file_info?: { mode: number } };
 type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
-type DeployProbe = { project: CliProject; status: number | null };
+type DeployProbe = { project: CliProject; status: number | null; output: string };
 type DeployRun = { status: number | null; output: string };
 
 type BuildMetadata = {
@@ -97,6 +97,8 @@ const RPM_NFPM_PATH = join("targets", "rpm", "nfpm.yaml");
 const GI_STORE_DIR = join("node_modules", ".gtkx", "gi");
 const LIBRARIES_INVENTORY = join(GI_STORE_DIR, "libraries.json");
 const MODE_MASK = 0o7777;
+const POT_CREATION_DATE = /^"POT-Creation-Date: .*\\n"$/m;
+const STABLE_POT_CREATION_DATE = String.raw`"POT-Creation-Date: 1970-01-01 00:00+0000\n"`;
 const HELPER_SOURCE = join("tools", "helper.sh");
 const NOTES_SOURCE = join("tools", "notes.txt");
 const HELPER_DESTINATION = join("lib", BINARY_NAME, "helper.sh");
@@ -167,6 +169,17 @@ const SOURCE_PAYLOAD = `        fileAssociations: [{ extension: "probe", mimeTyp
         extraFiles: { "lib/${BINARY_NAME}/helper.sh": "tools/helper.sh" },
 `;
 
+const MIME_DESCRIPTION = "GTKX probe document";
+const NEW_METADATA_MESSAGE = "Deployment utility";
+
+const LOCALIZATION_PAYLOAD = `        genericName: "${NEW_METADATA_MESSAGE}",
+        fileAssociations: [{
+            extension: "probe",
+            mimeType: "${MIME_TYPE}",
+            description: "${MIME_DESCRIPTION}",
+        }],
+`;
+
 const BAD_MODE = `        extraFiles: {
             "share/${BINARY_NAME}/notes.txt": { source: "tools/notes.txt", mode: "8" },
         },
@@ -177,6 +190,7 @@ const MINIMUM_OVERRIDES = `        minimumLibraryVersions: { "Gtk-4.0": "4.14" }
 
 const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1"], versions: [] }, null, 2)}\n`;
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
+const LOCALIZED_DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${LOCALIZATION_PAYLOAD}    },\n`;
 const MINIMUMS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${MINIMUM_OVERRIDES}    },\n`;
 const NO_DISPLAY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_DISPLAY}    },\n`;
 const BAD_MODE_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${BAD_MODE}    },\n`;
@@ -295,6 +309,27 @@ const BARE_APP_SOURCE = "process.env.PROBE_LABEL = \"probe\";\n";
 const NOTICES_DEST = `${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/${NOTICES_FILENAME}`;
 const NOTICES_INSTALL = `install -Dm644 ${NOTICES_FILENAME} ${NOTICES_DEST}`;
 
+const LOCALE_INSTALL =
+    `test ! -d dist/locale || { mkdir -p ${FLATPAK_DEST}/share/locale && ` +
+    `cp -a dist/locale/. ${FLATPAK_DEST}/share/locale/; }`;
+
+const FRENCH_NAME = "Sonde de déploiement";
+const GERMAN_NAME = "Bereitstellungsprüfung";
+const FRENCH_SUMMARY = "Vérifie les fichiers produits par le déploiement";
+const GERMAN_SUMMARY = "Prüft die vom Bereitstellen erzeugten Dateien";
+const FRENCH_MIME_DESCRIPTION = "Document de sonde GTKX";
+const GERMAN_MIME_DESCRIPTION = "GTKX-Prüfdokument";
+const STALE_SOURCE_MESSAGE = "A source message removed after deploy";
+const METADATA_SENTINEL = join("po", ".gtkx-metadata", "keep.txt");
+const FRENCH_CATALOG = join("po", "fr.po");
+const GERMAN_CATALOG = join("po", "de.po");
+const ITALIAN_CATALOG = join("po", "it.po");
+
+const LOCALIZED_APP_SOURCE = `import { t } from "@gtkx/i18n";
+${APP_SOURCE}
+process.env.STALE_TRANSLATION = t("${STALE_SOURCE_MESSAGE}");
+`;
+
 const DEPENDENCY_MANIFEST = {
     name: DEPENDENCY_NAME,
     version: DEPENDENCY_VERSION,
@@ -327,6 +362,25 @@ const RUNTIME_NODE = `        node: { source: "path", path: "${RUNTIME_BINARY}" 
 
 const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`;
 
+const poCatalog = (language: string, translations: [string, string][]): string => [
+    'msgid ""',
+    'msgstr ""',
+    String.raw`"Project-Id-Version: GTKX test catalog\n"`,
+    String.raw`"PO-Revision-Date: 1970-01-01 00:00+0000\n"`,
+    String.raw`"Last-Translator: GTKX Test\n"`,
+    String.raw`"Language-Team: ${language}\n"`,
+    String.raw`"Language: ${language}\n"`,
+    String.raw`"MIME-Version: 1.0\n"`,
+    String.raw`"Content-Type: text/plain; charset=UTF-8\n"`,
+    String.raw`"Content-Transfer-Encoding: 8bit\n"`,
+    "",
+    ...translations.flatMap(([message, translation]) => [
+        `msgid ${JSON.stringify(message)}`,
+        `msgstr ${JSON.stringify(translation)}`,
+        "",
+    ]),
+].join("\n");
+
 const config = (body: string, applicationIcon: string | null = "data/icons"): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
@@ -357,6 +411,23 @@ const projectFiles = (): Record<string, string> => ({
     [join("src", "index.tsx")]: APP_SOURCE,
     [HELPER_SOURCE]: HELPER_SCRIPT,
     [NOTES_SOURCE]: NOTES,
+});
+
+const localizedFiles = (files: Record<string, string>): Record<string, string> => ({
+    ...files,
+    [join("src", "index.tsx")]: LOCALIZED_APP_SOURCE,
+    [METADATA_SENTINEL]: "keep\n",
+    [join("po", "LINGUAS")]: "fr de it\n",
+    [join("po", "fr.po")]: poCatalog("fr", [
+        ["Deploy Probe", FRENCH_NAME],
+        ["Probes what the deploy command writes", FRENCH_SUMMARY],
+        [MIME_DESCRIPTION, FRENCH_MIME_DESCRIPTION],
+    ]),
+    [join("po", "de.po")]: poCatalog("de", [
+        ["Deploy Probe", GERMAN_NAME],
+        ["Probes what the deploy command writes", GERMAN_SUMMARY],
+        [MIME_DESCRIPTION, GERMAN_MIME_DESCRIPTION],
+    ]),
 });
 
 const noticesFiles = (): Record<string, string> => ({
@@ -393,6 +464,196 @@ const outputNames = (project: CliProject): string[] => listProjectFiles(project,
 
 const outputFile = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.root, OUT_DIR, ...segments), "utf8");
+
+const expectUnlocalizedMetadata = (project: CliProject): void => {
+    const desktop = outputFile(project, join("stage", "share", "applications", `${APPLICATION_ID}.desktop`));
+    const metainfo = outputFile(project, join("stage", "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`));
+    expect(desktop).toContain("Name=Deploy Probe");
+    expect(desktop).not.toContain("Name[");
+    expect(metainfo).toContain("<name>Deploy Probe</name>");
+    expect(metainfo).not.toContain("xml:lang=");
+};
+
+const expectMetadataMessages = (project: CliProject): void => {
+    const template = readFileSync(join(project.root, "po", `${APPLICATION_ID}.pot`), "utf8");
+    expect(template).toContain('msgid "Deploy Probe"');
+    expect(template).toContain('msgid "Probes what the deploy command writes"');
+    expect(template).toContain(`msgid "${MIME_DESCRIPTION}"`);
+    expect(template).toContain(join("po", ".gtkx-metadata", `${APPLICATION_ID}.template.desktop`));
+    expect(template).not.toContain("gtkx-deploy-metadata-");
+};
+
+const expectSynchronizedCatalog = (project: CliProject): void => {
+    const catalog = readFileSync(join(project.root, FRENCH_CATALOG), "utf8");
+    expect(catalog).toContain(`msgid ${JSON.stringify(STALE_SOURCE_MESSAGE)}`);
+    expect(catalog).toContain(`msgid ${JSON.stringify(NEW_METADATA_MESSAGE)}`);
+    expect(catalog).toContain(`msgstr ${JSON.stringify(FRENCH_NAME)}`);
+};
+
+const expectInitializedDeployCatalog = (project: CliProject): void => {
+    const catalog = readFileSync(join(project.root, ITALIAN_CATALOG), "utf8");
+    expect(catalog).toContain(String.raw`"Language: it\n"`);
+    expect(catalog).toContain(`msgid ${JSON.stringify(STALE_SOURCE_MESSAGE)}`);
+    expect(catalog).toContain(`msgid ${JSON.stringify(NEW_METADATA_MESSAGE)}`);
+};
+
+const stabilizePotCreationDate = (path: string): void => {
+    const catalog = readFileSync(path, "utf8");
+    expect(catalog).toMatch(POT_CREATION_DATE);
+    writeFileSync(path, catalog.replace(POT_CREATION_DATE, () => STABLE_POT_CREATION_DATE));
+};
+
+const expectCatalogRedeployIsStable = (project: CliProject): void => {
+    const templatePath = join(project.root, "po", `${APPLICATION_ID}.pot`);
+    const frenchPath = join(project.root, FRENCH_CATALOG);
+    const germanPath = join(project.root, GERMAN_CATALOG);
+    const italianPath = join(project.root, ITALIAN_CATALOG);
+
+    for (const path of [templatePath, frenchPath, germanPath, italianPath]) {
+        stabilizePotCreationDate(path);
+    }
+
+    const template = readFileSync(templatePath);
+    const french = readFileSync(frenchPath);
+    const german = readFileSync(germanPath);
+    const italian = readFileSync(italianPath);
+    runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"]);
+    expect(readFileSync(templatePath).equals(template)).toBe(true);
+    expect(readFileSync(frenchPath).equals(french)).toBe(true);
+    expect(readFileSync(germanPath).equals(german)).toBe(true);
+    expect(readFileSync(italianPath).equals(italian)).toBe(true);
+};
+
+const expectLocalizedDeploy = (state: DeployProbe): void => {
+    expectSuccessfulDeploy(state);
+
+    const desktop = outputFile(
+        state.project,
+        join("stage", "share", "applications", `${APPLICATION_ID}.desktop`),
+    );
+
+    const metainfo = outputFile(
+        state.project,
+        join("stage", "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`),
+    );
+
+    const mime = outputFile(state.project, join("stage", "share", "mime", "packages", MIME_FILENAME));
+    const launcher = outputFile(state.project, join("stage", "bin", BINARY_NAME));
+    const written = outputNames(state.project);
+    expect(desktop).toContain(`Name[fr]=${FRENCH_NAME}`);
+    expect(desktop).toContain(`Name[de]=${GERMAN_NAME}`);
+    expect(metainfo).toContain(`<name xml:lang="fr">${FRENCH_NAME}</name>`);
+    expect(metainfo).toContain(`<name xml:lang="de">${GERMAN_NAME}</name>`);
+    expect(mime).toContain(`<comment xml:lang="fr">${FRENCH_MIME_DESCRIPTION}</comment>`);
+    expect(mime).toContain(`<comment xml:lang="de">${GERMAN_MIME_DESCRIPTION}</comment>`);
+
+    expect(written).toEqual(expect.arrayContaining([
+        join("stage", "share", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
+        join("stage", "share", "locale", "de", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
+        join("stage", "share", "locale", "it", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
+    ]));
+
+    expect(written.some((name) => name.startsWith(join("stage", "lib", BINARY_NAME, "locale")))).toBe(false);
+    expect(launcher).toContain('GTKX_LOCALE_DIR="$prefix/share/locale"\nexport GTKX_LOCALE_DIR');
+    expectMetadataMessages(state.project);
+    expectInitializedDeployCatalog(state.project);
+
+    expect(readFileSync(join(state.project.root, "po", `${APPLICATION_ID}.pot`), "utf8")).toContain(
+        STALE_SOURCE_MESSAGE,
+    );
+
+    expect(readFileSync(join(state.project.root, METADATA_SENTINEL), "utf8")).toBe("keep\n");
+    expectSynchronizedCatalog(state.project);
+    expectCatalogRedeployIsStable(state.project);
+};
+
+const expectPlainBuildPreservesMetadata = (project: CliProject): void => {
+    const sourcePath = join(project.root, "src", "index.tsx");
+    writeFileSync(sourcePath, APP_SOURCE);
+
+    try {
+        expect(runCli(project, ["build"]).status).toBe(0);
+        const template = readFileSync(join(project.root, "po", `${APPLICATION_ID}.pot`), "utf8");
+        expectMetadataMessages(project);
+        expect(template).not.toContain(STALE_SOURCE_MESSAGE);
+    } finally {
+        writeFileSync(sourcePath, LOCALIZED_APP_SOURCE);
+    }
+};
+
+const expectRedeployDropsRemovedMetadata = (project: CliProject): void => {
+    const configPath = join(project.root, "gtkx.config.ts");
+    const templatePath = join(project.root, "po", `${APPLICATION_ID}.pot`);
+    stabilizePotCreationDate(templatePath);
+    writeFileSync(configPath, config(DEPLOY_BLOCK));
+
+    try {
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+        const template = readFileSync(templatePath, "utf8");
+        expect(template).toContain('msgid "Deploy Probe"');
+        expect(template).not.toContain(MIME_DESCRIPTION);
+        expect(template).not.toContain(STABLE_POT_CREATION_DATE);
+    } finally {
+        writeFileSync(configPath, config(LOCALIZED_DEPLOY_BLOCK));
+    }
+};
+
+const expectSkipBuildPreservesPot = (project: CliProject): void => {
+    const path = join(project.root, "po", `${APPLICATION_ID}.pot`);
+    const original = readFileSync(path, "utf8");
+    const catalogPath = join(project.root, FRENCH_CATALOG);
+    const catalog = readFileSync(catalogPath, "utf8");
+    const compiled = join(project.root, "dist", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`);
+    const sentinel = "catalog template must stay untouched\n";
+    writeFileSync(path, sentinel);
+    rmSync(compiled, { force: true });
+
+    try {
+        expect(runCli(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]).status).toBe(0);
+        expect(readFileSync(path, "utf8")).toBe(sentinel);
+        expect(readFileSync(catalogPath, "utf8")).toBe(catalog);
+        expect(existsSync(compiled)).toBe(true);
+    } finally {
+        writeFileSync(path, original);
+    }
+};
+
+const expectMalformedCatalogFailure = (): void => {
+    const project = createCliProject({
+        prefix: "gtkx-cli-deploy-malformed-catalog-",
+        config: config(LOCALIZED_DEPLOY_BLOCK),
+        files: {
+            ...localizedFiles(projectFiles()),
+            [join("po", "fr.po")]: "this is not a gettext catalog\n",
+        },
+        hasStore: true,
+    });
+
+    try {
+        expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+    } finally {
+        removeCliProject(project);
+    }
+};
+
+const expectMissingSkipCatalogFailure = (): void => {
+    const project = createCliProject({
+        prefix: "gtkx-cli-deploy-missing-skip-catalog-",
+        config: config(LOCALIZED_DEPLOY_BLOCK),
+        files: {
+            ...localizedFiles(projectFiles()),
+            [join("po", `${APPLICATION_ID}.pot`)]: "catalog template must stay untouched\n",
+        },
+        hasStore: true,
+    });
+
+    try {
+        const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+        expect(() => runCliOrThrow(project, args)).toThrow();
+    } finally {
+        removeCliProject(project);
+    }
+};
 
 const noticesFor = (project: CliProject, target: string): string =>
     outputFile(project, join("overlay", target, "share", "licenses", BINARY_NAME, NOTICES_FILENAME));
@@ -451,7 +712,7 @@ const stubGenerator = (): string => {
 
 const deployProbe = (setup: DeploySetup): DeployProbe => {
     const { args, executables = [], ...options } = setup;
-    const probe: DeployProbe = { project: { root: "", nodeModules: "" }, status: null };
+    const probe: DeployProbe = { project: { root: "", nodeModules: "" }, status: null, output: "" };
 
     beforeAll(() => {
         probe.project = createCliProject({ ...options, hasStore: true });
@@ -460,7 +721,9 @@ const deployProbe = (setup: DeploySetup): DeployProbe => {
             chmodSync(join(probe.project.root, name), 0o755);
         }
 
-        probe.status = runCli(probe.project, args).status;
+        const run = runCli(probe.project, args);
+        probe.status = run.status;
+        probe.output = run.output;
     });
 
     afterAll(() => {
@@ -468,6 +731,14 @@ const deployProbe = (setup: DeploySetup): DeployProbe => {
     });
 
     return probe;
+};
+
+const expectSuccessfulDeploy = (probe: DeployProbe): void => {
+    if (probe.status !== 0) {
+        throw new Error(probe.output);
+    }
+
+    expect(probe.status).toBe(0);
 };
 
 const expectRefusal = (prefix: string, source: string, pin: string, env?: NodeJS.ProcessEnv): void => {
@@ -529,6 +800,67 @@ describe("gtkx deploy (manifests only)", () => {
     it("leaves the relations that carry no release of their own alone", () => {
         expect(packagedDepends(state.project, NFPM_PATH)).toContain("hicolor-icon-theme");
         expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("libGLESv2.so.2()(64bit)");
+    });
+
+    it("leaves metadata untranslated when the project has no po directory", () => {
+        expectUnlocalizedMetadata(state.project);
+    });
+});
+
+describe("gtkx deploy (gettext localization)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-localized-",
+        config: config(LOCALIZED_DEPLOY_BLOCK),
+        files: localizedFiles(projectFiles()),
+        args: ["deploy", "--print-manifests", "--target", "deb"],
+    });
+
+    it("localizes the staged metadata and installs every compiled catalog", () => {
+        expectLocalizedDeploy(state);
+    });
+
+    it("preserves metadata while removing stale source messages on a plain build", () => {
+        expectPlainBuildPreservesMetadata(state.project);
+    });
+
+    it("replaces old metadata when a later deploy removes it", () => {
+        expectRedeployDropsRemovedMetadata(state.project);
+    });
+
+    it("does not rewrite the catalog template when the build is skipped", () => {
+        expectSkipBuildPreservesPot(state.project);
+    });
+});
+
+describe("gtkx deploy (gettext localization in Flatpak source mode)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-localized-source-",
+        config: sourceConfig(PINNED_SOURCE, LOCALIZATION_PAYLOAD),
+        files: localizedFiles(sourceFiles(PNPM_PIN)),
+        args: SOURCE_ARGS,
+    });
+
+    it("uses the localized metadata and build catalogs in Flatpak source mode", () => {
+        expectSuccessfulDeploy(state);
+        const sourceModule = flatpakModule(state.project);
+
+        expect(findInlineSource(sourceModule, `${APPLICATION_ID}.desktop`)?.contents).toContain(
+            `Name[fr]=${FRENCH_NAME}`,
+        );
+
+        expect(findInlineSource(sourceModule, `${APPLICATION_ID}.metainfo.xml`)?.contents).toContain(
+            `<name xml:lang="de">${GERMAN_NAME}</name>`,
+        );
+
+        expect(findInlineSource(sourceModule, MIME_FILENAME)?.contents).toContain(FRENCH_MIME_DESCRIPTION);
+        expect(sourceModule["build-commands"]).toContain(LOCALE_INSTALL);
+    });
+});
+
+describe("gtkx deploy (invalid gettext catalog sources)", () => {
+    it("fails for a malformed catalog and a missing skip-build catalog", () => {
+        expectMalformedCatalogFailure();
+        expectMissingSkipCatalogFailure();
     });
 });
 

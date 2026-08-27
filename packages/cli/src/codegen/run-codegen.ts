@@ -8,9 +8,13 @@ import {
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { info, warn } from "@gtkx/utils";
-import { rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
+import { extractSourceCatalog } from "../i18n/source-messages.js";
+import { emitI18nTypes } from "../i18n/types.js";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
@@ -21,6 +25,7 @@ type RunCodegenOptions = {
     isForced?: boolean;
     inputs?: CodegenInputs;
     resolved?: LoadedConfig;
+    shouldPreserveI18nMetadata?: boolean | undefined;
 };
 
 type LoadedConfig = {
@@ -52,13 +57,19 @@ type CodegenOptionsInput = {
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
-type EnsureGeneratedOptions = { shouldAnnounce?: boolean; mode?: string };
+
+type EnsureGeneratedOptions = {
+    shouldAnnounce?: boolean;
+    mode?: string;
+    shouldPreserveI18nMetadata?: boolean | undefined;
+};
 
 type RunOptionsInput = {
     root: string;
     mode: string | undefined;
     inputs: CodegenInputs | null;
     resolved: LoadedConfig;
+    shouldPreserveI18nMetadata: boolean | undefined;
 };
 
 const GIR_PATH_MISSING_MESSAGE =
@@ -156,6 +167,7 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
+    await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     syncSchemaEnv(cwd, config.future?.v2ResourceImports === true);
 
     if (config.codegen === false) {
@@ -199,6 +211,26 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     };
 };
 
+const syncI18n = async (
+    root: string,
+    applicationId: string,
+    shouldPreserveMetadataMessages = true,
+): Promise<void> => {
+    const project = resolveCatalogProject(root, applicationId);
+
+    if (project === null) {
+        emitI18nTypes(root, [], false);
+
+        return;
+    }
+
+    const srcDir = join(root, "src");
+    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : root);
+    const catalog = await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
+    synchronizeCatalogs(project);
+    emitI18nTypes(root, catalog.messages);
+};
+
 const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
     try {
         const { config } = await loadConfig(cwd, { mode });
@@ -232,12 +264,18 @@ const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: Codegen
     }
 };
 
-const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
+const getRunOptions = ({
+    root,
+    mode,
+    inputs,
+    resolved,
+    shouldPreserveI18nMetadata,
+}: RunOptionsInput): RunCodegenOptions => {
     if (inputs === null) {
-        return { cwd: root, mode, resolved };
+        return { cwd: root, mode, resolved, shouldPreserveI18nMetadata };
     }
 
-    return { cwd: root, mode, inputs, resolved };
+    return { cwd: root, mode, inputs, resolved, shouldPreserveI18nMetadata };
 };
 
 const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
@@ -250,6 +288,7 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
             cwd: context.root,
             mode: options.mode,
             resolved: { config: context.config, configFile: context.configFile },
+            shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
         });
 
         return result.isRegenerated;
@@ -258,7 +297,14 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     const inputs = resolveInputsOrNull(context.root, context.config);
     maybeAnnounceStale(options.shouldAnnounce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
-    const result = await runCodegen(getRunOptions({ root: context.root, mode: options.mode, inputs, resolved }));
+
+    const result = await runCodegen(getRunOptions({
+        root: context.root,
+        mode: options.mode,
+        inputs,
+        resolved,
+        shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
+    }));
 
     return result.isRegenerated;
 };

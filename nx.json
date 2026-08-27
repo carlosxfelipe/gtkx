@@ -132,6 +132,7 @@
                 "@gtkx/css:build",
                 "@gtkx/forms:build",
                 "@gtkx/gl:build",
+                "@gtkx/i18n:build",
                 "@gtkx/navigation:build"
             ]
         },
@@ -152,6 +153,7 @@
                 "@gtkx/css:build",
                 "@gtkx/forms:build",
                 "@gtkx/gl:build",
+                "@gtkx/i18n:build",
                 "@gtkx/navigation:build"
             ]
         }

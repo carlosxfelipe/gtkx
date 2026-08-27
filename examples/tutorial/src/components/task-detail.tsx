@@ -1,6 +1,7 @@
 import { EntryRow, FormProvider, SwitchRow, useForm } from "@gtkx/forms";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import { t } from "@gtkx/i18n";
 import { AdwActionRow, AdwClamp, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import {
     GtkBox,
@@ -50,30 +51,30 @@ export const TaskDetail = ({ task }: { task: Task }) => {
                         <AdwPreferencesGroup>
                             <EntryRow<TaskFields>
                                 name="title"
-                                title="Title"
+                                title={t("Title")}
                                 showApplyButton
                                 onApply={submitTitle}
                                 onEntryActivated={submitTitle}
                             />
                             <SwitchRow<TaskFields>
                                 name="important"
-                                title="Important"
+                                title={t("Important")}
                                 onNotifyActive={(active) => setImportant(task.id, active ?? false)}
                             />
                             <AdwActionRow
-                                title="Due"
+                                title={t("Due")}
                                 suffix={
                                     <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
                                         {task.due ? (
                                             <GtkButton
                                                 iconName="edit-clear-symbolic"
                                                 cssClasses={["flat", "circular"]}
-                                                accessibleLabel="Clear due date"
+                                                accessibleLabel={t("Clear due date")}
                                                 onClicked={() => updateTask(task.id, { due: null })}
                                             />
                                         ) : null}
                                         <GtkMenuButton
-                                            label={formatDue(task.due) ?? "Set date"}
+                                            label={formatDue(task.due) ?? t("Set date")}
                                             popover={
                                                 <GtkPopover>
                                                     <GtkCalendar
@@ -102,7 +103,7 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                         <GtkLabel halign={Gtk.Align.START} cssClasses={["heading"]}>
-                            Notes
+                            {t("Notes")}
                         </GtkLabel>
                         <GtkScrolledWindow cssClasses={["card"]} heightRequest={160}>
                             <GtkTextView
@@ -130,13 +131,13 @@ export const TaskDetail = ({ task }: { task: Task }) => {
                     <AdwPreferencesGroup>
                         <AdwActionRow
                             cssClasses={["property"]}
-                            title="Created"
+                            title={t("Created")}
                             subtitle={formatDateTime(task.createdAt)}
                         />
                         {task.completedAt ? (
                             <AdwActionRow
                                 cssClasses={["property"]}
-                                title="Completed"
+                                title={t("Completed")}
                                 subtitle={formatDateTime(task.completedAt)}
                             />
                         ) : null}

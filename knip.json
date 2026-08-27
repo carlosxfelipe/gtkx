@@ -104,6 +104,12 @@
         "packages/gl": {
             "includeEntryExports": false
         },
+        "packages/i18n": {
+            "includeEntryExports": false,
+            "entry": [
+                "gtkx.config.ts!"
+            ]
+        },
         "packages/native": {
             "includeEntryExports": false
         },
